@@ -304,22 +304,61 @@ class TestWindfieldHelpers(unittest.TestCase):
 
     def test_holland_2010_pass(self):
         """Test Holland et al. 2010 wind field model."""
-        # test at centroids within and outside of radius of max wind
+        # The parameter "x" is designed to be exactly 0.5 inside the radius of max wind (RMW) and
+        # to increase or decrease linearly outside of it in radial direction.
+        #
+        # An increase (decrease) of "x" outside of the RMW is for cases where the max wind is very
+        # high (low), but the RMW is still comparably large (small). This means, wind speeds need
+        # to decay very sharply (only moderately) outside of the RMW to reach the low prescribed
+        # peripheral wind speeds.
+        #
+        # The "hol_b" parameter tunes the meaning of a "comparably" large or small RMW.
         si_track = xr.Dataset({
-            "rad": ("time", KM_TO_M * np.array([75, 40])),
-            "vmax": ("time", [35.0, 40.0]),
-            "hol_b": ("time", [1.80, 2.5]),
+            # four test cases:
+            # - low vmax, moderate RMW: x decreases moderately
+            # - large hol_b: x decreases sharply
+            # - very low vmax: x decreases so much, it needs to be clipped at 0
+            # - large vmax, large RMW: x increases
+            "rad": ("time", KM_TO_M * np.array([75, 75, 75, 90])),
+            "vmax": ("time", [35.0, 35.0, 16.0, 90.0]),
+            "hol_b": ("time", [1.75, 2.5, 1.9, 1.6]),
         })
-        d_centr = KM_TO_M * np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
-        close_centr = np.array([[True, True, True], [True, False, True]], dtype=bool)
+        d_centr = KM_TO_M * np.array([
+            # first column is for locations within the storm eye
+            # second column is for locations at or close to the radius of max wind
+            # third column is for locations outside the storm eye
+            # fourth column is for locations exactly at the peripheral radius
+            # fifth column is for locations outside the peripheral radius
+            [0., 75, 220, 300, 490],
+            [30, 74, 170, 300, 501],
+            [21, 76, 230, 300, 431],
+            [32, 91, 270, 300, 452],
+        ], dtype=float)
+        close_centr = np.array([
+            # note that we set one of these to "False" for testing
+            [True, True, True, True, True],
+            [True, True, True, True, False],
+            [True, True, True, True, True],
+            [True, True, True, True, True],
+        ], dtype=bool)
         hol_x = _x_holland_2010(si_track, d_centr, close_centr)
-        np.testing.assert_array_almost_equal(
-            hol_x, [[0.5, 0.5, 0.47273], [0.5, 0, 0.211602]])
+        np.testing.assert_array_almost_equal(hol_x, [
+            [0.5, 0.500000, 0.485077, 0.476844, 0.457291],
+            [0.5, 0.500000, 0.410997, 0.289203, 0.000000],
+            [0.5, 0.497620, 0.131072, 0.000000, 0.000000],
+            [0.5, 0.505022, 1.403952, 1.554611, 2.317948],
+        ])
 
-        # test exactly at radius of maximum wind (35 m/s) and at peripheral radius (17 m/s)
         v_ang_norm = _stat_holland_2010(si_track, d_centr, close_centr, hol_x)
-        np.testing.assert_array_almost_equal(v_ang_norm,
-            [[15.957853, 35.0, 20.99411], [33.854826, 0, 17.0]])
+        np.testing.assert_array_almost_equal(v_ang_norm, [
+            # first column: converge to 0 when approaching storm eye
+            # second column: vmax at RMW
+            # fourth column: peripheral speed (17 m/s) at peripheral radius (unless x is clipped!)
+            [0.0000000, 35.000000, 21.181497, 17.00000, 12.103461],
+            [1.2964800, 34.990037, 21.593755, 17.00000, 0.0000000],
+            [0.3219518, 15.997500, 13.585498, 16.00000, 16.000000],
+            [24.823469, 89.992938, 24.381965, 17.00000, 1.9292020],
+        ])
 
     def test_stat_holland_1980(self):
         """Test _stat_holland_1980 function. Compare to MATLAB reference."""

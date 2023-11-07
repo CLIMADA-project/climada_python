@@ -1424,7 +1424,13 @@ def _x_holland_2010(
     # linearly interpolate between max exponent and peripheral exponent
     x_max = 0.5
     hol_x[close_centr] = x_max + np.fmax(0, d_centr - r_max) * (x_n - x_max) / (r_n - r_max)
-    hol_x[close_centr] = np.clip(hol_x[close_centr], 0.0, 0.5)
+
+    # Negative hol_x values appear when v_max_s is very close to or even lower than v_n (which
+    # should never happen in theory). In those cases, wind speeds might decrease outside of the eye
+    # wall and increase again towards the peripheral radius (which is actually unphysical).
+    # We clip hol_x to 0, otherwise wind speeds keep increasing indefinitely away from the eye:
+    hol_x[close_centr] = np.fmax(hol_x[close_centr], 0.0)
+
     return hol_x
 
 def _stat_holland_2010(
