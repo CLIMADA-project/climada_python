@@ -43,7 +43,7 @@ def get_knutson_scaling_factor(
             percentile='50',
             basin='NA',
             variable='cat05',
-            baseline=(1950, 2018)
+            baseline=(1982, 2022)
     ):
     """
     This code combines data in Knutson et al. (2020) and GMST data
