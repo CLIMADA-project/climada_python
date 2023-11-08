@@ -28,7 +28,9 @@ class TestKnutson(unittest.TestCase):
 
     def test_get_knutson_scaling_pass(self):
         """Test get_knutson_criterion function."""
-        criterion = tc_cc.get_knutson_scaling_factor()
+        criterion = tc_cc.get_knutson_scaling_factor(
+                    percentile='5/10',
+                    baseline=(1950, 2018))
         self.assertEqual(criterion.shape, (21, 4))
 
         self.assertEqual(criterion.columns[0], '2.6')
@@ -43,15 +45,19 @@ class TestKnutson(unittest.TestCase):
 
     def test_get_gmst_pass(self):
         """Test get_gmst_info function."""
-        gmst_data, gmst_start_year, gmst_end_year, rcps = tc_cc.get_gmst_info()
+        gmst_info = tc_cc.get_gmst_info()
 
-        self.assertAlmostEqual(gmst_data.shape,
-                               (len(rcps),
-                                 gmst_end_year-gmst_start_year+1))
-        self.assertAlmostEqual(gmst_data[0,0], -0.16)
-        self.assertAlmostEqual(gmst_data[0,-1], 1.27641, 4)
-        self.assertAlmostEqual(gmst_data[-1,0], -0.16)
-        self.assertAlmostEqual(gmst_data[-1,-1], 4.477764, 4)
+        self.assertAlmostEqual(gmst_info['gmst_start_year'], 1880)
+        self.assertAlmostEqual(gmst_info['gmst_end_year'], 2100)
+        self.assertAlmostEqual(len(gmst_info['rcps']), 4)
+
+        self.assertAlmostEqual(gmst_info['gmst_data'].shape,
+                               (len(gmst_info['rcps']),
+                                gmst_info['gmst_end_year']-gmst_info['gmst_start_year']+1))
+        self.assertAlmostEqual(gmst_info['gmst_data'][0,0], -0.16)
+        self.assertAlmostEqual(gmst_info['gmst_data'][0,-1], 1.27641, 4)
+        self.assertAlmostEqual(gmst_info['gmst_data'][-1,0], -0.16)
+        self.assertAlmostEqual(gmst_info['gmst_data'][-1,-1], 4.477764, 4)
 
     def test_get_knutson_data_pass(self):
         """Test get_knutson_data function."""
