@@ -840,7 +840,7 @@ class Hazard():
                     None,
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
-                    [str(x) for x in data[coords["event"]].values],
+                    list(data[coords["event"]].dt.strftime("%Y-%m-%d")),
                     np.array(u_dt.datetime64_to_ordinal(data[coords["event"]].values)),
                 ],
                 # The accessor for the data in the Dataset

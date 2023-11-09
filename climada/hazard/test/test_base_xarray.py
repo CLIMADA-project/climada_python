@@ -72,7 +72,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         self.assertEqual(hazard.units, "")
         np.testing.assert_array_equal(hazard.event_id, [1, 2])
         np.testing.assert_array_equal(
-            hazard.event_name, [str(x) for x in hazard.event_id]
+            hazard.event_name, [x.strftime("%Y-%m-%d") for x in self.time]
         )
         np.testing.assert_array_equal(
             hazard.date, [val.toordinal() for val in self.time]
@@ -342,7 +342,9 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             ds = ds.isel(time=0).squeeze()
             hazard = Hazard.from_xarray_raster(ds, "", "")
             self._assert_default_types(hazard)
-
+            np.testing.assert_array_equal(
+                hazard.event_name, [self.time[0].strftime("%Y-%m-%d")]
+                )
             np.testing.assert_array_equal(hazard.date, [self.time[0].toordinal()])
             np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
             np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
@@ -367,6 +369,9 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             ds = ds.expand_dims(time=[np.datetime64("2022-01-01")])
             hazard = Hazard.from_xarray_raster(ds, "", "")
             self._assert_default_types(hazard)
+            np.testing.assert_array_equal(
+                hazard.event_name, ["2022-01-01"]
+            )
             np.testing.assert_array_equal(
                 hazard.date, [dt.datetime(2022, 1, 1).toordinal()]
             )
