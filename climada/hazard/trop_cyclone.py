@@ -59,7 +59,7 @@ DEF_INTENSITY_THRES = 17.5
 DEF_MAX_MEMORY_GB = 8
 """Default value of the memory limit (in GB) for windfield computations (in each thread)."""
 
-MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3}
+MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3, 'H10_v2_test3a': 4, 'H10_v2_test3b': 5, 'H10_vtrans_fix': 6}
 """Enumerate different symmetric wind field models."""
 
 RHO_AIR = 1.15
@@ -959,7 +959,7 @@ def _compute_windfields(
     windfields = (
         si_track.attrs["latsign"] * np.array([1.0, -1.0])[..., :] * v_centr_normed[:, :, ::-1]
     )
-    windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
+
 
     # Influence of translational speed decreases with distance from eye.
     # The "absorbing factor" is according to the following paper (see Fig. 7):
@@ -974,6 +974,15 @@ def _compute_windfields(
     v_trans_corr[close_centr_msk] = np.fmin(
         1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
 
+    if model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_vtrans_fix']]:
+        # first substract the corrected v_trans from the windspeeds everywhere (v_trans should not have been included)
+        v_ang_norm_corrected = (
+                v_ang_norm
+                - np.broadcast_arrays(si_track["vtrans_norm"].values[:,None], v_ang_norm)[0] * v_trans_corr
+        )
+        windfields[close_centr_msk] *= v_ang_norm_corrected[close_centr_msk, None]
+    else:
+        windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
     # add angular and corrected translational velocity vectors
     windfields[1:] += si_track["vtrans"].values[1:, None, :] * v_trans_corr[1:, :, None]
     windfields[np.isnan(windfields)] = 0
@@ -1094,8 +1103,10 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
     """
     if model == MODEL_VANG['H1980']:
         _B_holland_1980(si_track)
-    elif model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
+    elif model in [MODEL_VANG['H08'], MODEL_VANG['H10'], MODEL_VANG['H10_vtrans_fix']]:
         _bs_holland_2008(si_track)
+    elif model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_v2_test3b']]:
+        _bs_holland_2010_v2(si_track)
 
     if model in [MODEL_VANG['H1980'], MODEL_VANG['H08']]:
         result = _stat_holland_1980(
@@ -1103,13 +1114,18 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
         )
         if model == MODEL_VANG['H1980']:
             result *= GRADIENT_LEVEL_TO_SURFACE_WINDS
-    elif model == MODEL_VANG['H10']:
+    elif model in [MODEL_VANG['H10'], MODEL_VANG['H10_vtrans_fix']]:
         # this model is always cyclostrophic
         _v_max_s_holland_2008(si_track)
         hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
         result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
     elif model == MODEL_VANG['ER11']:
         result = _stat_er_2011(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
+    elif model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_v2_test3b']]:
+        if model == MODEL_VANG['H10_v2_test3b']:
+            si_track['vmax'] = si_track['vmax'] - si_track['vtrans_norm']
+        hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
+        result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
     else:
         raise NotImplementedError
 
@@ -1298,6 +1314,41 @@ def _bs_holland_2008(si_track: xr.Dataset):
         + 0.03 * (si_track["cen"] - prev_cen) / si_track["tstep"] * (H_TO_S / MBAR_TO_PA)
         - 0.014 * abs(si_track["lat"])
         + 0.15 * si_track["vtrans_norm"]**hol_xx + 1.0
+    )
+    si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
+
+
+def _bs_holland_2010_v2(si_track: xr.Dataset):
+    """Holland's 2008 version 2 b-value estimate for sustained surface winds.
+    For version 1 see "_bs_holland_2008"
+
+    The result is stored in place as a new data variable "hol_b".
+
+    Unlike the original 1980 formula (see `_B_holland_1980`), this approach does not require any
+    wind speed measurements, but is based on the more reliable pressure information.
+
+    The parameter applies to 1-minute sustained winds at 10 meters above ground.
+    It is taken from equation (7) in the following paper:
+
+    Holland et al. (2010): A Revised Model for Radial Profiles of Hurricane Winds. Monthly
+    Weather Review 138(12): 4393–4401. https://doi.org/10.1175/2010MWR3317.1
+
+    For reference, it reads
+    b_s = vmax^2 * rho^e / ( 100 * (penv - pcen) )
+    where:
+        rho is the air density ρ (in kg m−3) at the surface level
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Output of `tctrack_to_si`. The data variables used by this function are "lat",
+        "cen", and "env", "vmax" and maybe "vtrans_norm". The result is stored in place as a new data
+        variable "hol_b".
+    """
+
+    si_track["hol_b"] = (
+            si_track["vmax"]**2 * RHO_AIR**np.exp(1)
+            / ( 100 * ( si_track["env"] - si_track["cen"] ) )
     )
     si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
 
