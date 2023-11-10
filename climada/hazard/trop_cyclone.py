@@ -1351,7 +1351,7 @@ def _bs_holland_2010_v2(si_track: xr.Dataset):
 
     si_track["hol_b"] = (
             si_track["vmax"]**2 * RHO_AIR_SURFACE**np.exp(1)
-            / ( 100 * ( si_track["env"] - si_track["cen"] ) ) # we do not need the factor 100 as in the original
+            / ( si_track["env"] - si_track["cen"] ) # we do not need the factor 100 as in the original
             # formula, because environmental pressure and central pressure are already saved in Pa, not hPa
     )
     si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
