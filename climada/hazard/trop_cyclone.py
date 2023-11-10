@@ -63,7 +63,9 @@ MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3, 'H10_v2_test3a': 4, 'H1
 """Enumerate different symmetric wind field models."""
 
 RHO_AIR = 1.15
-"""Air density. Assumed constant, following Holland 1980."""
+"""Air density at gradient level. Assumed constant, following Holland 1980."""
+RHO_AIR_SURFACE = 1.2
+"""Air density at surface level. Assumed constant, following Holland 2010"""
 
 GRADIENT_LEVEL_TO_SURFACE_WINDS = 0.9
 """Gradient-to-surface wind reduction factor according to the 90%-rule:
@@ -1337,6 +1339,7 @@ def _bs_holland_2010_v2(si_track: xr.Dataset):
     b_s = vmax^2 * rho^e / ( 100 * (penv - pcen) )
     where:
         rho is the air density ρ (in kg m−3) at the surface level
+        !penv and pcen is assumed to be in hPa in this formula - not Pa, as in our tracks
 
     Parameters
     ----------
@@ -1347,8 +1350,9 @@ def _bs_holland_2010_v2(si_track: xr.Dataset):
     """
 
     si_track["hol_b"] = (
-            si_track["vmax"]**2 * RHO_AIR**np.exp(1)
-            / ( 100 * ( si_track["env"] - si_track["cen"] ) )
+            si_track["vmax"]**2 * RHO_AIR_SURFACE**np.exp(1)
+            / ( 100 * ( si_track["env"] - si_track["cen"] ) ) # we do not need the factor 100 as in the original
+            # formula, because environmental pressure and central pressure are already saved in Pa, not hPa
     )
     si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
 
