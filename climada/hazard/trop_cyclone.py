@@ -1354,7 +1354,7 @@ def _bs_holland_2010_v2(si_track: xr.Dataset):
             / ( si_track["env"] - si_track["cen"] ) # we do not need the factor 100 as in the original
             # formula, because environmental pressure and central pressure are already saved in Pa, not hPa
     )
-    si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
+    si_track["hol_b"] = np.clip(si_track["hol_b"], 0.4, 2.5)  # reconsider the clip as b_s is b_g/1.6, but does this also relate to limits?
 
 def _v_max_s_holland_2008(si_track: xr.Dataset):
     """Compute maximum surface winds from pressure according to Holland 2008.
