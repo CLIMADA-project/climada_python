@@ -77,7 +77,7 @@ def find_common_time_definition(dates):
             warnings.warn("Array with a single date encountered. It will not contribute to the common time definition.")
             continue
 
-        date_list = [datetime.date.fromordinal(date) for date in date_array]
+        date_list = [datetime.date.fromordinal(int(date)) for date in date_array]
         differences = [(date_list[i + 1] - date_list[i]).days for i in range(len(date_list) - 1)]
 
         if all(diff % 365 == 0 or diff % 366 == 0 for diff in differences):
@@ -117,7 +117,7 @@ def upscale_dates(impact, by='year'):
     dict: Dictionary containing the impact data with upscaled dates.
     """
     imp = copy.deepcopy(impact)
-    dates = [datetime.datetime.fromordinal(date) for date in imp.date]
+    dates = [datetime.datetime.fromordinal(int(date)) for date in imp.date]
     if by == 'year':
         dates = [datetime.date(date.year, 1, 1).toordinal() for date in dates]
     elif by == 'month':
@@ -172,7 +172,7 @@ def aggregate_impact_by_date(impact, how='sum', exp=None):
         m2 = np.array(exp.gdf.value[imp_mat.nonzero()[1]])
         imp_mat = sp.sparse.csr_matrix((np.minimum(m1, m2), imp_mat.indices, imp_mat.indptr))
 
-    years = np.unique([datetime.date.fromordinal(date) for date in impact.date])
+    years = np.unique([datetime.date.fromordinal(int(date)) for date in impact.date])
     frequency = np.ones(imp_mat.shape[0]) / len(np.unique(years))
     at_event, eai_exp, aai_agg = ImpactCalc.risk_metrics(imp_mat, frequency)
     date = np.unique(impact_upscaled_dates.date)
@@ -191,8 +191,7 @@ def aggregate_impact_by_date(impact, how='sum', exp=None):
         frequency=frequency,
         tot_value=5,
         unit="USD",
-        frequency_unit="1/year",
-        tag=impact.tag,
+        frequency_unit="1/year"
     )
     return impact_aggr
 
@@ -244,7 +243,7 @@ def fill_impact_gaps(impact_dict):
         filled_impact.event_id = np.arange(1, len(all_dates)+1)
         filled_impact.event_name = np.arange(1, len(all_dates) + 1)
         filled_impact.coord_exp = np.array([list(coord) for coord in all_coords])
-        years = np.unique([datetime.date.fromordinal(date).year for date in filled_impact.date])
+        years = np.unique([datetime.date.fromordinal(int(date)).year for date in filled_impact.date])
         filled_impact.frequency = np.ones(new_mat.shape[0]) / len(np.unique(years))
         filled_impact.at_event, filled_impact.eai_exp, filled_impact.aai_agg = \
             ImpactCalc.risk_metrics(filled_impact.imp_mat, filled_impact.frequency)
@@ -255,7 +254,7 @@ def fill_impact_gaps(impact_dict):
 
 import itertools
 
-def calculate_combinations_dict(impact_dict, how='sum', by='date', exp=None, combination_type='all'):
+def calculate_combinations_dict(impact_dict, how='sum', by='date', exp=None, combinations=None,combination_type='all'):
     """
     Calculates combinations of impacts from a dictionary.
 
@@ -378,7 +377,7 @@ def combine_impacts(impact_list, how='sum', by='date', exp=None):
         imp_mat = sp.sparse.csr_matrix((np.minimum(m1, m2), imp_mat.indices, imp_mat.indptr))
         imp_mat.eliminate_zeros()
 
-    years = np.unique([datetime.date.fromordinal(date).year for date in imp0.date])
+    years = np.unique([datetime.date.fromordinal(int(date)).year for date in imp0.date])
     frequency = np.ones(imp_mat.shape[0]) / len(np.unique(years))
     at_event, eai_exp, aai_agg = ImpactCalc.risk_metrics(imp_mat, frequency)
 
@@ -403,7 +402,6 @@ def combine_impacts(impact_list, how='sum', by='date', exp=None):
         tot_value=5,
         unit=imp0.unit,
         frequency_unit="1/year",
-        tag=imp0.tag,
     )
     return impact_aggr
 
