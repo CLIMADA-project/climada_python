@@ -8,12 +8,14 @@ from numbers import Number
 import pandas as pd
 import numpy as np
 from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint
+import matplotlib.pyplot as plt
 import seaborn as sns
 
 from climada.hazard import Hazard
 from climada.entity import Exposures, ImpactFuncSet
 from climada.engine import Impact, ImpactCalc
 import climada.util.coordinates as u_coord
+# from .bayesian_optimizer import BayesianOptimizerOutput
 
 ConstraintType = Union[LinearConstraint, NonlinearConstraint, Mapping]
 
@@ -157,6 +159,131 @@ class OutputEvaluator:
         :py:meth:`~climada.entity.impact_funcs.impact_func_set.ImpactFuncSet.plot`
         """
         return self.impf_set.plot(**plot_kwargs)
+
+    def plot_impf_variability(
+        self,
+        cost_func_diff: float = 0.1,
+        p_space_df: Optional[pd.DataFrame] = None,
+        plot_haz: bool = True,
+        plot_impf_kws: Optional[dict] = None,
+        plot_hist_kws: Optional[dict] = None,
+    ):
+
+        """Plot impact function variability with parameter combinations of
+        almost equal cost function values
+
+        Args:
+            cost_func_diff (float, optional): Max deviation from optimal cost
+                function value (as fraction). Defaults to 0.1 (i.e. 10%).
+            p_space_df (pd.DataFrame, optional): parameter space. Defaults to None.
+            plot_haz (bool, optional): Whether or not to plot hazard intensity
+                distibution. Defaults to False.
+            plot_impf_kws (dict, optional): Keyword arguments for impact
+                function plot. Defaults to None.
+            plot_hist_kws (dict, optional): Keyword arguments for hazard
+                intensity distribution plot. Defaults to None.
+        """
+
+        # Initialize plot keyword arguments
+        if plot_impf_kws is None:
+            plot_impf_kws = {}
+        if plot_hist_kws is None:
+            plot_hist_kws = {}
+
+        # Retrieve hazard type and parameter space
+        haz_type = self.input.hazard.haz_type
+        if p_space_df is None:
+            # Assert that self.output has the p_space_to_dataframe() method,
+            # which is defined for the BayesianOptimizerOutput class
+            if not hasattr(self.output,"p_space_to_dataframe"):
+                raise TypeError(
+                    "To derive the full impact function parameter space, "
+                    "plot_impf_variability() requires BayesianOptimizerOutput "
+                    "as OutputEvaluator.output attribute, which provides the "
+                    "method p_space_to_dataframe()."
+                )
+            p_space_df = self.output.p_space_to_dataframe()
+
+        # Retrieve list of parameters required for creating impact functions
+        # and remove the dimension 'Cost Function'.
+        params = p_space_df.columns.tolist()
+        try:
+            params.remove('Cost Function')
+        except ValueError:
+            pass
+
+        # Retrieve parameters of impact functions with cost function values
+        # within 'cost_func_diff' % of the best estimate
+        params_within_range = p_space_df[params]
+        plot_space_label = 'Parameter space'
+        if cost_func_diff is not None:
+            max_cost_func_val = (p_space_df['Cost Function'].min()*
+                                 (1+cost_func_diff))
+            params_within_range = p_space_df.loc[
+                p_space_df['Cost Function'] <=max_cost_func_val,params
+            ]
+            plot_space_label = (f"within {int(cost_func_diff*100)} percent "
+                                f"of best fit")
+
+        # Set plot defaults
+        color = plot_impf_kws.pop('color','tab:blue')
+        lw = plot_impf_kws.pop('lw',2)
+        zorder = plot_impf_kws.pop('zorder',3)
+        label = plot_impf_kws.pop('label','best fit')
+
+        #get number of impact functions and create a plot for each
+        n_impf = len(self.impf_set.get_func(haz_type=haz_type))
+        axes=[]
+
+        for impf_idx in range(n_impf):
+
+            _,ax = plt.subplots()
+
+            #Plot best-fit impact function
+            best_impf = self.impf_set.get_func(haz_type=haz_type)[impf_idx]
+            ax.plot(best_impf.intensity,best_impf.mdd*best_impf.paa*100,
+                    color=color,lw=lw,zorder=zorder,label=label,**plot_impf_kws)
+
+            #Plot all impact functions within 'cost_func_diff' % of best estimate
+            for row in range(params_within_range.shape[0]):
+                label_temp = plot_space_label if row == 0 else None
+
+                sel_params = params_within_range.iloc[row,:].to_dict()
+                temp_impf_set = self.input.impact_func_creator(**sel_params)
+                temp_impf = temp_impf_set.get_func(haz_type=haz_type)[impf_idx]
+
+                ax.plot(temp_impf.intensity,temp_impf.mdd*temp_impf.paa*100,
+                        color='grey',alpha=0.4,label=label_temp)
+
+            # Plot hazard intensity value distributions
+            if plot_haz:
+                haz_vals = self.input.hazard.intensity[
+                    :, self.input.exposure.gdf[f"centr_{haz_type}"]
+                ]
+
+                #Plot defaults
+                color_hist = plot_hist_kws.pop('color','tab:orange')
+                alpha_hist = plot_hist_kws.pop('alpha',0.3)
+
+                ax2 = ax.twinx()
+                ax2.hist(haz_vals.data,bins=40,color=color_hist,
+                        alpha=alpha_hist,label='Hazard intensity\noccurence')
+                ax2.set(ylabel='Hazard intensity occurence (#Exposure points)')
+                ax.axvline(x=haz_vals.max(),label='Maximum hazard value',
+                        color='tab:orange')
+                ax2.legend(loc='lower right')
+
+            ax.set(xlabel=f"Intensity ({self.input.hazard.units})",
+                ylabel="Mean Damage Ratio (MDR) in %",
+                xlim=(min(best_impf.intensity),max(best_impf.intensity)))
+            ax.legend()
+            axes.append(ax)
+
+        if n_impf > 1:
+            return axes
+
+        return ax
+
 
     def plot_at_event(
         self,
