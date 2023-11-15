@@ -1,11 +1,12 @@
 """Calibration with Bayesian Optimization"""
 
 from dataclasses import dataclass, InitVar
-from typing import Mapping, Optional, Any
+from typing import Mapping, Optional, Any, Union, List
 from numbers import Number
 from itertools import combinations, repeat
 
 import pandas as pd
+import matplotlib.axes as maxes
 from bayes_opt import BayesianOptimization
 from bayes_opt.target_space import TargetSpace
 
@@ -170,7 +171,7 @@ class BayesianOptimizerOutput(Output):
         min_fmt: str = "x",
         min_color: str = "r",
         **plot_kwargs
-    ):
+    ) -> Union[maxes.Axes, List[maxes.Axes]]:
         """Plot the parameter space as scatter plot(s)
 
         Produce a scatter plot where each point represents a parameter combination
@@ -255,5 +256,4 @@ class BayesianOptimizerOutput(Output):
             iterable = zip(params, repeat(y))
 
         # Iterate over parameter combinations
-        for p_first, p_second in iterable:
-            plot_single(p_first, p_second)
+        return [plot_single(p_first, p_second) for p_first, p_second in iterable]

@@ -13,7 +13,6 @@ import seaborn as sns
 from climada.hazard import Hazard
 from climada.entity import Exposures, ImpactFuncSet
 from climada.engine import Impact, ImpactCalc
-import climada.util.coordinates as u_coord
 
 ConstraintType = Union[LinearConstraint, NonlinearConstraint, Mapping]
 
@@ -30,7 +29,9 @@ class Input:
         Exposures object to compute impacts from
     data : pandas.Dataframe
         The data to compare computed impacts to. Index: Event IDs matching the IDs of
-        ``hazard``. Columns: Arbitrary columns.
+        ``hazard``. Columns: Arbitrary columns. NaN values in the data frame have
+        special meaning: Corresponding impact values computed by the model are ignored
+        in the calibration.
     impact_func_creator : Callable
         Function that takes the parameters as keyword arguments and returns an impact
         function set. This will be called each time the optimization algorithm updates
@@ -59,17 +60,14 @@ class Input:
         Defaults to ``{"assign_centroids": False}`` (by default, centroids are assigned
         here via the ``assign_centroids`` parameter, to avoid assigning them each time
         the impact is calculated).
-    align_kwds : Mapping (str, Any), optional
-        Keyword arguments to ``pandas.DataFrame.align`` for aligning the :py:attr:`data`
-        with the data frame returned by :py:attr:`impact_to_dataframe`. By default,
-        both axes will be aligned and the fill value is zero
-        (``"axis": None, "fill_value": 0}``). This assumes that if events and/or regions
-        between both data frames do not align, the respective value is assumed to be
-        zero and this will be incorporated into the estimation. If you want to require
-        alignment, set ``"fill_value": None``. This will set non-aligned values to NaN,
-        which typically results in a NaN target function, aborting the estimation.
+    missing_data_value : float, optional
+        If the impact model returns impact data for which no values exist in
+        :py:attr:`data`, insert this value. Defaults to NaN, in which case the impact
+        from the model is ignored. Set this to zero to explicitly calibrate to zero
+        impacts in these cases.
     assign_centroids : bool, optional
-        If ``True`` (default), assign the hazard centroids to the exposure.
+        If ``True`` (default), assign the hazard centroids to the exposure when this
+        object is created.
     """
 
     hazard: Hazard
@@ -83,9 +81,7 @@ class Input:
     impact_calc_kwds: Mapping[str, Any] = field(
         default_factory=lambda: {"assign_centroids": False}
     )
-    align_kwds: Mapping[str, Any] = field(
-        default_factory=lambda: {"axis": None, "fill_value": 0}
-    )
+    missing_data_value: float = np.nan
     assign_centroids: InitVar[bool] = True
 
     def __post_init__(self, assign_centroids):
@@ -271,7 +267,7 @@ class OutputEvaluator:
         # Data preparation
         agg = self.input.impact_to_dataframe(self.impact)
         data = (agg + 1) / (self.input.data + 1)
-        data = data.transform(np.log10).replace(0, np.nan)
+        data = data.transform(np.log10)
         data = data.where((agg > 0) | (self.input.data > 0))
 
         # Transform data
@@ -360,6 +356,53 @@ class Optimizer(ABC):
         """
         return kwargs
 
+    def _align_impact_with_data(
+        self, impact_df: pd.DataFrame
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Align the impact dataframe with the input data dataframe
+
+        When aligning, two general cases might occur, which are not mutually exclusive:
+
+        1. There are data points for which no impact was computed. This will always be
+           treated as an impact of zero.
+        2. There are impacts for which no data points exist. For these points, the input
+           data will be filled with the value of :py:attr:`Input.missing_data_value`.
+
+        Parameters
+        ----------
+        impact_df : pandas.DataFrame
+            The impact computed by the model, transformed into a dataframe by
+            :py:attr:`Input.impact_to_dataframe`.
+
+        Returns
+        -------
+        data_aligned : pandas.DataFrame
+            The :py:attr:`Input.data` aligned with the impact.
+        impact_df_aligned : pandas.DataFrame
+            The ``impact_df`` aligned with the data.
+
+        Raises
+        ------
+        ValueError
+            If ``impact_df`` contains NaNs before aligning.
+        """
+        if impact_df.isna().any(axis=None):
+            raise ValueError("NaN values computed in impact!")
+
+        data_aligned, impact_df_aligned = self.input.data.align(
+            impact_df, axis=None, fill_value=None
+        )
+
+        # Add user-set value for non-aligned data
+        data_aligned[
+            impact_df_aligned.notna() & data_aligned.isna()
+        ] = self.input.missing_data_value
+
+        # Set all impacts to zero for which data is NaN
+        impact_df_aligned.where(data_aligned.notna(), inplace=True)
+
+        return data_aligned.fillna(0), impact_df_aligned.fillna(0)
+
     def _opt_func(self, *args, **kwargs) -> Number:
         """The optimization function iterated by the optimizer
 
@@ -389,9 +432,7 @@ class Optimizer(ABC):
 
         # Transform to DataFrame, align, and compute target function
         impact_df = self.input.impact_to_dataframe(impact)
-        data_aligned, impact_df_aligned = self.input.data.align(
-            impact_df, **self.input.align_kwds
-        )
+        data_aligned, impact_df_aligned = self._align_impact_with_data(impact_df)
         return self._target_func(data_aligned, impact_df_aligned)
 
     @abstractmethod
