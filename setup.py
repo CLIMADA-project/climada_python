@@ -84,6 +84,7 @@ setup(
         'rasterio',
         'salib',
         'scikit-learn',
+        'seaborn',
         'statsmodels',
         'sparse',
         'tables',
