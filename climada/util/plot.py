@@ -251,7 +251,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
 
 
 def geo_im_from_array(array_sub, coord, var_name, title,
-                      proj=None, smooth=True, axes=None, figsize=(9, 13), adapt_fontsize=True,
+                      proj=None, smooth=True, shapes=True, axes=None, figsize=(9, 13), adapt_fontsize=True,
                       **kwargs):
     """Image(s) plot defined in array(s) over input coordinates.
 
@@ -272,6 +272,9 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         coordinate reference system used in coordinates, by default None
     smooth : bool, optional
         smooth plot to RESOLUTIONxRESOLUTION, by default True
+    shapes : bool, optional
+        Overlay Earth's countries coastlines to matplotlib.pyplot axis.
+        The default is True
     axes : Axes or ndarray(Axes), optional
         by default None
     figsize : tuple, optional
@@ -349,7 +352,8 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                          extent[2], extent[3]), crs=proj)
 
         # Add coastline to axis
-        add_shapes(axis)
+        if shapes:
+            add_shapes(axis)
         # Create colormesh, colorbar and labels in axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                      pad=0.1, axes_class=plt.Axes)
