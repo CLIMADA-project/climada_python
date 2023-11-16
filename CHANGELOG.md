@@ -11,6 +11,8 @@ Code freeze date: YYYY-MM-DD
 ### Dependency Changes
 
 ### Added
+- Add `shapes` argument to `geo_im_from_array` to allow flexible turning on/off of plotting coastline in `plot_intensity`.
+[#805](https://github.com/CLIMADA-project/climada_python/pull/805)
 
 ### Changed
 
