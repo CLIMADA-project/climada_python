@@ -14,12 +14,14 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Change default event name to string of event date when importing Hazard data from xarray [#795](https://github.com/CLIMADA-project/climada_python/pull/795)
 - Add `shapes` argument to `geo_im_from_array` to allow flexible turning on/off of plotting coastline in `plot_intensity`. [#805](https://github.com/CLIMADA-project/climada_python/pull/805)
 - Update `CONTRIBUTING.md` to better explain types of contributions to this repository [#797](https://github.com/CLIMADA-project/climada_python/pull/797)
 - The default tile layer in Exposures maps is not Stamen Terrain anymore, but [CartoDB Positron](https://github.com/CartoDB/basemap-styles). Affected methods are `climada.engine.Impact.plot_basemap_eai_exposure`,`climada.engine.Impact.plot_basemap_impact_exposure` and `climada.entity.Exposures.plot_basemap`. [#798](https://github.com/CLIMADA-project/climada_python/pull/798)
 
 ### Fixed
 
+- Hazard.from_raster_xarray used to native values of dates in Hazard.event_name, now it is only a string representation of the event date [#795](https://github.com/CLIMADA-project/climada_python/pull/795)
 - Fix the dist_approx util function when used with method="geosphere" and log=True and points that are very close. [#792](https://github.com/CLIMADA-project/climada_python/pull/792)
 
 ### Deprecated
