@@ -344,7 +344,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             self._assert_default_types(hazard)
             np.testing.assert_array_equal(
                 hazard.event_name, [self.time[0].strftime("%Y-%m-%d")]
-                )
+            )
             np.testing.assert_array_equal(hazard.date, [self.time[0].toordinal()])
             np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
             np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
@@ -551,7 +551,9 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         np.testing.assert_array_equal(
             hazard.date, [val.toordinal() for val in time.flat]
         )
-        np.testing.assert_array_equal(hazard.event_name, ["1999-01-01", "1999-02-01", "2000-01-01", "2000-02-01"])
+        np.testing.assert_array_equal(
+            hazard.event_name, ["1999-01-01", "1999-02-01", "2000-01-01", "2000-02-01"]
+        )
 
     def test_errors(self):
         """Check if expected errors are thrown"""
