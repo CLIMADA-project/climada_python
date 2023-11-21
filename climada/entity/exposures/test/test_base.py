@@ -182,8 +182,8 @@ class TestFuncs(unittest.TestCase):
         haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL')
         exp.assign_centroids(haz)
         assigned_centroids = haz.centroids.select(sel_cen=exp.gdf[INDICATOR_CENTR + 'FL'].values)
-        np.testing.assert_array_equal(assigned_centroids.lat, exp.gdf.latitude)
-        np.testing.assert_array_equal(assigned_centroids.lon, exp.gdf.longitude)
+        np.testing.assert_array_equal(np.unique(assigned_centroids.lat), np.unique(exp.gdf.latitude))
+        np.testing.assert_array_equal(np.unique(assigned_centroids.lon), np.unique(exp.gdf.longitude))
 
     def test_affected_total_value(self):
         haz_type = "RF"

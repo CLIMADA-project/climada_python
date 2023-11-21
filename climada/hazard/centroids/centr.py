@@ -444,24 +444,30 @@ class Centroids():
             [lon_max, 180] + [-180, lon_min]
             Borders are inclusive.
         sel_cen : np.array
-            1-dim mask, overrides reg_id and extent
+            1-dim mask or 1-dim centroids indices, complements reg_id and extent
 
         Returns
         -------
         cen : Centroids
             Sub-selection of this object
         """
-        if sel_cen is None:
-            sel_cen = self.select_mask(reg_id=reg_id, extent=extent)
+        if sel_cen.dtype.kind == 'i':  #is integer
+            sel_cen_bool = np.zeros(self.size, dtype=bool)
+            sel_cen_bool[np.unique(sel_cen)] = True
+        else:
+            sel_cen_bool = sel_cen
+        sel_cen_mask = self.select_mask(sel_cen=sel_cen_bool, reg_id=reg_id, extent=extent)
+        return Centroids.from_geodataframe(self.gdf[sel_cen_mask])
 
-        return Centroids.from_geodataframe(self.gdf[sel_cen])
 
-    def select_mask(self, reg_id=None, extent=None):
+    def select_mask(self, sel_cen, reg_id=None, extent=None):
         """
         Make mask of selected centroids
 
         Parameters
         ----------
+        sel_cen: np.array(bool)
+            boolean array mask for centroids
         reg_id : int
             region to filter according to region_id values
         extent : tuple
@@ -476,7 +482,6 @@ class Centroids():
             1d mask of selected centroids
 
         """
-        sel_cen = np.ones(self.size, dtype=bool)
         if reg_id is not None:
             sel_cen &= np.isin(self.region_id, reg_id)
         if extent is not None:
