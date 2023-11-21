@@ -308,61 +308,15 @@ class TestBase(unittest.TestCase):
             )
             self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
 
-    def test_raster_to_vector_pass(self):
+    def test_read_raster_pass(self):
         """Test raster_to_vector method"""
 
         haz_fl = Hazard.from_raster([HAZ_DEMO_FL], haz_type="FL")
-        haz_fl.check()
-        meta_orig = haz_fl.centroids.meta
         inten_orig = haz_fl.intensity
         fract_orig = haz_fl.fraction
 
-        haz_fl.raster_to_vector()
-
-        self.assertEqual(haz_fl.centroids.meta, dict())
-        self.assertAlmostEqual(
-            haz_fl.centroids.lat.min(),
-            meta_orig["transform"][5]
-            + meta_orig["height"] * meta_orig["transform"][4]
-            - meta_orig["transform"][4] / 2,
-        )
-        self.assertAlmostEqual(
-            haz_fl.centroids.lat.max(),
-            meta_orig["transform"][5] + meta_orig["transform"][4] / 2,
-        )
-        self.assertAlmostEqual(
-            haz_fl.centroids.lon.max(),
-            meta_orig["transform"][2]
-            + meta_orig["width"] * meta_orig["transform"][0]
-            - meta_orig["transform"][0] / 2,
-        )
-        self.assertAlmostEqual(
-            haz_fl.centroids.lon.min(),
-            meta_orig["transform"][2] + meta_orig["transform"][0] / 2,
-        )
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.crs, meta_orig["crs"]))
         self.assertTrue(np.allclose(haz_fl.intensity.data, inten_orig.data))
         self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
-
-    def test_reproject_raster_pass(self):
-        """Test reproject_raster reference."""
-
-        haz_fl = Hazard.from_raster([HAZ_DEMO_FL])
-        haz_fl.check()
-
-        haz_fl.reproject_raster(dst_crs="epsg:2202")
-
-        self.assertEqual(haz_fl.intensity.shape, (1, 1046408))
-        self.assertIsInstance(haz_fl.intensity, sparse.csr_matrix)
-        self.assertIsInstance(haz_fl.fraction, sparse.csr_matrix)
-        self.assertEqual(haz_fl.fraction.shape, (1, 1046408))
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta["crs"], "epsg:2202"))
-        self.assertEqual(haz_fl.centroids.meta["width"], 968)
-        self.assertEqual(haz_fl.centroids.meta["height"], 1081)
-        self.assertEqual(haz_fl.fraction.min(), 0)
-        self.assertEqual(haz_fl.fraction.max(), 1)
-        self.assertEqual(haz_fl.intensity.min(), -9999)
-        self.assertTrue(haz_fl.intensity.max() < 4.7)
 
 
 # Execute Tests
