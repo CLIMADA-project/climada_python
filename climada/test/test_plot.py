@@ -26,18 +26,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import contextily as ctx
+from pathlib import Path
 
 from climada.engine.unsequa import  UncOutput
 from climada.engine import ImpactCalc, ImpactFreqCurve, CostBenefit
 from climada.entity import (Entity, ImpactFuncSet, Exposures, DiscRates, ImpfTropCyclone, Measure,
                             MeasureSet)
 from climada.hazard import Hazard, Centroids
-from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY, TEST_UNC_OUTPUT_COSTBEN
+from climada.util.constants import ENT_DEMO_TODAY, TEST_UNC_OUTPUT_COSTBEN, HAZ_DEMO_FL
 from climada.util.api_client import Client
+from climada.test import get_test_file
 
 apiclient = Client()
 ds = apiclient.get_dataset_info(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
 _target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
+
+
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
+"""
+Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
+Fraction is empty. Format: HDF5.
+"""
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
@@ -47,7 +56,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_intensity_pass(self):
         """Generate all possible plots of the hazard intensity."""
-        hazard = Hazard.from_mat(HAZ_DEMO_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
         hazard.event_name = [""] * hazard.event_id.size
         hazard.event_name[35] = "NNN_1185106_gen5"
         hazard.event_name[3898] = "NNN_1190604_gen8"
@@ -128,7 +137,7 @@ class TestPlotter(unittest.TestCase):
         """Plot impact exceedence frequency curves."""
         myent = Entity.from_excel(ENT_DEMO_TODAY)
         myent.exposures.check()
-        myhaz = Hazard.from_mat(HAZ_DEMO_MAT)
+        myhaz = Hazard.from_hdf5(HAZ_TEST_TC)
         myhaz.event_name = [""] * myhaz.event_id.size
         myimp = ImpactCalc(myent.exposures, myent.impact_funcs, myhaz).impact()
         ifc = myimp.calc_freq_curve()

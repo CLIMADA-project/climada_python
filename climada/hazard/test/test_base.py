@@ -41,10 +41,6 @@ DATA_DIR :Path = CONFIG.hazard.test_data.dir()
 """
 Directory for writing (and subsequent reading) of temporary files created during tests.
 """
-HAZ_TEST_MAT :Path = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
-"""
-Hazard test file from Git repository. Fraction is 1. Format: matlab.
-"""
 HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
 """
 Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
