@@ -135,7 +135,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
 
    Both commands will probably require administrator rights, which can be enabled by prepending ``sudo``.
 
-#. Create a folder for your source code.
+#. Create a folder for your code.
    We will call it **workspace directory**.
    To make sure that your user can manipulate it without special privileges, use a subdirectory of your user/home directory.
    Do **not** use a directory that is synchronized by cloud storage systems like OneDrive, iCloud or Polybox!
