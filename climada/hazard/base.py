@@ -1475,7 +1475,6 @@ class Hazard():
         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
             intenstats is return_periods.size x num_centroids
         """
-        self._set_coords_centroids()
         inten_stats = self.local_exceedance_inten(np.array(return_periods))
         colbar_name = 'Intensity (' + self.units + ')'
         title = list()
@@ -1521,7 +1520,6 @@ class Hazard():
         ------
             ValueError
         """
-        self._set_coords_centroids()
         col_label = f'Intensity ({self.units})'
         crs_epsg, _ = u_plot.get_transformation(self.centroids.geometry.crs)
         if event is not None:
@@ -1571,7 +1569,6 @@ class Hazard():
         ------
             ValueError
         """
-        self._set_coords_centroids()
         col_label = 'Fraction'
         if event is not None:
             if isinstance(event, str):
@@ -1862,11 +1859,6 @@ class Hazard():
         hazard_kwargs["centroids"] = Centroids.from_hdf5(file_name)
         # Now create the actual object we want to return!
         return cls(**hazard_kwargs)
-
-    def _set_coords_centroids(self):
-        """If centroids are raster, set lat and lon coordinates"""
-        if self.centroids.meta and not self.centroids.coord.size:
-            self.centroids.set_meta_to_lat_lon()
 
     def _events_set(self):
         """Generate set of tuples with (event_name, event_date)"""
