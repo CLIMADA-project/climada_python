@@ -1664,22 +1664,19 @@ class Hazard():
         variable = self.intensity
         if not intensity:
             variable = self.fraction
-        if self.centroids.meta:
-            u_coord.write_raster(file_name, variable.toarray(), self.centroids.meta)
-        else:
-            pixel_geom = self.centroids.calc_pixels_polygons()
-            profile = self.centroids.meta
-            profile.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
-            with rasterio.open(file_name, 'w', **profile) as dst:
-                LOGGER.info('Writing %s', file_name)
-                for i_ev in range(variable.shape[0]):
-                    raster = rasterize(
-                        [(x, val) for (x, val) in
-                         zip(pixel_geom, np.array(variable[i_ev, :].toarray()).reshape(-1))],
-                        out_shape=(profile['height'], profile['width']),
-                        transform=profile['transform'], fill=0,
-                        all_touched=True, dtype=profile['dtype'], )
-                    dst.write(raster.astype(profile['dtype']), i_ev + 1)
+        pixel_geom = self.centroids.calc_pixels_polygons()
+        profile = self.centroids.meta
+        profile.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
+        with rasterio.open(file_name, 'w', **profile) as dst:
+            LOGGER.info('Writing %s', file_name)
+            for i_ev in range(variable.shape[0]):
+                raster = rasterize(
+                    [(x, val) for (x, val) in
+                        zip(pixel_geom, np.array(variable[i_ev, :].toarray()).reshape(-1))],
+                    out_shape=(profile['height'], profile['width']),
+                    transform=profile['transform'], fill=0,
+                    all_touched=True, dtype=profile['dtype'], )
+                dst.write(raster.astype(profile['dtype']), i_ev + 1)
 
     def write_hdf5(self, file_name, todense=False):
         """Write hazard in hdf5 format.
@@ -1892,7 +1889,7 @@ class Hazard():
             except IndexError as err:
                 raise ValueError(f'Wrong centroid id: {centr_idx}.') from err
             array_val = mat_var[:, centr_pos].toarray()
-            title = f'Centroid {centr_idx}: ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})'
+            title = f'Centroid {centr_idx}: ({np.around(coord[centr_pos, 0],3)}, {np.around(coord[centr_pos, 1],3)})'
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_idx)[centr_idx:]
@@ -1900,7 +1897,7 @@ class Hazard():
             array_val = mat_var[:, centr_pos].toarray()
 
             title = (f'{np.abs(centr_idx)}-largest Centroid. {centr_pos}:'
-                     f' ({coord[centr_pos, 0]}, {coord[centr_pos, 1]})')
+                     f' ({np.around(coord[centr_pos, 0], 3)}, {np.around(coord[centr_pos, 1], 3)})')
         else:
             array_val = np.max(mat_var, axis=1).toarray()
             title = f'{self.haz_type} max intensity at each event'
