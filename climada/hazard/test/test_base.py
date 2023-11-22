@@ -825,11 +825,10 @@ class TestAppend(unittest.TestCase):
                        frequency_unit='1/week',
                        fraction=sparse.csr_matrix([[0.02, 0.03, 0.04]]),
                        intensity=sparse.csr_matrix([[0.2, 0.3, 0.4]]),
-                       units='m/s',)
+                       units='m/s')
 
         haz_2 = Hazard("TC",
-                           latitude=np.array([1, 3, 5]), longitude=np.array([2, 4, 6])),
-                       centroids=Centroids(
+                       centroids=Centroids(latitude=np.array([1, 3, 5]), longitude=np.array([2, 4, 6])),
                        event_id=np.array([1]),
                        event_name=['ev2'],
                        date=np.array([2]),
@@ -838,7 +837,7 @@ class TestAppend(unittest.TestCase):
                        frequency_unit='1/week',
                        fraction=sparse.csr_matrix([[1.02, 1.03, 1.04]]),
                        intensity=sparse.csr_matrix([[1.2, 1.3, 1.4]]),
-                       units='m/s',)
+                       units='m/s')
 
         haz = Hazard.concat([haz_1, haz_2])
 

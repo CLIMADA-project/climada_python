@@ -412,18 +412,6 @@ class TestRaster(unittest.TestCase):
         self.assertTrue(
             np.allclose(centr_ras.area_pixel,
                         np.ones(60 * 50) * 0.009000000000000341 * 0.009000000000000341))
-'''
-    def test_area_approx(self):
-        """Test set_area_approx"""
-        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        centr_ras.set_area_approx()
-        approx_dim = (centr_ras.meta['transform'][0] * 111 * 1000
-                      * centr_ras.meta['transform'][0] * 111 * 1000)
-        self.assertEqual(centr_ras.area_pixel.size, centr_ras.size)
-        self.assertEqual(np.unique(centr_ras.area_pixel).size, 60)
-        self.assertTrue(np.array_equal((approx_dim / np.unique(centr_ras.area_pixel)).astype(int),
-                                       np.ones(60)))
-'''
 
     def test_size_pass(self):
         """Test size property"""
