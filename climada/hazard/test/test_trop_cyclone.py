@@ -420,7 +420,9 @@ class TestClimateSce(unittest.TestCase):
             frequency=np.ones(4) * 0.5,
         )
 
-        tc_cc = tc.apply_climate_scenario_knu(ref_year=2050, rcp_scenario=45)
+        tc_cc = tc.apply_climate_scenario_knu(percentile='50',
+                                              rcp_scenario=45,
+                                              target_year=2050)
         self.assertFalse(
             np.allclose(tc.frequency[1], tc_cc.frequency[1])
             )
@@ -457,12 +459,14 @@ class TestClimateSce(unittest.TestCase):
         )
 
         NA_scaling_05, NA_scaling_45 = [
-            get_knutson_scaling_factor(variable=variable,
+            get_knutson_scaling_factor(percentile='50',
+                                       variable=variable,
                                        basin='NA').loc[2035, '8.5']
             for variable in ['cat05', 'cat45']
             ]
         WP_scaling_05, WP_scaling_45 = [
-            get_knutson_scaling_factor(variable=variable,
+            get_knutson_scaling_factor(percentile='50',
+                                       variable=variable,
                                        basin='WP').loc[2035, '8.5']
             for variable in ['cat05', 'cat45']
             ]
@@ -482,7 +486,9 @@ class TestClimateSce(unittest.TestCase):
                          - WP_scaling_45 * np.sum(tc.frequency[cat45_sel & WP_bas_sel])
                         ) / np.sum(tc.frequency[cat03_sel & WP_bas_sel])
 
-        tc_cc = tc.apply_climate_scenario_knu()
+        tc_cc = tc.apply_climate_scenario_knu(percentile='50',
+                                              rcp_scenario=85,
+                                              target_year=2035)
 
         for i_tile in range(ntiles):
             offset = i_tile * 4
