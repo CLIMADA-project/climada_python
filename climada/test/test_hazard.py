@@ -30,15 +30,18 @@ from climada.hazard import tc_tracks as tc
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.hazard.storm_europe import StormEurope
-from climada.util.constants import (HAZ_DEMO_FL, WS_DEMO_NC)
+from climada.util.constants import (HAZ_DEMO_FL, WS_DEMO_NC, DEF_CRS)
 from climada.util.api_client import Client
 from climada.util import coordinates as u_coord
-import climada.hazard.test as hazard_test
+from climada.test import get_test_file
 
 DATA_DIR = CONFIG.test_data.dir()
 
-# Hazard test file from Git repository. Fraction is 1. Format: matlab.
-HAZ_TEST_MAT :Path = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
+"""
+Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
+Fraction is empty. Format: HDF5.
+"""
 
 class TestCentroids(unittest.TestCase):
     """Test centroids functionalities"""
@@ -47,7 +50,6 @@ class TestCentroids(unittest.TestCase):
         """Test write_raster: Hazard from raster data"""
         haz_fl = Hazard.from_raster([HAZ_DEMO_FL])
         haz_fl.haz_type = 'FL'
-        haz_fl.check()
 
         self.assertEqual(haz_fl.intensity.shape, (1, 1032226))
         self.assertEqual(haz_fl.intensity.min(), -9999.0)
@@ -59,6 +61,7 @@ class TestCentroids(unittest.TestCase):
         haz_fl.haz_type = 'FL'
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), haz_read.intensity.toarray()))
         self.assertEqual(np.unique(np.array(haz_fl.fraction.toarray())).size, 2)
+        DATA_DIR.joinpath('test_write_hazard.tif').unlink()
 
     def test_read_raster_pool_pass(self):
         """Test from_raster constructor with pool"""
@@ -83,8 +86,9 @@ class TestCentroids(unittest.TestCase):
                         event_name=['1'],
                         intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
                         fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
-                        centroids=Centroids.from_lat_lon(
-                            np.array([1, 2, 3]), np.array([1, 2, 3])),)
+                        centroids=Centroids(
+                            latitude=np.array([1, 2, 3]), longitude=np.array([1, 2, 3]), crs=DEF_CRS)
+                            )
         haz_fl.check()
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
@@ -104,8 +108,9 @@ class TestCentroids(unittest.TestCase):
                         event_name=['1'],
                         intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
                         fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
-                        centroids=Centroids.from_lat_lon(
-                            np.array([1, 2, 3]), np.array([1, 2, 3])),)
+                        centroids=Centroids(
+                            latitude=np.array([1, 2, 3]),longitude=np.array([1, 2, 3]), crs=DEF_CRS)
+                            )
         haz_fl.check()
 
         haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'), intensity=False)
@@ -270,7 +275,7 @@ class TestBase(unittest.TestCase):
 
         file_name = str(DATA_DIR.joinpath("test_haz.h5"))
         # Read demo matlab file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
         hazard.event_name = list(map(str, hazard.event_name))
         for todense_flag in [False, True]:
             if todense_flag:
