@@ -336,9 +336,9 @@ class TropCyclone(Hazard):
 
     def apply_climate_scenario_knu(
         self,
-        percentile: str = '50',
-        rcp_scenario: int = 85,
-        ref_year: int = 2035,
+        percentile: str,
+        rcp_scenario: int,
+        target_year: int,
         baseline: tuple = (1982, 2022)
     ):
         """
@@ -358,25 +358,25 @@ class TropCyclone(Hazard):
 
         Parameters
         ----------
-        ref_year : int
-            year between 2000 ad 2100. Default: 2050
-        rcp_scenario : int
-            possible scenarios:
-                26 for RCP 2.6
-                45 for RCP 4.5
-                60 for RCP 6.0
-                85 for RCP 8.5
-            Default: 85
-        baseline : tuple of int
-            the starting and ending years that define the historical baseline.
         percentile: str
-            percentile of Knutson et al. 2020 estimates. These estimates come from a
+            percentile of Knutson et al. 2020 estimates, representing the model
+            uncertainty in future changes in TC activity. These estimates come from a
             review of state-of-the-art literature and models. As extreme percentiles,
             the 5th and 95th are reported for variable cat05 and the 10th and 90th
             for cat45 and intensity. All three (cat05, cat45, intensity) report the
             25th, 50th and 75th percentiles. Refer to the mentioned publications above
             for more details. Possible values are:
                 '5/10', '25', '50', '75', '90/95'
+        rcp_scenario : int
+            possible scenarios:
+                26 for RCP 2.6
+                45 for RCP 4.5
+                60 for RCP 6.0
+                85 for RCP 8.5
+        target_year : int
+            future year to be simulated, between 2000 and 2100.
+        baseline : tuple of int
+            the starting and ending years that define the historical baseline.
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
@@ -401,7 +401,7 @@ class TropCyclone(Hazard):
                                 variable=variable,
                                 basin=basin,
                                 baseline=baseline
-                                ).loc[ref_year, map_rcp_names[rcp_scenario]]
+                                ).loc[target_year, map_rcp_names[rcp_scenario]]
                                 for variable in ['cat05', 'cat45']
                                 ]
 

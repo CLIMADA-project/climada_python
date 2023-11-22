@@ -40,7 +40,7 @@ MAP_PERC_NAMES = dict(
     )
 
 def get_knutson_scaling_factor(
-            percentile='50',
+            percentile: str,
             basin='NA',
             variable='cat05',
             baseline=(1982, 2022)
@@ -67,7 +67,8 @@ def get_knutson_scaling_factor(
     Parameters
     ----------
     percentile: str
-        percentile of Knutson et al. 2020 estimates. These estimates come from a
+        percentile of Knutson et al. 2020 estimates, representing the model
+        uncertainty in future changes in TC activity. These estimates come from a
         review of state-of-the-art literature and models. As extreme percentiles,
         the 5th, and 95th are reported for variable cat05 and the 10th and 90th
         for cat45 and intensity. All three (cat05, cat45, intensity) report the
