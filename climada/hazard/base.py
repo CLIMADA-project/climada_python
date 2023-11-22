@@ -1651,32 +1651,85 @@ class Hazard():
         """Return number of events."""
         return self.event_id.size
 
-    def write_raster(self, file_name, intensity=True):
-        """Write intensity or fraction as GeoTIFF file. Each band is an event
+    def write_raster(self, file_name, variable='intensity', output_resolution=None):
+        """Write intensity or fraction as GeoTIFF file. Each band is an event.
+        Output raster is always a regular grid (same resolution for lat/lon).
+
+        Note that is output_resolution is not None, the data is rasterized to that
+        resolution. This is an expensive operation. For hazards that are already
+        a raster, output_resolution=None saves on this raster which is efficient.
+
+        If you want to save both fraction and intensity, create two separate files.
+        These can then be read together with the from_raster method.
 
         Parameters
         ----------
         file_name: str
             file name to write in tif format
-        intensity: bool
-            if True, write intensity, otherwise write fraction
+        variable: str
+            if 'intensity', write intensity, if 'fraction' write fraction.
+            Default is 'intensity'
+        output_resolution: int
+            If not None, the data is rasterized to this resolution.
+            Default is None (resolution is estimated from the data).
+
+        See also
+        --------
+        from_raster:
+            method to read intensity and fraction raster files.
         """
-        variable = self.intensity
-        if not intensity:
-            variable = self.fraction
-        pixel_geom = self.centroids.calc_pixels_polygons()
-        profile = self.centroids.meta
-        profile.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
-        with rasterio.open(file_name, 'w', **profile) as dst:
-            LOGGER.info('Writing %s', file_name)
-            for i_ev in range(variable.shape[0]):
-                raster = rasterize(
-                    [(x, val) for (x, val) in
-                        zip(pixel_geom, np.array(variable[i_ev, :].toarray()).reshape(-1))],
-                    out_shape=(profile['height'], profile['width']),
-                    transform=profile['transform'], fill=0,
-                    all_touched=True, dtype=profile['dtype'], )
-                dst.write(raster.astype(profile['dtype']), i_ev + 1)
+
+        if variable == 'intensity':
+            var_to_write = self.intensity
+        elif variable =='fraction':
+            var_to_write = self.fraction
+        else:
+            raise ValueError(
+                f"The variable {variable} is not valid. Please use 'intensity' or 'fraction'."
+                )
+
+        centroids = self.centroids
+
+        res = np.abs(u_coord.get_resolution(centroids.lat, centroids.lon)).min()
+        xmin, ymin, xmax, ymax = centroids.gdf.total_bounds
+
+        if output_resolution:
+            res = output_resolution
+
+        # construct raster
+        rows, cols, ras_trans = u_coord.pts_to_raster_meta(
+            (xmin, ymin, xmax, ymax), (res, -res)
+            )
+        meta = {
+            'crs': self.centroids.crs,
+            'height': rows,
+            'width': cols,
+            'transform': ras_trans,
+        }
+        meta.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
+
+        if rows*cols == centroids.shape[0]:
+            u_coord.write_raster(file_name, var_to_write.toarray(), meta)
+        else:
+            geometry = centroids.gdf.geometry.buffer(distance=res/2, resolution=1, cap_style=3)
+            #resolution=1, cap_style=3: squared buffers
+            #https://shapely.readthedocs.io/en/latest/manual.html#object.buffer
+            with rasterio.open(file_name, 'w', **meta) as dst:
+                LOGGER.info('Writing %s', file_name)
+                for i_ev in range(self.size):
+                    raster = rasterio.features.rasterize(
+                        (
+                            (geom, value)
+                            for geom, value
+                            in zip(geometry, var_to_write[i_ev].toarray().flatten())
+                        ),
+                        out_shape=(meta['height'], meta['width']),
+                        transform=meta['transform'],
+                        fill=0,
+                        all_touched=True,
+                        dtype=meta['dtype']
+                        )
+                    dst.write(raster.astype(meta['dtype']), i_ev + 1)
 
     def write_hdf5(self, file_name, todense=False):
         """Write hazard in hdf5 format.
