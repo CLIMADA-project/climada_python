@@ -557,7 +557,7 @@ All three approaches can also be combined.
 .. _conda-instead-of-mamba:
 
 Conda as Alternative to Mamba
-^^^^^^^^^^^^^^^^^^^^^^
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 We experienced several issues with the default ``conda`` package manager lately.
 This is likely due to the large dependency set of CLIMADA, which makes solving the environment a tedious task.
