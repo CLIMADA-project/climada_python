@@ -24,10 +24,10 @@ Prerequisites
 * Ensure a **stable internet connection** for the installation procedure.
   All dependencies will be downloaded from the internet.
   Do **not** use a metered, mobile connection!
-* Install `Conda`_.
+* Install the `Conda`_ package manager.
   We highly recommend you use `Miniforge`_, which includes the potent `Mamba`_ package manager.
   Download the installer suitable for your system and follow the respective installation instructions.
-  We do **not** recommend using ``conda`` anymore, see :ref:`conda-instead-of-mamba`.
+  We do **not** recommend using the ``conda`` command anymore, rather use ``mamba`` (see :ref:`conda-instead-of-mamba`).
 
 .. note:: When mentioning the terms "terminal" or "command line" in the following, we are referring to the "Terminal" apps on macOS or Linux and the "Miniforge Prompt" on Windows.
 
@@ -556,7 +556,7 @@ All three approaches can also be combined.
 
 .. _conda-instead-of-mamba:
 
-Conda Instead of Mamba
+Conda as Alternative to Mamba
 ^^^^^^^^^^^^^^^^^^^^^^
 
 We experienced several issues with the default ``conda`` package manager lately.
