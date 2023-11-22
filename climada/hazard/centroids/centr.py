@@ -460,7 +460,7 @@ class Centroids():
         return Centroids.from_geodataframe(self.gdf[sel_cen_mask])
 
 
-    def select_mask(self, sel_cen, reg_id=None, extent=None):
+    def select_mask(self, sel_cen=None, reg_id=None, extent=None):
         """
         Make mask of selected centroids
 
@@ -482,6 +482,8 @@ class Centroids():
             1d mask of selected centroids
 
         """
+        if sel_cen is None:
+            sel_cen = np.ones(self.size, dtype=bool)
         if reg_id is not None:
             sel_cen &= np.isin(self.region_id, reg_id)
         if extent is not None:
