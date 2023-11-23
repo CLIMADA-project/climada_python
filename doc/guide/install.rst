@@ -438,11 +438,13 @@ To update, follow the instructions based on your :ref:`installation type <instal
      cd <path/to/workspace>/climada_python
      git pull
 
-  Then, update the environment:
+  Then, update the environment and reinstall the package:
 
   .. code-block:: shell
 
      mamba env update -n climada_env -f requirements/env_climada.yml
+     mamba activate climada_env
+     python -m pip install -e ./
 
   The same instructions apply for CLIMADA Petals.
 
