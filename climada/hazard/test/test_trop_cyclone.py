@@ -467,7 +467,7 @@ class TestClimateSce(unittest.TestCase):
             np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
         self.assertTrue(np.allclose(tc.frequency, tc_cc.frequency))
 
-    def test_apply_criterion_track(self):
+    def test_apply_criterion_track2(self):
         """Test _apply_criterion function."""
         criterion = [{'basin': 'NA', 'category': [1, 2, 3, 4, 5],
                    'year': 2100, 'change': 1.045, 'variable': 'intensity'}
