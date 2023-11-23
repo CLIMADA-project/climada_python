@@ -729,7 +729,6 @@ class Centroids():
         """
         if not Path(file_name).is_file():
             raise FileNotFoundError(str(file_name))
-
         try:
             with pd.HDFStore(file_name, mode='r') as store:
                 metadata = store.get_storer('centroids').attrs.metadata
@@ -739,6 +738,9 @@ class Centroids():
         except TypeError:
             with h5py.File(file_name, 'r') as data:
                 gdf = cls._legacy_from_hdf5(data.get('centroids'))
+        except KeyError:
+            with h5py.File(file_name, 'r') as data:
+                gdf = cls._legacy_from_hdf5(data)
 
         return cls.from_geodataframe(gdf)
 
