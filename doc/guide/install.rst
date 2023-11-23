@@ -24,7 +24,7 @@ Prerequisites
 * Ensure a **stable internet connection** for the installation procedure.
   All dependencies will be downloaded from the internet.
   Do **not** use a metered, mobile connection!
-* Install the `Conda`_ package manager.
+* Install the `Conda`_ environment management system.
   We highly recommend you use `Miniforge`_, which includes the potent `Mamba`_ package manager.
   Download the installer suitable for your system and follow the respective installation instructions.
   We do **not** recommend using the ``conda`` command anymore, rather use ``mamba`` (see :ref:`conda-instead-of-mamba`).
