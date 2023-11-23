@@ -33,9 +33,6 @@ from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
 
 
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.mat'
-
-
 class TestCentroidsReader(unittest.TestCase):
     """Test read functions Centroids"""
 
