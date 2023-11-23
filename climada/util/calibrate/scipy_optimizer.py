@@ -10,6 +10,19 @@ from .base import Output, Optimizer
 
 
 @dataclass
+class ScipyMinimizeOptimizerOutput(Output):
+    """Output of a calibration with :py:class:`ScipyMinimizeOptimizer`
+
+    Attributes
+    ----------
+    result : scipy.minimize.OptimizeResult
+        The OptimizeResult instance returned by ``scipy.optimize.minimize``.
+    """
+
+    result: OptimizeResult
+
+
+@dataclass
 class ScipyMinimizeOptimizer(Optimizer):
     """An optimization using scipy.optimize.minimize
 
@@ -42,7 +55,7 @@ class ScipyMinimizeOptimizer(Optimizer):
         """Return a list of entries from a map with matching keys or ``None``"""
         return [mapping.get(key) for key in self._param_names]
 
-    def run(self, **opt_kwargs) -> Output:
+    def run(self, **opt_kwargs) -> ScipyMinimizeOptimizerOutput:
         """Execute the optimization
 
         Parameters
@@ -64,7 +77,12 @@ class ScipyMinimizeOptimizer(Optimizer):
             associated ``scipy.optimize.OptimizeResult`` instance.
         """
         # Parse kwargs
-        params_init = opt_kwargs.pop("params_init")
+        try:
+            params_init = opt_kwargs.pop("params_init")
+        except KeyError as err:
+            raise RuntimeError(
+                "ScipyMinimizeOptimizer.run requires 'params_init' mapping as argument"
+            ) from err
         method = opt_kwargs.pop("method", "trust-constr")
 
         # Store names to rebuild dict when the minimize iterator returns an array
@@ -89,16 +107,3 @@ class ScipyMinimizeOptimizer(Optimizer):
 
         params = dict(zip(self._param_names, res.x.flat))
         return ScipyMinimizeOptimizerOutput(params=params, target=res.fun, result=res)
-
-
-@dataclass
-class ScipyMinimizeOptimizerOutput(Output):
-    """Output of a calibration with :py:class:`ScipyMinimizeOptimizer`
-
-    Attributes
-    ----------
-    result : scipy.minimize.OptimizeResult
-        The OptimizeResult instance returned by ``scipy.optimize.minimize``.
-    """
-
-    result: OptimizeResult

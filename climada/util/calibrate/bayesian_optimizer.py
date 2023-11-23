@@ -153,6 +153,7 @@ class BayesianOptimizerOutput(Output):
             function value (``Cost Function``) and whose rows are the optimizer
             iterations.
         """
+        # TODO: Handle constraints!!!
         data = {
             self.p_space.keys[i]: self.p_space.params[..., i]
             for i in range(self.p_space.dim)
