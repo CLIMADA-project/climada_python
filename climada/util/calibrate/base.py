@@ -87,6 +87,15 @@ class Input:
 
     def __post_init__(self, assign_centroids):
         """Prepare input data"""
+        if not isinstance(self.data, pd.DataFrame):
+            if isinstance(self.data, pd.Series):
+                raise ValueError(
+                    "You passed a pandas Series as 'data'. Please transform it into a "
+                    "dataframe with Series.to_frame() and make sure that columns "
+                    "correctly indicate locations and indexes events."
+                )
+            raise ValueError("'data' must be a pandas.DataFrame")
+
         if assign_centroids:
             self.exposure.assign_centroids(self.hazard)
 
@@ -251,22 +260,16 @@ class OutputEvaluator:
                 )
             p_space_df = self.output.p_space_to_dataframe()
 
-        # Retrieve list of parameters required for creating impact functions
-        # and remove the dimension 'Cost Function'.
-        params = p_space_df.columns.tolist()
-        try:
-            params.remove("Cost Function")
-        except ValueError:
-            pass
-
         # Retrieve parameters of impact functions with cost function values
         # within 'cost_func_diff' % of the best estimate
-        params_within_range = p_space_df[params]
+        params_within_range = p_space_df["Parameters"]
         plot_space_label = "Parameter space"
         if cost_func_diff is not None:
-            max_cost_func_val = p_space_df["Cost Function"].min() * (1 + cost_func_diff)
-            params_within_range = p_space_df.loc[
-                p_space_df["Cost Function"] <= max_cost_func_val, params
+            max_cost_func_val = p_space_df["Calibration", "Cost Function"].min() * (
+                1 + cost_func_diff
+            )
+            params_within_range = params_within_range.loc[
+                p_space_df["Calibration", "Cost Function"] <= max_cost_func_val
             ]
             plot_space_label = (
                 f"within {int(cost_func_diff*100)} percent " f"of best fit"

@@ -1,7 +1,7 @@
 """Calibration with Bayesian Optimization"""
 
 from dataclasses import dataclass, InitVar
-from typing import Mapping, Optional, Any, Union, List
+from typing import Mapping, Optional, Any, Union, List, Tuple
 from numbers import Number
 from itertools import combinations, repeat
 
@@ -80,6 +80,7 @@ class BayesianOptimizer(Optimizer):
         self.optimizer = BayesianOptimization(
             f=self._opt_func,
             pbounds=self.input.bounds,
+            constraint=self.input.constraints,
             verbose=verbose,
             random_state=random_state,
             allow_duplicate_points=allow_duplicate_points,
@@ -153,13 +154,26 @@ class BayesianOptimizerOutput(Output):
             function value (``Cost Function``) and whose rows are the optimizer
             iterations.
         """
-        # TODO: Handle constraints!!!
-        data = {
-            self.p_space.keys[i]: self.p_space.params[..., i]
-            for i in range(self.p_space.dim)
-        }
-        data["Cost Function"] = -self.p_space.target
-        data = pd.DataFrame.from_dict(data)
+        # Build MultiIndex for columns
+        index = pd.MultiIndex.from_tuples(
+            [("Parameters", p) for p in self.p_space.keys]
+            + [("Calibration", "Cost Function")]
+        )
+
+        # Create DataFrame and fill
+        data = pd.DataFrame(data=None, columns=index)
+        for i in range(self.p_space.dim):
+            data["Parameters", self.p_space.keys[i]] = self.p_space.params[..., i]
+        data["Calibration", "Cost Function"] = -self.p_space.target
+
+        # Constraints
+        if self.p_space.constraint is not None:
+            data["Calibration", "Constraints Function"] = self.p_space.constraint_values
+            data["Calibration", "Allowed"] = self.p_space.constraint.allowed(
+                self.p_space.constraint_values
+            )
+
+        # Rename index and return
         data.index.rename("Iteration", inplace=True)
         return data
 
@@ -168,7 +182,7 @@ class BayesianOptimizerOutput(Output):
         p_space_df: Optional[pd.DataFrame] = None,
         x: Optional[str] = None,
         y: Optional[str] = None,
-        min_def: Optional[str] = "Cost Function",
+        min_def: Optional[Union[str, Tuple[str, str]]] = "Cost Function",
         min_fmt: str = "x",
         min_color: str = "r",
         **plot_kwargs
@@ -206,13 +220,19 @@ class BayesianOptimizerOutput(Output):
         if p_space_df is None:
             p_space_df = self.p_space_to_dataframe()
 
+        if min_def is not None and not isinstance(min_def, tuple):
+            min_def = ("Calibration", min_def)
+
         # Plot defaults
         cmap = plot_kwargs.pop("cmap", "viridis_r")
         s = plot_kwargs.pop("s", 40)
-        c = plot_kwargs.pop("c", "Cost Function")
+        c = ("Calibration", plot_kwargs.pop("c", "Cost Function"))
 
         def plot_single(x, y):
             """Plot a single combination of parameters"""
+            x = ("Parameters", x)
+            y = ("Parameters", y)
+
             # Plot scatter
             ax = p_space_df.plot(
                 kind="scatter",
@@ -231,14 +251,8 @@ class BayesianOptimizerOutput(Output):
 
             return ax
 
-        # Ignore cost dimension
-        params = p_space_df.columns.tolist()
-        try:
-            params.remove(c)
-        except ValueError:
-            pass
-
         # Option 0: Only one parameter
+        params = p_space_df.columns.to_list()
         if len(params) < 2:
             return plot_single(x=params[0], y=repeat(0))
 

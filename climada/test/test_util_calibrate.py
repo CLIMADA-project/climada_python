@@ -170,7 +170,7 @@ class TestBayesianOptimizer(unittest.TestCase):
 
         # Constraint: param[0] < param[1] (intensity_1 < intensity_2)
         self.input.constraints = NonlinearConstraint(
-            lambda params: params[0] - params[1], -np.inf, 0.0
+            lambda intensity_1, intensity_2: intensity_1 - intensity_2, -np.inf, 0.0
         )
         self.input.bounds = {"intensity_1": (-1, 4), "intensity_2": (-1, 4)}
         # Run optimizer
@@ -187,6 +187,17 @@ class TestBayesianOptimizer(unittest.TestCase):
         p_space = output.p_space_to_dataframe()
         self.assertSetEqual(
             set(p_space.columns.to_list()),
-            {"intensity_1", "intensity_2", "Cost Function"},
+            {
+                ("Parameters", "intensity_1"),
+                ("Parameters", "intensity_2"),
+                ("Calibration", "Cost Function"),
+                ("Calibration", "Constraints Function"),
+                ("Calibration", "Allowed"),
+            },
         )
-        self.assertTupleEqual(p_space.shape, (300, 3))
+        self.assertTupleEqual(p_space.shape, (300, 5))
+        p_allowed = p_space.loc[p_space["Calibration", "Allowed"], "Parameters"]
+        npt.assert_array_equal(
+            (p_allowed["intensity_1"] < p_allowed["intensity_2"]).to_numpy(),
+            np.full_like(p_allowed["intensity_1"].to_numpy(), True),
+        )
