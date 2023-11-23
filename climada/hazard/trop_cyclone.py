@@ -273,9 +273,9 @@ class TropCyclone(Hazard):
             coastal_idx = (np.abs(centroids.lat) <= max_latitude).nonzero()[0]
         else:
             # Select centroids which are inside max_dist_inland_km and lat <= max_latitude
-            if not centroids.dist_coast.size:
-                centroids.set_dist_coast()
-            coastal_idx = ((centroids.dist_coast <= max_dist_inland_km * 1000)
+            if 'dist_coast' not in centroids.gdf:
+                centroids.gdf['dist_coast'] = centroids.get_dist_coast()
+            coastal_idx = ((centroids.gdf.dist_coast.values <= max_dist_inland_km * 1000)
                            & (np.abs(centroids.lat) <= max_latitude)).nonzero()[0]
 
         # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
