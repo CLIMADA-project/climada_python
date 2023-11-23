@@ -21,13 +21,14 @@ This is the Python (3.9+) version of CLIMADA - please see [here](https://github.
 ## Getting started
 
 CLIMADA runs on Windows, macOS and Linux.
-The released versions of the CLIMADA core can be installed directly through Anaconda:
+The released versions of CLIMADA are available from [conda-forge](https://anaconda.org/conda-forge/climada).
+Use the [Mamba](https://mamba.readthedocs.io/en/latest/) package manager to install it:
 
 ```shell
-conda install -c conda-forge climada
+mamba install -c conda-forge climada
 ```
 
-It is **highly recommended** to install CLIMADA into a **separate** Anaconda environment.
+It is **highly recommended** to install CLIMADA into a **separate** Conda environment.
 See the [installation guide](https://climada-python.readthedocs.io/en/latest/guide/install.html) for further information.
 
 Follow the [tutorials](https://climada-python.readthedocs.io/en/stable/tutorial/1_main_climada.html) in a Jupyter Notebook to see what can be done with CLIMADA and how.
