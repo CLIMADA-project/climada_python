@@ -12,7 +12,7 @@ from climada.entity import ImpactFuncSet, ImpactFunc
 
 from climada.util.calibrate import Input, ScipyMinimizeOptimizer, BayesianOptimizer
 
-from climada.util.calibrate.test.test_calibrate import hazard, exposure
+from climada.util.calibrate.test.test_base import hazard, exposure
 
 
 class TestScipyMinimizeOptimizer(unittest.TestCase):
@@ -48,7 +48,6 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
             self.impact_func_creator,
             self.impact_to_dataframe,
             mean_squared_error,
-            # lambda x,y: mean_squared_error(x, y, squared=True),
         )
 
     def test_single(self):

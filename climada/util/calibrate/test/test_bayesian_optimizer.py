@@ -37,7 +37,7 @@ class TestBayesianOptimizer(unittest.TestCase):
         self.optimizer = BayesianOptimizer(self.input)
 
         # Call 'run'
-        with patch.object(self.optimizer, "_align_impact_with_data") as align:
+        with patch.object(self.input, "impact_to_aligned_df") as align:
             align.return_value = (None, None)
             self.optimizer.run(init_points=2, n_iter=1)
 
@@ -58,7 +58,7 @@ class TestBayesianOptimizer(unittest.TestCase):
         self.optimizer = BayesianOptimizer(self.input)
 
         # Call 'run'
-        with patch.object(self.optimizer, "_align_impact_with_data") as align:
+        with patch.object(self.input, "impact_to_aligned_df") as align:
             align.return_value = (None, None)
             output = self.optimizer.run(init_points=1, n_iter=1)
 

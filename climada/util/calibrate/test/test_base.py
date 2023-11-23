@@ -109,6 +109,69 @@ class TestInputPostInit(unittest.TestCase):
         self.assertIn("centr_", input.exposure.gdf)
         npt.assert_array_equal(input.exposure.gdf["centr_"], [0, 1, -1])
 
+    def test_align_impact(self):
+        """Check alignment of impact and data"""
+        input = Input(
+            hazard=hazard(),
+            exposure=exposure(),
+            data=pd.DataFrame(
+                data={"col1": [1, 2], "col2": [2, 3]}, index=[0, 1], dtype="float"
+            ),
+            cost_func=lambda x, y: (x + y).sum(axis=None),
+            impact_func_creator=lambda _: ImpactFuncSet([ImpactFunc()]),
+            # Mock the dataframe creation by ignoring the argument
+            impact_to_dataframe=lambda _: pd.DataFrame(
+                data={"col2": [1, 2], "col3": [2, 3]}, index=[1, 2], dtype="float"
+            ),
+        )
+
+        # missing_data_value = np.nan
+        data_aligned, impact_df_aligned = input.impact_to_aligned_df(None)
+        data_aligned_test = pd.DataFrame(
+            data={
+                "col1": [1, 2, np.nan],
+                "col2": [2, 3, np.nan],
+                "col3": [np.nan, np.nan, np.nan],
+            },
+            index=[0, 1, 2],
+            dtype="float",
+        )
+        pd.testing.assert_frame_equal(data_aligned, data_aligned_test)
+        impact_df_aligned_test = pd.DataFrame(
+                data={"col1": [0, 0, 0], "col2": [0, 1, 0], "col3": [0, 0, 0]},
+                index=[0, 1, 2],
+                dtype="float",
+            )
+        pd.testing.assert_frame_equal(
+            impact_df_aligned,
+            impact_df_aligned_test
+        )
+
+        # Check fillna
+        data_aligned, impact_df_aligned = input.impact_to_aligned_df(None, fillna=0)
+        pd.testing.assert_frame_equal(data_aligned, data_aligned_test.fillna(0))
+        pd.testing.assert_frame_equal(impact_df_aligned, impact_df_aligned_test)
+
+        # Different missing data value
+        input.missing_data_value = 0.0
+        data_aligned, impact_df_aligned = input.impact_to_aligned_df(None)
+        pd.testing.assert_frame_equal(data_aligned, data_aligned_test.fillna(0))
+        pd.testing.assert_frame_equal(
+            impact_df_aligned,
+            pd.DataFrame(
+                data={"col1": [0, 0, 0], "col2": [0, 1, 2], "col3": [0, 2, 3]},
+                index=[0, 1, 2],
+                dtype="float",
+            ),
+        )
+
+        # Check error
+        with self.assertRaisesRegex(ValueError, "NaN values computed in impact!"):
+            input.impact_to_dataframe = lambda _: pd.DataFrame(
+                data={"col1": [np.nan], "col2": [2, 3]}, index=[1, 2]
+            )
+            data_aligned, impact_df_aligned = input.impact_to_aligned_df(None)
+
 
 class TestOptimizer(unittest.TestCase):
     """Base class for testing optimizers. Creates an input mock"""
@@ -124,53 +187,6 @@ class TestOptimizer(unittest.TestCase):
             impact_to_dataframe=lambda x: x.impact_at_reg(),
         )
         self.optimizer = ConcreteOptimizer(self.input)
-
-    def test_align_impact_with_data(self):
-        """Check alignment of impact and data"""
-        self.input.data = pd.DataFrame(
-            data={"col1": [1, 2], "col2": [2, 3]}, index=[0, 1]
-        )
-        impact_df = pd.DataFrame(data={"col2": [1, 2], "col3": [2, 3]}, index=[1, 2])
-
-        # missing_data_value = np.nan
-        data_aligned, impact_df_aligned = self.optimizer._align_impact_with_data(
-            impact_df
-        )
-        data_aligned_test = pd.DataFrame(
-            data={"col1": [1, 2, 0], "col2": [2, 3, 0], "col3": [0, 0, 0]},
-            index=[0, 1, 2],
-            dtype="float",
-        )
-        pd.testing.assert_frame_equal(data_aligned, data_aligned_test)
-        pd.testing.assert_frame_equal(
-            impact_df_aligned,
-            pd.DataFrame(
-                data={"col1": [0, 0, 0], "col2": [0, 1, 0], "col3": [0, 0, 0]},
-                index=[0, 1, 2],
-                dtype="float",
-            ),
-        )
-
-        # Different missing data value
-        self.input.missing_data_value = 0
-        data_aligned, impact_df_aligned = self.optimizer._align_impact_with_data(
-            impact_df
-        )
-        pd.testing.assert_frame_equal(data_aligned, data_aligned_test)
-        pd.testing.assert_frame_equal(
-            impact_df_aligned,
-            pd.DataFrame(
-                data={"col1": [0, 0, 0], "col2": [0, 1, 2], "col3": [0, 2, 3]},
-                index=[0, 1, 2],
-                dtype="float",
-            ),
-        )
-
-        # Check error
-        with self.assertRaisesRegex(ValueError, "NaN values computed in impact!"):
-            data_aligned, impact_df_aligned = self.optimizer._align_impact_with_data(
-                pd.DataFrame(data={"col1": [np.nan], "col2": [2, 3]}, index=[1, 2])
-            )
 
 
 # Execute Tests

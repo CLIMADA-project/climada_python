@@ -44,7 +44,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
 
         # Call 'run', make sure that 'minimize' is only with these parameters
         params_init = {"x_2": 1, "x 1": 2, "x_3": 3}  # NOTE: Also works with whitespace
-        with patch.object(self.optimizer, "_align_impact_with_data") as align:
+        with patch.object(self.input, "impact_to_aligned_df") as align:
             align.return_value = (None, None)
             self.optimizer.run(params_init=params_init, options={"maxiter": 1})
 

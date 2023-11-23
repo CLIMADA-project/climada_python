@@ -90,6 +90,59 @@ class Input:
         if assign_centroids:
             self.exposure.assign_centroids(self.hazard)
 
+    def impact_to_aligned_df(
+        self, impact: Impact, fillna: float = np.nan
+    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
+        """Create a dataframe from an impact and align it with the data.
+
+        When aligning, two general cases might occur, which are not mutually exclusive:
+
+        1. There are data points for which no impact was computed. This will always be
+           treated as an impact of zero.
+        2. There are impacts for which no data points exist. For these points, the input
+           data will be filled with the value of :py:attr:`Input.missing_data_value`.
+
+        This method performs the following steps:
+
+        * Transform the impact into a dataframe using :py:attr:`impact_to_dataframe`.
+        * Align the :py:attr:`data` with the impact dataframe, using
+          :py:attr:`missing_data_value` as fill value.
+        * Align the impact dataframe with the data, using zeros as fill value.
+        * In the aligned impact, set all values to zero where the data is NaN.
+        * Fill remaining NaNs in data with ``fillna``.
+
+        Parameters
+        ----------
+        impact_df : pandas.DataFrame
+            The impact computed by the model, transformed into a dataframe by
+            :py:attr:`Input.impact_to_dataframe`.
+
+        Returns
+        -------
+        data_aligned : pd.DataFrame
+            The data aligned to the impact dataframe
+        impact_df_aligned : pd.DataFrame
+            The impact transformed to a dataframe and aligned with the data
+        """
+        # Transform impact to  to dataframe
+        impact_df = self.impact_to_dataframe(impact)
+        if impact_df.isna().any(axis=None):
+            raise ValueError("NaN values computed in impact!")
+
+        # Align with different fill values
+        data_aligned, _ = self.data.align(
+            impact_df, axis=None, fill_value=self.missing_data_value, copy=True
+        )
+        impact_df_aligned, _ = impact_df.align(
+            data_aligned, join="right", axis=None, fill_value=0.0, copy=False
+        )
+
+        # Set all impacts to zero for which data is NaN
+        impact_df_aligned.where(data_aligned.notna(), 0.0, inplace=True)
+
+        # NOTE: impact_df_aligned should not contain any NaNs at this point
+        return data_aligned.fillna(fillna), impact_df_aligned.fillna(fillna)
+
 
 @dataclass
 class Output:
@@ -163,7 +216,6 @@ class OutputEvaluator:
         plot_impf_kws: Optional[dict] = None,
         plot_hist_kws: Optional[dict] = None,
     ):
-
         """Plot impact function variability with parameter combinations of
         almost equal cost function values
 
@@ -190,7 +242,7 @@ class OutputEvaluator:
         if p_space_df is None:
             # Assert that self.output has the p_space_to_dataframe() method,
             # which is defined for the BayesianOptimizerOutput class
-            if not hasattr(self.output,"p_space_to_dataframe"):
+            if not hasattr(self.output, "p_space_to_dataframe"):
                 raise TypeError(
                     "To derive the full impact function parameter space, "
                     "plot_impf_variability() requires BayesianOptimizerOutput "
@@ -203,52 +255,63 @@ class OutputEvaluator:
         # and remove the dimension 'Cost Function'.
         params = p_space_df.columns.tolist()
         try:
-            params.remove('Cost Function')
+            params.remove("Cost Function")
         except ValueError:
             pass
 
         # Retrieve parameters of impact functions with cost function values
         # within 'cost_func_diff' % of the best estimate
         params_within_range = p_space_df[params]
-        plot_space_label = 'Parameter space'
+        plot_space_label = "Parameter space"
         if cost_func_diff is not None:
-            max_cost_func_val = (p_space_df['Cost Function'].min()*
-                                 (1+cost_func_diff))
+            max_cost_func_val = p_space_df["Cost Function"].min() * (1 + cost_func_diff)
             params_within_range = p_space_df.loc[
-                p_space_df['Cost Function'] <=max_cost_func_val,params
+                p_space_df["Cost Function"] <= max_cost_func_val, params
             ]
-            plot_space_label = (f"within {int(cost_func_diff*100)} percent "
-                                f"of best fit")
+            plot_space_label = (
+                f"within {int(cost_func_diff*100)} percent " f"of best fit"
+            )
 
         # Set plot defaults
-        color = plot_impf_kws.pop('color','tab:blue')
-        lw = plot_impf_kws.pop('lw',2)
-        zorder = plot_impf_kws.pop('zorder',3)
-        label = plot_impf_kws.pop('label','best fit')
+        color = plot_impf_kws.pop("color", "tab:blue")
+        lw = plot_impf_kws.pop("lw", 2)
+        zorder = plot_impf_kws.pop("zorder", 3)
+        label = plot_impf_kws.pop("label", "best fit")
 
-        #get number of impact functions and create a plot for each
+        # get number of impact functions and create a plot for each
         n_impf = len(self.impf_set.get_func(haz_type=haz_type))
-        axes=[]
+        axes = []
 
         for impf_idx in range(n_impf):
+            _, ax = plt.subplots()
 
-            _,ax = plt.subplots()
-
-            #Plot best-fit impact function
+            # Plot best-fit impact function
             best_impf = self.impf_set.get_func(haz_type=haz_type)[impf_idx]
-            ax.plot(best_impf.intensity,best_impf.mdd*best_impf.paa*100,
-                    color=color,lw=lw,zorder=zorder,label=label,**plot_impf_kws)
+            ax.plot(
+                best_impf.intensity,
+                best_impf.mdd * best_impf.paa * 100,
+                color=color,
+                lw=lw,
+                zorder=zorder,
+                label=label,
+                **plot_impf_kws,
+            )
 
-            #Plot all impact functions within 'cost_func_diff' % of best estimate
+            # Plot all impact functions within 'cost_func_diff' % of best estimate
             for row in range(params_within_range.shape[0]):
                 label_temp = plot_space_label if row == 0 else None
 
-                sel_params = params_within_range.iloc[row,:].to_dict()
+                sel_params = params_within_range.iloc[row, :].to_dict()
                 temp_impf_set = self.input.impact_func_creator(**sel_params)
                 temp_impf = temp_impf_set.get_func(haz_type=haz_type)[impf_idx]
 
-                ax.plot(temp_impf.intensity,temp_impf.mdd*temp_impf.paa*100,
-                        color='grey',alpha=0.4,label=label_temp)
+                ax.plot(
+                    temp_impf.intensity,
+                    temp_impf.mdd * temp_impf.paa * 100,
+                    color="grey",
+                    alpha=0.4,
+                    label=label_temp,
+                )
 
             # Plot hazard intensity value distributions
             if plot_haz:
@@ -256,21 +319,29 @@ class OutputEvaluator:
                     :, self.input.exposure.gdf[f"centr_{haz_type}"]
                 ]
 
-                #Plot defaults
-                color_hist = plot_hist_kws.pop('color','tab:orange')
-                alpha_hist = plot_hist_kws.pop('alpha',0.3)
+                # Plot defaults
+                color_hist = plot_hist_kws.pop("color", "tab:orange")
+                alpha_hist = plot_hist_kws.pop("alpha", 0.3)
 
                 ax2 = ax.twinx()
-                ax2.hist(haz_vals.data,bins=40,color=color_hist,
-                        alpha=alpha_hist,label='Hazard intensity\noccurence')
-                ax2.set(ylabel='Hazard intensity occurence (#Exposure points)')
-                ax.axvline(x=haz_vals.max(),label='Maximum hazard value',
-                        color='tab:orange')
-                ax2.legend(loc='lower right')
+                ax2.hist(
+                    haz_vals.data,
+                    bins=40,
+                    color=color_hist,
+                    alpha=alpha_hist,
+                    label="Hazard intensity\noccurence",
+                )
+                ax2.set(ylabel="Hazard intensity occurence (#Exposure points)")
+                ax.axvline(
+                    x=haz_vals.max(), label="Maximum hazard value", color="tab:orange"
+                )
+                ax2.legend(loc="lower right")
 
-            ax.set(xlabel=f"Intensity ({self.input.hazard.units})",
+            ax.set(
+                xlabel=f"Intensity ({self.input.hazard.units})",
                 ylabel="Mean Damage Ratio (MDR) in %",
-                xlim=(min(best_impf.intensity),max(best_impf.intensity)))
+                xlim=(min(best_impf.intensity), max(best_impf.intensity)),
+            )
             ax.legend()
             axes.append(ax)
 
@@ -279,13 +350,12 @@ class OutputEvaluator:
 
         return ax
 
-
     def plot_at_event(
         self,
         data_transf: Callable[[pd.DataFrame], pd.DataFrame] = lambda x: x,
         **plot_kwargs,
     ):
-        """Create a bar plot comparing estimated model output and data per event
+        """Create a bar plot comparing estimated model output and data per event.
 
         Every row of the :py:attr:`Input.data` is considered an event.
         The data to be plotted can be transformed with a generic function
@@ -305,21 +375,23 @@ class OutputEvaluator:
         -------
         ax : matplotlib.axes.Axes
             The plot axis returned by ``DataFrame.plot.bar``
+
+        Note
+        ----
+        This plot does *not* include the ignored impact, see :py:attr:`Input.data`.
         """
-        data = pd.concat(
-            [
-                self.input.impact_to_dataframe(self.impact).sum(axis="columns"),
-                self.input.data.sum(axis="columns"),
-            ],
+        data, impact = self.input.impact_to_aligned_df(self.impact)
+        values = pd.concat(
+            [impact.sum(axis="columns"), data.sum(axis="columns")],
             axis=1,
         ).rename(columns={0: "Model", 1: "Data"})
 
         # Transform data before plotting
-        data = data_transf(data)
+        values = data_transf(values)
 
         # Now plot
         ylabel = plot_kwargs.pop("ylabel", self._impact_label)
-        return data.plot.bar(ylabel=ylabel, **plot_kwargs)
+        return values.plot.bar(ylabel=ylabel, **plot_kwargs)
 
     def plot_at_region(
         self,
@@ -346,21 +418,23 @@ class OutputEvaluator:
         -------
         ax : matplotlib.axes.Axes
             The plot axis returned by ``DataFrame.plot.bar``.
+
+        Note
+        ----
+        This plot does *not* include the ignored impact, see :py:attr:`Input.data`.
         """
-        data = pd.concat(
-            [
-                self.input.impact_to_dataframe(self.impact).sum(axis="index"),
-                self.input.data.sum(axis="index"),
-            ],
+        data, impact = self.input.impact_to_aligned_df(self.impact)
+        values = pd.concat(
+            [impact.sum(axis="index"), data.sum(axis="index")],
             axis=1,
         ).rename(columns={0: "Model", 1: "Data"})
 
         # Transform data before plotting
-        data = data_transf(data)
+        values = data_transf(values)
 
         # Now plot
         ylabel = plot_kwargs.pop("ylabel", self._impact_label)
-        return data.plot.bar(ylabel=ylabel, **plot_kwargs)
+        return values.plot.bar(ylabel=ylabel, **plot_kwargs)
 
     def plot_event_region_heatmap(
         self,
@@ -391,13 +465,12 @@ class OutputEvaluator:
 
         """
         # Data preparation
-        agg = self.input.impact_to_dataframe(self.impact)
-        data = (agg + 1) / (self.input.data + 1)
-        data = data.transform(np.log10)
-        data = data.where((agg > 0) | (self.input.data > 0))
+        data, impact = self.input.impact_to_aligned_df(self.impact)
+        values = (impact + 1) / (data + 1)  # Avoid division by zero
+        values = values.transform(np.log10)
 
         # Transform data
-        data = data_transf(data)
+        values = data_transf(values)
 
         # Default plot settings
         annot = plot_kwargs.pop("annot", True)
@@ -411,7 +484,7 @@ class OutputEvaluator:
         )
 
         return sns.heatmap(
-            data,
+            values,
             annot=annot,
             vmin=vmin,
             vmax=vmax,
@@ -482,53 +555,6 @@ class Optimizer(ABC):
         """
         return kwargs
 
-    def _align_impact_with_data(
-        self, impact_df: pd.DataFrame
-    ) -> Tuple[pd.DataFrame, pd.DataFrame]:
-        """Align the impact dataframe with the input data dataframe
-
-        When aligning, two general cases might occur, which are not mutually exclusive:
-
-        1. There are data points for which no impact was computed. This will always be
-           treated as an impact of zero.
-        2. There are impacts for which no data points exist. For these points, the input
-           data will be filled with the value of :py:attr:`Input.missing_data_value`.
-
-        Parameters
-        ----------
-        impact_df : pandas.DataFrame
-            The impact computed by the model, transformed into a dataframe by
-            :py:attr:`Input.impact_to_dataframe`.
-
-        Returns
-        -------
-        data_aligned : pandas.DataFrame
-            The :py:attr:`Input.data` aligned with the impact.
-        impact_df_aligned : pandas.DataFrame
-            The ``impact_df`` aligned with the data.
-
-        Raises
-        ------
-        ValueError
-            If ``impact_df`` contains NaNs before aligning.
-        """
-        if impact_df.isna().any(axis=None):
-            raise ValueError("NaN values computed in impact!")
-
-        data_aligned, impact_df_aligned = self.input.data.align(
-            impact_df, axis=None, fill_value=None
-        )
-
-        # Add user-set value for non-aligned data
-        data_aligned[
-            impact_df_aligned.notna() & data_aligned.isna()
-        ] = self.input.missing_data_value
-
-        # Set all impacts to zero for which data is NaN
-        impact_df_aligned.where(data_aligned.notna(), inplace=True)
-
-        return data_aligned.fillna(0), impact_df_aligned.fillna(0)
-
     def _opt_func(self, *args, **kwargs) -> Number:
         """The optimization function iterated by the optimizer
 
@@ -557,8 +583,9 @@ class Optimizer(ABC):
         ).impact(**self.input.impact_calc_kwds)
 
         # Transform to DataFrame, align, and compute target function
-        impact_df = self.input.impact_to_dataframe(impact)
-        data_aligned, impact_df_aligned = self._align_impact_with_data(impact_df)
+        data_aligned, impact_df_aligned = self.input.impact_to_aligned_df(
+            impact, fillna=0
+        )
         return self._target_func(data_aligned, impact_df_aligned)
 
     @abstractmethod
