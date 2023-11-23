@@ -632,5 +632,5 @@ IDE
 
 .. _Conda: https://docs.conda.io/en/latest/
 .. _Mamba: https://mamba.readthedocs.io/en/latest/
-.. _Miniforge: <https://github.com/conda-forge/miniforge>
+.. _Miniforge: https://github.com/conda-forge/miniforge
 .. _CLIMADA Petals: https://climada-petals.readthedocs.io/en/latest/
