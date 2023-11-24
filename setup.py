@@ -60,7 +60,7 @@ setup(
     python_requires=">=3.9,<3.12",
 
     install_requires=[
-        'bayes_opt',
+        'bayesian-optimization',
         'bottleneck',
         'cartopy',
         'cfgrib',
