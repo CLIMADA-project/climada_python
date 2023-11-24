@@ -95,7 +95,7 @@ class ScipyMinimizeOptimizer(Optimizer):
             else None
         )
 
-        x0 = np.array(list(params_init.values()))
+        x0 = np.array(list(params_init.values()))  # pylint: disable=invalid-name
         res = minimize(
             fun=self._opt_func,
             x0=x0,

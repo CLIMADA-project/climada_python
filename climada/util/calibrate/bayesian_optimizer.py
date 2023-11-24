@@ -10,7 +10,6 @@ import matplotlib.axes as maxes
 from bayes_opt import BayesianOptimization
 from bayes_opt.target_space import TargetSpace
 
-from climada.engine import Impact
 from .base import Output, Optimizer
 
 
@@ -217,6 +216,8 @@ class BayesianOptimizerOutput(Output):
         min_color : str, optional
             Color for plotting the minimum. Defaults to ``"r"`` (red).
         """
+        # pylint: disable=invalid-name
+
         if p_space_df is None:
             p_space_df = self.p_space_to_dataframe()
 
