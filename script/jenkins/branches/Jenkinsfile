@@ -27,7 +27,7 @@ pipeline {
             rm -rf tests_xml/
             rm -rf coverage/
             python -m pip install bayesian-optimization
-            python -m pip install seaborn
+            python -m pip install --upgrade seaborn>=0.13
             make unit_test'''
           }
         }
