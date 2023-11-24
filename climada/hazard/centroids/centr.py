@@ -345,7 +345,7 @@ class Centroids():
         close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
-    def set_region_id(self, scheduler=None):
+    def set_region_id(self):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
 
         Parameters
@@ -353,11 +353,10 @@ class Centroids():
         scheduler : str
             used for dask map_partitions. “threads”, “synchronous” or “processes”
         """
-        ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting region_id %s points.', str(self.size))
         if u_coord.equal_crs(self.crs, 'epsg:4326'):
             self.gdf['region_id'] = u_coord.get_country_code(
-                ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
+                self.lat, self.lon)
         else:
             raise NotImplementedError(
                 'The region id can only be assigned if the crs is epsg:4326'
@@ -375,7 +374,7 @@ class Centroids():
         """
         return u_coord.read_raster_sample(topo_path, self.lat, self.lon)
 
-    def get_dist_coast(self, signed=False, precomputed=False, scheduler=None):
+    def get_dist_coast(self, signed=False, precomputed=False):
         """Get dist_coast attribute for every pixel or point in meters.
 
         Parameters
@@ -385,8 +384,6 @@ class Centroids():
         precomputed : bool
             If True, use precomputed distances (from NASA). Works only for crs=epsg:4326
             Default: False.
-        scheduler : str
-            Used for dask map_partitions. "threads", "synchronous" or "processes"
         """
         if not u_coord.equal_crs(self.crs, 'epsg:4326'):
             raise NotImplementedError(
@@ -397,11 +394,11 @@ class Centroids():
             return u_coord.dist_to_coast_nasa(
                 self.lat, self.lon, highres=True, signed=signed)
         else:
-            ne_geom = self._ne_crs_geom(scheduler)
+            ne_geom = self._ne_crs_geom()
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
             return u_coord.dist_to_coast(ne_geom, signed=signed)
 
-    def set_on_land(self, scheduler=None):
+    def set_on_land(self,):
         """Set on_land attribute for every pixel or point.
 
         Parameters
@@ -415,10 +412,10 @@ class Centroids():
                 'Please use .to_default_crs to change to epsg:4326'
                 )
 
-        ne_geom = self._ne_crs_geom(scheduler)
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
         self.gdf['on_land'] = u_coord.coord_on_land(
-            ne_geom.geometry[:].y.values, ne_geom.geometry[:].x.values)
+            self.lat, self.lon
+        )
 
     @classmethod
     def remove_duplicate_points(cls, centroids):
@@ -781,13 +778,8 @@ class Centroids():
         )
 
 
-    def _ne_crs_geom(self, scheduler=None):
+    def _ne_crs_geom(self):
         """Return `geometry` attribute in the CRS of Natural Earth.
-
-        Parameters
-        ----------
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
 
         Returns
         -------
