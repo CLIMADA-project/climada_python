@@ -11,7 +11,13 @@ from matplotlib.axes import Axes
 
 from climada.entity import ImpactFuncSet, ImpactFunc
 
-from climada.util.calibrate import Input, ScipyMinimizeOptimizer, BayesianOptimizer, OutputEvaluator
+from climada.util.calibrate import (
+    Input,
+    ScipyMinimizeOptimizer,
+    BayesianOptimizer,
+    OutputEvaluator,
+    BayesianOptimizerOutputEvaluator,
+)
 
 from climada.util.calibrate.test.test_base import hazard, exposure
 
@@ -213,6 +219,8 @@ class TestBayesianOptimizer(unittest.TestCase):
         output_eval.impf_set.plot()
         output_eval.plot_at_event()
         output_eval.plot_at_region()
+        output_eval.plot_event_region_heatmap()
+
+        output_eval = BayesianOptimizerOutputEvaluator(self.input, output)
         ax = output_eval.plot_impf_variability()
         self.assertIsInstance(ax, Axes)
-        output_eval.plot_event_region_heatmap()
