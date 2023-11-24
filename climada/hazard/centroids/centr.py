@@ -451,11 +451,13 @@ class Centroids():
         cen : Centroids
             Sub-selection of this object
         """
-        if sel_cen.dtype.kind == 'i':  #is integer
-            sel_cen_bool = np.zeros(self.size, dtype=bool)
-            sel_cen_bool[np.unique(sel_cen)] = True
-        else:
-            sel_cen_bool = sel_cen
+        sel_cen_bool = sel_cen
+        #if needed, convert indices to bool
+        if sel_cen is not None:
+            if sel_cen.dtype.kind == 'i':  #is integer
+                sel_cen_bool = np.zeros(self.size, dtype=bool)
+                sel_cen_bool[np.unique(sel_cen)] = True
+
         sel_cen_mask = self.select_mask(sel_cen=sel_cen_bool, reg_id=reg_id, extent=extent)
         return Centroids.from_geodataframe(self.gdf[sel_cen_mask])
 
@@ -643,7 +645,7 @@ class Centroids():
 
         centroids = cls.from_geodataframe(gpd.read_file(file_name))
         if dst_crs is not None:
-            centroids.to_crs(dst_crs, inplace=True)
+            centroids.gdf.geometry.to_crs(dst_crs, inplace=True)
         return centroids
 
 #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
@@ -794,6 +796,38 @@ class Centroids():
         if u_coord.equal_crs(self.gdf.geometry.crs, u_coord.NE_CRS):
             return self.gdf.geometry
         return self.gdf.geometry.to_crs(u_coord.NE_CRS)
+
+    def get_meta(self, resolution=None):
+        """
+        Returns a meta raster based on the centroids bounds.
+
+        When resolution is None it is estimated from the centroids
+        by assuming that they form a regular raster.
+
+        Parameters
+        ----------
+        resolution : int, optional
+            Resolution of the raster.
+            By default None (resolution is estimated from centroids)
+
+        Returns
+        -------
+        meta: dict
+            meta raster representation of the centroids
+        """
+        if resolution is None:
+            resolution = np.abs(u_coord.get_resolution(self.lat, self.lon)).min()
+        xmin, ymin, xmax, ymax = self.gdf.total_bounds
+        rows, cols, ras_trans = u_coord.pts_to_raster_meta(
+            (xmin, ymin, xmax, ymax), (resolution, -resolution)
+            )
+        meta = {
+            'crs': self.crs,
+            'height': rows,
+            'width': cols,
+            'transform': ras_trans,
+        }
+        return meta
 
 def _meta_to_lat_lon(meta):
     """Compute lat and lon of every pixel center from meta raster.

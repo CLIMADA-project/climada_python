@@ -1690,22 +1690,7 @@ class Hazard():
 
         centroids = self.centroids
 
-        res = np.abs(u_coord.get_resolution(centroids.lat, centroids.lon)).min()
-        xmin, ymin, xmax, ymax = centroids.gdf.total_bounds
-
-        if output_resolution:
-            res = output_resolution
-
-        # construct raster
-        rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-            (xmin, ymin, xmax, ymax), (res, -res)
-            )
-        meta = {
-            'crs': self.centroids.crs,
-            'height': rows,
-            'width': cols,
-            'transform': ras_trans,
-        }
+        meta = centroids.get_meta(self, resolution=output_resolution)
         meta.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
 
         if rows*cols == centroids.shape[0]:
