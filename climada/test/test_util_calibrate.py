@@ -7,10 +7,11 @@ import numpy as np
 import numpy.testing as npt
 from scipy.optimize import NonlinearConstraint
 from sklearn.metrics import mean_squared_error
+from matplotlib.axes import Axes
 
 from climada.entity import ImpactFuncSet, ImpactFunc
 
-from climada.util.calibrate import Input, ScipyMinimizeOptimizer, BayesianOptimizer
+from climada.util.calibrate import Input, ScipyMinimizeOptimizer, BayesianOptimizer, OutputEvaluator
 
 from climada.util.calibrate.test.test_base import hazard, exposure
 
@@ -201,3 +202,17 @@ class TestBayesianOptimizer(unittest.TestCase):
             (p_allowed["intensity_1"] < p_allowed["intensity_2"]).to_numpy(),
             np.full_like(p_allowed["intensity_1"].to_numpy(), True),
         )
+
+    def test_plots(self):
+        """Check if executing the default plots works"""
+        self.input.bounds = {"slope": (-1, 3)}
+        optimizer = BayesianOptimizer(self.input)
+        output = optimizer.run(init_points=10, n_iter=20, random_state=1)
+
+        output_eval = OutputEvaluator(self.input, output)
+        output_eval.impf_set.plot()
+        output_eval.plot_at_event()
+        output_eval.plot_at_region()
+        ax = output_eval.plot_impf_variability()
+        self.assertIsInstance(ax, Axes)
+        output_eval.plot_event_region_heatmap()

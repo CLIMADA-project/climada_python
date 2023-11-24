@@ -1,7 +1,7 @@
 """Tests for calibration module"""
 
 import unittest
-from unittest.mock import create_autospec
+from unittest.mock import patch, create_autospec, MagicMock
 
 import numpy as np
 import numpy.testing as npt
@@ -10,9 +10,10 @@ from scipy.sparse import csr_matrix
 
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
 from climada.hazard import Hazard, Centroids
+from climada.engine import ImpactCalc
 
-from climada.util.calibrate import Input
-from climada.util.calibrate.base import Optimizer
+from climada.util.calibrate import Input, OutputEvaluator
+from climada.util.calibrate.base import Optimizer, Output
 
 
 class ConcreteOptimizer(Optimizer):
@@ -138,14 +139,11 @@ class TestInputPostInit(unittest.TestCase):
         )
         pd.testing.assert_frame_equal(data_aligned, data_aligned_test)
         impact_df_aligned_test = pd.DataFrame(
-                data={"col1": [0, 0, 0], "col2": [0, 1, 0], "col3": [0, 0, 0]},
-                index=[0, 1, 2],
-                dtype="float",
-            )
-        pd.testing.assert_frame_equal(
-            impact_df_aligned,
-            impact_df_aligned_test
+            data={"col1": [0, 0, 0], "col2": [0, 1, 0], "col3": [0, 0, 0]},
+            index=[0, 1, 2],
+            dtype="float",
         )
+        pd.testing.assert_frame_equal(impact_df_aligned, impact_df_aligned_test)
 
         # Check fillna
         data_aligned, impact_df_aligned = input.impact_to_aligned_df(None, fillna=0)
@@ -189,8 +187,46 @@ class TestOptimizer(unittest.TestCase):
         self.optimizer = ConcreteOptimizer(self.input)
 
 
+class TestOutputEvaluator(unittest.TestCase):
+    """Test the output evaluator"""
+
+    def setUp(self):
+        """Create Input and Output"""
+        self.input = Input(
+            hazard=hazard(),
+            exposure=exposure(),
+            data=pd.DataFrame(),
+            impact_func_creator=MagicMock(),
+            # Should not be called
+            impact_to_dataframe=lambda _: None,
+            cost_func=lambda _: None,
+        )
+        self.output = Output(params={"p1": 1, "p2": 2.0}, target=0.0)
+
+    @patch("climada.util.calibrate.base.ImpactCalc", autospec=True)
+    def test_init(self, mock):
+        """Test initialization"""
+        self.input.exposure.value_unit = "my_unit"
+        self.input.impact_func_creator.return_value = "impact_func"
+        impact_calc_mock = MagicMock(ImpactCalc)
+        mock.return_value = impact_calc_mock
+        impact_calc_mock.impact = MagicMock()
+        impact_calc_mock.impact.return_value = "impact"
+
+        out_eval = OutputEvaluator(self.input, self.output)
+        self.assertEqual(out_eval.impf_set, "impact_func")
+        self.assertEqual(out_eval.impact, "impact")
+        self.assertEqual(out_eval._impact_label, "Impact [my_unit]")
+
+        self.input.impact_func_creator.assert_called_with(p1=1, p2=2.0)
+        mock.assert_called_with(
+            self.input.exposure, "impact_func", self.input.hazard
+        )
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputPostInit)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOptimizer))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutputEvaluator))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
