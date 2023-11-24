@@ -28,7 +28,6 @@ from pathlib import Path
 import re
 import warnings
 import zipfile
-from typing import Union, Sequence
 
 from cartopy.io import shapereader
 import dask.dataframe as dd
@@ -1469,11 +1468,6 @@ def country_natid2iso(natids, representation="alpha3"):
     if representation != "alpha3":
         iso_list = country_to_iso(iso_list, representation)
     return iso_list[0] if return_str else iso_list
-
-
-def iso_to_country(iso: Union[str, int, Sequence[Union[str, int]]], attr):
-    """Convert an ISO 3166 code to a country name"""
-
 
 def country_iso2natid(isos):
     """Convert ISO 3166-1 alpha-3 codes to internal NatIDs
