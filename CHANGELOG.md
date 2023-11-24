@@ -12,6 +12,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- `climada.util.calibrate` module for calibrating impact functions [#692](https://github.com/CLIMADA-project/climada_python/pull/692)
+
 ### Changed
 
 - Update `CONTRIBUTING.md` to better explain types of contributions to this repository [#797](https://github.com/CLIMADA-project/climada_python/pull/797)
