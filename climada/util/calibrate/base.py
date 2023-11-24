@@ -89,12 +89,12 @@ class Input:
         """Prepare input data"""
         if not isinstance(self.data, pd.DataFrame):
             if isinstance(self.data, pd.Series):
-                raise ValueError(
+                raise TypeError(
                     "You passed a pandas Series as 'data'. Please transform it into a "
                     "dataframe with Series.to_frame() and make sure that columns "
                     "correctly indicate locations and indexes events."
                 )
-            raise ValueError("'data' must be a pandas.DataFrame")
+            raise TypeError("'data' must be a pandas.DataFrame")
 
         if assign_centroids:
             self.exposure.assign_centroids(self.hazard)
@@ -200,22 +200,6 @@ class OutputEvaluator:
             hazard=self.input.hazard,
         ).impact(assign_centroids=True, save_mat=True)
         self._impact_label = f"Impact [{self.input.exposure.value_unit}]"
-
-    def plot_impf_set(self, **plot_kwargs):
-        """Plot the optimized impact functions
-
-        This calls the plot function of the respective impact function set.
-
-        Parameters
-        ----------
-        plot_kwargs
-            Plotting keyword arguments passed to the underlying plotting method.
-
-        See Also
-        --------
-        :py:meth:`~climada.entity.impact_funcs.impact_func_set.ImpactFuncSet.plot`
-        """
-        return self.impf_set.plot(**plot_kwargs)
 
     def plot_impf_variability(
         self,
