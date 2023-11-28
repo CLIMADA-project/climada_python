@@ -154,7 +154,7 @@ class BayesianOptimizerOutput(Output):
             return ax
 
         # Option 0: Only one parameter
-        params = p_space_df.columns.to_list()
+        params = p_space_df["Parameters"].columns.to_list()
         if len(params) < 2:
             return plot_single(x=params[0], y=repeat(0))
 
