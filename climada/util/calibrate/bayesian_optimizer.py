@@ -248,6 +248,7 @@ class BayesianOptimizer(Optimizer):
             allow_duplicate_points=allow_duplicate_points,
             **bayes_opt_kwds,
         )
+        self.optimizer.space._allow_duplicate_points = allow_duplicate_points
 
     def _target_func(self, true: pd.DataFrame, predicted: pd.DataFrame) -> Number:
         """Invert the cost function because BayesianOptimization maximizes the target"""
