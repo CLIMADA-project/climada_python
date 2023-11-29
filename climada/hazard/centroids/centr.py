@@ -696,8 +696,7 @@ class Centroids():
         """
         LOGGER.info('Writing %s', file_name)
         store = pd.HDFStore(file_name, mode=mode)
-        pandas_df = pd.DataFrame(self.gdf, copy=True)  # the default, `copy=False`, alters the
-                                                       # DataFrame's Block data of `self.gdf`.
+        pandas_df = pd.DataFrame(self.gdf)
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
                 pandas_df[col] = np.asarray(self.gdf[col])
