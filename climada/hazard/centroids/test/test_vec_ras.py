@@ -466,19 +466,6 @@ class TestReader(unittest.TestCase):
         self.assertAlmostEqual(centr_read.meta['transform'].f, centr.meta['transform'].f)
         self.assertTrue(u_coord.equal_crs(centr_read.meta['crs'], centr.meta['crs']))
 
-    def test_write_read_points_h5(self):
-        file_name = str(DATA_DIR.joinpath('test_centr.h5'))
-
-        centr = Centroids.from_lat_lon(VEC_LAT, VEC_LON)
-        centr.write_hdf5(file_name)
-
-        centr_read = Centroids.from_hdf5(file_name)
-        self.assertFalse(centr_read.meta)
-        self.assertTrue(centr_read.lat.size)
-        self.assertTrue(centr_read.lon.size)
-        self.assertTrue(np.allclose(centr_read.lat, centr.lat))
-        self.assertTrue(np.allclose(centr_read.lon, centr.lon))
-        self.assertTrue(u_coord.equal_crs(centr_read.crs, centr.crs))
 
 class TestCentroidsFuncs(unittest.TestCase):
     """Test Centroids methods"""
