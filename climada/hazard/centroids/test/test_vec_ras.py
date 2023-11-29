@@ -61,7 +61,7 @@ ON_LAND = np.array([True, True, True, False, True, True])
 REGION_ID = np.array([776, 242, 578, 0, 10, 218])
 
 TEST_CRS = 'EPSG:4326'
-ALT_CRS = 'eps:32632' #Europe
+ALT_CRS = 'epsg:32632' #Europe
 
 class TestVector(unittest.TestCase):
     """Test CentroidsVector class"""
@@ -375,13 +375,11 @@ class TestCentroids(unittest.TestCase):
 
     def test_centroids_check_pass(self):
         """Test vector data in Centroids"""
-        data_vec = data_vector()
-        lat, lon, geometry = data_vec
-        centr = Centroids(latitude=lat, longitude=lon, crs=geometry.crs)
+        centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON, crs=ALT_CRS)
 
-        self.assertTrue(u_coord.equal_crs(centr.crs, data_vec[2].crs))
-        for i in range(4):
-            self.assertEqual(centr.total_bounds[i], data_vec[2].total_bounds[i])
+        self.assertTrue(u_coord.equal_crs(centr.crs, CRS.from_user_input(ALT_CRS)))
+        self.assertEqual(list(centr.total_bounds),
+                         [VEC_LON.min(), VEC_LAT.min(), VEC_LON.max(), VEC_LAT.max()])
 
         self.assertIsInstance(centr.lat, np.ndarray)
         self.assertIsInstance(centr.lon, np.ndarray)
