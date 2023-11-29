@@ -78,7 +78,7 @@ class EnsembleOptimizerOutput:
     def to_input_var(self, impact_func_gen, **impfset_kwargs):
         """Build Unsequa InputVar from the parameters stored in this object"""
         impf_set_list = [
-            impact_func_gen(**params) for _, params in self.data.iterrows()
+            impact_func_gen(**row["Parameters"]) for _, row in self.data.iterrows()
         ]
         return InputVar.impfset(impf_set_list, **impfset_kwargs)
 
