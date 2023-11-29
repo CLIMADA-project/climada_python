@@ -487,15 +487,15 @@ class TestCentroidsFuncs(unittest.TestCase):
     def test_select_pass(self):
         """Test Centroids.select method"""
         region_id = np.zeros(VEC_LAT.size)
-        region_id[[100, 200]] = 10
+        region_id[[2, 4]] = 10
         centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON, region_id=region_id)
 
         fil_centr = centr.select(reg_id=10)
         self.assertEqual(fil_centr.size, 2)
-        self.assertEqual(fil_centr.lat[0], VEC_LAT[100])
-        self.assertEqual(fil_centr.lat[1], VEC_LAT[200])
-        self.assertEqual(fil_centr.lon[0], VEC_LON[100])
-        self.assertEqual(fil_centr.lon[1], VEC_LON[200])
+        self.assertEqual(fil_centr.lat[0], VEC_LAT[2])
+        self.assertEqual(fil_centr.lat[1], VEC_LAT[4])
+        self.assertEqual(fil_centr.lon[0], VEC_LON[2])
+        self.assertEqual(fil_centr.lon[1], VEC_LON[4])
         self.assertTrue(np.array_equal(fil_centr.region_id, np.ones(2) * 10))
 
     def test_select_extent_pass(self):
