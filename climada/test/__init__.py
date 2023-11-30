@@ -49,7 +49,7 @@ def get_test_file(ds_name, file_format=None):
     test_ds = [ds for ds in sorted(
         client.list_dataset_infos(name=ds_name, status='test_dataset', version='ANY'),
         key=lambda ds: ds.version
-    ) if ds.version <= climada_version][-1]
+    ) if ds.version.strip('v') <= climada_version.strip('v')][-1]
     _, files = client.download_dataset(test_ds)
     [test_file] = [fil for fil in files if fil.name in [
         dsf.file_name 
