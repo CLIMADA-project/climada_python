@@ -35,9 +35,9 @@ from climada.hazard import Hazard, Centroids
 from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY, TEST_UNC_OUTPUT_COSTBEN
 from climada.util.api_client import Client
 
-apiclient = Client()
-ds = apiclient.get_dataset_info(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
-_target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
+
+test_unc_output_costben = Client().get_dataset_file(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
+
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
