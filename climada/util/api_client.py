@@ -1072,3 +1072,25 @@ class Client():
             except OSError:  # raised when the directory is not empty
                 pass
         rm_empty_dirs(target_dir)
+
+    def get_dataset_file(self, **kwargs):
+        """Convenience method. Combines ``get_dataset`` and ``download_dataset``.
+        Returns the path to a single file if the dataset has only one,
+        otherwise throws an error.
+        
+        Parameters
+        ----------
+        **kwargs
+            arguments for get_dataset and download_dataset
+
+        Returns
+        -------
+        Path
+        """
+        download_arguments = {
+            'target_dir': kwargs.pop('target_dir', SYSTEM_DIR),
+            'organize_path': kwargs.pop('organize_path', True),
+        }
+        dsi = self.get_dataset_info(**kwargs)
+        _, [test_file] = self.download_dataset(dsi, **download_arguments)
+        return test_file
