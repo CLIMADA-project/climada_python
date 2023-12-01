@@ -169,7 +169,7 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
         events_per_year = np.round(np.random.poisson(lam=lam,
                                                      size=n_sampled_years)).astype('int')
     else:
-        events_per_year = np.ones(len(n_sampled_years))
+        events_per_year = np.ones(n_sampled_years).astype('int')
 
 
     return events_per_year
