@@ -20,7 +20,7 @@ Cross-calibration on top of a single calibration module
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar, field
-from typing import Optional, List, Mapping, Any, Tuple, Union, Sequence
+from typing import Optional, List, Mapping, Any, Tuple, Union, Sequence, Dict
 from copy import copy, deepcopy
 from pathlib import Path
 
@@ -47,11 +47,24 @@ def sample_data(data: pd.DataFrame, sample: List[Tuple[int, int]]):
 
 
 @dataclass
+class SingleEnsembleOptimizerOutput(Output):
+    """Output for a single member of an ensemble optimizer
+
+    Attributes
+    ----------
+    event_info : dict(str, any)
+        Information on the events for this calibration instance
+    """
+
+    event_info: Dict[str, Any] = field(default_factory=dict)
+
+
+@dataclass
 class EnsembleOptimizerOutput:
     data: pd.DataFrame
 
     @classmethod
-    def from_outputs(cls, outputs: Sequence[Output]):
+    def from_outputs(cls, outputs: Sequence[SingleEnsembleOptimizerOutput]):
         """Build data from a list of outputs"""
         cols = pd.MultiIndex.from_tuples(
             [("Parameters", p_name) for p_name in outputs[0].params.keys()]
@@ -64,7 +77,6 @@ class EnsembleOptimizerOutput:
         data["Event"] = pd.DataFrame.from_records([out.event_info for out in outputs])
 
         return cls(data=data)
-        # return cls(data=pd.DataFrame.from_records([out.params for out in outputs]))
 
     @classmethod
     def from_csv(cls, filepath):
@@ -75,10 +87,10 @@ class EnsembleOptimizerOutput:
         """Store data as CSV"""
         self.data.to_csv(filepath, index=None)
 
-    def to_input_var(self, impact_func_gen, **impfset_kwargs):
+    def to_input_var(self, impact_func_creator, **impfset_kwargs):
         """Build Unsequa InputVar from the parameters stored in this object"""
         impf_set_list = [
-            impact_func_gen(**row["Parameters"]) for _, row in self.data.iterrows()
+            impact_func_creator(**row["Parameters"]) for _, row in self.data.iterrows()
         ]
         return InputVar.impfset(impf_set_list, **impfset_kwargs)
 
@@ -119,20 +131,35 @@ class EnsembleOptimizer(ABC):
             input = self.input_from_sample(sample)
 
             # Run optimizer
-            opt = self.optimizer_type(input, **self.optimizer_init_kwargs)
+            opt = self.optimizer_type(
+                input, **self._update_init_kwargs(self.optimizer_init_kwargs, idx)
+            )
             out = opt.run(**optimizer_run_kwargs)
+            out = SingleEnsembleOptimizerOutput(
+                params=out.params,
+                target=out.target,
+                event_info=self.event_info_from_input(input),
+            )
 
-            out.event_info = self.event_info_from_input(input)
             print(f"Ensemble: {idx}, Params: {out.params}")
             outputs.append(out)
 
         return EnsembleOptimizerOutput.from_outputs(outputs)
 
     @abstractmethod
-    def input_from_sample(self, sample: List[Tuple[int, int]]):
+    def input_from_sample(self, sample: List[Tuple[int, int]]) -> Input:
         """"""
 
-    def event_info_from_input(self, input: Input):
+    def _update_init_kwargs(
+        self, init_kwargs: Dict[str, Any], iteration: int
+    ) -> Dict[str, Any]:
+        """Copy settings in the init_kwargs and update for each iteration"""
+        kwargs = copy(init_kwargs)  # Maybe deepcopy?
+        if "random_state" in kwargs:
+            kwargs["random_state"] = kwargs["random_state"] + iteration
+        return kwargs
+
+    def event_info_from_input(self, input: Input) -> Dict[str, Any]:
         """Get information on the event(s) for which we calibrated"""
         # Get region and event IDs
         data = input.data.dropna(axis="columns", how="all").dropna(
