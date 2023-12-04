@@ -250,7 +250,7 @@ class Centroids():
             Centroids built from the exposures
         """
         gdf = exposures.gdf[['geometry', 'region_id']]
-        return cls.from_geodtaframe(gdf)
+        return cls.from_geodataframe(gdf)
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
