@@ -74,6 +74,12 @@ DEF_VAR_EXCEL = {
 }
 """Excel variable names"""
 
+DEF_VAR_CSV = {
+    'lat': 'latitude',
+    'lon': 'longitude',
+}
+"""CSV variable names"""
+
 LOGGER = logging.getLogger(__name__)
 
 
@@ -236,7 +242,7 @@ class Centroids():
     @classmethod
     def from_exposures(cls, exposures):
         """
-        Generate centroids form the location of an exposures.
+        Generate centroids from the location of an exposures.
 
         Parameters
         ----------
@@ -250,6 +256,31 @@ class Centroids():
             Centroids built from the exposures
         """
         gdf = exposures.gdf[['geometry', 'region_id']]
+        return cls.from_geodataframe(gdf)
+    
+    #TODO: Check whether other variables are necessary, e.g. dist to coast
+    @classmethod
+    def from_csv(cls, file_path, crs=DEF_CRS, var_names=DEF_VAR_CSV):
+        """
+        Generate centroids from a csv file.
+        
+        Parameters
+        ----------
+        file_path : str
+            path to csv file to be read
+        crs : dict() or rasterio.crs.CRS, optional
+            CRS. Default: DEF_CRS
+        var_names : dict, default
+            name of the variables
+        
+        Returns
+        -------
+        Centroids
+            Centroids built from the csv file
+        """
+        df = pd.read_csv(file_path)
+        geometry = gpd.points_from_xy(df[var_names['lat']], df[var_names['lon']])
+        gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
         return cls.from_geodataframe(gdf)
 
     @classmethod
