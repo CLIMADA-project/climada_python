@@ -59,7 +59,10 @@ DEF_INTENSITY_THRES = 17.5
 DEF_MAX_MEMORY_GB = 8
 """Default value of the memory limit (in GB) for windfield computations (in each thread)."""
 
-MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3, 'H10_v2_test3a': 4, 'H10_v2_test3b': 5, 'H10_vtrans_fix': 6}
+MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3,
+              'H10_v2_test3a': 4, 'H10_v2_test3b': 5, 'H10_vtrans_fix': 6,
+              'H10_v3_test4a': 7, 'H10_v3_test4b': 8,
+              'H10_v4_test5a': 9, 'H10_v4_test5b': 10}
 """Enumerate different symmetric wind field models."""
 
 RHO_AIR = 1.15
@@ -976,7 +979,7 @@ def _compute_windfields(
     v_trans_corr[close_centr_msk] = np.fmin(
         1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
 
-    if model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_vtrans_fix']]:
+    if model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_vtrans_fix'], MODEL_VANG['H10_v3_test4a'], MODEL_VANG['H10_v4_test5a']]:
         # first substract the corrected v_trans from the windspeeds everywhere (v_trans should not have been included)
         v_ang_norm_corrected = (
                 v_ang_norm
@@ -1037,9 +1040,16 @@ def tctrack_to_si(
     configs = [
         ("central_pressure", "cen", "Pa"),
         ("max_sustained_wind", "vmax", "m/s"),
+        ("R34", "r34", "km"),
     ]
     for long_name, var_name, si_unit in configs:
-        unit = track.attrs[f"{long_name}_unit"]
+        try:
+            unit = track.attrs[f"{long_name}_unit"]
+        except KeyError as ex:
+            if long_name == "R34":
+                continue
+            else:
+                raise ex
         unit = unit_replace.get(unit, unit)
         try:
             conv_factor = ureg(unit).to(si_unit).magnitude
@@ -1107,7 +1117,11 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
         _B_holland_1980(si_track)
     elif model in [MODEL_VANG['H08'], MODEL_VANG['H10'], MODEL_VANG['H10_vtrans_fix']]:
         _bs_holland_2008(si_track)
-    elif model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_v2_test3b']]:
+    elif model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_v2_test3b'],
+                   MODEL_VANG['H10_v3_test4a'], MODEL_VANG['H10_v3_test4b'],
+                   MODEL_VANG['H10_v4_test5a'], MODEL_VANG['H10_v4_test5b']]:
+        if model in [MODEL_VANG['H10_v2_test3b'], MODEL_VANG['H10_v3_test4b'], MODEL_VANG['H10_v4_test5b']]:
+            si_track['vmax'] = si_track['vmax'] - si_track['vtrans_norm']
         _bs_holland_2010_v2(si_track)
 
     if model in [MODEL_VANG['H1980'], MODEL_VANG['H08']]:
@@ -1123,11 +1137,18 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
         result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
     elif model == MODEL_VANG['ER11']:
         result = _stat_er_2011(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
-    elif model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_v2_test3b']]:
-        if model == MODEL_VANG['H10_v2_test3b']:
-            si_track['vmax'] = si_track['vmax'] - si_track['vtrans_norm']
-        hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
-        result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
+    elif model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_v2_test3b'],
+                   MODEL_VANG['H10_v3_test4a'], MODEL_VANG['H10_v3_test4b'],
+                   MODEL_VANG['H10_v4_test5a'], MODEL_VANG['H10_v4_test5b']]:
+        if model in [MODEL_VANG['H10_v4_test5a'], MODEL_VANG['H10_v4_test5b']]:
+            hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk, r_n_km=si_track['r34'])
+        else:
+            hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
+        if model in [MODEL_VANG['H10_v2_test3a'], MODEL_VANG['H10_v2_test3b'],
+                     MODEL_VANG['H10_v4_test5a'], MODEL_VANG['H10_v4_test5b']]:
+            result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
+        elif model in [MODEL_VANG['H10_v3_test4a'], MODEL_VANG['H10_v3_test4b']]:
+            result = _stat_holland_2010_v2(si_track, d_centr, close_centr_msk, hol_x)
     else:
         raise NotImplementedError
 
@@ -1474,7 +1495,7 @@ def _x_holland_2010(
 
     # compute peripheral exponent from second measurement
     r_max_norm = (r_max / r_n)**hol_b
-    x_n = np.log(v_n / v_max_s) / np.log(r_max_norm * np.exp(1 - r_max_norm))
+    x_n = np.log(v_n / v_max_s) / np.log(r_max_norm * np.exp(1 - r_max_norm))  # holland 2010 equation 6 solved for x
 
     # linearly interpolate between max exponent and peripheral exponent
     x_max = 0.5
@@ -1534,6 +1555,66 @@ def _stat_holland_2010(
 
     r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
     v_ang[close_centr] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**hol_x
+    # v_ang[close_centr] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**16.0
+    return v_ang
+
+def _stat_holland_2010_v2(
+        si_track: xr.Dataset,
+        d_centr: np.ndarray,
+        close_centr: np.ndarray,
+        hol_x: Union[float, np.ndarray],
+) -> np.ndarray:
+    """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
+
+    This function applies the cyclostrophic surface wind model expressed in equation (6) from
+
+    Holland et al. (2010): A Revised Model for Radial Profiles of Hurricane Winds. Monthly
+    Weather Review 138(12): 4393–4401. https://doi.org/10.1175/2010MWR3317.1
+
+    More precisely, this function implements the following equation:
+
+    V(r) = [
+        ( 100 * b_s * ( penv - pcen ) * (r_max / r)^b_s)
+        /
+        ( rho * e^( (r_max / r)^b_s ) ) ]^x
+    where e is Euler's number, rho is the density of air,
+    `penv` is environmental, and `pcen` is central pressure.
+
+    In terms of this function's arguments, b_s is `hol_b` and r is `d_centr`.
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Output of `tctrack_to_si` with "hol_b" (see _bs_holland_2008) data variables. The data
+        variables used by this function are "rad", and "hol_b", "cen", "env".
+    d_centr : np.ndarray of shape (nnodes, ncentroids)
+        Distance (in m) between centroids and track nodes.
+    close_centr : np.ndarray of shape (nnodes, ncentroids)
+        Mask indicating for each track node which centroids are within reach of the windfield.
+    hol_x : np.ndarray of shape (nnodes, ncentroids) or float
+        The exponent according to `_x_holland_2010`.
+
+    Returns
+    -------
+    v_ang : np.ndarray (nnodes, ncentroids)
+        Absolute values of wind speeds (in m/s) in angular direction.
+    """
+    v_ang = np.zeros_like(d_centr)
+    d_centr, r_max, hol_b, hol_x, p_cen, p_env = [
+        ar[close_centr] for ar in np.broadcast_arrays(
+            d_centr, si_track["rad"].values[:, None],
+            si_track["hol_b"].values[:, None], hol_x, si_track["cen"].values[:, None],
+            si_track["env"].values[:, None]
+        )
+    ]
+
+    r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
+    nominator = hol_b * ( p_env - p_cen ) * r_max_norm # we do not need the factor 100 as in the original
+    # formula, because environmental pressure and central pressure are already saved in Pa, not hPa
+    denominator = RHO_AIR_SURFACE * np.exp(r_max_norm)
+
+    v_ang[close_centr] = ( nominator / denominator )**hol_x
+
     return v_ang
 
 def _stat_holland_1980(

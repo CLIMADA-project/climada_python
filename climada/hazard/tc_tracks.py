@@ -136,6 +136,20 @@ BASIN_ENV_PRESSURE = {
 }
 """Basin-specific default environmental pressure"""
 
+BASIN_ENV_PRESSURE_V2 = {
+    '': DEF_ENV_PRESSURE,
+    'EP': 1010, 'NA': 1015, 'SA': 1010,
+    'NI': 1008, 'SI': 1008, 'WP': 1005,
+    'SP': 1004,  # australien region would be 1005
+}
+"""Basin-specific default environmental pressure based on UNEP-GRID paper
+Mouton, F. & Nordbeck, O. (2005). Cyclone Database Manager. A tool
+for converting point data from cyclone observations into tracks and
+wind speed profiles in a GIS. UNED/GRID-Geneva.
+https://unepgrid.ch/en/resource/19B7D302
+"""
+
+
 EMANUEL_RMW_CORR_FILES = [
     'temp_ccsm420thcal.mat', 'temp_ccsm4rcp85_full.mat',
     'temp_gfdl520thcal.mat', 'temp_gfdl5rcp85cal_full.mat',
@@ -326,6 +340,7 @@ class TCTracks():
                             year_range=None, basin=None, genesis_basin=None,
                             interpolate_missing=True, estimate_missing=False, correct_pres=False,
                             discard_single_points=True, additional_variables=None,
+                            radius_secondary_wind_measurement=None,
                             file_name='IBTrACS.ALL.v04r00.nc'):
         """Create new TCTracks object from IBTrACS databse.
 
@@ -439,6 +454,10 @@ class TCTracks():
             If specified, additional IBTrACS data variables are extracted, such as "nature" or
             "storm_speed". Only variables that are not agency-specific are supported.
             Default: None.
+        radius_secondary_wind_measurement: bool, optional
+            If true, an additional IBTrACS data variable (R34) is extracted. For USE eg. USA_R34_NE
+            etc. is extracted and the maximum is saved in R34 in tracks.
+            Default: None.
 
         Returns
         -------
@@ -530,8 +549,11 @@ class TCTracks():
             provider = ["official_3h"] + IBTRACS_AGENCIES
         elif isinstance(provider, str):
             provider = [provider]
-
-        phys_vars = ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci']
+        if radius_secondary_wind_measurement:
+            additional_phys_vars = ['r34']
+        else:
+            additional_phys_vars = []
+        phys_vars = ['lat', 'lon', 'wind', 'pres', 'rmw', 'poci', 'roci'] + additional_phys_vars
         for tc_var in phys_vars:
             if "official" in provider or "official_3h" in provider:
                 ibtracs_add_official_variable(
@@ -547,6 +569,9 @@ class TCTracks():
             all_vals = ibtracs_ds[ag_vars].to_array(dim='agency')
             # argmax returns the first True (i.e. valid) along the 'agency' dimension
             preferred_idx = all_vals.notnull().any(dim="date_time").argmax(dim='agency')
+            print(tc_var)
+            print(ag_vars)
+            print(preferred_idx)
             ibtracs_ds[tc_var] = all_vals.isel(agency=preferred_idx)
 
             selected_ags = np.array([v[:-len(f'_{tc_var}')].encode() for v in ag_vars])
@@ -684,6 +709,10 @@ class TCTracks():
             # this is the second most time consuming line in the processing:
             track_ds['poci'][:] = np.fmax(track_ds.poci, track_ds.pres)
 
+            if radius_secondary_wind_measurement:
+                print(track_ds)
+                track_ds['r34'] = track_ds.r34.max('QUADRANT')
+                print(track_ds)
             provider_str = f"ibtracs_{provider[0]}"
             if len(provider) > 1:
                 provider_str = "ibtracs_mixed:" + ",".join(
@@ -697,6 +726,8 @@ class TCTracks():
                 'central_pressure': ('time', track_ds.pres.data),
                 'environmental_pressure': ('time', track_ds.poci.data),
             }
+            if radius_secondary_wind_measurement:
+                data_vars['r34'] = ('time', track_ds.r34.data)
             coords = {
                 'time': ('time', track_ds.time.dt.round('s').data),
                 'lat': ('time', track_ds.lat.data),
@@ -2321,7 +2352,8 @@ def ibtracs_add_official_variable(ibtracs_ds, tc_var, add_3h=False):
     # determine which of the official agencies report this variable at all
     available_agencies = [a for a in IBTRACS_AGENCIES
                           if f'{a}_{tc_var}' in ibtracs_ds.data_vars.keys()]
-
+    print(available_agencies)
+    print(ibtracs_ds.data_vars.keys())
     # map all non-reporting agency variables to the 'nan_var' (0)
     agency_map = {
         a.encode("utf-8"): available_agencies.index(a) + 1 if a in available_agencies else 0
