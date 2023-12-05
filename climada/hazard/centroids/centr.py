@@ -216,6 +216,23 @@ class Centroids():
         """
         self.gdf.to_crs(DEF_CRS, inplace=True)
 
+    def to_crs(self, crs):
+        """
+        Project the current centroids to the default CRS (epsg4326)
+        Modifies the object in place.
+
+        Parameters
+        ----------
+        crs : str
+            coordinate reference system
+
+        Returns
+        -------
+        Centroids
+            Centroids in the new crs
+        """
+        return Centroids.from_geodataframe(self.gdf.to_crs(crs))
+
     @classmethod
     def from_geodataframe(cls, gdf):
         """Initialize centroids from a geodataframe
