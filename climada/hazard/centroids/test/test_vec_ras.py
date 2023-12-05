@@ -27,7 +27,6 @@ from pyproj.crs import CRS
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry.point import Point
-from shapely.geometry.polygon import Polygon
 
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
