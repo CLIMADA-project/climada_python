@@ -101,7 +101,7 @@ Jump right in:
    guide/Guide_continuous_integration_GitHub_actions
    guide/Guide_Review
    guide/Guide_PythonDos-n-Donts
-   guide/Exception_Logging
+   guide/Guide_Exception_Logging
    Performance and Best Practices <guide/Guide_Py_Performance>
    CLIMADA Coding Conventions <guide/Guide_CLIMADA_conventions>
    Building the Documentation <README>
