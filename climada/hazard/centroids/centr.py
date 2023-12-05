@@ -279,7 +279,7 @@ class Centroids():
             Centroids built from the csv file
         """
         df = pd.read_csv(file_path)
-        geometry = gpd.points_from_xy(df[var_names['lat']], df[var_names['lon']])
+        geometry = gpd.points_from_xy(df[var_names['lon']], df[var_names['lat']])
         gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
         return cls.from_geodataframe(gdf)
 
