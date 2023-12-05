@@ -955,11 +955,6 @@ def _compute_windfields(
         si_track, d_centr, close_centr_msk, model, cyclostrophic=False,
     )
 
-    # vectorial angular velocity
-    windfields = (
-        si_track.attrs["latsign"] * np.array([1.0, -1.0])[..., :] * v_centr_normed[:, :, ::-1]
-    )
-    windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
 
     # Influence of translational speed decreases with distance from eye.
     # The "absorbing factor" is according to the following paper (see Fig. 7):
@@ -973,6 +968,22 @@ def _compute_windfields(
     v_trans_corr = np.zeros_like(d_centr)
     v_trans_corr[close_centr_msk] = np.fmin(
         1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
+
+    if model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
+        # In these models, v_ang_norm already contains vtrans_norm, so subtract it first, before
+        # converting to vectors and then adding (vectorial) vtrans again. Make sure to apply the
+        # "absorbing factor" in both steps:
+        vtrans_norm_bc = np.broadcast_arrays(si_track["vtrans_norm"].values[:, None], d_centr)[0]
+        v_ang_norm[close_centr_msk] -= (
+                vtrans_norm_bc[close_centr_msk] * v_trans_corr[close_centr_msk]
+        )
+
+    # vectorial angular velocity
+    windfields = (
+            si_track.attrs["latsign"] * np.array([1.0, -1.0])[..., :] * v_centr_normed[:, :, ::-1]
+    )
+    windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
+
 
     # add angular and corrected translational velocity vectors
     windfields[1:] += si_track["vtrans"].values[1:, None, :] * v_trans_corr[1:, :, None]

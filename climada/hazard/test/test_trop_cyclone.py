@@ -60,9 +60,10 @@ class TestReader(unittest.TestCase):
         tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, max_memory_gb=0.001)
         intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = [
-            25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738, 36.16596567,
-            21.11399856, 28.01452136, 32.65076804, 31.33884098, 0, 40.27002104,
+            22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
+            18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
         ]
+
         np.testing.assert_array_almost_equal(
             tc_haz.intensity[0, intensity_idx].toarray()[0],
             intensity_values,
@@ -72,12 +73,14 @@ class TestReader(unittest.TestCase):
         """Test _tc_from_track function."""
         intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = {
-            "geosphere": [25.60794285, 26.90906280, 28.26649026, 25.54076797, 31.21986961,
-                          36.17171808, 21.11408573, 28.01457948, 32.65349378, 31.34027741, 0,
-                          40.27362679],
-            "equirect": [25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738,
-                         36.16596567, 21.11399856, 28.01452136, 32.65076804, 31.33884098, 0,
-                         40.27002104]
+            "geosphere": [
+                22.74927,  23.78498,  24.822908, 22.674202, 27.220042, 30.602122,
+                18.981022, 24.540138, 27.830925, 26.8489,    0.,       34.572391,
+            ],
+            "equirect": [
+                22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
+                18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
+            ]
         }
         # the values for the two metrics should agree up to first digit at least
         for i, val in enumerate(intensity_values["geosphere"]):
@@ -108,7 +111,7 @@ class TestReader(unittest.TestCase):
 
             self.assertTrue(isinstance(tc_haz.intensity, sparse.csr_matrix))
             self.assertEqual(tc_haz.intensity.shape, (1, 296))
-            self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 280)
+            self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 255)
 
             np.testing.assert_array_almost_equal(
                 tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[metric])
@@ -127,10 +130,14 @@ class TestReader(unittest.TestCase):
         """Test _tc_from_track function with different wind field models."""
         intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = {
-            "H08": [25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738, 36.16596567,
-                    21.11399856, 28.01452136, 32.65076804, 31.33884098, 0, 40.27002104],
-            "H10": [27.604317, 28.720708, 29.894993, 27.52234 , 32.512395, 37.114355,
-                    23.848917, 29.614752, 33.775593, 32.545347, 19.957627, 41.014578],
+            "H08": [
+                22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
+                18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
+            ],
+            "H10": [
+                24.745521, 25.596484, 26.475329, 24.690914, 28.650107, 31.584395,
+                21.723546, 26.140293, 28.94964,  28.051915, 18.49378, 35.312152,
+            ],
             # Holland 1980 and Emanuel & Rotunno 2011 use recorded wind speeds, while the above use
             # pressure values only. That's why the results are so different:
             "H1980": [21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
