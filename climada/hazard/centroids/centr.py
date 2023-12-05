@@ -368,7 +368,7 @@ class Centroids():
         close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
-    def set_region_id(self):
+    def set_region_id(self, level='country'):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
 
         Parameters
@@ -377,14 +377,20 @@ class Centroids():
             used for dask map_partitions. “threads”, “synchronous” or “processes”
         """
         LOGGER.debug('Setting region_id %s points.', str(self.size))
-        if u_coord.equal_crs(self.crs, 'epsg:4326'):
-            self.gdf['region_id'] = u_coord.get_country_code(
-                self.lat, self.lon)
+        if level == 'country':
+            if u_coord.equal_crs(self.crs, 'epsg:4326'):
+                self.gdf['region_id'] = u_coord.get_country_code(
+                    self.lat, self.lon)
+            else:
+                raise NotImplementedError(
+                    'The region id can only be assigned if the crs is epsg:4326'
+                    'Please use .to_default_crs to change to epsg:4326'
+                    )
         else:
             raise NotImplementedError(
-                'The region id can only be assigned if the crs is epsg:4326'
-                'Please use .to_default_crs to change to epsg:4326'
+                'The region id can only be assigned for countries so far'
                 )
+
 
     # NOT REALLY AN ELEVATION FUNCTION, JUST READ RASTER
     def get_elevation(self, topo_path):
