@@ -257,31 +257,6 @@ class Centroids():
         """
         gdf = exposures.gdf[['geometry', 'region_id']]
         return cls.from_geodataframe(gdf)
-    
-    #TODO: Check whether other variables are necessary, e.g. dist to coast
-    @classmethod
-    def from_csv(cls, file_path, crs=DEF_CRS, var_names=DEF_VAR_CSV):
-        """
-        Generate centroids from a csv file.
-        
-        Parameters
-        ----------
-        file_path : str
-            path to csv file to be read
-        crs : dict() or rasterio.crs.CRS, optional
-            CRS. Default: DEF_CRS
-        var_names : dict, default
-            name of the variables
-        
-        Returns
-        -------
-        Centroids
-            Centroids built from the csv file
-        """
-        df = pd.read_csv(file_path)
-        geometry = gpd.points_from_xy(df[var_names['lon']], df[var_names['lat']])
-        gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
-        return cls.from_geodataframe(gdf)
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
@@ -675,6 +650,37 @@ class Centroids():
         if dst_crs is not None:
             centroids.gdf.geometry.to_crs(dst_crs, inplace=True)
         return centroids
+    
+    #TODO: Check whether other variables are necessary, e.g. dist to coast
+    @classmethod
+    def from_csv(cls, file_path, crs=None, var_names=None):
+        """
+        Generate centroids from a csv file with column names in var_names.
+        
+        Parameters
+        ----------
+        file_path : str
+            path to csv file to be read
+        crs : dict() or rasterio.crs.CRS, optional
+            CRS. Default: DEF_CRS
+        var_names : dict, default
+            name of the variables. Default: DEF_VAR_CSV
+        
+        Returns
+        -------
+        Centroids
+            Centroids with data from the given csv file
+        """
+        if crs is None:
+            crs = DEF_CRS
+
+        if var_names is None:
+            var_names = DEF_VAR_CSV
+
+        df = pd.read_csv(file_path)
+        geometry = gpd.points_from_xy(df[var_names['lon']], df[var_names['lat']])
+        gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
+        return cls.from_geodataframe(gdf)
 
 #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
@@ -685,6 +691,8 @@ class Centroids():
         ----------
         file_name : str
             absolute or relative file name
+        crs : dict() or rasterio.crs.CRS, optional
+            CRS. Default: DEF_CRS
         var_names : dict, default
             name of the variables
 
@@ -695,15 +703,18 @@ class Centroids():
         Returns
         -------
         centr : Centroids
-            Centroids with data from the given file
+            Centroids with data from the given excel file
         """
+        if crs is None:
+            crs = DEF_VAR_EXCEL
+
         if var_names is None:
             var_names = DEF_VAR_EXCEL
 
         try:
-            dfr = pd.read_excel(file_name, var_names['sheet_name'])
+            df = pd.read_excel(file_name, var_names['sheet_name'])
             try:
-                region_id = dfr[var_names['col_name']['region_id']]
+                region_id = df[var_names['col_name']['region_id']]
             except KeyError:
                 region_id = None
                 pass
@@ -711,11 +722,9 @@ class Centroids():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        return cls(
-            longitude=dfr[var_names['col_name']['lon']],
-            latitude=dfr[var_names['col_name']['lat']],
-            region_id=region_id
-            )
+        geometry = gpd.points_from_xy(df[var_names['lon']], df[var_names['lat']])
+        gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
+        return cls.from_geodataframe(gdf)
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
