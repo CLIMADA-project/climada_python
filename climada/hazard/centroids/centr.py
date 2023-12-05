@@ -677,17 +677,18 @@ class Centroids():
         df = pd.read_csv(file_path)
         geometry = gpd.points_from_xy(df[var_names['lon']], df[var_names['lat']])
         gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
+        gdf = gdf.drop(columns=[var_names['lon'], var_names['lat']])
         return cls.from_geodataframe(gdf)
 
 #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
-    def from_excel(cls, file_name, crs= DEF_CRS, var_names=None):
+    def from_excel(cls, file_path, crs= DEF_CRS, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
         ----------
         file_name : str
-            absolute or relative file name
+            absolute or relative file path
         crs : dict() or rasterio.crs.CRS, optional
             CRS. Default: DEF_CRS
         var_names : dict, default
@@ -706,7 +707,7 @@ class Centroids():
             var_names = DEF_VAR_EXCEL
 
         try:
-            df = pd.read_excel(file_name, var_names['sheet_name'])
+            df = pd.read_excel(file_path, var_names['sheet_name'])
             try:
                 region_id = df[var_names['col_name']['region_id']]
             except KeyError:
@@ -716,8 +717,9 @@ class Centroids():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        geometry = gpd.points_from_xy(df[var_names['lon']], df[var_names['lat']])
+        geometry = gpd.points_from_xy(df[var_names['col_name']['lon']], df[var_names['col_name']['lat']])
         gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
+        gdf = gdf.drop(columns=[var_names['col_name']['lon'], var_names['col_name']['lat']])
         return cls.from_geodataframe(gdf)
 
     def write_hdf5(self, file_name, mode='w'):
