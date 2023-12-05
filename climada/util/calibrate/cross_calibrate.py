@@ -23,10 +23,13 @@ from dataclasses import dataclass, InitVar, field
 from typing import Optional, List, Mapping, Any, Tuple, Union, Sequence, Dict
 from copy import copy, deepcopy
 from pathlib import Path
+from itertools import repeat
 
 import numpy as np
 from numpy.random import default_rng
 import pandas as pd
+from pathos.multiprocessing import ProcessPool
+from tqdm import tqdm
 
 from ...engine.unsequa.input_var import InputVar
 from .base import Optimizer, Output, Input
@@ -44,6 +47,34 @@ def sample_data(data: pd.DataFrame, sample: List[Tuple[int, int]]):
         data_sampled.iloc[x, y] = data.iloc[x, y]
 
     return data_sampled
+
+
+def event_info_from_input(input: Input) -> Dict[str, Any]:
+    """Get information on the event(s) for which we calibrated"""
+    # Get region and event IDs
+    data = input.data.dropna(axis="columns", how="all").dropna(axis="index", how="all")
+    event_ids = data.index
+    region_ids = data.columns
+
+    # Get event name
+    event_names = input.hazard.select(event_id=event_ids.to_list()).event_name
+
+    # Return data
+    return {
+        "event_id": event_ids,
+        "region_id": region_ids,
+        "event_name": event_names,
+    }
+
+
+def optimize(optimizer_type, input, opt_init_kwargs, opt_run_kwargs):
+    opt = optimizer_type(input, **opt_init_kwargs)
+    out = opt.run(**opt_run_kwargs)
+    return SingleEnsembleOptimizerOutput(
+        params=out.params,
+        target=out.target,
+        event_info=event_info_from_input(input),
+    )
 
 
 @dataclass
@@ -94,22 +125,6 @@ class EnsembleOptimizerOutput:
         ]
         return InputVar.impfset(impf_set_list, **impfset_kwargs)
 
-        # Build MultiIndex DataFrame
-        # data = pd.DataFrame(
-        #     columns=pd.MultiIndex.from_tuples(
-        #         [("Parameters", p_name) for p_name in outputs[0].params.keys()]
-        #     )
-        # )
-
-        # Insert Parameters
-        # params = pd.DataFrame.from_records([out.params for out in outputs])
-        # for p_name in params.columns:
-        #     data["Parameters", p_name] = params[p_name]
-
-        # Insert
-
-        # return cls(data=pd.DataFrame.from_records([out.params for out in outputs]))
-
 
 @dataclass
 class EnsembleOptimizer(ABC):
@@ -117,7 +132,7 @@ class EnsembleOptimizer(ABC):
 
     input: Input
     optimizer_type: Any
-    optimizer_init_kwargs: Mapping[str, Any] = field(default_factory=dict)
+    optimizer_init_kwargs: Dict[str, Any] = field(default_factory=dict)
     samples: List[List[Tuple[int, int]]] = field(init=False)
 
     def __post_init__(self):
@@ -125,9 +140,19 @@ class EnsembleOptimizer(ABC):
         if self.samples is None:
             raise RuntimeError("Samples must be set!")
 
-    def run(self, **optimizer_run_kwargs) -> EnsembleOptimizerOutput:
+    def run(self, processes=1, **optimizer_run_kwargs) -> EnsembleOptimizerOutput:
+        if processes == 1:
+            outputs = self._iterate_sequential(**optimizer_run_kwargs)
+        else:
+            outputs = self._iterate_parallel(processes, **optimizer_run_kwargs)
+        return EnsembleOptimizerOutput.from_outputs(outputs)
+
+    def _iterate_sequential(
+        self, **optimizer_run_kwargs
+    ) -> List[SingleEnsembleOptimizerOutput]:
+        """Iterate over all samples sequentially"""
         outputs = []
-        for idx, sample in enumerate(self.samples):
+        for idx, sample in enumerate(tqdm(self.samples)):
             input = self.input_from_sample(sample)
 
             # Run optimizer
@@ -138,13 +163,37 @@ class EnsembleOptimizer(ABC):
             out = SingleEnsembleOptimizerOutput(
                 params=out.params,
                 target=out.target,
-                event_info=self.event_info_from_input(input),
+                event_info=event_info_from_input(input),
             )
 
-            print(f"Ensemble: {idx}, Params: {out.params}")
             outputs.append(out)
 
-        return EnsembleOptimizerOutput.from_outputs(outputs)
+        return outputs
+
+    def _iterate_parallel(
+        self, processes, **optimizer_run_kwargs
+    ) -> List[SingleEnsembleOptimizerOutput]:
+        """Iterate over all samples in parallel"""
+        inputs = (self.input_from_sample(sample) for sample in self.samples)
+        opt_init_kwargs = (
+            self._update_init_kwargs(self.optimizer_init_kwargs, idx)
+            for idx in range(len(self.samples))
+        )
+
+        with ProcessPool(nodes=processes) as pool:
+            return list(
+                tqdm(
+                    pool.imap(
+                        optimize,
+                        repeat(self.optimizer_type),
+                        inputs,
+                        opt_init_kwargs,
+                        repeat(optimizer_run_kwargs),
+                        # chunksize=processes,
+                    ),
+                    total=len(self.samples),
+                )
+            )
 
     @abstractmethod
     def input_from_sample(self, sample: List[Tuple[int, int]]) -> Input:
@@ -158,25 +207,6 @@ class EnsembleOptimizer(ABC):
         if "random_state" in kwargs:
             kwargs["random_state"] = kwargs["random_state"] + iteration
         return kwargs
-
-    def event_info_from_input(self, input: Input) -> Dict[str, Any]:
-        """Get information on the event(s) for which we calibrated"""
-        # Get region and event IDs
-        data = input.data.dropna(axis="columns", how="all").dropna(
-            axis="index", how="all"
-        )
-        event_ids = data.index
-        region_ids = data.columns
-
-        # Get event name
-        event_names = input.hazard.select(event_id=event_ids.to_list()).event_name
-
-        # Return data
-        return {
-            "event_id": event_ids,
-            "region_id": region_ids,
-            "event_name": event_names,
-        }
 
 
 @dataclass
