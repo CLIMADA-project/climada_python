@@ -653,7 +653,7 @@ class Centroids():
     
     #TODO: Check whether other variables are necessary, e.g. dist to coast
     @classmethod
-    def from_csv(cls, file_path, crs=None, var_names=None):
+    def from_csv(cls, file_path, crs=DEF_CRS, var_names=None):
         """
         Generate centroids from a csv file with column names in var_names.
         
@@ -671,9 +671,6 @@ class Centroids():
         Centroids
             Centroids with data from the given csv file
         """
-        if crs is None:
-            crs = DEF_CRS
-
         if var_names is None:
             var_names = DEF_VAR_CSV
 
@@ -684,7 +681,7 @@ class Centroids():
 
 #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
-    def from_excel(cls, file_name, var_names=None):
+    def from_excel(cls, file_name, crs= DEF_CRS, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
@@ -705,9 +702,6 @@ class Centroids():
         centr : Centroids
             Centroids with data from the given excel file
         """
-        if crs is None:
-            crs = DEF_VAR_EXCEL
-
         if var_names is None:
             var_names = DEF_VAR_EXCEL
 
