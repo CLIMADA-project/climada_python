@@ -141,6 +141,18 @@ class EnsembleOptimizer(ABC):
             raise RuntimeError("Samples must be set!")
 
     def run(self, processes=1, **optimizer_run_kwargs) -> EnsembleOptimizerOutput:
+        """Execute the ensemble optimization
+
+        Parameters
+        ----------
+        processes : int, optional
+            The number of processes to distribute the optimization tasks to. Defaults to
+            1 (no parallelization)
+        optimizer_run_kwargs
+            Additional keywords arguments for the
+            :py:func`~climada.util.calibrate.base.Optimizer.run` method of the
+            particular optimizer used.
+        """
         if processes == 1:
             outputs = self._iterate_sequential(**optimizer_run_kwargs)
         else:
