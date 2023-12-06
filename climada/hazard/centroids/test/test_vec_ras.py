@@ -69,8 +69,19 @@ class TestVector(unittest.TestCase):
         """Test from_lat_lon"""
         self.assertTrue(np.allclose(self.centr.lat, VEC_LAT))
         self.assertTrue(np.allclose(self.centr.lon, VEC_LON))
-        self.assertTrue(u_coord.equal_crs(self.centr.crs, DEF_CRS))
-        self.assertTrue(u_coord.equal_crs(self.centr.geometry.crs, DEF_CRS))
+        self.assertTrue(u_coord.equal_crs(self.centr.crs, TEST_CRS))
+
+        # Test default crs and other inputs
+        EXTRA_COL = np.ones_like(VEC_LAT)
+        centr = Centroids(
+            latitude=VEC_LAT,longitude=VEC_LON,
+            region_id = REGION_ID, on_land=ON_LAND,
+            extra_col = EXTRA_COL)
+        self.assertTrue(u_coord.equal_crs(centr.crs, DEF_CRS))
+        self.assertTrue(np.allclose(centr.region_id, REGION_ID))
+        self.assertTrue(np.allclose(centr.on_land, ON_LAND))
+        self.assertTrue(np.allclose(centr.gdf.extra_col.values, EXTRA_COL))
+
 
     def test_ne_crs_geom_pass(self):
         """Test _ne_crs_geom"""
@@ -79,11 +90,11 @@ class TestVector(unittest.TestCase):
 
     def test_dist_coast_pass(self):
         """Test set_dist_coast"""
-        dist_coast = self.centr.get_dist_coast()\
+        dist_coast = self.centr.get_dist_coast()
         # Just checking that the output doesnt change over time.
         REF_VALUES = np.array([
-            5.55578093e+05, 1.64066475e+03, 2.00703835e+03,
-            4.82264614e+02, 4.50037266e+03, 1.08610274e+05
+            1605.243, 603.261, 26112.239, 2228.629, 7207.817,
+            156271.372, 661.114, 158184.4
             ])
         np.testing.assert_array_almost_equal(dist_coast, REF_VALUES, decimal=3)
 

@@ -247,6 +247,11 @@ class Centroids():
         Centroids
             Centroids built from the geodataframe.
         """
+        if gdf.crs:
+            crs = gdf.crs
+        else:
+            crs = DEF_CRS
+
         return cls(
             longitude=gdf.geometry.x.values,
             latitude=gdf.geometry.y.values,
