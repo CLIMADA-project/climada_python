@@ -744,6 +744,9 @@ class Centroids():
         geometry = gpd.points_from_xy(df[var_names['col_name']['lon']],
                                       df[var_names['col_name']['lat']])
         gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
+        region_column = var_names['col_name'].get('region_id')
+        if region_column and region_column in df.columns.values:
+            gdf['region_id'] = df[region_column]
         return cls.from_geodataframe(gdf)
 
     def write_hdf5(self, file_name, mode='w'):
