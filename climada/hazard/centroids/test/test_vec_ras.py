@@ -39,26 +39,22 @@ DATA_DIR = CONFIG.hazard.test_data.dir()
 
 # Note: the coordinates are not directly on the cities, the region id and on land
 # otherwise do not work correctly. It is only the closest point.
-VEC_LON = np.array([
-    -175.1883, #Tonga, Nuku'alofa, TON, 776
-    178.433, #Fidji, Suva, FJI, 242
-    18.95, #Norway, Tromso, NOR, 578
-    0, # Ocean, 0
-    166.6778, #Antarctica, McMurdo station, ATA, 010
-    -78.5833 #Ecuador, Quito, ECU, 218
+LATLON = np.array([
+    [-21.1736, -175.1883], #Tonga, Nuku'alofa, TON, 776
+    [-18.133, 178.433], #Fidji, Suva, FJI, 242  IN WATER IN NATURAL EARTH
+    [-38.4689, 177.8642], #New-Zealand, Te Karaka, NZL, 554
+    [69.6833, 18.95], #Norway, Tromso, NOR, 578 IN WATER IN NATURAL EARTH
+    [78.84422,	20.82842],  #Norway, Svalbard, NOR, 578
+    [1, 1], # Ocean, 0  (0,0 is onland in Natural earth for testing reasons)
+    [-77.85, 166.6778], #Antarctica, McMurdo station, ATA, 010
+    [-0.25, -78.5833] #Ecuador, Quito, ECU, 218
 ])
 
-VEC_LAT = np.array([
-    -21.1736, #Tonga, Nuku'alofa
-    -18.133, #Fidji, Suvaå
-    69.6833, #Norway, Tromso
-    0, #Ocean
-    -77.85, #Antarctica, McMurdo station
-    -0.25, #Ecuador, Quito
-])
+VEC_LAT = LATLON[:,0]
+VEC_LON = LATLON[:,1]
 
-ON_LAND = np.array([True, True, True, False, True, True])
-REGION_ID = np.array([776, 242, 578, 0, 10, 218])
+ON_LAND = np.array([True, False, True, False, True, False, True, True])
+REGION_ID = np.array([776, 0, 554, 0, 578, 0, 10, 218])
 
 TEST_CRS = 'EPSG:4326'
 ALT_CRS = 'epsg:32632' #Europe
