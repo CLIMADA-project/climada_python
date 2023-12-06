@@ -253,7 +253,7 @@ class Centroids():
             longitude=gdf.geometry.x.values,
             latitude=gdf.geometry.y.values,
             crs=gdf.crs,
-            **gdf.drop(columns=['geometry']).to_dict(orient='list')
+            **gdf.drop(columns=['geometry', 'latitude', 'longitude'], errors='ignore').to_dict(orient='list')
             )
 
     @classmethod
@@ -707,7 +707,7 @@ class Centroids():
 
 #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
-    def from_excel(cls, file_name, var_names=None):
+    def from_excel(cls, file_name, crs=None, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
@@ -729,7 +729,7 @@ class Centroids():
             Centroids with data from the given excel file
         """
         if crs is None:
-            crs = DEF_VAR_EXCEL
+            crs = DEF_CRS
 
         if var_names is None:
             var_names = DEF_VAR_EXCEL
@@ -745,7 +745,7 @@ class Centroids():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        geometry = gpd.points_from_xy(df[var_names['lon']], df[var_names['lat']])
+        geometry = gpd.points_from_xy(df[var_names['col_name']['lon']], df[var_names['col_name']['lat']])
         gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
         return cls.from_geodataframe(gdf)
 
