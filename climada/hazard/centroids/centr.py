@@ -22,7 +22,7 @@ Define Centroids class.
 import copy
 import logging
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional
 import warnings
 
 import h5py
@@ -32,15 +32,13 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pyproj.crs.crs import CRS
-from rasterio.warp import Resampling
+import rasterio
 from shapely.geometry.point import Point
 
-from climada.util.constants import (DEF_CRS,
-                                    ONE_LAT_KM,
-                                    NATEARTH_CENTROIDS)
+from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
-import climada.util.hdf5_handler as u_hdf5
 import climada.util.plot as u_plot
+
 
 __all__ = ['Centroids']
 
@@ -253,7 +251,8 @@ class Centroids():
             longitude=gdf.geometry.x.values,
             latitude=gdf.geometry.y.values,
             crs=gdf.crs,
-            **gdf.drop(columns=['geometry']).to_dict(orient='list')
+            **gdf.drop(columns=['geometry', 'latitude', 'longitude'],
+                       errors='ignore').to_dict(orient='list')
             )
 
     @classmethod
@@ -344,7 +343,7 @@ class Centroids():
         # remove duplicate points
         return Centroids.remove_duplicate_points(centroids)
 
-    def get_closest_point(self, x_lon, y_lat, scheduler=None):
+    def get_closest_point(self, x_lon, y_lat):
         """Returns closest centroid and its index to a given point.
 
         Parameters
@@ -353,8 +352,6 @@ class Centroids():
             x coord (lon)
         y_lat : float
             y coord (lat)
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
 
         Returns
         -------
@@ -526,7 +523,7 @@ class Centroids():
         return sel_cen
 
     #TODO replace with nice Geodataframe util plot method.
-    def plot(self, ax=None, figsize=(9, 13), **kwargs):
+    def plot(self, ax=None, figsize=(9, 13), latlon_bounds_buffer=0.0, **kwargs):
         """Plot centroids scatter points over earth.
 
         Parameters
@@ -536,6 +533,8 @@ class Centroids():
         figsize: (float, float), optional
             figure size for plt.subplots
             The default is (9, 13)
+        latlon_bounds_buffer : float, optional
+            Buffer to add to all sides of the bounding box. Default: 0.0.
         kwargs : optional
             arguments for scatter matplotlib function
 
@@ -547,7 +546,8 @@ class Centroids():
         proj_plot = proj_data
         if isinstance(proj_data, ccrs.PlateCarree):
             # use different projections for plot and data to shift the central lon in the plot
-            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(self.lat, self.lon, buffer=pad)
+            xmin, _ymin, xmax, _ymax = u_coord.latlon_bounds(self.lat, self.lon,
+                                                           buffer=latlon_bounds_buffer)
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
 
         if ax is None:
@@ -592,9 +592,9 @@ class Centroids():
     '''
 
     @classmethod
-    def from_raster_file(cls, file_name, src_crs=None, window=None,
-                         geometry=None, dst_crs=None, transform=None, width=None,
-                         height=None, resampling=Resampling.nearest, return_meta=False):
+    def from_raster_file(cls, file_name, src_crs=None, window=None, geometry=None,
+                         dst_crs=None, transform=None, width=None, height=None,
+                         resampling=rasterio.warp.Resampling.nearest, return_meta=False):
         """Create a new Centroids object from a raster file
 
         Select region using window or geometry. Reproject input by providing
@@ -618,8 +618,9 @@ class Centroids():
             number of lons for transform
         height : float
             number of lats for transform
-        resampling : rasterio.warp,.Resampling optional
-            resampling function used for reprojection to dst_crs
+        resampling : rasterio.warp.Resampling optional
+            resampling function used for reprojection to dst_crs,
+            default: nearest
 
         Returns
         -------
@@ -671,15 +672,15 @@ class Centroids():
 
         centroids = cls.from_geodataframe(gpd.read_file(file_name))
         if dst_crs is not None:
-            centroids.gdf.geometry.to_crs(dst_crs, inplace=True)
+            centroids.gdf.to_crs(dst_crs, inplace=True)
         return centroids
-    
+
     #TODO: Check whether other variables are necessary, e.g. dist to coast
     @classmethod
     def from_csv(cls, file_path, crs=None, var_names=None):
         """
         Generate centroids from a csv file with column names in var_names.
-        
+
         Parameters
         ----------
         file_path : str
@@ -688,7 +689,7 @@ class Centroids():
             CRS. Default: DEF_CRS
         var_names : dict, default
             name of the variables. Default: DEF_VAR_CSV
-        
+
         Returns
         -------
         Centroids
@@ -705,9 +706,9 @@ class Centroids():
         gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
         return cls.from_geodataframe(gdf)
 
-#TODO: this method is badly written but kept for backwards compatibility. It should be improved.
+    #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
-    def from_excel(cls, file_name, var_names=None):
+    def from_excel(cls, file_name, crs=None, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
@@ -729,23 +730,19 @@ class Centroids():
             Centroids with data from the given excel file
         """
         if crs is None:
-            crs = DEF_VAR_EXCEL
+            crs = DEF_CRS
 
         if var_names is None:
             var_names = DEF_VAR_EXCEL
 
         try:
             df = pd.read_excel(file_name, var_names['sheet_name'])
-            try:
-                region_id = df[var_names['col_name']['region_id']]
-            except KeyError:
-                region_id = None
-                pass
 
         except KeyError as err:
-            raise KeyError("Not existing variable: %s" % str(err)) from err
+            raise KeyError(f"Not existing variable: {err}") from err
 
-        geometry = gpd.points_from_xy(df[var_names['lon']], df[var_names['lat']])
+        geometry = gpd.points_from_xy(df[var_names['col_name']['lon']],
+                                      df[var_names['col_name']['lat']])
         gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
         return cls.from_geodataframe(gdf)
 
@@ -770,7 +767,9 @@ class Centroids():
             # Write dataframe
             store.put('centroids', pandas_df)
 
-        store.get_storer('centroids').attrs.metadata = {'crs': CRS.from_user_input(self.crs).to_wkt()}
+        store.get_storer('centroids').attrs.metadata = {
+            'crs': CRS.from_user_input(self.crs).to_wkt()
+        }
 
         store.close()
 
@@ -794,7 +793,8 @@ class Centroids():
         try:
             with pd.HDFStore(file_name, mode='r') as store:
                 metadata = store.get_storer('centroids').attrs.metadata
-                # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
+                # in previous versions of CLIMADA and/or geopandas,
+                # the CRS was stored in '_crs'/'crs'
                 crs = metadata.get('crs')
                 gdf = gpd.GeoDataFrame(store['centroids'], crs=crs)
         except TypeError:
