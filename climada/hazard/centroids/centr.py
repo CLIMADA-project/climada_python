@@ -671,7 +671,7 @@ class Centroids():
 
         centroids = cls.from_geodataframe(gpd.read_file(file_name))
         if dst_crs is not None:
-            centroids.gdf.geometry.to_crs(dst_crs, inplace=True)
+            centroids.gdf.to_crs(dst_crs, inplace=True)
         return centroids
     
     #TODO: Check whether other variables are necessary, e.g. dist to coast
