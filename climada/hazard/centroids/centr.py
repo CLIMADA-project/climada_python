@@ -673,13 +673,13 @@ class Centroids():
         if dst_crs is not None:
             centroids.gdf.to_crs(dst_crs, inplace=True)
         return centroids
-    
+
     #TODO: Check whether other variables are necessary, e.g. dist to coast
     @classmethod
     def from_csv(cls, file_path, crs=None, var_names=None):
         """
         Generate centroids from a csv file with column names in var_names.
-        
+
         Parameters
         ----------
         file_path : str
@@ -688,7 +688,7 @@ class Centroids():
             CRS. Default: DEF_CRS
         var_names : dict, default
             name of the variables. Default: DEF_VAR_CSV
-        
+
         Returns
         -------
         Centroids
@@ -705,7 +705,7 @@ class Centroids():
         gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
         return cls.from_geodataframe(gdf)
 
-#TODO: this method is badly written but kept for backwards compatibility. It should be improved.
+    #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
     def from_excel(cls, file_name, crs=None, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
