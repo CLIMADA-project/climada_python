@@ -247,6 +247,11 @@ class Centroids():
         Centroids
             Centroids built from the geodataframe.
         """
+        if gdf.crs:
+            crs = gdf.crs
+        else:
+            crs = DEF_CRS
+
         return cls(
             longitude=gdf.geometry.x.values,
             latitude=gdf.geometry.y.values,
@@ -663,6 +668,7 @@ class Centroids():
             vector file with format supported by fiona and 'geometry' field.
         dst_crs : crs, optional
             reproject to given crs
+            If not crs is given in the file, simply sets the crs.
 
         Returns
         -------
@@ -672,7 +678,10 @@ class Centroids():
 
         centroids = cls.from_geodataframe(gpd.read_file(file_name))
         if dst_crs is not None:
-            centroids.gdf.to_crs(dst_crs, inplace=True)
+            if centroids.crs:
+                centroids.gdf.to_crs(dst_crs, inplace=True)
+            else:
+                centroids.gdf.set_crs(dst_crs, inplace=True)
         return centroids
 
     #TODO: Check whether other variables are necessary, e.g. dist to coast
