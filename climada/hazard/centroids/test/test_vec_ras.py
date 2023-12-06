@@ -134,23 +134,19 @@ class TestVector(unittest.TestCase):
             'lon': xx.flatten(),
             'lat': yy.flatten(),
         }, crs={'proj': 'cea'})
-
-        area_pixel = self.centr.get_area_pixel()
-        self.assertTrue(np.allclose(area_pixel, np.ones(self.centr.size)))
-
-    def test_size_pass(self):
-        """Test size property"""
-        centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON)
-        self.assertEqual(centr.size, len(VEC_LAT))
+        centr = Centroids.from_geodataframe(vec_data)
+        area_pixel = centr.get_area_pixel()
+        self.assertTrue(np.allclose(area_pixel, np.ones(centr.size)))
 
     def test_get_closest_point(self):
         """Test get_closest_point"""
-        x, y, idx = self.centr.get_closest_point(-58.13, 14.38)
-        self.assertAlmostEqual(x, -58.125)
-        self.assertAlmostEqual(y, 14.375)
-        self.assertEqual(idx, 295)
-        self.assertEqual(self.centr.lon[idx], x)
-        self.assertEqual(self.centr.lat[idx], y)
+        for n, (lat, lon) in enumerate(LATLON):
+            x, y, idx = self.centr.get_closest_point(lon*0.99, lat*1.01)
+            self.assertAlmostEqual(x, lon)
+            self.assertAlmostEqual(y, lat)
+            self.assertEqual(idx, n)
+            self.assertEqual(self.centr.lon[n], x)
+            self.assertEqual(self.centr.lat[n], y)
 
     def test_append_pass(self):
         """Append points"""
