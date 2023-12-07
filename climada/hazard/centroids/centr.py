@@ -247,18 +247,12 @@ class Centroids():
                 ' that are not points.'
             )
 
-        if gdf.crs:
-            crs = gdf.crs
-        else:
-            crs = DEF_CRS
-
-        '''
-        This is a bit ugly, but avoids to recompute the geometries
-        in the init. For large datasets this saves computation time
-        '''
-        centroids = cls(latitude=[1], longitude=[1], crs=crs)
-        centroids.gdf = gdf.to_crs(crs)
-
+        # This is a bit ugly, but avoids to recompute the geometries
+        # in the init. For large datasets this saves computation time
+        centroids = cls(latitude=[1], longitude=[1])
+        centroids.gdf = gdf
+        if not gdf.crs:
+            centroids.gdf.set_crs(DEF_CRS, inplace=True)
         return centroids
 
     @classmethod
