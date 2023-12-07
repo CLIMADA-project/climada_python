@@ -241,7 +241,7 @@ class Centroids():
         Centroids
             Centroids built from the geodataframe.
         """
-        if np.any(geom.geom_type != 'Point'):
+        if np.any(gdf.geom_type != 'Point'):
             raise ValueError(
                 'The inpute geodataframe contains geometries'
                 ' that are not points.'
