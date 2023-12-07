@@ -662,7 +662,7 @@ class StormEurope(Hazard):
         if sel_cen is not None:
             pass
         elif on_land is True:
-            sel_cen = cent.on_land
+            sel_cen = cent.on_land.astype(bool)
         else:  # select all centroids
             sel_cen = np.ones_like(area_pixel, dtype=bool)
 
