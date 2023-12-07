@@ -362,28 +362,32 @@ class Centroids():
         close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
-    def set_region_id(self, level='country'):
+    def set_region_id(self, level='country', overwrite=False):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
 
         Parameters
         ----------
         scheduler : str
             used for dask map_partitions. “threads”, “synchronous” or “processes”
+        overwrite : bool
+            if True, overwrites the existing region_id information.
+            if False and region_id is None region_id is computed.
         """
-        LOGGER.debug('Setting region_id %s points.', str(self.size))
-        if level == 'country':
-            if u_coord.equal_crs(self.crs, 'epsg:4326'):
-                self.gdf['region_id'] = u_coord.get_country_code(
-                    self.lat, self.lon)
+        if overwrite or self.region_id.isna().all():
+            LOGGER.debug('Setting region_id %s points.', str(self.size))
+            if level == 'country':
+                if u_coord.equal_crs(self.crs, 'epsg:4326'):
+                    self.gdf['region_id'] = u_coord.get_country_code(
+                        self.lat, self.lon)
+                else:
+                    raise NotImplementedError(
+                        'The region id can only be assigned if the crs is epsg:4326'
+                        'Please use .to_default_crs to change to epsg:4326'
+                        )
             else:
                 raise NotImplementedError(
-                    'The region id can only be assigned if the crs is epsg:4326'
-                    'Please use .to_default_crs to change to epsg:4326'
+                    'The region id can only be assigned for countries so far'
                     )
-        else:
-            raise NotImplementedError(
-                'The region id can only be assigned for countries so far'
-                )
 
 
     # NOT REALLY AN ELEVATION FUNCTION, JUST READ RASTER
@@ -421,19 +425,23 @@ class Centroids():
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
             return u_coord.dist_to_coast(ne_geom, signed=signed)
 
-    def set_on_land(self,):
+    def set_on_land(self, overwrite=False):
         """Set on_land attribute for every pixel or point.
 
         Parameters
         ----------
         scheduler : str
             used for dask map_partitions. “threads”, “synchronous” or “processes”
+        overwrite : bool
+            if True, overwrites the existing on_land information.
+            if False and on_land is None on_land is computed.
         """
-        if not u_coord.equal_crs(self.crs, 'epsg:4326'):
-            raise NotImplementedError(
-                'The on land property can only be assigned if the crs is epsg:4326'
-                'Please use .to_default_crs to change to epsg:4326'
-                )
+        if overwrite or self.on_land.isna().all():
+            if not u_coord.equal_crs(self.crs, 'epsg:4326'):
+                raise NotImplementedError(
+                    'The on land property can only be assigned if the crs is epsg:4326'
+                    'Please use .to_default_crs to change to epsg:4326'
+                    )
 
         LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
         self.gdf['on_land'] = u_coord.coord_on_land(

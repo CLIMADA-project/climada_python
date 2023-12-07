@@ -774,8 +774,7 @@ class StormEurope(Hazard):
         """
         # bool vector selecting the targeted centroids
         if reg_id is not None:
-            if not self.centroids.region_id:
-                self.centroids.set_region_id()
+            self.centroids.set_region_id(overwrite=False)
             if not isinstance(reg_id, list):
                 reg_id = [reg_id]
             sel_cen = np.isin(self.centroids.region_id, reg_id)
