@@ -341,8 +341,10 @@ class Hazard():
             hazard_kwargs["haz_type"] = haz_type
 
         centroids, meta = Centroids.from_raster_file(
-            files_intensity[0], src_crs=src_crs, window=window, geometry=geometry, dst_crs=dst_crs,
-            transform=transform, width=width, height=height, resampling=resampling, return_meta=True)
+            files_intensity[0], src_crs=src_crs, window=window,
+            geometry=geometry, dst_crs=dst_crs, transform=transform,
+            width=width, height=height, resampling=resampling, return_meta=True
+            )
 
         if pool:
             chunksize = max(min(len(files_intensity) // pool.ncpus, 1000), 1)
@@ -367,9 +369,10 @@ class Hazard():
                 fraction = sparse.vstack(fract_list, format='csr')
         else:
             intensity = _values_from_raster_files(
-                files_intensity, meta=meta, band=band, src_crs=src_crs, window=window, geometry=geometry,
-                dst_crs=dst_crs, transform=transform, width=width, height=height,
-                resampling=resampling)
+                files_intensity, meta=meta, band=band, src_crs=src_crs, window=window,
+                geometry=geometry, dst_crs=dst_crs, transform=transform, width=width,
+                height=height, resampling=resampling
+                )
             if files_fraction is not None:
                 fraction = _values_from_raster_files(
                     files_fraction, meta=meta, band=band, src_crs=src_crs, window=window, geometry=geometry,
@@ -2459,62 +2462,62 @@ class Hazard():
 
 
 #Function to read intensity/fraction values from raster files
-#No a method to allow for parallel computing
+#Not a method to allow for parallel computing
 def _values_from_raster_files(file_names, meta, band=None, src_crs=None, window=None,
-                                 geometry=None, dst_crs=None, transform=None, width=None,
-                                 height=None, resampling=Resampling.nearest):
-        """Read raster of bands and set 0 values to the masked ones.
+                                geometry=None, dst_crs=None, transform=None, width=None,
+                                height=None, resampling=Resampling.nearest):
+    """Read raster of bands and set 0 values to the masked ones.
 
-        Each band is an event. Select region using window or geometry. Reproject input by proving
-        dst_crs and/or (transform, width, height).
+    Each band is an event. Select region using window or geometry. Reproject input by proving
+    dst_crs and/or (transform, width, height).
 
-        Parameters
-        ----------
-        file_names : str
-            path of the file
-        meta : dict
-            description of the centroids raster
-        band : list(int), optional
-            band number to read. Default: [1]
-        src_crs : crs, optional
-            source CRS. Provide it if error without it.
-        window : rasterio.windows.Window, optional
-            window to read
-        geometry : list of shapely.geometry, optional
-            consider pixels only within these shapes
-        dst_crs : crs, optional
-            reproject to given crs
-        transform : rasterio.Affine
-            affine transformation to apply
-        wdith : float
-            number of lons for transform
-        height : float
-            number of lats for transform
-        resampling : rasterio.warp,.Resampling optional
-            resampling function used for reprojection to dst_crs
+    Parameters
+    ----------
+    file_names : str
+        path of the file
+    meta : dict
+        description of the centroids raster
+    band : list(int), optional
+        band number to read. Default: [1]
+    src_crs : crs, optional
+        source CRS. Provide it if error without it.
+    window : rasterio.windows.Window, optional
+        window to read
+    geometry : list of shapely.geometry, optional
+        consider pixels only within these shapes
+    dst_crs : crs, optional
+        reproject to given crs
+    transform : rasterio.Affine
+        affine transformation to apply
+    wdith : float
+        number of lons for transform
+    height : float
+        number of lats for transform
+    resampling : rasterio.warp,.Resampling optional
+        resampling function used for reprojection to dst_crs
 
-        Raises
-        ------
-        ValueError
+    Raises
+    ------
+    ValueError
 
-        Returns
-        -------
-        inten : scipy.sparse.csr_matrix
-            Each row is an event.
-        """
-        if band is None:
-            band = [1]
+    Returns
+    -------
+    inten : scipy.sparse.csr_matrix
+        Each row is an event.
+    """
+    if band is None:
+        band = [1]
 
-        values = []
-        for file_name in file_names:
-            tmp_meta, data = u_coord.read_raster(
-                file_name, band, src_crs, window, geometry, dst_crs,
-                transform, width, height, resampling)
-            if (tmp_meta['crs'] != meta['crs']
-                    or tmp_meta['transform'] != meta['transform']
-                    or tmp_meta['height'] != meta['height']
-                    or tmp_meta['width'] != meta['width']):
-                raise ValueError('Raster data is inconsistent with contained raster.')
-            values.append(sparse.csr_matrix(data))
+    values = []
+    for file_name in file_names:
+        tmp_meta, data = u_coord.read_raster(
+            file_name, band, src_crs, window, geometry, dst_crs,
+            transform, width, height, resampling)
+        if (tmp_meta['crs'] != meta['crs']
+                or tmp_meta['transform'] != meta['transform']
+                or tmp_meta['height'] != meta['height']
+                or tmp_meta['width'] != meta['width']):
+            raise ValueError('Raster data is inconsistent with contained raster.')
+        values.append(sparse.csr_matrix(data))
 
-        return sparse.vstack(values, format='csr')
+    return sparse.vstack(values, format='csr')
