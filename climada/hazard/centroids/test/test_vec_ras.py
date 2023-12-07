@@ -23,7 +23,7 @@ import unittest
 from cartopy.io import shapereader
 import geopandas as gpd
 import numpy as np
-from pyproj.crs import CRS
+from pyproj.crs.crs import CRS
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry.point import Point
@@ -38,7 +38,7 @@ DATA_DIR = CONFIG.hazard.test_data.dir()
 
 
 # Note: the coordinates are not directly on the cities, the region id and on land
-# otherwise do not work correctly. It is only the closest point.
+# otherwise do not work correctly. It is only a close point.
 LATLON = np.array([
     [-21.1736, -175.1883], #Tonga, Nuku'alofa, TON, 776
     [-18.133, 178.433], #Fidji, Suva, FJI, 242  IN WATER IN NATURAL EARTH
@@ -195,14 +195,9 @@ class TestRaster(unittest.TestCase):
 
     def test_ne_crs_geom_pass(self):
         """Test _ne_crs_geom"""
-        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-
-        xy_vec = centr_ras._ne_crs_geom()
-        x_vec, y_vec = xy_vec.geometry[:].x.values, xy_vec.geometry[:].y.values
-        self.assertAlmostEqual(4.51063496489, x_vec[0])
-        self.assertAlmostEqual(9.40153761711e-05, y_vec[0])
-        self.assertAlmostEqual(4.51063891581, x_vec[-1])
-        self.assertAlmostEqual(8.92260922066e-05, y_vec[-1])
+        centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON, crs=ALT_CRS)
+        ne_geom = centr._ne_crs_geom()
+        self.assertTrue(u_coord.equal_crs(ne_geom.crs, u_coord.NE_CRS))
 
     def test_region_id_pass(self):
         """Test set_dist_coast"""
@@ -235,12 +230,25 @@ class TestRaster(unittest.TestCase):
 
     def test_area_pass(self):
         """Test set_area"""
-        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        #centr_ras.meta['crs'] = {'proj': 'cea'}
+        window_size = (0, 0, 2, 3)
+        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(*window_size))
         area_pixel = centr_ras.get_area_pixel()
+
+        # Result in the crs of the test file (ESPG:4326)
+        # This is a wrong result as it should be projected to CEA (for correct area)
+        res = 0.009000000000000341
+        self.assertFalse(
+            np.allclose(area_pixel, np.ones(window_size[2] * window_size[3]) * res ** 2)
+            )
+
+        # Correct result in CEA results in unequal pixel area
+        test_area = np.array([
+            981010.32497514, 981010.3249724 , 981037.92674855,
+            981037.92674582, 981065.50487659, 981065.50487385
+            ])
         self.assertTrue(
-            np.allclose(area_pixel,
-                        np.ones(60 * 50) * 0.009000000000000341 * 0.009000000000000341))
+            np.allclose(area_pixel, test_area)
+            )
 
     def test_size_pass(self):
         """Test size property"""

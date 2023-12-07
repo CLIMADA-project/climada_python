@@ -92,16 +92,11 @@ class Centroids():
         longitudes in the chosen crs (can be any unit)
     crs : str, optional
         coordinate reference system, default is WGS84
-    area_pixel : np.array, optional
-        areas
-    dist_coast : np.array, optional
-        distances to coast
-    on_land : np.array, optional
-        on land (True) and on sea (False)
     region_id : np.array, optional
         region numeric codes
-    elevation : np.array, optional
-        elevations
+        (can be any values, admin0, admin1, custom values)
+    on_land : np.array, optional
+        on land (True) and on sea (False)
     kwargs: dicts of np.arrays, optional
         any further desired properties of centroids. Is passed to the
         GeoDataFrame constructor
@@ -126,56 +121,55 @@ class Centroids():
             longitude of size size. Defaults to empty array
         crs : str
             coordinate reference system
-        area_pixel : np.array, optional
-            area of size size. Defaults to empty array
-        on_land : np.array, optional
-            on land (True) and on sea (False) of size size. Defaults to empty array
         region_id : np.array, optional
-            country region code of size size, Defaults to empty array
+            country region code of size size, Defaults to None array
+        on_land : np.array, optional
+            on land (True) and on sea (False) of size size. Defaults to None array
         kwargs:
             columns of values to passed to the geodataframe constructor
         """
         attr_dict = {
             'geometry': gpd.points_from_xy(longitude, latitude, crs=crs),
+            'region_id': region_id,
+            'on_land': on_land
         }
-        if region_id is not None:
-            attr_dict['region_id'] = region_id
-        if on_land is not None:
-            attr_dict['on_land'] = on_land
         if kwargs:
             attr_dict = dict(**attr_dict, **kwargs)
-        self.gdf = gpd.GeoDataFrame(data=attr_dict, crs=crs)
+        self.gdf = gpd.GeoDataFrame(data=attr_dict)
 
     @property
     def lat(self):
+        """ Returns the latitudes """
         return self.gdf.geometry.y.values
 
     @property
     def lon(self):
+        """ Returns the longitudes """
         return self.gdf.geometry.x.values
 
     @property
     def geometry(self):
+        """ Return the geometry """
         return self.gdf['geometry']
 
     @property
     def on_land(self):
-        if 'on_land' in self.gdf.columns.values:
-            return self.gdf['on_land']
-        return None
+        """ Get the on_land property """
+        return self.gdf['on_land']
 
     @property
     def region_id(self):
-        if 'region_id' in self.gdf.columns.values:
-            return self.gdf['region_id']
-        return None
+        """ Get the assigned region_id."""
+        return self.gdf['region_id']
 
     @property
     def crs(self):
+        """ Get the crs"""
         return self.gdf.crs
 
     @property
     def size(self):
+        """Get size (number of lat/lon paris)"""
         return self.gdf.shape[0]
 
     @property
@@ -247,18 +241,25 @@ class Centroids():
         Centroids
             Centroids built from the geodataframe.
         """
+        if np.any(gdf.geom_type != 'Point'):
+            raise ValueError(
+                'The inpute geodataframe contains geometries'
+                ' that are not points.'
+            )
+
         if gdf.crs:
             crs = gdf.crs
         else:
             crs = DEF_CRS
 
-        return cls(
-            longitude=gdf.geometry.x.values,
-            latitude=gdf.geometry.y.values,
-            crs=gdf.crs,
-            **gdf.drop(columns=['geometry', 'latitude', 'longitude'],
-                       errors='ignore').to_dict(orient='list')
-            )
+        '''
+        This is a bit ugly, but avoids to recompute the geometries
+        in the init. For large datasets this saves computation time
+        '''
+        centroids = cls(latitude=[1], longitude=[1], crs=crs)
+        centroids.gdf = gdf.to_crs(crs)
+
+        return centroids
 
     @classmethod
     def from_exposures(cls, exposures):
@@ -276,7 +277,10 @@ class Centroids():
         Centroids
             Centroids built from the exposures
         """
-        gdf = exposures.gdf[['geometry', 'region_id']]
+        if 'region_id' in exposures.gdf.columns:
+            gdf = exposures.gdf[['geometry', 'region_id']]
+        else:
+            gdf = exposures.gdf[['geometry']]
         return cls.from_geodataframe(gdf)
 
     @classmethod
@@ -370,28 +374,29 @@ class Centroids():
         close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
-    def set_region_id(self, level='country'):
+    def set_region_id(self, level='country', overwrite=False):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
 
         Parameters
         ----------
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
+        level: str
+            defines the admin level on which to assign centroids. Currently
+            only 'country' (admin0) is implemented. Default is 'country'.
+        overwrite : bool
+            if True, overwrites the existing region_id information.
+            if False and region_id is None region_id is computed.
         """
-        LOGGER.debug('Setting region_id %s points.', str(self.size))
-        if level == 'country':
-            if u_coord.equal_crs(self.crs, 'epsg:4326'):
+        if overwrite or self.region_id.isna().all():
+            LOGGER.debug('Setting region_id %s points.', str(self.size))
+            if level == 'country':
+                ne_geom = self._ne_crs_geom()
                 self.gdf['region_id'] = u_coord.get_country_code(
-                    self.lat, self.lon)
+                    ne_geom.y.values, ne_geom.x.values
+                    )
             else:
                 raise NotImplementedError(
-                    'The region id can only be assigned if the crs is epsg:4326'
-                    'Please use .to_default_crs to change to epsg:4326'
+                    'The region id can only be assigned for countries so far'
                     )
-        else:
-            raise NotImplementedError(
-                'The region id can only be assigned for countries so far'
-                )
 
 
     # NOT REALLY AN ELEVATION FUNCTION, JUST READ RASTER
@@ -416,37 +421,29 @@ class Centroids():
             If True, use precomputed distances (from NASA). Works only for crs=epsg:4326
             Default: False.
         """
-        if not u_coord.equal_crs(self.crs, 'epsg:4326'):
-            raise NotImplementedError(
-                'The distance to coast can only be assigned if the crs is epsg:4326'
-                'Please use .to_default_crs to change to epsg:4326'
-                )
+        ne_geom = self._ne_crs_geom()
         if precomputed:
             return u_coord.dist_to_coast_nasa(
-                self.lat, self.lon, highres=True, signed=signed)
+                ne_geom.y.values, ne_geom.x.values, highres=True, signed=signed)
         else:
-            ne_geom = self._ne_crs_geom()
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
             return u_coord.dist_to_coast(ne_geom, signed=signed)
 
-    def set_on_land(self,):
+    def set_on_land(self, overwrite=False):
         """Set on_land attribute for every pixel or point.
 
         Parameters
         ----------
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
+        overwrite : bool
+            if True, overwrites the existing on_land information.
+            if False and on_land is None on_land is computed.
         """
-        if not u_coord.equal_crs(self.crs, 'epsg:4326'):
-            raise NotImplementedError(
-                'The on land property can only be assigned if the crs is epsg:4326'
-                'Please use .to_default_crs to change to epsg:4326'
-                )
-
-        LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
-        self.gdf['on_land'] = u_coord.coord_on_land(
-            self.lat, self.lon
-        )
+        if overwrite or self.on_land.isna().all():
+            LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
+            ne_geom = self._ne_crs_geom()
+            self.gdf['on_land'] = u_coord.coord_on_land(
+                ne_geom.y.values, ne_geom.x.values
+            )
 
     @classmethod
     def remove_duplicate_points(cls, centroids):
@@ -581,10 +578,9 @@ class Centroids():
         climada.util.coordinates.get_resolution
         """
 
-        res = u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)
-        res = np.abs(res).min()
+        res = np.abs(u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)).min()
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
-        xy_pixels = self.geometry.buffer(res / 2).envelope
+        xy_pixels = self.geometry.buffer(res / 2, resolution=1, cap_style=3).envelope
         if PROJ_CEA == self.geometry.crs:
             area_pixel = xy_pixels.area.values
         else:
@@ -856,7 +852,7 @@ class Centroids():
         -------
         geo : gpd.GeoSeries
         """
-        if u_coord.equal_crs(self.gdf.geometry.crs, u_coord.NE_CRS):
+        if u_coord.equal_crs(self.gdf.crs, u_coord.NE_CRS):
             return self.gdf.geometry
         return self.gdf.geometry.to_crs(u_coord.NE_CRS)
 

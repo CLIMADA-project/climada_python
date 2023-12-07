@@ -1077,7 +1077,7 @@ class Client():
         """Convenience method. Combines ``get_dataset`` and ``download_dataset``.
         Returns the path to a single file if the dataset has only one,
         otherwise throws an error.
-        
+
         Parameters
         ----------
         **kwargs
