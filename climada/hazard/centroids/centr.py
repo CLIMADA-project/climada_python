@@ -252,6 +252,10 @@ class Centroids():
         else:
             crs = DEF_CRS
 
+        '''
+        This is a bit ugly, but avoids to recompute the geometries
+        in the init. For large datasets this saves computation time
+        '''
         centroids = cls(latitude=[1], longitude=[1], crs=crs)
         centroids.gdf = gdf.to_crs(crs)
 
