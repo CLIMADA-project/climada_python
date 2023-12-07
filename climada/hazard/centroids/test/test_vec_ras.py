@@ -38,7 +38,7 @@ DATA_DIR = CONFIG.hazard.test_data.dir()
 
 
 # Note: the coordinates are not directly on the cities, the region id and on land
-# otherwise do not work correctly. It is only the closest point.
+# otherwise do not work correctly. It is only a close point.
 LATLON = np.array([
     [-21.1736, -175.1883], #Tonga, Nuku'alofa, TON, 776
     [-18.133, 178.433], #Fidji, Suva, FJI, 242  IN WATER IN NATURAL EARTH
