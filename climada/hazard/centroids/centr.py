@@ -138,37 +138,37 @@ class Centroids():
         self.gdf = gpd.GeoDataFrame(data=attr_dict)
 
     @property
-    def lat(self) -> numpy.ndarray:
+    def lat(self):
         """ Returns the latitudes """
         return self.gdf.geometry.y.values
 
     @property
-    def lon(self) -> numpy.ndarray:
+    def lon(self):
         """ Returns the longitudes """
         return self.gdf.geometry.x.values
 
     @property
-    def geometry(self) -> Shapely.geometry.GeometryCollection:
+    def geometry(self):
         """ Return the geometry """
         return self.gdf['geometry']
 
     @property
-    def on_land(self) -> numpy.ndarray:
+    def on_land(self):
         """ Get the on_land property """
         return self.gdf['on_land']
 
     @property
-    def region_id(self) -> numpy.ndarray:
+    def region_id(self):
         """ Get the assigned region_id."""
         return self.gdf['region_id']
 
     @property
-    def crs(self) -> pyproj.CRS:
+    def crs(self):
         """ Get the crs"""
         return self.gdf.crs
 
     @property
-    def size(self) -> int:
+    def size(self):
         """Get size (number of lat/lon paris)"""
         return self.gdf.shape[0]
 
@@ -241,18 +241,21 @@ class Centroids():
         Centroids
             Centroids built from the geodataframe.
         """
+        if np.any(geom.geom_type != 'Point'):
+            raise ValueError(
+                'The inpute geodataframe contains geometries'
+                ' that are not points.'
+            )
+
         if gdf.crs:
             crs = gdf.crs
         else:
             crs = DEF_CRS
 
-        return cls(
-            longitude=gdf.geometry.x.values,
-            latitude=gdf.geometry.y.values,
-            crs=crs,
-            **gdf.drop(columns=['geometry', 'latitude', 'longitude'],
-                       errors='ignore').to_dict(orient='list')
-            )
+        centroids = cls(latitude=[1], longitude=[1], crs=crs)
+        centroids.gdf = gdf.to_crs(crs)
+
+        return centroids
 
     @classmethod
     def from_exposures(cls, exposures):
@@ -270,7 +273,10 @@ class Centroids():
         Centroids
             Centroids built from the exposures
         """
-        gdf = exposures.gdf[['geometry', 'region_id']]
+        if 'region_id' in exposures.gdf.columns:
+            gdf = exposures.gdf[['geometry', 'region_id']]
+        else:
+            gdf = exposures.gdf[['geometry']]
         return cls.from_geodataframe(gdf)
 
     @classmethod
@@ -369,8 +375,9 @@ class Centroids():
 
         Parameters
         ----------
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
+        level: str
+            defines the admin level on which to assign centroids. Currently
+            only 'country' (admin0) is implemented. Default is 'country'.
         overwrite : bool
             if True, overwrites the existing region_id information.
             if False and region_id is None region_id is computed.
@@ -378,14 +385,10 @@ class Centroids():
         if overwrite or self.region_id.isna().all():
             LOGGER.debug('Setting region_id %s points.', str(self.size))
             if level == 'country':
-                if u_coord.equal_crs(self.crs, 'epsg:4326'):
-                    self.gdf['region_id'] = u_coord.get_country_code(
-                        self.lat, self.lon)
-                else:
-                    raise NotImplementedError(
-                        'The region id can only be assigned if the crs is epsg:4326'
-                        'Please use .to_default_crs to change to epsg:4326'
-                        )
+                ne_geom = self._ne_crs_geom()
+                self.gdf['region_id'] = u_coord.get_country_code(
+                    ne_geom.y.values, ne_geom.x.values
+                    )
             else:
                 raise NotImplementedError(
                     'The region id can only be assigned for countries so far'
@@ -414,16 +417,11 @@ class Centroids():
             If True, use precomputed distances (from NASA). Works only for crs=epsg:4326
             Default: False.
         """
-        if not u_coord.equal_crs(self.crs, 'epsg:4326'):
-            raise NotImplementedError(
-                'The distance to coast can only be assigned if the crs is epsg:4326'
-                'Please use .to_default_crs to change to epsg:4326'
-                )
+        ne_geom = self._ne_crs_geom()
         if precomputed:
             return u_coord.dist_to_coast_nasa(
-                self.lat, self.lon, highres=True, signed=signed)
+                ne_geom.y.values, ne_geom.x.values, highres=True, signed=signed)
         else:
-            ne_geom = self._ne_crs_geom()
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
             return u_coord.dist_to_coast(ne_geom, signed=signed)
 
@@ -432,23 +430,16 @@ class Centroids():
 
         Parameters
         ----------
-        scheduler : str
-            used for dask map_partitions. “threads”, “synchronous” or “processes”
         overwrite : bool
             if True, overwrites the existing on_land information.
             if False and on_land is None on_land is computed.
         """
         if overwrite or self.on_land.isna().all():
-            if not u_coord.equal_crs(self.crs, 'epsg:4326'):
-                raise NotImplementedError(
-                    'The on land property can only be assigned if the crs is epsg:4326'
-                    'Please use .to_default_crs to change to epsg:4326'
-                    )
-
-        LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
-        self.gdf['on_land'] = u_coord.coord_on_land(
-            self.lat, self.lon
-        )
+            LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
+            ne_geom = self._ne_crs_geom()
+            self.gdf['on_land'] = u_coord.coord_on_land(
+                ne_geom.y.values, ne_geom.x.values
+            )
 
     @classmethod
     def remove_duplicate_points(cls, centroids):
