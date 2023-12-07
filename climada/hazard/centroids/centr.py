@@ -44,20 +44,6 @@ __all__ = ['Centroids']
 
 PROJ_CEA = CRS.from_user_input({'proj': 'cea'})
 
-DEF_VAR_MAT = {
-    'field_names': ['centroids', 'hazard'],
-    'var_name': {
-        'lat': 'lat',
-        'lon': 'lon',
-        'dist_coast': 'distance2coast_km',
-        'admin0_name': 'admin0_name',
-        'admin0_iso3': 'admin0_ISO3',
-        'comment': 'comment',
-        'region_id': 'NatId'
-    }
-}
-"""MATLAB variable names"""
-
 DEF_VAR_EXCEL = {
     'sheet_name': 'centroids',
     'col_name': {
