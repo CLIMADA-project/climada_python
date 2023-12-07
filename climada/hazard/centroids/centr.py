@@ -136,17 +136,17 @@ class Centroids():
     @property
     def geometry(self):
         """ Return the geometry """
-        return self.gdf['geometry'].values
+        return self.gdf['geometry']
 
     @property
     def on_land(self):
         """ Get the on_land property """
-        return self.gdf['on_land'].values
+        return self.gdf['on_land']
 
     @property
     def region_id(self):
         """ Get the assigned region_id."""
-        return self.gdf['region_id'].values
+        return self.gdf['region_id']
 
     @property
     def crs(self):
