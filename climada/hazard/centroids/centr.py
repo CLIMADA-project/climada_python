@@ -126,25 +126,21 @@ class Centroids():
             longitude of size size. Defaults to empty array
         crs : str
             coordinate reference system
-        area_pixel : np.array, optional
-            area of size size. Defaults to empty array
         on_land : np.array, optional
-            on land (True) and on sea (False) of size size. Defaults to empty array
+            on land (True) and on sea (False) of size size. Defaults to None array
         region_id : np.array, optional
-            country region code of size size, Defaults to empty array
+            country region code of size size, Defaults to None array
         kwargs:
             columns of values to passed to the geodataframe constructor
         """
         attr_dict = {
             'geometry': gpd.points_from_xy(longitude, latitude, crs=crs),
+            'region_id': region_id,
+            'on_land': on_land
         }
-        if region_id is not None:
-            attr_dict['region_id'] = region_id
-        if on_land is not None:
-            attr_dict['on_land'] = on_land
         if kwargs:
             attr_dict = dict(**attr_dict, **kwargs)
-        self.gdf = gpd.GeoDataFrame(data=attr_dict, crs=crs)
+        self.gdf = gpd.GeoDataFrame(data=attr_dict)
 
     @property
     def lat(self):
@@ -160,15 +156,11 @@ class Centroids():
 
     @property
     def on_land(self):
-        if 'on_land' in self.gdf.columns.values:
-            return self.gdf['on_land']
-        return None
+        return self.gdf['on_land']
 
     @property
     def region_id(self):
-        if 'region_id' in self.gdf.columns.values:
-            return self.gdf['region_id']
-        return None
+        return self.gdf['region_id']
 
     @property
     def crs(self):
@@ -255,7 +247,7 @@ class Centroids():
         return cls(
             longitude=gdf.geometry.x.values,
             latitude=gdf.geometry.y.values,
-            crs=gdf.crs,
+            crs=crs,
             **gdf.drop(columns=['geometry', 'latitude', 'longitude'],
                        errors='ignore').to_dict(orient='list')
             )
