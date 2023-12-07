@@ -27,7 +27,6 @@ from pyproj.crs import CRS
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry.point import Point
-from shapely.geometry.polygon import Polygon
 
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
@@ -40,26 +39,22 @@ DATA_DIR = CONFIG.hazard.test_data.dir()
 
 # Note: the coordinates are not directly on the cities, the region id and on land
 # otherwise do not work correctly. It is only the closest point.
-VEC_LON = np.array([
-    -175.1883, #Tonga, Nuku'alofa, TON, 776
-    178.433, #Fidji, Suva, FJI, 242
-    18.95, #Norway, Tromso, NOR, 578
-    0, # Ocean, 0
-    166.6778, #Antarctica, McMurdo station, ATA, 010
-    -78.5833 #Ecuador, Quito, ECU, 218
+LATLON = np.array([
+    [-21.1736, -175.1883], #Tonga, Nuku'alofa, TON, 776
+    [-18.133, 178.433], #Fidji, Suva, FJI, 242  IN WATER IN NATURAL EARTH
+    [-38.4689, 177.8642], #New-Zealand, Te Karaka, NZL, 554
+    [69.6833, 18.95], #Norway, Tromso, NOR, 578 IN WATER IN NATURAL EARTH
+    [78.84422,	20.82842],  #Norway, Svalbard, NOR, 578
+    [1, 1], # Ocean, 0  (0,0 is onland in Natural earth for testing reasons)
+    [-77.85, 166.6778], #Antarctica, McMurdo station, ATA, 010
+    [-0.25, -78.5833] #Ecuador, Quito, ECU, 218
 ])
 
-VEC_LAT = np.array([
-    -21.1736, #Tonga, Nuku'alofa
-    -18.133, #Fidji, Suvaå
-    69.6833, #Norway, Tromso
-    0, #Ocean
-    -77.85, #Antarctica, McMurdo station
-    -0.25, #Ecuador, Quito
-])
+VEC_LAT = LATLON[:,0]
+VEC_LON = LATLON[:,1]
 
-ON_LAND = np.array([True, True, True, False, True, True])
-REGION_ID = np.array([776, 242, 578, 0, 10, 218])
+ON_LAND = np.array([True, False, True, False, True, False, True, True])
+REGION_ID = np.array([776, 0, 554, 0, 578, 0, 10, 218])
 
 TEST_CRS = 'EPSG:4326'
 ALT_CRS = 'epsg:32632' #Europe
@@ -74,8 +69,19 @@ class TestVector(unittest.TestCase):
         """Test from_lat_lon"""
         self.assertTrue(np.allclose(self.centr.lat, VEC_LAT))
         self.assertTrue(np.allclose(self.centr.lon, VEC_LON))
-        self.assertTrue(u_coord.equal_crs(self.centr.crs, DEF_CRS))
-        self.assertTrue(u_coord.equal_crs(self.centr.geometry.crs, DEF_CRS))
+        self.assertTrue(u_coord.equal_crs(self.centr.crs, TEST_CRS))
+
+        # Test default crs and other inputs
+        EXTRA_COL = np.ones_like(VEC_LAT)
+        centr = Centroids(
+            latitude=VEC_LAT,longitude=VEC_LON,
+            region_id = REGION_ID, on_land=ON_LAND,
+            extra_col = EXTRA_COL)
+        self.assertTrue(u_coord.equal_crs(centr.crs, DEF_CRS))
+        self.assertTrue(np.allclose(centr.region_id, REGION_ID))
+        self.assertTrue(np.allclose(centr.on_land, ON_LAND))
+        self.assertTrue(np.allclose(centr.gdf.extra_col.values, EXTRA_COL))
+
 
     def test_ne_crs_geom_pass(self):
         """Test _ne_crs_geom"""
@@ -84,11 +90,11 @@ class TestVector(unittest.TestCase):
 
     def test_dist_coast_pass(self):
         """Test set_dist_coast"""
-        dist_coast = self.centr.get_dist_coast()\
+        dist_coast = self.centr.get_dist_coast()
         # Just checking that the output doesnt change over time.
         REF_VALUES = np.array([
-            5.55578093e+05, 1.64066475e+03, 2.00703835e+03,
-            4.82264614e+02, 4.50037266e+03, 1.08610274e+05
+            1605.243, 603.261, 26112.239, 2228.629, 7207.817,
+            156271.372, 661.114, 158184.4
             ])
         np.testing.assert_array_almost_equal(dist_coast, REF_VALUES, decimal=3)
 
@@ -128,23 +134,19 @@ class TestVector(unittest.TestCase):
             'lon': xx.flatten(),
             'lat': yy.flatten(),
         }, crs={'proj': 'cea'})
-
-        area_pixel = self.centr.get_area_pixel()
-        self.assertTrue(np.allclose(area_pixel, np.ones(self.centr.size)))
-
-    def test_size_pass(self):
-        """Test size property"""
-        centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON)
-        self.assertEqual(centr.size, len(VEC_LAT))
+        centr = Centroids.from_geodataframe(vec_data)
+        area_pixel = centr.get_area_pixel()
+        self.assertTrue(np.allclose(area_pixel, np.ones(centr.size)))
 
     def test_get_closest_point(self):
         """Test get_closest_point"""
-        x, y, idx = self.centr.get_closest_point(-58.13, 14.38)
-        self.assertAlmostEqual(x, -58.125)
-        self.assertAlmostEqual(y, 14.375)
-        self.assertEqual(idx, 295)
-        self.assertEqual(self.centr.lon[idx], x)
-        self.assertEqual(self.centr.lat[idx], y)
+        for n, (lat, lon) in enumerate(LATLON):
+            x, y, idx = self.centr.get_closest_point(lon*0.99, lat*1.01)
+            self.assertAlmostEqual(x, lon)
+            self.assertAlmostEqual(y, lat)
+            self.assertEqual(idx, n)
+            self.assertEqual(self.centr.lon[n], x)
+            self.assertEqual(self.centr.lat[n], y)
 
     def test_append_pass(self):
         """Append points"""
