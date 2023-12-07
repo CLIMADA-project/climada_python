@@ -1688,15 +1688,17 @@ class Hazard():
                 f"The variable {variable} is not valid. Please use 'intensity' or 'fraction'."
                 )
 
-        centroids = self.centroids
-
-        meta = centroids.get_meta(self, resolution=output_resolution)
+        meta = self.centroids.get_meta(resolution=output_resolution)
         meta.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
+        res = meta["transform"][0]  # resolution from lon coordinates
 
-        if rows*cols == centroids.shape[0]:
+        if meta['height'] * meta['width'] == self.centroids.shape[0]:
+            #If centroids already in raster format
             u_coord.write_raster(file_name, var_to_write.toarray(), meta)
         else:
-            geometry = centroids.gdf.geometry.buffer(distance=res/2, resolution=1, cap_style=3)
+            geometry = self.centroids.gdf.geometry.buffer(
+                distance=res/2, resolution=1, cap_style=3
+                )
             #resolution=1, cap_style=3: squared buffers
             #https://shapely.readthedocs.io/en/latest/manual.html#object.buffer
             with rasterio.open(file_name, 'w', **meta) as dst:
