@@ -92,16 +92,11 @@ class Centroids():
         longitudes in the chosen crs (can be any unit)
     crs : str, optional
         coordinate reference system, default is WGS84
-    area_pixel : np.array, optional
-        areas
-    dist_coast : np.array, optional
-        distances to coast
-    on_land : np.array, optional
-        on land (True) and on sea (False)
     region_id : np.array, optional
         region numeric codes
-    elevation : np.array, optional
-        elevations
+        (can be any values, admin0, admin1, custom values)
+    on_land : np.array, optional
+        on land (True) and on sea (False)
     kwargs: dicts of np.arrays, optional
         any further desired properties of centroids. Is passed to the
         GeoDataFrame constructor
@@ -126,10 +121,10 @@ class Centroids():
             longitude of size size. Defaults to empty array
         crs : str
             coordinate reference system
-        on_land : np.array, optional
-            on land (True) and on sea (False) of size size. Defaults to None array
         region_id : np.array, optional
             country region code of size size, Defaults to None array
+        on_land : np.array, optional
+            on land (True) and on sea (False) of size size. Defaults to None array
         kwargs:
             columns of values to passed to the geodataframe constructor
         """
@@ -143,31 +138,38 @@ class Centroids():
         self.gdf = gpd.GeoDataFrame(data=attr_dict)
 
     @property
-    def lat(self):
+    def lat(self) -> numpy.ndarray:
+        """ Returns the latitudes """
         return self.gdf.geometry.y.values
 
     @property
-    def lon(self):
+    def lon(self) -> numpy.ndarray:
+        """ Returns the longitudes """
         return self.gdf.geometry.x.values
 
     @property
-    def geometry(self):
+    def geometry(self) -> Shapely.geometry.GeometryCollection:
+        """ Return the geometry """
         return self.gdf['geometry']
 
     @property
-    def on_land(self):
+    def on_land(self) -> numpy.ndarray:
+        """ Get the on_land property """
         return self.gdf['on_land']
 
     @property
-    def region_id(self):
+    def region_id(self) -> numpy.ndarray:
+        """ Get the assigned region_id."""
         return self.gdf['region_id']
 
     @property
-    def crs(self):
+    def crs(self) -> pyproj.CRS:
+        """ Get the crs"""
         return self.gdf.crs
 
     @property
-    def size(self):
+    def size(self) -> int:
+        """Get size (number of lat/lon paris)"""
         return self.gdf.shape[0]
 
     @property
