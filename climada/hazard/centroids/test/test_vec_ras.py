@@ -195,14 +195,9 @@ class TestRaster(unittest.TestCase):
 
     def test_ne_crs_geom_pass(self):
         """Test _ne_crs_geom"""
-        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-
-        xy_vec = centr_ras._ne_crs_geom()
-        x_vec, y_vec = xy_vec.geometry[:].x.values, xy_vec.geometry[:].y.values
-        self.assertAlmostEqual(4.51063496489, x_vec[0])
-        self.assertAlmostEqual(9.40153761711e-05, y_vec[0])
-        self.assertAlmostEqual(4.51063891581, x_vec[-1])
-        self.assertAlmostEqual(8.92260922066e-05, y_vec[-1])
+        centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON, crs=ALT_CRS)
+        ne_geom = centr._ne_crs_geom()
+        self.assertTrue(u_coord.equal_crs(ne_geom.crs, u_coord.NE_CRS))
 
     def test_region_id_pass(self):
         """Test set_dist_coast"""

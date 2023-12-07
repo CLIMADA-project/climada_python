@@ -859,7 +859,7 @@ class Centroids():
         -------
         geo : gpd.GeoSeries
         """
-        if u_coord.equal_crs(self.gdf.geometry.crs, u_coord.NE_CRS):
+        if u_coord.equal_crs(self.gdf.crs, u_coord.NE_CRS):
             return self.gdf.geometry
         return self.gdf.geometry.to_crs(u_coord.NE_CRS)
 
