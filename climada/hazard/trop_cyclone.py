@@ -178,7 +178,7 @@ class TropCyclone(Hazard):
     def from_tracks(
         cls,
         tracks: TCTracks,
-        centroids: Optional[Centroids] = None,
+        centroids: Optional[Centroids],
         pool: Optional[pathos.pools.ProcessPool] = None,
         model: str = 'H08',
         ignore_distance_to_coast: bool = False,
@@ -262,11 +262,6 @@ class TropCyclone(Hazard):
         TropCyclone
         """
         num_tracks = tracks.size
-        if centroids is None:
-            centroids = Centroids.from_base_grid(res_as=360, land=False)
-
-        if not centroids.coord.size:
-            centroids.set_meta_to_lat_lon()
 
         if ignore_distance_to_coast:
             # Select centroids with lat <= max_latitude
