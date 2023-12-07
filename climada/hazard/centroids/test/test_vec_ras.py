@@ -235,12 +235,25 @@ class TestRaster(unittest.TestCase):
 
     def test_area_pass(self):
         """Test set_area"""
-        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        #centr_ras.meta['crs'] = {'proj': 'cea'}
+        window_size = (0, 0, 2, 3)
+        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(*window_size))
         area_pixel = centr_ras.get_area_pixel()
+
+        # Result in the crs of the test file (ESPG:4326)
+        # This is a wrong result as it should be projected to CEA (for correct area)
+        res = 0.009000000000000341
+        self.assertFalse(
+            np.allclose(area_pixel, np.ones(window_size[2] * window_size[3]) * res ** 2)
+            )
+
+        # Correct result in CEA results in unequal pixel area
+        test_area = np.array([
+            981010.32497514, 981010.3249724 , 981037.92674855,
+            981037.92674582, 981065.50487659, 981065.50487385
+            ])
         self.assertTrue(
-            np.allclose(area_pixel,
-                        np.ones(60 * 50) * 0.009000000000000341 * 0.009000000000000341))
+            np.allclose(area_pixel, test_area)
+            )
 
     def test_size_pass(self):
         """Test size property"""

@@ -581,10 +581,9 @@ class Centroids():
         climada.util.coordinates.get_resolution
         """
 
-        res = u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)
-        res = np.abs(res).min()
+        res = np.abs(u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)).min()
         LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
-        xy_pixels = self.geometry.buffer(res / 2).envelope
+        xy_pixels = self.geometry.buffer(res / 2, resolution=1, cap_style=3).envelope
         if PROJ_CEA == self.geometry.crs:
             area_pixel = xy_pixels.area.values
         else:
