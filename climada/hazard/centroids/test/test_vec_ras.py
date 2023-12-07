@@ -23,7 +23,7 @@ import unittest
 from cartopy.io import shapereader
 import geopandas as gpd
 import numpy as np
-from pyproj.crs import CRS
+from pyproj.crs.crs import CRS
 import rasterio
 from rasterio.windows import Window
 from shapely.geometry.point import Point
