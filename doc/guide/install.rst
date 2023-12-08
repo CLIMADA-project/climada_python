@@ -244,7 +244,7 @@ On macOS and on Linux it is pre-installed. On Windows, it can easily be installe
 
    mamba install -n climada_env make
 
-Instructions for running the test scripts can be found in the :doc:`Testing and CI Guide <Guide_Continuous_Integration_and_Testing>`.
+Instructions for running the test scripts can be found in the :doc:`Testing Guide <Guide_Testing>`.
 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -311,7 +311,8 @@ It is easy to get confused by all the different softwares and their uses so here
 +------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
 | Continuous Integration (CI) server                   | Jenkins        | - automatically checks code changes in GitHub repositories, e.g. when you create a pull request for the develop branch                            | CLIMADA developers         |
 |                                                      |                | - performs static code analysis using pylint                                                                                                      |                            |
-|                                                      |                | - you don't need to do any installations, this runs automatically (see: :doc:`GitHub Actions CI <github-actions>`)                                |                            |
+|                                                      |                | - you don't need to do any installations, this runs automatically                                                                                 |                            |
+|                                                      |                | - see: :doc: `Continuous Integration and GitHub Actions <Guide_continuous_integration_GitHub_actions>`)                                           |                            |
 +------------------------------------------------------+----------------+---------------------------------------------------------------------------------------------------------------------------------------------------+----------------------------+
 
 JupyterLab
