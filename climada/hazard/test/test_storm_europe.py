@@ -66,7 +66,7 @@ class TestReader(unittest.TestCase):
         """Test from_footprints while passing in a Centroids object"""
         var_names = copy.deepcopy(DEF_VAR_EXCEL)
         var_names['sheet_name'] = 'fp_centroids-test'
-        var_names['col_name']['region_id'] = 'iso_n3'
+        var_names['col_name']['iso_n3'] = 'region_id'
         test_centroids = Centroids.from_excel(
             DATA_DIR.joinpath('fp_centroids-test.xls'),
             var_names=var_names

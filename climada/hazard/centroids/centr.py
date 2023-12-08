@@ -48,8 +48,8 @@ DEF_VAR_EXCEL = {
     'sheet_name': 'centroids',
     'col_name': {
         'region_id': 'region_id',
-        'latitude': 'latitude',
-        'longitude': 'longitude',
+        'lat': 'latitude',
+        'lon': 'longitude',
         'on_land': 'on_land',
         'dist_coast': 'dist_coast',
         'elevation': 'elevation',
@@ -719,7 +719,7 @@ class Centroids():
             assert 'col_name' in var_names, 'col_name must be a key in the var_names dict'
 
         data = pd.read_excel(file_path, var_names['sheet_name']).rename(
-            columns={val: key for key, val in var_names['col_name'].items()}
+            columns=var_names['col_name']
         )
         return cls(**dict(data.items()), crs=crs)
 
