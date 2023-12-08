@@ -684,12 +684,10 @@ class Centroids():
             var_names = DEF_VAR_CSV
 
         df = pd.read_csv(file_path)
-        return cls(longitude=df[var_names['lon']], latitude=df[var_names['lat']], crs=crs)
-
+        df = df.rename(columns=var_names)
+        return cls(**dict(df.items()), crs=crs)
         
        
-
-    #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
     def from_excel(cls, file_path, crs=DEF_CRS, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
@@ -722,12 +720,11 @@ class Centroids():
         except KeyError as err:
             raise KeyError(f"Not existing variable: {err}") from err
 
-
-        region_column = var_names['col_name'].get('region_id')
-        if region_column and region_column in df.columns.values:
-            gdf['region_id'] = df[region_column]
+        for key, value in var_names.items():
+            if isinstance(value, dict):
+                df.rename(columns=value, inplace=True)
         
-        return cls(longitude=df[var_names['col_name']['lon']], latitude=[var_names['col_name']['lat']], crs=crs)
+        return cls(**dict(df.items()), crs=crs)
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
