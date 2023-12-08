@@ -44,20 +44,6 @@ __all__ = ['Centroids']
 
 PROJ_CEA = CRS.from_user_input({'proj': 'cea'})
 
-DEF_VAR_MAT = {
-    'field_names': ['centroids', 'hazard'],
-    'var_name': {
-        'lat': 'lat',
-        'lon': 'lon',
-        'dist_coast': 'distance2coast_km',
-        'admin0_name': 'admin0_name',
-        'admin0_iso3': 'admin0_ISO3',
-        'comment': 'comment',
-        'region_id': 'NatId'
-    }
-}
-"""MATLAB variable names"""
-
 DEF_VAR_EXCEL = {
     'sheet_name': 'centroids',
     'col_name': {
@@ -247,18 +233,12 @@ class Centroids():
                 ' that are not points.'
             )
 
-        if gdf.crs:
-            crs = gdf.crs
-        else:
-            crs = DEF_CRS
-
-        '''
-        This is a bit ugly, but avoids to recompute the geometries
-        in the init. For large datasets this saves computation time
-        '''
-        centroids = cls(latitude=[1], longitude=[1], crs=crs)
-        centroids.gdf = gdf.to_crs(crs)
-
+        # This is a bit ugly, but avoids to recompute the geometries
+        # in the init. For large datasets this saves computation time
+        centroids = cls(latitude=[1], longitude=[1])
+        centroids.gdf = gdf
+        if not gdf.crs:
+            centroids.gdf.set_crs(DEF_CRS, inplace=True)
         return centroids
 
     @classmethod
