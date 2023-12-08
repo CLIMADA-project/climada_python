@@ -704,12 +704,14 @@ class Centroids():
             var_names = DEF_VAR_CSV
 
         df = pd.read_csv(file_path)
+        return cls(longitude=df[var_names['lon']], latitude=df[var_names['lat']], crs=crs)
+
         
        
 
     #TODO: this method is badly written but kept for backwards compatibility. It should be improved.
     @classmethod
-    def from_excel(cls, file_name, crs=None, var_names=None):
+    def from_excel(cls, file_path, crs=DEF_CRS, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
@@ -730,25 +732,22 @@ class Centroids():
         centr : Centroids
             Centroids with data from the given excel file
         """
-        if crs is None:
-            crs = DEF_CRS
 
         if var_names is None:
             var_names = DEF_VAR_EXCEL
 
         try:
-            df = pd.read_excel(file_name, var_names['sheet_name'])
+            df = pd.read_excel(file_path, var_names['sheet_name'])
 
         except KeyError as err:
             raise KeyError(f"Not existing variable: {err}") from err
 
-        geometry = gpd.points_from_xy(df[var_names['col_name']['lon']],
-                                      df[var_names['col_name']['lat']])
-        gdf = gpd.GeoDataFrame(df, crs=crs, geometry=geometry)
+
         region_column = var_names['col_name'].get('region_id')
         if region_column and region_column in df.columns.values:
             gdf['region_id'] = df[region_column]
-        return cls.from_geodataframe(gdf)
+        
+        return cls(longitude=df[var_names['col_name']['lon']], latitude=[var_names['col_name']['lat']], crs=crs)
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
