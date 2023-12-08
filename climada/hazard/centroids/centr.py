@@ -48,8 +48,8 @@ DEF_VAR_EXCEL = {
     'sheet_name': 'centroids',
     'col_name': {
         'region_id': 'region_id',
-        'lat': 'latitude',
-        'lon': 'longitude',
+        'latitude': 'latitude',
+        'longitude': 'longitude',
         'on_land': 'on_land',
         'dist_coast': 'dist_coast',
         'elevation': 'elevation',
@@ -713,18 +713,15 @@ class Centroids():
 
         if var_names is None:
             var_names = DEF_VAR_EXCEL
+        else:
+            assert isinstance(var_names, dict), 'var_names must be a dict'
+            assert 'sheet_name' in var_names, 'sheet_name must be a key in the var_names dict'
+            assert 'col_name' in var_names, 'col_name must be a key in the var_names dict'
 
-        try:
-            df = pd.read_excel(file_path, var_names['sheet_name'])
-
-        except KeyError as err:
-            raise KeyError(f"Not existing variable: {err}") from err
-
-        for key, value in var_names.items():
-            if isinstance(value, dict):
-                df.rename(columns=value, inplace=True)
-        
-        return cls(**dict(df.items()), crs=crs)
+        data = pd.read_excel(file_path, var_names['sheet_name']).rename(
+            columns={val: key for key, val in var_names['col_name'].items()}
+        )
+        return cls(**dict(data.items()), crs=crs)
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
