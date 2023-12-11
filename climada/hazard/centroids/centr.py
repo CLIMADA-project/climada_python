@@ -141,12 +141,16 @@ class Centroids():
     @property
     def on_land(self):
         """ Get the on_land property """
-        return self.gdf['on_land']
+        if self.gdf.on_land.isna().all():
+            return None
+        return self.gdf['on_land'].values
 
     @property
     def region_id(self):
         """ Get the assigned region_id."""
-        return self.gdf['region_id']
+        if self.gdf.region_id.isna().all():
+            return None
+        return self.gdf['region_id'].values
 
     @property
     def crs(self):
@@ -257,11 +261,28 @@ class Centroids():
         Centroids
             Centroids built from the exposures
         """
-        if 'region_id' in exposures.gdf.columns:
-            gdf = exposures.gdf[['geometry', 'region_id']]
-        else:
-            gdf = exposures.gdf[['geometry']]
-        return cls.from_geodataframe(gdf)
+        col_names = [
+            column
+            for column in exposures.gdf.columns
+            if column in ['region_id', 'on_land']
+            ]
+
+        # Legacy behaviour
+        # Exposures can be without geometry column
+        #TODO: remove once exposures is real geodataframe with geometry.
+        if 'geometry' in exposures.gdf.columns:
+            col_names += ['geometry']
+            gdf = exposures.gdf[col_names]
+            return cls.from_geodataframe(gdf)
+
+        if 'latitude' in exposures.gdf.columns and 'longitude' in exposures.gdf.columns:
+            gdf = exposures.gdf[col_names]
+            return cls(
+                latitude = exposures.gdf['latitude'],
+                longitude = exposures.gdf['longitude'],
+                crs = exposures.crs,
+                **dict(gdf.items())
+            )
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
@@ -366,7 +387,7 @@ class Centroids():
             if True, overwrites the existing region_id information.
             if False and region_id is None region_id is computed.
         """
-        if overwrite or self.region_id.isna().all():
+        if overwrite or self.region_id is None:
             LOGGER.debug('Setting region_id %s points.', str(self.size))
             if level == 'country':
                 ne_geom = self._ne_crs_geom()
@@ -418,7 +439,7 @@ class Centroids():
             if True, overwrites the existing on_land information.
             if False and on_land is None on_land is computed.
         """
-        if overwrite or self.on_land.isna().all():
+        if overwrite or self.on_land is None:
             LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
             ne_geom = self._ne_crs_geom()
             self.gdf['on_land'] = u_coord.coord_on_land(
@@ -686,8 +707,8 @@ class Centroids():
         df = pd.read_csv(file_path)
         df = df.rename(columns=var_names)
         return cls(**dict(df.items()), crs=crs)
-        
-       
+
+
     @classmethod
     def from_excel(cls, file_path, crs=DEF_CRS, var_names=None):
         """Generate a new centroids object from an excel file with column names in var_names.
