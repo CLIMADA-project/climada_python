@@ -18,6 +18,7 @@ Code freeze date: YYYY-MM-DD
 - Update `CONTRIBUTING.md` to better explain types of contributions to this repository [#797](https://github.com/CLIMADA-project/climada_python/pull/797)
 - The default tile layer in Exposures maps is not Stamen Terrain anymore, but [CartoDB Positron](https://github.com/CartoDB/basemap-styles). Affected methods are `climada.engine.Impact.plot_basemap_eai_exposure`,`climada.engine.Impact.plot_basemap_impact_exposure` and `climada.entity.Exposures.plot_basemap`. [#798](https://github.com/CLIMADA-project/climada_python/pull/798)
 - Recommend using Mamba instead of Conda for installing CLIMADA [#809](https://github.com/CLIMADA-project/climada_python/pull/809)
+- Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. The methods to read matlab files were removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 
 ### Fixed
 
@@ -27,6 +28,7 @@ Code freeze date: YYYY-MM-DD
 ### Deprecated
 
 ### Removed
+- Read/write matlab file methods for Centroids and Hazard objects. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 
 ## 4.0.1
 
