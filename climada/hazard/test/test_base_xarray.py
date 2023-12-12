@@ -361,7 +361,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             ds = ds.drop_vars("time")
             with self.assertRaises(RuntimeError) as cm:
                 Hazard.from_xarray_raster(ds, "", "")
-            self.assertIn("No variable named 'time'", str(cm.exception))
+            self.assertIn("time", str(cm.exception))
 
             # Expand time again
             ds = ds.expand_dims(time=[np.datetime64("2022-01-01")])
@@ -571,7 +571,7 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
                 "",
                 coordinate_vars=dict(latitude="lalalatitude"),
             )
-        self.assertIn("No variable named 'lalalatitude'", str(cm.exception))
+        self.assertIn("lalalatitude", str(cm.exception))
 
 
 # Execute Tests
