@@ -12,6 +12,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- Read and Write methods to and from csv files for the `DiscRates` class. [#818](ttps://github.com/CLIMADA-project/climada_python/pull/818)
+
 ### Changed
 
 - Add `shapes` argument to `geo_im_from_array` to allow flexible turning on/off of plotting coastline in `plot_intensity`. [#805](https://github.com/CLIMADA-project/climada_python/pull/805)
