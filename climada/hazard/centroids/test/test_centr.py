@@ -28,9 +28,85 @@ import geopandas as gpd
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import HAZ_TEMPLATE_XLS
-import climada.hazard.test as hazard_test
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
+
+import unittest
+import numpy as np
+import geopandas as gpd
+
+
+class TestCentroidsData(unittest.TestCase):
+
+    def test_init(self):
+        # Creating Centroids with latitude and longitude arrays
+        lat = np.array([10.0, 20.0, 30.0])
+        lon = np.array([-10.0, -20.0, -30.0])
+        centroids = Centroids(latitude=lat, longitude=lon)
+
+        # Checking attributes
+        np.testing.assert_array_equal(centroids.lat, lat)
+        np.testing.assert_array_equal(centroids.lon, lon)
+        self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
+
+        # Creating Centroids with additional properties
+        region_id = np.array([1, 2, 3])
+        on_land = np.array([True, False, False])
+        centroids = Centroids(lat, lon, region_id=region_id, on_land=on_land)
+
+        # Checking additional attributes
+        np.testing.assert_array_equal(centroids.region_id, region_id)
+        np.testing.assert_array_equal(centroids.on_land, on_land)
+
+    def test_from_geodataframe(self):
+        # Creating a GeoDataFrame with centroids
+        lat = np.array([10.0, 20.0, 30.0])
+        lon = np.array([-10.0, -20.0, -30.0])
+        gdf = gpd.GeoDataFrame({'geometry': gpd.points_from_xy(x=lon, y=lat)})
+
+        # Creating Centroids from GeoDataFrame
+        centroids = Centroids.from_geodataframe(gdf)
+
+        # Checking attributes
+        np.testing.assert_array_equal(centroids.lat, lat)
+        np.testing.assert_array_equal(centroids.lon, lon)
+        self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
+
+    def test_to_default_crs(self):
+        # Creating Centroids with non-default CRS
+        crs = 'epsg:32632'
+        lat = np.array([-10, 0, 10])
+        lon = np.array([-170, -150, -130])
+        centroids = Centroids(latitude=lat, longitude=lon, crs=crs)
+
+        self.assertTrue(u_coord.equal_crs(centroids.crs, 'epsg:32632'))
+
+        # Transforming to default CRS
+        centroids.to_default_crs()
+
+        # Checking CRS after transformation
+        self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
+
+    def test_to_crs(self):
+        # Creating Centroids with non-default CRS
+        crs = 'epsg:4326'
+        lat = np.array([-10, 0, 10])
+        lon = np.array([-170, -150, -130])
+        centroids = Centroids(latitude=lat, longitude=lon, crs=crs)
+
+        # Transforming to another CRS
+        new_crs = 'epsg:3857'
+        transformed_centroids = centroids.to_crs(new_crs)
+
+        # Checking CRS after transformation
+        self.assertTrue(u_coord.equal_crs(transformed_centroids.crs, new_crs))
+        self.assertTrue(u_coord.equal_crs(centroids.crs, crs))
+
+        # Checking coordinates after transformation
+        expected_lat = np.array([-1118889.974858, 0., 1118889.9748585])
+        expected_lon = np.array([-18924313.434857, -16697923.618991, -14471533.803126])
+        np.testing.assert_array_almost_equal(transformed_centroids.lat, expected_lat)
+        np.testing.assert_array_almost_equal(transformed_centroids.lon, expected_lon)
 
 
 class TestCentroidsReader(unittest.TestCase):
@@ -126,6 +202,7 @@ class TestCentroidsMethods(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCentroidsReader)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCentroidsData)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroidsReader))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCentroidsMethods))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
