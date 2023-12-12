@@ -197,7 +197,7 @@ class TestFuncs(unittest.TestCase):
         )
         exp = Exposures(gdf, crs=4326)
         intensity = sp.sparse.csr_matrix(np.array([[0, 0, 1, 10, 2], [-1, 0, 0, 1, 2]]))
-        cent = Centroids(latitude=np.array([1, 2, 3, 4]), longitude=np.array([-1, -2, -3, -4]))
+        cent = Centroids(lat=np.array([1, 2, 3, 4]), lon=np.array([-1, -2, -3, -4]))
         haz = Hazard(
             haz_type=haz_type, centroids=cent, intensity=intensity, event_id=[1, 2]
         )
