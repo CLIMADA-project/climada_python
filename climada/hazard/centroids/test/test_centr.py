@@ -22,18 +22,16 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import geopandas as gpd
+import shapely
 
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import HAZ_TEMPLATE_XLS
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
-
-import unittest
-import numpy as np
-import geopandas as gpd
+from climada.entity import Exposures
+from rasterio import Affine
 
 
 class TestCentroidsData(unittest.TestCase):
@@ -57,20 +55,6 @@ class TestCentroidsData(unittest.TestCase):
         # Checking additional attributes
         np.testing.assert_array_equal(centroids.region_id, region_id)
         np.testing.assert_array_equal(centroids.on_land, on_land)
-
-    def test_from_geodataframe(self):
-        # Creating a GeoDataFrame with centroids
-        lat = np.array([10.0, 20.0, 30.0])
-        lon = np.array([-10.0, -20.0, -30.0])
-        gdf = gpd.GeoDataFrame({'geometry': gpd.points_from_xy(x=lon, y=lat)})
-
-        # Creating Centroids from GeoDataFrame
-        centroids = Centroids.from_geodataframe(gdf)
-
-        # Checking attributes
-        np.testing.assert_array_equal(centroids.lat, lat)
-        np.testing.assert_array_equal(centroids.lon, lon)
-        self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
 
     def test_to_default_crs(self):
         # Creating Centroids with non-default CRS
@@ -124,7 +108,7 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord[n_centroids - 1][0], -24.7)
         self.assertEqual(centroids.coord[n_centroids - 1][1], 33.88)
 
-    def test_geodataframe(self):
+    def test_from_geodataframe(self):
         """Test that constructing a valid Centroids instance from gdf works."""
         crs = DEF_CRS
         lat = np.arange(170, 180)
@@ -145,6 +129,84 @@ class TestCentroidsReader(unittest.TestCase):
             np.testing.assert_array_equal(array, getattr(centroids, name))
         np.testing.assert_array_equal(extra, centroids.gdf.extra.values)
         self.assertTrue(u_coord.equal_crs(centroids.crs, crs))
+
+    def test_from_geodataframe_invalid(self):
+
+        # Creating an invalid GeoDataFrame with geometries that are not points
+        invalid_geometry_gdf = gpd.GeoDataFrame({
+            'geometry': [
+                 shapely.Point((2,2)),
+                 shapely.Polygon([(0, 0), (1, 1), (1, 0), (0, 0)]),
+                 shapely.LineString([(0, 1), (1, 0)])
+                 ]
+            })
+
+        with self.assertRaises(ValueError):
+            # Trying to create Centroids from invalid GeoDataFrame
+            Centroids.from_geodataframe(invalid_geometry_gdf)
+
+    def test_from_exposures_with_region_id(self):
+        """
+        Test that the `from_exposures` method correctly extracts
+        centroids and region_id from an `Exposure` object with region_id.
+        """
+        # Create an Exposure object with region_id, on_land and custom crs
+        lat = np.array([10.0, 20.0, 30.0])
+        lon = np.array([-10.0, -20.0, -30.0])
+        value = np.array([1, 1, 1])
+        region_id = np.array([1, 2, 3])
+        on_land = [False, True, True]
+        crs = 'epsg:32632'
+        gdf = gpd.GeoDataFrame({
+            'latitude' : lat,
+            'longitude': lon,
+            'value': value,
+            'region_id': region_id,
+            'on_land': on_land
+        })
+        exposures = Exposures(gdf, crs=crs)
+
+        # Extract centroids from exposures
+        centroids = Centroids.from_exposures(exposures)
+
+        # Check attributes
+        np.testing.assert_array_equal(centroids.lat, lat)
+        np.testing.assert_array_equal(centroids.lon, lon)
+        np.testing.assert_array_equal(centroids.region_id, region_id)
+        np.testing.assert_array_equal(centroids.on_land, on_land)
+        self.assertEqual(centroids.crs, crs)
+
+    def test_from_exposures_without_region_id(self):
+        """
+        Test that the `from_exposures` method correctly extracts
+        centroids from an `Exposure` object without region_id.
+        """
+        # Create an Exposure object without region_id and variables to ignore
+        # and default crs
+        lat = np.array([10.0, 20.0, 30.0])
+        lon = np.array([-10.0, -20.0, -30.0])
+        value = np.array([1, 1, 1])
+        impf_TC = np.array([1, 2, 3])
+        centr_TC = np.array([1, 2, 3])
+        gdf = gpd.GeoDataFrame({
+            'latitude' : lat,
+            'longitude': lon,
+            'value': value,
+            'impf_tc': impf_TC,
+            'centr_TC': centr_TC
+        })
+        exposures = Exposures(gdf)
+
+        # Extract centroids from exposures
+        centroids = Centroids.from_exposures(exposures)
+
+        # Check attributes
+        self.assertEqual(centroids.lat.tolist(), lat.tolist())
+        self.assertEqual(centroids.lon.tolist(), lon.tolist())
+        self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
+        self.assertEqual(centroids.region_id, None)
+        self.assertEqual(centroids.on_land, None)
+
 
 
 class TestCentroidsWriter(unittest.TestCase):
@@ -198,6 +260,32 @@ class TestCentroidsMethods(unittest.TestCase):
         cent = Centroids.union(cent1, cent2, cent3)
         np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3, -1, -2])
         np.testing.assert_array_equal(cent.lon, [0, -1, -2, 3, 1, 2])
+
+    def test_get_meta(self):
+        """
+        Test that the `get_meta` method correctly generates metadata
+        for a raster with a specified resolution.
+        """
+        # Create centroids with specified resolution
+        lon = np.array([-10.0, -20.0, -30.0])
+        lat = np.array([10.0, 20.0, 30.0])
+        centroids = Centroids(latitude=lat, longitude=lon, crs=DEF_CRS)
+
+        # Get metadata
+        meta = centroids.get_meta()
+
+        # Check metadata
+        expected_meta = dict(
+            crs=DEF_CRS,
+            height= 3,
+            width= 3,
+            transform=Affine(10, 0, -35,
+                              0, -10, 35)
+        )
+        self.assertEqual(meta['height'], expected_meta['height'])
+        self.assertEqual(meta['width'], expected_meta['width'])
+        self.assertTrue(u_coord.equal_crs(meta['crs'], expected_meta['crs']))
+        self.assertTrue(meta['transform'].almost_equals(expected_meta['transform']))
 
 
 # Execute Tests

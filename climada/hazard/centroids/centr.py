@@ -239,7 +239,7 @@ class Centroids():
 
         # This is a bit ugly, but avoids to recompute the geometries
         # in the init. For large datasets this saves computation time
-        centroids = cls(latitude=[1], longitude=[1])
+        centroids = cls(latitude=[1], longitude=[1]) #make "empty" centroids
         centroids.gdf = gdf
         if not gdf.crs:
             centroids.gdf.set_crs(DEF_CRS, inplace=True)
@@ -254,7 +254,7 @@ class Centroids():
         ----------
         exposures : Exposure
             exposures from which to take the centroids location
-            and region_id (if defined)
+            and region_id (if defined) and on_land (if defined)
 
         Returns
         -------
