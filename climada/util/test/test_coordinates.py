@@ -582,11 +582,11 @@ class TestAssign(unittest.TestCase):
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
         centroids = Centroids(
-            latitude=coords_to_assign[:, 0],
-            longitude=coords_to_assign[:, 1],
+            lat=coords_to_assign[:, 0],
+            lon=coords_to_assign[:, 1],
             crs=DEF_CRS
         )
-        centroids_empty = Centroids(latitude=np.array([]), longitude=np.array([]))
+        centroids_empty = Centroids(lat=np.array([]), lon=np.array([]))
 
         expected_results = [
             # test with different thresholds (in km)
@@ -617,8 +617,8 @@ class TestAssign(unittest.TestCase):
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
         centroids = Centroids(
-            latitude=[1100000,1200000],
-            longitude=[2500000,2600000],
+            lat=[1100000,1200000],
+            lon=[2500000,2600000],
             crs='EPSG:2056'
         )
 

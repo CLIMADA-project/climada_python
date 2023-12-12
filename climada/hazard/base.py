@@ -66,8 +66,8 @@ DEF_VAR_EXCEL = {'sheet_name': {'inten': 'hazard_intensity',
                               },
                  'col_centroids': {'sheet_name': 'centroids',
                                    'col_name': {'cen_id': 'centroid_id',
-                                                'lat': 'latitude',
-                                                'lon': 'longitude'
+                                                'latitude': 'lat',
+                                                'longitude': 'lon',
                                                 }
                                    }
                  }
@@ -227,7 +227,7 @@ class Hazard():
         """
         self.haz_type = haz_type
         self.units = units
-        self.centroids = centroids if centroids is not None else Centroids(np.empty(0), np.empty(0))
+        self.centroids = centroids if centroids is not None else Centroids(lat=np.empty(0), lon=np.empty(0))
         # following values are defined for each event
         self.event_id = event_id if event_id is not None else np.array([], int)
         self.frequency = frequency if frequency is not None else np.array(
@@ -752,8 +752,8 @@ class Hazard():
 
         # Transform coordinates into centroids
         centroids = Centroids(
-            latitude=data[coords["latitude"]].values,
-            longitude=data[coords["longitude"]].values,
+            lat=data[coords["latitude"]].values,
+            lon=data[coords["longitude"]].values,
             crs=crs,
         )
 

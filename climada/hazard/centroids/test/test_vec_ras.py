@@ -63,7 +63,7 @@ class TestVector(unittest.TestCase):
     """Test CentroidsVector class"""
 
     def setUp(self):
-        self.centr = Centroids(latitude=VEC_LAT,longitude=VEC_LON, crs=TEST_CRS)
+        self.centr = Centroids(lat=VEC_LAT,lon=VEC_LON, crs=TEST_CRS)
 
     def test_init_pass(self):
         """Test from_lat_lon"""
@@ -72,15 +72,12 @@ class TestVector(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(self.centr.crs, TEST_CRS))
 
         # Test default crs and other inputs
-        EXTRA_COL = np.ones_like(VEC_LAT)
         centr = Centroids(
-            latitude=VEC_LAT,longitude=VEC_LON,
-            region_id = REGION_ID, on_land=ON_LAND,
-            extra_col = EXTRA_COL)
+            lat=VEC_LAT,lon=VEC_LON,
+            region_id = REGION_ID, on_land=ON_LAND)
         self.assertTrue(u_coord.equal_crs(centr.crs, DEF_CRS))
         self.assertTrue(np.allclose(centr.region_id, REGION_ID))
         self.assertTrue(np.allclose(centr.on_land, ON_LAND))
-        self.assertTrue(np.allclose(centr.gdf.extra_col.values, EXTRA_COL))
 
 
     def test_ne_crs_geom_pass(self):
@@ -100,7 +97,7 @@ class TestVector(unittest.TestCase):
 
     def test_region_id_pass(self):
         """Test set_region_id"""
-        self.centr.set_region_id()
+        self.centr._set_region_id()
         np.testing.assert_array_equal(
             self.centr.region_id,
             REGION_ID
@@ -108,7 +105,7 @@ class TestVector(unittest.TestCase):
 
     def test_on_land(self):
         """Test set_on_land"""
-        self.centr.set_on_land()
+        self.centr._set_on_land()
         np.testing.assert_array_equal(
             self.centr.on_land,
             ON_LAND
@@ -116,8 +113,8 @@ class TestVector(unittest.TestCase):
 
     def test_remove_duplicate_pass(self):
         """Test remove_duplicate_points"""
-        centr = Centroids(latitude = np.hstack([VEC_LAT, VEC_LAT]),
-                         longitude = np.hstack([VEC_LON , VEC_LON]),
+        centr = Centroids(lat = np.hstack([VEC_LAT, VEC_LAT]),
+                         lon = np.hstack([VEC_LON , VEC_LON]),
                          crs=TEST_CRS)
         self.assertTrue(centr.gdf.shape[0] == 2*self.centr.gdf.shape[0])
         rem_centr = Centroids.remove_duplicate_points(centr)
@@ -151,7 +148,7 @@ class TestVector(unittest.TestCase):
     def test_append_pass(self):
         """Append points"""
         centr = self.centr
-        centr_bis = Centroids(latitude=np.array([1, 2, 3]), longitude=np.array([4, 5, 6]), crs=DEF_CRS)
+        centr_bis = Centroids(lat=np.array([1, 2, 3]), lon=np.array([4, 5, 6]), crs=DEF_CRS)
         with self.assertRaises(ValueError):
             #Different crs
             centr_bis.to_crs(ALT_CRS).append(centr)
@@ -168,9 +165,9 @@ class TestVector(unittest.TestCase):
     def test_equal_pass(self):
         """Test equal"""
         centr_list = [
-            Centroids(latitude=VEC_LAT, longitude=VEC_LON, crs=DEF_CRS),
-            Centroids(latitude=VEC_LAT, longitude=VEC_LON, crs=ALT_CRS),
-            Centroids(latitude=VEC_LAT+1, longitude=VEC_LON+1)
+            Centroids(lat=VEC_LAT, lon=VEC_LON, crs=DEF_CRS),
+            Centroids(lat=VEC_LAT, lon=VEC_LON, crs=ALT_CRS),
+            Centroids(lat=VEC_LAT+1, lon=VEC_LON+1)
         ]
         for centr1, centr2 in itertools.combinations(centr_list, 2):
             self.assertFalse(centr2 == centr1)
@@ -195,14 +192,14 @@ class TestRaster(unittest.TestCase):
 
     def test_ne_crs_geom_pass(self):
         """Test _ne_crs_geom"""
-        centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON, crs=ALT_CRS)
+        centr = Centroids(lat=VEC_LAT, lon=VEC_LON, crs=ALT_CRS)
         ne_geom = centr._ne_crs_geom()
         self.assertTrue(u_coord.equal_crs(ne_geom.crs, u_coord.NE_CRS))
 
     def test_region_id_pass(self):
         """Test set_dist_coast"""
         centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        centr_ras.set_region_id()
+        centr_ras._set_region_id()
         self.assertEqual(centr_ras.region_id.size, centr_ras.size)
         self.assertTrue(np.array_equal(np.unique(centr_ras.region_id), np.array([862])))
 
@@ -225,7 +222,7 @@ class TestRaster(unittest.TestCase):
     def test_on_land(self):
         """Test set_on_land"""
         centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        centr_ras.set_on_land()
+        centr_ras._set_on_land()
         self.assertTrue(np.array_equal(centr_ras.on_land, np.ones(60 * 50, bool)))
 
     def test_area_pass(self):
@@ -282,7 +279,7 @@ class TestRaster(unittest.TestCase):
                 self.assertEqual(centr_ras.lon[idx], x)
                 self.assertEqual(centr_ras.lat[idx], y)
 
-        centr_ras = Centroids(latitude=np.array([0, 0.2, 0.7]), longitude=np.array([-0.4, 0.2, 1.1]))
+        centr_ras = Centroids(lat=np.array([0, 0.2, 0.7]), lon=np.array([-0.4, 0.2, 1.1]))
         x, y, idx = centr_ras.get_closest_point(0.1, 0.0)
         self.assertEqual(x, 0.2)
         self.assertEqual(y, 0.2)
@@ -306,7 +303,7 @@ class TestCentroids(unittest.TestCase):
 
     def test_centroids_check_pass(self):
         """Test vector data in Centroids"""
-        centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON, crs=ALT_CRS)
+        centr = Centroids(lat=VEC_LAT, lon=VEC_LON, crs=ALT_CRS)
 
         self.assertTrue(u_coord.equal_crs(centr.crs, CRS.from_user_input(ALT_CRS)))
         self.assertEqual(list(centr.total_bounds),
@@ -324,7 +321,7 @@ class TestCentroids(unittest.TestCase):
 class TestReader(unittest.TestCase):
     """Test Centroids setter vector and raster methods"""
     def setUp(self):
-        self.centr = Centroids(latitude=VEC_LAT,longitude=VEC_LON, crs=TEST_CRS)
+        self.centr = Centroids(lat=VEC_LAT,lon=VEC_LON, crs=TEST_CRS)
 
     def test_from_vector_file(self):
         """Test from_vector_file and values_from_vector_files"""
@@ -356,7 +353,7 @@ class TestCentroidsFuncs(unittest.TestCase):
         """Test Centroids.select method"""
         region_id = np.zeros(VEC_LAT.size)
         region_id[[2, 4]] = 10
-        centr = Centroids(latitude=VEC_LAT, longitude=VEC_LON, region_id=region_id)
+        centr = Centroids(lat=VEC_LAT, lon=VEC_LON, region_id=region_id)
 
         fil_centr = centr.select(reg_id=10)
         self.assertEqual(fil_centr.size, 2)
@@ -369,8 +366,8 @@ class TestCentroidsFuncs(unittest.TestCase):
     def test_select_extent_pass(self):
         """Test select extent"""
         centr = Centroids(
-            latitude=np.array([-5, -3, 0, 3, 5]),
-            longitude=np.array([-180, -175, -170, 170, 175]),
+            lat=np.array([-5, -3, 0, 3, 5]),
+            lon=np.array([-180, -175, -170, 170, 175]),
             region_id=np.zeros(5))
         ext_centr = centr.select(extent=[-175, -170, -5, 5])
         np.testing.assert_array_equal(ext_centr.lon, np.array([-175, -170]))
