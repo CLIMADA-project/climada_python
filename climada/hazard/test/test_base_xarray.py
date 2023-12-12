@@ -359,9 +359,8 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 
             # Now drop variable altogether, should raise an error
             ds = ds.drop_vars("time")
-            with self.assertRaises(RuntimeError) as cm:
+            with self.assertRaisesRegex(RuntimeError, "time"):
                 Hazard.from_xarray_raster(ds, "", "")
-            self.assertIn("time", str(cm.exception))
 
             # Expand time again
             ds = ds.expand_dims(time=[np.datetime64("2022-01-01")])
@@ -564,15 +563,13 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         self.assertIn("Unknown coordinates passed: '['bar']'.", str(cm.exception))
 
         # Correctly specified, but the custom dimension does not exist
-        with self.assertRaises(RuntimeError) as cm:
+        with self.assertRaisesRegex(RuntimeError, "lalalatitude"):
             Hazard.from_xarray_raster_file(
                 self.netcdf_path,
                 "",
                 "",
                 coordinate_vars=dict(latitude="lalalatitude"),
             )
-        self.assertIn("lalalatitude", str(cm.exception))
-
 
 # Execute Tests
 if __name__ == "__main__":
