@@ -88,7 +88,7 @@ class TestCentroids(unittest.TestCase):
             intensity=sparse.csr_matrix(np.array([0.11, 0.22, 0.33, 0.31])),
             fraction=sparse.csr_matrix(np.array([0, 1, 2, 3]) ),
             centroids=Centroids(
-                longitude=np.array([1, 2, 3, 3]), latitude=np.array([1, 2, 3, 1]), crs=DEF_CRS
+                lon=np.array([1, 2, 3, 3]), lat=np.array([1, 2, 3, 1]), crs=DEF_CRS
                 )
         )
 
@@ -135,7 +135,7 @@ class TestCentroids(unittest.TestCase):
             intensity=sparse.csr_matrix(np.array([-0.11, -0.22, -0.33, -0.31])),
             fraction=sparse.csr_matrix(np.array([0.11, 0.22, 0.33, 0.31])),
             centroids=Centroids(
-                longitude=np.array([1, 2, 3, 3]), latitude=np.array([1, 2, 3, 1]), crs=DEF_CRS
+                lon=np.array([1, 2, 3, 3]), lat=np.array([1, 2, 3, 1]), crs=DEF_CRS
                 )
         )
 

@@ -40,7 +40,7 @@ class TestCentroidsData(unittest.TestCase):
         # Creating Centroids with latitude and longitude arrays
         lat = np.array([10.0, 20.0, 30.0])
         lon = np.array([-10.0, -20.0, -30.0])
-        centroids = Centroids(latitude=lat, longitude=lon)
+        centroids = Centroids(lat=lat, lon=lon)
 
         # Checking attributes
         np.testing.assert_array_equal(centroids.lat, lat)
@@ -50,7 +50,7 @@ class TestCentroidsData(unittest.TestCase):
         # Creating Centroids with additional properties
         region_id = np.array([1, 2, 3])
         on_land = np.array([True, False, False])
-        centroids = Centroids(lat, lon, region_id=region_id, on_land=on_land)
+        centroids = Centroids(lat=lat, lon=lon, region_id=region_id, on_land=on_land)
 
         # Checking additional attributes
         np.testing.assert_array_equal(centroids.region_id, region_id)
@@ -61,7 +61,7 @@ class TestCentroidsData(unittest.TestCase):
         crs = 'epsg:32632'
         lat = np.array([-10, 0, 10])
         lon = np.array([-170, -150, -130])
-        centroids = Centroids(latitude=lat, longitude=lon, crs=crs)
+        centroids = Centroids(lat=lat, lon=lon, crs=crs)
 
         self.assertTrue(u_coord.equal_crs(centroids.crs, 'epsg:32632'))
 
@@ -76,7 +76,7 @@ class TestCentroidsData(unittest.TestCase):
         crs = 'epsg:4326'
         lat = np.array([-10, 0, 10])
         lon = np.array([-170, -150, -130])
-        centroids = Centroids(latitude=lat, longitude=lon, crs=crs)
+        centroids = Centroids(lat=lat, lon=lon, crs=crs)
 
         # Transforming to another CRS
         new_crs = 'epsg:3857'
@@ -213,10 +213,10 @@ class TestCentroidsWriter(unittest.TestCase):
 
     def test_read_write_hdf5(self):
         tmpfile = Path('test_write_hdf5.out.hdf5')
-        latitude = np.arange(0,10)
-        longitude = np.arange(-10,0)
+        lat = np.arange(0,10)
+        lon = np.arange(-10,0)
         crs = DEF_CRS
-        centroids_w = Centroids(latitude=latitude, longitude=longitude, crs=crs)
+        centroids_w = Centroids(lat=lat, lon=lon, crs=crs)
         centroids_w.write_hdf5(tmpfile)
         centroids_r = Centroids.from_hdf5(tmpfile)
         self.assertTrue(centroids_w == centroids_r)
@@ -228,14 +228,14 @@ class TestCentroidsMethods(unittest.TestCase):
     def test_union(self):
         lat, lon = np.array([0, 1]), np.array([0, -1])
         on_land = np.array([True, True])
-        cent1 = Centroids(latitude=lat, longitude=lon, on_land=on_land)
+        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
 
         lat2, lon2 = np.array([2, 3]), np.array([-2, 3])
         on_land2 = np.array([False, False])
-        cent2 = Centroids(latitude=lat2, longitude=lon2, on_land=on_land2)
+        cent2 = Centroids(lat=lat2, lon=lon2, on_land=on_land2)
 
         lat3, lon3 = np.array([-1, -2]), np.array([1, 2])
-        cent3 = Centroids(latitude=lat3,longitude=lon3)
+        cent3 = Centroids(lat=lat3,lon=lon3)
 
         cent = cent1.union(cent2)
         np.testing.assert_array_equal(cent.lat, [0, 1, 2, 3])
@@ -269,7 +269,7 @@ class TestCentroidsMethods(unittest.TestCase):
         # Create centroids with specified resolution
         lon = np.array([-10.0, -20.0, -30.0])
         lat = np.array([10.0, 20.0, 30.0])
-        centroids = Centroids(latitude=lat, longitude=lon, crs=DEF_CRS)
+        centroids = Centroids(lat=lat, lon=lon, crs=DEF_CRS)
 
         # Get metadata
         meta = centroids.get_meta()

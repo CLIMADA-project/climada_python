@@ -557,8 +557,7 @@ class StormEurope(Hazard):
         if create_meshgrid:
             lats, lons = np.array([np.repeat(lats, len(lons)),
                                    np.tile(lons, len(lats))])
-        cent = Centroids(latitude=lats, longitude=lons)
-        cent.set_on_land()
+        cent = Centroids(lat=lats, lon=lons, on_land='naturel_earth')
 
         return cent
 
@@ -774,7 +773,7 @@ class StormEurope(Hazard):
         """
         # bool vector selecting the targeted centroids
         if reg_id is not None:
-            self.centroids.set_region_id(overwrite=False)
+            self.centroids._set_region_id(overwrite=False)
             if not isinstance(reg_id, list):
                 reg_id = [reg_id]
             sel_cen = np.isin(self.centroids.region_id, reg_id)

@@ -22,7 +22,7 @@ Define Centroids class.
 import copy
 import logging
 from pathlib import Path
-from typing import Optional
+from typing import Union
 import warnings
 
 import h5py
@@ -48,8 +48,8 @@ DEF_VAR_EXCEL = {
     'sheet_name': 'centroids',
     'col_name': {
         'region_id': 'region_id',
-        'lat': 'latitude',
-        'lon': 'longitude',
+        'latitude': 'lat',
+        'longitude': 'lon',
         'on_land': 'on_land',
         'dist_coast': 'dist_coast',
         'elevation': 'elevation',
@@ -90,12 +90,12 @@ class Centroids():
 
     def __init__(
         self,
-        longitude: np.ndarray,
-        latitude: np.ndarray,
+        *,
+        lat: Union[np.ndarray, list],
+        lon: Union[np.ndarray, list],
         crs: str = DEF_CRS,
-        region_id: Optional[np.ndarray] = None,
-        on_land: Optional[np.ndarray] = None,
-        **kwargs
+        region_id: Union[str('country'), None, np.ndarray, list] = None,
+        on_land: Union[str('natural_earth'), None, np.ndarray, list] = None,
     ):
         """Initialization
 
@@ -114,14 +114,20 @@ class Centroids():
         kwargs:
             columns of values to passed to the geodataframe constructor
         """
+
         attr_dict = {
-            'geometry': gpd.points_from_xy(longitude, latitude, crs=crs),
+            'geometry': gpd.points_from_xy(lon, lat, crs=crs),
             'region_id': region_id,
             'on_land': on_land
         }
-        if kwargs:
-            attr_dict = dict(**attr_dict, **kwargs)
         self.gdf = gpd.GeoDataFrame(data=attr_dict)
+
+        if isinstance(region_id, str):
+            if region_id == 'admin0':
+                self._set_region_id(level='country')
+        if isinstance(on_land, str):
+            if on_land== 'country':
+                self._set_on_land(source='natural_earth')
 
     @property
     def lat(self):
@@ -239,7 +245,7 @@ class Centroids():
 
         # This is a bit ugly, but avoids to recompute the geometries
         # in the init. For large datasets this saves computation time
-        centroids = cls(latitude=[1], longitude=[1]) #make "empty" centroids
+        centroids = cls(lat=[1], lon=[1]) #make "empty" centroids
         centroids.gdf = gdf
         if not gdf.crs:
             centroids.gdf.set_crs(DEF_CRS, inplace=True)
@@ -278,8 +284,8 @@ class Centroids():
         if 'latitude' in exposures.gdf.columns and 'longitude' in exposures.gdf.columns:
             gdf = exposures.gdf[col_names]
             return cls(
-                latitude = exposures.gdf['latitude'],
-                longitude = exposures.gdf['longitude'],
+                lat = exposures.gdf['latitude'],
+                lon = exposures.gdf['longitude'],
                 crs = exposures.crs,
                 **dict(gdf.items())
             )
@@ -306,7 +312,7 @@ class Centroids():
         """
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
         x_grid, y_grid = u_coord.raster_to_meshgrid(ras_trans, cols, rows)
-        return cls(latitude=y_grid.flatten(), longitude=x_grid.flatten(), crs=crs)
+        return cls(lat=y_grid.flatten(), lon=x_grid.flatten(), crs=crs)
 
     def append(self, centr):
         """Append centroids points.
@@ -375,31 +381,6 @@ class Centroids():
         close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
         return self.lon[close_idx], self.lat[close_idx], close_idx
 
-    def set_region_id(self, level='country', overwrite=False):
-        """Set region_id as country ISO numeric code attribute for every pixel or point.
-
-        Parameters
-        ----------
-        level: str
-            defines the admin level on which to assign centroids. Currently
-            only 'country' (admin0) is implemented. Default is 'country'.
-        overwrite : bool
-            if True, overwrites the existing region_id information.
-            if False and region_id is None region_id is computed.
-        """
-        if overwrite or self.region_id is None:
-            LOGGER.debug('Setting region_id %s points.', str(self.size))
-            if level == 'country':
-                ne_geom = self._ne_crs_geom()
-                self.gdf['region_id'] = u_coord.get_country_code(
-                    ne_geom.y.values, ne_geom.x.values
-                    )
-            else:
-                raise NotImplementedError(
-                    'The region id can only be assigned for countries so far'
-                    )
-
-
     # NOT REALLY AN ELEVATION FUNCTION, JUST READ RASTER
     def get_elevation(self, topo_path):
         """Return elevation attribute for every pixel or point in meters.
@@ -429,22 +410,6 @@ class Centroids():
         else:
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
             return u_coord.dist_to_coast(ne_geom, signed=signed)
-
-    def set_on_land(self, overwrite=False):
-        """Set on_land attribute for every pixel or point.
-
-        Parameters
-        ----------
-        overwrite : bool
-            if True, overwrites the existing on_land information.
-            if False and on_land is None on_land is computed.
-        """
-        if overwrite or self.on_land is None:
-            LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
-            ne_geom = self._ne_crs_geom()
-            self.gdf['on_land'] = u_coord.coord_on_land(
-                ne_geom.y.values, ne_geom.x.values
-            )
 
     @classmethod
     def remove_duplicate_points(cls, centroids):
@@ -634,8 +599,8 @@ class Centroids():
             transform, width, height, resampling)
         lat, lon = _meta_to_lat_lon(meta)
         if return_meta:
-            return cls(longitude=lon, latitude=lat, crs=meta['crs']), meta
-        return cls(longitude=lon, latitude=lat, crs=meta['crs'])
+            return cls(lon=lon, lat=lat, crs=meta['crs']), meta
+        return cls(lon=lon, lat=lat, crs=meta['crs'])
 
     @classmethod
     def from_meta(cls, meta):
@@ -653,7 +618,7 @@ class Centroids():
         """
         crs = meta['crs']
         lat, lon = _meta_to_lat_lon(meta)
-        return cls(longitude=lon, latitude=lat, crs=crs)
+        return cls(lon=lon, lat=lat, crs=crs)
 
     @classmethod
     def from_vector_file(cls, file_name, dst_crs=None):
@@ -739,10 +704,17 @@ class Centroids():
             assert 'sheet_name' in var_names, 'sheet_name must be a key in the var_names dict'
             assert 'col_name' in var_names, 'col_name must be a key in the var_names dict'
 
-        data = pd.read_excel(file_path, var_names['sheet_name']).rename(
-            columns=var_names['col_name']
-        )
-        return cls(**dict(data.items()), crs=crs)
+        data = pd.read_excel(file_path, var_names['sheet_name'])
+        data = data.rename(columns=var_names['col_name'])
+        if 'region_id' in data.columns:
+            region_id = data['region_id']
+        else:
+            region_id = None
+        if 'on_land' in data.columns:
+            on_land = data['on_land']
+        else:
+            on_land = None
+        return cls(lat=data['lat'], lon=data['lon'], region_id=region_id, on_land=on_land, crs=crs)
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
@@ -881,6 +853,59 @@ class Centroids():
             'transform': ras_trans,
         }
         return meta
+
+    def _set_region_id(self, level='country', overwrite=False):
+        """Set region_id as country ISO numeric code attribute for every pixel or point.
+
+        Parameters
+        ----------
+        level: str
+            defines the admin level on which to assign centroids. Currently
+            only 'country' (admin0) is implemented. Default is 'country'.
+        overwrite : bool
+            if True, overwrites the existing region_id information.
+            if False and region_id is None region_id is computed.
+        """
+        if overwrite or self.region_id is None:
+            LOGGER.debug('Setting region_id %s points.', str(self.size))
+            if level == 'country':
+                ne_geom = self._ne_crs_geom()
+                self.gdf['region_id'] = u_coord.get_country_code(
+                    ne_geom.y.values, ne_geom.x.values
+                    )
+            else:
+                raise NotImplementedError(
+                    'The region id can only be assigned for countries so far'
+                    )
+
+    def _set_on_land(self, source='natural_earth', overwrite=False):
+        """Set on_land attribute for every pixel or point.
+
+        natural_earth: https://www.naturalearthdata.com/
+
+        Parameters
+        ----------
+        source: str
+            defines the source of the coastlines. Currently
+            only 'natural_earth' is implemented.
+            Default is 'natural_earth'.
+        overwrite : bool
+            if True, overwrites the existing on_land information.
+            if False and on_land is None on_land is computed.
+        """
+        if overwrite or self.on_land is None:
+            LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
+            if source=='natural_earth':
+                ne_geom = self._ne_crs_geom()
+                self.gdf['on_land'] = u_coord.coord_on_land(
+                    ne_geom.y.values, ne_geom.x.values
+                )
+            else:
+                raise NotImplementedError(
+                    'The on land variables can only be assigned'
+                    'using natural earth.'
+                    )
+
 
 def _meta_to_lat_lon(meta):
     """Compute lat and lon of every pixel center from meta raster.

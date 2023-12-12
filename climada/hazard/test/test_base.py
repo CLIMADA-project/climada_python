@@ -63,7 +63,7 @@ def dummy_hazard():
         intensity=intensity,
         fraction=fraction,
         centroids=Centroids(
-            latitude=np.array([1, 3, 5]), longitude=np.array([2, 4, 6])),
+            lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6])),
         event_id=np.array([1, 2, 3, 4]),
         event_name=['ev1', 'ev2', 'ev3', 'ev4'],
         date=np.array([1, 2, 3, 4]),
@@ -79,8 +79,8 @@ class TestLoader(unittest.TestCase):
     def setUp(self):
         """Test fixure: Build a valid hazard"""
         centroids = Centroids(
-            latitude=np.array([1, 3]),
-            longitude=np.array([2, 3]),
+            lat=np.array([1, 3]),
+            lon=np.array([2, 3]),
             region_id = np.array([1, 2])
             )
         self.hazard = Hazard(
@@ -240,7 +240,7 @@ class TestRemoveDupl(unittest.TestCase):
         duplicate events, initial events are obtained with 0 intensity and
         fraction in new appended centroids."""
         haz1 = dummy_hazard()
-        centroids = Centroids(latitude=np.array([7, 9, 11]), longitude=np.array([8, 10, 12]))
+        centroids = Centroids(lat=np.array([7, 9, 11]), lon=np.array([8, 10, 12]))
         fraction = sparse.csr_matrix([[0.22, 0.32, 0.44],
                                       [0.11, 0.11, 0.11],
                                       [0.32, 0.11, 0.99],
@@ -718,7 +718,7 @@ class TestAppend(unittest.TestCase):
                       date=np.ones((4,)),
                       orig=np.ones((4,)),
                       centroids=Centroids(
-                          latitude=np.array([7, 9, 11]), longitude=np.array([8, 10, 12])),
+                          lat=np.array([7, 9, 11]), lon=np.array([8, 10, 12])),
                       event_id=np.array([5, 6, 7, 8]),
                       event_name=['ev5', 'ev6', 'ev7', 'ev8'],
                       frequency=np.array([0.9, 0.75, 0.75, 0.22]),
@@ -769,7 +769,7 @@ class TestAppend(unittest.TestCase):
                                        [9.33, 9.22, 1.77]])
         haz2 = Hazard('TC',
                       centroids=Centroids(
-                         latitude=np.array([7, 9, 11]), longitude=np.array([8, 10, 12])),
+                         lat=np.array([7, 9, 11]), lon=np.array([8, 10, 12])),
                       event_id=haz1.event_id,
                       event_name=haz1.event_name.copy(),
                       frequency=haz1.frequency,
@@ -816,7 +816,7 @@ class TestAppend(unittest.TestCase):
 
         haz_1 = Hazard("TC",
                        centroids=Centroids(
-                           latitude=np.array([1, 3, 5]), longitude=np.array([2, 4, 6])),
+                           lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6])),
                        event_id=np.array([1]),
                        event_name=['ev1'],
                        date=np.array([1]),
@@ -828,7 +828,7 @@ class TestAppend(unittest.TestCase):
                        units='m/s')
 
         haz_2 = Hazard("TC",
-                       centroids=Centroids(latitude=np.array([1, 3, 5]), longitude=np.array([2, 4, 6])),
+                       centroids=Centroids(lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6])),
                        event_id=np.array([1]),
                        event_name=['ev2'],
                        date=np.array([2]),
@@ -894,7 +894,7 @@ class TestAppend(unittest.TestCase):
         """Set new centroids for hazard"""
         lat, lon = np.array([0, 1]), np.array([0, -1])
         on_land = np.array([True, True])
-        cent1 = Centroids(latitude=lat, longitude=lon, on_land=on_land)
+        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
 
         haz_1 = Hazard('TC',
                        centroids=cent1,
@@ -910,7 +910,7 @@ class TestAppend(unittest.TestCase):
 
         lat2, lon2 = np.array([0, 1, 3]), np.array([0, -1, 3])
         on_land2 = np.array([True, True, False])
-        cent2 = Centroids(latitude=lat2, longitude=lon2, on_land=on_land2)
+        cent2 = Centroids(lat=lat2, lon=lon2, on_land=on_land2)
 
         haz_2 = haz_1.change_centroids(cent2)
 
@@ -925,7 +925,7 @@ class TestAppend(unittest.TestCase):
         """Test error for projection"""
         lat3, lon3 = np.array([0.5, 3, 1]), np.array([-0.5, 3, 1])
         on_land3 = np.array([True, True, False])
-        cent3 = Centroids(latitude=lat3, longitude=lon3, on_land=on_land3)
+        cent3 = Centroids(lat=lat3, lon=lon3, on_land=on_land3)
 
         with self.assertRaises(ValueError) as cm:
             haz_1.change_centroids(cent3, threshold=100)
@@ -936,7 +936,7 @@ class TestAppend(unittest.TestCase):
         """Set new centroids for hazard"""
         lat, lon = np.array([0, 1]), np.array([0, -1])
         on_land = np.array([True, True])
-        cent1 = Centroids(latitude=lat, longitude=lon, on_land=on_land)
+        cent1 = Centroids(lat=lat, lon=lon, on_land=on_land)
 
         haz_1 = Hazard('TC',
                        centroids=cent1,
@@ -1119,7 +1119,7 @@ class TestCentroids(unittest.TestCase):
                         intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
                         fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
                         centroids=Centroids(
-                            latitude=np.array([1, 2, 3]), longitude=np.array([1, 2, 3])),)
+                            lat=np.array([1, 2, 3]), lon=np.array([1, 2, 3])),)
         haz_fl.check()
 
         haz_fl.reproject_vector(dst_crs='epsg:2202')
