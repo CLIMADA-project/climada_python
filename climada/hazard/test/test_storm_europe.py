@@ -86,7 +86,9 @@ class TestReader(unittest.TestCase):
 
         storms.set_ssi(method='dawkins')
         ssi_dawg = np.asarray([1.44573572e+09, 6.16173724e+08])
-        np.testing.assert_array_almost_equal(storms.ssi, ssi_dawg)
+        self.assertTrue(
+            np.allclose(storms.ssi, ssi_dawg)
+        )
 
         storms.set_ssi(method='wisc_gust')
         ssi_gusty = np.asarray([1.42124571e+09, 5.86870673e+08])
