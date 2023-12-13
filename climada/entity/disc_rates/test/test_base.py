@@ -21,6 +21,8 @@ Test DiscRates class.
 import unittest
 import numpy as np
 import copy
+from pathlib import Path
+from tempfile import TemporaryDirectory
 
 from climada import CONFIG
 from climada.entity.disc_rates.base import DiscRates
@@ -216,19 +218,42 @@ class TestReaderMat(unittest.TestCase):
         self.assertEqual(disc_rate.rates.max(), 0.02)
 
 
-class TestWriter(unittest.TestCase):
-    """Test excel reader for discount rates"""
+class TestWriteRead(unittest.TestCase):
+    """Test file write read cycle for discount rates"""
 
-    def test_write_read_pass(self):
+    @classmethod
+    def setUpClass(cls):
+        cls._td = TemporaryDirectory()
+        cls.tempdir = Path(cls._td.name)
+
+    @classmethod
+    def tearDownClass(cls):
+        cls._td.cleanup()
+
+    def test_write_read_excel_pass(self):
         """Read demo excel file."""
         years = np.arange(1950, 2150)
         rates = np.ones(years.size) * 0.03
         disc_rate = DiscRates(years=years, rates=rates)
 
-        file_name = CONFIG.disc_rates.test_data.dir().joinpath('test_disc.xlsx')
+        file_name = self.tempdir.joinpath('test_disc.xlsx')
         disc_rate.write_excel(file_name)
 
         disc_read = DiscRates.from_excel(file_name)
+
+        self.assertTrue(np.array_equal(disc_read.years, disc_rate.years))
+        self.assertTrue(np.array_equal(disc_read.rates, disc_rate.rates))
+
+    def test_write_read_csv_pass(self):
+        """Write and read csv file."""
+        years = np.arange(1950, 2150)
+        rates = np.ones(years.size) * 0.03
+        disc_rate = DiscRates(years=years, rates=rates)
+
+        file_name = self.tempdir.joinpath('test_disc.csv')
+        disc_rate.write_csv(file_name)
+
+        disc_read = DiscRates.from_csv(file_name)
 
         self.assertTrue(np.array_equal(disc_read.years, disc_rate.years))
         self.assertTrue(np.array_equal(disc_read.rates, disc_rate.rates))
@@ -243,5 +268,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestNetPresValue))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderMat))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriter))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestWriteRead))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
