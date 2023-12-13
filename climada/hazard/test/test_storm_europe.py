@@ -29,7 +29,6 @@ from climada import CONFIG
 from climada.hazard.storm_europe import StormEurope, generate_WS_forecast_hazard
 from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
 from climada.util.constants import WS_DEMO_NC
-from climada.util.api_client import Client
 
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
@@ -87,9 +86,7 @@ class TestReader(unittest.TestCase):
 
         storms.set_ssi(method='dawkins')
         ssi_dawg = np.asarray([1.44573572e+09, 6.16173724e+08])
-        self.assertTrue(
-            np.allclose(storms.ssi, ssi_dawg)
-        )
+        np.testing.assert_array_almost_equal(storms.ssi, ssi_dawg)
 
         storms.set_ssi(method='wisc_gust')
         ssi_gusty = np.asarray([1.42124571e+09, 5.86870673e+08])
