@@ -103,11 +103,27 @@ class TestVector(unittest.TestCase):
             REGION_ID
         )
 
+        centroids = Centroids(
+            lat=VEC_LAT, lon=VEC_LON, region_id='country'
+            )
+        np.testing.assert_array_equal(
+            centroids.region_id,
+            REGION_ID
+        )
+
     def test_on_land(self):
         """Test set_on_land"""
         self.centr._set_on_land()
         np.testing.assert_array_equal(
             self.centr.on_land,
+            ON_LAND
+        )
+
+        centroids = Centroids(
+            lat=VEC_LAT, lon=VEC_LON, on_land='natural_earth'
+            )
+        np.testing.assert_array_equal(
+            centroids.on_land,
             ON_LAND
         )
 

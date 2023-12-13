@@ -123,11 +123,11 @@ class Centroids():
         self.gdf = gpd.GeoDataFrame(data=attr_dict)
 
         if isinstance(region_id, str):
-            if region_id == 'admin0':
-                self._set_region_id(level='country')
+            LOGGER.info(f'Setting region id to {region_id} level.')
+            self._set_region_id(level=region_id, overwrite=True)
         if isinstance(on_land, str):
-            if on_land== 'country':
-                self._set_on_land(source='natural_earth')
+            LOGGER.info(f'Setting on land from {on_land} source.')
+            self._set_on_land(source=on_land, overwrite=True)
 
     @property
     def lat(self):
