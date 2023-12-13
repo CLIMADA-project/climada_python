@@ -359,58 +359,6 @@ class Centroids():
         # remove duplicate points
         return Centroids.remove_duplicate_points(centroids)
 
-    def get_closest_point(self, x_lon, y_lat):
-        """Returns closest centroid and its index to a given point.
-
-        Parameters
-        ----------
-        x_lon : float
-            x coord (lon)
-        y_lat : float
-            y coord (lat)
-
-        Returns
-        -------
-        x_close : float
-            x-coordinate (longitude) of closest centroid.
-        y_close : float
-            y-coordinate (latitude) of closest centroids.
-        idx_close : int
-            Index of centroid in internal ordering of centroids.
-        """
-        close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
-        return self.lon[close_idx], self.lat[close_idx], close_idx
-
-    # NOT REALLY AN ELEVATION FUNCTION, JUST READ RASTER
-    def get_elevation(self, topo_path):
-        """Return elevation attribute for every pixel or point in meters.
-
-        Parameters
-        ----------
-        topo_path : str
-            Path to a raster file containing gridded elevation data.
-        """
-        return u_coord.read_raster_sample(topo_path, self.lat, self.lon)
-
-    def get_dist_coast(self, signed=False, precomputed=False):
-        """Get dist_coast attribute for every pixel or point in meters.
-
-        Parameters
-        ----------
-        signed : bool
-            If True, use signed distances (positive off shore and negative on land). Default: False.
-        precomputed : bool
-            If True, use precomputed distances (from NASA). Works only for crs=epsg:4326
-            Default: False.
-        """
-        ne_geom = self._ne_crs_geom()
-        if precomputed:
-            return u_coord.dist_to_coast_nasa(
-                ne_geom.y.values, ne_geom.x.values, highres=True, signed=signed)
-        else:
-            LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
-            return u_coord.dist_to_coast(ne_geom, signed=signed)
-
     @classmethod
     def remove_duplicate_points(cls, centroids):
         """Return a copy of centroids with removed duplicated points
@@ -491,7 +439,7 @@ class Centroids():
         return sel_cen
 
     #TODO replace with nice Geodataframe util plot method.
-    def plot(self, ax=None, figsize=(9, 13), latlon_bounds_buffer=0.0, **kwargs):
+    def plot(self, ax=None, figsize=(9, 13), latlon_bounds_buffer=0.0, shapes=True, **kwargs):
         """Plot centroids scatter points over earth.
 
         Parameters
@@ -523,7 +471,9 @@ class Centroids():
         else:
             self.gdf.copy().to_crs(proj_plot).plot(figsize=figsize, **kwargs)
 
-        u_plot.add_shapes(ax)
+        if shapes:
+            u_plot.add_shapes(ax)
+
         plt.tight_layout()
         return ax
 
@@ -552,6 +502,89 @@ class Centroids():
         else:
             area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
         return area_pixel
+
+    def get_closest_point(self, x_lon, y_lat):
+        """Returns closest centroid and its index to a given point.
+
+        Parameters
+        ----------
+        x_lon : float
+            x coord (lon)
+        y_lat : float
+            y coord (lat)
+
+        Returns
+        -------
+        x_close : float
+            x-coordinate (longitude) of closest centroid.
+        y_close : float
+            y-coordinate (latitude) of closest centroids.
+        idx_close : int
+            Index of centroid in internal ordering of centroids.
+        """
+        close_idx = self.geometry.distance(Point(x_lon, y_lat)).values.argmin()
+        return self.lon[close_idx], self.lat[close_idx], close_idx
+
+    # NOT REALLY AN ELEVATION FUNCTION, JUST READ RASTER
+    def get_elevation(self, topo_path):
+        """Return elevation attribute for every pixel or point in meters.
+
+        Parameters
+        ----------
+        topo_path : str
+            Path to a raster file containing gridded elevation data.
+        """
+        return u_coord.read_raster_sample(topo_path, self.lat, self.lon)
+
+    def get_dist_coast(self, signed=False, precomputed=False):
+        """Get dist_coast attribute for every pixel or point in meters.
+
+        Parameters
+        ----------
+        signed : bool
+            If True, use signed distances (positive off shore and negative on land). Default: False.
+        precomputed : bool
+            If True, use precomputed distances (from NASA). Works only for crs=epsg:4326
+            Default: False.
+        """
+        ne_geom = self._ne_crs_geom()
+        if precomputed:
+            return u_coord.dist_to_coast_nasa(
+                ne_geom.y.values, ne_geom.x.values, highres=True, signed=signed)
+        else:
+            LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
+            return u_coord.dist_to_coast(ne_geom, signed=signed)
+    def get_meta(self, resolution=None):
+        """
+        Returns a meta raster based on the centroids bounds.
+
+        When resolution is None it is estimated from the centroids
+        by assuming that they form a regular raster.
+
+        Parameters
+        ----------
+        resolution : int, optional
+            Resolution of the raster.
+            By default None (resolution is estimated from centroids)
+
+        Returns
+        -------
+        meta: dict
+            meta raster representation of the centroids
+        """
+        if resolution is None:
+            resolution = np.abs(u_coord.get_resolution(self.lat, self.lon)).min()
+        xmin, ymin, xmax, ymax = self.gdf.total_bounds
+        rows, cols, ras_trans = u_coord.pts_to_raster_meta(
+            (xmin, ymin, xmax, ymax), (resolution, -resolution)
+            )
+        meta = {
+            'crs': self.crs,
+            'height': rows,
+            'width': cols,
+            'transform': ras_trans,
+        }
+        return meta
 
 
     '''
@@ -810,6 +843,10 @@ class Centroids():
             geometry=gpd.points_from_xy(x=longitude, y=latitude, crs=crs)
         )
 
+    '''
+    Private methods
+    '''
+
 
     def _ne_crs_geom(self):
         """Return `geometry` attribute in the CRS of Natural Earth.
@@ -821,38 +858,6 @@ class Centroids():
         if u_coord.equal_crs(self.gdf.crs, u_coord.NE_CRS):
             return self.gdf.geometry
         return self.gdf.geometry.to_crs(u_coord.NE_CRS)
-
-    def get_meta(self, resolution=None):
-        """
-        Returns a meta raster based on the centroids bounds.
-
-        When resolution is None it is estimated from the centroids
-        by assuming that they form a regular raster.
-
-        Parameters
-        ----------
-        resolution : int, optional
-            Resolution of the raster.
-            By default None (resolution is estimated from centroids)
-
-        Returns
-        -------
-        meta: dict
-            meta raster representation of the centroids
-        """
-        if resolution is None:
-            resolution = np.abs(u_coord.get_resolution(self.lat, self.lon)).min()
-        xmin, ymin, xmax, ymax = self.gdf.total_bounds
-        rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-            (xmin, ymin, xmax, ymax), (resolution, -resolution)
-            )
-        meta = {
-            'crs': self.crs,
-            'height': rows,
-            'width': cols,
-            'transform': ras_trans,
-        }
-        return meta
 
     def _set_region_id(self, level='country', overwrite=False):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
