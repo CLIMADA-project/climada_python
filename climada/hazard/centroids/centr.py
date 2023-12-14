@@ -83,9 +83,6 @@ class Centroids():
         (can be any values, admin0, admin1, custom values)
     on_land : np.array, optional
         on land (True) and on sea (False)
-    kwargs: dicts of np.arrays, optional
-        any further desired properties of centroids. Is passed to the
-        GeoDataFrame constructor
     """
 
     def __init__(
@@ -111,8 +108,6 @@ class Centroids():
             country region code of size size, Defaults to None array
         on_land : np.array, optional
             on land (True) and on sea (False) of size size. Defaults to None array
-        kwargs:
-            columns of values to passed to the geodataframe constructor
         """
 
         attr_dict = {
@@ -131,12 +126,12 @@ class Centroids():
 
     @property
     def lat(self):
-        """ Returns the latitudes """
+        """ Return latitudes """
         return self.gdf.geometry.y.values
 
     @property
     def lon(self):
-        """ Returns the longitudes """
+        """ Return longitudes """
         return self.gdf.geometry.x.values
 
     @property
@@ -153,7 +148,7 @@ class Centroids():
 
     @property
     def region_id(self):
-        """ Get the assigned region_id."""
+        """ Get the assigned region_id """
         if self.gdf.region_id.isna().all():
             return None
         return self.gdf['region_id'].values
@@ -170,7 +165,7 @@ class Centroids():
 
     @property
     def shape(self):
-        """Get shape assuming rastered data."""
+        """Get shape [lat, lon] assuming rastered data."""
         return (np.unique(self.lat).size, np.unique(self.lon).size)
 
     @property
@@ -198,15 +193,13 @@ class Centroids():
         return self.gdf.equals(other.gdf) & u_coord.equal_crs(self.crs, other.crs)
 
     def to_default_crs(self):
-        """
-        Project the current centroids to the default CRS (epsg4326)
+        """Project the current centroids to the default CRS (epsg4326)
         Modifies the object in place.
         """
         self.gdf.to_crs(DEF_CRS, inplace=True)
 
     def to_crs(self, crs):
-        """
-        Project the current centroids to the default CRS (epsg4326)
+        """ Project the current centroids to the default CRS (epsg4326)
         Modifies the object in place.
 
         Parameters
@@ -253,8 +246,7 @@ class Centroids():
 
     @classmethod
     def from_exposures(cls, exposures):
-        """
-        Generate centroids from the location of an exposures.
+        """Generate centroids from the location of an exposures.
 
         Parameters
         ----------
@@ -336,8 +328,7 @@ class Centroids():
         self.gdf = pd.concat([self.gdf, centr.gdf])
 
     def union(self, *others):
-        """
-        Create the union of centroids from the inputs.
+        """Create the union of centroids from the inputs.
         The centroids are combined together point by point.
         All centroids must have the same CRS.
 
@@ -371,18 +362,19 @@ class Centroids():
         return cls.from_geodataframe(centroids.gdf.drop_duplicates())
 
     def select(self, reg_id=None, extent=None, sel_cen=None):
-        """Return Centroids with points in the given reg_id or within mask
+        """Return Centroids with points in the given reg_id and/or in an 
+        spatial extent and/or in an index based list
 
         Parameters
         ----------
-        reg_id : int
+        reg_id : int, optional
             region to filter according to region_id values
-        extent : tuple
+        extent : tuple, optional
             Format (min_lon, max_lon, min_lat, max_lat) tuple.
             If min_lon > lon_max, the extend crosses the antimeridian and is
             [lon_max, 180] + [-180, lon_min]
             Borders are inclusive.
-        sel_cen : np.array
+        sel_cen : np.array, optional
             1-dim mask or 1-dim centroids indices, complements reg_id and extent
 
         Returns
@@ -402,16 +394,15 @@ class Centroids():
 
 
     def select_mask(self, sel_cen=None, reg_id=None, extent=None):
-        """
-        Make mask of selected centroids
+        """Return mask of selected centroids
 
         Parameters
         ----------
-        sel_cen: np.array(bool)
+        sel_cen: np.array(bool), optional
             boolean array mask for centroids
-        reg_id : int
+        reg_id : int, optional
             region to filter according to region_id values
-        extent : tuple
+        extent : tuple, optional
             Format (min_lon, max_lon, min_lat, max_lat) tuple.
             If min_lon > lon_max, the extend crosses the antimeridian and is
             [lon_max, 180] + [-180, lon_min]
@@ -440,7 +431,7 @@ class Centroids():
 
     #TODO replace with nice Geodataframe util plot method.
     def plot(self, ax=None, figsize=(9, 13), latlon_bounds_buffer=0.0, shapes=True, **kwargs):
-        """Plot centroids scatter points over earth.
+        """Plot centroids scatter points over earth
 
         Parameters
         ----------
@@ -533,6 +524,11 @@ class Centroids():
         ----------
         topo_path : str
             Path to a raster file containing gridded elevation data.
+
+        Returns
+        -------
+        values : np.array of shape (npoints,)
+            Interpolated elevation values from raster file for each given coordinate point.
         """
         return u_coord.read_raster_sample(topo_path, self.lat, self.lon)
 
@@ -541,11 +537,16 @@ class Centroids():
 
         Parameters
         ----------
-        signed : bool
+        signed : bool, optional
             If True, use signed distances (positive off shore and negative on land). Default: False.
-        precomputed : bool
+        precomputed : bool, optional
             If True, use precomputed distances (from NASA). Works only for crs=epsg:4326
             Default: False.
+
+        Returns
+        -------
+        dist : np.array
+            (Signed) distance to coast in meters.
         """
         ne_geom = self._ne_crs_geom()
         if precomputed:
@@ -554,9 +555,9 @@ class Centroids():
         else:
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
             return u_coord.dist_to_coast(ne_geom, signed=signed)
+        
     def get_meta(self, resolution=None):
-        """
-        Returns a meta raster based on the centroids bounds.
+        """Returns a meta raster based on the centroids bounds.
 
         When resolution is None it is estimated from the centroids
         by assuming that they form a regular raster.
@@ -621,6 +622,8 @@ class Centroids():
         resampling : rasterio.warp.Resampling optional
             resampling function used for reprojection to dst_crs,
             default: nearest
+        return_meta : bool, optional
+            default: False
 
         Returns
         -------
@@ -718,7 +721,7 @@ class Centroids():
         crs : dict() or rasterio.crs.CRS, optional
             CRS. Default: DEF_CRS
         var_names : dict, default
-            name of the variables
+            name of the variables. Default: DEF_VAR_EXCEL
 
         Raises
         ------
@@ -867,7 +870,7 @@ class Centroids():
         level: str
             defines the admin level on which to assign centroids. Currently
             only 'country' (admin0) is implemented. Default is 'country'.
-        overwrite : bool
+        overwrite : bool, optional
             if True, overwrites the existing region_id information.
             if False and region_id is None region_id is computed.
         """
@@ -922,7 +925,7 @@ def _meta_to_lat_lon(meta):
 
     Returns
     -------
-    (np.ndarray, np.ndarray)
+    tuple(np.ndarray, np.ndarray)
         latitudes, longitudes
     """
     xgrid, ygrid = u_coord.raster_to_meshgrid(
