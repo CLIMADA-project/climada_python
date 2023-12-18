@@ -58,12 +58,6 @@ DEF_VAR_EXCEL = {
 }
 """Excel variable names"""
 
-DEF_VAR_CSV = {
-    'lat': 'latitude',
-    'lon': 'longitude',
-}
-"""CSV variable names"""
-
 LOGGER = logging.getLogger(__name__)
 
 
