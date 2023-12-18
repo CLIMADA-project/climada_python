@@ -682,9 +682,8 @@ class Centroids():
                 centroids.gdf.set_crs(dst_crs, inplace=True)
         return centroids
 
-    #TODO: Check whether other variables are necessary, e.g. dist to coast
     @classmethod
-    def from_csv(cls, file_path, crs=DEF_CRS, var_names=None):
+    def from_csv(cls, file_path):
         """
         Generate centroids from a csv file with column names in var_names.
 
@@ -692,22 +691,27 @@ class Centroids():
         ----------
         file_path : str
             path to csv file to be read
-        crs : dict() or rasterio.crs.CRS, optional
-            CRS. Default: DEF_CRS
-        var_names : dict, default
-            name of the variables. Default: DEF_VAR_CSV
 
         Returns
         -------
         Centroids
             Centroids with data from the given csv file
         """
-        if var_names is None:
-            var_names = DEF_VAR_CSV
 
         df = pd.read_csv(file_path)
-        df = df.rename(columns=var_names)
-        return cls(**dict(df.items()), crs=crs)
+        if 'crs' in df.columns:
+            crs = df['crs'].iloc[0]
+        else:
+            crs = DEF_CRS
+        if 'region_id' in df.columns:
+            region_id = df['region_id']
+        else:
+            region_id = None
+        if 'on_land' in df.columns:
+            on_land = df['on_land']
+        else:
+            on_land = None
+        return cls(lat=df['lat'], lon=df['lon'], region_id=region_id, on_land=on_land, crs=crs)
 
 
     @classmethod

@@ -24,6 +24,8 @@ from pathlib import Path
 import numpy as np
 import geopandas as gpd
 import shapely
+import csv
+from pyproj.crs.crs import CRS
 
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
@@ -96,7 +98,46 @@ class TestCentroidsData(unittest.TestCase):
 class TestCentroidsReader(unittest.TestCase):
     """Test read functions Centroids"""
 
-    def test_centroid_pass(self):
+    def test_from_csv(self):
+        """Read a centroid csv file correctly"""
+        tmpfile = Path('test_write_csv.csv')
+        test_crs = CRS.from_user_input(4326).to_wkt()
+        sample_data = [
+            ["lon", "lat", "crs"],
+            [32.57, -25.95, test_crs],
+            [32.46, -25.97],
+            [34.84, -19.83],
+            [39.24, -15.13],
+            [33.47, -19.12],
+            [40.68, -14.56],
+            [36.89, -17.88],
+            [33.58, -16.17],
+            [33.64, -25.04],
+            [36.98, -15.46],
+            [35.34, -23.87],
+            [35.24, -13.3],
+            [40.48, -12.96],
+            [34.73, -19.62],
+            [39.91, -16.23]
+            ]
+        
+        with open(tmpfile, 'w') as temp_csv:
+            writer = csv.writer(temp_csv)
+            writer.writerows(sample_data)
+
+        centroids = Centroids.from_csv(tmpfile)
+
+        n_centroids = 15
+        self.assertEqual(centroids.coord.shape[0], n_centroids)
+        self.assertEqual(centroids.coord.shape[1], 2)
+        self.assertEqual(centroids.coord[0][0], -25.95)
+        self.assertEqual(centroids.coord[0][1], 32.57)
+        self.assertEqual(centroids.coord[n_centroids - 1][0], -16.23)
+        self.assertEqual(centroids.coord[n_centroids - 1][1], 39.91)
+
+        Path(tmpfile).unlink()
+    
+    def test_from_excel(self):
         """Read a centroid excel file correctly."""
         centroids = Centroids.from_excel(HAZ_TEMPLATE_XLS)
 
