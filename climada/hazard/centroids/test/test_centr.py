@@ -22,6 +22,7 @@ import unittest
 from pathlib import Path
 
 import numpy as np
+import pandas as pd
 import geopandas as gpd
 import shapely
 import csv
@@ -134,20 +135,48 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertEqual(centroids.coord[0][1], 32.57)
         self.assertEqual(centroids.coord[n_centroids - 1][0], -16.23)
         self.assertEqual(centroids.coord[n_centroids - 1][1], 39.91)
+        self.assertEqual(centroids.crs, 'epsg:4326')
 
         Path(tmpfile).unlink()
     
     def test_from_excel(self):
         """Read a centroid excel file correctly."""
-        centroids = Centroids.from_excel(HAZ_TEMPLATE_XLS)
+        tmpfile = Path('test_write_excel.xlsx')
+        test_crs = CRS.from_user_input(4326).to_wkt()
+        sample_data = [
+            [32.57, -25.95, test_crs],
+            [32.46, -25.97],
+            [34.84, -19.83],
+            [39.24, -15.13],
+            [33.47, -19.12],
+            [40.68, -14.56],
+            [36.89, -17.88],
+            [33.58, -16.17],
+            [33.64, -25.04],
+            [36.98, -15.46],
+            [35.34, -23.87],
+            [35.24, -13.3],
+            [40.48, -12.96],
+            [34.73, -19.62],
+            [39.91, -16.23]
+            ]
 
-        n_centroids = 45
+        df = pd.DataFrame(sample_data, columns = ["lon", "lat", "crs"],)
+
+        df.to_excel(tmpfile, sheet_name = 'centroids', index=False)
+        
+        centroids = Centroids.from_excel(file_path=tmpfile, sheet_name='centroids')
+
+        n_centroids = 15
         self.assertEqual(centroids.coord.shape[0], n_centroids)
         self.assertEqual(centroids.coord.shape[1], 2)
         self.assertEqual(centroids.coord[0][0], -25.95)
         self.assertEqual(centroids.coord[0][1], 32.57)
-        self.assertEqual(centroids.coord[n_centroids - 1][0], -24.7)
-        self.assertEqual(centroids.coord[n_centroids - 1][1], 33.88)
+        self.assertEqual(centroids.coord[n_centroids - 1][0], -16.23)
+        self.assertEqual(centroids.coord[n_centroids - 1][1], 39.91)
+        self.assertEqual(centroids.crs, 'epsg:4326')
+
+        Path(tmpfile).unlink()
 
     def test_from_geodataframe(self):
         """Test that constructing a valid Centroids instance from gdf works."""

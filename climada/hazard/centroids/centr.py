@@ -44,20 +44,6 @@ __all__ = ['Centroids']
 
 PROJ_CEA = CRS.from_user_input({'proj': 'cea'})
 
-DEF_VAR_EXCEL = {
-    'sheet_name': 'centroids',
-    'col_name': {
-        'region_id': 'region_id',
-        'latitude': 'lat',
-        'longitude': 'lon',
-        'on_land': 'on_land',
-        'dist_coast': 'dist_coast',
-        'elevation': 'elevation',
-       ' area_pixel': 'area_pixel'
-    }
-}
-"""Excel variable names"""
-
 LOGGER = logging.getLogger(__name__)
 
 
@@ -696,6 +682,7 @@ class Centroids():
         if 'crs' in df.columns:
             crs = df['crs'].iloc[0]
         else:
+            LOGGER.info(f'No \'crs\' column provided in file, setting CRS to WGS84 default.')
             crs = DEF_CRS
         if 'region_id' in df.columns:
             region_id = df['region_id']
@@ -709,17 +696,15 @@ class Centroids():
 
 
     @classmethod
-    def from_excel(cls, file_path, crs=DEF_CRS, var_names=None):
+    def from_excel(cls, file_path, sheet_name):
         """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
         ----------
         file_name : str
             absolute or relative file path
-        crs : dict() or rasterio.crs.CRS, optional
-            CRS. Default: DEF_CRS
-        var_names : dict, default
-            name of the variables. Default: DEF_VAR_EXCEL
+        sheet_name : str
+            name of sheet in excel file containing centroid information
 
         Raises
         ------
@@ -731,24 +716,22 @@ class Centroids():
             Centroids with data from the given excel file
         """
 
-        if var_names is None:
-            var_names = DEF_VAR_EXCEL
-        else:
-            assert isinstance(var_names, dict), 'var_names must be a dict'
-            assert 'sheet_name' in var_names, 'sheet_name must be a key in the var_names dict'
-            assert 'col_name' in var_names, 'col_name must be a key in the var_names dict'
+        df = pd.read_excel(file_path, sheet_name)
 
-        data = pd.read_excel(file_path, var_names['sheet_name'])
-        data = data.rename(columns=var_names['col_name'])
-        if 'region_id' in data.columns:
-            region_id = data['region_id']
+        if 'crs' in df.columns:
+            crs = df['crs'].iloc[0]
+        else:
+            LOGGER.info(f'No \'crs\' column provided in file, setting CRS to WGS84 default.')
+            crs = DEF_CRS
+        if 'region_id' in df.columns:
+            region_id = df['region_id']
         else:
             region_id = None
-        if 'on_land' in data.columns:
-            on_land = data['on_land']
+        if 'on_land' in df.columns:
+            on_land = df['on_land']
         else:
             on_land = None
-        return cls(lat=data['lat'], lon=data['lon'], region_id=region_id, on_land=on_land, crs=crs)
+        return cls(lat=df['lat'], lon=df['lon'], region_id=region_id, on_land=on_land, crs=crs)
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
