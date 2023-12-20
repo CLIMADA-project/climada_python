@@ -27,7 +27,7 @@ from scipy import sparse
 
 from climada import CONFIG
 from climada.hazard.storm_europe import StormEurope, generate_WS_forecast_hazard
-from climada.hazard.centroids.centr import DEF_VAR_EXCEL, Centroids
+from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import WS_DEMO_NC
 
 
@@ -63,12 +63,9 @@ class TestReader(unittest.TestCase):
 
     def test_read_with_cent(self):
         """Test from_footprints while passing in a Centroids object"""
-        var_names = copy.deepcopy(DEF_VAR_EXCEL)
-        var_names['sheet_name'] = 'fp_centroids-test'
-        var_names['col_name']['iso_n3'] = 'region_id'
         test_centroids = Centroids.from_excel(
-            DATA_DIR.joinpath('fp_centroids-test.xls'),
-            var_names=var_names
+            file_path=DATA_DIR.joinpath('fp_centroids-test.xls'),
+            sheet_name='fp_centroids-test'
             )
         storms = StormEurope.from_footprints(WS_DEMO_NC, centroids=test_centroids)
 
