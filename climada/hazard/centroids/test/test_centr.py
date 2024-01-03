@@ -98,83 +98,85 @@ class TestCentroidsData(unittest.TestCase):
 class TestCentroidsReader(unittest.TestCase):
     """Test read functions Centroids"""
 
-    def test_from_csv(self):
-        """Read a centroid csv file correctly"""
+    def test_from_csv_def_crs(self):
+        """Read a centroid csv file correctly and use default CRS."""
+        # Create temporary csv file containing centroids data
         tmpfile = Path('test_write_csv.csv')
-        test_crs = CRS.from_user_input(4326).to_wkt()
-        sample_data = [
-            ["lon", "lat", "crs"],
-            [32.57, -25.95, test_crs],
-            [32.46, -25.97],
-            [34.84, -19.83],
-            [39.24, -15.13],
-            [33.47, -19.12],
-            [40.68, -14.56],
-            [36.89, -17.88],
-            [33.58, -16.17],
-            [33.64, -25.04],
-            [36.98, -15.46],
-            [35.34, -23.87],
-            [35.24, -13.3],
-            [40.48, -12.96],
-            [34.73, -19.62],
-            [39.91, -16.23]
-            ]
-        
-        with open(tmpfile, 'w') as temp_csv:
-            writer = csv.writer(temp_csv)
-            writer.writerows(sample_data)
+        lat = np.array([0, 90, -90, 0, 0])
+        lon = np.array([0, 0, 0, 180, -180])
+        df = pd.DataFrame({'lat':lat, 'lon':lon})
+        df.to_csv(tmpfile, index=False)
 
+        # Read centroids using from_csv method
         centroids = Centroids.from_csv(tmpfile)
 
-        n_centroids = 15
-        self.assertEqual(centroids.coord.shape[0], n_centroids)
-        self.assertEqual(centroids.coord.shape[1], 2)
-        self.assertEqual(centroids.coord[0][0], -25.95)
-        self.assertEqual(centroids.coord[0][1], 32.57)
-        self.assertEqual(centroids.coord[n_centroids - 1][0], -16.23)
-        self.assertEqual(centroids.coord[n_centroids - 1][1], 39.91)
-        self.assertEqual(centroids.crs, 'epsg:4326')
+        # test attributes
+        np.testing.assert_array_equal(centroids.lat, lat)
+        np.testing.assert_array_equal(centroids.lon, lon)
+        self.assertEqual(centroids.crs, DEF_CRS)
 
+        #delete file
+        Path(tmpfile).unlink()
+
+    def test_from_csv(self):
+        """Read a centroid csv file which contains CRS information."""
+        tmpfile = Path('test_write_csv.csv')
+        lat = np.array([0, 20048966.1, -20048966, 0, 0])
+        lon = np.array([0, 0, 0, 20037508.34, -20037508.34])
+        df = pd.DataFrame({'lat':lat, 'lon':lon})
+        df['crs'] = CRS.from_user_input(3857).to_wkt()
+        df.to_csv(tmpfile, index=False)
+
+        # Read centroids using from_csv method
+        centroids = Centroids.from_csv(tmpfile)
+
+        # test attributes
+        np.testing.assert_array_equal(centroids.lat, lat)
+        np.testing.assert_array_equal(centroids.lon, lon)
+        self.assertEqual(centroids.crs, 'epsg:3857')
+
+        #delete file
+        Path(tmpfile).unlink()  
+    
+    def test_from_excel_def_crs(self):
+        """Read a centroid excel file correctly and use default CRS."""
+        # Create temporary excel file containing centroids data
+        tmpfile = Path('test_write_excel.xlsx')
+        lat = np.array([0, 90, -90, 0, 0])
+        lon = np.array([0, 0, 0, 180, -180])
+        df = pd.DataFrame({'lat':lat, 'lon':lon})
+        df.to_excel(tmpfile, sheet_name = 'centroids', index=False)
+        
+        # Read centroids using from_excel method
+        centroids = Centroids.from_excel(file_path=tmpfile)
+        
+        # test attributes
+        np.testing.assert_array_equal(centroids.lat, lat)
+        np.testing.assert_array_equal(centroids.lon, lon)
+        self.assertEqual(centroids.crs, DEF_CRS)
+
+        #delete file
         Path(tmpfile).unlink()
     
     def test_from_excel(self):
-        """Read a centroid excel file correctly."""
+        """Read a centroid excel file correctly which contains CRS information."""
+        # Create temporary excel file containing centroids data
         tmpfile = Path('test_write_excel.xlsx')
-        test_crs = CRS.from_user_input(4326).to_wkt()
-        sample_data = [
-            [32.57, -25.95, test_crs],
-            [32.46, -25.97],
-            [34.84, -19.83],
-            [39.24, -15.13],
-            [33.47, -19.12],
-            [40.68, -14.56],
-            [36.89, -17.88],
-            [33.58, -16.17],
-            [33.64, -25.04],
-            [36.98, -15.46],
-            [35.34, -23.87],
-            [35.24, -13.3],
-            [40.48, -12.96],
-            [34.73, -19.62],
-            [39.91, -16.23]
-            ]
-
-        df = pd.DataFrame(sample_data, columns = ["lon", "lat", "crs"],)
-
+        lat = np.array([0, 20048966.1, -20048966, 0, 0])
+        lon = np.array([0, 0, 0, 20037508.34, -20037508.34])
+        df = pd.DataFrame({'lat':lat, 'lon':lon})
+        df['crs'] = CRS.from_user_input(3857).to_wkt()
         df.to_excel(tmpfile, sheet_name = 'centroids', index=False)
         
-        centroids = Centroids.from_excel(file_path=tmpfile, sheet_name='centroids')
+        # Read centroids using from_excel method
+        centroids = Centroids.from_excel(file_path=tmpfile)
+        
+        # test attributes
+        np.testing.assert_array_equal(centroids.lat, lat)
+        np.testing.assert_array_equal(centroids.lon, lon)
+        self.assertEqual(centroids.crs, 'epsg:3857')
 
-        n_centroids = 15
-        self.assertEqual(centroids.coord.shape[0], n_centroids)
-        self.assertEqual(centroids.coord.shape[1], 2)
-        self.assertEqual(centroids.coord[0][0], -25.95)
-        self.assertEqual(centroids.coord[0][1], 32.57)
-        self.assertEqual(centroids.coord[n_centroids - 1][0], -16.23)
-        self.assertEqual(centroids.coord[n_centroids - 1][1], 39.91)
-        self.assertEqual(centroids.crs, 'epsg:4326')
-
+        #delete file
         Path(tmpfile).unlink()
 
     def test_from_geodataframe(self):

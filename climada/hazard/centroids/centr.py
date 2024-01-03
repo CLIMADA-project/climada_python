@@ -696,15 +696,16 @@ class Centroids():
 
 
     @classmethod
-    def from_excel(cls, file_path, sheet_name):
+    def from_excel(cls, file_path, sheet_name=None):
         """Generate a new centroids object from an excel file with column names in var_names.
 
         Parameters
         ----------
         file_name : str
             absolute or relative file path
-        sheet_name : str
+        sheet_name : str, optional
             name of sheet in excel file containing centroid information
+            Default: "centroids"
 
         Raises
         ------
@@ -715,7 +716,9 @@ class Centroids():
         centr : Centroids
             Centroids with data from the given excel file
         """
-
+        if sheet_name is None:
+            sheet_name = 'centroids'
+            
         df = pd.read_excel(file_path, sheet_name)
 
         if 'crs' in df.columns:
