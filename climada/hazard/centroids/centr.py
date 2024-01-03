@@ -68,11 +68,11 @@ class Centroids():
     def __init__(
         self,
         *,
-        lat: Union[np.ndarray, list],
-        lon: Union[np.ndarray, list],
+        lat: Union[np.ndarray, list[float]],
+        lon: Union[np.ndarray, list[float]],
         crs: str = DEF_CRS,
-        region_id: Union[str('country'), None, np.ndarray, list] = None,
-        on_land: Union[str('natural_earth'), None, np.ndarray, list] = None,
+        region_id: Union[Literal["country"], None, np.ndarray, list[float]] = None,
+        on_land: Union[Literal["natural_earth"], None, np.ndarray, list[float]] = None,
     ):
         """Initialization
 
@@ -90,12 +90,13 @@ class Centroids():
             on land (True) and on sea (False) of size size. Defaults to None array
         """
 
-        attr_dict = {
-            'geometry': gpd.points_from_xy(lon, lat, crs=crs),
-            'region_id': region_id,
-            'on_land': on_land
-        }
-        self.gdf = gpd.GeoDataFrame(data=attr_dict)
+        self.gdf = gpd.GeoDataFrame(
+            data={
+                'geometry': gpd.points_from_xy(lon, lat, crs=crs),
+                'region_id': region_id,
+                'on_land': on_land,
+            }
+        )
 
         if isinstance(region_id, str):
             LOGGER.info(f'Setting region id to {region_id} level.')
@@ -140,7 +141,7 @@ class Centroids():
 
     @property
     def size(self):
-        """Get size (number of lat/lon paris)"""
+        """Get size (number of lat/lon pairs)"""
         return self.gdf.shape[0]
 
     @property
