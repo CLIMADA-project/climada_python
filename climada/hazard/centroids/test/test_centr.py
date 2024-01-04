@@ -130,10 +130,32 @@ class TestCentroidsReader(unittest.TestCase):
         # Read centroids using from_csv method
         centroids = Centroids.from_csv(tmpfile)
 
-        # test attributes
+        # Test attributes
         np.testing.assert_array_equal(centroids.lat, lat)
         np.testing.assert_array_equal(centroids.lon, lon)
         self.assertEqual(centroids.crs, 'epsg:3857')
+
+        # Delete file
+        Path(tmpfile).unlink()  
+    
+    def test_write_read_csv(self):
+        """Write and read a Centroids CSV file correctly."""
+        # Create Centroids with latitude and longitude arrays
+        tmpfile = Path('test_write_csv.csv')
+        lat = np.array([10.0, 20.0, 30.0])
+        lon = np.array([-10.0, -20.0, -30.0])
+        centroids_out = Centroids(lat=lat, lon=lon)
+
+        # Write CSV file from Centroids using write_csv
+        centroids_out.write_csv(tmpfile)
+
+        # Read CSV file using read_csv
+        centroids_in = Centroids.from_csv(tmpfile)
+
+        # Test attributes
+        np.testing.assert_array_equal(centroids_in.lat, centroids_out.lat)
+        np.testing.assert_array_equal(centroids_in.lon, centroids_out.lon)
+        self.assertEqual(centroids_in.crs, centroids_out.crs)
 
         #delete file
         Path(tmpfile).unlink()  
@@ -178,6 +200,28 @@ class TestCentroidsReader(unittest.TestCase):
 
         #delete file
         Path(tmpfile).unlink()
+
+    def test_write_read_excel(self):
+        """Write and read a Centroids Excel file correctly."""
+        # Create Centroids with latitude and longitude arrays
+        tmpfile = Path('test_write_excel.xlsx')
+        lat = np.array([10.0, 20.0, 30.0])
+        lon = np.array([-10.0, -20.0, -30.0])
+        centroids_out = Centroids(lat=lat, lon=lon)
+
+        # Write Excel file from Centroids using write_csv
+        centroids_out.write_excel(tmpfile)
+
+        # Read Excel file using read_csv
+        centroids_in = Centroids.from_excel(tmpfile)
+
+        # Test attributes
+        np.testing.assert_array_equal(centroids_in.lat, centroids_out.lat)
+        np.testing.assert_array_equal(centroids_in.lon, centroids_out.lon)
+        self.assertEqual(centroids_in.crs, centroids_out.crs)
+
+        #delete file
+        Path(tmpfile).unlink()  
 
     def test_from_geodataframe(self):
         """Test that constructing a valid Centroids instance from gdf works."""

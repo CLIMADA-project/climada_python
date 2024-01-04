@@ -664,18 +664,17 @@ class Centroids():
 
     @classmethod
     def from_csv(cls, file_path):
-        """
-        Generate centroids from a csv file with column names in var_names.
+        """Generate centroids from a CSV file with column names in var_names.
 
         Parameters
         ----------
         file_path : str
-            path to csv file to be read
+            path to CSV file to be read
 
         Returns
         -------
         Centroids
-            Centroids with data from the given csv file
+            Centroids with data from the given CSV file
         """
 
         df = pd.read_csv(file_path)
@@ -694,6 +693,23 @@ class Centroids():
             on_land = None
         return cls(lat=df['lat'], lon=df['lon'], region_id=region_id, on_land=on_land, crs=crs)
 
+    def write_csv(self, file_path):
+        """Save centroids as CSV file
+
+        Parameters
+        ----------
+        file_path : str
+            absolute or relative file path and name to write to
+        """
+        LOGGER.info('Writing %s', file_path)
+        df = pd.DataFrame(self.gdf)
+        df['lon'] = self.gdf['geometry'].x
+        df['lat'] = self.gdf['geometry'].y
+        df = df.drop(['geometry'], axis=1)
+        crs = CRS.from_user_input(self.crs).to_wkt()
+        df['crs'] = crs
+        df.to_csv(file_path, index=False)
+
 
     @classmethod
     def from_excel(cls, file_path, sheet_name=None):
@@ -701,7 +717,7 @@ class Centroids():
 
         Parameters
         ----------
-        file_name : str
+        file_path : str
             absolute or relative file path
         sheet_name : str, optional
             name of sheet in excel file containing centroid information
@@ -718,7 +734,7 @@ class Centroids():
         """
         if sheet_name is None:
             sheet_name = 'centroids'
-            
+
         df = pd.read_excel(file_path, sheet_name)
 
         if 'crs' in df.columns:
@@ -735,6 +751,23 @@ class Centroids():
         else:
             on_land = None
         return cls(lat=df['lat'], lon=df['lon'], region_id=region_id, on_land=on_land, crs=crs)
+    
+    def write_excel(self, file_path):
+        """Save centroids as excel file
+
+        Parameters
+        ----------
+        file_path : str
+            absolute or relative file path and name to write to
+        """
+        LOGGER.info('Writing %s', file_path)
+        df = pd.DataFrame(self.gdf)
+        df['lon'] = self.gdf['geometry'].x
+        df['lat'] = self.gdf['geometry'].y
+        df = df.drop(['geometry'], axis=1)
+        crs = CRS.from_user_input(self.crs).to_wkt()
+        df['crs'] = crs
+        df.to_excel(file_path, sheet_name='centroids', index=False)
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
