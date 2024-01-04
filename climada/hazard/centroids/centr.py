@@ -22,7 +22,7 @@ Define Centroids class.
 import copy
 import logging
 from pathlib import Path
-from typing import Union, Literal
+from typing import Union
 import warnings
 
 import h5py
@@ -45,8 +45,6 @@ __all__ = ['Centroids']
 PROJ_CEA = CRS.from_user_input({'proj': 'cea'})
 
 LOGGER = logging.getLogger(__name__)
-
-DEF_COLS = ['region_id', 'on_land', 'geometry']
 
 
 class Centroids():
@@ -92,7 +90,7 @@ class Centroids():
             on land (True) and on sea (False) of size size. Defaults to None array
         """
 
-        self._gdf = gpd.GeoDataFrame(
+        self.gdf = gpd.GeoDataFrame(
             data={
                 'geometry': gpd.points_from_xy(lon, lat, crs=crs),
                 'region_id': region_id,
@@ -110,41 +108,41 @@ class Centroids():
     @property
     def lat(self):
         """ Return latitudes """
-        return self._gdf.geometry.y.values
+        return self.gdf.geometry.y.values
 
     @property
     def lon(self):
         """ Return longitudes """
-        return self._gdf.geometry.x.values
+        return self.gdf.geometry.x.values
 
     @property
     def geometry(self):
         """ Return the geometry """
-        return self._gdf['geometry']
+        return self.gdf['geometry']
 
     @property
     def on_land(self):
         """ Get the on_land property """
-        if self._gdf.on_land.isna().all():
+        if self.gdf.on_land.isna().all():
             return None
-        return self._gdf['on_land'].values
+        return self.gdf['on_land'].values
 
     @property
     def region_id(self):
         """ Get the assigned region_id """
-        if self._gdf.region_id.isna().all():
+        if self.gdf.region_id.isna().all():
             return None
-        return self._gdf['region_id'].values
+        return self.gdf['region_id'].values
 
     @property
     def crs(self):
         """ Get the crs"""
-        return self._gdf.crs
+        return self.gdf.crs
 
     @property
     def size(self):
         """Get size (number of lat/lon pairs)"""
-        return self._gdf.shape[0]
+        return self.gdf.shape[0]
 
     @property
     def shape(self):
@@ -154,7 +152,7 @@ class Centroids():
     @property
     def total_bounds(self):
         """Get total bounds (minx, miny, maxx, maxy)."""
-        return self._gdf.total_bounds
+        return self.gdf.total_bounds
 
     @property
     def coord(self):
@@ -173,15 +171,15 @@ class Centroids():
         -------
         eq : bool
         """
-        return self._gdf.equals(other._gdf) & u_coord.equal_crs(self.crs, other.crs)
+        return self.gdf.equals(other.gdf) & u_coord.equal_crs(self.crs, other.crs)
 
-    def to_default_crs(self, inplace=True):
+    def to_default_crs(self):
         """Project the current centroids to the default CRS (epsg4326)
         Modifies the object in place.
         """
-        self.to_crs(DEF_CRS, inplace=inplace)
+        self.gdf.to_crs(DEF_CRS, inplace=True)
 
-    def to_crs(self, crs, inplace=True):
+    def to_crs(self, crs):
         """ Project the current centroids to the default CRS (epsg4326)
         Modifies the object in place.
 
@@ -195,9 +193,7 @@ class Centroids():
         Centroids
             Centroids in the new crs
         """
-        if inplace:
-            self._gdf.to_crs(DEF_CRS, inplace=True)
-        return Centroids.from_geodataframe(self._gdf.to_crs(crs))
+        return Centroids.from_geodataframe(self.gdf.to_crs(crs))
 
     @classmethod
     def from_geodataframe(cls, gdf):
@@ -224,10 +220,9 @@ class Centroids():
         # This is a bit ugly, but avoids to recompute the geometries
         # in the init. For large datasets this saves computation time
         centroids = cls(lat=[1], lon=[1]) #make "empty" centroids
-        columns = [col for col in gdf.columns if col in DEF_COLS]
-        centroids._gdf = gdf[columns]
+        centroids.gdf = gdf
         if not gdf.crs:
-            centroids._gdf.set_crs(DEF_CRS, inplace=True)
+            centroids.gdf.set_crs(DEF_CRS, inplace=True)
         return centroids
 
     @classmethod
@@ -311,7 +306,7 @@ class Centroids():
         if not u_coord.equal_crs(self.crs, centr.crs):
             raise ValueError(
                 "The centroids have different Coordinate-Reference-Systems (CRS)")
-        self._gdf = pd.concat([self._gdf, centr._gdf])
+        self.gdf = pd.concat([self.gdf, centr.gdf])
 
     def union(self, *others):
         """Create the union of centroids from the inputs.
@@ -345,10 +340,10 @@ class Centroids():
          : Centroids
             Sub-selection of centroids withtout duplicates
         """
-        return cls.from_geodataframe(centroids._gdf.drop_duplicates())
+        return cls.from_geodataframe(centroids.gdf.drop_duplicates())
 
     def select(self, reg_id=None, extent=None, sel_cen=None):
-        """Return Centroids with points in the given reg_id and/or in an
+        """Return Centroids with points in the given reg_id and/or in an 
         spatial extent and/or in an index based list
 
         Parameters
@@ -376,7 +371,7 @@ class Centroids():
                 sel_cen_bool[np.unique(sel_cen)] = True
 
         sel_cen_mask = self.select_mask(sel_cen=sel_cen_bool, reg_id=reg_id, extent=extent)
-        return Centroids.from_geodataframe(self._gdf[sel_cen_mask])
+        return Centroids.from_geodataframe(self.gdf[sel_cen_mask])
 
 
     def select_mask(self, sel_cen=None, reg_id=None, extent=None):
@@ -444,9 +439,9 @@ class Centroids():
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
 
         if ax is None:
-            ax = self._gdf.copy().to_crs(proj_plot).plot(figsize=figsize, **kwargs)
+            ax = self.gdf.copy().to_crs(proj_plot).plot(figsize=figsize, **kwargs)
         else:
-            self._gdf.copy().to_crs(proj_plot).plot(figsize=figsize, **kwargs)
+            self.gdf.copy().to_crs(proj_plot).plot(figsize=figsize, **kwargs)
 
         if shapes:
             u_plot.add_shapes(ax)
@@ -541,7 +536,7 @@ class Centroids():
         else:
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
             return u_coord.dist_to_coast(ne_geom, signed=signed)
-
+        
     def get_meta(self, resolution=None):
         """Returns a meta raster based on the centroids bounds.
 
@@ -561,7 +556,7 @@ class Centroids():
         """
         if resolution is None:
             resolution = np.abs(u_coord.get_resolution(self.lat, self.lon)).min()
-        xmin, ymin, xmax, ymax = self._gdf.total_bounds
+        xmin, ymin, xmax, ymax = self.gdf.total_bounds
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(
             (xmin, ymin, xmax, ymax), (resolution, -resolution)
             )
@@ -663,9 +658,9 @@ class Centroids():
         centroids = cls.from_geodataframe(gpd.read_file(file_name))
         if dst_crs is not None:
             if centroids.crs:
-                centroids._gdf.to_crs(dst_crs, inplace=True)
+                centroids.gdf.to_crs(dst_crs, inplace=True)
             else:
-                centroids._gdf.set_crs(dst_crs, inplace=True)
+                centroids.gdf.set_crs(dst_crs, inplace=True)
         return centroids
 
     @classmethod
@@ -708,9 +703,9 @@ class Centroids():
             absolute or relative file path and name to write to
         """
         LOGGER.info('Writing %s', file_path)
-        df = pd.DataFrame(self._gdf)
-        df['lon'] = self._gdf['geometry'].x
-        df['lat'] = self._gdf['geometry'].y
+        df = pd.DataFrame(self.gdf)
+        df['lon'] = self.gdf['geometry'].x
+        df['lat'] = self.gdf['geometry'].y
         df = df.drop(['geometry'], axis=1)
         crs = CRS.from_user_input(self.crs).to_wkt()
         df['crs'] = crs
@@ -757,7 +752,7 @@ class Centroids():
         else:
             on_land = None
         return cls(lat=df['lat'], lon=df['lon'], region_id=region_id, on_land=on_land, crs=crs)
-
+    
     def write_excel(self, file_path):
         """Save centroids as excel file
 
@@ -767,9 +762,9 @@ class Centroids():
             absolute or relative file path and name to write to
         """
         LOGGER.info('Writing %s', file_path)
-        df = pd.DataFrame(self._gdf)
-        df['lon'] = self._gdf['geometry'].x
-        df['lat'] = self._gdf['geometry'].y
+        df = pd.DataFrame(self.gdf)
+        df['lon'] = self.gdf['geometry'].x
+        df['lat'] = self.gdf['geometry'].y
         df = df.drop(['geometry'], axis=1)
         crs = CRS.from_user_input(self.crs).to_wkt()
         df['crs'] = crs
@@ -785,10 +780,10 @@ class Centroids():
         """
         LOGGER.info('Writing %s', file_name)
         store = pd.HDFStore(file_name, mode=mode)
-        pandas_df = pd.DataFrame(self._gdf)
+        pandas_df = pd.DataFrame(self.gdf)
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
-                pandas_df[col] = np.asarray(self._gdf[col])
+                pandas_df[col] = np.asarray(self.gdf[col])
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
         with warnings.catch_warnings():
@@ -881,9 +876,9 @@ class Centroids():
         -------
         geo : gpd.GeoSeries
         """
-        if u_coord.equal_crs(self._gdf.crs, u_coord.NE_CRS):
-            return self._gdf.geometry
-        return self._gdf.geometry.to_crs(u_coord.NE_CRS)
+        if u_coord.equal_crs(self.gdf.crs, u_coord.NE_CRS):
+            return self.gdf.geometry
+        return self.gdf.geometry.to_crs(u_coord.NE_CRS)
 
     def _set_region_id(self, level='country', overwrite=False):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
@@ -901,7 +896,7 @@ class Centroids():
             LOGGER.debug('Setting region_id %s points.', str(self.size))
             if level == 'country':
                 ne_geom = self._ne_crs_geom()
-                self._gdf['region_id'] = u_coord.get_country_code(
+                self.gdf['region_id'] = u_coord.get_country_code(
                     ne_geom.y.values, ne_geom.x.values
                     )
             else:
@@ -928,7 +923,7 @@ class Centroids():
             LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
             if source=='natural_earth':
                 ne_geom = self._ne_crs_geom()
-                self._gdf['on_land'] = u_coord.coord_on_land(
+                self.gdf['on_land'] = u_coord.coord_on_land(
                     ne_geom.y.values, ne_geom.x.values
                 )
             else:
