@@ -280,6 +280,11 @@ class Centroids():
                 **dict(gdf.items())
             )
 
+        raise ValueError(
+            "The given exposures object has no coordinates information."
+            "The exposures' geodataframe must have either point geometries"
+            " or latitude and longitude values.")
+
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
         """Create Centroids object with meta attribute according to points border data.
