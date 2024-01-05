@@ -173,13 +173,24 @@ class Centroids():
         """
         return self.gdf.equals(other.gdf) & u_coord.equal_crs(self.crs, other.crs)
 
-    def to_default_crs(self):
+    def to_default_crs(self, inplace=True):
         """Project the current centroids to the default CRS (epsg4326)
-        Modifies the object in place.
-        """
-        self.gdf.to_crs(DEF_CRS, inplace=True)
 
-    def to_crs(self, crs):
+        Parameters
+        ----------
+        inplace: bool
+            if True, modifies the centroids in place.
+            if False, returns a copy.
+            Default is True.
+
+        Returns
+        -------
+        Centroids
+            Centroids in the new crs
+        """
+        self.to_crs(DEF_CRS, inplace=inplace)
+
+    def to_crs(self, crs, inplace=False):
         """ Project the current centroids to the default CRS (epsg4326)
         Modifies the object in place.
 
@@ -187,12 +198,18 @@ class Centroids():
         ----------
         crs : str
             coordinate reference system
+        inplace: bool
+            if True, modifies the centroids in place.
+            if False, returns a copy.
+            Default is True.
 
         Returns
         -------
         Centroids
             Centroids in the new crs
         """
+        if inplace:
+            self.gdf.to_crs(crs)
         return Centroids.from_geodataframe(self.gdf.to_crs(crs))
 
     @classmethod
@@ -343,7 +360,7 @@ class Centroids():
         return cls.from_geodataframe(centroids.gdf.drop_duplicates())
 
     def select(self, reg_id=None, extent=None, sel_cen=None):
-        """Return Centroids with points in the given reg_id and/or in an 
+        """Return Centroids with points in the given reg_id and/or in an
         spatial extent and/or in an index based list
 
         Parameters
@@ -536,7 +553,7 @@ class Centroids():
         else:
             LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
             return u_coord.dist_to_coast(ne_geom, signed=signed)
-        
+
     def get_meta(self, resolution=None):
         """Returns a meta raster based on the centroids bounds.
 
@@ -752,7 +769,7 @@ class Centroids():
         else:
             on_land = None
         return cls(lat=df['lat'], lon=df['lon'], region_id=region_id, on_land=on_land, crs=crs)
-    
+
     def write_excel(self, file_path):
         """Save centroids as excel file
 
