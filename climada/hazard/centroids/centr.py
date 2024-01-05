@@ -683,7 +683,7 @@ class Centroids():
         centroids = cls.from_geodataframe(gpd.read_file(file_name))
         if dst_crs is not None:
             if centroids.crs:
-                centroids.gdf.to_crs(dst_crs, inplace=True)
+                centroids.to_crs(dst_crs, inplace=True)
             else:
                 centroids.gdf.set_crs(dst_crs, inplace=True)
         return centroids
@@ -877,7 +877,7 @@ class Centroids():
                     meta[key] = rasterio.Affine(*value)
             latitude, longitude = _meta_to_lat_lon(meta)
 
-        extra_values = {}
+        extra_values = dict.fromkeys(DEF_COLS)
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta', 'latitude', 'longitude'):
                 values = np.array(data.get(centr_name))
