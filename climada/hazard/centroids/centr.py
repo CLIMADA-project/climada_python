@@ -46,6 +46,8 @@ PROJ_CEA = CRS.from_user_input({'proj': 'cea'})
 
 LOGGER = logging.getLogger(__name__)
 
+DEF_COLS = ['region_id', 'on_land', 'geometry']
+
 
 class Centroids():
     """Contains raster or vector centroids.
@@ -201,7 +203,7 @@ class Centroids():
         inplace: bool
             if True, modifies the centroids in place.
             if False, returns a copy.
-            Default is True.
+            Default is False.
 
         Returns
         -------
@@ -237,7 +239,8 @@ class Centroids():
         # This is a bit ugly, but avoids to recompute the geometries
         # in the init. For large datasets this saves computation time
         centroids = cls(lat=[1], lon=[1]) #make "empty" centroids
-        centroids.gdf = gdf
+        columns = [col for col in gdf.columns if col in DEF_COLS]
+        centroids.gdf = gdf[columns]
         if not gdf.crs:
             centroids.gdf.set_crs(DEF_CRS, inplace=True)
         return centroids
