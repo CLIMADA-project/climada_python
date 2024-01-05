@@ -903,7 +903,7 @@ class Centroids():
         """
         if u_coord.equal_crs(self.gdf.crs, u_coord.NE_CRS):
             return self.gdf.geometry
-        return self.gdf.geometry.to_crs(u_coord.NE_CRS)
+        return self.to_crs(u_coord.NE_CRS, inplace=False).geometry
 
     def _set_region_id(self, level='country', overwrite=False):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
