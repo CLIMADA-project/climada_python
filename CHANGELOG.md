@@ -12,6 +12,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- Read and Write methods to and from csv files for the `DiscRates` class. [#818](ttps://github.com/CLIMADA-project/climada_python/pull/818)
+
 ### Changed
 
 - Add `shapes` argument to `geo_im_from_array` to allow flexible turning on/off of plotting coastline in `plot_intensity`. [#805](https://github.com/CLIMADA-project/climada_python/pull/805)
@@ -23,6 +25,7 @@ Code freeze date: YYYY-MM-DD
 
 - `Hazard.from_xarray_raster` now stores strings as default values for `Hazard.event_name` [#795](https://github.com/CLIMADA-project/climada_python/pull/795)
 - Fix the dist_approx util function when used with method="geosphere" and log=True and points that are very close. [#792](https://github.com/CLIMADA-project/climada_python/pull/792)
+- `climada.util.yearsets.sample_from_poisson`: fix a bug ([#819](https://github.com/CLIMADA-project/climada_python/issues/819)) and inconsistency that occurs when lambda events per year (`lam`) are set to 1. [[#823](https://github.com/CLIMADA-project/climada_python/pull/823)]
 - In the TropCyclone class in the Holland model 2008 and 2010 implementation a doublecounting of translational velocity is removed.
 
 ### Deprecated
