@@ -193,8 +193,7 @@ class Centroids():
         self.to_crs(DEF_CRS, inplace=inplace)
 
     def to_crs(self, crs, inplace=False):
-        """ Project the current centroids to the default CRS (epsg4326)
-        Modifies the object in place.
+        """ Project the current centroids to the desired crs
 
         Parameters
         ----------
@@ -211,7 +210,8 @@ class Centroids():
             Centroids in the new crs
         """
         if inplace:
-            self.gdf.to_crs(crs)
+            self.gdf.to_crs(crs, inplace=True)
+            return None
         return Centroids.from_geodataframe(self.gdf.to_crs(crs))
 
     @classmethod
@@ -263,14 +263,13 @@ class Centroids():
         col_names = [
             column
             for column in exposures.gdf.columns
-            if column in ['region_id', 'on_land']
+            if column in DEF_COLS
             ]
 
         # Legacy behaviour
         # Exposures can be without geometry column
         #TODO: remove once exposures is real geodataframe with geometry.
         if 'geometry' in exposures.gdf.columns:
-            col_names += ['geometry']
             gdf = exposures.gdf[col_names]
             return cls.from_geodataframe(gdf)
 
