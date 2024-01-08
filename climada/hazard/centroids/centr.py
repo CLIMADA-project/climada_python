@@ -46,7 +46,8 @@ PROJ_CEA = CRS.from_user_input({'proj': 'cea'})
 
 LOGGER = logging.getLogger(__name__)
 
-DEF_COLS = ['region_id', 'on_land', 'geometry']
+DEF_COLS = ['region_id', 'on_land']
+DEF_SHEET_NAME = 'centroids'
 
 
 class Centroids():
@@ -712,22 +713,8 @@ class Centroids():
         Centroids
             Centroids with data from the given CSV file
         """
-
         df = pd.read_csv(file_path)
-        if 'crs' in df.columns:
-            crs = df['crs'].iloc[0]
-        else:
-            LOGGER.info(f'No \'crs\' column provided in file, setting CRS to WGS84 default.')
-            crs = DEF_CRS
-        if 'region_id' in df.columns:
-            region_id = df['region_id']
-        else:
-            region_id = None
-        if 'on_land' in df.columns:
-            on_land = df['on_land']
-        else:
-            on_land = None
-        return cls(lat=df['lat'], lon=df['lon'], region_id=region_id, on_land=on_land, crs=crs)
+        return cls._from_dataframe(df)
 
     def write_csv(self, file_path):
         """Save centroids as CSV file
@@ -739,7 +726,7 @@ class Centroids():
         """
         LOGGER.info('Writing %s', file_path)
         df = self._centroids_to_df()
-        df.to_csv(file_path, index=False)
+        df.to_csv(file_path.with_suffix('.csv'), index=False)
 
 
     @classmethod
@@ -765,23 +752,8 @@ class Centroids():
         """
         if sheet_name is None:
             sheet_name = 'centroids'
-
         df = pd.read_excel(file_path, sheet_name)
-
-        if 'crs' in df.columns:
-            crs = df['crs'].iloc[0]
-        else:
-            LOGGER.info(f'No \'crs\' column provided in file, setting CRS to WGS84 default.')
-            crs = DEF_CRS
-        if 'region_id' in df.columns:
-            region_id = df['region_id']
-        else:
-            region_id = None
-        if 'on_land' in df.columns:
-            on_land = df['on_land']
-        else:
-            on_land = None
-        return cls(lat=df['lat'], lon=df['lon'], region_id=region_id, on_land=on_land, crs=crs)
+        return cls._from_dataframe(df)
 
     def write_excel(self, file_path):
         """Save centroids as excel file
@@ -793,7 +765,10 @@ class Centroids():
         """
         LOGGER.info('Writing %s', file_path)
         df = self._centroids_to_df()
-        df.to_excel(file_path, sheet_name='centroids', index=False)
+        df.to_excel(
+            file_path.with_suffix('.xlsx'),
+            sheet_name=DEF_SHEET_NAME, index=False
+            )
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
@@ -854,6 +829,31 @@ class Centroids():
                 gdf = cls._legacy_from_hdf5(data)
 
         return cls.from_geodataframe(gdf)
+
+    '''
+    Private methods
+    '''
+    @classmethod
+    def _from_dataframe(cls, df):
+        if 'crs' in df.columns:
+            crs = df['crs'].iloc[0]
+        else:
+            LOGGER.info(
+                'No \'crs\' column provided in file,'
+                'setting CRS to WGS84 default.'
+                )
+            crs = DEF_CRS
+
+        extra_values = {
+            col: df[col]
+            for col in df.columns
+            if col in DEF_COLS
+            }
+
+        return cls(
+            lat=df['lat'], lon=df['lon'],
+            **extra_values, crs=crs
+            )
 
     @classmethod
     def _legacy_from_hdf5(cls, data):
