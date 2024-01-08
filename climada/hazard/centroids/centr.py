@@ -877,7 +877,7 @@ class Centroids():
                     meta[key] = rasterio.Affine(*value)
             latitude, longitude = _meta_to_lat_lon(meta)
 
-        extra_values = dict.fromkeys(DEF_COLS)
+        extra_values = {}
         for centr_name in data.keys():
             if centr_name not in ('crs', 'lat', 'lon', 'meta', 'latitude', 'longitude'):
                 values = np.array(data.get(centr_name))
