@@ -74,7 +74,7 @@ class Centroids():
         lon: Union[np.ndarray, list[float]],
         crs: str = DEF_CRS,
         region_id: Union[Literal["country"], None, np.ndarray, list[float]] = None,
-        on_land: Union[Literal["natural_earth"], None, np.ndarray, list[float]] = None,
+        on_land: Union[Literal["natural_earth"], None, np.ndarray, list[bool]] = None,
     ):
         """Initialization
 
@@ -881,15 +881,15 @@ class Centroids():
     '''
     Private methods
     '''
-    
+
     def _centroids_to_df(self):
         """Create dataframe from Centroids object to facilitate saving in different file formats.
-        
+
         Returns
         -------
         df : DataFrame
         """
-        
+
         df = pd.DataFrame(self.gdf)
         df['lon'] = self.gdf['geometry'].x
         df['lat'] = self.gdf['geometry'].y
