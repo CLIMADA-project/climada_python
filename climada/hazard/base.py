@@ -1182,7 +1182,7 @@ class Hazard():
         if haz_type is not None:
             hazard_kwargs["haz_type"] = haz_type
         try:
-            centroids = Centroids.from_excel(file_name, var_names=var_names['col_centroids'])
+            centroids = Centroids._legacy_from_excel(file_name, var_names=var_names['col_centroids'])
             hazard_kwargs.update(cls._read_att_excel(file_name, var_names, centroids))
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err

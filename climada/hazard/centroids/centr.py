@@ -889,12 +889,19 @@ class Centroids():
             geometry=gpd.points_from_xy(x=longitude, y=latitude, crs=crs)
         )
 
-    '''
-    Private methods
-    '''
+    @classmethod
+    def _legacy_from_excel(cls, file_name, var_names):
+        LOGGER.info('Reading %s', file_name)
+        try:
+            df = pd.read_excel(file_name, var_names['sheet_name'])
+            df = df.rename(columns=var_names['col_name'])
+        except KeyError as err:
+            raise KeyError("Not existing variable: %s" % str(err)) from err
+        return cls._from_dataframe(df)
 
     def _centroids_to_df(self):
-        """Create dataframe from Centroids object to facilitate saving in different file formats.
+        """Create dataframe from Centroids object to facilitate
+        saving in different file formats.
 
         Returns
         -------
