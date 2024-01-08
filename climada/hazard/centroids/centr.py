@@ -249,6 +249,7 @@ class Centroids():
         # in the init. For large datasets this saves computation time
         centroids = cls(lat=[1], lon=[1]) #make "empty" centroids
         columns = [col for col in gdf.columns if col in DEF_COLS]
+        columns.insert(0, 'geometry') #Same order as init
         centroids.gdf = gdf[columns]
         if not gdf.crs:
             centroids.gdf.set_crs(DEF_CRS, inplace=True)
@@ -279,6 +280,7 @@ class Centroids():
         # Exposures can be without geometry column
         #TODO: remove once exposures is real geodataframe with geometry.
         if 'geometry' in exposures.gdf.columns:
+            col_names.append('geometry')
             gdf = exposures.gdf[col_names]
             return cls.from_geodataframe(gdf)
 
