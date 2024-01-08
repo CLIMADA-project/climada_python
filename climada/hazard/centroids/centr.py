@@ -22,7 +22,7 @@ Define Centroids class.
 import copy
 import logging
 from pathlib import Path
-from typing import Union
+from typing import Union, Literal
 import warnings
 
 import h5py
