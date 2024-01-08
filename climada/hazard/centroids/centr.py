@@ -727,12 +727,7 @@ class Centroids():
             absolute or relative file path and name to write to
         """
         LOGGER.info('Writing %s', file_path)
-        df = pd.DataFrame(self.gdf)
-        df['lon'] = self.gdf['geometry'].x
-        df['lat'] = self.gdf['geometry'].y
-        df = df.drop(['geometry'], axis=1)
-        crs = CRS.from_user_input(self.crs).to_wkt()
-        df['crs'] = crs
+        df = self._centroids_to_df()
         df.to_csv(file_path, index=False)
 
 
@@ -786,12 +781,7 @@ class Centroids():
             absolute or relative file path and name to write to
         """
         LOGGER.info('Writing %s', file_path)
-        df = pd.DataFrame(self.gdf)
-        df['lon'] = self.gdf['geometry'].x
-        df['lat'] = self.gdf['geometry'].y
-        df = df.drop(['geometry'], axis=1)
-        crs = CRS.from_user_input(self.crs).to_wkt()
-        df['crs'] = crs
+        df = self._centroids_to_df()
         df.to_excel(file_path, sheet_name='centroids', index=False)
 
     def write_hdf5(self, file_name, mode='w'):
@@ -891,7 +881,22 @@ class Centroids():
     '''
     Private methods
     '''
-
+    
+    def _centroids_to_df(self):
+        """Create dataframe from Centroids object to facilitate saving in different file formats.
+        
+        Returns
+        -------
+        df : DataFrame
+        """
+        
+        df = pd.DataFrame(self.gdf)
+        df['lon'] = self.gdf['geometry'].x
+        df['lat'] = self.gdf['geometry'].y
+        df = df.drop(['geometry'], axis=1)
+        crs = CRS.from_user_input(self.crs).to_wkt()
+        df['crs'] = crs
+        return df
 
     def _ne_crs_geom(self):
         """Return `geometry` attribute in the CRS of Natural Earth.

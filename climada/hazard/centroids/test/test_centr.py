@@ -123,7 +123,9 @@ class TestCentroidsReader(unittest.TestCase):
         tmpfile = Path('test_write_csv.csv')
         lat = np.array([0, 20048966.1, -20048966, 0, 0])
         lon = np.array([0, 0, 0, 20037508.34, -20037508.34])
-        df = pd.DataFrame({'lat':lat, 'lon':lon})
+        region_id = np.array([1, 2, 3, 4, 5])
+        on_land = np.array([True, False, False, True, True])
+        df = pd.DataFrame({'lat':lat, 'lon':lon, 'region_id':region_id, 'on_land':on_land})
         df['crs'] = CRS.from_user_input(3857).to_wkt()
         df.to_csv(tmpfile, index=False)
 
@@ -134,6 +136,8 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids.lat, lat)
         np.testing.assert_array_equal(centroids.lon, lon)
         self.assertEqual(centroids.crs, 'epsg:3857')
+        np.testing.assert_array_equal(centroids.region_id, region_id)
+        np.testing.assert_array_equal(centroids.on_land, on_land)
 
         # Delete file
         Path(tmpfile).unlink()
@@ -144,7 +148,9 @@ class TestCentroidsReader(unittest.TestCase):
         tmpfile = Path('test_write_csv.csv')
         lat = np.array([10.0, 20.0, 30.0])
         lon = np.array([-10.0, -20.0, -30.0])
-        centroids_out = Centroids(lat=lat, lon=lon)
+        region_id = np.array([1, 2, 3])
+        on_land = np.array([True, False, False])
+        centroids_out = Centroids(lat=lat, lon=lon, region_id=region_id, on_land=on_land)
 
         # Write CSV file from Centroids using write_csv
         centroids_out.write_csv(tmpfile)
@@ -155,7 +161,9 @@ class TestCentroidsReader(unittest.TestCase):
         # Test attributes
         np.testing.assert_array_equal(centroids_in.lat, centroids_out.lat)
         np.testing.assert_array_equal(centroids_in.lon, centroids_out.lon)
-        self.assertEqual(centroids_in.crs, centroids_out.crs)
+        self.assertTrue(u_coord.equal_crs(centroids_in.crs, centroids_out.crs))
+        np.testing.assert_array_equal(centroids_in.region_id, centroids_out.region_id)
+        np.testing.assert_array_equal(centroids_in.on_land, centroids_out.on_land)
 
         #delete file
         Path(tmpfile).unlink()
@@ -186,7 +194,9 @@ class TestCentroidsReader(unittest.TestCase):
         tmpfile = Path('test_write_excel.xlsx')
         lat = np.array([0, 20048966.1, -20048966, 0, 0])
         lon = np.array([0, 0, 0, 20037508.34, -20037508.34])
-        df = pd.DataFrame({'lat':lat, 'lon':lon})
+        region_id = np.array([1, 2, 3, 4, 5])
+        on_land = np.array([True, False, False, True, True])
+        df = pd.DataFrame({'lat':lat, 'lon':lon, 'region_id':region_id, 'on_land':on_land})
         df['crs'] = CRS.from_user_input(3857).to_wkt()
         df.to_excel(tmpfile, sheet_name = 'centroids', index=False)
 
@@ -197,6 +207,8 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids.lat, lat)
         np.testing.assert_array_equal(centroids.lon, lon)
         self.assertEqual(centroids.crs, 'epsg:3857')
+        np.testing.assert_array_equal(centroids.region_id, region_id)
+        np.testing.assert_array_equal(centroids.on_land, on_land)
 
         #delete file
         Path(tmpfile).unlink()
@@ -207,7 +219,9 @@ class TestCentroidsReader(unittest.TestCase):
         tmpfile = Path('test_write_excel.xlsx')
         lat = np.array([10.0, 20.0, 30.0])
         lon = np.array([-10.0, -20.0, -30.0])
-        centroids_out = Centroids(lat=lat, lon=lon)
+        region_id = np.array([1, 2, 3])
+        on_land = np.array([True, False, False])
+        centroids_out = Centroids(lat=lat, lon=lon, region_id=region_id, on_land=on_land)
 
         # Write Excel file from Centroids using write_csv
         centroids_out.write_excel(tmpfile)
@@ -218,7 +232,9 @@ class TestCentroidsReader(unittest.TestCase):
         # Test attributes
         np.testing.assert_array_equal(centroids_in.lat, centroids_out.lat)
         np.testing.assert_array_equal(centroids_in.lon, centroids_out.lon)
-        self.assertEqual(centroids_in.crs, centroids_out.crs)
+        self.assertTrue(u_coord.equal_crs(centroids_in.crs, centroids_out.crs))
+        np.testing.assert_array_equal(centroids_in.region_id, centroids_out.region_id)
+        np.testing.assert_array_equal(centroids_in.on_land, centroids_out.on_land)
 
         #delete file
         Path(tmpfile).unlink()
