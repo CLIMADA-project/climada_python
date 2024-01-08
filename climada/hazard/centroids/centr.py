@@ -173,7 +173,16 @@ class Centroids():
         -------
         eq : bool
         """
-        return self.gdf.equals(other.gdf) & u_coord.equal_crs(self.crs, other.crs)
+        eq_crs = u_coord.equal_crs(self.crs, other.crs)
+        try:
+            pd.testing.assert_frame_equal(
+                self.gdf, other.gdf, check_like=True
+                )
+            eq_df = True
+        except AssertionError:
+            eq_df = False
+
+        return eq_crs & eq_df
 
     def to_default_crs(self, inplace=True):
         """Project the current centroids to the default CRS (epsg4326)
