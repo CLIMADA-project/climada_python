@@ -51,7 +51,7 @@ DEF_SHEET_NAME = 'centroids'
 
 
 class Centroids():
-    """Contains raster or vector centroids.
+    """Contains vector centroids as a GeoDataFrame
 
     Attributes
     ----------
@@ -163,12 +163,13 @@ class Centroids():
         return np.stack([self.lat, self.lon], axis=1)
 
     def __eq__(self, other):
-        """Return True if two centroids equal, False otherwise
+        """ dunder method for Centroids comparison. 
+        returns True if two centroids equal, False otherwise
 
         Parameters
         ----------
         other : Centroids
-            centroids to compare
+            object to compare with
 
         Returns
         -------
@@ -192,15 +193,16 @@ class Centroids():
         ----------
         inplace: bool
             if True, modifies the centroids in place.
-            if False, returns a copy.
+            if False, return projected centroids object.
             Default is True.
 
         Returns
         -------
         Centroids
             Centroids in the new crs
+
         """
-        self.to_crs(DEF_CRS, inplace=inplace)
+        return self.to_crs(DEF_CRS, inplace=inplace)
 
     def to_crs(self, crs, inplace=False):
         """ Project the current centroids to the desired crs
@@ -209,10 +211,9 @@ class Centroids():
         ----------
         crs : str
             coordinate reference system
-        inplace: bool
+        inplace: bool, default False
             if True, modifies the centroids in place.
             if False, returns a copy.
-            Default is False.
 
         Returns
         -------
@@ -239,6 +240,10 @@ class Centroids():
         -------
         Centroids
             Centroids built from the geodataframe.
+
+        Raises
+        ------
+        ValueError        
         """
         if np.any(gdf.geom_type != 'Point'):
             raise ValueError(
@@ -269,7 +274,11 @@ class Centroids():
         Returns
         -------
         Centroids
-            Centroids built from the exposures
+            Centroids built from the exposures geodataframe
+
+        Raises
+        ------
+        ValueError
         """
         col_names = [
             column
@@ -324,7 +333,7 @@ class Centroids():
         return cls(lat=y_grid.flatten(), lon=x_grid.flatten(), crs=crs)
 
     def append(self, centr):
-        """Append centroids points.
+        """Append Centroids
 
         Parameters
         ----------
@@ -357,7 +366,7 @@ class Centroids():
         Returns
         -------
         centroids : Centroids
-            Centroids containing the union of the centroids in others.
+            Centroids containing the union of all Centroids.
 
         """
         centroids = copy.deepcopy(self)
@@ -368,15 +377,20 @@ class Centroids():
         return Centroids.remove_duplicate_points(centroids)
 
     @classmethod
-    def remove_duplicate_points(cls, centroids):
+    def remove_duplicate_points(cls, centr):
         """Return a copy of centroids with removed duplicated points
+
+        Parameters
+        ----------
+        centr : Centroids
+            Centroids with or without duplicate points      
 
         Returns
         -------
-         : Centroids
-            Sub-selection of centroids withtout duplicates
+        centroids : Centroids
+            Sub-selection of centroids without duplicates
         """
-        return cls.from_geodataframe(centroids.gdf.drop_duplicates())
+        return cls.from_geodataframe(centr.gdf.drop_duplicates())
 
     def select(self, reg_id=None, extent=None, sel_cen=None):
         """Return Centroids with points in the given reg_id and/or in an
@@ -396,7 +410,7 @@ class Centroids():
 
         Returns
         -------
-        cen : Centroids
+        centroids : Centroids
             Sub-selection of this object
         """
         sel_cen_bool = sel_cen
@@ -459,6 +473,8 @@ class Centroids():
             The default is (9, 13)
         latlon_bounds_buffer : float, optional
             Buffer to add to all sides of the bounding box. Default: 0.0.
+        shapes : bool, optional
+            overlay axis with coastlines. Default: True
         kwargs : optional
             arguments for scatter matplotlib function
 
@@ -496,6 +512,11 @@ class Centroids():
             Use this minimum resolution in lat and lon. Is passed to the
             method climada.util.coordinates.get_resolution.
             Default: 1.0e-8
+
+        Returns
+        -------
+        areapixels : np.array
+            area values in m*m
 
         See also
         --------
@@ -645,7 +666,9 @@ class Centroids():
         Returns
         -------
         centr : Centroids
-            Centroids with meta attribute according to the given raster file
+            Centroids according to the given raster file
+        meta : dict, optional if return_meta is True
+            Raster meta (height, width, transform, crs).
         """
         meta, _ = u_coord.read_raster(
             file_name, [1], src_crs, window, geometry, dst_crs,
@@ -683,7 +706,7 @@ class Centroids():
             vector file with format supported by fiona and 'geometry' field.
         dst_crs : crs, optional
             reproject to given crs
-            If not crs is given in the file, simply sets the crs.
+            If no crs is given in the file, simply sets the crs.
 
         Returns
         -------
@@ -740,10 +763,6 @@ class Centroids():
         sheet_name : str, optional
             name of sheet in excel file containing centroid information
             Default: "centroids"
-
-        Raises
-        ------
-        KeyError
 
         Returns
         -------
@@ -811,6 +830,10 @@ class Centroids():
         -------
         centr : Centroids
             Centroids with data from the given file
+
+        Raises 
+        ------    
+        FileNotFoundError
         """
         if not Path(file_name).is_file():
             raise FileNotFoundError(str(file_name))
