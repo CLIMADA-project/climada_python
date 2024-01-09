@@ -721,12 +721,12 @@ class Centroids():
 
         Parameters
         ----------
-        file_path : str
+        file_path : str, Path
             absolute or relative file path and name to write to
         """
         LOGGER.info('Writing %s', file_path)
         df = self._centroids_to_df()
-        df.to_csv(file_path.with_suffix('.csv'), index=False)
+        df.to_csv(Path(file_path).with_suffix('.csv'), index=False)
 
 
     @classmethod
@@ -760,13 +760,13 @@ class Centroids():
 
         Parameters
         ----------
-        file_path : str
+        file_path : str, Path
             absolute or relative file path and name to write to
         """
         LOGGER.info('Writing %s', file_path)
         df = self._centroids_to_df()
         df.to_excel(
-            file_path.with_suffix('.xlsx'),
+            Path(file_path).with_suffix('.xlsx'),
             sheet_name=DEF_SHEET_NAME, index=False
             )
 
