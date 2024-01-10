@@ -984,7 +984,6 @@ def _compute_windfields(
     )
     windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
 
-
     # add angular and corrected translational velocity vectors
     windfields[1:] += si_track["vtrans"].values[1:, None, :] * v_trans_corr[1:, :, None]
     windfields[np.isnan(windfields)] = 0
