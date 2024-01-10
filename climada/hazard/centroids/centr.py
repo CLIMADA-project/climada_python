@@ -103,10 +103,10 @@ class Centroids():
 
         if isinstance(region_id, str):
             LOGGER.info(f'Setting region id to {region_id} level.')
-            self._set_region_id(level=region_id, overwrite=True)
+            self.set_region_id(level=region_id, overwrite=True)
         if isinstance(on_land, str):
             LOGGER.info(f'Setting on land from {on_land} source.')
-            self._set_on_land(source=on_land, overwrite=True)
+            self.set_on_land(source=on_land, overwrite=True)
 
     @property
     def lat(self):
@@ -163,7 +163,7 @@ class Centroids():
         return np.stack([self.lat, self.lon], axis=1)
 
     def __eq__(self, other):
-        """ dunder method for Centroids comparison. 
+        """ dunder method for Centroids comparison.
         returns True if two centroids equal, False otherwise
 
         Parameters
@@ -243,7 +243,7 @@ class Centroids():
 
         Raises
         ------
-        ValueError        
+        ValueError
         """
         if np.any(gdf.geom_type != 'Point'):
             raise ValueError(
@@ -383,7 +383,7 @@ class Centroids():
         Parameters
         ----------
         centr : Centroids
-            Centroids with or without duplicate points      
+            Centroids with or without duplicate points
 
         Returns
         -------
@@ -500,6 +500,60 @@ class Centroids():
 
         plt.tight_layout()
         return ax
+
+    def set_region_id(self, level='country', overwrite=False):
+        """Set region_id as country ISO numeric code attribute for every pixel or point.
+
+        Parameters
+        ----------
+        level: str
+            defines the admin level on which to assign centroids. Currently
+            only 'country' (admin0) is implemented. Default is 'country'.
+        overwrite : bool, optional
+            if True, overwrites the existing region_id information.
+            if False and region_id is None region_id is computed.
+        """
+        if overwrite or self.region_id is None:
+            LOGGER.debug('Setting region_id %s points.', str(self.size))
+            if level == 'country':
+                ne_geom = self._ne_crs_geom()
+                self.gdf['region_id'] = u_coord.get_country_code(
+                    ne_geom.y.values, ne_geom.x.values
+                    )
+            else:
+                raise NotImplementedError(
+                    'The region id can only be assigned for countries so far'
+                    )
+        return None
+
+    def set_on_land(self, source='natural_earth', overwrite=False):
+        """Set on_land attribute for every pixel or point.
+
+        natural_earth: https://www.naturalearthdata.com/
+
+        Parameters
+        ----------
+        source: str
+            defines the source of the coastlines. Currently
+            only 'natural_earth' is implemented.
+            Default is 'natural_earth'.
+        overwrite : bool
+            if True, overwrites the existing on_land information.
+            if False and on_land is None on_land is computed.
+        """
+        if overwrite or self.on_land is None:
+            LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
+            if source=='natural_earth':
+                ne_geom = self._ne_crs_geom()
+                self.gdf['on_land'] = u_coord.coord_on_land(
+                    ne_geom.y.values, ne_geom.x.values
+                )
+            else:
+                raise NotImplementedError(
+                    'The on land variables can only be assigned'
+                    'using natural earth.'
+                    )
+        return None
 
     def get_area_pixel(self, min_resol=1.0e-8):
         """Computes the area per centroid in the CEA projection
@@ -831,8 +885,8 @@ class Centroids():
         centr : Centroids
             Centroids with data from the given file
 
-        Raises 
-        ------    
+        Raises
+        ------
         FileNotFoundError
         """
         if not Path(file_name).is_file():
@@ -950,57 +1004,7 @@ class Centroids():
             return self.gdf.geometry
         return self.to_crs(u_coord.NE_CRS, inplace=False).geometry
 
-    def _set_region_id(self, level='country', overwrite=False):
-        """Set region_id as country ISO numeric code attribute for every pixel or point.
 
-        Parameters
-        ----------
-        level: str
-            defines the admin level on which to assign centroids. Currently
-            only 'country' (admin0) is implemented. Default is 'country'.
-        overwrite : bool, optional
-            if True, overwrites the existing region_id information.
-            if False and region_id is None region_id is computed.
-        """
-        if overwrite or self.region_id is None:
-            LOGGER.debug('Setting region_id %s points.', str(self.size))
-            if level == 'country':
-                ne_geom = self._ne_crs_geom()
-                self.gdf['region_id'] = u_coord.get_country_code(
-                    ne_geom.y.values, ne_geom.x.values
-                    )
-            else:
-                raise NotImplementedError(
-                    'The region id can only be assigned for countries so far'
-                    )
-
-    def _set_on_land(self, source='natural_earth', overwrite=False):
-        """Set on_land attribute for every pixel or point.
-
-        natural_earth: https://www.naturalearthdata.com/
-
-        Parameters
-        ----------
-        source: str
-            defines the source of the coastlines. Currently
-            only 'natural_earth' is implemented.
-            Default is 'natural_earth'.
-        overwrite : bool
-            if True, overwrites the existing on_land information.
-            if False and on_land is None on_land is computed.
-        """
-        if overwrite or self.on_land is None:
-            LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
-            if source=='natural_earth':
-                ne_geom = self._ne_crs_geom()
-                self.gdf['on_land'] = u_coord.coord_on_land(
-                    ne_geom.y.values, ne_geom.x.values
-                )
-            else:
-                raise NotImplementedError(
-                    'The on land variables can only be assigned'
-                    'using natural earth.'
-                    )
 
 
 def _meta_to_lat_lon(meta):

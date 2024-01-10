@@ -97,7 +97,7 @@ class TestVector(unittest.TestCase):
 
     def test_region_id_pass(self):
         """Test set_region_id"""
-        self.centr._set_region_id()
+        self.centr.set_region_id()
         np.testing.assert_array_equal(
             self.centr.region_id,
             REGION_ID
@@ -113,7 +113,7 @@ class TestVector(unittest.TestCase):
 
     def test_on_land(self):
         """Test set_on_land"""
-        self.centr._set_on_land()
+        self.centr.set_on_land()
         np.testing.assert_array_equal(
             self.centr.on_land,
             ON_LAND
@@ -215,7 +215,7 @@ class TestRaster(unittest.TestCase):
     def test_region_id_pass(self):
         """Test set_dist_coast"""
         centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        centr_ras._set_region_id()
+        centr_ras.set_region_id()
         self.assertEqual(centr_ras.region_id.size, centr_ras.size)
         self.assertTrue(np.array_equal(np.unique(centr_ras.region_id), np.array([862])))
 
@@ -238,7 +238,7 @@ class TestRaster(unittest.TestCase):
     def test_on_land(self):
         """Test set_on_land"""
         centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
-        centr_ras._set_on_land()
+        centr_ras.set_on_land()
         self.assertTrue(np.array_equal(centr_ras.on_land, np.ones(60 * 50, bool)))
 
     def test_area_pass(self):
