@@ -955,11 +955,6 @@ def _compute_windfields(
         si_track, d_centr, close_centr_msk, model, cyclostrophic=False,
     )
 
-    # vectorial angular velocity
-    windfields = (
-        si_track.attrs["latsign"] * np.array([1.0, -1.0])[..., :] * v_centr_normed[:, :, ::-1]
-    )
-    windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
 
     # Influence of translational speed decreases with distance from eye.
     # The "absorbing factor" is according to the following paper (see Fig. 7):
@@ -969,10 +964,25 @@ def _compute_windfields(
     #   wind speed profiles in a GIS. UNED/GRID-Geneva.
     #   https://unepgrid.ch/en/resource/19B7D302
     #
-    t_rad_bc = np.broadcast_arrays(si_track["rad"].values[:, None], d_centr)[0]
+    t_rad_bc = np.broadcast_to(si_track["rad"].values[:, None], d_centr.shape)
     v_trans_corr = np.zeros_like(d_centr)
     v_trans_corr[close_centr_msk] = np.fmin(
         1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
+
+    if model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
+        # In these models, v_ang_norm already contains vtrans_norm, so subtract it first, before
+        # converting to vectors and then adding (vectorial) vtrans again. Make sure to apply the
+        # "absorbing factor" in both steps:
+        vtrans_norm_bc = np.broadcast_to(si_track["vtrans_norm"].values[:, None], d_centr.shape)
+        v_ang_norm[close_centr_msk] -= (
+                vtrans_norm_bc[close_centr_msk] * v_trans_corr[close_centr_msk]
+        )
+
+    # vectorial angular velocity
+    windfields = (
+            si_track.attrs["latsign"] * np.array([1.0, -1.0])[..., :] * v_centr_normed[:, :, ::-1]
+    )
+    windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
 
     # add angular and corrected translational velocity vectors
     windfields[1:] += si_track["vtrans"].values[1:, None, :] * v_trans_corr[1:, :, None]
@@ -1407,11 +1417,15 @@ def _x_holland_2010(
     """
     hol_x = np.zeros_like(d_centr)
     r_max, v_max_s, hol_b, d_centr, v_n, r_n = [
-        ar[close_centr] for ar in np.broadcast_arrays(
-            si_track["rad"].values[:, None], si_track["vmax"].values[:, None],
-            si_track["hol_b"].values[:, None], d_centr,
-            np.atleast_1d(v_n)[:, None], np.atleast_1d(r_n_km)[:, None],
-        )
+        np.broadcast_to(ar, d_centr.shape)[close_centr]
+        for ar in [
+            si_track["rad"].values[:, None],
+            si_track["vmax"].values[:, None],
+            si_track["hol_b"].values[:, None],
+            d_centr,
+            np.atleast_1d(v_n)[:, None],
+            np.atleast_1d(r_n_km)[:, None],
+        ]
     ]
 
     # convert to SI units
@@ -1470,11 +1484,15 @@ def _stat_holland_2010(
         Absolute values of wind speeds (in m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
-    d_centr, v_max_s, r_max, hol_b, hol_x = [
-        ar[close_centr] for ar in np.broadcast_arrays(
-            d_centr, si_track["vmax"].values[:, None], si_track["rad"].values[:, None],
-            si_track["hol_b"].values[:, None], hol_x,
-        )
+    v_max_s, r_max, hol_b, d_centr, hol_x = [
+        np.broadcast_to(ar, d_centr.shape)[close_centr]
+        for ar in [
+            si_track["vmax"].values[:, None],
+            si_track["rad"].values[:, None],
+            si_track["hol_b"].values[:, None],
+            d_centr,
+            hol_x,
+        ]
     ]
 
     r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
@@ -1526,12 +1544,16 @@ def _stat_holland_1980(
         Absolute values of wind speeds (m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
-    d_centr, r_max, hol_b, penv, pcen, coriolis_p = [
-        ar[close_centr] for ar in np.broadcast_arrays(
-            d_centr, si_track["rad"].values[:, None], si_track["hol_b"].values[:, None],
-            si_track["env"].values[:, None], si_track["cen"].values[:, None],
-            si_track["cp"].values[:, None]
-        )
+    r_max, hol_b, penv, pcen, coriolis_p, d_centr = [
+        np.broadcast_to(ar, d_centr.shape)[close_centr]
+        for ar in [
+            si_track["rad"].values[:, None],
+            si_track["hol_b"].values[:, None],
+            si_track["env"].values[:, None],
+            si_track["cen"].values[:, None],
+            si_track["cp"].values[:, None],
+            d_centr,
+        ]
     ]
 
     r_coriolis = 0
@@ -1587,12 +1609,14 @@ def _stat_er_2011(
         Absolute values of wind speeds (m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
-    d_centr, r_max, v_max, coriolis_p = [
-        ar[close_centr] for ar in np.broadcast_arrays(
-            d_centr, si_track["rad"].values[:, None],
+    r_max, v_max, coriolis_p, d_centr = [
+        np.broadcast_to(ar, d_centr.shape)[close_centr]
+        for ar in [
+            si_track["rad"].values[:, None],
             si_track["vmax"].values[:, None],
             si_track["cp"].values[:, None],
-        )
+            d_centr,
+        ]
     ]
 
     # compute the momentum at the maximum
