@@ -39,26 +39,26 @@ class TestReadDefaultNetCDF(unittest.TestCase):
     """Test reading a NetCDF file where the coordinates to read match the dimensions"""
 
     @classmethod
-    def setUp(self):
+    def setUpClass(cls):
         """Write a simple NetCDF file to read"""
-        self.tempdir = TemporaryDirectory()
-        self.netcdf_path = Path(self.tempdir.name) / "default.nc"
-        self.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
-        self.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
-        self.latitude = np.array([0, 1])
-        self.longitude = np.array([0, 1, 2])
+        cls.tempdir = TemporaryDirectory()
+        cls.netcdf_path = Path(cls.tempdir.name) / "default.nc"
+        cls.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
+        cls.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
+        cls.latitude = np.array([0, 1])
+        cls.longitude = np.array([0, 1, 2])
         dset = xr.Dataset(
             {
-                "intensity": (["time", "latitude", "longitude"], self.intensity),
+                "intensity": (["time", "latitude", "longitude"], cls.intensity),
             },
-            dict(time=self.time, latitude=self.latitude, longitude=self.longitude),
+            dict(time=cls.time, latitude=cls.latitude, longitude=cls.longitude),
         )
-        dset.to_netcdf(self.netcdf_path)
+        dset.to_netcdf(cls.netcdf_path)
 
     @classmethod
-    def tearDown(self):
+    def tearDownClass(cls):
         """Delete the NetCDF file"""
-        self.tempdir.cleanup()
+        cls.tempdir.cleanup()
 
     def _assert_default(self, hazard):
         """Assertions for the default hazard to be loaded"""
