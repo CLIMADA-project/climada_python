@@ -826,6 +826,24 @@ class Hazard():
                 )
                 return np.zeros(array.shape)
 
+        def year_month_day_accessor(
+            array: xr.DataArray, strict: bool = True
+        ) -> np.ndarray:
+            """Take an array and return am array of YYYY-MM-DD strings"""
+            try:
+                return array.dt.strftime("%Y-%m-%d").values
+
+            # Handle access errors
+            except (ValueError, TypeError) as err:
+                if strict:
+                    raise err
+
+                LOGGER.warning(
+                    "Failed to read values of '%s' as dates. Hazard.event_name will be "
+                    "empty strings" % array.name
+                )
+                return np.full(array.shape, "")
+
         def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
             """Return the array or repeat a single-valued array
 
@@ -855,7 +873,11 @@ class Hazard():
                     None,
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
-                    [""] * num_events,
+                    list(
+                        year_month_day_accessor(
+                            data[coords["event"]], strict=False
+                        ).flat
+                    ),
                     date_to_ordinal_accessor(data[coords["event"]], strict=False),
                 ],
                 # The accessor for the data in the Dataset

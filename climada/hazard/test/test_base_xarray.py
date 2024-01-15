@@ -71,9 +71,8 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         self.assertEqual(hazard.haz_type, "")
         self.assertEqual(hazard.units, "")
         np.testing.assert_array_equal(hazard.event_id, [1, 2])
-        np.testing.assert_array_equal(hazard.event_name, ["", ""])
         np.testing.assert_array_equal(
-            hazard.date, [val.toordinal() for val in self.time]
+            hazard.event_name, [x.strftime("%Y-%m-%d") for x in self.time]
         )
         np.testing.assert_array_equal(hazard.frequency, np.ones(hazard.event_id.size))
 
@@ -177,8 +176,12 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             with self.assertLogs("climada.hazard.base", "WARNING") as cm:
                 hazard = Hazard.from_xarray_raster(dataset, "", "")
                 np.testing.assert_array_equal(hazard.date, np.zeros(size))
+                np.testing.assert_array_equal(hazard.event_name, np.full(size, ""))
             self.assertIn(
-                "Failed to read values of 'time' as dates or ordinals.", cm.output[0]
+                "Failed to read values of 'time' as dates.", cm.output[0]
+            )
+            self.assertIn(
+                "Failed to read values of 'time' as dates or ordinals.", cm.output[1]
             )
 
     def test_data_vars(self):
@@ -361,7 +364,9 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             ds = ds.isel(time=0).squeeze()
             hazard = Hazard.from_xarray_raster(ds, "", "")
             self._assert_default_types(hazard)
-            np.testing.assert_array_equal(hazard.event_name, [""])
+            np.testing.assert_array_equal(
+                hazard.event_name, [self.time[0].strftime("%Y-%m-%d")]
+            )
             np.testing.assert_array_equal(hazard.date, [self.time[0].toordinal()])
             np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
             np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
@@ -383,7 +388,9 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             ds = ds.expand_dims(time=[np.datetime64("2022-01-01")])
             hazard = Hazard.from_xarray_raster(ds, "", "")
             self._assert_default_types(hazard)
-            np.testing.assert_array_equal(hazard.event_name, [""])
+            np.testing.assert_array_equal(
+                hazard.event_name, ["2022-01-01"]
+            )
             np.testing.assert_array_equal(
                 hazard.date, [dt.datetime(2022, 1, 1).toordinal()]
             )
@@ -563,7 +570,9 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         np.testing.assert_array_equal(
             hazard.date, [val.toordinal() for val in time.flat]
         )
-        np.testing.assert_array_equal(hazard.event_name, [""] * 4)
+        np.testing.assert_array_equal(
+            hazard.event_name, ["1999-01-01", "1999-02-01", "2000-01-01", "2000-02-01"]
+        )
 
     def test_errors(self):
         """Check if expected errors are thrown"""
