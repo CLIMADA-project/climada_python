@@ -823,7 +823,8 @@ class Hazard():
 
                 LOGGER.warning(
                     "Failed to read values of '%s' as dates or ordinals. Hazard.date "
-                    "will be ones only" % array.name
+                    "will be ones only",
+                    array.name,
                 )
                 return np.ones(array.shape)
 
@@ -841,7 +842,8 @@ class Hazard():
 
                 LOGGER.warning(
                     "Failed to read values of '%s' as dates. Hazard.event_name will be "
-                    "empty strings" % array.name
+                    "empty strings",
+                    array.name,
                 )
                 return np.full(array.shape, "")
 
