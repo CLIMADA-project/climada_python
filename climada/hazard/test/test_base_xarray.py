@@ -39,26 +39,26 @@ class TestReadDefaultNetCDF(unittest.TestCase):
     """Test reading a NetCDF file where the coordinates to read match the dimensions"""
 
     @classmethod
-    def setUpClass(cls):
+    def setUp(self):
         """Write a simple NetCDF file to read"""
-        cls.tempdir = TemporaryDirectory()
-        cls.netcdf_path = Path(cls.tempdir.name) / "default.nc"
-        cls.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
-        cls.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
-        cls.latitude = np.array([0, 1])
-        cls.longitude = np.array([0, 1, 2])
+        self.tempdir = TemporaryDirectory()
+        self.netcdf_path = Path(self.tempdir.name) / "default.nc"
+        self.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
+        self.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
+        self.latitude = np.array([0, 1])
+        self.longitude = np.array([0, 1, 2])
         dset = xr.Dataset(
             {
-                "intensity": (["time", "latitude", "longitude"], cls.intensity),
+                "intensity": (["time", "latitude", "longitude"], self.intensity),
             },
-            dict(time=cls.time, latitude=cls.latitude, longitude=cls.longitude),
+            dict(time=self.time, latitude=self.latitude, longitude=self.longitude),
         )
-        dset.to_netcdf(cls.netcdf_path)
+        dset.to_netcdf(self.netcdf_path)
 
     @classmethod
-    def tearDownClass(cls):
+    def tearDown(self):
         """Delete the NetCDF file"""
-        cls.tempdir.cleanup()
+        self.tempdir.cleanup()
 
     def _assert_default(self, hazard):
         """Assertions for the default hazard to be loaded"""
@@ -71,9 +71,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         self.assertEqual(hazard.haz_type, "")
         self.assertEqual(hazard.units, "")
         np.testing.assert_array_equal(hazard.event_id, [1, 2])
-        np.testing.assert_array_equal(
-            hazard.event_name, [x.strftime("%Y-%m-%d") for x in self.time]
-        )
+        np.testing.assert_array_equal(hazard.event_name, ["", ""])
         np.testing.assert_array_equal(
             hazard.date, [val.toordinal() for val in self.time]
         )
@@ -161,6 +159,27 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         self._assert_default_types(hazard)
         self.assertEqual(hazard.haz_type, "TC")
         self.assertEqual(hazard.units, "m/s")
+
+    def test_event_no_time(self):
+        """Test if an event coordinate that is not a time works"""
+        with xr.open_dataset(self.netcdf_path) as dataset:
+            size = dataset.sizes["time"]
+
+            # Integers
+            time = np.arange(size)
+            dataset["time"] = time
+            self.time = ["1970-01-01", "1970-01-02"]  # These will be 0, 1 as ordinals
+            hazard = Hazard.from_xarray_raster(dataset, "", "")
+            self._assert_default_types(hazard)
+
+            # Strings
+            dataset["time"] = ["a", "b"]
+            with self.assertLogs("climada.hazard.base", "WARNING") as cm:
+                hazard = Hazard.from_xarray_raster(dataset, "", "")
+                np.testing.assert_array_equal(hazard.date, np.zeros(size))
+            self.assertIn(
+                "Failed to read values of 'time' as dates or ordinals.", cm.output[0]
+            )
 
     def test_data_vars(self):
         """Check handling of data variables"""
@@ -342,9 +361,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             ds = ds.isel(time=0).squeeze()
             hazard = Hazard.from_xarray_raster(ds, "", "")
             self._assert_default_types(hazard)
-            np.testing.assert_array_equal(
-                hazard.event_name, [self.time[0].strftime("%Y-%m-%d")]
-            )
+            np.testing.assert_array_equal(hazard.event_name, [""])
             np.testing.assert_array_equal(hazard.date, [self.time[0].toordinal()])
             np.testing.assert_array_equal(hazard.centroids.lat, [0, 0, 0, 1, 1, 1])
             np.testing.assert_array_equal(hazard.centroids.lon, [0, 1, 2, 0, 1, 2])
@@ -366,7 +383,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             ds = ds.expand_dims(time=[np.datetime64("2022-01-01")])
             hazard = Hazard.from_xarray_raster(ds, "", "")
             self._assert_default_types(hazard)
-            np.testing.assert_array_equal(hazard.event_name, ["2022-01-01"])
+            np.testing.assert_array_equal(hazard.event_name, [""])
             np.testing.assert_array_equal(
                 hazard.date, [dt.datetime(2022, 1, 1).toordinal()]
             )
@@ -546,9 +563,7 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
         np.testing.assert_array_equal(
             hazard.date, [val.toordinal() for val in time.flat]
         )
-        np.testing.assert_array_equal(
-            hazard.event_name, ["1999-01-01", "1999-02-01", "2000-01-01", "2000-02-01"]
-        )
+        np.testing.assert_array_equal(hazard.event_name, [""] * 4)
 
     def test_errors(self):
         """Check if expected errors are thrown"""
@@ -570,6 +585,7 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
                 "",
                 coordinate_vars=dict(latitude="lalalatitude"),
             )
+
 
 # Execute Tests
 if __name__ == "__main__":

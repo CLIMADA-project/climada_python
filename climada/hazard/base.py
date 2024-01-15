@@ -513,12 +513,13 @@ class Hazard():
 
             Default values are:
 
-            * ``date``: The ``event`` coordinate interpreted as date
+            * ``date``: The ``event`` coordinate interpreted as date or ordinal, or
+              zeros if that fails (which will issue a warning).
             * ``fraction``: ``None``, which results in a value of 1.0 everywhere, see
               :py:meth:`Hazard.__init__` for details.
             * ``hazard_type``: Empty string
             * ``frequency``: 1.0 for every event
-            * ``event_name``: String representation of the event time
+            * ``event_name``: List of empty strings
             * ``event_id``: Consecutive integers starting at 1 and increasing with time
         crs : str, optional
             Identifier for the coordinate reference system of the coordinates. Defaults
@@ -553,13 +554,13 @@ class Hazard():
           and Examples) before loading the Dataset as Hazard.
         * Single-valued data for variables ``frequency``. ``event_name``, and
           ``event_date`` will be broadcast to every event.
+        * The ``event`` dimension need not be a time or date.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
         * The attributes ``Hazard.haz_type`` and ``Hazard.unit`` currently cannot be
           read from the Dataset. Use the method parameters to set these attributes.
         * This method does not read coordinate system metadata. Use the ``crs`` parameter
           to set a custom coordinate system identifier.
-        * This method **does not** read lazily. Single data arrays must fit into memory.
 
         Examples
         --------
@@ -802,14 +803,28 @@ class Hazard():
                 raise ValueError(f"'{array.name}' data must be larger than zero")
             return array.values
 
-        def date_to_ordinal_accessor(array: xr.DataArray) -> np.ndarray:
+        def date_to_ordinal_accessor(
+            array: xr.DataArray, strict: bool = True
+        ) -> np.ndarray:
             """Take a DataArray and transform it into ordinals"""
-            if np.issubdtype(array.dtype, np.integer):
-                # Assume that data is ordinals
-                return strict_positive_int_accessor(array)
+            try:
+                if np.issubdtype(array.dtype, np.integer):
+                    # Assume that data is ordinals
+                    return strict_positive_int_accessor(array)
 
-            # Try transforming to ordinals
-            return np.array(u_dt.datetime64_to_ordinal(array.values))
+                # Try transforming to ordinals
+                return np.array(u_dt.datetime64_to_ordinal(array.values))
+
+            # Handle access errors
+            except (ValueError, TypeError) as err:
+                if strict:
+                    raise err
+
+                LOGGER.warning(
+                    "Failed to read values of '%s' as dates or ordinals. Hazard.date "
+                    "will be zeros only" % array.name
+                )
+                return np.zeros(array.shape)
 
         def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
             """Return the array or repeat a single-valued array
@@ -840,8 +855,8 @@ class Hazard():
                     None,
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
-                    data[coords["event"]].dt.strftime("%Y-%m-%d").values.flatten().tolist(),
-                    np.array(u_dt.datetime64_to_ordinal(data[coords["event"]].values)),
+                    [""] * num_events,
+                    date_to_ordinal_accessor(data[coords["event"]], strict=False),
                 ],
                 # The accessor for the data in the Dataset
                 accessor=[
