@@ -823,9 +823,9 @@ class Hazard():
 
                 LOGGER.warning(
                     "Failed to read values of '%s' as dates or ordinals. Hazard.date "
-                    "will be zeros only" % array.name
+                    "will be ones only" % array.name
                 )
-                return np.zeros(array.shape)
+                return np.ones(array.shape)
 
         def year_month_day_accessor(
             array: xr.DataArray, strict: bool = True

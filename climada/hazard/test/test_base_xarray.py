@@ -74,6 +74,9 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         np.testing.assert_array_equal(
             hazard.event_name, [x.strftime("%Y-%m-%d") for x in self.time]
         )
+        np.testing.assert_array_equal(
+            hazard.date, [val.toordinal() for val in self.time]
+        )
         np.testing.assert_array_equal(hazard.frequency, np.ones(hazard.event_id.size))
 
         # Centroids
@@ -164,18 +167,22 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         with xr.open_dataset(self.netcdf_path) as dataset:
             size = dataset.sizes["time"]
 
-            # Integers
-            time = np.arange(size)
+            # Positive integers (interpreted as ordinals)
+            time = [2, 1]
             dataset["time"] = time
-            self.time = ["1970-01-01", "1970-01-02"]  # These will be 0, 1 as ordinals
             hazard = Hazard.from_xarray_raster(dataset, "", "")
             self._assert_default_types(hazard)
+            np.testing.assert_array_equal(
+                hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
+            )
+            np.testing.assert_array_equal(hazard.date, time)
+            np.testing.assert_array_equal(hazard.event_name, np.full(size, ""))
 
             # Strings
             dataset["time"] = ["a", "b"]
             with self.assertLogs("climada.hazard.base", "WARNING") as cm:
                 hazard = Hazard.from_xarray_raster(dataset, "", "")
-                np.testing.assert_array_equal(hazard.date, np.zeros(size))
+                np.testing.assert_array_equal(hazard.date, np.ones(size))
                 np.testing.assert_array_equal(hazard.event_name, np.full(size, ""))
             self.assertIn("Failed to read values of 'time' as dates.", cm.output[0])
             self.assertIn(
