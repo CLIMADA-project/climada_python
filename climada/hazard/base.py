@@ -519,7 +519,8 @@ class Hazard():
               :py:meth:`Hazard.__init__` for details.
             * ``hazard_type``: Empty string
             * ``frequency``: 1.0 for every event
-            * ``event_name``: List of empty strings
+            * ``event_name``: String representation of the event date or empty strings
+              if that fails (which will issue a warning).
             * ``event_id``: Consecutive integers starting at 1 and increasing with time
         crs : str, optional
             Identifier for the coordinate reference system of the coordinates. Defaults
