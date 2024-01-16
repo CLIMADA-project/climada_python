@@ -463,12 +463,13 @@ class Hazard():
     ):
         """Read raster-like data from an xarray Dataset
 
-        This method reads data that can be interpreted using three coordinates for event,
-        latitude, and longitude. The data and the coordinates themselves may be organized
-        in arbitrary dimensions in the Dataset (e.g. three dimensions 'year', 'month',
-        'day' for the coordinate 'event'). The three coordinates to be read can be
-        specified via the ``coordinate_vars`` parameter. See Notes and Examples if you
-        want to load single-event data that does not contain an event dimension.
+        This method reads data that can be interpreted using three coordinates: event,
+        latitude, and longitude. The names of the coordinates to be read from the
+        dataset can be specified via the ``coordinate_vars`` parameter. The data and the
+        coordinates themselves may be organized in arbitrary dimensions (e.g. two
+        dimensions 'year' and 'altitude' for the coordinate 'event').  See Notes and
+        Examples if you want to load single-event data that does not contain an event
+        dimension.
 
         The only required data is the intensity. For all other data, this method can
         supply sensible default values. By default, this method will try to find these
@@ -514,7 +515,7 @@ class Hazard():
             Default values are:
 
             * ``date``: The ``event`` coordinate interpreted as date or ordinal, or
-              zeros if that fails (which will issue a warning).
+              ones if that fails (which will issue a warning).
             * ``fraction``: ``None``, which results in a value of 1.0 everywhere, see
               :py:meth:`Hazard.__init__` for details.
             * ``hazard_type``: Empty string
@@ -555,7 +556,10 @@ class Hazard():
           and Examples) before loading the Dataset as Hazard.
         * Single-valued data for variables ``frequency``. ``event_name``, and
           ``event_date`` will be broadcast to every event.
-        * The ``event`` dimension need not be a time or date.
+        * The ``event`` coordinate may take arbitrary values. In case these values
+          cannot be interpreted as dates or date ordinals, the default values for
+          ``Hazard.date`` and ``Hazard.event_name`` will not be useful, see the
+          ``data_vars``` parameter documentation above.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
         * The attributes ``Hazard.haz_type`` and ``Hazard.unit`` currently cannot be
