@@ -357,10 +357,13 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         if log:
             vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
-            scal = 1 - 2 * hav
-            fact = dist / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
-            vtan = fact[..., None] * (vec2[:, None, :] - scal[..., None] * vec1[:, :, None])
+            vtan = vec2[:, None, :] - (1 - 2 * hav[..., None]) * vec1[:, :, None]
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
+            # faster version of `vtan_norm = np.linalg.norm(vtan, axis=-1)`
+            vtan_norm = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
+            # for consistency, set dist to 0 if vtan is 0
+            dist[vtan_norm < np.spacing(1)] = 0
+            vtan *= dist[..., None] / np.fmax(np.spacing(1), vtan_norm[..., None])
     else:
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
@@ -1539,9 +1542,8 @@ def get_country_code(lat, lon, gridded=False):
                                        method='nearest', fill_value=0)
         region_id = region_id.astype(int)
     else:
-        extent = (lon.min() - 0.001, lon.max() + 0.001,
-                  lat.min() - 0.001, lat.max() + 0.001)
-        countries = get_country_geometries(extent=extent)
+        (lon_min, lat_min, lon_max, lat_max) = latlon_bounds(lat, lon, 0.001)
+        countries = get_country_geometries(extent=(lon_min, lon_max, lat_min, lat_max))
         with warnings.catch_warnings():
             # in order to suppress the following
             # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely

@@ -29,3 +29,5 @@
 * Raphael Portmann
 * Nicolas Colombi
 * Leonie Villiger
+* Kam Lam Yeung
+* Sarah Hülsen

@@ -341,7 +341,7 @@ class Client():
             elif isinstance(_v, list):
                 multis[k] = _v
             else:
-                raise ValueError("properties must be a string or a list of strings")
+                raise ValueError("the value of a property must be a string or a list of strings")
         return straights, multis
 
     @staticmethod

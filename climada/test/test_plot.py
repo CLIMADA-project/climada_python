@@ -162,10 +162,7 @@ class TestPlotter(unittest.TestCase):
         myexp.gdf['value'] = np.array([1, 1, 1])
         myexp.check()
 
-        try:
-            myexp.plot_basemap(url=ctx.providers.OpenStreetMap.Mapnik)
-        except urllib.error.HTTPError:
-            self.assertEqual(1, 0)
+        myexp.plot_basemap(url=ctx.providers.OpenStreetMap.Mapnik)
 
     def test_disc_rates(self):
         """Test plot function of discount rates."""
