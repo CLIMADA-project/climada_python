@@ -126,6 +126,25 @@ class TestReader(unittest.TestCase):
             msk = (intensity > 0)
             np.testing.assert_array_equal(windfield_norms[msk], intensity[msk])
 
+    def test_cross_antimeridian(self):
+        # Two locations on the island Taveuni (Fiji), one west and one east of 180° longitude.
+        # We list the second point twice, with different lon-normalization:
+        cen = Centroids.from_lat_lon([-16.95, -16.8, -16.8], [179.9, 180.1, -179.9])
+        cen.set_dist_coast(precomputed=True)
+
+        # Cyclone YASA (2020) passed directly over Fiji
+        tr = TCTracks.from_ibtracs_netcdf(storm_id=["2020346S13168"])
+
+        inten = TropCyclone.from_tracks(tr, centroids=cen).intensity.toarray()[0, :]
+
+        # Centroids 1 and 2 are identical, they just use a different normalization for lon. This
+        # should not affect the result at all:
+        self.assertEqual(inten[1], inten[2])
+
+        # All locations should be clearly affected by strong winds of appx. 40 m/s. The exact
+        # values are not so important for this test:
+        np.testing.assert_allclose(inten, 40, atol=10)
+
     def test_windfield_models(self):
         """Test _tc_from_track function with different wind field models."""
         intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
