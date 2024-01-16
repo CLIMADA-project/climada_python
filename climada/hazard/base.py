@@ -558,7 +558,7 @@ class Hazard():
           ``event_date`` will be broadcast to every event.
         * The ``event`` coordinate may take arbitrary values. In case these values
           cannot be interpreted as dates or date ordinals, the default values for
-          ``Hazard.date`` and ``Hazard.event_name`` will not be useful, see the
+          ``Hazard.date`` and ``Hazard.event_name`` are used, see the
           ``data_vars``` parameter documentation above.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
