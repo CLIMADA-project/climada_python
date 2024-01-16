@@ -162,6 +162,33 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         self.assertEqual(hazard.haz_type, "TC")
         self.assertEqual(hazard.units, "m/s")
 
+    def test_event_no_time(self):
+        """Test if an event coordinate that is not a time works"""
+        with xr.open_dataset(self.netcdf_path) as dataset:
+            size = dataset.sizes["time"]
+
+            # Positive integers (interpreted as ordinals)
+            time = [2, 1]
+            dataset["time"] = time
+            hazard = Hazard.from_xarray_raster(dataset, "", "")
+            self._assert_default_types(hazard)
+            np.testing.assert_array_equal(
+                hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
+            )
+            np.testing.assert_array_equal(hazard.date, time)
+            np.testing.assert_array_equal(hazard.event_name, np.full(size, ""))
+
+            # Strings
+            dataset["time"] = ["a", "b"]
+            with self.assertLogs("climada.hazard.base", "WARNING") as cm:
+                hazard = Hazard.from_xarray_raster(dataset, "", "")
+                np.testing.assert_array_equal(hazard.date, np.ones(size))
+                np.testing.assert_array_equal(hazard.event_name, np.full(size, ""))
+            self.assertIn("Failed to read values of 'time' as dates.", cm.output[0])
+            self.assertIn(
+                "Failed to read values of 'time' as dates or ordinals.", cm.output[1]
+            )
+
     def test_data_vars(self):
         """Check handling of data variables"""
         with xr.open_dataset(self.netcdf_path) as dataset:
@@ -570,6 +597,7 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
                 "",
                 coordinate_vars=dict(latitude="lalalatitude"),
             )
+
 
 # Execute Tests
 if __name__ == "__main__":
