@@ -21,7 +21,7 @@ Test Tag class
 
 import unittest
 
-from climada.util.tag import Tag
+from climada.entity.tag import Tag
 
 class TestAppend(unittest.TestCase):
     """Test loading funcions from the Hazard class"""
