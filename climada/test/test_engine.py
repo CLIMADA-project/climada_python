@@ -173,7 +173,7 @@ class TestGDPScaling(unittest.TestCase):
         )
         # scaled impact value might change if worldbank input data changes,
         # check magnitude and adjust if test fails in the following line:
-        self.assertListEqual(impact_scaled, [28, 137, 1000, 165, 304])
+        self.assertListEqual(impact_scaled, [28, 137, 999, 163, 304])
 
 
 class TestEmdatToImpact(unittest.TestCase):
