@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Uncertainty Delta Impact class
+Define Uncertainty Impact class
 """
 
 __all__ = ['CalcDeltaImpact']
@@ -24,18 +24,26 @@ __all__ = ['CalcDeltaImpact']
 import logging
 import time
 from typing import Union
+import itertools
 
 import pandas as pd
 import numpy as np
+import pathos.multiprocessing as mp
+# use pathos.multiprocess fork of multiprocessing for compatibility
+# wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
+from climada.engine.unsequa.calc_base import (
+    _sample_parallel_iterator,
+    _multiprocess_chunksize,
+    _transpose_chunked_data,
+)
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
-
 
 class CalcDeltaImpact(Calc):
     """
@@ -54,18 +62,18 @@ class CalcDeltaImpact(Calc):
         Compute eai_exp or not
     value_unit : str
         Unit of the exposures value
-    exp_input_var : climada.engine.uncertainty.input_var.InputVar
+    exp_input_var : InputVar or Exposures
         Exposure uncertainty variable
-    impf_input_var : climada.engine.uncertainty.input_var.InputVar
+    impf_input_var : InputVar if ImpactFuncSet
         Impact function set uncertainty variable
-    haz_input_var: climada.engine.uncertainty.input_var.InputVar
+    haz_input_var: InputVar or Hazard
         Hazard uncertainty variable
     _input_var_names : tuple(str)
         Names of the required uncertainty input variables
         ('exp_input_var', 'impf_input_var', 'haz_input_var')
     _metric_names : tuple(str)
         Names of the impact output metrics
-        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp', 'tot_value')
+        ('aai_agg', 'freq_curve', 'at_event', 'eai_exp')
     """
 
     _input_var_names = (
@@ -82,8 +90,7 @@ class CalcDeltaImpact(Calc):
         'aai_agg',
         'freq_curve',
         'at_event',
-        'eai_exp',
-        'tot_value',
+        'eai_exp'
     )
     """Names of the cost benefit output metrics"""
 
@@ -129,7 +136,8 @@ class CalcDeltaImpact(Calc):
                     rp=None,
                     calc_eai_exp=False,
                     calc_at_event=False,
-                    pool=None
+                    processes=1,
+                    chunksize=None
                     ):
         """
         Computes the impact for each sample in unc_data.sample_df.
@@ -149,7 +157,6 @@ class CalcDeltaImpact(Calc):
         unc_output.freq_curve_unc_df
         unc_output.eai_exp_unc_df
         unc_output.at_event_unc_df
-        unc_output.tot_value_unc_df
         unc_output.unit
 
         Parameters
@@ -165,9 +172,13 @@ class CalcDeltaImpact(Calc):
         calc_at_event : boolean, optional
             Toggle computation of the impact for each event.
             The default is False.
-        pool : pathos.pools.ProcessPool, optional
-            Pool of CPUs for parralel computations.
-            The default is None.
+        processes : int, optional
+            Number of CPUs to use for parralel computations.
+            The default is 1 (not parallel)
+        chunksize: int, optional
+            Size of the sample chunks for parallel processing.
+            Default is equal to the number of samples divided by the
+            number of processes.
 
         Returns
         -------
@@ -181,9 +192,15 @@ class CalcDeltaImpact(Calc):
             If no sampling parameters defined, the distribution cannot
             be computed.
 
+        Notes
+        -----
+        Parallelization logic is described in the base class
+        here :py:class:`~climada.engine.unsequa.calc_base.Calc`
+
         See Also
         --------
-        climada.engine.impact: Compute risk.
+        climada.engine.impact:
+            compute impact and risk.
 
         """
 
@@ -191,8 +208,14 @@ class CalcDeltaImpact(Calc):
             raise ValueError("No sample was found. Please create one first"
                              "using UncImpact.make_sample(N)")
 
+
+        # copy may not be needed, but is kept to prevent potential
+        # data corruption issues. The computational cost should be
+        # minimal as only a list of floats is copied.'''
         samples_df = unc_sample.samples_df.copy(deep=True)
 
+        if chunksize is None:
+            chunksize = _multiprocess_chunksize(samples_df, processes)
         unit = self.value_unit
 
         if rp is None:
@@ -202,32 +225,22 @@ class CalcDeltaImpact(Calc):
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
 
+        one_sample = samples_df.iloc[0:1]
         start = time.time()
-        one_sample = samples_df.iloc[0:1].iterrows()
-        delta_metrics = map(self._map_delta_calc, one_sample)
-        [aai_agg_list, freq_curve_list,
-         eai_exp_list, at_event_list, tot_value_list] = list(zip(*delta_metrics))
+        self._compute_imp_metrics(
+            one_sample, chunksize=1, processes=1
+            )
         elapsed_time = (time.time() - start)
-        self.est_comp_time(unc_sample.n_samples, elapsed_time, pool)
+        self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
-        #Compute impact distributions
-        with log_level(level='ERROR', name_prefix='climada'):
-            if pool:
-                LOGGER.info('Using %s CPUs.', pool.ncpus)
-                chunksize = min(unc_sample.n_samples // pool.ncpus, 100)
-                delta_metrics = pool.map(self._map_delta_calc,
-                                        samples_df.iterrows(),
-                                        chunsize = chunksize)
-
-            else:
-                delta_metrics = map(self._map_delta_calc,
-                                  samples_df.iterrows())
-
-        #Perform the actual computation
-        with log_level(level='ERROR', name_prefix='climada'):
-            [aai_agg_list, freq_curve_list,
-             eai_exp_list, at_event_list,
-             tot_value_list] = list(zip(*delta_metrics))
+        [
+            aai_agg_list,
+            freq_curve_list,
+            eai_exp_list,
+            at_event_list
+        ] =  self._compute_imp_metrics(
+            samples_df, chunksize=chunksize, processes=processes
+            )
 
         # Assign computed impact distribution data to self
         aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
@@ -235,20 +248,11 @@ class CalcDeltaImpact(Calc):
         freq_curve_unc_df = pd.DataFrame(freq_curve_list,
                                     columns=['rp' + str(n) for n in rp])
         eai_exp_unc_df =  pd.DataFrame(eai_exp_list)
-        # Setting to sparse dataframes is not compatible with .to_hdf5
-        # if np.count_nonzero(df_eai_exp.to_numpy()) / df_eai_exp.size < 0.5:
-        #     df_eai_exp = df_eai_exp.astype(pd.SparseDtype("float", 0.0))
-        #eai_exp_unc_df = df_eai_exp
+        # Note: sparse dataframes are not used as they are not nativel y compatible with .to_hdf5
         at_event_unc_df = pd.DataFrame(at_event_list)
-        # Setting to sparse dataframes is not compatible with .to_hdf5
-        # if np.count_nonzero(df_at_event.to_numpy()) / df_at_event.size < 0.5:
-        #     df_at_event = df_at_event.astype(pd.SparseDtype("float", 0.0))
-        #at_event_unc_df = df_at_event
-        tot_value_unc_df = pd.DataFrame(tot_value_list,
-                                                 columns = ['tot_value'])
 
         if calc_eai_exp:
-            exp = self.exp_initial_input_var.evaluate()  # note: changed from exp_input_var to exp_initial_input_var on July 24th. In my understanding, this is just to get the lat, lon information of the exposure, which is not chaning between intial and final maps - SM
+            exp = self.exp_input_var.evaluate()
             coord_df = exp.gdf[['latitude', 'longitude']]
         else:
             coord_df = pd.DataFrame([])
@@ -259,84 +263,191 @@ class CalcDeltaImpact(Calc):
                                freq_curve_unc_df=freq_curve_unc_df,
                                eai_exp_unc_df=eai_exp_unc_df,
                                at_event_unc_df=at_event_unc_df,
-                               tot_value_unc_df=tot_value_unc_df,
                                coord_df=coord_df
                                )
 
-
-    def _map_delta_calc(self, sample_iterrows):
-        """
-        Map to compute impact for all parameter samples in parrallel
+    def _compute_imp_metrics(self, samples_df, chunksize, processes):
+        """Compute the uncertainty metrics
 
         Parameters
         ----------
-        sample_iterrows : pd.DataFrame.iterrows()
-            Generator of the parameter samples
+        samples_df : pd.DataFrame
+            dataframe of input parameter samples
+        chunksize : int
+            size of the samples chunks
+        processes : int
+            number of processes to use
 
         Returns
         -------
-         : list
-            impact metrics list for all samples containing aai_agg, rp_curve,
-            eai_exp (np.array([]) if self.calc_eai_exp=False) and at_event
-            (np.array([]) if self.calc_at_event=False).
-
+        list
+            values of impact metrics per sample
         """
+        #Compute impact distributions
+        with log_level(level='ERROR', name_prefix='climada'):
+            p_iterator = _sample_parallel_iterator(
+                samples=samples_df,
+                chunksize=chunksize,
+                exp_initial_input_var=self.exp_initial_input_var,
+                impf_initial_input_var=self.impf_initial_input_var,
+                haz_initial_input_var=self.haz_initial_input_var,
+                exp_final_input_var=self.exp_final_input_var,
+                impf_final_input_var=self.impf_final_input_var,
+                haz_final_input_var=self.haz_final_input_var,
+                rp=self.rp,
+                calc_eai_exp=self.calc_eai_exp,
+                calc_at_event=self.calc_at_event,
+            )
+            if processes > 1:
+                with mp.Pool(processes=processes) as pool:
+                    LOGGER.info('Using %s CPUs.', processes)
+                    imp_metrics = pool.starmap(
+                        _map_impact_calc, p_iterator
+                        )
+            else:
+                imp_metrics = itertools.starmap(
+                    _map_impact_calc, p_iterator
+                    )
 
-        # [1] only the rows of the dataframe passed by pd.DataFrame.iterrows()
-        exp_initial_samples = sample_iterrows[1][self.exp_initial_input_var.labels].to_dict()
-        impf_initial_samples = sample_iterrows[1][self.impf_initial_input_var.labels].to_dict()
-        haz_initial_samples = sample_iterrows[1][self.haz_initial_input_var.labels].to_dict()
-        exp_final_samples = sample_iterrows[1][self.exp_final_input_var.labels].to_dict()
-        impf_final_samples = sample_iterrows[1][self.impf_final_input_var.labels].to_dict()
-        haz_final_samples = sample_iterrows[1][self.haz_final_input_var.labels].to_dict()
+        #Perform the actual computation
+        with log_level(level='ERROR', name_prefix='climada'):
+            return _transpose_chunked_data(imp_metrics)
 
-        exp_initial = self.exp_initial_input_var.evaluate(**exp_initial_samples)
-        impf_initial = self.impf_initial_input_var.evaluate(**impf_initial_samples)
-        haz_initial = self.haz_initial_input_var.evaluate(**haz_initial_samples)
-        exp_final = self.exp_final_input_var.evaluate(**exp_final_samples)
-        impf_final = self.impf_final_input_var.evaluate(**impf_final_samples)
-        haz_final = self.haz_final_input_var.evaluate(**haz_final_samples)
 
+def safe_divide(numerator, denominator, replace_with=np.nan):
+    """
+    Safely divide two arrays or scalars, handling division by zero and NaN values.
+
+    Parameters:
+    numerator (array-like or scalar): Numerator for division.
+    denominator (array-like or scalar): Denominator for division.
+    replace_with (float): Value to use in place of division by zero or NaN. Defaults to NaN.
+
+    Returns:
+    array-like or scalar: Result of safe division.
+    """
+    if np.isscalar(numerator) and np.isscalar(denominator):
+        # Both numerator and denominator are scalars
+        return np.divide(numerator, denominator) if denominator != 0 else replace_with
+    else:
+        # At least one of the inputs is array-like
+        with np.errstate(divide='ignore', invalid='ignore'):
+            result = np.true_divide(numerator, denominator)
+            if not np.isscalar(result):
+                result[~np.isfinite(result)] = replace_with  # Replace infinities and NaNs in arrays
+            elif not np.isfinite(result):
+                result = replace_with  # Replace infinities and NaNs in scalars
+        return result
+
+
+
+def _map_impact_calc(
+    sample_chunks, exp_initial_input_var, impf_initial_input_var, haz_initial_input_var,
+    exp_final_input_var, impf_final_input_var, haz_final_input_var, rp, calc_eai_exp, calc_at_event
+    ):
+    """
+    Map to compute impact for all parameter samples in parallel
+
+    Parameters
+    ----------
+    sample_chunks : pd.DataFrame
+        Dataframe of the parameter samples
+    exp_input_var : InputVar or Exposures
+        Exposure uncertainty variable
+    impf_input_var : InputVar if ImpactFuncSet
+        Impact function set uncertainty variable
+    haz_input_var: InputVar or Hazard
+        Hazard uncertainty variable
+    rp : list(int)
+        List of the chosen return periods.
+    calc_eai_exp : bool
+        Compute eai_exp or not
+    calc_at_event : bool
+        Compute at_event or not
+
+    Returns
+    -------
+        : list
+        impact metrics list for all samples containing aai_agg, rp_curve,
+        eai_exp (np.array([]) if self.calc_eai_exp=False) and at_event
+        (np.array([]) if self.calc_at_event=False).
+
+    """
+    uncertainty_values = []
+    for _, sample in sample_chunks.iterrows():
+        
+        exp_initial_samples = sample[exp_initial_input_var.labels].to_dict()
+        impf_initial_samples = sample[impf_initial_input_var.labels].to_dict()
+        haz_initial_samples = sample[haz_initial_input_var.labels].to_dict()
+        exp_final_samples = sample[exp_final_input_var.labels].to_dict()
+        impf_final_samples = sample[impf_final_input_var.labels].to_dict()
+        haz_final_samples = sample[haz_final_input_var.labels].to_dict()
+
+        
+        exp_initial = exp_initial_input_var.evaluate(**exp_initial_samples)
+        impf_initial = impf_initial_input_var.evaluate(**impf_initial_samples)
+        haz_initial = haz_initial_input_var.evaluate(**haz_initial_samples)
+        exp_final = exp_final_input_var.evaluate(**exp_final_samples)
+        impf_final = impf_final_input_var.evaluate(**impf_final_samples)
+        haz_final = haz_final_input_var.evaluate(**haz_final_samples)
+        
         exp_initial.assign_centroids(haz_initial, overwrite=False)
         exp_final.assign_centroids(haz_final, overwrite=False)
-
+        
         imp_initial = ImpactCalc(exposures=exp_initial, impfset=impf_initial, hazard=haz_initial)\
-              .impact(assign_centroids=False)
+              .impact(assign_centroids=False, save_mat=False)
         imp_final = ImpactCalc(exposures=exp_final, impfset=impf_final, hazard=haz_final)\
-              .impact(assign_centroids=False)
+              .impact(assign_centroids=False, save_mat=False)
 
         # Extract from climada.impact the chosen metrics
-        freq_curve_initial = imp_initial.calc_freq_curve(self.rp).impact
-        freq_curve_final = imp_final.calc_freq_curve(self.rp).impact
+        freq_curve_initial = imp_initial.calc_freq_curve(rp).impact
+        freq_curve_final = imp_final.calc_freq_curve(rp).impact
 
-
-        if self.calc_eai_exp:
+        if calc_eai_exp:
             eai_exp_initial = imp_initial.eai_exp
             eai_exp_final = imp_final.eai_exp
         else:
             eai_exp_initial = np.array([])
             eai_exp_final = np.array([])
 
-        if self.calc_at_event:
-            at_event_initial = np.mean(imp_initial.at_event[
-                imp_initial.at_event>np.quantile(imp_initial.at_event,.9)])
-            at_event_final = np.mean(imp_final.at_event[
-                imp_final.at_event>np.quantile(imp_final.at_event,.9)])
+        if calc_at_event:
+            at_event_initial = imp_initial.at_event
+            at_event_final = imp_final.at_event
         else:
             at_event_initial = np.array([])
             at_event_final = np.array([])
 
+        delta_aai_agg = safe_divide(
+            imp_final.aai_agg - imp_initial.aai_agg, 
+            imp_initial.aai_agg
+        )
+        
+        delta_freq_curve = safe_divide(
+            freq_curve_final - freq_curve_initial, 
+            freq_curve_initial
+        )
+        
+        delta_eai_exp = safe_divide(
+            eai_exp_final - eai_exp_initial, 
+            eai_exp_initial
+        ) if calc_eai_exp else np.array([])
+        
+        delta_at_event = safe_divide(
+            at_event_final - at_event_initial, 
+            at_event_initial
+        ) if calc_at_event else np.array([])
+        
+        uncertainty_values.append([
+            delta_aai_agg,
+            delta_freq_curve,
+            delta_eai_exp,
+            delta_at_event
+        ])
 
-#        return [
-#            imp_final.aai_agg - imp_initial.aai_agg,
-#            freq_curve_final - freq_curve_initial,
-#            eai_exp_final - eai_exp_initial,
-#            at_event_final - at_event_initial,
-#            imp_final.tot_value - imp_initial.tot_value]
+        # uncertainty_values.append([
+        #     (imp_final.aai_agg - imp_initial.aai_agg)/imp_initial.aai_agg,
+        #     (freq_curve_final - freq_curve_initial)/freq_curve_initial,
+        #     (eai_exp_final - eai_exp_initial)/eai_exp_initial,
+        #     (at_event_final - at_event_initial)/at_event_initial])
 
-        return [
-            (imp_final.aai_agg - imp_initial.aai_agg)/imp_initial.aai_agg,
-            (freq_curve_final - freq_curve_initial)/freq_curve_initial,
-            (eai_exp_final - eai_exp_initial)/eai_exp_initial,
-            (at_event_final - at_event_initial)/at_event_initial,
-            (imp_final.tot_value - imp_initial.tot_value)/imp_initial.tot_value]
+    return list(zip(*uncertainty_values))

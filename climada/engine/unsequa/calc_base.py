@@ -179,7 +179,6 @@ class Calc():
                 "been assigned to exp before defining input_var, ..."
                 "\n If computation cannot be reduced, consider using"
                 " a surrogate model https://www.uqlab.com/", time_one_run)
-
         total_time = n_samples * time_one_run / processes
         LOGGER.info("\n\nEstimated computaion time: %s\n",
                     dt.timedelta(seconds=total_time))

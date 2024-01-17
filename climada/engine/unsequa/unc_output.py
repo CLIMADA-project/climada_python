@@ -556,6 +556,14 @@ class UncOutput():
                 if ax is not None:
                     ax.remove()
                 continue
+            # Check if the column data is empty or contains only NaNs
+            data, m_unit = u_vtm(unc_df_plt[col])
+            data = pd.Series(data)
+            if data.empty or data.isna().all() or data.dropna().shape[0] < 2:
+                print(f"Skipping plot for '{col}': insufficient data.")
+                if ax is not None:
+                    ax.remove()
+                continue
             data, m_unit = u_vtm(unc_df_plt[col])
             data = pd.Series(data)
             if data.empty:
@@ -658,7 +666,11 @@ class UncOutput():
         prop_cycle = plt.rcParams['axes.prop_cycle']
         colors = prop_cycle.by_key()['color']
 
+        # Check for NaNs in each column of unc_df and plot only if data is valid
         for n, (_name, values) in enumerate(unc_df.items()):
+            if values.isna().all() or len(values.dropna()) < 2:
+                print(f"Skipping plot for '{_name}': insufficient data.")
+                continue
             values = u_cmv(values, m_unit, n_sig_dig=4)
             count, division = np.histogram(values, bins=100)
             count = count / count.max()
