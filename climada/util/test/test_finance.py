@@ -190,7 +190,9 @@ class TestWBWealthAccount(unittest.TestCase):
                                                          variable_name=var_name)
         ref_val = [5415188681934.5,  # values sporadically updated by worldbank
                    5861193808779.6,  # <- October 27 2021
-                   5861186556152.8]  # <- June 29 2023
+                   5861186556152.8,  # <- June 29 2023
+                   5415181806660.7,  # <- Dezember 20 2023
+                   ]
         self.assertEqual(res_year, ref_year)
         self.assertIn(res_val, ref_val)
 
@@ -199,10 +201,12 @@ class TestWBWealthAccount(unittest.TestCase):
         ref_year = 2015
         cntry_iso = 'CUB'
         res_year, res_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
-        ref_val = 108675762920.0
+        ref_val = [108675762920.0,  # values sporadically updated by worldbank
+                   108675513472.0,  # <- Dezember 20 2023
+                   ]
         self.assertEqual(q, 0)
         self.assertEqual(res_year, ref_year)
-        self.assertEqual(res_val, ref_val)
+        self.assertIn(res_val, ref_val)
 
 # Execute Tests
 if __name__ == "__main__":
