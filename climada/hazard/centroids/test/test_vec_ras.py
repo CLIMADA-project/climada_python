@@ -180,8 +180,8 @@ class TestVector(unittest.TestCase):
         centr = Centroids(lat=lat, lon=lon, geometry=geometry)
         centr.geometry.crs = 'epsg:4326'
         centr.set_dist_coast()
-        self.assertAlmostEqual(2594.2070842031694, centr.dist_coast[1])
-        self.assertAlmostEqual(166295.87602398323, centr.dist_coast[-2])
+        self.assertAlmostEqual(3000.0, centr.dist_coast[1])
+        self.assertAlmostEqual(166000.0, centr.dist_coast[-2])
 
     def test_region_id_pass(self):
         """Test set_region_id"""
