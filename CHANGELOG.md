@@ -21,12 +21,14 @@ Code freeze date: YYYY-MM-DD
 - Update `CONTRIBUTING.md` to better explain types of contributions to this repository [#797](https://github.com/CLIMADA-project/climada_python/pull/797)
 - The default tile layer in Exposures maps is not Stamen Terrain anymore, but [CartoDB Positron](https://github.com/CartoDB/basemap-styles). Affected methods are `climada.engine.Impact.plot_basemap_eai_exposure`,`climada.engine.Impact.plot_basemap_impact_exposure` and `climada.entity.Exposures.plot_basemap`. [#798](https://github.com/CLIMADA-project/climada_python/pull/798)
 - Recommend using Mamba instead of Conda for installing CLIMADA [#809](https://github.com/CLIMADA-project/climada_python/pull/809)
+- `Hazard.from_xarray_raster` now allows arbitrary values as 'event' coordinates [#837](https://github.com/CLIMADA-project/climada_python/pull/837)
 
 ### Fixed
 
 - `Hazard.from_xarray_raster` now stores strings as default values for `Hazard.event_name` [#795](https://github.com/CLIMADA-project/climada_python/pull/795)
 - Fix the dist_approx util function when used with method="geosphere" and log=True and points that are very close. [#792](https://github.com/CLIMADA-project/climada_python/pull/792)
 - `climada.util.yearsets.sample_from_poisson`: fix a bug ([#819](https://github.com/CLIMADA-project/climada_python/issues/819)) and inconsistency that occurs when lambda events per year (`lam`) are set to 1. [[#823](https://github.com/CLIMADA-project/climada_python/pull/823)]
+- In the TropCyclone class in the Holland model 2008 and 2010 implementation, a doublecounting of translational velocity is removed [#833](https://github.com/CLIMADA-project/climada_python/pull/833)
 
 ### Deprecated
 
