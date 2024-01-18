@@ -33,13 +33,13 @@ from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IMPF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
-import climada.util.coordinates as u_coord
 from climada.test import get_test_file
+import climada.util.coordinates as u_coord
 import climada.entity.exposures.test as exposures_test
 
 DATA_DIR = CONFIG.measures.test_data.dir()
 
-HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida', file_format='hdf5')
 """
 Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
 Fraction is empty. Format: HDF5.

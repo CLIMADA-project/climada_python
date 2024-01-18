@@ -37,9 +37,9 @@ from climada.util.constants import ENT_DEMO_TODAY, TEST_UNC_OUTPUT_COSTBEN, HAZ_
 from climada.util.api_client import Client
 from climada.test import get_test_file
 
-apiclient = Client()
-ds = apiclient.get_dataset_info(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
-_target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
+
+test_unc_output_costben = Client().get_dataset_file(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
+
 
 
 HAZ_TEST_TC :Path = get_test_file('test_tc_florida')

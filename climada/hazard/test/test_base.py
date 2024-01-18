@@ -41,6 +41,7 @@ DATA_DIR :Path = CONFIG.hazard.test_data.dir()
 """
 Directory for writing (and subsequent reading) of temporary files created during tests.
 """
+
 HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
 """
 Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.

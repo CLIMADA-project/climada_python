@@ -28,7 +28,6 @@ import shapely
 import csv
 from pyproj.crs.crs import CRS
 
-from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
