@@ -29,6 +29,7 @@ from scipy import sparse
 import xarray as xr
 
 from climada.util import ureg
+from climada.test import get_test_file
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, get_close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
@@ -43,7 +44,7 @@ DATA_DIR = Path(hazard_test.__file__).parent.joinpath('data')
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
-CENTR_TEST_BRB = Centroids.from_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
+CENTR_TEST_BRB = Centroids.from_hdf5(get_test_file('centr_test_brb', file_format='hdf5'))
 
 
 class TestReader(unittest.TestCase):

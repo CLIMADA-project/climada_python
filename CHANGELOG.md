@@ -22,6 +22,7 @@ Code freeze date: YYYY-MM-DD
 - The default tile layer in Exposures maps is not Stamen Terrain anymore, but [CartoDB Positron](https://github.com/CartoDB/basemap-styles). Affected methods are `climada.engine.Impact.plot_basemap_eai_exposure`,`climada.engine.Impact.plot_basemap_impact_exposure` and `climada.entity.Exposures.plot_basemap`. [#798](https://github.com/CLIMADA-project/climada_python/pull/798)
 - Recommend using Mamba instead of Conda for installing CLIMADA [#809](https://github.com/CLIMADA-project/climada_python/pull/809)
 - `Hazard.from_xarray_raster` now allows arbitrary values as 'event' coordinates [#837](https://github.com/CLIMADA-project/climada_python/pull/837)
+- `climada.test.get_test_file` now compares the version of the requested test dataset with the version of climada itself and selects the most appropriate dataset. In this way a test file can be updated without the need of changing the code of the unittest. [#822](https://github.com/CLIMADA-project/climada_python/pull/822)
 
 ### Fixed
 

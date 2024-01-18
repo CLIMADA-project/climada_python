@@ -33,12 +33,12 @@ from climada.hazard.storm_europe import StormEurope
 from climada.util.constants import (HAZ_DEMO_FL, WS_DEMO_NC)
 from climada.util.api_client import Client
 from climada.util import coordinates as u_coord
-import climada.hazard.test as hazard_test
+from climada.test import get_test_file
 
 DATA_DIR = CONFIG.test_data.dir()
 
 # Hazard test file from Git repository. Fraction is 1. Format: matlab.
-HAZ_TEST_MAT :Path = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
+HAZ_TEST_MAT :Path = get_test_file('atl_prob_no_name', file_format='matlab')
 
 class TestCentroids(unittest.TestCase):
     """Test centroids functionalities"""
