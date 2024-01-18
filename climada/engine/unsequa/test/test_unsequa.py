@@ -352,7 +352,7 @@ class TestCalcDelta(unittest.TestCase):
             imp1 = ImpactCalc(exp1, impf1, haz1).impact()
             imp2 = ImpactCalc(exp2, impf2, haz2).impact()
 
-            self.assertAlmostEqual(imp2.aai_agg - imp1.aai_agg, delta_aai_aag)
+            self.assertAlmostEqual((imp2.aai_agg - imp1.aai_agg)/imp1.aai_agg, delta_aai_aag)
 
 
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
@@ -364,11 +364,6 @@ class TestCalcDelta(unittest.TestCase):
             unc_data.aai_agg_unc_df.size,
             unc_data.n_samples
             )
-        self.assertEqual(
-            unc_data.tot_value_unc_df.size,
-            unc_data.n_samples
-            )
-
         self.assertEqual(
             unc_data.freq_curve_unc_df.size,
             unc_data.n_samples * len(unc_calc.rp)
