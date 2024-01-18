@@ -39,16 +39,20 @@ from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
 
-
 __all__ = ['Centroids']
 
 PROJ_CEA = CRS.from_user_input({'proj': 'cea'})
 
 LOGGER = logging.getLogger(__name__)
 
-DEF_COLS = ['region_id', 'on_land']
 DEF_SHEET_NAME = 'centroids'
-
+EXP_SPECIFIC_COLS = [
+    'value',
+    'impf_',
+    'centr_',
+    'cover',
+    'deductible'
+]
 
 class Centroids():
     """Contains vector centroids as a GeoDataFrame
@@ -76,6 +80,7 @@ class Centroids():
         crs: str = DEF_CRS,
         region_id: Union[Literal["country"], None, np.ndarray, list[float]] = None,
         on_land: Union[Literal["natural_earth"], None, np.ndarray, list[bool]] = None,
+        **kwargs
     ):
         """Initialization
 
@@ -98,6 +103,7 @@ class Centroids():
                 'geometry': gpd.points_from_xy(lon, lat, crs=crs),
                 'region_id': region_id,
                 'on_land': on_land,
+                **kwargs
             }
         )
 
@@ -251,12 +257,11 @@ class Centroids():
                 ' that are not points.'
             )
 
+        # Don't forget to make a copy!!
         # This is a bit ugly, but avoids to recompute the geometries
         # in the init. For large datasets this saves computation time
         centroids = cls(lat=[1], lon=[1]) #make "empty" centroids
-        columns = [col for col in gdf.columns if col in DEF_COLS]
-        columns.insert(0, 'geometry') #Same order as init
-        centroids.gdf = gdf[columns]
+        centroids.gdf = gdf.copy(deep=True)
         if not gdf.crs:
             centroids.gdf.set_crs(DEF_CRS, inplace=True)
         return centroids
@@ -264,6 +269,8 @@ class Centroids():
     @classmethod
     def from_exposures(cls, exposures):
         """Generate centroids from the location of an exposures.
+        The columns value, impf_*, centr_*, cover, deductible,
+        are discarded.
 
         Parameters
         ----------
@@ -283,14 +290,13 @@ class Centroids():
         col_names = [
             column
             for column in exposures.gdf.columns
-            if column in DEF_COLS
+            if not np.any(np.isin(EXP_SPECIFIC_COLS, column))
             ]
 
         # Legacy behaviour
         # Exposures can be without geometry column
         #TODO: remove once exposures is real geodataframe with geometry.
         if 'geometry' in exposures.gdf.columns:
-            col_names.append('geometry')
             gdf = exposures.gdf[col_names]
             return cls.from_geodataframe(gdf)
 
@@ -802,7 +808,7 @@ class Centroids():
             absolute or relative file path and name to write to
         """
         LOGGER.info('Writing %s', file_path)
-        df = self._centroids_to_df()
+        df = self._centroids_to_dataframe()
         df.to_csv(Path(file_path).with_suffix('.csv'), index=False)
 
 
@@ -837,7 +843,7 @@ class Centroids():
             absolute or relative file path and name to write to
         """
         LOGGER.info('Writing %s', file_path)
-        df = self._centroids_to_df()
+        df = self._centroids_to_dataframe()
         df.to_excel(
             Path(file_path).with_suffix('.xlsx'),
             sheet_name=DEF_SHEET_NAME, index=False
@@ -924,7 +930,7 @@ class Centroids():
         extra_values = {
             col: df[col]
             for col in df.columns
-            if col in DEF_COLS
+            if col not in ['lat', 'lon', 'crs']
             }
 
         return cls(
@@ -976,7 +982,7 @@ class Centroids():
             raise KeyError("Not existing variable: %s" % str(err)) from err
         return cls._from_dataframe(df)
 
-    def _centroids_to_df(self):
+    def _centroids_to_dataframe(self):
         """Create dataframe from Centroids object to facilitate
         saving in different file formats.
 

@@ -260,7 +260,7 @@ class TestCentroidsReader(unittest.TestCase):
         for name, array in zip(['lat', 'lon', 'region_id', 'on_land'],
                                 [lat, lon, region_id, on_land]):
             np.testing.assert_array_equal(array, getattr(centroids, name))
-        self.assertTrue('extra' not in centroids.gdf.columns)
+        self.assertTrue('extra' in centroids.gdf.columns)
         self.assertTrue(u_coord.equal_crs(centroids.crs, crs))
 
     def test_from_geodataframe_invalid(self):
@@ -307,6 +307,7 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids.lon, lon)
         np.testing.assert_array_equal(centroids.region_id, region_id)
         np.testing.assert_array_equal(centroids.on_land, on_land)
+        self.assertFalse(np.isin('value', centroids.gdf.columns))
         self.assertEqual(centroids.crs, crs)
 
     def test_from_exposures_without_region_id(self):
@@ -339,6 +340,12 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
         self.assertEqual(centroids.region_id, None)
         self.assertEqual(centroids.on_land, None)
+        self.assertFalse(
+            np.all(np.isin(
+                ['value', 'impf_tc', 'centr_tc'], centroids.gdf.columns
+                 ))
+        )
+
 
 
 
