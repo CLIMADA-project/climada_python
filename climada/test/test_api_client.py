@@ -213,6 +213,16 @@ class TestClient(unittest.TestCase):
         self.assertIn(" can only query single countries. Download the data for multiple countries individually and concatenate ",
             str(cm.exception))
 
+    def test_get_dataset_file(self):
+        client = Client()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            single_file = client.get_dataset_file(
+                name='test_imp_mat', status='test_dataset',  # get_dataset_info arguments
+                target_dir=Path(temp_dir), organize_path=False,  # download_dataset arguments
+            )
+            self.assertTrue(single_file.is_file())
+            self.assertEqual(list(Path(temp_dir).iterdir()), [single_file])
+
     def test_multi_filter(self):
         client = Client()
         testds = client.list_dataset_infos(data_type='storm_europe')
