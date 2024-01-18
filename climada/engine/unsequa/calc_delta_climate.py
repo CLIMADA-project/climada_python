@@ -70,7 +70,8 @@ class CalcDeltaImpact(Calc):
         Hazard uncertainty variable
     _input_var_names : tuple(str)
         Names of the required uncertainty input variables
-        ('exp_input_var', 'impf_input_var', 'haz_input_var')
+        ('exp_initial_input_var', 'impf_initial_input_var', 'haz_initial_input_var',
+         'exp_final_input_var', 'impf_final_input_var', 'haz_final_input_var'')
     _metric_names : tuple(str)
         Names of the impact output metrics
         ('aai_agg', 'freq_curve', 'at_event', 'eai_exp')
@@ -110,11 +111,17 @@ class CalcDeltaImpact(Calc):
 
         Parameters
         ----------
-        exp_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.Exposure
+        exp_initial_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.Exposure
             Exposure uncertainty variable or Exposure
-        impf_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.ImpactFuncSet
+        impf_initital_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.ImpactFuncSet
             Impact function set uncertainty variable or Impact function set
-        haz_input_var : climada.engine.uncertainty.input_var.InputVar or climada.hazard.Hazard
+        haz_initial_input_var : climada.engine.uncertainty.input_var.InputVar or climada.hazard.Hazard
+            Hazard uncertainty variable or Hazard
+        exp_final_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.Exposure
+            Exposure uncertainty variable or Exposure
+        impf_final_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.ImpactFuncSet
+            Impact function set uncertainty variable or Impact function set
+        haz_final_input_var : climada.engine.uncertainty.input_var.InputVar or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard
 
         """
@@ -140,7 +147,8 @@ class CalcDeltaImpact(Calc):
                     chunksize=None
                     ):
         """
-        Computes the impact for each sample in unc_data.sample_df.
+        Computes the differential impact between the reference (initial) and 
+        future (final)for each sample in unc_data.sample_df.
 
         By default, the aggregated average impact within a period of 1/frequency_unit
         (impact.aai_agg) and the excees impact at return periods rp
@@ -314,16 +322,18 @@ class CalcDeltaImpact(Calc):
             return _transpose_chunked_data(imp_metrics)
 
 
-def safe_divide(numerator, denominator, replace_with=np.nan):
+def _safe_divide(numerator, denominator, replace_with=np.nan):
     """
     Safely divide two arrays or scalars, handling division by zero and NaN values.
 
-    Parameters:
+    Parameters
+    ----------
     numerator (array-like or scalar): Numerator for division.
     denominator (array-like or scalar): Denominator for division.
     replace_with (float): Value to use in place of division by zero or NaN. Defaults to NaN.
 
-    Returns:
+    Returns
+    -------
     array-like or scalar: Result of safe division.
     """
     if np.isscalar(numerator) and np.isscalar(denominator):
@@ -417,22 +427,22 @@ def _map_impact_calc(
             at_event_initial = np.array([])
             at_event_final = np.array([])
 
-        delta_aai_agg = safe_divide(
+        delta_aai_agg = _safe_divide(
             imp_final.aai_agg - imp_initial.aai_agg, 
             imp_initial.aai_agg
         )
         
-        delta_freq_curve = safe_divide(
+        delta_freq_curve = _safe_divide(
             freq_curve_final - freq_curve_initial, 
             freq_curve_initial
         )
         
-        delta_eai_exp = safe_divide(
+        delta_eai_exp = _safe_divide(
             eai_exp_final - eai_exp_initial, 
             eai_exp_initial
         ) if calc_eai_exp else np.array([])
         
-        delta_at_event = safe_divide(
+        delta_at_event = _safe_divide(
             at_event_final - at_event_initial, 
             at_event_initial
         ) if calc_at_event else np.array([])
@@ -443,11 +453,5 @@ def _map_impact_calc(
             delta_eai_exp,
             delta_at_event
         ])
-
-        # uncertainty_values.append([
-        #     (imp_final.aai_agg - imp_initial.aai_agg)/imp_initial.aai_agg,
-        #     (freq_curve_final - freq_curve_initial)/freq_curve_initial,
-        #     (eai_exp_final - eai_exp_initial)/eai_exp_initial,
-        #     (at_event_final - at_event_initial)/at_event_initial])
 
     return list(zip(*uncertainty_values))
