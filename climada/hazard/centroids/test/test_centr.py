@@ -25,12 +25,11 @@ import numpy as np
 import pandas as pd
 import geopandas as gpd
 
-from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.util.constants import GLB_CENTROIDS_MAT, HAZ_TEMPLATE_XLS
-import climada.hazard.test as hazard_test
+from climada.test import get_test_file
 
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.mat'
+HAZ_TEST_MAT = get_test_file('atl_prob_no_name', file_format='matlab')
 
 
 class TestCentroidsReader(unittest.TestCase):
