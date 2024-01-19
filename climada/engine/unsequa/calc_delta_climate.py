@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Uncertainty Impact class
+Define Uncertainty class for Impact differences between two climates.
 """
 
 __all__ = ['CalcDeltaImpact']
