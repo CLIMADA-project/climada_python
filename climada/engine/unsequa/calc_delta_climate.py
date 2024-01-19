@@ -148,7 +148,7 @@ class CalcDeltaImpact(Calc):
                     ):
         """
         Computes the differential impact between the reference (initial) and 
-        future (final)for each sample in unc_data.sample_df.
+        future (final) for each sample in unc_data.sample_df.
 
         By default, the aggregated average impact within a period of 1/frequency_unit
         (impact.aai_agg) and the excees impact at return periods rp
