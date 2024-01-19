@@ -33,13 +33,13 @@ from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IMPF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
+from climada.test import get_test_file
 import climada.util.coordinates as u_coord
-import climada.hazard.test as hazard_test
 import climada.entity.exposures.test as exposures_test
 
 DATA_DIR = CONFIG.measures.test_data.dir()
 
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.mat'
+HAZ_TEST_MAT = get_test_file('atl_prob_no_name', file_format='matlab')
 ENT_TEST_MAT = Path(exposures_test.__file__).parent / 'data' / 'demo_today.mat'
 
 class TestApply(unittest.TestCase):

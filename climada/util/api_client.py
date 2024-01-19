@@ -48,6 +48,7 @@ EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()
 
 class Download(Model):
     """Database entry keeping track of downloaded files from the CLIMADA data API"""
+
     url = CharField()
     path = CharField(unique=True)
     startdownload = DateTimeField()
@@ -55,6 +56,7 @@ class Download(Model):
 
     class Meta:
         """SQL database and table definition."""
+
         database = DB
 
     class Failed(Exception):
@@ -66,50 +68,54 @@ DB.create_tables([Download])
 
 
 @dataclass
-class FileInfo():
+class FileInfo:
     """file data from CLIMADA data API."""
-    uuid:str
-    url:str
-    file_name:str
-    file_format:str
-    file_size:int
-    check_sum:str
+
+    uuid: str
+    url: str
+    file_name: str
+    file_format: str
+    file_size: int
+    check_sum: str
 
 
 @dataclass
-class DataTypeInfo():
+class DataTypeInfo:
     """data type meta data from CLIMADA data API."""
-    data_type:str
-    data_type_group:str
+
+    data_type: str
+    data_type_group: str
     status: str
-    description:str
-    properties:list  # of dict
-    key_reference:list = None
-    version_notes:list = None
+    description: str
+    properties: list  # of dict
+    key_reference: list = None
+    version_notes: list = None
 
 
 @dataclass
-class DataTypeShortInfo():
+class DataTypeShortInfo:
     """data type name and group from CLIMADA data API."""
-    data_type:str
-    data_type_group:str
+
+    data_type: str
+    data_type_group: str
 
 
 @dataclass
-class DatasetInfo():
+class DatasetInfo:
     """dataset data from CLIMADA data API."""
-    uuid:str
-    data_type:DataTypeShortInfo
-    name:str
-    version:str
-    status:str
-    properties:dict
-    files:list  # of FileInfo
-    doi:str
-    description:str
+
+    uuid: str
+    data_type: DataTypeShortInfo
+    name: str
+    version: str
+    status: str
+    properties: dict
+    files: list  # of FileInfo
+    doi: str
+    description: str
     license: str
-    activation_date:str
-    expiration_date:str
+    activation_date: str
+    expiration_date: str
 
     @staticmethod
     def from_json(jsono):
@@ -125,8 +131,10 @@ class DatasetInfo():
         DatasetInfo
         """
         dataset = DatasetInfo(**jsono)
-        dataset.data_type = DataTypeShortInfo(data_type=dataset.data_type['data_type'],
-                                              data_type_group=dataset.data_type['data_type_group'])
+        dataset.data_type = DataTypeShortInfo(
+            data_type=dataset.data_type["data_type"],
+            data_type_group=dataset.data_type["data_type_group"],
+        )
         dataset.files = [FileInfo(uuid=dataset.uuid, **filo) for filo in dataset.files]
         return dataset
 
@@ -149,8 +157,10 @@ def checksize(local_path, fileinfo):
     if not local_path.is_file():
         raise Download.Failed(f"{str(local_path)} is not a file")
     if local_path.stat().st_size != fileinfo.file_size:
-        raise Download.Failed(f"{str(local_path)} has the wrong size:"
-            f"{local_path.stat().st_size} instead of {fileinfo.file_size}")
+        raise Download.Failed(
+            f"{str(local_path)} has the wrong size:"
+            f"{local_path.stat().st_size} instead of {fileinfo.file_size}"
+        )
 
 
 def checkhash(local_path, fileinfo):
@@ -171,10 +181,11 @@ def checkhash(local_path, fileinfo):
     raise NotImplementedError("sanity check by hash sum needs to be implemented yet")
 
 
-class Cacher():
+class Cacher:
     """Utility class handling cached results from http requests,
     to enable the API Client working in offline mode.
     """
+
     def __init__(self, cache_enabled):
         """Constructor of Cacher.
 
@@ -183,15 +194,17 @@ class Cacher():
         cache_enabled : bool, None
             Default: None, in this case the value is taken from CONFIG.data_api.cache_enabled.
         """
-        self.enabled = (CONFIG.data_api.cache_enabled.bool()
-                        if cache_enabled is None else cache_enabled)
+        self.enabled = (
+            CONFIG.data_api.cache_enabled.bool()
+            if cache_enabled is None
+            else cache_enabled
+        )
         self.cachedir = CONFIG.data_api.cache_dir.dir() if self.enabled else None
 
     @staticmethod
     def _make_key(*args, **kwargs):
-        as_text = '\t'.join(
-            [str(a) for a in args] +
-            [f"{k}={kwargs[k]}" for k in sorted(kwargs.keys())]
+        as_text = "\t".join(
+            [str(a) for a in args] + [f"{k}={kwargs[k]}" for k in sorted(kwargs.keys())]
         )
         md5h = hashlib.md5()
         md5h.update(as_text.encode())
@@ -212,7 +225,7 @@ class Cacher():
         """
         _key = Cacher._make_key(*args, **kwargs)
         try:
-            with Path(self.cachedir, _key).open('w', encoding='utf-8') as flp:
+            with Path(self.cachedir, _key).open("w", encoding="utf-8") as flp:
                 json.dump(result, flp)
         except (OSError, ValueError):
             pass
@@ -234,15 +247,15 @@ class Cacher():
         """
         _key = Cacher._make_key(*args, **kwargs)
         try:
-            with Path(self.cachedir, _key).open(encoding='utf-8') as flp:
+            with Path(self.cachedir, _key).open(encoding="utf-8") as flp:
                 return json.load(flp)
         except (OSError, ValueError):
             return None
 
 
-class Client():
-    """Python wrapper around REST calls to the CLIMADA data API server.
-    """
+class Client:
+    """Python wrapper around REST calls to the CLIMADA data API server."""
+
     MAX_WAITING_PERIOD = 6
     UNLIMITED = 100000
     DOWNLOAD_TIMEOUT = 3600
@@ -319,29 +332,36 @@ class Client():
 
         else:  # try to restore previous results from an identical request
             if not self.cache.enabled:
-                raise Client.NoConnection("there is no internet connection and the client does"
-                                          " not cache results.")
+                raise Client.NoConnection(
+                    "there is no internet connection and the client does"
+                    " not cache results."
+                )
             cached_result = self.cache.fetch(url, **params)
             if not cached_result:
-                raise Client.NoConnection("there is no internet connection and the client has not"
-                                          " found any cached result for this request.")
-            LOGGER.warning("there is no internet connection but the client has stored the results"
-                           " of this very request sometime in the past.")
+                raise Client.NoConnection(
+                    "there is no internet connection and the client has not"
+                    " found any cached result for this request."
+                )
+            LOGGER.warning(
+                "there is no internet connection but the client has stored the results"
+                " of this very request sometime in the past."
+            )
             return cached_result
-
 
     @staticmethod
     def _divide_straight_from_multi(properties):
         straights, multis = dict(), dict()
         for k, _v in properties.items():
             if _v is None:
-                straights[k] = ''
+                straights[k] = ""
             elif isinstance(_v, str):
                 straights[k] = _v
             elif isinstance(_v, list):
                 multis[k] = _v
             else:
-                raise ValueError("the value of a property must be a string or a list of strings")
+                raise ValueError(
+                    "the value of a property must be a string or a list of strings"
+                )
         return straights, multis
 
     @staticmethod
@@ -351,8 +371,9 @@ class Client():
             pdf = pdf[pdf[prop].isin(selection)]
         return [datasets[i] for i in pdf.index]
 
-    def list_dataset_infos(self, data_type=None, name=None, version=None, properties=None,
-                     status='active'):
+    def list_dataset_infos(
+        self, data_type=None, name=None, version=None, properties=None, status="active"
+    ):
         """Find all datasets matching the given parameters.
 
         Parameters
@@ -376,13 +397,13 @@ class Client():
         -------
         list of DatasetInfo
         """
-        url = f'{self.url}/dataset/'
+        url = f"{self.url}/dataset/"
         params = {
-            'data_type': data_type,
-            'name': name,
-            'version': version,
-            'status': '' if status is None else status,
-            'limit': Client.UNLIMITED,
+            "data_type": data_type,
+            "name": name,
+            "version": version,
+            "status": "" if status is None else status,
+            "limit": Client.UNLIMITED,
         }
 
         if properties:
@@ -393,14 +414,17 @@ class Client():
         if straight_props:
             params.update(straight_props)
 
-        datasets = [DatasetInfo.from_json(ds) for ds in self._request_200(url, params=params)]
+        datasets = [
+            DatasetInfo.from_json(ds) for ds in self._request_200(url, params=params)
+        ]
 
         if datasets and multi_props:
             return self._filter_datasets(datasets, multi_props)
         return datasets
 
-    def get_dataset_info(self, data_type=None, name=None, version=None, properties=None,
-                    status='active'):
+    def get_dataset_info(
+        self, data_type=None, name=None, version=None, properties=None, status="active"
+    ):
         """Find the one dataset that matches the given parameters.
 
         Parameters
@@ -430,19 +454,30 @@ class Client():
         NoResult
             when there is no dataset matching the search parameters
         """
-        jarr = self.list_dataset_infos(data_type=data_type, name=name, version=version,
-                                 properties=properties, status=status)
+        jarr = self.list_dataset_infos(
+            data_type=data_type,
+            name=name,
+            version=version,
+            properties=properties,
+            status=status,
+        )
         if len(jarr) > 1:
             shown = 10
-            endofmessage = '' if len(jarr) <= shown else f'\nand {len(jarr)-shown} more'
-            datasetlist = ',\n* '.join(str(jarr[i]) for i in range(min(shown, len(jarr))))
-            raise Client.AmbiguousResult(f"there are {len(jarr)} datasets meeting the requirements:"
-                                         f"\n* {datasetlist}{endofmessage}.")
+            endofmessage = "" if len(jarr) <= shown else f"\nand {len(jarr)-shown} more"
+            datasetlist = ",\n* ".join(
+                str(jarr[i]) for i in range(min(shown, len(jarr)))
+            )
+            raise Client.AmbiguousResult(
+                f"there are {len(jarr)} datasets meeting the requirements:"
+                f"\n* {datasetlist}{endofmessage}."
+            )
         if len(jarr) < 1:
             data_info = self.list_dataset_infos(data_type)
             properties = self.get_property_values(data_info)
-            raise Client.NoResult("there is no dataset meeting the requirements, the following"
-                                  f" property values are available for {data_type}: {properties}")
+            raise Client.NoResult(
+                "there is no dataset meeting the requirements, the following"
+                f" property values are available for {data_type}: {properties}"
+            )
         return jarr[0]
 
     def get_dataset_info_by_uuid(self, uuid):
@@ -463,7 +498,7 @@ class Client():
         NoResult
             if the uuid is not valid
         """
-        url = f'{self.url}/dataset/{uuid}/'
+        url = f"{self.url}/dataset/{uuid}/"
         return DatasetInfo.from_json(self._request_200(url))
 
     def list_data_type_infos(self, data_type_group=None):
@@ -479,9 +514,8 @@ class Client():
         -------
         list of DataTypeInfo
         """
-        url = f'{self.url}/data_type/'
-        params = {'data_type_group': data_type_group} \
-            if data_type_group else {}
+        url = f"{self.url}/data_type/"
+        params = {"data_type_group": data_type_group} if data_type_group else {}
         return [DataTypeInfo(**jobj) for jobj in self._request_200(url, params=params)]
 
     def get_data_type_info(self, data_type):
@@ -501,7 +535,7 @@ class Client():
         NoResult
             if there is no such data type registered
         """
-        url = f'{self.url}/data_type/{quote(data_type)}/'
+        url = f"{self.url}/data_type/{quote(data_type)}/"
         return DataTypeInfo(**self._request_200(url))
 
     def _download(self, url, path, replace=False):
@@ -529,34 +563,40 @@ class Client():
             and replace is False
         """
         if path.is_dir():
-            path /= unquote(url.split('/')[-1])
+            path /= unquote(url.split("/")[-1])
         if path.is_file() and not replace:
             raise FileExistsError(path)
         with requests.get(url, stream=True, timeout=Client.DOWNLOAD_TIMEOUT) as stream:
             stream.raise_for_status()
-            with open(path, 'wb') as dump:
+            with open(path, "wb") as dump:
                 for chunk in stream.iter_content(chunk_size=self.chunk_size):
                     dump.write(chunk)
         return path
 
     def _tracked_download(self, remote_url, local_path):
         if local_path.is_dir():
-            raise ValueError("tracked download requires a path to a file not a directory")
+            raise ValueError(
+                "tracked download requires a path to a file not a directory"
+            )
         path_as_str = str(local_path.absolute())
         try:
-            dlf = Download.create(url=remote_url,
-                                  path=path_as_str,
-                                  startdownload=datetime.utcnow())
+            dlf = Download.create(
+                url=remote_url, path=path_as_str, startdownload=datetime.utcnow()
+            )
         except IntegrityError as ierr:
-            dlf = Download.get(Download.path==path_as_str)  # path is the table's one unique column
+            dlf = Download.get(
+                Download.path == path_as_str
+            )  # path is the table's one unique column
             if not Path(path_as_str).is_file():  # in case the file has been removed
                 dlf.delete_instance()  # delete entry from database
                 return self._tracked_download(remote_url, local_path)  # and try again
             if dlf.url != remote_url:
-                raise RuntimeError(f"this file ({path_as_str}) has been downloaded from another"
-                                f" url ({dlf.url}), possibly because it belongs to a dataset with"
-                                " a recent version update. Please remove the file or purge the"
-                                " entry from data base before trying again") from ierr
+                raise RuntimeError(
+                    f"this file ({path_as_str}) has been downloaded from another"
+                    f" url ({dlf.url}), possibly because it belongs to a dataset with"
+                    " a recent version update. Please remove the file or purge the"
+                    " entry from data base before trying again"
+                ) from ierr
             return dlf
         try:
             self._download(url=remote_url, path=local_path, replace=True)
@@ -565,7 +605,7 @@ class Client():
         except Exception:
             dlf.delete_instance()
             raise
-        return Download.get(Download.path==path_as_str)
+        return Download.get(Download.path == path_as_str)
 
     def _download_file(self, local_path, fileinfo, check=checksize, retries=3):
         """Download a file if it is not already present at the target destination.
@@ -595,17 +635,21 @@ class Client():
         try:
             if local_path.is_dir():
                 local_path /= fileinfo.file_name
-            downloaded = self._tracked_download(remote_url=fileinfo.url, local_path=local_path)
+            downloaded = self._tracked_download(
+                remote_url=fileinfo.url, local_path=local_path
+            )
             if not downloaded.enddownload:
-                raise Download.Failed(f"A download of {fileinfo.url} via the API Client has been"
-                                      " requested before. Either it is still in progress or the"
-                                      " process got interrupted. In the former case just wait"
-                                      " until the download has finished and try again, in the"
-                                      f" latter run `Client.purge_cache_db(Path('{local_path}'))`"
-                                      " from Python. If unsure, check your internet connection,"
-                                      " wait for as long as it takes to download a file of size"
-                                      f" {fileinfo.file_size} and try again. If the problem"
-                                      " persists, purge the cache db with said call.")
+                raise Download.Failed(
+                    f"A download of {fileinfo.url} via the API Client has been"
+                    " requested before. Either it is still in progress or the"
+                    " process got interrupted. In the former case just wait"
+                    " until the download has finished and try again, in the"
+                    f" latter run `Client.purge_cache_db(Path('{local_path}'))`"
+                    " from Python. If unsure, check your internet connection,"
+                    " wait for as long as it takes to download a file of size"
+                    f" {fileinfo.file_size} and try again. If the problem"
+                    " persists, purge the cache db with said call."
+                )
             try:
                 check(local_path, fileinfo)
             except Download.Failed as dlf:
@@ -617,9 +661,13 @@ class Client():
             if retries < 1:
                 raise dle
             LOGGER.warning("Download failed: %s, retrying...", dle)
-            time.sleep(Client.MAX_WAITING_PERIOD/retries)
-            return self._download_file(local_path=local_path, fileinfo=fileinfo, check=check,
-                                       retries=retries - 1)
+            time.sleep(Client.MAX_WAITING_PERIOD / retries)
+            return self._download_file(
+                local_path=local_path,
+                fileinfo=fileinfo,
+                check=check,
+                retries=retries - 1,
+            )
 
     def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True):
         """Download all files from a given dataset to a given directory.
@@ -684,17 +732,24 @@ class Client():
         fileinfo : FileInfo
             file object as retrieved from the data api
         """
-        dlf = Download.get(Download.path==str(local_path.absolute()))
+        dlf = Download.get(Download.path == str(local_path.absolute()))
         dlf.delete_instance()
 
     @staticmethod
     def _multi_version(datasets):
         ddf = pd.DataFrame(datasets)
-        gdf = ddf.groupby('name').agg({'version': 'nunique'})
+        gdf = ddf.groupby("name").agg({"version": "nunique"})
         return list(gdf[gdf.version > 1].index)
 
-    def get_hazard(self, hazard_type, name=None, version=None, properties=None,
-                   status='active', dump_dir=SYSTEM_DIR):
+    def get_hazard(
+        self,
+        hazard_type,
+        name=None,
+        version=None,
+        properties=None,
+        status="active",
+        dump_dir=SYSTEM_DIR,
+    ):
         """Queries the data api for hazard datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.hazard.Hazard object.
 
@@ -725,10 +780,17 @@ class Client():
             The combined hazard object
         """
         if not hazard_type in HAZ_TYPES:
-            raise ValueError("Valid hazard types are a subset of CLIMADA hazard types."
-                             f" Currently these types are supported: {HAZ_TYPES}")
-        dataset = self.get_dataset_info(data_type=hazard_type, name=name, version=version,
-                                        properties=properties, status=status)
+            raise ValueError(
+                "Valid hazard types are a subset of CLIMADA hazard types."
+                f" Currently these types are supported: {HAZ_TYPES}"
+            )
+        dataset = self.get_dataset_info(
+            data_type=hazard_type,
+            name=name,
+            version=version,
+            properties=properties,
+            status=status,
+        )
         return self.to_hazard(dataset, dump_dir)
 
     def to_hazard(self, dataset, dump_dir=SYSTEM_DIR):
@@ -750,12 +812,15 @@ class Client():
         climada.hazard.Hazard
             The combined hazard object
         """
-        target_dir = self._organize_path(dataset, dump_dir) \
-                     if dump_dir == SYSTEM_DIR else dump_dir
+        target_dir = (
+            self._organize_path(dataset, dump_dir)
+            if dump_dir == SYSTEM_DIR
+            else dump_dir
+        )
         hazard_list = [
             Hazard.from_hdf5(self._download_file(target_dir, dsf))
             for dsf in dataset.files
-            if dsf.file_format == 'hdf5'
+            if dsf.file_format == "hdf5"
         ]
         if not hazard_list:
             raise ValueError("no hdf5 files found in dataset")
@@ -767,8 +832,15 @@ class Client():
         hazard_concat.check()
         return hazard_concat
 
-    def get_exposures(self, exposures_type, name=None, version=None, properties=None,
-                   status='active', dump_dir=SYSTEM_DIR):
+    def get_exposures(
+        self,
+        exposures_type,
+        name=None,
+        version=None,
+        properties=None,
+        status="active",
+        dump_dir=SYSTEM_DIR,
+    ):
         """Queries the data api for exposures datasets of the given type, downloads associated
         hdf5 files and turns them into a climada.entity.exposures.Exposures object.
 
@@ -798,10 +870,17 @@ class Client():
             The combined exposures object
         """
         if not exposures_type in EXP_TYPES:
-            raise ValueError("Valid exposures types are a subset of CLIMADA exposures types."
-                             f" Currently these types are supported: {EXP_TYPES}")
-        dataset = self.get_dataset_info(data_type=exposures_type, name=name, version=version,
-                                        properties=properties, status=status)
+            raise ValueError(
+                "Valid exposures types are a subset of CLIMADA exposures types."
+                f" Currently these types are supported: {EXP_TYPES}"
+            )
+        dataset = self.get_dataset_info(
+            data_type=exposures_type,
+            name=name,
+            version=version,
+            properties=properties,
+            status=status,
+        )
         return self.to_exposures(dataset, dump_dir)
 
     def to_exposures(self, dataset, dump_dir=SYSTEM_DIR):
@@ -823,12 +902,15 @@ class Client():
         climada.entity.exposures.Exposures
             The combined exposures object
         """
-        target_dir = self._organize_path(dataset, dump_dir) \
-                     if dump_dir == SYSTEM_DIR else dump_dir
+        target_dir = (
+            self._organize_path(dataset, dump_dir)
+            if dump_dir == SYSTEM_DIR
+            else dump_dir
+        )
         exposures_list = [
             Exposures.from_hdf5(self._download_file(target_dir, dsf))
             for dsf in dataset.files
-            if dsf.file_format == 'hdf5'
+            if dsf.file_format == "hdf5"
         ]
         if not exposures_list:
             raise ValueError("no hdf5 files found in dataset")
@@ -839,7 +921,9 @@ class Client():
         exposures_concat.check()
         return exposures_concat
 
-    def get_litpop(self, country=None, exponents=(1,1), version=None, dump_dir=SYSTEM_DIR):
+    def get_litpop(
+        self, country=None, exponents=(1, 1), version=None, dump_dir=SYSTEM_DIR
+    ):
         """Get a LitPop ``Exposures`` instance on a 150arcsec grid with the default parameters:
         exponents = (1,1) and fin_mode = 'pc'.
 
@@ -876,25 +960,40 @@ class Client():
         >>> litpop_comb = LitPop.concat([litpop_aut, litpop_che])
         """
         properties = {
-            'exponents': "".join(['(',str(exponents[0]),',',str(exponents[1]),')'])}
+            "exponents": "".join(["(", str(exponents[0]), ",", str(exponents[1]), ")"])
+        }
         if country is None:
-            properties['spatial_coverage'] = 'global'
+            properties["spatial_coverage"] = "global"
         elif isinstance(country, str):
-            properties['country_name'] = pycountry.countries.lookup(country).name
+            properties["country_name"] = pycountry.countries.lookup(country).name
         elif isinstance(country, list):
             if len(set(country)) > 1:
-                raise ValueError("``get_litpop`` can only query single countries. Download the"
-                                 " data for multiple countries individually and concatenate the"
-                                 " objects using ``LitPop.concat``")
-            properties['country_name'] = [pycountry.countries.lookup(c).name for c in country]
+                raise ValueError(
+                    "``get_litpop`` can only query single countries. Download the"
+                    " data for multiple countries individually and concatenate the"
+                    " objects using ``LitPop.concat``"
+                )
+            properties["country_name"] = [
+                pycountry.countries.lookup(c).name for c in country
+            ]
         else:
             raise ValueError("country must be string")
-        return self.get_exposures(exposures_type='litpop', properties=properties, version=version,
-                                  dump_dir=dump_dir)
+        return self.get_exposures(
+            exposures_type="litpop",
+            properties=properties,
+            version=version,
+            dump_dir=dump_dir,
+        )
 
-    def get_centroids(self, res_arcsec_land=150, res_arcsec_ocean=1800,
-                      extent=(-180, 180, -60, 60), country=None, version=None,
-                      dump_dir=SYSTEM_DIR):
+    def get_centroids(
+        self,
+        res_arcsec_land=150,
+        res_arcsec_ocean=1800,
+        extent=(-180, 180, -60, 60),
+        country=None,
+        version=None,
+        dump_dir=SYSTEM_DIR,
+    ):
         """Get centroids from teh API
 
         Parameters
@@ -922,14 +1021,21 @@ class Client():
         """
 
         properties = {
-            'res_arcsec_land': str(res_arcsec_land),
-            'res_arcsec_ocean': str(res_arcsec_ocean),
-            'extent': '(-180, 180, -90, 90)'
+            "res_arcsec_land": str(res_arcsec_land),
+            "res_arcsec_ocean": str(res_arcsec_ocean),
+            "extent": "(-180, 180, -90, 90)",
         }
-        dataset = self.get_dataset_info('centroids', version=version, properties=properties)
-        target_dir = self._organize_path(dataset, dump_dir) \
-                     if dump_dir == SYSTEM_DIR else dump_dir
-        centroids = Centroids.from_hdf5(self._download_file(target_dir, dataset.files[0]))
+        dataset = self.get_dataset_info(
+            "centroids", version=version, properties=properties
+        )
+        target_dir = (
+            self._organize_path(dataset, dump_dir)
+            if dump_dir == SYSTEM_DIR
+            else dump_dir
+        )
+        centroids = Centroids.from_hdf5(
+            self._download_file(target_dir, dataset.files[0])
+        )
         if country:
             reg_id = pycountry.countries.lookup(country).numeric
             centroids = centroids.select(reg_id=int(reg_id), extent=extent)
@@ -939,8 +1045,9 @@ class Client():
         return centroids
 
     @staticmethod
-    def get_property_values(dataset_infos, known_property_values=None,
-                            exclude_properties=None):
+    def get_property_values(
+        dataset_infos, known_property_values=None, exclude_properties=None
+    ):
         """Returns a dictionnary of possible values for properties of a data type, optionally given
         known property values.
 
@@ -962,7 +1069,7 @@ class Client():
             of possibles property values
         """
         if exclude_properties is None:
-            exclude_properties = ['date_creation', 'climada_version']
+            exclude_properties = ["date_creation", "climada_version"]
 
         ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
         if known_property_values:
@@ -996,11 +1103,22 @@ class Client():
         ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
         dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf.data_type])
 
-        return dtdf.loc[:, [c for c in dtdf.columns
-                            if c not in ['description', 'properties']]].join(
-               dsdf.loc[:, [c for c in dsdf.columns
-                            if c not in ['data_type', 'properties', 'files']]]).join(
-               ppdf)
+        return (
+            dtdf.loc[
+                :, [c for c in dtdf.columns if c not in ["description", "properties"]]
+            ]
+            .join(
+                dsdf.loc[
+                    :,
+                    [
+                        c
+                        for c in dsdf.columns
+                        if c not in ["data_type", "properties", "files"]
+                    ],
+                ]
+            )
+            .join(ppdf)
+        )
 
     @staticmethod
     def into_files_df(dataset_infos):
@@ -1016,8 +1134,9 @@ class Client():
         pandas.DataFrame
             of the files' informations including dataset informations
         """
-        return Client.into_datasets_df(dataset_infos) \
-            .merge(pd.DataFrame([dsfile for ds in dataset_infos for dsfile in ds.files]))
+        return Client.into_datasets_df(dataset_infos).merge(
+            pd.DataFrame([dsfile for ds in dataset_infos for dsfile in ds.files])
+        )
 
     def purge_cache(self, target_dir=SYSTEM_DIR, keep_testfiles=True):
         """Removes downloaded dataset files from the given directory if they have been downloaded
@@ -1039,13 +1158,17 @@ class Client():
         """
 
         # collect urls from datasets that should not be removed
-        test_datasets = self.list_dataset_infos(status='test_dataset') if keep_testfiles else []
+        test_datasets = (
+            self.list_dataset_infos(status="test_dataset") if keep_testfiles else []
+        )
         test_urls = set(
-            file_info.url for ds_info in test_datasets for file_info in ds_info.files)
+            file_info.url for ds_info in test_datasets for file_info in ds_info.files
+        )
 
-        active_datasets = self.list_dataset_infos(status='active', version='newest')
+        active_datasets = self.list_dataset_infos(status="active", version="newest")
         active_urls = set(
-            file_info.url for ds_info in active_datasets for file_info in ds_info.files)
+            file_info.url for ds_info in active_datasets for file_info in ds_info.files
+        )
 
         not_to_be_removed = test_urls.union(active_urls)
 
@@ -1071,4 +1194,27 @@ class Client():
                 directory.rmdir()
             except OSError:  # raised when the directory is not empty
                 pass
+
         rm_empty_dirs(target_dir)
+
+    def get_dataset_file(self, **kwargs):
+        """Convenience method. Combines ``get_dataset`` and ``download_dataset``.
+        Returns the path to a single file if the dataset has only one,
+        otherwise throws an error.
+
+        Parameters
+        ----------
+        **kwargs
+            arguments for get_dataset and download_dataset
+
+        Returns
+        -------
+        Path
+        """
+        download_arguments = {
+            "target_dir": kwargs.pop("target_dir", SYSTEM_DIR),
+            "organize_path": kwargs.pop("organize_path", True),
+        }
+        dsi = self.get_dataset_info(**kwargs)
+        _, [test_file] = self.download_dataset(dsi, **download_arguments)
+        return test_file
