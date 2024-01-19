@@ -14,6 +14,7 @@ Code freeze date: YYYY-MM-DD
 
 - Read and Write methods to and from csv files for the `DiscRates` class. [#818](ttps://github.com/CLIMADA-project/climada_python/pull/818)
 - Add `CalcDeltaClimate` to unsequa module to allow uncertainty and sensitivity analysis of impact change calculations. [#844](https://github.com/CLIMADA-project/climada_python/pull/844)
+- Addition of small function called `safe_divide` in util which handles division by zero and NaN values in the numerator or denominator. [#844](https://github.com/CLIMADA-project/climada_python/pull/844)
 
 ### Changed
 
