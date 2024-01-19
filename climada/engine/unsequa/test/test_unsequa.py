@@ -339,7 +339,7 @@ class TestCalcDelta(unittest.TestCase):
         haz2 = haz_dem()
         haz2.intensity *=2
         unc_calc = CalcDeltaImpact(exp_unc, impf_dem(), haz, exp_dem(), impf_unc, haz2)
-        unc_data = unc_calc.make_sample(N=1)
+        unc_data = unc_calc.make_sample(N=2)
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
         for [x_exp, x_paa, x_mdd], delta_aai_aag in zip(unc_data.samples_df.values, unc_data.aai_agg_unc_df.values):
@@ -370,6 +370,48 @@ class TestCalcDelta(unittest.TestCase):
             )
         self.assertTrue(unc_data.eai_exp_unc_df.empty)
         self.assertTrue(unc_data.at_event_unc_df.empty)
+        
+    def test_calc_sensitivity_pass(self):
+        """Test compute sensitivity default for CalcDeltaImpact input"""
+
+        exp_unc, impf_unc, _ = make_input_vars()
+        haz = haz_dem()
+        haz2 = haz_dem()
+        haz2.intensity *= 2
+        unc_calc = CalcDeltaImpact(exp_unc, impf_dem(), haz, exp_dem(), impf_unc, haz2)
+        unc_data = unc_calc.make_sample(N=4)
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+    
+        unc_data = unc_calc.sensitivity(
+            unc_data,
+            sensitivity_kwargs = {'calc_second_order': True}
+            )
+
+        self.assertEqual(unc_data.sensitivity_method, 'sobol')
+        self.assertTupleEqual(unc_data.sensitivity_kwargs,
+                             tuple({'calc_second_order': 'True'}.items())
+                             )
+
+        for name, attr in unc_data.__dict__.items():
+            if 'sens_df' in name:
+                if 'eai' in name:
+                    self.assertTrue(attr.empty)
+                elif 'at_event' in name:
+                    self.assertTrue(attr.empty)
+                else:
+                    np.testing.assert_array_equal(
+                        attr.param.unique(),
+                        np.array(['x_exp', 'x_paa', 'x_mdd'])
+                        )
+
+                    np.testing.assert_array_equal(
+                        attr.si.unique(),
+                        np.array(['S1', 'S1_conf', 'ST', 'ST_conf', 'S2', 'S2_conf'])
+                        )
+
+                    self.assertEqual(len(attr),
+                                     len(unc_data.param_labels) * (4 + 3 + 3)
+                                     )
 
 class TestCalcImpact(unittest.TestCase):
     """Test the calcluate impact uncertainty class"""
