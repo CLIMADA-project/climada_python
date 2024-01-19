@@ -21,7 +21,7 @@ Test of util.math module
 
 
 from climada.util.value_representation import sig_dig, sig_dig_list, ABBREV
-from climada.util.value_representation import value_to_monetary_unit
+from climada.util.value_representation import value_to_monetary_unit, safe_divide
 import unittest
 import numpy as np
 import math
@@ -134,8 +134,32 @@ class TestDigits(unittest.TestCase):
         self.assertTrue(np.array_equal(money[:-1], nbs_out[:-1]))
         self.assertEqual(name, name_out)
 
+class TestSafeDivide(unittest.TestCase):
+    
+    def test_scalar_division(self):
+        self.assertEqual(safe_divide(10, 2), 5)
+        self.assertEqual(safe_divide(-10, 5), -2)
+
+    def test_scalar_division_by_zero(self):
+        self.assertTrue(np.isnan(safe_divide(1, 0)))
+        self.assertEqual(safe_divide(1, 0, replace_with=0), 0)
+
+    def test_array_division(self):
+        np.testing.assert_array_equal(safe_divide(np.array([10, 20, 30]), np.array([2, 5, 10])), np.array([5, 4, 3]))
+
+    def test_array_division_by_zero(self):
+        np.testing.assert_array_equal(safe_divide(np.array([1, 0, 3]), np.array([0, 0, 1])), np.array([np.nan, np.nan, 3]))
+        np.testing.assert_array_equal(safe_divide(np.array([1, 0, 3]), np.array([0, 0, 1]), replace_with=0), np.array([0, 0, 3]))
+
+    def test_nan_handling(self):
+        self.assertTrue(np.isnan(safe_divide(np.nan, 1)))
+        self.assertTrue(np.isnan(safe_divide(1, np.nan)))
+        self.assertEqual(safe_divide(np.nan, 1, replace_with=0), 0)
+        self.assertEqual(safe_divide(1, np.nan, replace_with=0), 0)
+
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDigits)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSafeDivide))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

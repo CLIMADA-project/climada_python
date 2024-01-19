@@ -42,6 +42,7 @@ from climada.engine.unsequa.calc_base import (
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
+from climada.util.value_representation import safe_divide
 
 LOGGER = logging.getLogger(__name__)
 
@@ -198,7 +199,7 @@ class CalcDeltaImpact(Calc):
         Returns
         -------
         unc_output : climada.engine.uncertainty.unc_output.UncImpactOutput
-            Uncertainty data object with the impact outputs for each sample
+            Uncertainty data object with the delta impact outputs for each sample
             and all the sample data copied over from unc_sample.
 
         Raises
@@ -327,35 +328,6 @@ class CalcDeltaImpact(Calc):
             return _transpose_chunked_data(imp_metrics)
 
 
-def _safe_divide(numerator, denominator, replace_with=np.nan):
-    """
-    Safely divide two arrays or scalars, handling division by zero and NaN values.
-
-    Parameters
-    ----------
-    numerator (array-like or scalar): Numerator for division.
-    denominator (array-like or scalar): Denominator for division.
-    replace_with (float): Value to use in place of division by zero or NaN. Defaults to NaN.
-
-    Returns
-    -------
-    array-like or scalar: Result of safe division.
-    """
-    if np.isscalar(numerator) and np.isscalar(denominator):
-        # Both numerator and denominator are scalars
-        return np.divide(numerator, denominator) if denominator != 0 else replace_with
-    else:
-        # At least one of the inputs is array-like
-        with np.errstate(divide='ignore', invalid='ignore'):
-            result = np.true_divide(numerator, denominator)
-            if not np.isscalar(result):
-                result[~np.isfinite(result)] = replace_with  # Replace infinities and NaNs in arrays
-            elif not np.isfinite(result):
-                result = replace_with  # Replace infinities and NaNs in scalars
-        return result
-
-
-
 def _map_impact_calc(
     sample_chunks, exp_initial_input_var, impf_initial_input_var, haz_initial_input_var,
     exp_final_input_var, impf_final_input_var, haz_final_input_var, rp, calc_eai_exp, calc_at_event
@@ -432,22 +404,22 @@ def _map_impact_calc(
             at_event_initial = np.array([])
             at_event_final = np.array([])
 
-        delta_aai_agg = _safe_divide(
+        delta_aai_agg = safe_divide(
             imp_final.aai_agg - imp_initial.aai_agg, 
             imp_initial.aai_agg
         )
         
-        delta_freq_curve = _safe_divide(
+        delta_freq_curve = safe_divide(
             freq_curve_final - freq_curve_initial, 
             freq_curve_initial
         )
         
-        delta_eai_exp = _safe_divide(
+        delta_eai_exp = safe_divide(
             eai_exp_final - eai_exp_initial, 
             eai_exp_initial
         ) if calc_eai_exp else np.array([])
         
-        delta_at_event = _safe_divide(
+        delta_at_event = safe_divide(
             at_event_final - at_event_initial, 
             at_event_initial
         ) if calc_at_event else np.array([])
