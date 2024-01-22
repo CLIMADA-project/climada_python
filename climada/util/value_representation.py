@@ -29,16 +29,10 @@ import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 
-ABBREV = {
-    1:'',
-    1000: 'K',
-    1000000: 'M',
-    1000000000: 'Bn',
-    1000000000000: 'Tn'
-    }
+ABBREV = {1: "", 1000: "K", 1000000: "M", 1000000000: "Bn", 1000000000000: "Tn"}
 
 
-def sig_dig(x, n_sig_dig = 16):
+def sig_dig(x, n_sig_dig=16):
     """
     Rounds x to n_sig_dig number of significant digits.
     0, inf, Nan are returned unchanged.
@@ -66,8 +60,9 @@ def sig_dig(x, n_sig_dig = 16):
     if n_sig_dig >= num_of_digits:
         return x
     n = math.floor(math.log10(abs(x)) + 1 - n_sig_dig)
-    result = decimal.Decimal(str(np.round(x * 10**(-n)))) \
-              * decimal.Decimal(str(10**n))
+    result = decimal.Decimal(str(np.round(x * 10 ** (-n)))) * decimal.Decimal(
+        str(10**n)
+    )
     return float(result)
 
 
@@ -92,8 +87,8 @@ def sig_dig_list(iterable, n_sig_dig=16):
     """
     return np.vectorize(sig_dig)(iterable, n_sig_dig)
 
-def convert_monetary_value(values, abbrev, n_sig_dig=None):
 
+def convert_monetary_value(values, abbrev, n_sig_dig=None):
     if isinstance(values, (int, float)):
         values = [values]
 
@@ -150,27 +145,30 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
         values = [values]
 
     if abbreviations is None:
-        abbreviations= ABBREV
+        abbreviations = ABBREV
 
     exponents = []
     for val in values:
         if math.isclose(val, 0) or not math.isfinite(val):
             continue
         exponents.append(math.log10(abs(val)))
-    if not exponents: exponents = [0]
+    if not exponents:
+        exponents = [0]
     max_exp = max(exponents)
     min_exp = min(exponents)
 
     avg_exp = math.floor((max_exp + min_exp) / 2)  # rounded down
-    mil_exp = 3 * math.floor(avg_exp/3)
+    mil_exp = 3 * math.floor(avg_exp / 3)
 
-    thsder = int(10**mil_exp) #Remove negative exponents
+    thsder = int(10**mil_exp)  # Remove negative exponents
     thsder = 1 if thsder < 1 else thsder
 
     try:
         name = abbreviations[thsder]
     except KeyError:
-        LOGGER.warning("Warning: The numbers are larger than %s", list(abbreviations.keys())[-1])
+        LOGGER.warning(
+            "Warning: The numbers are larger than %s", list(abbreviations.keys())[-1]
+        )
         thsder, name = list(abbreviations.items())[-1]
 
     mon_val = np.array(values) / thsder
@@ -180,11 +178,12 @@ def value_to_monetary_unit(values, n_sig_dig=None, abbreviations=None):
 
     return (mon_val, name)
 
+
 def safe_divide(numerator, denominator, replace_with=np.nan):
     """
     Safely divide two arrays or scalars.
 
-    This function handles division by zero and NaN values in the numerator or denominator. 
+    This function handles division by zero and NaN values in the numerator or denominator.
     If the division results in infinity or NaN, it is replaced by a specified value.
 
     Parameters
@@ -194,18 +193,18 @@ def safe_divide(numerator, denominator, replace_with=np.nan):
     denominator : array-like or scalar
         The denominator for division. Division by zero is handled safely.
     replace_with : float, optional
-        The value to use in place of division results that are infinity or NaN. 
+        The value to use in place of division results that are infinity or NaN.
         By default, it is NaN.
 
     Returns
     -------
     array-like or scalar
-        The result of the division. If the division is not possible (e.g., division by zero), 
+        The result of the division. If the division is not possible (e.g., division by zero),
         it returns the value specified in `replace_with`.
 
     Notes
     -----
-    The function uses numpy's `true_divide` for array-like inputs and handles both 
+    The function uses numpy's `true_divide` for array-like inputs and handles both
     scalar and array-like inputs for the numerator and denominator. Division by zero
     or NaN values in the input will result in the `replace_with` value in the output.
 
@@ -230,9 +229,11 @@ def safe_divide(numerator, denominator, replace_with=np.nan):
                 return np.full(numerator.shape, replace_with)
         else:
             # Perform division for arrays
-            with np.errstate(divide='ignore', invalid='ignore'):
+            with np.errstate(divide="ignore", invalid="ignore"):
                 result = np.true_divide(numerator, denominator)
-                result[~np.isfinite(result)] = replace_with  # Replace infinities and NaNs in arrays
+                result[
+                    ~np.isfinite(result)
+                ] = replace_with  # Replace infinities and NaNs in arrays
             return result
 
     # Handle scalar inputs
