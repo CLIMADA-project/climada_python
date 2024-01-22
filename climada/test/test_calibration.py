@@ -31,13 +31,11 @@ from climada.util.constants import ENT_DEMO_TODAY
 import climada.hazard.test as hazard_test
 from climada.test import get_test_file
 
-HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
-"""
-Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
-Fraction is empty. Format: HDF5.
-"""
+
+HAZ_TEST_MAT = get_test_file('atl_prob_no_name', file_format='matlab')
 
 DATA_FOLDER = CONFIG.test_data.dir()
+
 
 class TestCalib(unittest.TestCase):
     """Test engine calibration method."""
@@ -49,7 +47,7 @@ class TestCalib(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+        hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         # get impact function from set
         imp_func = ent.impact_funcs.get_func(hazard.haz_type,
@@ -61,10 +59,10 @@ class TestCalib(unittest.TestCase):
         # create input frame
         df_in = pd.DataFrame.from_dict({'v_threshold': [25.7],
                                         'other_param': [2],
-                                        'hazard': [HAZ_TEST_TC]})
+                                        'hazard': [HAZ_TEST_MAT]})
         df_in_yearly = pd.DataFrame.from_dict({'v_threshold': [25.7],
                                                'other_param': [2],
-                                               'hazard': [HAZ_TEST_TC]})
+                                               'hazard': [HAZ_TEST_MAT]})
 
         # Compute the impact over the whole exposures
         df_out = calib_instance(hazard, ent.exposures, imp_func, df_in)
