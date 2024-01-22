@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty class for Impact differences between two climates.
 """
 
-__all__ = ['CalcDeltaImpact']
+__all__ = ["CalcDeltaImpact"]
 
 import logging
 import time
@@ -29,6 +29,7 @@ import itertools
 import pandas as pd
 import numpy as np
 import pathos.multiprocessing as mp
+
 # use pathos.multiprocess fork of multiprocessing for compatibility
 # wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
@@ -44,17 +45,19 @@ from climada.hazard import Hazard
 from climada.util import log_level
 from climada.util.value_representation import safe_divide
 
+
 LOGGER = logging.getLogger(__name__)
+
 
 class CalcDeltaImpact(Calc):
     """
     Delta Impact uncertainty caclulation class.
 
     This is the class to perform uncertainty analysis on the outputs of a relative
-    change in impact from a (final impact - initial impact) / initial impact. 
+    change in impact from a (final impact - initial impact) / initial impact.
     Impact objects are regular climada.engine.impact.Impact() objects. The resulting
     Delta Impact is a relative change (fraction of the inital impact). The relative
-    change is intuitive to understand in contrast to absolute changes which are 
+    change is intuitive to understand in contrast to absolute changes which are
     hard to understand without knowledge of the absolute initial (baseline) state.
 
     Attributes
@@ -83,21 +86,16 @@ class CalcDeltaImpact(Calc):
     """
 
     _input_var_names = (
-        'exp_initial_input_var',
-        'impf_initial_input_var',
-        'haz_initial_input_var',
-        'exp_final_input_var',
-        'impf_final_input_var',
-        'haz_final_input_var',
+        "exp_initial_input_var",
+        "impf_initial_input_var",
+        "haz_initial_input_var",
+        "exp_final_input_var",
+        "impf_final_input_var",
+        "haz_final_input_var",
     )
     """Names of the required uncertainty variables"""
 
-    _metric_names = (
-        'aai_agg',
-        'freq_curve',
-        'at_event',
-        'eai_exp'
-    )
+    _metric_names = ("aai_agg", "freq_curve", "at_event", "eai_exp")
     """Names of the cost benefit output metrics"""
 
     def __init__(
@@ -132,27 +130,27 @@ class CalcDeltaImpact(Calc):
         """
 
         Calc.__init__(self)
-        self.exp_initial_input_var =  InputVar.var_to_inputvar(exp_initial_input_var)
-        self.impf_initial_input_var =  InputVar.var_to_inputvar(impf_initial_input_var)
-        self.haz_initial_input_var =  InputVar.var_to_inputvar(haz_initial_input_var)
-        self.exp_final_input_var =  InputVar.var_to_inputvar(exp_final_input_var)
-        self.impf_final_input_var =  InputVar.var_to_inputvar(impf_final_input_var)
-        self.haz_final_input_var =  InputVar.var_to_inputvar(haz_final_input_var)
+        self.exp_initial_input_var = InputVar.var_to_inputvar(exp_initial_input_var)
+        self.impf_initial_input_var = InputVar.var_to_inputvar(impf_initial_input_var)
+        self.haz_initial_input_var = InputVar.var_to_inputvar(haz_initial_input_var)
+        self.exp_final_input_var = InputVar.var_to_inputvar(exp_final_input_var)
+        self.impf_final_input_var = InputVar.var_to_inputvar(impf_final_input_var)
+        self.haz_final_input_var = InputVar.var_to_inputvar(haz_final_input_var)
 
         self.value_unit = self.exp_initial_input_var.evaluate().value_unit
         self.check_distr()
 
-
-    def uncertainty(self,
-                    unc_sample,
-                    rp=None,
-                    calc_eai_exp=False,
-                    calc_at_event=False,
-                    processes=1,
-                    chunksize=None
-                    ):
+    def uncertainty(
+        self,
+        unc_sample,
+        rp=None,
+        calc_eai_exp=False,
+        calc_at_event=False,
+        processes=1,
+        chunksize=None,
+    ):
         """
-        Computes the differential impact between the reference (initial) and 
+        Computes the differential impact between the reference (initial) and
         future (final) for each sample in unc_data.sample_df.
 
         By default, the aggregated average impact within a period of 1/frequency_unit
@@ -161,8 +159,8 @@ class CalcDeltaImpact(Calc):
         Optionally, eai_exp and at_event is computed (this may require
         a larger amount of memory if the number of samples and/or the number
         of centroids and/or exposures points is large).
-        For all metrics, the impacts are caculated first and the the difference 
-        thereof is computed. 
+        For all metrics, the impacts are caculated first and the the difference
+        thereof is computed.
         For example, (impact_final.aai_agg - impact_inital.aai_agg / impact_inital.aai_agg)
 
         This sets the attributes self.rp, self.calc_eai_exp,
@@ -221,9 +219,10 @@ class CalcDeltaImpact(Calc):
         """
 
         if unc_sample.samples_df.empty:
-            raise ValueError("No sample was found. Please create one first"
-                             "using UncImpact.make_sample(N)")
-
+            raise ValueError(
+                "No sample was found. Please create one first"
+                "using UncImpact.make_sample(N)"
+            )
 
         # copy may not be needed, but is kept to prevent potential
         # data corruption issues. The computational cost should be
@@ -235,7 +234,7 @@ class CalcDeltaImpact(Calc):
         unit = self.value_unit
 
         if rp is None:
-            rp=[5, 10, 20, 50, 100, 250]
+            rp = [5, 10, 20, 50, 100, 250]
 
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
@@ -243,42 +242,43 @@ class CalcDeltaImpact(Calc):
 
         one_sample = samples_df.iloc[0:1]
         start = time.time()
-        self._compute_imp_metrics(
-            one_sample, chunksize=1, processes=1
-            )
-        elapsed_time = (time.time() - start)
+        self._compute_imp_metrics(one_sample, chunksize=1, processes=1)
+        elapsed_time = time.time() - start
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
         [
             aai_agg_list,
             freq_curve_list,
             eai_exp_list,
-            at_event_list
-        ] =  self._compute_imp_metrics(
+            at_event_list,
+        ] = self._compute_imp_metrics(
             samples_df, chunksize=chunksize, processes=processes
-            )
+        )
 
         # Assign computed impact distribution data to self
-        aai_agg_unc_df  = pd.DataFrame(aai_agg_list, columns = ['aai_agg'])
-        freq_curve_unc_df = pd.DataFrame(freq_curve_list, columns=['rp' + str(n) for n in rp])
-        eai_exp_unc_df =  pd.DataFrame(eai_exp_list)
+        aai_agg_unc_df = pd.DataFrame(aai_agg_list, columns=["aai_agg"])
+        freq_curve_unc_df = pd.DataFrame(
+            freq_curve_list, columns=["rp" + str(n) for n in rp]
+        )
+        eai_exp_unc_df = pd.DataFrame(eai_exp_list)
         # Note: sparse dataframes are not used as they are not nativel y compatible with .to_hdf5
         at_event_unc_df = pd.DataFrame(at_event_list)
 
         if calc_eai_exp:
             exp = self.exp_input_var.evaluate()
-            coord_df = exp.gdf[['latitude', 'longitude']]
+            coord_df = exp.gdf[["latitude", "longitude"]]
         else:
             coord_df = pd.DataFrame([])
 
-        return UncImpactOutput(samples_df=samples_df,
-                               unit=unit,
-                               aai_agg_unc_df=aai_agg_unc_df,
-                               freq_curve_unc_df=freq_curve_unc_df,
-                               eai_exp_unc_df=eai_exp_unc_df,
-                               at_event_unc_df=at_event_unc_df,
-                               coord_df=coord_df
-                               )
+        return UncImpactOutput(
+            samples_df=samples_df,
+            unit=unit,
+            aai_agg_unc_df=aai_agg_unc_df,
+            freq_curve_unc_df=freq_curve_unc_df,
+            eai_exp_unc_df=eai_exp_unc_df,
+            at_event_unc_df=at_event_unc_df,
+            coord_df=coord_df,
+        )
 
     def _compute_imp_metrics(self, samples_df, chunksize, processes):
         """Compute the uncertainty metrics
@@ -297,8 +297,8 @@ class CalcDeltaImpact(Calc):
         list
             values of impact metrics per sample
         """
-        #Compute impact distributions
-        with log_level(level='ERROR', name_prefix='climada'):
+        # Compute impact distributions
+        with log_level(level="ERROR", name_prefix="climada"):
             p_iterator = _sample_parallel_iterator(
                 samples=samples_df,
                 chunksize=chunksize,
@@ -314,24 +314,28 @@ class CalcDeltaImpact(Calc):
             )
             if processes > 1:
                 with mp.Pool(processes=processes) as pool:
-                    LOGGER.info('Using %s CPUs.', processes)
-                    imp_metrics = pool.starmap(
-                        _map_impact_calc, p_iterator
-                        )
+                    LOGGER.info("Using %s CPUs.", processes)
+                    imp_metrics = pool.starmap(_map_impact_calc, p_iterator)
             else:
-                imp_metrics = itertools.starmap(
-                    _map_impact_calc, p_iterator
-                    )
+                imp_metrics = itertools.starmap(_map_impact_calc, p_iterator)
 
-        #Perform the actual computation
-        with log_level(level='ERROR', name_prefix='climada'):
+        # Perform the actual computation
+        with log_level(level="ERROR", name_prefix="climada"):
             return _transpose_chunked_data(imp_metrics)
 
 
 def _map_impact_calc(
-    sample_chunks, exp_initial_input_var, impf_initial_input_var, haz_initial_input_var,
-    exp_final_input_var, impf_final_input_var, haz_final_input_var, rp, calc_eai_exp, calc_at_event
-    ):
+    sample_chunks,
+    exp_initial_input_var,
+    impf_initial_input_var,
+    haz_initial_input_var,
+    exp_final_input_var,
+    impf_final_input_var,
+    haz_final_input_var,
+    rp,
+    calc_eai_exp,
+    calc_at_event,
+):
     """
     Map to compute impact for all parameter samples in parallel
 
@@ -362,7 +366,6 @@ def _map_impact_calc(
     """
     uncertainty_values = []
     for _, sample in sample_chunks.iterrows():
-        
         exp_initial_samples = sample[exp_initial_input_var.labels].to_dict()
         impf_initial_samples = sample[impf_initial_input_var.labels].to_dict()
         haz_initial_samples = sample[haz_initial_input_var.labels].to_dict()
@@ -370,21 +373,22 @@ def _map_impact_calc(
         impf_final_samples = sample[impf_final_input_var.labels].to_dict()
         haz_final_samples = sample[haz_final_input_var.labels].to_dict()
 
-        
         exp_initial = exp_initial_input_var.evaluate(**exp_initial_samples)
         impf_initial = impf_initial_input_var.evaluate(**impf_initial_samples)
         haz_initial = haz_initial_input_var.evaluate(**haz_initial_samples)
         exp_final = exp_final_input_var.evaluate(**exp_final_samples)
         impf_final = impf_final_input_var.evaluate(**impf_final_samples)
         haz_final = haz_final_input_var.evaluate(**haz_final_samples)
-        
+
         exp_initial.assign_centroids(haz_initial, overwrite=False)
         exp_final.assign_centroids(haz_final, overwrite=False)
-        
-        imp_initial = ImpactCalc(exposures=exp_initial, impfset=impf_initial, hazard=haz_initial)\
-              .impact(assign_centroids=False, save_mat=False)
-        imp_final = ImpactCalc(exposures=exp_final, impfset=impf_final, hazard=haz_final)\
-              .impact(assign_centroids=False, save_mat=False)
+
+        imp_initial = ImpactCalc(
+            exposures=exp_initial, impfset=impf_initial, hazard=haz_initial
+        ).impact(assign_centroids=False, save_mat=False)
+        imp_final = ImpactCalc(
+            exposures=exp_final, impfset=impf_final, hazard=haz_final
+        ).impact(assign_centroids=False, save_mat=False)
 
         # Extract from climada.impact the chosen metrics
         freq_curve_initial = imp_initial.calc_freq_curve(rp).impact
@@ -405,30 +409,27 @@ def _map_impact_calc(
             at_event_final = np.array([])
 
         delta_aai_agg = safe_divide(
-            imp_final.aai_agg - imp_initial.aai_agg, 
-            imp_initial.aai_agg
+            imp_final.aai_agg - imp_initial.aai_agg, imp_initial.aai_agg
         )
-        
+
         delta_freq_curve = safe_divide(
-            freq_curve_final - freq_curve_initial, 
-            freq_curve_initial
+            freq_curve_final - freq_curve_initial, freq_curve_initial
         )
-        
-        delta_eai_exp = safe_divide(
-            eai_exp_final - eai_exp_initial, 
-            eai_exp_initial
-        ) if calc_eai_exp else np.array([])
-        
-        delta_at_event = safe_divide(
-            at_event_final - at_event_initial, 
-            at_event_initial
-        ) if calc_at_event else np.array([])
-        
-        uncertainty_values.append([
-            delta_aai_agg,
-            delta_freq_curve,
-            delta_eai_exp,
-            delta_at_event
-        ])
+
+        delta_eai_exp = (
+            safe_divide(eai_exp_final - eai_exp_initial, eai_exp_initial)
+            if calc_eai_exp
+            else np.array([])
+        )
+
+        delta_at_event = (
+            safe_divide(at_event_final - at_event_initial, at_event_initial)
+            if calc_at_event
+            else np.array([])
+        )
+
+        uncertainty_values.append(
+            [delta_aai_agg, delta_freq_curve, delta_eai_exp, delta_at_event]
+        )
 
     return list(zip(*uncertainty_values))
