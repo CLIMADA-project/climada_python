@@ -85,7 +85,6 @@ class Calc():
         """
         Empty constructor to be overwritten by subclasses
         """
-        pass
 
     def check_distr(self):
         """
@@ -117,7 +116,6 @@ class Calc():
                         )
                 distr_dict[input_param_name] = input_param_func
         return True
-
 
     @property
     def input_vars(self):
@@ -322,9 +320,9 @@ class Calc():
 
         Parameters
         ----------
-        unc_output : climada.engine.uncertainty.unc_output.UncOutput()
+        unc_output : climada.engine.usequa.UncOutput
             Uncertainty data object in which to store the sensitivity indices
-        sensitivity_method : str
+        sensitivity_method : str, optional
             sensitivity analysis method from SALib.analyse
             Possible choices:
                 'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
@@ -332,13 +330,13 @@ class Calc():
             Note that in Salib, sampling methods and sensitivity analysis
             methods should be used in specific pairs.
             https://salib.readthedocs.io/en/latest/api.html
-        sensitivity_kwargs: dict(), optional
+        sensitivity_kwargs: dict, optional
             Keyword arguments of the chosen SALib analyse method.
             The default is to use SALib's default arguments.
 
         Returns
         -------
-        sens_output : climada.engine.uncertainty.unc_output.UncOutput()
+        sens_output : climada.engine.usequa.UncOutput
             Uncertainty data object with all the sensitivity indices,
             and all the uncertainty data copied over from unc_output.
 
@@ -380,6 +378,7 @@ class Calc():
 
         return sens_output
 
+
 def _multiprocess_chunksize(samples_df, processes):
     """Divides the samples into chunks for multiprocesses computing
 
@@ -405,6 +404,7 @@ def _multiprocess_chunksize(samples_df, processes):
     return np.ceil(
         samples_df.shape[0] / processes
         ).astype(int)
+
 
 def _transpose_chunked_data(metrics):
     """Transposes the output metrics lists from one list per
@@ -434,6 +434,7 @@ def _transpose_chunked_data(metrics):
         list(itertools.chain.from_iterable(x))
         for x in zip(*metrics)
         ]
+
 
 def _sample_parallel_iterator(samples, chunksize, **kwargs):
     """
