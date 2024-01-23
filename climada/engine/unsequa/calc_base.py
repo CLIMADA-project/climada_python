@@ -206,8 +206,8 @@ class Calc():
             Number of samples as used in the sampling method from SALib
         sampling_method : str, optional
             The sampling method as defined in SALib. Possible choices:
-            'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
-            https://salib.readthedocs.io/en/latest/api.html
+            'dgsm', 'fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli',
+             https://salib.readthedocs.io/en/latest/api.html
             The default is 'saltelli'.
         sampling_kwargs : kwargs, optional
             Optional keyword arguments passed on to the SALib sampling_method.
@@ -274,7 +274,7 @@ class Calc():
             SALib sampling method.
         sampling_method: string
             The sampling method as defined in SALib. Possible choices:
-            'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
+            'dgsm', 'fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli',
             https://salib.readthedocs.io/en/latest/api.html
         sampling_kwargs: dict()
             Optional keyword arguments passed on to the SALib sampling method.
@@ -326,8 +326,9 @@ class Calc():
         unc_output : climada.engine.uncertainty.unc_output.UncOutput
             Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str, optional
-            Sensitivity analysis method from SALib.analyse. Possible choices: 'fast', 'rbd_fact',
-            'morris', 'sobol', 'delta', 'ff'. Note that in Salib, sampling methods and sensitivity
+            Sensitivity analysis method from SALib.analyse. Possible choices: 'fast', 'rbd_fast',
+            'morris', 'sobol', 'delta', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy'. 
+            Note that in Salib, sampling methods and sensitivity
             analysis methods should be used in specific pairs:
             https://salib.readthedocs.io/en/latest/api.html
             Default: 'sobol'
@@ -512,7 +513,10 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
             ]).ravel()
         sens_second_order_dict[submetric_name] = sens_second_order
 
-    sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
+    #sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
+    # Assume sens_first_order_dict is a dictionary where values are lists/arrays of varying lengths
+    sens_first_order_df = pd.DataFrame({k: pd.Series(v, dtype=object) for k, v in sens_first_order_dict.items()})
+
     if not sens_first_order_df.empty:
         si_names_first_order, param_names_first_order = _si_param_first(param_labels, sens_indices)
         sens_first_order_df.insert(0, 'si', si_names_first_order)

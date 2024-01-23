@@ -56,12 +56,16 @@ MAP_CMAP = 'Dark2' #Default color map for the sensitivity map
 # NEEDS TO BE UPDATED REGULARLY!! https://salib.readthedocs.io/en/latest/api.html
 SALIB_COMPATIBILITY = {
     'fast': ['fast_sampler'],
-    'rbd_fast': ['latin'] ,
+    'rbd_fast': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
     'morris': ['morris'],
-    'sobol' : ['saltelli'],
-    'delta' : ['latin'],
-    'dgsm' : ['fast_sampler', 'latin', 'morris', 'saltelli', 'latin', 'ff'],
+    'sobol' : ['saltelli', 'sobol'],
+    'delta' : ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
+    'dgsm' : ['finite_diff'],
     'ff' : ['ff'],
+    'pawn' : ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
+    'hdmr' : ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
+    #'rsa' : ['dgsm', 'fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
+    #'discrepancy' : ['dgsm', 'fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'] # all samplers
     }
 
 
