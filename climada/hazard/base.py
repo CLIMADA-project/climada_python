@@ -1743,11 +1743,7 @@ class Hazard():
             # centroids already in raster format
             u_coord.write_raster(file_name, var_to_write.toarray(), meta)
         else:
-            geometry = self.centroids.gdf.geometry.buffer(
-                distance=res/2, resolution=1, cap_style=3,
-            )
-            # resolution=1, cap_style=3: squared buffers
-            # https://shapely.readthedocs.io/en/latest/manual.html#object.buffer
+            geometry = self.centroids.get_pixel_shapes(res=res)
             with rasterio.open(file_name, 'w', **meta) as dst:
                 LOGGER.info('Writing %s', file_name)
                 for i_ev in range(self.size):

@@ -60,16 +60,15 @@ class Centroids():
     Attributes
     ----------
     lat : np.array
-        latitudes in the chosen crs (can be any unit)
+        Latitudinal coordinates in the specified CRS (can be any unit).
     lon : np.array
-        longitudes in the chosen crs (can be any unit)
-    crs : str, optional
-        coordinate reference system, default is WGS84
+        Longitudinal coordinates in the specified CRS (can be any unit).
+    crs : pyproj.CRS
+        Coordinate reference system. Default: EPSG:4326 (WGS84)
     region_id : np.array, optional
-        region numeric codes
-        (can be any values, admin0, admin1, custom values)
+        Numeric country (or region) codes. Default: None
     on_land : np.array, optional
-        on land (True) and on sea (False)
+        Boolean array indicating on land (True) or off shore (False). Default: None
     """
 
     def __init__(
@@ -77,7 +76,7 @@ class Centroids():
         *,
         lat: Union[np.ndarray, list[float]],
         lon: Union[np.ndarray, list[float]],
-        crs: str = DEF_CRS,
+        crs: any = DEF_CRS,
         region_id: Union[Literal["country"], None, np.ndarray, list[float]] = None,
         on_land: Union[Literal["natural_earth"], None, np.ndarray, list[bool]] = None,
         **kwargs
@@ -87,15 +86,18 @@ class Centroids():
         Parameters
         ----------
         lat : np.array
-            latitude of size size. Defaults to empty array
+            Latitudinal coordinates in the specified CRS (can be any unit).
         lon : np.array
-            longitude of size size. Defaults to empty array
-        crs : str
-            coordinate reference system
-        region_id : np.array, optional
-            country region code of size size, Defaults to None array
-        on_land : np.array, optional
-            on land (True) and on sea (False) of size size. Defaults to None array
+            Longitudinal coordinates in the specified CRS (can be any unit).
+        crs : str or anything accepted by pyproj.CRS.from_user_input()
+            Coordinate reference system. Default: EPSG:4326 (WGS84)
+        region_id : np.array or str, optional
+            Array of numeric country (or region) codes. If the special value "country" is given
+            admin-0 codes are automatically assigned. Default: None
+        on_land : np.array or str, optional
+            Boolean array indicating on land (True) or off shore (False). If the special value
+            "natural_earth" is given, the property is automatically determined from NaturalEarth
+            shapes. Default: None
         """
 
         self.gdf = gpd.GeoDataFrame(
@@ -103,7 +105,7 @@ class Centroids():
                 'geometry': gpd.points_from_xy(lon, lat, crs=crs),
                 'region_id': region_id,
                 'on_land': on_land,
-                **kwargs
+                **kwargs,
             }
         )
 
@@ -516,40 +518,38 @@ class Centroids():
 
         Parameters
         ----------
-        level: str
-            defines the admin level on which to assign centroids. Currently
-            only 'country' (admin0) is implemented. Default is 'country'.
+        level: str, optional
+            The admin level on which to assign centroids. Currently only 'country' (admin0) is
+            implemented. Defaul: 'country'
         overwrite : bool, optional
-            if True, overwrites the existing region_id information.
-            if False and region_id is None region_id is computed.
+            If True, overwrite the existing region_id information. If False, region_id is set
+            only if region_id is missing (None). Default: False
         """
         if overwrite or self.region_id is None:
             LOGGER.debug('Setting region_id %s points.', str(self.size))
             if level == 'country':
                 ne_geom = self._ne_crs_geom()
                 self.gdf['region_id'] = u_coord.get_country_code(
-                    ne_geom.y.values, ne_geom.x.values
-                    )
+                    ne_geom.y.values, ne_geom.x.values,
+                )
             else:
                 raise NotImplementedError(
                     'The region id can only be assigned for countries so far'
-                    )
+                )
         return None
 
     def set_on_land(self, source='natural_earth', overwrite=False):
         """Set on_land attribute for every pixel or point.
 
-        natural_earth: https://www.naturalearthdata.com/
-
         Parameters
         ----------
-        source: str
-            defines the source of the coastlines. Currently
-            only 'natural_earth' is implemented.
-            Default is 'natural_earth'.
-        overwrite : bool
-            if True, overwrites the existing on_land information.
-            if False and on_land is None on_land is computed.
+        source: str, optional
+            The source of the on-land information. Currently, only 'natural_earth' (based on shapes
+            from NaturalEarth, https://www.naturalearthdata.com/) is implemented.
+            Default: 'natural_earth'.
+        overwrite : bool, optional
+            If True, overwrite the existing on_land information. If False, on_land is set
+            only if on_land is missing (None). Default: False
         """
         if overwrite or self.on_land is None:
             LOGGER.debug('Setting on_land %s points.', str(self.lat.size))
@@ -560,41 +560,64 @@ class Centroids():
                 )
             else:
                 raise NotImplementedError(
-                    'The on land variables can only be assigned'
-                    'using natural earth.'
-                    )
+                    'The on land variables can only be automatically assigned using natural earth.'
+                )
         return None
 
-    def get_area_pixel(self, min_resol=1.0e-8):
-        """Computes the area per centroid in the CEA projection
-        assuming that the centroids define a regular grid of pixels
-        (area in m*m).
+    def get_pixel_shapes(self, res=None, **kwargs):
+        """Create a GeoSeries of the quadratic pixel shapes at the centroid locations
+
+        Note that this assumes that the centroids define a regular grid of pixels.
 
         Parameters
         ----------
-        min_resol : float, optional
-            Use this minimum resolution in lat and lon. Is passed to the
-            method climada.util.coordinates.get_resolution.
-            Default: 1.0e-8
+        res : float, optional
+            The resolution of the regular grid the pixels are taken from. If not given, it is
+            estimated using climada.util.coordinates.get_resolution. Default: None
+        kwargs : optional
+            Additional keyword arguments are passed to climada.util.coordinates.get_resolution.
 
         Returns
         -------
-        areapixels : np.array
-            area values in m*m
+        GeoSeries
 
         See also
         --------
         climada.util.coordinates.get_resolution
         """
+        if res is None:
+            res = np.abs(u_coord.get_resolution(self.lat, self.lon, **kwargs)).min()
+        geom = self.geometry.copy()
+        # unset CRS to avoid warnings about geographic CRS when using `GeoSeries.buffer`
+        geom.crs = None
+        return geom.buffer(
+            # resolution=1, cap_style=3: squared buffers
+            # https://shapely.readthedocs.io/en/latest/manual.html#object.buffer
+            distance=res / 2, resolution=1, cap_style=3,
+        # reset CRS (see above)
+        ).set_crs(self.crs)
 
-        res = np.abs(u_coord.get_resolution(self.lat, self.lon, min_resol=min_resol)).min()
-        LOGGER.debug('Setting area_pixel %s points.', str(self.lat.size))
-        xy_pixels = self.geometry.buffer(res / 2, resolution=1, cap_style=3).envelope
-        if PROJ_CEA == self.geometry.crs:
-            area_pixel = xy_pixels.area.values
-        else:
-            area_pixel = xy_pixels.to_crs(crs={'proj': 'cea'}).area.values
-        return area_pixel
+    def get_area_pixel(self, min_resol=1.0e-8):
+        """Compute the area per centroid in the CEA projection
+
+        Note that this assumes that the centroids define a regular grid of pixels (area in m²).
+
+        Parameters
+        ----------
+        min_resol : float, optional
+            When estimating the grid resolution, use this as the minimum resolution in lat and lon.
+            It is passed to climada.util.coordinates.get_resolution. Default: 1.0e-8
+
+        Returns
+        -------
+        areapixels : np.array
+            Area of each pixel in square meters.
+        """
+        LOGGER.debug('Computing pixel area for %d centroids.', self.size)
+        xy_pixels = self.get_pixel_shapes(min_resol=min_resol)
+        if PROJ_CEA != xy_pixels.crs:
+            xy_pixels = xy_pixels.to_crs(crs={'proj': 'cea'})
+        return xy_pixels.area.values
 
     def get_closest_point(self, x_lon, y_lat):
         """Returns closest centroid and its index to a given point.
@@ -737,11 +760,10 @@ class Centroids():
         """
         meta, _ = u_coord.read_raster(
             file_name, [1], src_crs, window, geometry, dst_crs,
-            transform, width, height, resampling)
-        lat, lon = _meta_to_lat_lon(meta)
-        if return_meta:
-            return cls(lon=lon, lat=lat, crs=meta['crs']), meta
-        return cls(lon=lon, lat=lat, crs=meta['crs'])
+            transform, width, height, resampling,
+        )
+        centr = cls.from_meta(meta)
+        return (centr, meta) if return_meta else centr
 
     @classmethod
     def from_meta(cls, meta):
@@ -911,10 +933,10 @@ class Centroids():
                 gdf = gpd.GeoDataFrame(store['centroids'], crs=crs)
         except TypeError:
             with h5py.File(file_name, 'r') as data:
-                gdf = cls._legacy_from_hdf5(data.get('centroids'))
+                gdf = cls._gdf_from_legacy_hdf5(data.get('centroids'))
         except KeyError:
             with h5py.File(file_name, 'r') as data:
-                gdf = cls._legacy_from_hdf5(data)
+                gdf = cls._gdf_from_legacy_hdf5(data)
 
         return cls.from_geodataframe(gdf)
 
@@ -943,8 +965,7 @@ class Centroids():
             **extra_values, crs=crs
             )
 
-    @classmethod
-    def _legacy_from_hdf5(cls, data):
+    def _gdf_from_legacy_hdf5(data):
         crs = DEF_CRS
         if data.get('crs'):
             crs = u_coord.to_crs_user_input(data.get('crs')[0])
@@ -1026,10 +1047,10 @@ def _meta_to_lat_lon(meta):
 
     Returns
     -------
-    tuple(np.ndarray, np.ndarray)
-        latitudes, longitudes
+    latitudes : np.ndarray
+        Latitudinal coordinates of pixel centers.
+    longitudes : np.ndarray
+        Longitudinal coordinates of pixel centers.
     """
-    xgrid, ygrid = u_coord.raster_to_meshgrid(
-        meta['transform'], meta['width'], meta['height']
-        )
-    return ygrid.flatten(), xgrid.flatten()
+    xgrid, ygrid = u_coord.raster_to_meshgrid(meta['transform'], meta['width'], meta['height'])
+    return ygrid.ravel(), xgrid.ravel()
