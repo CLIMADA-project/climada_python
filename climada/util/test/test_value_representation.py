@@ -157,7 +157,6 @@ class TestSafeDivide(unittest.TestCase):
         expected_result = [5.0, np.nan, 3.0] 
         np.testing.assert_array_almost_equal(safe_divide(list_num, list_denom), expected_result)
 
-
     def test_list_division(self):
         list_num = [10, 20, 30]
         list_denom = [2, 5, 10]
