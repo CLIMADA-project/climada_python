@@ -55,17 +55,15 @@ MAP_CMAP = 'Dark2' #Default color map for the sensitivity map
 #Table of recommended pairing between salib sampling and sensitivity methods
 # NEEDS TO BE UPDATED REGULARLY!! https://salib.readthedocs.io/en/latest/api.html
 SALIB_COMPATIBILITY = {
+    'delta': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
+    'dgsm': ['finite_diff'],
     'fast': ['fast_sampler'],
-    'rbd_fast': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
+    'ff': ['ff'],
+    'hdmr': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
     'morris': ['morris'],
-    'sobol' : ['saltelli', 'sobol'],
-    'delta' : ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
-    'dgsm' : ['finite_diff'],
-    'ff' : ['ff'],
-    'pawn' : ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
-    'hdmr' : ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
-    #'rsa' : ['dgsm', 'fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'], # all samplers
-    #'discrepancy' : ['dgsm', 'fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'] # all samplers
+    'pawn': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
+    'rbd_fast': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
+    'sobol': ['saltelli', 'sobol']
     }
 
 
