@@ -183,60 +183,60 @@ def safe_divide(numerator, denominator, replace_with=np.nan):
     """
     Safely divide two arrays or scalars.
 
-    This function handles division by zero and NaN values in the numerator or denominator.
-    If the division results in infinity or NaN, it is replaced by a specified value.
+    This function handles division by zero and NaN values in the numerator or denominator
+    on an element-wise basis. If the division results in infinity, NaN, or division by zero
+    in any element, that particular result is replaced by the specified value.
 
     Parameters
     ----------
-    numerator : array-like or scalar
+    numerator : np.ndarray or scalar
         The numerator for division.
-    denominator : array-like or scalar
-        The denominator for division. Division by zero is handled safely.
+    denominator : np.ndarray or scalar
+        The denominator for division. Division by zero and NaN values are handled safely.
     replace_with : float, optional
-        The value to use in place of division results that are infinity or NaN.
+        The value to use in place of division results that are infinity, NaN, or division by zero.
         By default, it is NaN.
 
     Returns
     -------
-    array-like or scalar
-        The result of the division. If the division is not possible (e.g., division by zero),
-        it returns the value specified in `replace_with`.
+    np.ndarray or scalar
+        The result of the division. If the division results in infinity, NaN, or division by zero
+        in any element, it returns the value specified in `replace_with` for those elements.
 
     Notes
     -----
     The function uses numpy's `true_divide` for array-like inputs and handles both
-    scalar and array-like inputs for the numerator and denominator. Division by zero
-    or NaN values in the input will result in the `replace_with` value in the output.
+    scalar and array-like inputs for the numerator and denominator. NaN values or division by zero
+    in any element of the input will result in the `replace_with` value in the corresponding element
+    of the output.
 
     Examples
     --------
     >>> safe_divide(1, 0)
     nan
 
-    >>> _safe_divide(1, 0, replace_with=0)
+    >>> safe_divide(1, 0, replace_with=0)
     0
 
-    >>> _safe_divide([1, 0, 3], [0, 0, 3])
+    >>> safe_divide([1, 0, 3], [0, 0, 3])
     array([nan, nan,  1.])
-    """
-    # Handle array inputs
-    if not np.isscalar(numerator) or not np.isscalar(denominator):
-        # If either input is an array and contains NaN, replace the whole result with replace_with
-        if np.any(np.isnan(numerator)) or np.any(np.isnan(denominator)):
-            if np.isscalar(numerator) or np.isscalar(denominator):
-                return replace_with
-            else:
-                return np.full(numerator.shape, replace_with)
-        else:
-            # Perform division for arrays
-            with np.errstate(divide="ignore", invalid="ignore"):
-                result = np.true_divide(numerator, denominator)
-                result[
-                    ~np.isfinite(result)
-                ] = replace_with  # Replace infinities and NaNs in arrays
-            return result
 
-    # Handle scalar inputs
-    if np.isnan(numerator) or np.isnan(denominator):
-        return replace_with
-    return np.divide(numerator, denominator) if denominator != 0 else replace_with
+    >>> safe_divide([4, 4], [1, 0])
+    array([4., nan])
+
+    >>> safe_divide([4, 4], [1, nan])
+    array([ 4., nan])
+    """
+    
+    with np.errstate(divide="ignore", invalid="ignore"):
+        result = np.true_divide(numerator, denominator)
+        
+        # Check if the result is a scalar
+        if np.isscalar(result):
+            if not np.isfinite(result):
+                return replace_with
+        else:
+            # Replace infinities, NaNs, and division by zeros in np.ndarray
+            result[~np.isfinite(result)] = replace_with
+
+    return result
