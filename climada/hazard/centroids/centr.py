@@ -657,14 +657,15 @@ class Centroids():
     def get_meta(self, resolution=None):
         """Returns a meta raster based on the centroids bounds.
 
-        When resolution is None it is estimated from the centroids
-        by assuming that they form a regular raster.
+        Note that this function is not perfectly inverse with `from_meta` since `get_meta` enforces
+        a grid with equal resolution in x- and y-direction with coordinates increasing in
+        x-direction and decreasing in y-direction.
 
         Parameters
         ----------
         resolution : int, optional
-            Resolution of the raster.
-            By default None (resolution is estimated from centroids)
+            Resolution of the raster. If not given, the resolution is estimated from the centroids
+            by assuming that they form a regular raster. Default: None
 
         Returns
         -------

@@ -66,7 +66,7 @@ class TestVector(unittest.TestCase):
         self.centr = Centroids(lat=VEC_LAT, lon=VEC_LON, crs=TEST_CRS)
 
     def test_init_pass(self):
-        """Test from_lat_lon"""
+        """Test init"""
         self.assertTrue(np.allclose(self.centr.lat, VEC_LAT))
         self.assertTrue(np.allclose(self.centr.lon, VEC_LON))
         self.assertTrue(u_coord.equal_crs(self.centr.crs, TEST_CRS))
@@ -288,9 +288,53 @@ class TestRaster(unittest.TestCase):
         self.assertEqual(y, 0.2)
         self.assertEqual(idx, 1)
 
-    def test_set_meta_to_lat_lon_pass(self):
-        """Test set_meta_to_lat_lon by using its inverse set_lat_lon_to_meta"""
-        pass
+    def test_from_meta(self):
+        """Test from_meta"""
+        meta_ref = {
+            'width': 10,
+            'height': 8,
+            'transform': rasterio.Affine(
+                0.6, 0, -0.1,
+                0, -0.6, 0.3,
+            ),
+            'crs': DEF_CRS,
+        }
+
+        lon_ref = np.array([0.2, 0.8, 1.4, 2.0, 2.6, 3.2, 3.8, 4.4, 5.0, 5.6])
+        lat_ref = np.array([0.0, -0.6, -1.2, -1.8, -2.4, -3.0, -3.6, -4.2])
+        lon_ref, lat_ref = [ar.ravel() for ar in np.meshgrid(lon_ref, lat_ref)]
+
+        centr = Centroids.from_meta(meta_ref)
+        meta = centr.get_meta()
+        self.assertTrue(u_coord.equal_crs(meta_ref["crs"], meta["crs"]))
+        self.assertEqual(meta_ref["width"], meta["width"])
+        self.assertEqual(meta_ref["height"], meta["height"])
+        np.testing.assert_allclose(meta_ref["transform"], meta["transform"])
+
+        centr = Centroids.from_meta(
+            Centroids(lat=lat_ref, lon=lon_ref).get_meta()
+        )
+        np.testing.assert_allclose(lat_ref, centr.lat)
+        np.testing.assert_allclose(lon_ref, centr.lon)
+
+        # `get_meta` enforces same resolution in x and y, and y-coordinates are decreasing.
+        # For other cases, `from_meta` needs to be checked manually.
+        meta_ref = {
+            'width': 4,
+            'height': 5,
+            'transform': rasterio.Affine(
+                0.5, 0, 0.2,
+                0, 0.6, -0.7,
+            ),
+            'crs': DEF_CRS,
+        }
+        lon_ref = np.array([0.45, 0.95, 1.45, 1.95])
+        lat_ref = np.array([-0.4, 0.2, 0.8, 1.4, 2.0])
+        lon_ref, lat_ref = [ar.ravel() for ar in np.meshgrid(lon_ref, lat_ref)]
+
+        centr = Centroids.from_meta(meta_ref)
+        np.testing.assert_allclose(lat_ref, centr.lat)
+        np.testing.assert_allclose(lon_ref, centr.lon)
 
     def test_equal_pass(self):
         """Test equal"""
