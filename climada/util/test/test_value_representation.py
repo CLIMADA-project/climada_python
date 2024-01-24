@@ -151,18 +151,36 @@ class TestSafeDivide(unittest.TestCase):
         np.testing.assert_array_equal(safe_divide(np.array([1, 0, 3]), np.array([0, 0, 1])), np.array([np.nan, np.nan, 3]))
         np.testing.assert_array_equal(safe_divide(np.array([1, 0, 3]), np.array([0, 0, 1]), replace_with=0), np.array([0, 0, 3]))
 
+    def test_list_division_by_zero(self):
+        list_num = [10, 0, 30]
+        list_denom = [2, 0, 10]
+        expected_result = [5.0, np.nan, 3.0] 
+        np.testing.assert_array_almost_equal(safe_divide(list_num, list_denom), expected_result)
+
+
+    def test_list_division(self):
+        list_num = [10, 20, 30]
+        list_denom = [2, 5, 10]
+        expected_result = [5.0, 4.0, 3.0]
+        np.testing.assert_array_almost_equal(safe_divide(list_num, list_denom), expected_result)
+
     def test_nan_handling(self):
         self.assertTrue(np.isnan(safe_divide(np.nan, 1)))
         self.assertTrue(np.isnan(safe_divide(1, np.nan)))
         self.assertEqual(safe_divide(np.nan, 1, replace_with=0), 0)
         self.assertEqual(safe_divide(1, np.nan, replace_with=0), 0)
+        
+    def test_nan_handling_in_arrays(self):
+        np.testing.assert_array_equal(
+            safe_divide(np.array([1, np.nan, 3]), np.array([3, 2, 0])),
+            np.array([1/3, np.nan, np.nan])
+        )
 
-    def test_list_division(self):
-            # Testing division with list inputs
-        list_num = [10, 20, 30]
-        list_denom = [2, 5, 10]
-        expected_result = [5.0, 4.0, 3.0]
-        np.testing.assert_array_almost_equal(safe_divide(list_num, list_denom), expected_result)
+    def test_nan_handling_in_scalars(self):
+        self.assertTrue(np.isnan(safe_divide(np.nan, 1)))
+        self.assertTrue(np.isnan(safe_divide(1, np.nan)))
+        self.assertEqual(safe_divide(np.nan, 1, replace_with=0), 0)
+        self.assertEqual(safe_divide(1, np.nan, replace_with=0), 0)
 
 # Execute Tests
 if __name__ == "__main__":
