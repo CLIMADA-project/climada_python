@@ -548,7 +548,7 @@ class TestCalcImpact(unittest.TestCase):
         self.assertTrue(unc_data.at_event_unc_df.empty)
         
     def test_calc_sensitivity_rbd_fast_pass(self):
-        """Test compute sensitivity using the FAST method"""
+        """Test compute sensitivity using the RBD FAST method"""
     
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
@@ -583,99 +583,6 @@ class TestCalcImpact(unittest.TestCase):
         self.assertTrue(unc_data.eai_exp_unc_df.empty)
         self.assertTrue(unc_data.at_event_unc_df.empty)
         
-        
-    # def test_calc_sensitivity_delta_pass(self):
-    #     """Test compute sensitivity using the delta method"""
-    #     exp_unc, impf_unc, _ = make_input_vars()
-    #     haz = haz_dem()
-    #     unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-    
-    #     # Generate samples
-    #     unc_data = unc_calc.make_sample(N=1024, sampling_method='saltelli')
-    #     unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
-    
-    #     # Perform sensitivity analysis with delta method
-    #     unc_data = unc_calc.sensitivity(
-    #         unc_data,
-    #         sensitivity_method='delta',
-    #         sensitivity_kwargs={'seed': 12345}
-    #     )
-    
-    #     self.assertEqual(unc_data.sensitivity_method, 'delta')
-    
-    #     self.assertEqual('x_exp', unc_data.aai_agg_sens_df.param[2])
-    #     self.assertEqual('S1_conf', unc_data.aai_agg_sens_df.si[8])
-    #     self.assertAlmostEqual(0.056517, unc_data.aai_agg_sens_df.rp100[6], places=6)
-        
-    #     self.assertEqual(
-    #         unc_data.aai_agg_unc_df.size,
-    #         unc_data.n_samples
-    #         )
-
-    #     self.assertEqual(
-    #         unc_data.freq_curve_unc_df.size,
-    #         unc_data.n_samples * len(unc_calc.rp)
-    #         )
-    #     self.assertTrue(unc_data.eai_exp_unc_df.empty)
-    #     self.assertTrue(unc_data.at_event_unc_df.empty)
-
-
-    # def test_calc_sensitivity_ff_pass(self):
-    #     """Test compute sensitivity using the FF method"""
-    
-    #     exp_unc, impf_unc, _ = make_input_vars()
-    #     haz = haz_dem()
-    #     unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-    
-    #     # Generate samples using the FF sampling method
-    #     unc_data = unc_calc.make_sample(N=4, sampling_method='ff')
-    #     unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
-    
-    #     unc_data = unc_calc.sensitivity(
-    #         unc_data,
-    #         sensitivity_method='ff',
-    #         sensitivity_kwargs={'second_order': True, 'seed': 12345}  # Add any FF-specific arguments here
-    #     )
-    
-    #     self.assertEqual(unc_data.sensitivity_method, 'ff')
-    
-    #     # Assertions to check the structure and contents of the FF analysis output
-    #     # Example: Check if the 'ME' (main effect) and 'IE' (interaction effect) are present in the output
-    #     self.assertIn('ME', unc_data.sens_df.columns)
-    #     self.assertIn('IE', unc_data.sens_df.columns)
-
-   
-    # def test_calc_sensitivity_hdmr_pass(self):
-    #     """Test compute sensitivity using the HDMR method"""
-    
-    #     exp_unc, impf_unc, _ = make_input_vars()
-    #     haz = haz_dem()
-    
-    #     # Reduced sample size for testing purposes
-    #     unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-    #     unc_data = unc_calc.make_sample(N=2**6)  # Adjust N to a smaller number for testing
-    #     unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
-    
-    #     unc_data = unc_calc.sensitivity(
-    #         unc_data,
-    #         sensitivity_method='hdmr',
-    #         sensitivity_kwargs={'maxorder': 2, 'maxiter': 100, 'm': 2, 'K': 20, 'seed': 12345}
-    #     )
-    
-    #     self.assertEqual(unc_data.sensitivity_method, 'hdmr')
-    
-    #     self.assertEqual(
-    #         unc_data.aai_agg_unc_df.size,
-    #         unc_data.n_samples
-    #         )
-
-    #     self.assertEqual(
-    #         unc_data.freq_curve_unc_df.size,
-    #         unc_data.n_samples * len(unc_calc.rp)
-    #         )
-    #     self.assertTrue(unc_data.eai_exp_unc_df.empty)
-    #     self.assertTrue(unc_data.at_event_unc_df.empty)
-
 
     def test_calc_sensitivity_morris_pass(self):
         """Test compute sensitivity default"""
