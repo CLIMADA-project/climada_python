@@ -57,7 +57,7 @@ ON_LAND = np.array([True, False, True, False, True, False, True, True])
 REGION_ID = np.array([776, 0, 554, 0, 578, 0, 10, 218])
 
 TEST_CRS = 'EPSG:4326'
-ALT_CRS = 'epsg:32632'  # Europe
+ALT_CRS = 'epsg:32632'  # UTM zone 32N (Central Europe, 6-12°E)
 
 class TestVector(unittest.TestCase):
     """Test CentroidsVector class"""
@@ -186,20 +186,38 @@ class TestRaster(unittest.TestCase):
 
     def test_from_pnt_bounds_pass(self):
         """Test from_pnt_bounds"""
+        width, height = 26, 51
         left, bottom, right, top = 5, 0, 10, 10
+
         centr = Centroids.from_pnt_bounds((left, bottom, right, top), 0.2, crs=DEF_CRS)
         self.assertTrue(u_coord.equal_crs(centr.crs, DEF_CRS))
+        self.assertEqual(centr.size, width * height)
+        np.testing.assert_allclose([5.0, 5.2, 5.0], centr.lon[[0, 1, width]], atol=0.1)
+        np.testing.assert_allclose([10.0, 10.0, 9.8], centr.lat[[0, 1, width]], atol=0.1)
 
-    def test_read_all_pass(self):
-        """Test centr_ras data"""
-        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
+    def test_from_raster(self):
+        """Test from_raster_file"""
+        width, height = 50, 60
+        o_lat, o_lon = (10.42822096697894, -69.33714959699981)
+        res_lat, res_lon = (-0.009000000000000341, 0.009000000000000341)
+
+        centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, width, height))
         self.assertTrue(u_coord.equal_crs(centr_ras.crs, DEF_CRS))
+        self.assertEqual(centr_ras.size, width * height)
+        np.testing.assert_allclose(
+            [-69.333, -69.324, -69.333], centr_ras.lon[[0, 1, width]], atol=0.001,
+        )
+        np.testing.assert_allclose(
+            [10.424, 10.424, 10.415], centr_ras.lat[[0, 1, width]], atol=0.001,
+        )
 
     def test_ne_crs_geom_pass(self):
         """Test _ne_crs_geom"""
         centr = Centroids(lat=VEC_LAT, lon=VEC_LON, crs=ALT_CRS)
         ne_geom = centr._ne_crs_geom()
         self.assertTrue(u_coord.equal_crs(ne_geom.crs, u_coord.NE_CRS))
+        np.testing.assert_allclose(ne_geom.geometry[:].x.values, 4.5, atol=0.1)
+        np.testing.assert_allclose(ne_geom.geometry[:].y.values, 0.0, atol=0.001)
 
     def test_region_id_pass(self):
         """Test set_dist_coast"""
