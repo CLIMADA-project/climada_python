@@ -210,7 +210,7 @@ def safe_divide(numerator, denominator, replace_with=np.nan):
 
     Examples
     --------
-    >>> _safe_divide(1, 0)
+    >>> safe_divide(1, 0)
     nan
 
     >>> _safe_divide(1, 0, replace_with=0)
