@@ -341,9 +341,9 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
         self.assertEqual(centroids.region_id, None)
         self.assertEqual(centroids.on_land, None)
-        self.testing.assert_equal(
+        np.testing.assert_equal(
             np.isin(['value', 'impf_tc', 'centr_tc'], centroids.gdf.columns),
-            True,
+            False,
         )
 
 

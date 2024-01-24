@@ -288,10 +288,9 @@ class Centroids():
         ValueError
         """
         col_names = [
-            column
-            for column in exposures.gdf.columns
-            if not np.any(np.isin(EXP_SPECIFIC_COLS, column))
-            ]
+            column for column in exposures.gdf.columns
+            if not any(pattern in column for pattern in EXP_SPECIFIC_COLS)
+        ]
 
         # Legacy behaviour
         # Exposures can be without geometry column
@@ -316,27 +315,32 @@ class Centroids():
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
-        """Create Centroids object with meta attribute according to points border data.
+        """Create Centroids object from coordinate bounds and resolution.
 
-        raster border = point border + res/2
+        The result contains all points from a regular raster with the given resolution and CRS,
+        covering the given bounds. Note that the raster bounds are larger than the points' bounds
+        by res/2.
 
         Parameters
         ----------
         points_bounds : tuple
-            points' lon_min, lat_min, lon_max, lat_max
+            The bounds (lon_min, lat_min, lon_max, lat_max) of the point coordinates.
         res : float
-            desired resolution in same units as points_bounds
+            The desired resolution in same units as `points_bounds`.
         crs : dict() or rasterio.crs.CRS, optional
-            CRS. Default: DEF_CRS
+            Coordinate reference system. Default: DEF_CRS
 
         Returns
         -------
-        centr : Centroids
-            Centroids with meta according to given points border data.
+        Centroids
         """
-        rows, cols, ras_trans = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
-        x_grid, y_grid = u_coord.raster_to_meshgrid(ras_trans, cols, rows)
-        return cls(lat=y_grid.flatten(), lon=x_grid.flatten(), crs=crs)
+        height, width, transform = u_coord.pts_to_raster_meta(points_bounds, (res, -res))
+        return cls.from_meta({
+            "crs": crs,
+            "width": width,
+            "height": height,
+            "transform": transform,
+        })
 
     def append(self, centr):
         """Append Centroids
