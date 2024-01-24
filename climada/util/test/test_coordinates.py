@@ -546,17 +546,20 @@ class TestAssign(unittest.TestCase):
                 -19.0, -19.0, -19.0, -19.0,
                 -20.1, 0.0, 10.1, 10.1, 10.1, 0.0, -20.2, -20.3,
                 -6.4, 9.8, 0.0,
-                ]),
+            ]),
             'latitude': np.array([
                 7.3, 7.3, 7.3, 7.3, 7.3, 7.3,
                 8.1, 7.9, 6.7, 6.5,
                 8.1, 8.2, 8.3, 0.0, -6.1, -6.2, -6.3, 0.0,
                 -1.9, -1.7, 0.0,
-                ])
+            ]),
         })
-        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
-                               crs=DEF_CRS)
-        assigned = u_coord.match_centroids(gdf,centroids)
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df.longitude, df.latitude),
+            crs=DEF_CRS,
+        )
+        assigned = u_coord.match_centroids(gdf, centroids)
 
         expected_result = [
             # constant y-value, varying x-value

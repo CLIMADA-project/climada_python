@@ -1133,9 +1133,9 @@ def match_centroids(coord_gdf, centroids, distance='euclidean',
         pass
 
     assigned = match_coordinates(
-        np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
-        centroids.coord, distance=distance, threshold=threshold
-        )
+        np.stack([coord_gdf['latitude'].values, coord_gdf['longitude'].values], axis=1),
+        centroids.coord, distance=distance, threshold=threshold,
+    )
     return assigned
 
 @numba.njit

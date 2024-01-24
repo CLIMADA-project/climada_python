@@ -178,7 +178,7 @@ class TropCyclone(Hazard):
     def from_tracks(
         cls,
         tracks: TCTracks,
-        centroids: Optional[Centroids],
+        centroids: Centroids,
         pool: Optional[pathos.pools.ProcessPool] = None,
         model: str = 'H08',
         ignore_distance_to_coast: bool = False,
@@ -268,9 +268,9 @@ class TropCyclone(Hazard):
             coastal_idx = (np.abs(centroids.lat) <= max_latitude).nonzero()[0]
         else:
             # Select centroids which are inside max_dist_inland_km and lat <= max_latitude
-            if 'dist_coast' not in centroids.gdf:
+            if 'dist_coast' not in centroids.gdf.columns:
                 centroids.gdf['dist_coast'] = centroids.get_dist_coast()
-            coastal_idx = ((centroids.gdf.dist_coast.values <= max_dist_inland_km * 1000)
+            coastal_idx = ((centroids.gdf['dist_coast'].values <= max_dist_inland_km * 1000)
                            & (np.abs(centroids.lat) <= max_latitude)).nonzero()[0]
 
         # Filter early with a larger threshold, but inaccurate (lat/lon) distances.

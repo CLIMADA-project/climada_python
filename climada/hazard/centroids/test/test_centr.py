@@ -73,8 +73,8 @@ class TestCentroidsData(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
 
     def test_to_crs(self):
-        # Creating Centroids with non-default CRS
-        crs = 'epsg:4326'
+        # Creating Centroids with default CRS
+        crs = DEF_CRS
         lat = np.array([-10, 0, 10])
         lon = np.array([-170, -150, -130])
         centroids = Centroids(lat=lat, lon=lon, crs=crs)
@@ -103,7 +103,7 @@ class TestCentroidsReader(unittest.TestCase):
         tmpfile = Path('test_write_csv.csv')
         lat = np.array([0, 90, -90, 0, 0])
         lon = np.array([0, 0, 0, 180, -180])
-        df = pd.DataFrame({'lat':lat, 'lon':lon})
+        df = pd.DataFrame({'lat': lat, 'lon': lon})
         df.to_csv(tmpfile, index=False)
 
         # Read centroids using from_csv method
@@ -114,8 +114,8 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids.lon, lon)
         self.assertEqual(centroids.crs, DEF_CRS)
 
-        #delete file
-        Path(tmpfile).unlink()
+        # delete file
+        tmpfile.unlink()
 
     def test_from_csv(self):
         """Read a centroid csv file which contains CRS information."""
@@ -124,7 +124,7 @@ class TestCentroidsReader(unittest.TestCase):
         lon = np.array([0, 0, 0, 20037508.34, -20037508.34])
         region_id = np.array([1, 2, 3, 4, 5])
         on_land = np.array([True, False, False, True, True])
-        df = pd.DataFrame({'lat':lat, 'lon':lon, 'region_id':region_id, 'on_land':on_land})
+        df = pd.DataFrame({'lat': lat, 'lon': lon, 'region_id': region_id, 'on_land': on_land})
         df['crs'] = CRS.from_user_input(3857).to_wkt()
         df.to_csv(tmpfile, index=False)
 
@@ -139,7 +139,7 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids.on_land, on_land)
 
         # Delete file
-        Path(tmpfile).unlink()
+        tmpfile.unlink()
 
     def test_write_read_csv(self):
         """Write and read a Centroids CSV file correctly."""
@@ -164,8 +164,8 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids_in.region_id, centroids_out.region_id)
         np.testing.assert_array_equal(centroids_in.on_land, centroids_out.on_land)
 
-        #delete file
-        Path(tmpfile).unlink()
+        # delete file
+        tmpfile.unlink()
 
     def test_from_excel_def_crs(self):
         """Read a centroid excel file correctly and use default CRS."""
@@ -173,8 +173,8 @@ class TestCentroidsReader(unittest.TestCase):
         tmpfile = Path('test_write_excel.xlsx')
         lat = np.array([0, 90, -90, 0, 0])
         lon = np.array([0, 0, 0, 180, -180])
-        df = pd.DataFrame({'lat':lat, 'lon':lon})
-        df.to_excel(tmpfile, sheet_name = 'centroids', index=False)
+        df = pd.DataFrame({'lat': lat, 'lon': lon})
+        df.to_excel(tmpfile, sheet_name='centroids', index=False)
 
         # Read centroids using from_excel method
         centroids = Centroids.from_excel(file_path=tmpfile)
@@ -184,8 +184,8 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids.lon, lon)
         self.assertEqual(centroids.crs, DEF_CRS)
 
-        #delete file
-        Path(tmpfile).unlink()
+        # delete file
+        tmpfile.unlink()
 
     def test_from_excel(self):
         """Read a centroid excel file correctly which contains CRS information."""
@@ -195,9 +195,9 @@ class TestCentroidsReader(unittest.TestCase):
         lon = np.array([0, 0, 0, 20037508.34, -20037508.34])
         region_id = np.array([1, 2, 3, 4, 5])
         on_land = np.array([True, False, False, True, True])
-        df = pd.DataFrame({'lat':lat, 'lon':lon, 'region_id':region_id, 'on_land':on_land})
+        df = pd.DataFrame({'lat': lat, 'lon': lon, 'region_id': region_id, 'on_land': on_land})
         df['crs'] = CRS.from_user_input(3857).to_wkt()
-        df.to_excel(tmpfile, sheet_name = 'centroids', index=False)
+        df.to_excel(tmpfile, sheet_name='centroids', index=False)
 
         # Read centroids using from_excel method
         centroids = Centroids.from_excel(file_path=tmpfile)
@@ -209,8 +209,8 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids.region_id, region_id)
         np.testing.assert_array_equal(centroids.on_land, on_land)
 
-        #delete file
-        Path(tmpfile).unlink()
+        # delete file
+        tmpfile.unlink()
 
     def test_write_read_excel(self):
         """Write and read a Centroids Excel file correctly."""
@@ -235,8 +235,8 @@ class TestCentroidsReader(unittest.TestCase):
         np.testing.assert_array_equal(centroids_in.region_id, centroids_out.region_id)
         np.testing.assert_array_equal(centroids_in.on_land, centroids_out.on_land)
 
-        #delete file
-        Path(tmpfile).unlink()
+        # delete file
+        tmpfile.unlink()
 
     def test_from_geodataframe(self):
         """Test that constructing a valid Centroids instance from gdf works."""
@@ -244,20 +244,22 @@ class TestCentroidsReader(unittest.TestCase):
         lat = np.arange(170, 180)
         lon = np.arange(-50, -40)
         region_id = np.arange(1, 11)
-        on_land = np.ones(10).astype(bool)
-        extra = np.repeat(str('a'), 10)
+        on_land = np.ones(10, dtype=bool)
+        extra = np.full(10, 'a')
 
         gdf = gpd.GeoDataFrame({
-            'geometry' : gpd.points_from_xy(lon, lat),
-            'region_id' : region_id,
+            'geometry': gpd.points_from_xy(lon, lat),
+            'region_id': region_id,
             'on_land': on_land,
-            'extra' : extra
+            'extra': extra,
         }, crs=crs)
 
         centroids = Centroids.from_geodataframe(gdf)
 
-        for name, array in zip(['lat', 'lon', 'region_id', 'on_land'],
-                                [lat, lon, region_id, on_land]):
+        for name, array in zip(
+            ['lat', 'lon', 'region_id', 'on_land'],
+            [lat, lon, region_id, on_land],
+        ):
             np.testing.assert_array_equal(array, getattr(centroids, name))
         self.assertTrue('extra' in centroids.gdf.columns)
         self.assertTrue(u_coord.equal_crs(centroids.crs, crs))
@@ -269,9 +271,9 @@ class TestCentroidsReader(unittest.TestCase):
             'geometry': [
                  shapely.Point((2,2)),
                  shapely.Polygon([(0, 0), (1, 1), (1, 0), (0, 0)]),
-                 shapely.LineString([(0, 1), (1, 0)])
-                 ]
-            })
+                 shapely.LineString([(0, 1), (1, 0)]),
+            ],
+        })
 
         with self.assertRaises(ValueError):
             # Trying to create Centroids from invalid GeoDataFrame
@@ -290,11 +292,11 @@ class TestCentroidsReader(unittest.TestCase):
         on_land = [False, True, True]
         crs = 'epsg:32632'
         gdf = gpd.GeoDataFrame({
-            'latitude' : lat,
+            'latitude': lat,
             'longitude': lon,
             'value': value,
             'region_id': region_id,
-            'on_land': on_land
+            'on_land': on_land,
         })
         exposures = Exposures(gdf, crs=crs)
 
@@ -322,11 +324,11 @@ class TestCentroidsReader(unittest.TestCase):
         impf_TC = np.array([1, 2, 3])
         centr_TC = np.array([1, 2, 3])
         gdf = gpd.GeoDataFrame({
-            'latitude' : lat,
+            'latitude': lat,
             'longitude': lon,
             'value': value,
             'impf_tc': impf_TC,
-            'centr_TC': centr_TC
+            'centr_TC': centr_TC,
         })
         exposures = Exposures(gdf)
 
@@ -339,27 +341,24 @@ class TestCentroidsReader(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(centroids.crs, DEF_CRS))
         self.assertEqual(centroids.region_id, None)
         self.assertEqual(centroids.on_land, None)
-        self.assertFalse(
-            np.all(np.isin(
-                ['value', 'impf_tc', 'centr_tc'], centroids.gdf.columns
-                 ))
+        self.testing.assert_equal(
+            np.isin(['value', 'impf_tc', 'centr_tc'], centroids.gdf.columns),
+            True,
         )
-
-
 
 
 class TestCentroidsWriter(unittest.TestCase):
 
     def test_read_write_hdf5(self):
         tmpfile = Path('test_write_hdf5.out.hdf5')
-        lat = np.arange(0,10)
-        lon = np.arange(-10,0)
+        lat = np.arange(0, 10)
+        lon = np.arange(-10, 0)
         crs = DEF_CRS
         centroids_w = Centroids(lat=lat, lon=lon, crs=crs)
         centroids_w.write_hdf5(tmpfile)
         centroids_r = Centroids.from_hdf5(tmpfile)
         self.assertTrue(centroids_w == centroids_r)
-        Path(tmpfile).unlink()
+        tmpfile.unlink()
 
 
 class TestCentroidsMethods(unittest.TestCase):
@@ -416,10 +415,12 @@ class TestCentroidsMethods(unittest.TestCase):
         # Check metadata
         expected_meta = dict(
             crs=DEF_CRS,
-            height= 3,
-            width= 3,
-            transform=Affine(10, 0, -35,
-                              0, -10, 35)
+            height=3,
+            width=3,
+            transform=Affine(
+                10, 0, -35,
+                0, -10, 35,
+            ),
         )
         self.assertEqual(meta['height'], expected_meta['height'])
         self.assertEqual(meta['width'], expected_meta['width'])

@@ -343,8 +343,8 @@ class Hazard():
         centroids, meta = Centroids.from_raster_file(
             files_intensity[0], src_crs=src_crs, window=window,
             geometry=geometry, dst_crs=dst_crs, transform=transform,
-            width=width, height=height, resampling=resampling, return_meta=True
-            )
+            width=width, height=height, resampling=resampling, return_meta=True,
+        )
 
         if pool:
             chunksize = max(min(len(files_intensity) // pool.ncpus, 1000), 1)
@@ -371,8 +371,8 @@ class Hazard():
             intensity = _values_from_raster_files(
                 files_intensity, meta=meta, band=band, src_crs=src_crs, window=window,
                 geometry=geometry, dst_crs=dst_crs, transform=transform, width=width,
-                height=height, resampling=resampling
-                )
+                height=height, resampling=resampling,
+            )
             if files_fraction is not None:
                 fraction = _values_from_raster_files(
                     files_fraction, meta=meta, band=band, src_crs=src_crs, window=window, geometry=geometry,
@@ -1702,7 +1702,7 @@ class Hazard():
         """Write intensity or fraction as GeoTIFF file. Each band is an event.
         Output raster is always a regular grid (same resolution for lat/lon).
 
-        Note that is output_resolution is not None, the data is rasterized to that
+        Note that if output_resolution is not None, the data is rasterized to that
         resolution. This is an expensive operation. For hazards that are already
         a raster, output_resolution=None saves on this raster which is efficient.
 
@@ -1733,21 +1733,21 @@ class Hazard():
         else:
             raise ValueError(
                 f"The variable {variable} is not valid. Please use 'intensity' or 'fraction'."
-                )
+            )
 
         meta = self.centroids.get_meta(resolution=output_resolution)
         meta.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
         res = meta["transform"][0]  # resolution from lon coordinates
 
         if meta['height'] * meta['width'] == self.centroids.shape[0]:
-            #If centroids already in raster format
+            # centroids already in raster format
             u_coord.write_raster(file_name, var_to_write.toarray(), meta)
         else:
             geometry = self.centroids.gdf.geometry.buffer(
-                distance=res/2, resolution=1, cap_style=3
-                )
-            #resolution=1, cap_style=3: squared buffers
-            #https://shapely.readthedocs.io/en/latest/manual.html#object.buffer
+                distance=res/2, resolution=1, cap_style=3,
+            )
+            # resolution=1, cap_style=3: squared buffers
+            # https://shapely.readthedocs.io/en/latest/manual.html#object.buffer
             with rasterio.open(file_name, 'w', **meta) as dst:
                 LOGGER.info('Writing %s', file_name)
                 for i_ev in range(self.size):
@@ -1761,8 +1761,8 @@ class Hazard():
                         transform=meta['transform'],
                         fill=0,
                         all_touched=True,
-                        dtype=meta['dtype']
-                        )
+                        dtype=meta['dtype'],
+                    )
                     dst.write(raster.astype(meta['dtype']), i_ev + 1)
 
     def write_hdf5(self, file_name, todense=False):
@@ -1782,13 +1782,6 @@ class Hazard():
             for (var_name, var_val) in self.__dict__.items():
                 if var_name == 'centroids':
                     pass
-                elif var_name == 'tag':
-                    hf_str = hf_data.create_dataset('haz_type', (1,), dtype=str_dt)
-                    hf_str[0] = var_val.haz_type
-                    hf_str = hf_data.create_dataset('file_name', (1,), dtype=str_dt)
-                    hf_str[0] = str(var_val.file_name)
-                    hf_str = hf_data.create_dataset('description', (1,), dtype=str_dt)
-                    hf_str[0] = str(var_val.description)
                 elif isinstance(var_val, sparse.csr_matrix):
                     if todense:
                         hf_data.create_dataset(var_name, data=var_val.toarray())
@@ -1850,13 +1843,6 @@ class Hazard():
                     continue
                 if var_name == 'centroids':
                     continue
-                elif var_name == 'tag':
-                    hazard_kwargs["haz_type"] = u_hdf5.to_string(
-                        hf_data.get('haz_type')[0])
-                    hazard_kwargs["file_name"] = u_hdf5.to_string(
-                        hf_data.get('file_name')[0])
-                    hazard_kwargs["description"] = u_hdf5.to_string(
-                        hf_data.get('description')[0])
                 elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                     hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):
@@ -1976,15 +1962,20 @@ class Hazard():
             except IndexError as err:
                 raise ValueError(f'Wrong centroid id: {centr_idx}.') from err
             array_val = mat_var[:, centr_pos].toarray()
-            title = f'Centroid {centr_idx}: ({np.around(coord[centr_pos, 0],3)}, {np.around(coord[centr_pos, 1],3)})'
+            title = (
+                f'Centroid {centr_idx}:'
+                f' ({np.around(coord[centr_pos, 0], 3)}, {np.around(coord[centr_pos, 1],3)})'
+            )
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
             centr_pos = np.argpartition(max_inten, centr_idx)[centr_idx:]
             centr_pos = centr_pos[np.argsort(max_inten[centr_pos])][0]
             array_val = mat_var[:, centr_pos].toarray()
 
-            title = (f'{np.abs(centr_idx)}-largest Centroid. {centr_pos}:'
-                     f' ({np.around(coord[centr_pos, 0], 3)}, {np.around(coord[centr_pos, 1], 3)})')
+            title = (
+                f'{np.abs(centr_idx)}-largest Centroid. {centr_pos}:'
+                f' ({np.around(coord[centr_pos, 0], 3)}, {np.around(coord[centr_pos, 1], 3)})'
+            )
         else:
             array_val = np.max(mat_var, axis=1).toarray()
             title = f'{self.haz_type} max intensity at each event'
@@ -2377,16 +2368,18 @@ class Hazard():
             self.centroids.coord, centroids.coord, threshold=threshold
         )
         if -1 in new_cent_idx:
-            raise ValueError("At least one hazard centroid is at a larger "
-                                f"distance than the given threshold {threshold} "
-                                "from the given centroids. Please choose a "
-                                "larger threshold or enlarge the centroids")
+            raise ValueError(
+                "At least one hazard centroid is at a larger distance than the given threshold"
+                f" {threshold} from the given centroids. Please choose a larger threshold or"
+                " enlarge the centroids"
+            )
 
         if np.unique(new_cent_idx).size < new_cent_idx.size:
-            raise ValueError("At least two hazard centroids are mapped to the same "
-                             "centroids. Please make sure that the given centroids "
-                             "cover the same area like the original centroids and "
-                             "are not of lower resolution.")
+            raise ValueError(
+                "At least two hazard centroids are mapped to the same centroids. Please make sure"
+                " that the given centroids cover the same area like the original centroids and are"
+                " not of lower resolution."
+            )
 
         # re-assign attributes intensity and fraction
         for attr_name in ["intensity", "fraction"]:
@@ -2505,15 +2498,19 @@ class Hazard():
         return self.fraction[:, cent_idx]
 
 
-#Function to read intensity/fraction values from raster files
-#Not a method to allow for parallel computing
-def _values_from_raster_files(file_names, meta, band=None, src_crs=None, window=None,
-                                geometry=None, dst_crs=None, transform=None, width=None,
-                                height=None, resampling=Resampling.nearest):
+def _values_from_raster_files(
+    file_names, meta, band=None, src_crs=None, window=None,
+    geometry=None, dst_crs=None, transform=None, width=None,
+    height=None, resampling=Resampling.nearest,
+):
     """Read raster of bands and set 0 values to the masked ones.
 
     Each band is an event. Select region using window or geometry. Reproject input by proving
     dst_crs and/or (transform, width, height).
+
+    The main purpose of this function is to read intensity/fraction values from raster files for
+    use in Hazard.read_raster. It is implemented as a separate helper function (instead of a
+    class method) to allow for parallel computing.
 
     Parameters
     ----------
@@ -2556,7 +2553,8 @@ def _values_from_raster_files(file_names, meta, band=None, src_crs=None, window=
     for file_name in file_names:
         tmp_meta, data = u_coord.read_raster(
             file_name, band, src_crs, window, geometry, dst_crs,
-            transform, width, height, resampling)
+            transform, width, height, resampling,
+        )
         if (tmp_meta['crs'] != meta['crs']
                 or tmp_meta['transform'] != meta['transform']
                 or tmp_meta['height'] != meta['height']

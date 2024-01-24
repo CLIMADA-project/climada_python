@@ -82,8 +82,8 @@ class TestLoader(unittest.TestCase):
         centroids = Centroids(
             lat=np.array([1, 3]),
             lon=np.array([2, 3]),
-            region_id = np.array([1, 2])
-            )
+            region_id=np.array([1, 2]),
+        )
         self.hazard = Hazard(
             "TC",
             centroids=centroids,

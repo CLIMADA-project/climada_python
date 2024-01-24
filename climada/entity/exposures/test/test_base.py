@@ -73,8 +73,8 @@ class TestFuncs(unittest.TestCase):
 
         # make sure that it works for both float32 and float64
         for test_dtype in [np.float64, np.float32]:
-            haz.centroids.gdf.lat = haz.centroids.lat.astype(test_dtype)
-            haz.centroids.gdf.lon = haz.centroids.lon.astype(test_dtype)
+            haz.centroids.gdf["lat"] = haz.centroids.lat.astype(test_dtype)
+            haz.centroids.gdf["lon"] = haz.centroids.lon.astype(test_dtype)
             exp.assign_centroids(haz)
             self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + 'FL']))
             np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values, expected_result)
@@ -170,9 +170,9 @@ class TestFuncs(unittest.TestCase):
         np.testing.assert_array_equal(exp.gdf[INDICATOR_CENTR + 'FL'].values,
                                       np.arange(haz.centroids.size, dtype=int))
 
-# Test fails because exposures stores the crs in the meta attribute as rasterio object,
-# while the centroids stores the crs in the geodataframe, which is not a rasterio object.
-# The comparison in assign_centroids then fails.
+    # Test fails because exposures stores the crs in the meta attribute as rasterio object,
+    # while the centroids stores the crs in the geodataframe, which is not a rasterio object.
+    # The comparison in assign_centroids then fails.
     def test_assign_large_hazard_subset_pass(self):
         """Test assign_centroids with raster hazard"""
         exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))

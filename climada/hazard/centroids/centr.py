@@ -1011,8 +1011,6 @@ class Centroids():
         return self.to_crs(u_coord.NE_CRS, inplace=False).geometry
 
 
-
-
 def _meta_to_lat_lon(meta):
     """Compute lat and lon of every pixel center from meta raster.
 
