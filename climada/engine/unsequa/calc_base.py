@@ -320,7 +320,7 @@ class Calc():
 
         Parameters
         ----------
-        unc_output : climada.engine.usequa.UncOutput
+        unc_output : climada.engine.unsequa.UncOutput
             Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str, optional
             sensitivity analysis method from SALib.analyse
