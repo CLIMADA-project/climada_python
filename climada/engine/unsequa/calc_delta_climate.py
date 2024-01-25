@@ -114,17 +114,25 @@ class CalcDeltaImpact(Calc):
 
         Parameters
         ----------
-        exp_initial_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.Exposure
+        exp_initial_input_var : climada.engine.uncertainty.input_var.InputVar 
+            or climada.entity.Exposure
             Exposure uncertainty variable or Exposure of initial state
-        impf_initital_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.ImpactFuncSet
-            Impact function set uncertainty variable or Impact function set of initial state
-        haz_initial_input_var : climada.engine.uncertainty.input_var.InputVar or climada.hazard.Hazard
+        impf_initital_input_var : climada.engine.uncertainty.input_var.InputVar
+            or climada.entity.ImpactFuncSet
+            Impact function set uncertainty variable or Impact function set of 
+            initial state
+        haz_initial_input_var : climada.engine.uncertainty.input_var.InputVar
+            or climada.hazard.Hazard
             Hazard uncertainty variable or Hazard of initial state
-        exp_final_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.Exposure
+        exp_final_input_var : climada.engine.uncertainty.input_var.InputVar or
+            climada.entity.Exposure
             Exposure uncertainty variable or Exposure of final state
-        impf_final_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.ImpactFuncSet
-            Impact function set uncertainty variable or Impact function set of final state
-        haz_final_input_var : climada.engine.uncertainty.input_var.InputVar or climada.hazard.Hazard
+        impf_final_input_var : climada.engine.uncertainty.input_var.InputVar or
+            climada.entity.ImpactFuncSet
+            Impact function set uncertainty variable or Impact function set of
+            final state
+        haz_final_input_var : climada.engine.uncertainty.input_var.InputVar or
+            climada.hazard.Hazard
             Hazard uncertainty variable or Hazard of final state
 
         """
@@ -161,7 +169,8 @@ class CalcDeltaImpact(Calc):
         of centroids and/or exposures points is large).
         For all metrics, the impacts are caculated first and the the difference
         thereof is computed.
-        For example, (impact_final.aai_agg - impact_inital.aai_agg / impact_inital.aai_agg)
+        For example:
+        (impact_final.aai_agg - impact_inital.aai_agg / impact_inital.aai_agg)
 
         This sets the attributes self.rp, self.calc_eai_exp,
         self.calc_at_event, self.metrics.
@@ -261,7 +270,6 @@ class CalcDeltaImpact(Calc):
             freq_curve_list, columns=["rp" + str(n) for n in rp]
         )
         eai_exp_unc_df = pd.DataFrame(eai_exp_list)
-        # Note: sparse dataframes are not used as they are not nativel y compatible with .to_hdf5
         at_event_unc_df = pd.DataFrame(at_event_list)
 
         if calc_eai_exp:

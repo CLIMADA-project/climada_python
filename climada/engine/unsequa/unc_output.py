@@ -565,8 +565,9 @@ class UncOutput():
             if data.empty or data.isna().all() or data.dropna().shape[0] < 2:
                 print(f"No data to plot for '{col}'.")
                 if ax is not None:
-                    ax.text(0.5, 0.5, 'No data to plot', horizontalalignment='center',
-                            verticalalignment='center', transform=ax.transAxes, fontsize=18)
+                    ax.text(0.5, 0.5, 'No data to plot', fontsize=18,
+                            horizontalalignment='center', verticalalignment='center', 
+                            transform=ax.transAxes)
                     ax.set_xlabel(col)
                     ax.set_ylabel('density of samples')
                     ax.tick_params(labelsize=fontsize)
@@ -627,7 +628,8 @@ class UncOutput():
         return axes
 
 
-    def plot_rp_uncertainty(self, orig_list=None, figsize=(16, 6), axes=None, calc_delta=False):
+    def plot_rp_uncertainty(self, orig_list=None, figsize=(16, 6), axes=None, 
+                            calc_delta=False):
         """
         Plot the distribution of return period uncertainty
     
@@ -713,17 +715,23 @@ class UncOutput():
     
         # Plotting for the second axes
         ax = axes[1]
-        high = u_cmv(self.get_unc_df('freq_curve').quantile(0.95).values, m_unit, n_sig_dig=4)
-        middle = u_cmv(self.get_unc_df('freq_curve').quantile(0.5).values, m_unit, n_sig_dig=4)
-        low = u_cmv(self.get_unc_df('freq_curve').quantile(0.05).values, m_unit, n_sig_dig=4)
+        high = u_cmv(self.get_unc_df('freq_curve').quantile(0.95).values, 
+                     m_unit, n_sig_dig=4)
+        middle = u_cmv(self.get_unc_df('freq_curve').quantile(0.5).values, 
+                       m_unit, n_sig_dig=4)
+        low = u_cmv(self.get_unc_df('freq_curve').quantile(0.05).values, 
+                    m_unit, n_sig_dig=4)
     
         x = [float(rp[2:]) for rp in unc_df.columns]
-        ax.plot(x, high, linestyle='--', color='blue', alpha=0.5, label='0.95 percentile')
+        ax.plot(x, high, linestyle='--', color='blue', alpha=0.5, 
+                label='0.95 percentile')
         ax.plot(x, middle, label='0.5 percentile')
-        ax.plot(x, low, linestyle='dashdot', color='blue', alpha=0.5, label='0.05 percentile')
+        ax.plot(x, low, linestyle='dashdot', color='blue', alpha=0.5, 
+                label='0.05 percentile')
         ax.fill_between(x, low, high, alpha=0.2)
         if add_orig:
-            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green', linestyle='dotted', label='orig')
+            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green', 
+                    linestyle='dotted', label='orig')
         ax.set_xlabel('Return period [year]')
     
         # Set y-axis label for the second axes
@@ -1133,10 +1141,11 @@ class UncOutput():
 
 
 class UncImpactOutput(UncOutput):
-    """Extension of UncOutput specific for CalcImpact, returned by the  uncertainty() method.
+    """Extension of UncOutput specific for CalcImpact, returned by the 
+        uncertainty() method.
     """
-    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
-                 at_event_unc_df, coord_df):
+    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, 
+                 eai_exp_unc_df, at_event_unc_df, coord_df):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
