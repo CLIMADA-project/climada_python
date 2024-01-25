@@ -68,9 +68,6 @@ NE_EPSG = 4326
 NE_CRS = f"epsg:{NE_EPSG}"
 """Natural Earth CRS"""
 
-TMP_ELEVATION_FILE = SYSTEM_DIR.joinpath('tmp_elevation.tif')
-"""Path of elevation file written in set_elevation"""
-
 DEM_NODATA = -9999
 """Value to use for no data values in DEM, i.e see points"""
 

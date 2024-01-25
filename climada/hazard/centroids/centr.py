@@ -79,7 +79,7 @@ class Centroids():
         crs: any = DEF_CRS,
         region_id: Union[Literal["country"], None, np.ndarray, list[float]] = None,
         on_land: Union[Literal["natural_earth"], None, np.ndarray, list[bool]] = None,
-        **kwargs
+        **kwargs,
     ):
         """Initialization
 
@@ -98,6 +98,8 @@ class Centroids():
             Boolean array indicating on land (True) or off shore (False). If the special value
             "natural_earth" is given, the property is automatically determined from NaturalEarth
             shapes. Default: None
+        kwargs : dict
+            Additional columns with data to store in the internal GeoDataFrame (gdf attribute).
         """
 
         self.gdf = gpd.GeoDataFrame(
@@ -181,18 +183,16 @@ class Centroids():
 
         Returns
         -------
-        eq : bool
+        bool
         """
-        eq_crs = u_coord.equal_crs(self.crs, other.crs)
-        try:
-            pd.testing.assert_frame_equal(
-                self.gdf, other.gdf, check_like=True
-                )
-            eq_df = True
-        except AssertionError:
-            eq_df = False
+        if not u_coord.equal_crs(self.crs, other.crs):
+            return False
 
-        return eq_crs & eq_df
+        try:
+            pd.testing.assert_frame_equal(self.gdf, other.gdf, check_like=True)
+            return True
+        except AssertionError:
+            return False
 
     def to_default_crs(self, inplace=True):
         """Project the current centroids to the default CRS (epsg4326)
@@ -253,10 +253,9 @@ class Centroids():
         ------
         ValueError
         """
-        if np.any(gdf.geom_type != 'Point'):
+        if (gdf.geom_type != 'Point').any():
             raise ValueError(
-                'The inpute geodataframe contains geometries'
-                ' that are not points.'
+                'The inpute geodataframe contains geometries that are not points.'
             )
 
         # Don't forget to make a copy!!
@@ -264,26 +263,27 @@ class Centroids():
         # in the init. For large datasets this saves computation time
         centroids = cls(lat=[1], lon=[1]) #make "empty" centroids
         centroids.gdf = gdf.copy(deep=True)
-        if not gdf.crs:
+        if gdf.crs is None:
             centroids.gdf.set_crs(DEF_CRS, inplace=True)
         return centroids
 
     @classmethod
     def from_exposures(cls, exposures):
-        """Generate centroids from the location of an exposures.
-        The columns value, impf_*, centr_*, cover, deductible,
-        are discarded.
+        """Generate centroids from the locations of exposures.
+
+        The properties "region_id" and "on_land" are also extracted from the Exposures object if
+        available. The columns "value", "impf_*", "centr_*", "cover", and "deductible" are not
+        used.
 
         Parameters
         ----------
-        exposures : Exposure
-            exposures from which to take the centroids location
-            and region_id (if defined) and on_land (if defined)
+        exposures : Exposures
+            Exposures from which to take the centroids locations (as well as region_id and on_land
+            if available).
 
         Returns
         -------
         Centroids
-            Centroids built from the exposures geodataframe
 
         Raises
         ------
@@ -304,16 +304,17 @@ class Centroids():
         if 'latitude' in exposures.gdf.columns and 'longitude' in exposures.gdf.columns:
             gdf = exposures.gdf[col_names]
             return cls(
-                lat = exposures.gdf['latitude'],
-                lon = exposures.gdf['longitude'],
-                crs = exposures.crs,
-                **dict(gdf.items())
+                lat=exposures.gdf['latitude'],
+                lon=exposures.gdf['longitude'],
+                crs=exposures.crs,
+                **dict(gdf.items()),
             )
 
         raise ValueError(
             "The given exposures object has no coordinates information."
-            "The exposures' geodataframe must have either point geometries"
-            " or latitude and longitude values.")
+            "The exposures' GeoDataFrame must have either point geometries"
+            " or latitude and longitude values."
+        )
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
@@ -347,6 +348,9 @@ class Centroids():
     def append(self, centr):
         """Append Centroids
 
+        Note that the result might contain duplicate points if the object to append has an overlap
+        with the current object.
+
         Parameters
         ----------
         centr : Centroids
@@ -359,38 +363,37 @@ class Centroids():
         See Also
         --------
         union : Union of Centroid objects.
+        remove_duplicate_points : Remove duplicate points in a Centroids object.
         """
         if not u_coord.equal_crs(self.crs, centr.crs):
             raise ValueError(
-                "The centroids have different Coordinate-Reference-Systems (CRS)")
+                "The centroids have different Coordinate-Reference-Systems (CRS)"
+            )
         self.gdf = pd.concat([self.gdf, centr.gdf])
 
     def union(self, *others):
-        """Create the union of centroids from the inputs.
-        The centroids are combined together point by point.
-        All centroids must have the same CRS.
+        """Create the union of Centroids objects
+
+        All centroids must have the same CRS. Points that are contained in more than one of the
+        Centroids objects will only be contained once (i.e. duplicates are removed).
 
         Parameters
         ----------
-        others : any number of climada.hazard.Centroids()
-            Centroids to form the union with
+        others : list of Centroids
+            Centroids contributing to the union.
 
         Returns
         -------
         centroids : Centroids
-            Centroids containing the union of all Centroids.
-
+            Centroids object containing the union of all Centroids.
         """
         centroids = copy.deepcopy(self)
         for cent in others:
             centroids.append(cent)
+        return centroids.remove_duplicate_points()
 
-        # remove duplicate points
-        return Centroids.remove_duplicate_points(centroids)
-
-    @classmethod
-    def remove_duplicate_points(cls, centr):
-        """Return a copy of centroids with removed duplicated points
+    def remove_duplicate_points(self):
+        """Return a copy of centroids with duplicate points removed
 
         Parameters
         ----------
@@ -400,25 +403,30 @@ class Centroids():
         Returns
         -------
         centroids : Centroids
-            Sub-selection of centroids without duplicates
+            A new Centroids object that contains a subselection of the original centroids without
+            duplicates. Note that a copy is returned even if there were no duplicates.
         """
-        return cls.from_geodataframe(centr.gdf.drop_duplicates())
+        return self.from_geodataframe(self.gdf.drop_duplicates(subset=["geometry"]))
 
     def select(self, reg_id=None, extent=None, sel_cen=None):
-        """Return Centroids with points in the given reg_id and/or in an
-        spatial extent and/or in an index based list
+        """Return new Centroids object containing points following certain criteria
+
+        It is currently possible to filter by region (reg_id), by geographical extent (extent), or
+        by an explicit list of indices/a mask (sel_cen). If more than one criterion is given, all
+        of them must be satisfied for a point to be included in the selection.
 
         Parameters
         ----------
-        reg_id : int, optional
-            region to filter according to region_id values
+        reg_id : int or list of int, optional
+            Numeric ID (or IDs) of the region (or regions) to restrict to, according to the values
+            in the region_id property. Default: None
         extent : tuple, optional
-            Format (min_lon, max_lon, min_lat, max_lat) tuple.
-            If min_lon > lon_max, the extend crosses the antimeridian and is
-            [lon_max, 180] + [-180, lon_min]
-            Borders are inclusive.
-        sel_cen : np.array, optional
-            1-dim mask or 1-dim centroids indices, complements reg_id and extent
+            The geographical extent (min_lon, max_lon, min_lat, max_lat) to restrict to, including
+            the boundary. If the value for min_lon is greater than lon_max, the extent is
+            interpreted to cross the antimeridian ([lon_max, 180] and [-180, lon_min]).
+            Default: None
+        sel_cen : np.ndarray of int or bool, optional
+            Boolean mask, or list of indices to restrict to. Default: None
 
         Returns
         -------
@@ -426,36 +434,35 @@ class Centroids():
             Sub-selection of this object
         """
         sel_cen_bool = sel_cen
-        #if needed, convert indices to bool
-        if sel_cen is not None:
-            if sel_cen.dtype.kind == 'i':  #is integer
-                sel_cen_bool = np.zeros(self.size, dtype=bool)
-                sel_cen_bool[np.unique(sel_cen)] = True
+        if sel_cen is not None and sel_cen.dtype.kind == 'i':
+            # if needed, convert indices to bool
+            sel_cen_bool = np.zeros(self.size, dtype=bool)
+            sel_cen_bool[np.unique(sel_cen)] = True
 
         sel_cen_mask = self.select_mask(sel_cen=sel_cen_bool, reg_id=reg_id, extent=extent)
-        return Centroids.from_geodataframe(self.gdf[sel_cen_mask])
+        return Centroids.from_geodataframe(self.gdf.iloc[sel_cen_mask])
 
 
     def select_mask(self, sel_cen=None, reg_id=None, extent=None):
-        """Return mask of selected centroids
+        """Create mask of selected centroids
 
         Parameters
         ----------
-        sel_cen: np.array(bool), optional
-            boolean array mask for centroids
-        reg_id : int, optional
-            region to filter according to region_id values
+        sel_cen: np.ndarray of bool, optional
+            Boolean array, with size matching the number of centroids. Default: None
+        reg_id : int or list of int, optional
+            Numeric ID (or IDs) of the region (or regions) to restrict to, according to the values
+            in the region_id property. Default: None
         extent : tuple, optional
-            Format (min_lon, max_lon, min_lat, max_lat) tuple.
-            If min_lon > lon_max, the extend crosses the antimeridian and is
-            [lon_max, 180] + [-180, lon_min]
-            Borders are inclusive.
+            The geographical extent (min_lon, max_lon, min_lat, max_lat) to restrict to, including
+            the boundary. If the value for min_lon is greater than lon_max, the extent is
+            interpreted to cross the antimeridian ([lon_max, 180] and [-180, lon_min]).
+            Default: None
 
         Returns
         -------
-        sel_cen : 1d array of booleans
-            1d mask of selected centroids
-
+        sel_cen : np.ndarray of bool
+            Boolean array (mask) with value True for centroids in selection.
         """
         if sel_cen is None:
             sel_cen = np.ones(self.size, dtype=bool)
@@ -472,7 +479,7 @@ class Centroids():
             )
         return sel_cen
 
-    #TODO replace with nice Geodataframe util plot method.
+    #TODO replace with nice GeoDataFrame util plot method.
     def plot(self, ax=None, figsize=(9, 13), latlon_bounds_buffer=0.0, shapes=True, **kwargs):
         """Plot centroids scatter points over earth
 
@@ -520,7 +527,7 @@ class Centroids():
         ----------
         level: str, optional
             The admin level on which to assign centroids. Currently only 'country' (admin0) is
-            implemented. Defaul: 'country'
+            implemented. Default: 'country'
         overwrite : bool, optional
             If True, overwrite the existing region_id information. If False, region_id is set
             only if region_id is missing (None). Default: False
@@ -625,16 +632,16 @@ class Centroids():
         Parameters
         ----------
         x_lon : float
-            x coord (lon)
+            Longitudinal (x) coordinate.
         y_lat : float
-            y coord (lat)
+            Latitudinal (y) coordinate.
 
         Returns
         -------
         x_close : float
             x-coordinate (longitude) of closest centroid.
         y_close : float
-            y-coordinate (latitude) of closest centroids.
+            y-coordinate (latitude) of closest centroid.
         idx_close : int
             Index of centroid in internal ordering of centroids.
         """
@@ -703,8 +710,9 @@ class Centroids():
             resolution = np.abs(u_coord.get_resolution(self.lat, self.lon)).min()
         xmin, ymin, xmax, ymax = self.gdf.total_bounds
         rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-            (xmin, ymin, xmax, ymax), (resolution, -resolution)
-            )
+            (xmin, ymin, xmax, ymax),
+            (resolution, -resolution),
+        )
         meta = {
             'crs': self.crs,
             'height': rows,
@@ -810,21 +818,21 @@ class Centroids():
         return centroids
 
     @classmethod
-    def from_csv(cls, file_path):
+    def from_csv(cls, file_path, **kwargs):
         """Generate centroids from a CSV file with column names in var_names.
 
         Parameters
         ----------
         file_path : str
             path to CSV file to be read
+        kwargs : dict
+            Additional keyword arguments to pass on to pandas.read_csv.
 
         Returns
         -------
         Centroids
-            Centroids with data from the given CSV file
         """
-        df = pd.read_csv(file_path)
-        return cls._from_dataframe(df)
+        return cls._from_dataframe(pd.read_csv(file_path, **kwargs))
 
     def write_csv(self, file_path):
         """Save centroids as CSV file
@@ -834,9 +842,9 @@ class Centroids():
         file_path : str, Path
             absolute or relative file path and name to write to
         """
+        file_path = Path(file_path).with_suffix('.csv')
         LOGGER.info('Writing %s', file_path)
-        df = self._centroids_to_dataframe()
-        df.to_csv(Path(file_path).with_suffix('.csv'), index=False)
+        self._centroids_to_dataframe().to_csv(file_path, index=False)
 
 
     @classmethod
@@ -869,12 +877,11 @@ class Centroids():
         file_path : str, Path
             absolute or relative file path and name to write to
         """
+        file_path = Path(file_path).with_suffix('.xlsx')
         LOGGER.info('Writing %s', file_path)
-        df = self._centroids_to_dataframe()
-        df.to_excel(
-            Path(file_path).with_suffix('.xlsx'),
-            sheet_name=DEF_SHEET_NAME, index=False
-            )
+        self._centroids_to_dataframe().to_excel(
+            file_path, sheet_name=DEF_SHEET_NAME, index=False,
+        )
 
     def write_hdf5(self, file_name, mode='w'):
         """Write data frame and metadata in hdf5 format
@@ -948,22 +955,16 @@ class Centroids():
         if 'crs' in df.columns:
             crs = df['crs'].iloc[0]
         else:
-            LOGGER.info(
-                'No \'crs\' column provided in file,'
-                'setting CRS to WGS84 default.'
-                )
+            LOGGER.info("No 'crs' column provided in file, setting CRS to WGS84 default.")
             crs = DEF_CRS
 
         extra_values = {
             col: df[col]
             for col in df.columns
             if col not in ['lat', 'lon', 'crs']
-            }
+        }
 
-        return cls(
-            lat=df['lat'], lon=df['lon'],
-            **extra_values, crs=crs
-            )
+        return cls(lat=df['lat'], lon=df['lon'], **extra_values, crs=crs)
 
     def _gdf_from_legacy_hdf5(data):
         crs = DEF_CRS
@@ -995,7 +996,7 @@ class Centroids():
 
         return gpd.GeoDataFrame(
             extra_values,
-            geometry=gpd.points_from_xy(x=longitude, y=latitude, crs=crs)
+            geometry=gpd.points_from_xy(x=longitude, y=latitude, crs=crs),
         )
 
     @classmethod
