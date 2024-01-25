@@ -24,7 +24,7 @@ dependencies:
   - pip
   - pycountry>=22.3
   - pyepsg>=0.4
-  - pyproj>=3.6
+  - pyproj>=3.5
   - pytables>=3.7
   - pyxlsb>=1.0
   - rasterio>=1.3
