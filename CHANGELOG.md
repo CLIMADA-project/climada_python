@@ -17,6 +17,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Update Developer and Installation Guides for easier accessibility by new developers. [808](https://github.com/CLIMADA-project/climada_python/pull/808)
 - Add `shapes` argument to `geo_im_from_array` to allow flexible turning on/off of plotting coastline in `plot_intensity`. [#805](https://github.com/CLIMADA-project/climada_python/pull/805)
 - Update `CONTRIBUTING.md` to better explain types of contributions to this repository [#797](https://github.com/CLIMADA-project/climada_python/pull/797)
 - The default tile layer in Exposures maps is not Stamen Terrain anymore, but [CartoDB Positron](https://github.com/CartoDB/basemap-styles). Affected methods are `climada.engine.Impact.plot_basemap_eai_exposure`,`climada.engine.Impact.plot_basemap_impact_exposure` and `climada.entity.Exposures.plot_basemap`. [#798](https://github.com/CLIMADA-project/climada_python/pull/798)
