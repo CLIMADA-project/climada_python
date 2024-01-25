@@ -129,7 +129,7 @@ class CalcDeltaImpact(Calc):
 
         """
 
-        Calc.__init__(self)
+        super().__init__(self)
         self.exp_initial_input_var = InputVar.var_to_inputvar(exp_initial_input_var)
         self.impf_initial_input_var = InputVar.var_to_inputvar(impf_initial_input_var)
         self.haz_initial_input_var = InputVar.var_to_inputvar(haz_initial_input_var)
