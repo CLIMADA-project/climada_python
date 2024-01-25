@@ -336,7 +336,7 @@ class Calc():
 
         Returns
         -------
-        sens_output : climada.engine.usequa.UncOutput
+        sens_output : climada.engine.unsequa.UncOutput
             Uncertainty data object with all the sensitivity indices,
             and all the uncertainty data copied over from unc_output.
 
