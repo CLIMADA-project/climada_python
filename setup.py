@@ -81,6 +81,7 @@ setup(
         'pillow',
         'pint',
         'pycountry',
+        'pyproj',
         'rasterio',
         'salib',
         'scikit-learn',
