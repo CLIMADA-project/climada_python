@@ -41,3 +41,10 @@ climada\.engine\.unsequa\.unc\_output module
     :undoc-members:
     :show-inheritance:
 
+climada\.engine\.unsequa\.calc\_delta\_impact module
+---------------------------------------------
+
+.. automodule:: climada.engine.unsequa.calc_delta_impact
+    :members:
+    :undoc-members:
+    :show-inheritance:
