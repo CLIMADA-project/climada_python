@@ -59,11 +59,13 @@ DEF_INTENSITY_THRES = 17.5
 DEF_MAX_MEMORY_GB = 8
 """Default value of the memory limit (in GB) for windfield computations (in each thread)."""
 
-MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3}
+MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3, 'H10_v2': 4}
 """Enumerate different symmetric wind field models."""
 
 RHO_AIR = 1.15
 """Air density. Assumed constant, following Holland 1980."""
+RHO_AIR_SURFACE = 1.2
+"""Air density at surface level. Assumed constant, following Holland 2010"""
 
 GRADIENT_LEVEL_TO_SURFACE_WINDS = 0.9
 """Gradient-to-surface wind reduction factor according to the 90%-rule:
@@ -969,7 +971,7 @@ def _compute_windfields(
     v_trans_corr[close_centr_msk] = np.fmin(
         1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
 
-    if model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
+    if model in [MODEL_VANG['H08'], MODEL_VANG['H10'], MODEL_VANG['H10_v2']]:
         # In these models, v_ang_norm already contains vtrans_norm, so subtract it first, before
         # converting to vectors and then adding (vectorial) vtrans again. Make sure to apply the
         # "absorbing factor" in both steps:
@@ -1106,7 +1108,8 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
         _B_holland_1980(si_track)
     elif model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
         _bs_holland_2008(si_track)
-
+    elif model in [MODEL_VANG['H10_v2']]:
+        _bs_holland_2010_v2(si_track)
     if model in [MODEL_VANG['H1980'], MODEL_VANG['H08']]:
         result = _stat_holland_1980(
             si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic,
@@ -1120,6 +1123,9 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
         result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
     elif model == MODEL_VANG['ER11']:
         result = _stat_er_2011(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
+    elif model in [MODEL_VANG['H10_v2'],]:
+        hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
+        result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
     else:
         raise NotImplementedError
 
@@ -1255,6 +1261,8 @@ def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
 
 def _bs_holland_2008(si_track: xr.Dataset):
     """Holland's 2008 b-value estimate for sustained surface winds.
+    (This is also one option of how to estimate the b-value in Holland 2010,
+    for the other option consult '_bs_holland_2010_v2'.)
 
     The result is stored in place as a new data variable "hol_b".
 
@@ -1310,6 +1318,44 @@ def _bs_holland_2008(si_track: xr.Dataset):
         + 0.15 * si_track["vtrans_norm"]**hol_xx + 1.0
     )
     si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
+
+def _bs_holland_2010_v2(si_track: xr.Dataset):
+    """Holland 2010's second version of how to estimate b-value  for sustained surface winds.
+    For version 1 see "_bs_holland_2008"
+
+    The result is stored in place as a new data variable "hol_b".
+
+    Like the original 1980 formula (see `_B_holland_1980`), this approach does also require
+    wind speed measurements, if the wind speed measurements are not available or not  reliable, consider the second
+    option proposed in Holland 2010 (and Holland 2008) implemented as "_bs_holland_2008"
+
+    The parameter applies to 1-minute sustained winds at 10 meters above ground.
+    It is taken from equation (7) in the following paper:
+
+    Holland et al. (2010): A Revised Model for Radial Profiles of Hurricane Winds. Monthly
+    Weather Review 138(12): 4393–4401. https://doi.org/10.1175/2010MWR3317.1
+
+    For reference, it reads
+    b_s = vmax^2 * rho^e / ( 100 * (penv - pcen) )
+    where:
+        rho is the air density ρ (in kg m−3) at the surface level
+        !penv and pcen is assumed to be in hPa in this formula - not Pa, as in our tracks
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Output of `tctrack_to_si`. The data variables used by this function are
+        "cen",  "env", and "vmax". The result is stored in place as a new data
+        variable "hol_b".
+    """
+
+    si_track["hol_b"] = (
+            si_track["vmax"]**2 * RHO_AIR_SURFACE**np.exp(1)
+            / ( si_track["env"] - si_track["cen"] ) # we do not need the factor 100 as in the original
+        # formula, because environmental pressure and central pressure are already saved in Pa, not hPa
+    )
+    si_track["hol_b"] = np.clip(si_track["hol_b"], 0.4, 2.5)  # reconsider the clip as b_s is b_g/1.6, but does this also relate to limits?
+
 
 def _v_max_s_holland_2008(si_track: xr.Dataset):
     """Compute maximum surface winds from pressure according to Holland 2008.
@@ -1433,7 +1479,7 @@ def _x_holland_2010(
 
     # compute peripheral exponent from second measurement
     r_max_norm = (r_max / r_n)**hol_b
-    x_n = np.log(v_n / v_max_s) / np.log(r_max_norm * np.exp(1 - r_max_norm))
+    x_n = np.log(v_n / v_max_s) / np.log(r_max_norm * np.exp(1 - r_max_norm))  # holland 2010 equation 6 solved for x
 
     # linearly interpolate between max exponent and peripheral exponent
     x_max = 0.5

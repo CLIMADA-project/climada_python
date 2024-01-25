@@ -33,8 +33,8 @@ from climada.test import get_test_file
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, get_close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
-    _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010,
-    _stat_er_2011, tctrack_to_si, MBAR_TO_PA, KM_TO_M, H_TO_S,
+    _bs_holland_2010_v2, _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980,
+    _stat_holland_2010, _stat_er_2011, tctrack_to_si, MBAR_TO_PA, KM_TO_M, H_TO_S,
 )
 from climada.hazard.centroids.centr import Centroids
 import climada.hazard.test as hazard_test
@@ -139,19 +139,23 @@ class TestReader(unittest.TestCase):
                 24.745521, 25.596484, 26.475329, 24.690914, 28.650107, 31.584395,
                 21.723546, 26.140293, 28.94964,  28.051915, 18.49378, 35.312152,
             ],
-            # Holland 1980 and Emanuel & Rotunno 2011 use recorded wind speeds, while the above use
-            # pressure values only. That's why the results are so different:
+            # Holland 1980, version 2 of Holland 2010 and Emanuel & Rotunno 2011 use recorded wind speeds,
+            # while the above use pressure values only. That's why the results are so different:
             "H1980": [21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
                       19.220149, 21.984516, 24.196388, 23.449116,  0, 31.550207],
             "ER11": [23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
                      18.996389, 26.102109, 30.780737, 29.498453,  0, 38.368805],
+            "H10_v2": [
+                28.067253, 28.544574, 28.975862, 27.907048, 30.450187, 32.091651,
+                25.79227 , 28.140679, 29.615011, 28.693995, 22.191709, 32.245298
+            ],
         }
 
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data = tc_track.data[:1]
 
-        for model in ["H08", "H10", "H1980", "ER11"]:
+        for model in ["H08", "H10", "H1980", "ER11", "H10_v2"]:
             tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
             np.testing.assert_array_almost_equal(
                 tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[model])
@@ -298,6 +302,17 @@ class TestWindfieldHelpers(unittest.TestCase):
         _bs_holland_2008(si_track)
         np.testing.assert_array_almost_equal(
             si_track["hol_b"], [np.nan, 1.27085617, 1.26555341])
+
+    def test_bs_holland_2010_v2_pass(self):
+        """Test _bs_holland_2010_v2 function. Compare to MATLAB reference."""
+        si_track = xr.Dataset({
+            "env": ("time", MBAR_TO_PA * np.array([1010, 1010, 1010, 1010])),
+            "cen": ("time", MBAR_TO_PA * np.array([1005.2585, 1005.2633, 1005.2682, 1005.2731])),
+            "vmax": ("time",  [np.nan, 22.5, 25.4, 42.5]),
+        })
+        _bs_holland_2010_v2(si_track)
+        np.testing.assert_array_almost_equal(
+            si_track["hol_b"], [np.nan, 1.75439, 2.238092, 2.5])
 
     def test_v_max_s_holland_2008_pass(self):
         """Test _v_max_s_holland_2008 function."""
