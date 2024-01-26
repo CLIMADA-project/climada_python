@@ -33,8 +33,8 @@ from climada.test import get_test_file
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, get_close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
-    _bs_holland_2010_v2, _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980,
-    _stat_holland_2010, _stat_er_2011, tctrack_to_si, MBAR_TO_PA, KM_TO_M, H_TO_S,
+    _v_max_s_holland_2008, _x_holland_2010, _stat_holland_1980, _stat_holland_2010, _stat_er_2011,
+    tctrack_to_si, MBAR_TO_PA, KM_TO_M, H_TO_S,
 )
 from climada.hazard.centroids.centr import Centroids
 import climada.hazard.test as hazard_test
@@ -130,36 +130,47 @@ class TestReader(unittest.TestCase):
     def test_windfield_models(self):
         """Test _tc_from_track function with different wind field models."""
         intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
-        intensity_values = {
-            "H08": [
-                22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
-                18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
-            ],
-            "H10": [
-                24.745521, 25.596484, 26.475329, 24.690914, 28.650107, 31.584395,
-                21.723546, 26.140293, 28.94964,  28.051915, 18.49378, 35.312152,
-            ],
-            # Holland 1980, version 2 of Holland 2010 and Emanuel & Rotunno 2011 use recorded wind speeds,
-            # while the above use pressure values only. That's why the results are so different:
-            "H1980": [21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
-                      19.220149, 21.984516, 24.196388, 23.449116,  0, 31.550207],
-            "ER11": [23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
-                     18.996389, 26.102109, 30.780737, 29.498453,  0, 38.368805],
-            "H10_v2": [
-                28.067253, 28.544574, 28.975862, 27.907048, 30.450187, 32.091651,
-                25.79227 , 28.140679, 29.615011, 28.693995, 22.191709, 32.245298
-            ],
-        }
+        intensity_values = [
+             ("H08", None, [
+                 22.74903, 23.784691, 24.82255, 22.67403, 27.218706, 30.593959,
+                 18.980878, 24.540069, 27.826407, 26.846293, 0., 34.568898,
+             ]),
+             ("H10", None, [
+                 24.745521, 25.596484, 26.475329, 24.690914, 28.650107, 31.584395,
+                 21.723546, 26.140293, 28.94964, 28.051915, 18.49378, 35.312152,
+             ]),
+             # The following model configurations use recorded wind speeds, while the above use
+             # pressure values only. That's why some of the values are so different.
+             ("H10", dict(vmax_from_cen=False, rho_air_const=1.2), [
+                23.702232, 24.327615, 24.947161, 23.589233, 26.616085, 29.389295,
+                21.338178, 24.257067, 26.472543, 25.662313, 18.535842, 31.886041,
+             ]),
+             ("H10", dict(vmax_from_cen=False, rho_air_const=None), [
+                24.244162, 24.835561, 25.432454, 24.139294, 27.127457, 29.719196,
+                21.910658, 24.692637, 26.783575, 25.971516, 19.005555, 31.904048,
+             ]),
+             ("H1980", None, [
+                 21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
+                 19.220149, 21.984516, 24.196388, 23.449116, 0, 31.550207,
+             ]),
+             ("ER11", None, [
+                 23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
+                 18.996389, 26.102109, 30.780737, 29.498453, 0, 38.368805,
+             ]),
+        ]
 
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
         tc_track.equal_timestep()
         tc_track.data = tc_track.data[:1]
 
-        for model in ["H08", "H10", "H1980", "ER11", "H10_v2"]:
-            tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
+        for model, model_kwargs, inten_ref in intensity_values:
+            tc_haz = TropCyclone.from_tracks(
+                tc_track, centroids=CENTR_TEST_BRB, model=model, model_kwargs=model_kwargs,
+            )
             np.testing.assert_array_almost_equal(
-                tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[model])
-            for idx, val in zip(intensity_idx, intensity_values[model]):
+                tc_haz.intensity[0, intensity_idx].toarray()[0], inten_ref,
+            )
+            for idx, val in zip(intensity_idx, inten_ref):
                 if val == 0:
                     self.assertEqual(tc_haz.intensity[0, idx], 0)
 
@@ -172,10 +183,14 @@ class TestReader(unittest.TestCase):
         intensity_values = {
             # Holland 1980 and Emanuel & Rotunno 2011 use recorded wind speeds, that is why checking them for different
             # windspeed units is so important:
-            "H1980": [21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
-                      19.220149, 21.984516, 24.196388, 23.449116,  0, 31.550207],
-            "ER11": [23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
-                     18.996389, 26.102109, 30.780737, 29.498453,  0, 38.368805],
+            "H1980": [
+                21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
+                19.220149, 21.984516, 24.196388, 23.449116,  0, 31.550207,
+            ],
+            "ER11": [
+                23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
+                18.996389, 26.102109, 30.780737, 29.498453,  0, 38.368805,
+            ],
         }
 
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
@@ -286,9 +301,19 @@ class TestWindfieldHelpers(unittest.TestCase):
             "env": ("time",  MBAR_TO_PA * np.array([1010, 1010])),
             "cen": ("time",  MBAR_TO_PA * np.array([995, 980])),
             "vgrad": ("time",  [35, 40]),
+            "rho_air": ("time", [1.15, 1.15])
         })
         _B_holland_1980(si_track)
         np.testing.assert_array_almost_equal(si_track["hol_b"], [2.5, 1.667213])
+
+        si_track = xr.Dataset({
+            "env": ("time", MBAR_TO_PA * np.array([1010, 1010, 1010, 1010])),
+            "cen": ("time", MBAR_TO_PA * np.array([1005.2585, 995, 980, 970])),
+            "vmax": ("time",  [np.nan, 22.5, 25.4, 42.5]),
+            "rho_air": ("time", [1.2, 1.2, 1.2, 1.2])
+        })
+        _B_holland_1980(si_track, gradient_to_surface_winds=0.9)
+        np.testing.assert_allclose(si_track["hol_b"], [np.nan, 1.101, 0.810, 1.473], atol=1e-3)
 
     def test_bs_holland_2008_pass(self):
         """Test _bs_holland_2008 function. Compare to MATLAB reference."""
@@ -303,17 +328,6 @@ class TestWindfieldHelpers(unittest.TestCase):
         np.testing.assert_array_almost_equal(
             si_track["hol_b"], [np.nan, 1.27085617, 1.26555341])
 
-    def test_bs_holland_2010_v2_pass(self):
-        """Test _bs_holland_2010_v2 function. Compare to MATLAB reference."""
-        si_track = xr.Dataset({
-            "env": ("time", MBAR_TO_PA * np.array([1010, 1010, 1010, 1010])),
-            "cen": ("time", MBAR_TO_PA * np.array([1005.2585, 1005.2633, 1005.2682, 1005.2731])),
-            "vmax": ("time",  [np.nan, 22.5, 25.4, 42.5]),
-        })
-        _bs_holland_2010_v2(si_track)
-        np.testing.assert_array_almost_equal(
-            si_track["hol_b"], [np.nan, 1.75439, 2.238092, 2.5])
-
     def test_v_max_s_holland_2008_pass(self):
         """Test _v_max_s_holland_2008 function."""
         # Numbers analogous to test_B_holland_1980_pass
@@ -321,6 +335,7 @@ class TestWindfieldHelpers(unittest.TestCase):
             "env": ("time", MBAR_TO_PA * np.array([1010, 1010])),
             "cen": ("time", MBAR_TO_PA * np.array([995, 980])),
             "hol_b": ("time", [2.5, 1.67]),
+            "rho_air": ("time", [1.15, 1.15]),
         })
         _v_max_s_holland_2008(si_track)
         np.testing.assert_array_almost_equal(si_track["vmax"], [34.635341, 40.033421])
@@ -396,6 +411,7 @@ class TestWindfieldHelpers(unittest.TestCase):
             "cen": ("time", MBAR_TO_PA * np.array([970.8727666672957, 1005.268166666671])),
             "lat": ("time", [-14.089110370469488, 12.299999279463769]),
             "cp": ("time", [3.54921922e-05, 3.10598285e-05]),
+            "rho_air": ("time", [1.15, 1.15]),
         })
         mask = np.array([[True, True, True, True], [True, False, True, True]], dtype=bool)
         v_ang_norm = _stat_holland_1980(si_track, d_centr, mask)

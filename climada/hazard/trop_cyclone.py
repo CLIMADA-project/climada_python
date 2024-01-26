@@ -59,20 +59,21 @@ DEF_INTENSITY_THRES = 17.5
 DEF_MAX_MEMORY_GB = 8
 """Default value of the memory limit (in GB) for windfield computations (in each thread)."""
 
-MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3, 'H10_v2': 4}
+MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3}
 """Enumerate different symmetric wind field models."""
 
-RHO_AIR = 1.15
-"""Air density. Assumed constant, following Holland 1980."""
-RHO_AIR_SURFACE = 1.2
-"""Air density at surface level. Assumed constant, following Holland 2010"""
+DEF_RHO_AIR = 1.15
+"""Default value for air density (in kg/m³), following Holland 1980."""
 
-GRADIENT_LEVEL_TO_SURFACE_WINDS = 0.9
-"""Gradient-to-surface wind reduction factor according to the 90%-rule:
+DEF_GRADIENT_TO_SURFACE_WINDS = 0.9
+"""Default gradient-to-surface wind reduction factor, following the 90%-rule mentioned in:
 
 Franklin, J.L., Black, M.L., Valde, K. (2003): GPS Dropwindsonde Wind Profiles in Hurricanes and
 Their Operational Implications. Weather and Forecasting 18(1): 32–44.
 https://doi.org/10.1175/1520-0434(2003)018<0032:GDWPIH>2.0.CO;2
+
+According to Table 2, this is a reasonable factor for the 750 hPa level in the eyewall region. For
+other regions and levels, values of 0.8 or even 0.75 might be justified.
 """
 
 KMH_TO_MS = (1.0 * ureg.km / ureg.hour).to(ureg.meter / ureg.second).magnitude
@@ -82,6 +83,9 @@ KM_TO_M = (1.0 * ureg.kilometer).to(ureg.meter).magnitude
 H_TO_S = (1.0 * ureg.hours).to(ureg.seconds).magnitude
 MBAR_TO_PA = (1.0 * ureg.millibar).to(ureg.pascal).magnitude
 """Unit conversion factors for JIT functions that can't use ureg"""
+
+T_ICE_K = 273.16
+"""Freezing temperatur of water (in K), for conversion between K and °C"""
 
 V_ANG_EARTH = 7.29e-5
 """Earth angular velocity (in radians per second)"""
@@ -183,6 +187,7 @@ class TropCyclone(Hazard):
         centroids: Optional[Centroids] = None,
         pool: Optional[pathos.pools.ProcessPool] = None,
         model: str = 'H08',
+        model_kwargs: Optional[dict] = None,
         ignore_distance_to_coast: bool = False,
         store_windfields: bool = False,
         metric: str = "equirect",
@@ -224,6 +229,28 @@ class TropCyclone(Hazard):
             "H08" (Holland 1980 with b-value from Holland 2008), "H10" (Holland et al. 2010), or
             "ER11" (Emanuel and Rotunno 2011).
             Default: "H08".
+        model_kwargs : dict, optional
+            If given, forward these kwargs to the selected wind model. None of the parameters is
+            currently supported by the ER11 model. The Holland models support the following
+            parameters, in alphabetical order:
+
+            gradient_to_surface_winds : float, optional
+                The gradient-to-surface wind reduction factor to use. In H1980, the wind profile is
+                computed on the gradient level, and wind speeds are converted to the surface level
+                using this factor. In H08 and H10, the wind profile is computed on the surface
+                level, but the clipping interval of the B-value depends on this factor.
+                Default: 0.9
+            rho_air_const : float or None, optional
+                The constant value for air density (in kg/m³) to assume in the formulas from
+                Holland 1980. By default, the constant value suggested in Holland 1980 is used. If
+                set to None, the air density is computed from pressure following equation (9) in
+                Holland et al. 2010. Default: 1.15
+            vmax_from_cen : boolean, optional
+                Only used in H10. If True, replace the recorded value of vmax along the track by
+                an estimate from pressure, following equation (8) in Holland et al. 2010.
+                Default: True
+
+            Default: None
         ignore_distance_to_coast : boolean, optional
             If True, centroids far from coast are not ignored. Default: False.
         store_windfields : boolean, optional
@@ -296,21 +323,32 @@ class TropCyclone(Hazard):
                                    & (t_lat_min <= coastal_centroids[:, 0])
                                    & (coastal_centroids[:, 0] <= t_lat_max))]
 
-        LOGGER.info('Mapping %s tracks to %s coastal centroids.', str(tracks.size),
-                    str(coastal_idx.size))
+        # prepare keyword arguments to pass to `from_single_track`
+        kwargs_from_single_track = dict(
+            centroids=centroids,
+            coastal_idx=coastal_idx,
+            model=model,
+            model_kwargs=model_kwargs,
+            store_windfields=store_windfields,
+            metric=metric,
+            intensity_thres=intensity_thres,
+            max_dist_eye_km=max_dist_eye_km,
+            max_memory_gb=max_memory_gb,
+        )
+
+        LOGGER.info('Mapping %d tracks to %d coastal centroids.', num_tracks, coastal_idx.size)
         if pool:
             chunksize = max(min(num_tracks // pool.ncpus, 1000), 1)
+            kwargs_repeated = [
+                itertools.repeat(val, num_tracks)
+                for val in kwargs_from_single_track.values()
+            ]
             tc_haz_list = pool.map(
-                cls.from_single_track, tracks.data,
-                itertools.repeat(centroids, num_tracks),
-                itertools.repeat(coastal_idx, num_tracks),
-                itertools.repeat(model, num_tracks),
-                itertools.repeat(store_windfields, num_tracks),
-                itertools.repeat(metric, num_tracks),
-                itertools.repeat(intensity_thres, num_tracks),
-                itertools.repeat(max_dist_eye_km, num_tracks),
-                itertools.repeat(max_memory_gb, num_tracks),
-                chunksize=chunksize)
+                cls.from_single_track,
+                tracks.data,
+                *kwargs_repeated,
+                chunksize=chunksize,
+            )
         else:
             last_perc = 0
             tc_haz_list = []
@@ -320,11 +358,8 @@ class TropCyclone(Hazard):
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
                 tc_haz_list.append(
-                    cls.from_single_track(track, centroids, coastal_idx,
-                                          model=model, store_windfields=store_windfields,
-                                          metric=metric, intensity_thres=intensity_thres,
-                                          max_dist_eye_km=max_dist_eye_km,
-                                          max_memory_gb=max_memory_gb))
+                    cls.from_single_track(track, **kwargs_from_single_track)
+                )
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
 
@@ -511,6 +546,7 @@ class TropCyclone(Hazard):
         centroids: Centroids,
         coastal_idx: np.ndarray,
         model: str = 'H08',
+        model_kwargs: Optional[dict] = None,
         store_windfields: bool = False,
         metric: str = "equirect",
         intensity_thres: float = DEF_INTENSITY_THRES,
@@ -533,6 +569,8 @@ class TropCyclone(Hazard):
             "H08" (Holland 1980 with b-value from Holland 2008), "H10" (Holland et al. 2010), or
             "ER11" (Emanuel and Rotunno 2011).
             Default: "H08".
+        model_kwargs: dict, optional
+            If given, forward these kwargs to the selected model. Default: None
         store_windfields : boolean, optional
             If True, store windfields. Default: False.
         metric : str, optional
@@ -561,6 +599,7 @@ class TropCyclone(Hazard):
             centroids=centroids,
             coastal_idx=coastal_idx,
             model=model,
+            model_kwargs=model_kwargs,
             store_windfields=store_windfields,
             metric=metric,
             intensity_thres=intensity_thres,
@@ -667,6 +706,7 @@ def _compute_windfields_sparse(
     centroids: Centroids,
     coastal_idx: np.ndarray,
     model: str = 'H08',
+    model_kwargs: Optional[dict] = None,
     store_windfields: bool = False,
     metric: str = "equirect",
     intensity_thres: float = DEF_INTENSITY_THRES,
@@ -688,6 +728,8 @@ def _compute_windfields_sparse(
         "H08" (Holland 1980 with b-value from Holland 2008), "H10" (Holland et al. 2010), or
         "ER11" (Emanuel and Rotunno 2011).
         Default: "H08".
+    model_kwargs: dict, optional
+        If given, forward these kwargs to the selected model. Default: None
     store_windfields : boolean, optional
         If True, store windfields. Default: False.
     metric : str, optional
@@ -787,6 +829,7 @@ def _compute_windfields_sparse(
             centroids,
             coastal_idx,
             model=model,
+            model_kwargs=model_kwargs,
             store_windfields=store_windfields,
             metric=metric,
             intensity_thres=intensity_thres,
@@ -795,7 +838,12 @@ def _compute_windfields_sparse(
         )
 
     windfields, reachable_centr_idx = _compute_windfields(
-        si_track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km,
+        si_track,
+        coastal_centr,
+        mod_id,
+        model_kwargs=model_kwargs,
+        metric=metric,
+        max_dist_eye_km=max_dist_eye_km,
     )
     reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
     npositions = windfields.shape[0]
@@ -887,6 +935,7 @@ def _compute_windfields(
     si_track: xr.Dataset,
     centroids: np.ndarray,
     model: int,
+    model_kwargs: Optional[dict] = None,
     metric: str = "equirect",
     max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
 ) -> Tuple[np.ndarray, np.ndarray]:
@@ -907,6 +956,8 @@ def _compute_windfields(
         Centroids that are not within reach of the track are ignored.
     model : int
         Wind profile model selection according to MODEL_VANG.
+    model_kwargs: dict, optional
+        If given, forward these kwargs to the selected model. Default: None
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
         "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
@@ -954,9 +1005,8 @@ def _compute_windfields(
 
     # derive (absolute) angular velocity from parametric wind profile
     v_ang_norm = compute_angular_windspeeds(
-        si_track, d_centr, close_centr_msk, model, cyclostrophic=False,
+        si_track, d_centr, close_centr_msk, model, model_kwargs=model_kwargs, cyclostrophic=False,
     )
-
 
     # Influence of translational speed decreases with distance from eye.
     # The "absorbing factor" is according to the following paper (see Fig. 7):
@@ -971,7 +1021,7 @@ def _compute_windfields(
     v_trans_corr[close_centr_msk] = np.fmin(
         1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
 
-    if model in [MODEL_VANG['H08'], MODEL_VANG['H10'], MODEL_VANG['H10_v2']]:
+    if model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
         # In these models, v_ang_norm already contains vtrans_norm, so subtract it first, before
         # converting to vectors and then adding (vectorial) vtrans again. Make sure to apply the
         # "absorbing factor" in both steps:
@@ -1073,16 +1123,35 @@ def tctrack_to_si(
     # add translational speed of track at every node (in m/s)
     _vtrans(si_track, metric=metric)
 
-    # convert surface winds to gradient winds without translational influence
-    si_track["vgrad"] = (
-        np.fmax(0, si_track["vmax"] - si_track["vtrans_norm"]) / GRADIENT_LEVEL_TO_SURFACE_WINDS
-    )
-
     si_track["cp"] = ("time", _coriolis_parameter(si_track["lat"].values))
 
     return si_track
 
-def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclostrophic=False):
+def _vgrad(si_track, gradient_to_surface_winds):
+    """Gradient wind speeds (in m/s) without translational influence at each track node
+
+    The track dataset is modified in place, with the "vgrad" data variable added.
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Track information as returned by `tctrack_to_si`. The data variables used by this function
+        are "vmax" and "vtrans_norm". The result is stored in place as new data variable "vgrad".
+    gradient_to_surface_winds : float
+        The gradient-to-surface wind reduction factor to use.
+    """
+    si_track["vgrad"] = (
+        np.fmax(0, si_track["vmax"] - si_track["vtrans_norm"]) / gradient_to_surface_winds
+    )
+
+def compute_angular_windspeeds(
+    si_track: xr.Dataset,
+    d_centr: np.ndarray,
+    close_centr_msk: np.ndarray,
+    model: int,
+    model_kwargs: Optional[dict] = None,
+    cyclostrophic: bool = False,
+):
     """Compute (absolute) angular wind speeds according to a parametric wind profile
 
     Parameters
@@ -1096,6 +1165,8 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
         For each track position one row indicating which centroids are within reach.
     model : int
         Wind profile model selection according to MODEL_VANG.
+    model_kwargs: dict, optional
+        If given, forward these kwargs to the selected model. Default: None
     cyclostrophic : bool, optional
         If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
         Default: False
@@ -1104,34 +1175,156 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
     -------
     ndarray of shape (npositions, ncentroids)
     """
-    if model == MODEL_VANG['H1980']:
-        _B_holland_1980(si_track)
-    elif model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
-        _bs_holland_2008(si_track)
-    elif model in [MODEL_VANG['H10_v2']]:
-        _bs_holland_2010_v2(si_track)
-    if model in [MODEL_VANG['H1980'], MODEL_VANG['H08']]:
-        result = _stat_holland_1980(
-            si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic,
-        )
-        if model == MODEL_VANG['H1980']:
-            result *= GRADIENT_LEVEL_TO_SURFACE_WINDS
-    elif model == MODEL_VANG['H10']:
-        # this model is always cyclostrophic
-        _v_max_s_holland_2008(si_track)
-        hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
-        result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
-    elif model == MODEL_VANG['ER11']:
-        result = _stat_er_2011(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
-    elif model in [MODEL_VANG['H10_v2'],]:
-        hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
-        result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
-    else:
-        raise NotImplementedError
-
+    model_kwargs = {} if model_kwargs is None else model_kwargs
+    compute_funs = {
+        MODEL_VANG['H1980']: _compute_angular_windspeeds_h1980,
+        MODEL_VANG['H08']: _compute_angular_windspeeds_h08,
+        MODEL_VANG['H10']: _compute_angular_windspeeds_h10,
+        MODEL_VANG['ER11']: _stat_er_2011,
+    }
+    if model not in compute_funs:
+        raise NotImplementedError(f"The specified wind model is not supported: {model}")
+    result = compute_funs[model](
+        si_track,
+        d_centr,
+        close_centr_msk,
+        cyclostrophic=cyclostrophic,
+        **model_kwargs,
+    )
     result[0, :] *= 0
-
     return result
+
+def _compute_angular_windspeeds_h1980(
+    si_track: xr.Dataset,
+    d_centr: np.ndarray,
+    close_centr_msk: np.ndarray,
+    cyclostrophic: bool = False,
+    gradient_to_surface_winds: float = DEF_GRADIENT_TO_SURFACE_WINDS,
+    rho_air_const: float = DEF_RHO_AIR,
+):
+    """Compute (absolute) angular wind speeds according to the Holland 1980 model
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        profile depends on the selected model.
+    d_centr : np.ndarray of shape (npositions, ncentroids)
+        Distance (in m) between centroids and track positions.
+    close_centr_msk : np.ndarray of shape (npositions, ncentroids)
+        For each track position one row indicating which centroids are within reach.
+    cyclostrophic : bool, optional
+        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
+        Default: False
+    gradient_to_surface_winds : float, optional
+        The gradient-to-surface wind reduction factor to use. The wind profile is computed on the
+        gradient level, and wind speeds are converted to the surface level using this factor.
+        Default: 0.9
+    rho_air_const : float or None, optional
+        The constant value for air density (in kg/m³) to assume in the formulas from Holland 1980.
+        By default, the constant value suggested in Holland 1980 is used. If set to None, the air
+        density is computed from pressure following equation (9) in Holland et al. 2010.
+        Default: 1.15
+
+    Returns
+    -------
+    ndarray of shape (npositions, ncentroids)
+    """
+    _vgrad(si_track, gradient_to_surface_winds)
+    _rho_air(si_track, rho_air_const)
+    _B_holland_1980(si_track)
+    result = _stat_holland_1980(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
+    result *= gradient_to_surface_winds
+    return result
+
+def _compute_angular_windspeeds_h08(
+    si_track: xr.Dataset,
+    d_centr: np.ndarray,
+    close_centr_msk: np.ndarray,
+    cyclostrophic: bool = False,
+    gradient_to_surface_winds: float = DEF_GRADIENT_TO_SURFACE_WINDS,
+    rho_air_const: float = DEF_RHO_AIR,
+):
+    """Compute (absolute) angular wind speeds according to the Holland 2008 model
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        profile depends on the selected model.
+    d_centr : np.ndarray of shape (npositions, ncentroids)
+        Distance (in m) between centroids and track positions.
+    close_centr_msk : np.ndarray of shape (npositions, ncentroids)
+        For each track position one row indicating which centroids are within reach.
+    cyclostrophic : bool, optional
+        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
+        Default: False
+    gradient_to_surface_winds : float, optional
+        The gradient-to-surface wind reduction factor to use. The wind profile is computed on the
+        surface level, but the clipping interval of the B-value depends on this factor.
+        Default: 0.9
+    rho_air_const : float or None, optional
+        The constant value for air density (in kg/m³) to assume in the formula from Holland 1980.
+        By default, the constant value suggested in Holland 1980 is used. If set to None, the air
+        density is computed from pressure following equation (9) in Holland et al. 2010.
+        Default: 1.15
+
+    Returns
+    -------
+    ndarray of shape (npositions, ncentroids)
+    """
+    _rho_air(si_track, rho_air_const)
+    _bs_holland_2008(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
+    return _stat_holland_1980(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
+
+def _compute_angular_windspeeds_h10(
+    si_track: xr.Dataset,
+    d_centr: np.ndarray,
+    close_centr_msk: np.ndarray,
+    cyclostrophic: bool = False,
+    gradient_to_surface_winds: float = DEF_GRADIENT_TO_SURFACE_WINDS,
+    rho_air_const: float = DEF_RHO_AIR,
+    vmax_from_cen: bool = True,
+):
+    """Compute (absolute) angular wind speeds according to the Holland et al. 2010 model
+
+    Note that this model is always cyclostrophic, the parameter setting is ignored.
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        profile depends on the selected model.
+    d_centr : np.ndarray of shape (npositions, ncentroids)
+        Distance (in m) between centroids and track positions.
+    close_centr_msk : np.ndarray of shape (npositions, ncentroids)
+        For each track position one row indicating which centroids are within reach.
+    cyclostrophic : bool, optional
+        This parameter is ignored because this model is always cyclostrophic. Default: False
+    gradient_to_surface_winds : float, optional
+        The gradient-to-surface wind reduction factor to use. the wind profile is computed on the
+        surface level, but the clipping interval of the B-value depends on this factor.
+        Default: 0.9
+    rho_air_const : float or None, optional
+        The constant value for air density (in kg/m³) to assume in the formula for the B-value. By
+        default, the value suggested in Holland 1980 is used. If set to None, the air density is
+        computed from pressure following equation (9) in Holland et al. 2010. Default: 1.15
+    vmax_from_cen : boolean, optional
+        If True, replace the recorded value of vmax along the track by an estimate from pressure,
+        following equation (8) in Holland et al. 2010. Default: True
+
+    Returns
+    -------
+    ndarray of shape (npositions, ncentroids)
+    """
+    _rho_air(si_track, rho_air_const)
+    if vmax_from_cen:
+        _bs_holland_2008(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
+        _v_max_s_holland_2008(si_track)
+    else:
+        _B_holland_1980(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
+    hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
+    return _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
 
 def get_close_centroids(
     t_lat: np.ndarray,
@@ -1259,7 +1452,51 @@ def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     """
     return 2 * V_ANG_EARTH * np.sin(np.radians(np.abs(lat)))
 
-def _bs_holland_2008(si_track: xr.Dataset):
+def _rho_air(si_track: xr.Dataset, const: Optional[float]):
+    """Eyewall density of air (in kg/m³) at each track node.
+
+    The track dataset is modified in place, with the "rho_air" data variable added.
+
+    Parameters
+    ----------
+    si_track : xr.Dataset
+        Track information as returned by `tctrack_to_si`. The data variables used by this function
+        are "lat" and "cen". The result is stored in place as new data variable "rho_air".
+    const : float or None
+        A constant value for air density (in kg/m³) to assume. If None, the air density is
+        estimated from eyewall pressure following equation (9) in Holland et al. 2010.
+    """
+    if const is not None:
+        si_track["rho_air"] = xr.full_like(si_track["time"], const, dtype=float)
+        return
+
+    # surface relative humidity (unitless), assumed constant following Holland et al. 2010
+    surface_relative_humidity = 0.9
+
+    # surface temperature (in °C), following equation (9) in Holland 2008
+    temp_s = 28.0 - 3.0 * (si_track["lat"] - 10.0) / 20.0
+
+    # eyewall surface pressure (in Pa), following equation (6) in Holland 2008
+    pres_eyewall = si_track["cen"] + (si_track["env"] - si_track["cen"]) / np.exp(1)
+
+    # mixing ratio (in kg/kg), estimated from temperature, using formula for saturation vapor
+    # pressure in Bolton 1980 (multiplied by the ratio of molar masses of water vapor and dry air)
+    # We multiply by 100, since the formula by Bolton is in hPa (mbar), and we use Pa.
+    r_mix = 100 * 3.802 / pres_eyewall * np.exp(17.67 * temp_s / (243.5 + temp_s))
+
+    # virtual surface temperature (in K)
+    temp_vs = (T_ICE_K + temp_s) * (1 + 0.81 * surface_relative_humidity * r_mix)
+
+    # specific gas constant of dry air (in J/kgK)
+    r_dry_air = 286.9
+
+    # density of air (in kg/m³); when checking the units, note that J/Pa = m³
+    si_track["rho_air"] =  pres_eyewall / (r_dry_air * temp_vs)
+
+def _bs_holland_2008(
+    si_track: xr.Dataset,
+    gradient_to_surface_winds: float = DEF_GRADIENT_TO_SURFACE_WINDS,
+):
     """Holland's 2008 b-value estimate for sustained surface winds.
     (This is also one option of how to estimate the b-value in Holland 2010,
     for the other option consult '_bs_holland_2010_v2'.)
@@ -1299,6 +1536,9 @@ def _bs_holland_2008(si_track: xr.Dataset):
         Output of `tctrack_to_si`. The data variables used by this function are "lat", "tstep",
         "vtrans_norm", "cen", and "env". The result is stored in place as a new data
         variable "hol_b".
+    gradient_to_surface_winds : float, optional
+        The gradient-to-surface wind reduction factor to use when determining the clipping
+        interval. Default: 0.9
     """
     # adjust pressure at previous track point
     prev_cen = np.zeros_like(si_track["cen"].values)
@@ -1317,45 +1557,8 @@ def _bs_holland_2008(si_track: xr.Dataset):
         - 0.014 * abs(si_track["lat"])
         + 0.15 * si_track["vtrans_norm"]**hol_xx + 1.0
     )
-    si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
-
-def _bs_holland_2010_v2(si_track: xr.Dataset):
-    """Holland 2010's second version of how to estimate b-value  for sustained surface winds.
-    For version 1 see "_bs_holland_2008"
-
-    The result is stored in place as a new data variable "hol_b".
-
-    Like the original 1980 formula (see `_B_holland_1980`), this approach does also require
-    wind speed measurements, if the wind speed measurements are not available or not  reliable, consider the second
-    option proposed in Holland 2010 (and Holland 2008) implemented as "_bs_holland_2008"
-
-    The parameter applies to 1-minute sustained winds at 10 meters above ground.
-    It is taken from equation (7) in the following paper:
-
-    Holland et al. (2010): A Revised Model for Radial Profiles of Hurricane Winds. Monthly
-    Weather Review 138(12): 4393–4401. https://doi.org/10.1175/2010MWR3317.1
-
-    For reference, it reads
-    b_s = vmax^2 * rho^e / ( 100 * (penv - pcen) )
-    where:
-        rho is the air density ρ (in kg m−3) at the surface level
-        !penv and pcen is assumed to be in hPa in this formula - not Pa, as in our tracks
-
-    Parameters
-    ----------
-    si_track : xr.Dataset
-        Output of `tctrack_to_si`. The data variables used by this function are
-        "cen",  "env", and "vmax". The result is stored in place as a new data
-        variable "hol_b".
-    """
-
-    si_track["hol_b"] = (
-            si_track["vmax"]**2 * RHO_AIR_SURFACE**np.exp(1)
-            / ( si_track["env"] - si_track["cen"] ) # we do not need the factor 100 as in the original
-        # formula, because environmental pressure and central pressure are already saved in Pa, not hPa
-    )
-    si_track["hol_b"] = np.clip(si_track["hol_b"], 0.4, 2.5)  # reconsider the clip as b_s is b_g/1.6, but does this also relate to limits?
-
+    clip_interval = _b_holland_clip_interval(gradient_to_surface_winds)
+    si_track["hol_b"] = np.clip(si_track["hol_b"], *clip_interval)
 
 def _v_max_s_holland_2008(si_track: xr.Dataset):
     """Compute maximum surface winds from pressure according to Holland 2008.
@@ -1378,15 +1581,18 @@ def _v_max_s_holland_2008(si_track: xr.Dataset):
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008). The data variables
-        used by this function are "env", "cen", and "hol_b". The results are stored in place as
-        a new data variable "vmax". If a variable of that name already exists, its values are
-        overwritten.
+        Output of `tctrack_to_si` with "hol_b" (see _bs_holland_2008) and "rho_air" (see
+        _rho_air) variables. The data variables used by this function are "env", "cen", "hol_b"
+        and "rho_air". The results are stored in place as a new data variable "vmax". If a variable
+        of that name already exists, its values are overwritten.
     """
     pdelta = si_track["env"] - si_track["cen"]
-    si_track["vmax"] = np.sqrt(si_track["hol_b"] / (RHO_AIR * np.exp(1)) * pdelta)
+    si_track["vmax"] = np.sqrt(si_track["hol_b"] / (si_track["rho_air"] * np.exp(1)) * pdelta)
 
-def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
+def _B_holland_1980(  # pylint: disable=invalid-name
+    si_track: xr.Dataset,
+    gradient_to_surface_winds: Optional[float] = None,
+):
     """Holland's 1980 B-value computation for gradient-level winds.
 
     The result is stored in place as a new data variable "hol_b".
@@ -1408,13 +1614,46 @@ def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "vgrad" variable (see _vgrad). The data variables
-        used by this function are "vgrad", "env", and "cen". The results are stored in place as
-        a new data variable "hol_b".
+        Output of `tctrack_to_si` with "rho_air" variable (see _rho_air). The data variables
+        used by this function are "vgrad" (or "vmax" if gradient_to_surface_winds is different from
+        1.0), "env", "cen", and "rho_air". The results are stored in place as a new data variable
+        "hol_b".
+    gradient_to_surface_winds : float, optional
+        The gradient-to-surface wind reduction factor to use when determining the clipping
+        interval. By default, the gradient level values are assumed. Default: None
     """
+    windvar = "vgrad" if gradient_to_surface_winds is None else "vmax"
+
     pdelta = si_track["env"] - si_track["cen"]
-    si_track["hol_b"] = si_track["vgrad"]**2 * np.exp(1) * RHO_AIR / np.fmax(np.spacing(1), pdelta)
-    si_track["hol_b"] = np.clip(si_track["hol_b"], 1, 2.5)
+    si_track["hol_b"] = (
+        si_track[windvar]**2 * np.exp(1) * si_track["rho_air"] / np.fmax(np.spacing(1), pdelta)
+    )
+
+    clip_interval = _b_holland_clip_interval(gradient_to_surface_winds)
+    si_track["hol_b"] = np.clip(si_track["hol_b"], *clip_interval)
+
+def _b_holland_clip_interval(gradient_to_surface_winds):
+    """The clip interval to use for the Holland B-value
+
+    The default clip interval for gradient level B-values is taken to be (1.0, 2.5), following
+    Holland 1980.
+
+    Parameters
+    ----------
+    gradient_to_surface_winds : float or None
+        The gradient-to-surface wind reduction factor to use when rescaling the gradient-level
+        clip interval (1.0, 2.5) proposed in Holland 1980. If None, no rescaling is applied.
+
+    Returns
+    -------
+    b_min, b_max : float
+        Minimum and maximum value of the clip interval.
+    """
+    clip_interval = (1.0, 2.5)
+    if gradient_to_surface_winds is not None:
+        fact = gradient_to_surface_winds**2
+        clip_interval = tuple(c * fact for c in clip_interval)
+    return clip_interval
 
 def _x_holland_2010(
     si_track: xr.Dataset,
@@ -1478,8 +1717,9 @@ def _x_holland_2010(
     r_n *= KM_TO_M
 
     # compute peripheral exponent from second measurement
+    # (equation (6) from Holland et al. 2010 solved for x)
     r_max_norm = (r_max / r_n)**hol_b
-    x_n = np.log(v_n / v_max_s) / np.log(r_max_norm * np.exp(1 - r_max_norm))  # holland 2010 equation 6 solved for x
+    x_n = np.log(v_n / v_max_s) / np.log(r_max_norm * np.exp(1 - r_max_norm))
 
     # linearly interpolate between max exponent and peripheral exponent
     x_max = 0.5
@@ -1563,9 +1803,8 @@ def _stat_holland_1980(
 
     V(r) = [(B/rho) * (r_max/r)^B * (penv - pcen) * e^(-(r_max/r)^B) + (r*f/2)^2]^0.5 - (r*f/2)
 
-    In terms of this function's arguments, B is `hol_b` and r is `d_centr`.
-    The air density rho is assumed to be constant while the Coriolis parameter f is computed
-    from the latitude `lat` using the constant rotation rate of the earth.
+    In terms of this function's arguments, B is `hol_b` and r is `d_centr`. The air density rho and
+    the Coriolis parameter f are taken from `si_track`.
 
     Even though the equation has been derived originally for gradient winds (when combined with the
     output of `_B_holland_1980`), it can be used for surface winds by adjusting the parameter
@@ -1574,8 +1813,9 @@ def _stat_holland_1980(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable. The data
-        variables used by this function are "lat", "cp", "rad", "cen", "env", and "hol_b".
+        Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) and
+        "rho_air" (see _rho_air) data variable. The data variables used by this function are "lat",
+        "cp", "rad", "cen", "env", "hol_b", and "rho_air".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1590,7 +1830,7 @@ def _stat_holland_1980(
         Absolute values of wind speeds (m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
-    r_max, hol_b, penv, pcen, coriolis_p, d_centr = [
+    r_max, hol_b, penv, pcen, coriolis_p, rho_air, d_centr = [
         np.broadcast_to(ar, d_centr.shape)[close_centr]
         for ar in [
             si_track["rad"].values[:, None],
@@ -1598,6 +1838,7 @@ def _stat_holland_1980(
             si_track["env"].values[:, None],
             si_track["cen"].values[:, None],
             si_track["cp"].values[:, None],
+            si_track["rho_air"].values[:, None],
             d_centr,
         ]
     ]
@@ -1607,7 +1848,7 @@ def _stat_holland_1980(
         r_coriolis = 0.5 * d_centr * coriolis_p
 
     r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
-    sqrt_term = hol_b / RHO_AIR * r_max_norm * (penv - pcen) * np.exp(-r_max_norm) + r_coriolis**2
+    sqrt_term = hol_b / rho_air * r_max_norm * (penv - pcen) * np.exp(-r_max_norm) + r_coriolis**2
     v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
 
