@@ -14,6 +14,7 @@ Code freeze date: YYYY-MM-DD
 
 - Convenience method `api_client.Client.get_dataset_file`, combining `get_dataset_info` and `download_dataset`, returning a single file objet. [#821](https://github.com/CLIMADA-project/climada_python/pull/821)
 - Read and Write methods to and from csv files for the `DiscRates` class. [#818](ttps://github.com/CLIMADA-project/climada_python/pull/818)
+- Add reset_frequency option for the impact.select() function. [#847](https://github.com/CLIMADA-project/climada_python/pull/847)
 
 ### Changed
 
