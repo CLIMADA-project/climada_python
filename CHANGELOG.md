@@ -10,6 +10,16 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+Added:
+
+- `pyproj` >=3.5
+- `pyarrow` >=14.0
+- `numexpr` >=2.8
+
+Removed:
+
+- `proj` (in favor of `pyproj`)
+
 ### Added
 
 - Convenience method `api_client.Client.get_dataset_file`, combining `get_dataset_info` and `download_dataset`, returning a single file objet. [#821](https://github.com/CLIMADA-project/climada_python/pull/821)
@@ -24,6 +34,7 @@ Code freeze date: YYYY-MM-DD
 - Recommend using Mamba instead of Conda for installing CLIMADA [#809](https://github.com/CLIMADA-project/climada_python/pull/809)
 - `Hazard.from_xarray_raster` now allows arbitrary values as 'event' coordinates [#837](https://github.com/CLIMADA-project/climada_python/pull/837)
 - `climada.test.get_test_file` now compares the version of the requested test dataset with the version of climada itself and selects the most appropriate dataset. In this way a test file can be updated without the need of changing the code of the unittest. [#822](https://github.com/CLIMADA-project/climada_python/pull/822)
+- Explicitly require `pyproj` instead of `proj` (the latter is now implicitly required) [#845](https://github.com/CLIMADA-project/climada_python/pull/845)
 
 ### Fixed
 
@@ -32,6 +43,7 @@ Code freeze date: YYYY-MM-DD
 - `climada.util.yearsets.sample_from_poisson`: fix a bug ([#819](https://github.com/CLIMADA-project/climada_python/issues/819)) and inconsistency that occurs when lambda events per year (`lam`) are set to 1. [[#823](https://github.com/CLIMADA-project/climada_python/pull/823)]
 - In the TropCyclone class in the Holland model 2008 and 2010 implementation, a doublecounting of translational velocity is removed [#833](https://github.com/CLIMADA-project/climada_python/pull/833)
 - `climada.util.test.test_finance` and `climada.test.test_engine` updated to recent input data from worldbank [#841](https://github.com/CLIMADA-project/climada_python/pull/841)
+- Set `nodefaults` in Conda environment specs because `defaults` are not compatible with conda-forge [#845](https://github.com/CLIMADA-project/climada_python/pull/845)
 
 ### Deprecated
 
