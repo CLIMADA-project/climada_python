@@ -13,6 +13,8 @@ Code freeze date: YYYY-MM-DD
 Added:
 
 - `pyproj` >=3.5
+- `pyarrow` >=14.0
+- `numexpr` >=2.8
 
 Removed:
 
