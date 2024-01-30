@@ -31,3 +31,4 @@
 * Leonie Villiger
 * Kam Lam Yeung
 * Sarah Hülsen
+* Timo Schmid

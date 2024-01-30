@@ -65,7 +65,7 @@ class TestYearSets(unittest.TestCase):
 
             self.assertEqual(events_per_year.size, n_sample_years)
             self.assertAlmostEqual(np.mean(events_per_year), lam, places=1)
-        
+
         self.assertRaises(TypeError, yearsets.sample_from_poisson, n_sample_years, None)
         self.assertRaises(ValueError, yearsets.sample_from_poisson, n_sample_years, -1)
 

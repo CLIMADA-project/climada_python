@@ -52,7 +52,7 @@ def get_test_file(ds_name, file_format=None):
     ) if ds.version.strip('v') <= climada_version.strip('v')][-1]
     _, files = client.download_dataset(test_ds)
     [test_file] = [fil for fil in files if fil.name in [
-        dsf.file_name 
-        for dsf in test_ds.files 
+        dsf.file_name
+        for dsf in test_ds.files
         if file_format is None or dsf.file_format == file_format]]
     return test_file
