@@ -140,6 +140,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
         minimize_mock.assert_called_once()
         assert_bounds_in_call(bounds=[None, "a", (1, 2)])
 
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestScipyMinimizeOptimizer)

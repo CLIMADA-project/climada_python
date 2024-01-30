@@ -28,6 +28,7 @@ from climada.util.calibrate import Input, BayesianOptimizer
 
 from .test_base import hazard, exposure
 
+
 class TestBayesianOptimizer(unittest.TestCase):
     """Tests for the optimizer based on bayes_opt.BayesianOptimization"""
 

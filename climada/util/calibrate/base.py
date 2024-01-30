@@ -379,7 +379,7 @@ class Optimizer(ABC):
 
     input: Input
 
-    def _target_func(self, true: pd.DataFrame, predicted: pd.DataFrame) -> Number:
+    def _target_func(self, data: pd.DataFrame, predicted: pd.DataFrame) -> Number:
         """Target function for the optimizer
 
         The default version of this function simply returns the value of the cost
@@ -387,8 +387,8 @@ class Optimizer(ABC):
 
         Parameters
         ----------
-        true : pandas.DataFrame
-            The "true" data used for calibration. By default, this is
+        data : pandas.DataFrame
+            The reference data used for calibration. By default, this is
             :py:attr:`Input.data`.
         predicted : pandas.DataFrame
             The impact predicted by the data calibration after it has been transformed
@@ -398,7 +398,7 @@ class Optimizer(ABC):
         -------
         The value of the target function for the optimizer.
         """
-        return self.input.cost_func(true, predicted)
+        return self.input.cost_func(data, predicted)
 
     def _kwargs_to_impact_func_creator(self, *_, **kwargs) -> Dict[str, Any]:
         """Define how the parameters to :py:meth:`_opt_func` must be transformed
