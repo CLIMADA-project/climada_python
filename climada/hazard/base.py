@@ -463,12 +463,13 @@ class Hazard():
     ):
         """Read raster-like data from an xarray Dataset
 
-        This method reads data that can be interpreted using three coordinates for event,
-        latitude, and longitude. The data and the coordinates themselves may be organized
-        in arbitrary dimensions in the Dataset (e.g. three dimensions 'year', 'month',
-        'day' for the coordinate 'event'). The three coordinates to be read can be
-        specified via the ``coordinate_vars`` parameter. See Notes and Examples if you
-        want to load single-event data that does not contain an event dimension.
+        This method reads data that can be interpreted using three coordinates: event,
+        latitude, and longitude. The names of the coordinates to be read from the
+        dataset can be specified via the ``coordinate_vars`` parameter. The data and the
+        coordinates themselves may be organized in arbitrary dimensions (e.g. two
+        dimensions 'year' and 'altitude' for the coordinate 'event').  See Notes and
+        Examples if you want to load single-event data that does not contain an event
+        dimension.
 
         The only required data is the intensity. For all other data, this method can
         supply sensible default values. By default, this method will try to find these
@@ -513,12 +514,14 @@ class Hazard():
 
             Default values are:
 
-            * ``date``: The ``event`` coordinate interpreted as date
+            * ``date``: The ``event`` coordinate interpreted as date or ordinal, or
+              ones if that fails (which will issue a warning).
             * ``fraction``: ``None``, which results in a value of 1.0 everywhere, see
               :py:meth:`Hazard.__init__` for details.
             * ``hazard_type``: Empty string
             * ``frequency``: 1.0 for every event
-            * ``event_name``: String representation of the event time
+            * ``event_name``: String representation of the event date or empty strings
+              if that fails (which will issue a warning).
             * ``event_id``: Consecutive integers starting at 1 and increasing with time
         crs : str, optional
             Identifier for the coordinate reference system of the coordinates. Defaults
@@ -553,13 +556,16 @@ class Hazard():
           and Examples) before loading the Dataset as Hazard.
         * Single-valued data for variables ``frequency``. ``event_name``, and
           ``event_date`` will be broadcast to every event.
+        * The ``event`` coordinate may take arbitrary values. In case these values
+          cannot be interpreted as dates or date ordinals, the default values for
+          ``Hazard.date`` and ``Hazard.event_name`` are used, see the
+          ``data_vars``` parameter documentation above.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
         * The attributes ``Hazard.haz_type`` and ``Hazard.unit`` currently cannot be
           read from the Dataset. Use the method parameters to set these attributes.
         * This method does not read coordinate system metadata. Use the ``crs`` parameter
           to set a custom coordinate system identifier.
-        * This method **does not** read lazily. Single data arrays must fit into memory.
 
         Examples
         --------
@@ -802,14 +808,48 @@ class Hazard():
                 raise ValueError(f"'{array.name}' data must be larger than zero")
             return array.values
 
-        def date_to_ordinal_accessor(array: xr.DataArray) -> np.ndarray:
+        def date_to_ordinal_accessor(
+            array: xr.DataArray, strict: bool = True
+        ) -> np.ndarray:
             """Take a DataArray and transform it into ordinals"""
-            if np.issubdtype(array.dtype, np.integer):
-                # Assume that data is ordinals
-                return strict_positive_int_accessor(array)
+            try:
+                if np.issubdtype(array.dtype, np.integer):
+                    # Assume that data is ordinals
+                    return strict_positive_int_accessor(array)
 
-            # Try transforming to ordinals
-            return np.array(u_dt.datetime64_to_ordinal(array.values))
+                # Try transforming to ordinals
+                return np.array(u_dt.datetime64_to_ordinal(array.values))
+
+            # Handle access errors
+            except (ValueError, TypeError) as err:
+                if strict:
+                    raise err
+
+                LOGGER.warning(
+                    "Failed to read values of '%s' as dates or ordinals. Hazard.date "
+                    "will be ones only",
+                    array.name,
+                )
+                return np.ones(array.shape)
+
+        def year_month_day_accessor(
+            array: xr.DataArray, strict: bool = True
+        ) -> np.ndarray:
+            """Take an array and return am array of YYYY-MM-DD strings"""
+            try:
+                return array.dt.strftime("%Y-%m-%d").values
+
+            # Handle access errors
+            except (ValueError, TypeError) as err:
+                if strict:
+                    raise err
+
+                LOGGER.warning(
+                    "Failed to read values of '%s' as dates. Hazard.event_name will be "
+                    "empty strings",
+                    array.name,
+                )
+                return np.full(array.shape, "")
 
         def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
             """Return the array or repeat a single-valued array
@@ -840,8 +880,12 @@ class Hazard():
                     None,
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
-                    list(data[coords["event"]].values),
-                    np.array(u_dt.datetime64_to_ordinal(data[coords["event"]].values)),
+                    list(
+                        year_month_day_accessor(
+                            data[coords["event"]], strict=False
+                        ).flat
+                    ),
+                    date_to_ordinal_accessor(data[coords["event"]], strict=False),
                 ],
                 # The accessor for the data in the Dataset
                 accessor=[

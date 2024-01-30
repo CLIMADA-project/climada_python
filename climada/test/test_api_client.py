@@ -213,6 +213,16 @@ class TestClient(unittest.TestCase):
         self.assertIn(" can only query single countries. Download the data for multiple countries individually and concatenate ",
             str(cm.exception))
 
+    def test_get_dataset_file(self):
+        client = Client()
+        with tempfile.TemporaryDirectory() as temp_dir:
+            single_file = client.get_dataset_file(
+                name='test_imp_mat', status='test_dataset',  # get_dataset_info arguments
+                target_dir=Path(temp_dir), organize_path=False,  # download_dataset arguments
+            )
+            self.assertTrue(single_file.is_file())
+            self.assertEqual(list(Path(temp_dir).iterdir()), [single_file])
+
     def test_multi_filter(self):
         client = Client()
         testds = client.list_dataset_infos(data_type='storm_europe')
@@ -243,12 +253,12 @@ class TestClient(unittest.TestCase):
 
     def test_purge_cache(self):
         client = Client()
-        
+
         active_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v2")
         outdated_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v1")
         test_ds = client.get_dataset_info(data_type="storm_europe", name="test_storm_europe_icon_2021012800", version="v1", status="test_dataset")
         expired_ds = client.get_dataset_info(data_type="tropical_cyclone", name="rename_files2", version="v1", status="expired")
-        
+
         with tempfile.TemporaryDirectory() as temp_dir:
             for ds in [active_ds, outdated_ds, test_ds, expired_ds]:
                 client.download_dataset(dataset=ds, target_dir=Path(temp_dir))
