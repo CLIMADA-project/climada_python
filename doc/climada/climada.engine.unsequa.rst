@@ -42,7 +42,7 @@ climada\.engine\.unsequa\.unc\_output module
     :show-inheritance:
 
 climada\.engine\.unsequa\.calc\_delta\_climate module
----------------------------------------------
+-----------------------------------------------------
 
 .. automodule:: climada.engine.unsequa.calc_delta_climate
     :members:

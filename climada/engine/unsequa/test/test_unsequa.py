@@ -367,7 +367,7 @@ class TestCalcDelta(unittest.TestCase):
             )
         self.assertTrue(unc_data.eai_exp_unc_df.empty)
         self.assertTrue(unc_data.at_event_unc_df.empty)
-        
+
     def test_calc_sensitivity_pass(self):
         """Test compute sensitivity default for CalcDeltaImpact input"""
 
@@ -378,7 +378,7 @@ class TestCalcDelta(unittest.TestCase):
         unc_calc = CalcDeltaImpact(exp_unc, impf_dem(), haz, exp_dem(), impf_unc, haz2)
         unc_data = unc_calc.make_sample(N=4)
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
-    
+
         unc_data = unc_calc.sensitivity(
             unc_data,
             sensitivity_kwargs = {'calc_second_order': True}

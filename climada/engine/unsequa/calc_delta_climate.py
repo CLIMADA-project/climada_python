@@ -114,12 +114,12 @@ class CalcDeltaImpact(Calc):
 
         Parameters
         ----------
-        exp_initial_input_var : climada.engine.uncertainty.input_var.InputVar 
+        exp_initial_input_var : climada.engine.uncertainty.input_var.InputVar
             or climada.entity.Exposure
             Exposure uncertainty variable or Exposure of initial state
         impf_initital_input_var : climada.engine.uncertainty.input_var.InputVar
             or climada.entity.ImpactFuncSet
-            Impact function set uncertainty variable or Impact function set of 
+            Impact function set uncertainty variable or Impact function set of
             initial state
         haz_initial_input_var : climada.engine.uncertainty.input_var.InputVar
             or climada.hazard.Hazard

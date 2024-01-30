@@ -1227,8 +1227,8 @@ class UncDeltaImpactOutput(UncOutput):
         self.at_event_final_unc_df = at_event_final_unc_df
         self.at_event_final_sens_df = None
         self.coord_df = coord_df
-        
-        
+
+
 class UncCostBenefitOutput(UncOutput):
     """Extension of UncOutput specific for CalcCostBenefit, returned by the uncertainty() method.
     """
