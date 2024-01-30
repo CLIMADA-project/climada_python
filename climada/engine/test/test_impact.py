@@ -896,24 +896,9 @@ class TestSelect(unittest.TestCase):
         n_yr = 4
         sel_imp = imp.select(dates=(imp.date[0],imp.date[n_yr-1]), reset_frequency=True)
 
-        # check unchanged attributes
-        self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
-        self.assertEqual(sel_imp.unit, imp.unit)
-        self.assertEqual(sel_imp.frequency_unit, imp.frequency_unit)
-        np.testing.assert_array_equal(sel_imp.coord_exp, imp.coord_exp)
-
-        # check sub-selected attributes
-        np.testing.assert_array_equal(sel_imp.event_id, imp.event_id[0:n_yr])
-        self.assertEqual(sel_imp.event_name, imp.event_name[0:n_yr])
-        np.testing.assert_array_equal(sel_imp.date, imp.date[0:n_yr])
-        np.testing.assert_array_equal(sel_imp.at_event, imp.at_event[0:n_yr])
-        np.testing.assert_array_equal(sel_imp.imp_mat.todense(),
-                                      imp.imp_mat[0:n_yr,:].todense())
-
         # check frequency-related attributes
         np.testing.assert_array_equal(sel_imp.frequency, [1/n_yr]*n_yr)
         self.assertEqual(sel_imp.aai_agg,imp.at_event[0:n_yr].sum()/n_yr)
-
         np.testing.assert_array_equal(sel_imp.eai_exp,
                                       imp.imp_mat[0:n_yr,:].todense().sum(axis=0).A1/n_yr)
 

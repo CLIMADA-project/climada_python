@@ -1475,9 +1475,14 @@ class Impact():
 
         return imp_fit
 
-    def select(self,
-               event_ids=None, event_names=None, dates=None,
-               coord_exp=None,reset_frequency=False):
+    def select(
+        self,
+        event_ids=None,
+        event_names=None,
+        dates=None,
+        coord_exp=None,
+        reset_frequency=False
+    ):
         """
         Select a subset of events and/or exposure points from the impact.
         If multiple input variables are not None, it returns all the impacts
@@ -1511,7 +1516,7 @@ class Impact():
             The default is None.
         reset_frequency : bool, optional
             Change frequency of events proportional to difference between first and last
-            year (old and new). Default: False.
+            year (old and new). Assumes annual frequency values. Default: False.
 
         Raises
         ------
