@@ -373,9 +373,9 @@ class Hazard():
             )
             if files_fraction is not None:
                 fraction = _values_from_raster_files(
-                    files_fraction, meta=meta, band=band, src_crs=src_crs, window=window, geometry=geometry,
-                    dst_crs=dst_crs, transform=transform, width=width, height=height,
-                    resampling=resampling)
+                    files_fraction, meta=meta, band=band, src_crs=src_crs, window=window,
+                    geometry=geometry, dst_crs=dst_crs, transform=transform, width=width,
+                    height=height, resampling=resampling)
 
         if files_fraction is None:
             fraction = intensity.copy()

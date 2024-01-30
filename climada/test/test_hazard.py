@@ -379,7 +379,7 @@ class TestBase(unittest.TestCase):
             self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
 
     def test_read_raster_pass(self):
-        """Test raster_to_vector method"""
+        """Test from_raster method"""
 
         haz_fl = Hazard.from_raster([HAZ_DEMO_FL], haz_type="FL")
         inten_orig = haz_fl.intensity
