@@ -35,20 +35,20 @@ import numpy as np
 import pandas as pd
 from pathos.pools import ProcessPool as Pool
 import rasterio
-from rasterio.warp import Resampling
+import rasterio.features
+import rasterio.warp
 import sparse as sp
 from scipy import sparse
 import xarray as xr
 
-from climada.hazard.centroids.centr import Centroids
-import climada.util.plot as u_plot
-import climada.util.checker as u_check
-import climada.util.dates_times as u_dt
 from climada import CONFIG
-import climada.util.hdf5_handler as u_hdf5
+from climada.hazard.centroids.centr import Centroids
+import climada.util.checker as u_check
+import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
-from climada.util.constants import ONE_LAT_KM, DEF_CRS, DEF_FREQ_UNIT
-from climada.util.coordinates import NEAREST_NEIGHBOR_THRESHOLD
+import climada.util.dates_times as u_dt
+import climada.util.hdf5_handler as u_hdf5
+import climada.util.plot as u_plot
 
 LOGGER = logging.getLogger(__name__)
 
@@ -172,7 +172,7 @@ class Hazard():
                  centroids: Optional[Centroids] = None,
                  event_id: Optional[np.ndarray] = None,
                  frequency: Optional[np.ndarray] = None,
-                 frequency_unit: str = DEF_FREQ_UNIT,
+                 frequency_unit: str = u_const.DEF_FREQ_UNIT,
                  event_name: Optional[List[str]] = None,
                  date: Optional[np.ndarray] = None,
                  orig: Optional[np.ndarray] = None,
@@ -258,7 +258,7 @@ class Hazard():
         Any
         """
         return {
-            'frequency_unit': DEF_FREQ_UNIT,
+            'frequency_unit': u_const.DEF_FREQ_UNIT,
         }.get(attribute)
 
     def check(self):
@@ -274,7 +274,7 @@ class Hazard():
     def from_raster(cls, files_intensity, files_fraction=None, attrs=None,
                     band=None, haz_type=None, pool=None, src_crs=None, window=None,
                     geometry=None, dst_crs=None, transform=None, width=None,
-                    height=None, resampling=Resampling.nearest):
+                    height=None, resampling=rasterio.warp.Resampling.nearest):
         """Create Hazard with intensity and fraction values from raster files
 
         If raster files are masked, the masked values are set to 0.
@@ -449,7 +449,7 @@ class Hazard():
         intensity: str = "intensity",
         coordinate_vars: Optional[Dict[str, str]] = None,
         data_vars: Optional[Dict[str, str]] = None,
-        crs: str = DEF_CRS,
+        crs: str = u_const.DEF_CRS,
         rechunk: bool = False,
     ):
         """Read raster-like data from an xarray Dataset
@@ -1339,7 +1339,7 @@ class Hazard():
                 LOGGER.warning("Resetting the frequency is based on the calendar year of given"
                     " dates but the frequency unit here is %s. Consider setting the frequency"
                     " manually for the selection or changing the frequency unit to %s.",
-                    self.frequency_unit, DEF_FREQ_UNIT)
+                    self.frequency_unit, u_const.DEF_FREQ_UNIT)
             year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
                                    dt.datetime.fromordinal(self.date.min()).year) + 1
             year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year -
@@ -1349,7 +1349,7 @@ class Hazard():
         haz.sanitize_event_ids()
         return haz
 
-    def select_tight(self, buffer=NEAREST_NEIGHBOR_THRESHOLD/ONE_LAT_KM,
+    def select_tight(self, buffer=u_coord.NEAREST_NEIGHBOR_THRESHOLD / u_const.ONE_LAT_KM,
                      val='intensity'):
         """
         Reduce hazard to those centroids spanning a minimal box which
@@ -1678,7 +1678,7 @@ class Hazard():
         if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
             LOGGER.warning("setting the frequency on a hazard object who's frequency unit"
                 "is %s and not %s will most likely lead to unexpected results",
-                self.frequency_unit, DEF_FREQ_UNIT)
+                self.frequency_unit, u_const.DEF_FREQ_UNIT)
         if not yearrange:
             delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
                          dt.datetime.fromordinal(int(np.min(self.date))).year + 1
@@ -2317,7 +2317,7 @@ class Hazard():
         haz_concat.append(*haz_list)
         return haz_concat
 
-    def change_centroids(self, centroids, threshold=NEAREST_NEIGHBOR_THRESHOLD):
+    def change_centroids(self, centroids, threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
         """
         Assign (new) centroids to hazard.
 
@@ -2495,7 +2495,7 @@ class Hazard():
 def _values_from_raster_files(
     file_names, meta, band=None, src_crs=None, window=None,
     geometry=None, dst_crs=None, transform=None, width=None,
-    height=None, resampling=Resampling.nearest,
+    height=None, resampling=rasterio.warp.Resampling.nearest,
 ):
     """Read raster of bands and set 0 values to the masked ones.
 
