@@ -1475,9 +1475,14 @@ class Impact():
 
         return imp_fit
 
-    def select(self,
-               event_ids=None, event_names=None, dates=None,
-               coord_exp=None):
+    def select(
+        self,
+        event_ids=None,
+        event_names=None,
+        dates=None,
+        coord_exp=None,
+        reset_frequency=False
+    ):
         """
         Select a subset of events and/or exposure points from the impact.
         If multiple input variables are not None, it returns all the impacts
@@ -1509,6 +1514,9 @@ class Impact():
         coord_exp : np.array, optional
             Selection of exposures coordinates [lat, lon] (in degrees)
             The default is None.
+        reset_frequency : bool, optional
+            Change frequency of events proportional to difference between first and last
+            year (old and new). Assumes annual frequency values. Default: False.
 
         Raises
         ------
@@ -1579,6 +1587,19 @@ class Impact():
             imp.tot_value = None
             LOGGER.info("The total value cannot be re-computed for a "
                         "subset of exposures and is set to None.")
+
+        # reset frequency if date span has changed (optional):
+        if reset_frequency:
+            if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
+                LOGGER.warning("Resetting the frequency is based on the calendar year of given"
+                    " dates but the frequency unit here is %s. Consider setting the frequency"
+                    " manually for the selection or changing the frequency unit to %s.",
+                    self.frequency_unit, DEF_FREQ_UNIT)
+            year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
+                                   dt.datetime.fromordinal(self.date.min()).year) + 1
+            year_span_new = np.abs(dt.datetime.fromordinal(imp.date.max()).year -
+                                   dt.datetime.fromordinal(imp.date.min()).year) + 1
+            imp.frequency = imp.frequency * year_span_old / year_span_new
 
         # cast frequency vector into 2d array for sparse matrix multiplication
         freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
