@@ -20,21 +20,25 @@ Cross-calibration on top of a single calibration module
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar, field
-from typing import Optional, List, Mapping, Any, Tuple, Union, Sequence, Dict
-from copy import copy, deepcopy
-from pathlib import Path
+from typing import List, Any, Tuple, Sequence, Dict, Callable
+from copy import copy
 from itertools import repeat
+import logging
 
 import numpy as np
 from numpy.random import default_rng
 import pandas as pd
 from pathos.multiprocessing import ProcessPool
 from tqdm import tqdm
+import matplotlib.pyplot as plt
+import matplotlib.ticker as mticker
 
 from ...engine.unsequa.input_var import InputVar
-from .base import Optimizer, Output, Input
+from ...entity.impact_funcs import ImpactFuncSet
+from ..coordinates import country_to_iso
+from .base import Output, Input
 
-# TODO: derived classes for average and tragedy
+LOGGER = logging.getLogger(__name__)
 
 
 def sample_data(data: pd.DataFrame, sample: List[Tuple[int, int]]):
@@ -61,8 +65,8 @@ def event_info_from_input(input: Input) -> Dict[str, Any]:
 
     # Return data
     return {
-        "event_id": event_ids,
-        "region_id": region_ids,
+        "event_id": event_ids.to_numpy(),
+        "region_id": region_ids.to_numpy(),
         "event_name": event_names,
     }
 
@@ -109,21 +113,134 @@ class EnsembleOptimizerOutput:
 
         return cls(data=data)
 
+    def to_hdf(self, filepath):
+        """Store data to HDF5"""
+        self.data.to_hdf(filepath, key="data")
+
+    @classmethod
+    def from_hdf(cls, filepath):
+        """Load data from HDF"""
+        return cls(data=pd.read_hdf(filepath, key="data"))
+
     @classmethod
     def from_csv(cls, filepath):
         """Load data from CSV"""
+        LOGGER.warning(
+            "Do not use CSV for storage, because it does not preserve data types. "
+            "Use HDF instead."
+        )
         return cls(data=pd.read_csv(filepath, header=[0, 1]))
 
     def to_csv(self, filepath):
         """Store data as CSV"""
+        LOGGER.warning(
+            "Do not use CSV for storage, because it does not preserve data types. "
+            "Use HDF instead."
+        )
         self.data.to_csv(filepath, index=None)
 
-    def to_input_var(self, impact_func_creator, **impfset_kwargs):
-        """Build Unsequa InputVar from the parameters stored in this object"""
-        impf_set_list = [
+    def _to_impf_sets(self, impact_func_creator) -> List[ImpactFuncSet]:
+        """Return a list of impact functions created from the stored parameters"""
+        return [
             impact_func_creator(**row["Parameters"]) for _, row in self.data.iterrows()
         ]
-        return InputVar.impfset(impf_set_list, **impfset_kwargs)
+
+    def to_input_var(
+        self, impact_func_creator: Callable[..., ImpactFuncSet], **impfset_kwargs
+    ) -> InputVar:
+        """Build Unsequa InputVar from the parameters stored in this object"""
+        return InputVar.impfset(
+            self._to_impf_sets(impact_func_creator), **impfset_kwargs
+        )
+
+    def plot(
+        self, impact_func_creator: Callable[..., ImpactFuncSet], **impf_set_plot_kwargs
+    ):
+        """Plot all impact functions into the same plot"""
+        impf_set_list = self._to_impf_sets(impact_func_creator)
+
+        # Create a single plot for the overall layout, then continue plotting into it
+        axes = impf_set_list[0].plot(**impf_set_plot_kwargs)
+
+        # 'axes' might be array or single instance
+        ax_first = axes
+        if isinstance(axes, np.ndarray):
+            ax_first = axes.flat[0]
+
+        # Legend is always the same
+        handles, labels = ax_first.get_legend_handles_labels()
+
+        # Plot remaining impact function sets
+        for impf_set in impf_set_list[1:]:
+            impf_set.plot(axis=axes, **impf_set_plot_kwargs)
+
+        # Adjust legends
+        for ax in np.asarray([axes]).flat:
+            ax.legend(handles, labels)
+
+        return axes
+
+    def plot_shiny(
+        self,
+        impact_func_creator: Callable[..., ImpactFuncSet],
+        haz_type,
+        impf_id,
+    ):
+        """Plot all impact functions with appropriate color coding and event data"""
+        # Store data to plot
+        data_plt = []
+        for _, row in self.data.iterrows():
+            impf = impact_func_creator(**row["Parameters"]).get_func(
+                haz_type=haz_type, fun_id=impf_id
+            )
+            region_id = country_to_iso(row[("Event", "region_id")])
+            event_name = row[("Event", "event_name")]
+            event_id = row[("Event", "event_id")]
+
+            label = f"{event_name}, {region_id}, {event_id}"
+            if len(event_name) > 1 or len(event_id) > 1:
+                label = label.replace("], [", "]\n[")  # Multiline label
+
+            data_plt.append(
+                {
+                    "intensity": impf.intensity,
+                    "mdr": impf.paa * impf.mdd,
+                    "label": label,
+                }
+            )
+
+        # Create plot
+        _, ax = plt.subplots()
+        colors = plt.get_cmap("turbo")(np.linspace(0, 1, self.data.shape[0]))
+
+        # Sort data by final MDR value, then plot
+        data_plt = sorted(data_plt, key=lambda x: x["mdr"][-1], reverse=True)
+        for idx, data_dict in enumerate(data_plt):
+            ax.plot(
+                data_dict["intensity"],
+                data_dict["mdr"],
+                label=data_dict["label"],
+                color=colors[idx],
+            )
+
+        # Cosmetics
+        ax.set_xlabel(f"Intensity [{impf.intensity_unit}]")
+        ax.set_ylabel("Impact")
+        ax.set_title(f"{haz_type} {impf_id}")
+        ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+        ax.set_ylim(0, 1)
+        ax.legend(
+            bbox_to_anchor=(1.05, 1),
+            borderaxespad=0,
+            borderpad=0,
+            loc="upper left",
+            title="Event Name, Country, Event ID",
+            frameon=False,
+            fontsize="xx-small",
+            title_fontsize="x-small",
+        )
+
+        return ax
 
 
 @dataclass
@@ -159,47 +276,39 @@ class EnsembleOptimizer(ABC):
             outputs = self._iterate_parallel(processes, **optimizer_run_kwargs)
         return EnsembleOptimizerOutput.from_outputs(outputs)
 
+    def _inputs(self):
+        """Generator for input objects"""
+        for sample in self.samples:
+            yield self.input_from_sample(sample)
+
+    def _opt_init_kwargs(self):
+        """Generator for optimizer initialization keyword arguments"""
+        for idx in range(len(self.samples)):
+            yield self._update_init_kwargs(self.optimizer_init_kwargs, idx)
+
     def _iterate_sequential(
         self, **optimizer_run_kwargs
     ) -> List[SingleEnsembleOptimizerOutput]:
         """Iterate over all samples sequentially"""
-        outputs = []
-        for idx, sample in enumerate(tqdm(self.samples)):
-            input = self.input_from_sample(sample)
-
-            # Run optimizer
-            opt = self.optimizer_type(
-                input, **self._update_init_kwargs(self.optimizer_init_kwargs, idx)
+        return [
+            optimize(self.optimizer_type, input, init_kwargs, optimizer_run_kwargs)
+            for input, init_kwargs in tqdm(
+                zip(self._inputs(), self._opt_init_kwargs()), total=len(self.samples)
             )
-            out = opt.run(**optimizer_run_kwargs)
-            out = SingleEnsembleOptimizerOutput(
-                params=out.params,
-                target=out.target,
-                event_info=event_info_from_input(input),
-            )
-
-            outputs.append(out)
-
-        return outputs
+        ]
 
     def _iterate_parallel(
         self, processes, **optimizer_run_kwargs
     ) -> List[SingleEnsembleOptimizerOutput]:
         """Iterate over all samples in parallel"""
-        inputs = (self.input_from_sample(sample) for sample in self.samples)
-        opt_init_kwargs = (
-            self._update_init_kwargs(self.optimizer_init_kwargs, idx)
-            for idx in range(len(self.samples))
-        )
-
         with ProcessPool(nodes=processes) as pool:
             return list(
                 tqdm(
                     pool.imap(
                         optimize,
                         repeat(self.optimizer_type),
-                        inputs,
-                        opt_init_kwargs,
+                        self._inputs(),
+                        self._opt_init_kwargs(),
                         repeat(optimizer_run_kwargs),
                         # chunksize=processes,
                     ),
