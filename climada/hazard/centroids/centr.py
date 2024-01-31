@@ -1015,13 +1015,11 @@ class Centroids():
         -------
         df : DataFrame
         """
-
         df = pd.DataFrame(self.gdf)
         df['lon'] = self.gdf['geometry'].x
         df['lat'] = self.gdf['geometry'].y
+        df['crs'] = CRS.from_user_input(self.crs).to_wkt()
         df = df.drop(['geometry'], axis=1)
-        crs = CRS.from_user_input(self.crs).to_wkt()
-        df['crs'] = crs
         return df
 
     def _ne_crs_geom(self):
