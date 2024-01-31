@@ -1775,7 +1775,7 @@ class Hazard():
             str_dt = h5py.special_dtype(vlen=str)
             for (var_name, var_val) in self.__dict__.items():
                 if var_name == 'centroids':
-                    # Centroids have their own write_hdf2 method,
+                    # Centroids have their own write_hdf5 method,
                     # which is invoked at the end of this method (s.b.)
                     pass
                 elif isinstance(var_val, sparse.csr_matrix):

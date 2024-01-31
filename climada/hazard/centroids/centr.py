@@ -966,8 +966,8 @@ class Centroids():
 
         return cls(lat=df['lat'], lon=df['lon'], **extra_values, crs=crs)
 
-    @classmethod
-    def _gdf_from_legacy_hdf5(cls, data):
+    @staticmethod
+    def _gdf_from_legacy_hdf5(data):
         crs = DEF_CRS
         if data.get('crs'):
             crs = u_coord.to_crs_user_input(data.get('crs')[0])
