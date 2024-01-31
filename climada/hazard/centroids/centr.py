@@ -422,8 +422,8 @@ class Centroids():
             in the region_id property. Default: None
         extent : tuple, optional
             The geographical extent (min_lon, max_lon, min_lat, max_lat) to restrict to, including
-            the boundary. If the value for min_lon is greater than lon_max, the extent is
-            interpreted to cross the antimeridian ([lon_max, 180] and [-180, lon_min]).
+            the boundary. If the value for min_lon is greater than max_lon, the extent is
+            interpreted to cross the antimeridian ([max_lon, 180] and [-180, min_lon]).
             Default: None
         sel_cen : np.ndarray of int or bool, optional
             Boolean mask, or list of indices to restrict to. Default: None
@@ -568,7 +568,6 @@ class Centroids():
                 raise NotImplementedError(
                     'The on land variables can only be automatically assigned using natural earth.'
                 )
-        return None
 
     def get_pixel_shapes(self, res=None, **kwargs):
         """Create a GeoSeries of the quadratic pixel shapes at the centroid locations
@@ -719,10 +718,9 @@ class Centroids():
         }
         return meta
 
-
-    '''
-    I/O methods
-    '''
+    ##
+    # I/O methods
+    ##
 
     @classmethod
     def from_raster_file(cls, file_name, src_crs=None, window=None, geometry=None,
@@ -945,9 +943,10 @@ class Centroids():
 
         return cls.from_geodataframe(gdf)
 
-    '''
-    Private methods
-    '''
+    ##
+    # Private methods
+    ##
+
     @classmethod
     def _from_dataframe(cls, df):
         if 'crs' in df.columns:
