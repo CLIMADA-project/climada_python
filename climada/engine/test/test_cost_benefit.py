@@ -35,7 +35,7 @@ from climada.util.api_client import Client
 from climada.test import get_test_file
 
 
-HAZ_TEST_MAT = get_test_file('atl_prob_no_name')
+HAZ_TEST_MAT = get_test_file('atl_prob_no_name', file_format='matlab')
 ENT_TEST_MAT = get_test_file('demo_today', file_format='MAT-file')
 
 
