@@ -225,7 +225,8 @@ class Hazard():
         """
         self.haz_type = haz_type
         self.units = units
-        self.centroids = centroids if centroids is not None else Centroids(lat=np.empty(0), lon=np.empty(0))
+        self.centroids = centroids if centroids is not None else Centroids(
+            lat=np.empty(0), lon=np.empty(0))
         # following values are defined for each event
         self.event_id = event_id if event_id is not None else np.array([], int)
         self.frequency = frequency if frequency is not None else np.array(
@@ -1224,7 +1225,8 @@ class Hazard():
         if haz_type is not None:
             hazard_kwargs["haz_type"] = haz_type
         try:
-            centroids = Centroids._legacy_from_excel(file_name, var_names=var_names['col_centroids'])
+            centroids = Centroids._legacy_from_excel(
+                file_name, var_names=var_names['col_centroids'])
             hazard_kwargs.update(cls._read_att_excel(file_name, var_names, centroids))
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
@@ -1839,7 +1841,7 @@ class Hazard():
                     continue
                 if var_name == 'centroids':
                     continue
-                elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                     hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):
                     hf_csr = hf_data.get(var_name)
