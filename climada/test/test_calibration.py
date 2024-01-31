@@ -32,7 +32,7 @@ import climada.hazard.test as hazard_test
 from climada.test import get_test_file
 
 
-HAZ_TEST_MAT = get_test_file('atl_prob_no_name', file_format='matlab')
+HAZ_TEST_TC = get_test_file('test_tc_florida', file_format='hdf5')
 
 DATA_FOLDER = CONFIG.test_data.dir()
 
@@ -47,7 +47,7 @@ class TestCalib(unittest.TestCase):
         ent.check()
 
         # Read default hazard file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
         # get impact function from set
         imp_func = ent.impact_funcs.get_func(hazard.haz_type,
