@@ -244,7 +244,7 @@ On macOS and on Linux it is pre-installed. On Windows, it can easily be installe
 
    mamba install -n climada_env make
 
-Instructions for running the test scripts can be found in the :doc:`Testing and CI Guide <Guide_Continuous_Integration_and_Testing>`.
+Instructions for running the test scripts can be found in the :doc:`Testing Guide <Guide_Testing>`.
 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -277,12 +277,6 @@ To install CLIMADA Petals, we assume you have already installed CLIMADA Core wit
 
       python -m pip install -e ./
 
-------------------------------
-Apps for Programming in Python
-------------------------------
-
-To work with CLIMADA, you will need an application that supports Jupyter Notebooks.
-There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend `JupyterLab <https://jupyterlab.readthedocs.io/en/stable/>`_, `Visual Studio Code <https://code.visualstudio.com/>`_ or `Spyder <https://www.spyder-ide.org/>`_.
 
 JupyterLab
 ^^^^^^^^^^
