@@ -112,10 +112,10 @@ class Centroids():
         )
 
         if isinstance(region_id, str):
-            LOGGER.info(f'Setting region id to {region_id} level.')
+            LOGGER.info('Setting region id to %s level.', region_id)
             self.set_region_id(level=region_id, overwrite=True)
         if isinstance(on_land, str):
-            LOGGER.info(f'Setting on land from {on_land} source.')
+            LOGGER.info('Setting on land from %s source.', on_land)
             self.set_on_land(source=on_land, overwrite=True)
 
     @property
@@ -543,7 +543,6 @@ class Centroids():
                 raise NotImplementedError(
                     'The region id can only be assigned for countries so far'
                 )
-        return None
 
     def set_on_land(self, source='natural_earth', overwrite=False):
         """Set on_land attribute for every pixel or point.
@@ -684,9 +683,8 @@ class Centroids():
         if precomputed:
             return u_coord.dist_to_coast_nasa(
                 ne_geom.y.values, ne_geom.x.values, highres=True, signed=signed)
-        else:
-            LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
-            return u_coord.dist_to_coast(ne_geom, signed=signed)
+        LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
+        return u_coord.dist_to_coast(ne_geom, signed=signed)
 
     def get_meta(self, resolution=None):
         """Returns a meta raster based on the centroids bounds.
