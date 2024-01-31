@@ -22,7 +22,7 @@ Define Centroids class.
 import copy
 import logging
 from pathlib import Path
-from typing import Union, Literal
+from typing import Any, Literal, Union
 import warnings
 
 import h5py
@@ -76,7 +76,7 @@ class Centroids():
         *,
         lat: Union[np.ndarray, list[float]],
         lon: Union[np.ndarray, list[float]],
-        crs: any = DEF_CRS,
+        crs: Any = DEF_CRS,
         region_id: Union[Literal["country"], None, np.ndarray, list[float]] = None,
         on_land: Union[Literal["natural_earth"], None, np.ndarray, list[bool]] = None,
         **kwargs,
@@ -697,7 +697,7 @@ class Centroids():
 
         Parameters
         ----------
-        resolution : int, optional
+        resolution : float, optional
             Resolution of the raster. If not given, the resolution is estimated from the centroids
             by assuming that they form a regular raster. Default: None
 
@@ -966,7 +966,8 @@ class Centroids():
 
         return cls(lat=df['lat'], lon=df['lon'], **extra_values, crs=crs)
 
-    def _gdf_from_legacy_hdf5(data):
+    @classmethod
+    def _gdf_from_legacy_hdf5(cls, data):
         crs = DEF_CRS
         if data.get('crs'):
             crs = u_coord.to_crs_user_input(data.get('crs')[0])
