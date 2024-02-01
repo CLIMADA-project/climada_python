@@ -980,7 +980,7 @@ def assign_coordinates(*args, **kwargs):
     return match_coordinates(*args, **kwargs)
 
 def match_coordinates(coords, coords_to_assign, distance="euclidean",
-                       threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
+                      threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
     If there is no exact match for some entry, an attempt is made to assign the geographically

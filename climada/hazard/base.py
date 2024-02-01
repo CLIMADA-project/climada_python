@@ -1739,7 +1739,7 @@ class Hazard():
         meta.update(driver='GTiff', dtype=rasterio.float32, count=self.size)
         res = meta["transform"][0]  # resolution from lon coordinates
 
-        if meta['height'] * meta['width'] == self.centroids.shape[0]:
+        if meta['height'] * meta['width'] == self.centroids.size:
             # centroids already in raster format
             u_coord.write_raster(file_name, var_to_write.toarray(), meta)
         else:
