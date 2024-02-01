@@ -239,8 +239,8 @@ class TestRaster(unittest.TestCase):
         """Test set_region_id"""
         centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
         dist_coast = centr_ras.get_dist_coast()
-        self.assertTrue(abs(dist_coast[0] - 117000) < 1000)
-        self.assertTrue(abs(dist_coast[-1] - 104000) < 1000)
+        self.assertLess(abs(dist_coast[0] - 117000), 1000)
+        self.assertLess(abs(dist_coast[-1] - 104000), 1000)
 
     def test_on_land(self):
         """Test set_on_land"""
