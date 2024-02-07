@@ -59,10 +59,10 @@ class TestCalib(unittest.TestCase):
         # create input frame
         df_in = pd.DataFrame.from_dict({'v_threshold': [25.7],
                                         'other_param': [2],
-                                        'hazard': [HAZ_TEST_MAT]})
+                                        'hazard': [HAZ_TEST_TC]})
         df_in_yearly = pd.DataFrame.from_dict({'v_threshold': [25.7],
                                                'other_param': [2],
-                                               'hazard': [HAZ_TEST_MAT]})
+                                               'hazard': [HAZ_TEST_TC]})
 
         # Compute the impact over the whole exposures
         df_out = calib_instance(hazard, ent.exposures, imp_func, df_in)
