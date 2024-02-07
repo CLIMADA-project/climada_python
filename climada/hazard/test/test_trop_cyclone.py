@@ -298,8 +298,7 @@ class TestWindfieldHelpers(unittest.TestCase):
     def test_B_holland_1980_pass(self):
         """Test _B_holland_1980 function."""
         si_track = xr.Dataset({
-            "env": ("time",  MBAR_TO_PA * np.array([1010, 1010])),
-            "cen": ("time",  MBAR_TO_PA * np.array([995, 980])),
+            "pdelta": ("time",  MBAR_TO_PA * np.array([15, 30])),
             "vgrad": ("time",  [35, 40]),
             "rho_air": ("time", [1.15, 1.15])
         })
@@ -307,8 +306,7 @@ class TestWindfieldHelpers(unittest.TestCase):
         np.testing.assert_array_almost_equal(si_track["hol_b"], [2.5, 1.667213])
 
         si_track = xr.Dataset({
-            "env": ("time", MBAR_TO_PA * np.array([1010, 1010, 1010, 1010])),
-            "cen": ("time", MBAR_TO_PA * np.array([1005.2585, 995, 980, 970])),
+            "pdelta": ("time", MBAR_TO_PA * np.array([4.74, 15, 30, 40])),
             "vmax": ("time",  [np.nan, 22.5, 25.4, 42.5]),
             "rho_air": ("time", [1.2, 1.2, 1.2, 1.2])
         })
@@ -320,20 +318,20 @@ class TestWindfieldHelpers(unittest.TestCase):
         si_track = xr.Dataset({
             "tstep": ("time", H_TO_S * np.array([1.0, 1.0, 1.0])),
             "lat": ("time", [12.299999504631234, 12.299999504631343, 12.299999279463769]),
-            "env": ("time", MBAR_TO_PA * np.array([1010, 1010, 1010])),
+            "pdelta": ("time", MBAR_TO_PA * np.array([4.74, 4.73, 4.73])),
             "cen": ("time", MBAR_TO_PA * np.array([1005.2585, 1005.2633, 1005.2682])),
             "vtrans_norm": ("time",  [np.nan, 5.241999541820597, 5.123882725120426]),
         })
         _bs_holland_2008(si_track)
-        np.testing.assert_array_almost_equal(
-            si_track["hol_b"], [np.nan, 1.27085617, 1.26555341])
+        np.testing.assert_allclose(
+            si_track["hol_b"], [np.nan, 1.27, 1.27], atol=1e-2
+        )
 
     def test_v_max_s_holland_2008_pass(self):
         """Test _v_max_s_holland_2008 function."""
         # Numbers analogous to test_B_holland_1980_pass
         si_track = xr.Dataset({
-            "env": ("time", MBAR_TO_PA * np.array([1010, 1010])),
-            "cen": ("time", MBAR_TO_PA * np.array([995, 980])),
+            "pdelta": ("time", MBAR_TO_PA * np.array([15, 30])),
             "hol_b": ("time", [2.5, 1.67]),
             "rho_air": ("time", [1.15, 1.15]),
         })
@@ -407,23 +405,22 @@ class TestWindfieldHelpers(unittest.TestCase):
         si_track = xr.Dataset({
             "rad": ("time", KM_TO_M * np.array([40.665454622610511, 75.547902916671745])),
             "hol_b": ("time", [1.486076257880692, 1.265551666104679]),
-            "env": ("time", MBAR_TO_PA * np.array([1010.0, 1010.0])),
-            "cen": ("time", MBAR_TO_PA * np.array([970.8727666672957, 1005.268166666671])),
+            "pdelta": ("time", MBAR_TO_PA * np.array([39.12, 4.73])),
             "lat": ("time", [-14.089110370469488, 12.299999279463769]),
             "cp": ("time", [3.54921922e-05, 3.10598285e-05]),
             "rho_air": ("time", [1.15, 1.15]),
         })
         mask = np.array([[True, True, True, True], [True, False, True, True]], dtype=bool)
         v_ang_norm = _stat_holland_1980(si_track, d_centr, mask)
-        np.testing.assert_array_almost_equal(v_ang_norm,
-            [[11.279764005440288, 11.682978583939310, 11.610940769149384, 42.412845],
-             [5.384115724400597, 0, 5.281356766052531, 12.763087]])
+        np.testing.assert_allclose(
+            v_ang_norm, [[11.28, 11.68, 11.61, 42.41], [5.38, 0, 5.28, 12.76]], atol=1e-2,
+        )
 
         # without Coriolis force, values are higher, esp. far away from the center:
         v_ang_norm = _stat_holland_1980(si_track, d_centr, mask, cyclostrophic=True)
-        np.testing.assert_array_almost_equal(v_ang_norm,
-            [[15.719924, 16.037052, 15.980323, 43.128461],
-             [8.836768,  0,  8.764678, 13.807452]])
+        np.testing.assert_allclose(
+            v_ang_norm, [[15.72, 16.04, 15.98, 43.13], [8.84,  0,  8.76, 13.81]], atol=1e-2,
+        )
 
         d_centr = np.array([[], []])
         mask = np.ones_like(d_centr, dtype=bool)

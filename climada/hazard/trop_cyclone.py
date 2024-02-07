@@ -1053,6 +1053,7 @@ def tctrack_to_si(
     are normalized and additional variables are defined:
 
     * cp (coriolis parameter)
+    * pdelta (difference between environmental and central pressure, always strictly positive)
     * vtrans (translational velocity vectors)
     * vtrans_norm (absolute value of translational speed)
 
@@ -1123,7 +1124,11 @@ def tctrack_to_si(
     # add translational speed of track at every node (in m/s)
     _vtrans(si_track, metric=metric)
 
+    # add Coriolis parameter
     si_track["cp"] = ("time", _coriolis_parameter(si_track["lat"].values))
+
+    # add pressure drop
+    si_track["pdelta"] = np.fmax(np.spacing(1), si_track["env"] - si_track["cen"])
 
     return si_track
 
@@ -1461,7 +1466,8 @@ def _rho_air(si_track: xr.Dataset, const: Optional[float]):
     ----------
     si_track : xr.Dataset
         Track information as returned by `tctrack_to_si`. The data variables used by this function
-        are "lat" and "cen". The result is stored in place as new data variable "rho_air".
+        are "lat", "cen", and "pdelta". The result is stored in place as new data
+        variable "rho_air".
     const : float or None
         A constant value for air density (in kg/m³) to assume. If None, the air density is
         estimated from eyewall pressure following equation (9) in Holland et al. 2010.
@@ -1477,7 +1483,7 @@ def _rho_air(si_track: xr.Dataset, const: Optional[float]):
     temp_s = 28.0 - 3.0 * (si_track["lat"] - 10.0) / 20.0
 
     # eyewall surface pressure (in Pa), following equation (6) in Holland 2008
-    pres_eyewall = si_track["cen"] + (si_track["env"] - si_track["cen"]) / np.exp(1)
+    pres_eyewall = si_track["cen"] + si_track["pdelta"] / np.exp(1)
 
     # mixing ratio (in kg/kg), estimated from temperature, using formula for saturation vapor
     # pressure in Bolton 1980 (multiplied by the ratio of molar masses of water vapor and dry air)
@@ -1534,7 +1540,7 @@ def _bs_holland_2008(
     ----------
     si_track : xr.Dataset
         Output of `tctrack_to_si`. The data variables used by this function are "lat", "tstep",
-        "vtrans_norm", "cen", and "env". The result is stored in place as a new data
+        "vtrans_norm", "cen", and "pdelta". The result is stored in place as a new data
         variable "hol_b".
     gradient_to_surface_winds : float, optional
         The gradient-to-surface wind reduction factor to use when determining the clipping
@@ -1549,7 +1555,7 @@ def _bs_holland_2008(
     # The formula assumes that pressure values are in millibar (hPa) instead of SI units (Pa),
     # and time steps are in hours instead of seconds, but translational wind speed is still
     # expected to be in m/s.
-    pdelta = (si_track["env"] - si_track["cen"]) / MBAR_TO_PA
+    pdelta = si_track["pdelta"] / MBAR_TO_PA
     hol_xx = 0.6 * (1. - pdelta / 215)
     si_track["hol_b"] = (
         -4.4e-5 * pdelta**2 + 0.01 * pdelta
@@ -1582,12 +1588,13 @@ def _v_max_s_holland_2008(si_track: xr.Dataset):
     ----------
     si_track : xr.Dataset
         Output of `tctrack_to_si` with "hol_b" (see _bs_holland_2008) and "rho_air" (see
-        _rho_air) variables. The data variables used by this function are "env", "cen", "hol_b"
+        _rho_air) variables. The data variables used by this function are "pdelta", "hol_b",
         and "rho_air". The results are stored in place as a new data variable "vmax". If a variable
         of that name already exists, its values are overwritten.
     """
-    pdelta = si_track["env"] - si_track["cen"]
-    si_track["vmax"] = np.sqrt(si_track["hol_b"] / (si_track["rho_air"] * np.exp(1)) * pdelta)
+    si_track["vmax"] = np.sqrt(
+        si_track["hol_b"] / (si_track["rho_air"] * np.exp(1)) * si_track["pdelta"]
+    )
 
 def _B_holland_1980(  # pylint: disable=invalid-name
     si_track: xr.Dataset,
@@ -1616,17 +1623,16 @@ def _B_holland_1980(  # pylint: disable=invalid-name
     si_track : xr.Dataset
         Output of `tctrack_to_si` with "rho_air" variable (see _rho_air). The data variables
         used by this function are "vgrad" (or "vmax" if gradient_to_surface_winds is different from
-        1.0), "env", "cen", and "rho_air". The results are stored in place as a new data variable
-        "hol_b".
+        1.0), "pdelta", and "rho_air". The results are stored in place as a new data
+        variable "hol_b".
     gradient_to_surface_winds : float, optional
         The gradient-to-surface wind reduction factor to use when determining the clipping
         interval. By default, the gradient level values are assumed. Default: None
     """
     windvar = "vgrad" if gradient_to_surface_winds is None else "vmax"
 
-    pdelta = si_track["env"] - si_track["cen"]
     si_track["hol_b"] = (
-        si_track[windvar]**2 * np.exp(1) * si_track["rho_air"] / np.fmax(np.spacing(1), pdelta)
+        si_track[windvar]**2 * np.exp(1) * si_track["rho_air"] / si_track["pdelta"]
     )
 
     clip_interval = _b_holland_clip_interval(gradient_to_surface_winds)
@@ -1815,7 +1821,7 @@ def _stat_holland_1980(
     si_track : xr.Dataset
         Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) and
         "rho_air" (see _rho_air) data variable. The data variables used by this function are "lat",
-        "cp", "rad", "cen", "env", "hol_b", and "rho_air".
+        "cp", "rad", "pdelta", "hol_b", and "rho_air".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     close_centr : np.ndarray of shape (nnodes, ncentroids)
@@ -1830,13 +1836,12 @@ def _stat_holland_1980(
         Absolute values of wind speeds (m/s) in angular direction.
     """
     v_ang = np.zeros_like(d_centr)
-    r_max, hol_b, penv, pcen, coriolis_p, rho_air, d_centr = [
+    r_max, hol_b, pdelta, coriolis_p, rho_air, d_centr = [
         np.broadcast_to(ar, d_centr.shape)[close_centr]
         for ar in [
             si_track["rad"].values[:, None],
             si_track["hol_b"].values[:, None],
-            si_track["env"].values[:, None],
-            si_track["cen"].values[:, None],
+            si_track["pdelta"].values[:, None],
             si_track["cp"].values[:, None],
             si_track["rho_air"].values[:, None],
             d_centr,
@@ -1848,7 +1853,7 @@ def _stat_holland_1980(
         r_coriolis = 0.5 * d_centr * coriolis_p
 
     r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
-    sqrt_term = hol_b / rho_air * r_max_norm * (penv - pcen) * np.exp(-r_max_norm) + r_coriolis**2
+    sqrt_term = hol_b / rho_air * r_max_norm * pdelta * np.exp(-r_max_norm) + r_coriolis**2
     v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
 
