@@ -206,8 +206,7 @@ class Centroids():
 
         Returns
         -------
-        Centroids
-            Centroids in the new crs
+        Centroids or None (if inplace is True)
 
         """
         return self.to_crs(DEF_CRS, inplace=inplace)
@@ -225,8 +224,7 @@ class Centroids():
 
         Returns
         -------
-        Centroids
-            Centroids in the new crs
+        Centroids or None (if inplace is True)
         """
         if inplace:
             self.gdf.to_crs(crs, inplace=True)
@@ -668,10 +666,9 @@ class Centroids():
         Parameters
         ----------
         signed : bool, optional
-            If True, use signed distances (positive off shore and negative on land). Default: False.
+            If True, use signed distances (positive off shore and negative on land). Default: False
         precomputed : bool, optional
-            If True, use precomputed distances (from NASA). Works only for crs=epsg:4326
-            Default: False.
+            If True, use precomputed distances (from NASA). Default: False
 
         Returns
         -------
