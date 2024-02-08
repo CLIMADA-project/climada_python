@@ -478,20 +478,16 @@ class Centroids():
         return sel_cen
 
     #TODO replace with nice GeoDataFrame util plot method.
-    def plot(self, ax=None, figsize=(9, 13), latlon_bounds_buffer=0.0, shapes=True, **kwargs):
+    def plot(self, axis=None, figsize=(9, 13), **kwargs):
         """Plot centroids scatter points over earth
 
         Parameters
         ----------
-        ax : matplotlib.axes._subplots.AxesSubplot, optional
+        axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         figsize: (float, float), optional
             figure size for plt.subplots
             The default is (9, 13)
-        latlon_bounds_buffer : float, optional
-            Buffer to add to all sides of the bounding box. Default: 0.0.
-        shapes : bool, optional
-            overlay axis with coastlines. Default: True
         kwargs : optional
             arguments for scatter matplotlib function
 
@@ -499,24 +495,26 @@ class Centroids():
         -------
         axis : matplotlib.axes._subplots.AxesSubplot
         """
+        pad = np.abs(u_coord.get_resolution(self.lat, self.lon)).min()
+
         proj_data, _ = u_plot.get_transformation(self.crs)
         proj_plot = proj_data
         if isinstance(proj_data, ccrs.PlateCarree):
             # use different projections for plot and data to shift the central lon in the plot
-            xmin, _ymin, xmax, _ymax = u_coord.latlon_bounds(self.lat, self.lon,
-                                                           buffer=latlon_bounds_buffer)
+            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(self.lat, self.lon, buffer=pad)
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
-
-        if ax is None:
-            ax = self.gdf.copy().to_crs(proj_plot).plot(figsize=figsize, **kwargs)
         else:
-            self.gdf.copy().to_crs(proj_plot).plot(figsize=figsize, **kwargs)
+            xmin, ymin, xmax, ymax = (self.lon.min() - pad, self.lat.min() - pad,
+                                      self.lon.max() + pad, self.lat.max() + pad)
 
-        if shapes:
-            u_plot.add_shapes(ax)
+        if not axis:
+            _fig, axis, _fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize)
 
+        axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
+        u_plot.add_shapes(axis)
+        axis.scatter(self.lon, self.lat, transform=proj_data, **kwargs)
         plt.tight_layout()
-        return ax
+        return axis
 
     def set_region_id(self, level='country', overwrite=False):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
