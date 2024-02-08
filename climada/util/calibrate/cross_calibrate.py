@@ -61,7 +61,10 @@ def event_info_from_input(input: Input) -> Dict[str, Any]:
     region_ids = data.columns
 
     # Get event name
-    event_names = input.hazard.select(event_id=event_ids.to_list()).event_name
+    try:
+        event_names = input.hazard.select(event_id=event_ids.to_list()).event_name
+    except Exception:
+        event_names = []
 
     # Return data
     return {
