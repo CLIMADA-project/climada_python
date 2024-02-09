@@ -881,59 +881,6 @@ class HazardIO():
 
         return kwargs
 
-    def reproject_vector(self, dst_crs):
-        """Change current point data to a a given projection
-
-        Parameters
-        ----------
-        dst_crs : crs
-            reproject to given crs
-        """
-        self.centroids.gdf.to_crs(dst_crs, inplace=True)
-        self.check()
-
-    @classmethod
-    def from_mat(cls, file_name, var_names=None):
-        """Read climada hazard generate with the MATLAB code in .mat format.
-
-        Parameters
-        ----------
-        file_name : str
-            absolute file name
-        var_names : dict, optional
-            name of the variables in the file,
-            default: DEF_VAR_MAT constant
-
-        Returns
-        -------
-        haz : climada.hazard.Hazard
-            Hazard object from the provided MATLAB file
-
-        Raises
-        ------
-        KeyError
-        """
-        # pylint: disable=protected-access
-        if not var_names:
-            var_names = DEF_VAR_MAT
-        LOGGER.info('Reading %s', file_name)
-        try:
-            data = u_hdf5.read(file_name)
-            try:
-                data = data[var_names['field_name']]
-            except KeyError:
-                pass
-
-            centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
-            attrs = cls._read_att_mat(data, file_name, var_names, centroids)
-            haz = cls(haz_type=u_hdf5.get_string(data[var_names['var_name']['per_id']]),
-                      centroids=centroids,
-                      **attrs
-                      )
-        except KeyError as var_err:
-            raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
-        return haz
-
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_excel."""
         LOGGER.warning("The use of Hazard.read_excel is deprecated."

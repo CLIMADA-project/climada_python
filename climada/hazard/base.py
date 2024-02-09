@@ -217,6 +217,17 @@ class Hazard(HazardIO, HazardPlot):
         """
         self._check_events()
 
+    def reproject_vector(self, dst_crs):
+        """Change current point data to a a given projection
+
+        Parameters
+        ----------
+        dst_crs : crs
+            reproject to given crs
+        """
+        self.centroids.gdf.to_crs(dst_crs, inplace=True)
+        self.check()
+
     def select(self, event_names=None, event_id=None, date=None, orig=None,
                reg_id=None, extent=None, reset_frequency=False):
         """Select events matching provided criteria
