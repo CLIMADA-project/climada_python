@@ -1096,7 +1096,7 @@ class TestHDF5(unittest.TestCase):
         hazard.event_id = CustomID()
 
         # Write the hazard and check the logs for the correct warning
-        with self.assertLogs(logger="climada.hazard.base", level="WARN") as cm:
+        with self.assertLogs(logger="climada.hazard.base_io", level="WARN") as cm:
             hazard.write_hdf5(file_name)
         self.assertIn("write_hdf5: the class member event_id is skipped", cm.output[0])
 
