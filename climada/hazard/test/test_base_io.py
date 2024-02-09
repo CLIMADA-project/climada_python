@@ -19,7 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Hazard base class.
 """
 import unittest
-
+from unittest.mock import patch
+import datetime as dt
 from pathlib import Path
 from tempfile import TemporaryDirectory
 
@@ -28,10 +29,8 @@ import numpy as np
 from scipy.sparse import csr_matrix
 import xarray as xr
 
-from climada import CONFIG
 from climada.hazard.base import Hazard
-from climada.hazard.centroids.centr import Centroids
-from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS
+from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL, DEF_CRS
 from climada.hazard.test.test_base import DATA_DIR, dummy_hazard
 
 

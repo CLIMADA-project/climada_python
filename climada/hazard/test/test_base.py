@@ -20,7 +20,7 @@ Test Hazard base class.
 """
 
 import unittest
-import datetime as dt
+
 from pathlib import Path
 import numpy as np
 from scipy import sparse
@@ -30,11 +30,10 @@ from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
-from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
+from climada.util.constants import HAZ_TEMPLATE_XLS
 import climada.util.coordinates as u_coord
 
 from climada.test import get_test_file
-import climada.hazard.test as hazard_test
 
 
 DATA_DIR :Path = CONFIG.hazard.test_data.dir()
