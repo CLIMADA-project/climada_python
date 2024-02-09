@@ -180,7 +180,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 
             # Strings
             dataset["time"] = ["a", "b"]
-            with self.assertLogs("climada.hazard.base", "WARNING") as cm:
+            with self.assertLogs("climada.hazard.base_io", "WARNING") as cm:
                 hazard = Hazard.from_xarray_raster(dataset, "", "")
                 np.testing.assert_array_equal(hazard.date, np.ones(size))
                 np.testing.assert_array_equal(hazard.event_name, np.full(size, ""))
