@@ -391,12 +391,6 @@ class Hazard():
                        "Use Hazard.from_raster instead.")
         self.__dict__ = Hazard.from_raster(*args, **kwargs).__dict__
 
-    def set_vector(self, *args, **kwargs):
-        """This function is deprecated, use Hazard.from_vector."""
-        LOGGER.warning("The use of Hazard.set_vector is deprecated."
-                       "Use Hazard.from_vector instead.")
-        self.__dict__ = Hazard.from_vector(*args, **kwargs).__dict__
-
     @classmethod
     def from_xarray_raster_file(
         cls, filepath: Union[pathlib.Path, str], *args, **kwargs
@@ -1011,72 +1005,6 @@ class Hazard():
         LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)
         return cls(centroids=centroids, intensity=intensity_matrix, **hazard_kwargs)
 
-    @classmethod
-    def from_vector(cls, files_intensity, files_fraction=None, attrs=None,
-                    inten_name=None, frac_name=None, dst_crs=None, haz_type=None):
-        """Read vector files format supported by fiona. Each intensity name is
-        considered an event.
-
-        Parameters
-        ----------
-        files_intensity : list(str)
-            file names containing intensity, default: ['intensity']
-        files_fraction : (list(str))
-            file names containing fraction,
-            default: ['fraction']
-        attrs : dict, optional
-            name of Hazard attributes and their values
-        inten_name : list(str), optional
-            name of variables containing the intensities of each event
-        frac_name : list(str), optional
-            name of variables containing
-            the fractions of each event
-        dst_crs : crs, optional
-            reproject to given crs
-        haz_type : str, optional
-            acronym of the hazard type (e.g. 'TC').
-            default: None, which will use the class default ('' for vanilla
-            `Hazard` objects, hard coded in some subclasses)
-
-        Returns
-        -------
-        haz : climada.hazard.Hazard
-            Hazard from vector file
-        """
-        if not attrs:
-            attrs = {}
-        if not inten_name:
-            inten_name = ['intensity']
-        if not frac_name:
-            inten_name = ['fraction']
-        if files_fraction is not None and len(files_intensity) != len(files_fraction):
-            raise ValueError('Number of intensity files differs from fraction files:'
-                             f' {len(files_intensity)} != {len(files_fraction)}')
-
-        hazard_kwargs = {}
-        if haz_type is not None:
-            hazard_kwargs["haz_type"] = haz_type
-
-        if len(files_intensity) > 0:
-            centroids = Centroids.from_vector_file(files_intensity[0], dst_crs=dst_crs)
-        elif files_fraction is not None and len(files_fraction) > 0:
-            centroids = Centroids.from_vector_file(files_fraction[0], dst_crs=dst_crs)
-        else:
-            centroids = Centroids()
-
-        intensity = centroids.values_from_vector_files(
-            files_intensity, val_names=inten_name, dst_crs=dst_crs)
-        if files_fraction is None:
-            fraction = intensity.copy()
-            fraction.data.fill(1)
-        else:
-            fraction = centroids.values_from_vector_files(
-                files_fraction, val_names=frac_name, dst_crs=dst_crs)
-
-        hazard_kwargs.update(cls._attrs_to_kwargs(attrs, num_events=intensity.shape[0]))
-        return cls(
-            centroids=centroids, intensity=intensity, fraction=fraction, **hazard_kwargs)
-
     @staticmethod
     def _attrs_to_kwargs(attrs: Dict[str, Any], num_events: int) -> Dict[str, Any]:
         """Transform attributes to init kwargs or use default values
@@ -1137,55 +1065,6 @@ class Hazard():
         """
         self.centroids.gdf.to_crs(dst_crs, inplace=True)
         self.check()
-
-
-    def read_mat(self, *args, **kwargs):
-        """This function is deprecated, use Hazard.from_mat."""
-        LOGGER.warning("The use of Hazard.read_mat is deprecated."
-                       "Use Hazard.from_mat instead.")
-        self.__dict__ = Hazard.from_mat(*args, **kwargs).__dict__
-
-    @classmethod
-    def from_mat(cls, file_name, var_names=None):
-        """Read climada hazard generate with the MATLAB code in .mat format.
-
-        Parameters
-        ----------
-        file_name : str
-            absolute file name
-        var_names : dict, optional
-            name of the variables in the file,
-            default: DEF_VAR_MAT constant
-
-        Returns
-        -------
-        haz : climada.hazard.Hazard
-            Hazard object from the provided MATLAB file
-
-        Raises
-        ------
-        KeyError
-        """
-        # pylint: disable=protected-access
-        if not var_names:
-            var_names = DEF_VAR_MAT
-        LOGGER.info('Reading %s', file_name)
-        try:
-            data = u_hdf5.read(file_name)
-            try:
-                data = data[var_names['field_name']]
-            except KeyError:
-                pass
-
-            centroids = Centroids.from_mat(file_name, var_names=var_names['var_cent'])
-            attrs = cls._read_att_mat(data, file_name, var_names, centroids)
-            haz = cls(haz_type=u_hdf5.get_string(data[var_names['var_name']['per_id']]),
-                      centroids=centroids,
-                      **attrs
-                      )
-        except KeyError as var_err:
-            raise KeyError("Variable not in MAT file: " + str(var_err)) from var_err
-        return haz
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_excel."""

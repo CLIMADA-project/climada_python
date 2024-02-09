@@ -53,7 +53,8 @@ Removed:
 ### Deprecated
 
 ### Removed
-- Read/write matlab file methods for Centroids and Hazard objects. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
+
+- Read/write matlab file and vector file methods for Centroids and Hazard objects. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 
 ## 4.0.1
 
