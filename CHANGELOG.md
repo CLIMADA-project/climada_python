@@ -53,6 +53,8 @@ Removed:
 
 ### Removed
 
+- `requirements/env_docs.yml`. The regular environment specs are now used to build the online documentation [#687](https://github.com/CLIMADA-project/climada_python/pull/687)
+
 ## 4.0.1
 
 Release date: 2023-09-27

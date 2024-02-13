@@ -5,8 +5,13 @@ build:
   tools:
     python: "mambaforge-4.10"
 
+  # Append fixed Python version to requirements
+  jobs:
+    pre_create_environment:
+      - echo "  - python=3.9" >> requirements/env_climada.yml
+
 conda:
-  environment: requirements/env_docs.yml
+  environment: requirements/env_climada.yml
 
 python:
   install:
