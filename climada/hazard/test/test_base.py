@@ -41,7 +41,7 @@ DATA_DIR :Path = CONFIG.hazard.test_data.dir()
 """
 Directory for writing (and subsequent reading) of temporary files created during tests.
 """
-HAZ_TEST_MAT :Path = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
+HAZ_TEST_MAT :Path = get_test_file('atl_prob_no_name', file_format='matlab')
 """
 Hazard test file from Git repository. Fraction is 1. Format: matlab.
 """
@@ -1093,8 +1093,8 @@ class TestReaderMat(unittest.TestCase):
     """Test reader functionality of the ExposuresExcel class"""
 
     def test_hazard_pass(self):
-        """Read a hazard mat file correctly."""
-        # Read demo excel file
+        """Read a hazard matlab file correctly."""
+        # Read demo matlab file
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         # Check results

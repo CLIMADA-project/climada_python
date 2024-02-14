@@ -29,6 +29,7 @@ from scipy import sparse
 import xarray as xr
 
 from climada.util import ureg
+from climada.test import get_test_file
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone import (
     TropCyclone, get_close_centroids, _vtrans, _B_holland_1980, _bs_holland_2008,
@@ -43,7 +44,7 @@ DATA_DIR = Path(hazard_test.__file__).parent.joinpath('data')
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
-CENTR_TEST_BRB = Centroids.from_mat(DATA_DIR.joinpath('centr_brb_test.mat'))
+CENTR_TEST_BRB = Centroids.from_hdf5(get_test_file('centr_test_brb', file_format='hdf5'))
 
 
 class TestReader(unittest.TestCase):
@@ -60,9 +61,10 @@ class TestReader(unittest.TestCase):
         tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, max_memory_gb=0.001)
         intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = [
-            25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738, 36.16596567,
-            21.11399856, 28.01452136, 32.65076804, 31.33884098, 0, 40.27002104,
+            22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
+            18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
         ]
+
         np.testing.assert_array_almost_equal(
             tc_haz.intensity[0, intensity_idx].toarray()[0],
             intensity_values,
@@ -72,12 +74,14 @@ class TestReader(unittest.TestCase):
         """Test _tc_from_track function."""
         intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = {
-            "geosphere": [25.60794285, 26.90906280, 28.26649026, 25.54076797, 31.21986961,
-                          36.17171808, 21.11408573, 28.01457948, 32.65349378, 31.34027741, 0,
-                          40.27362679],
-            "equirect": [25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738,
-                         36.16596567, 21.11399856, 28.01452136, 32.65076804, 31.33884098, 0,
-                         40.27002104]
+            "geosphere": [
+                22.74927,  23.78498,  24.822908, 22.674202, 27.220042, 30.602122,
+                18.981022, 24.540138, 27.830925, 26.8489,    0.,       34.572391,
+            ],
+            "equirect": [
+                22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
+                18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
+            ]
         }
         # the values for the two metrics should agree up to first digit at least
         for i, val in enumerate(intensity_values["geosphere"]):
@@ -108,7 +112,7 @@ class TestReader(unittest.TestCase):
 
             self.assertTrue(isinstance(tc_haz.intensity, sparse.csr_matrix))
             self.assertEqual(tc_haz.intensity.shape, (1, 296))
-            self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 280)
+            self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 255)
 
             np.testing.assert_array_almost_equal(
                 tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[metric])
@@ -127,10 +131,14 @@ class TestReader(unittest.TestCase):
         """Test _tc_from_track function with different wind field models."""
         intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = {
-            "H08": [25.60778909, 26.90887264, 28.26624642, 25.54092386, 31.21941738, 36.16596567,
-                    21.11399856, 28.01452136, 32.65076804, 31.33884098, 0, 40.27002104],
-            "H10": [27.604317, 28.720708, 29.894993, 27.52234 , 32.512395, 37.114355,
-                    23.848917, 29.614752, 33.775593, 32.545347, 19.957627, 41.014578],
+            "H08": [
+                22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
+                18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
+            ],
+            "H10": [
+                24.745521, 25.596484, 26.475329, 24.690914, 28.650107, 31.584395,
+                21.723546, 26.140293, 28.94964,  28.051915, 18.49378, 35.312152,
+            ],
             # Holland 1980 and Emanuel & Rotunno 2011 use recorded wind speeds, while the above use
             # pressure values only. That's why the results are so different:
             "H1980": [21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
@@ -304,22 +312,61 @@ class TestWindfieldHelpers(unittest.TestCase):
 
     def test_holland_2010_pass(self):
         """Test Holland et al. 2010 wind field model."""
-        # test at centroids within and outside of radius of max wind
+        # The parameter "x" is designed to be exactly 0.5 inside the radius of max wind (RMW) and
+        # to increase or decrease linearly outside of it in radial direction.
+        #
+        # An increase (decrease) of "x" outside of the RMW is for cases where the max wind is very
+        # high (low), but the RMW is still comparably large (small). This means, wind speeds need
+        # to decay very sharply (only moderately) outside of the RMW to reach the low prescribed
+        # peripheral wind speeds.
+        #
+        # The "hol_b" parameter tunes the meaning of a "comparably" large or small RMW.
         si_track = xr.Dataset({
-            "rad": ("time", KM_TO_M * np.array([75, 40])),
-            "vmax": ("time", [35.0, 40.0]),
-            "hol_b": ("time", [1.80, 2.5]),
+            # four test cases:
+            # - low vmax, moderate RMW: x decreases moderately
+            # - large hol_b: x decreases sharply
+            # - very low vmax: x decreases so much, it needs to be clipped at 0
+            # - large vmax, large RMW: x increases
+            "rad": ("time", KM_TO_M * np.array([75, 75, 75, 90])),
+            "vmax": ("time", [35.0, 35.0, 16.0, 90.0]),
+            "hol_b": ("time", [1.75, 2.5, 1.9, 1.6]),
         })
-        d_centr = KM_TO_M * np.array([[35, 75, 220], [30, 1000, 300]], dtype=float)
-        close_centr = np.array([[True, True, True], [True, False, True]], dtype=bool)
+        d_centr = KM_TO_M * np.array([
+            # first column is for locations within the storm eye
+            # second column is for locations at or close to the radius of max wind
+            # third column is for locations outside the storm eye
+            # fourth column is for locations exactly at the peripheral radius
+            # fifth column is for locations outside the peripheral radius
+            [0., 75, 220, 300, 490],
+            [30, 74, 170, 300, 501],
+            [21, 76, 230, 300, 431],
+            [32, 91, 270, 300, 452],
+        ], dtype=float)
+        close_centr = np.array([
+            # note that we set one of these to "False" for testing
+            [True, True, True, True, True],
+            [True, True, True, True, False],
+            [True, True, True, True, True],
+            [True, True, True, True, True],
+        ], dtype=bool)
         hol_x = _x_holland_2010(si_track, d_centr, close_centr)
-        np.testing.assert_array_almost_equal(
-            hol_x, [[0.5, 0.5, 0.47273], [0.5, 0, 0.211602]])
+        np.testing.assert_array_almost_equal(hol_x, [
+            [0.5, 0.500000, 0.485077, 0.476844, 0.457291],
+            [0.5, 0.500000, 0.410997, 0.289203, 0.000000],
+            [0.5, 0.497620, 0.131072, 0.000000, 0.000000],
+            [0.5, 0.505022, 1.403952, 1.554611, 2.317948],
+        ])
 
-        # test exactly at radius of maximum wind (35 m/s) and at peripheral radius (17 m/s)
         v_ang_norm = _stat_holland_2010(si_track, d_centr, close_centr, hol_x)
-        np.testing.assert_array_almost_equal(v_ang_norm,
-            [[15.957853, 35.0, 20.99411], [33.854826, 0, 17.0]])
+        np.testing.assert_array_almost_equal(v_ang_norm, [
+            # first column: converge to 0 when approaching storm eye
+            # second column: vmax at RMW
+            # fourth column: peripheral speed (17 m/s) at peripheral radius (unless x is clipped!)
+            [0.0000000, 35.000000, 21.181497, 17.00000, 12.103461],
+            [1.2964800, 34.990037, 21.593755, 17.00000, 0.0000000],
+            [0.3219518, 15.997500, 13.585498, 16.00000, 16.000000],
+            [24.823469, 89.992938, 24.381965, 17.00000, 1.9292020],
+        ])
 
     def test_stat_holland_1980(self):
         """Test _stat_holland_1980 function. Compare to MATLAB reference."""

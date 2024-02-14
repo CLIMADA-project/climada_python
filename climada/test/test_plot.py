@@ -35,9 +35,9 @@ from climada.hazard import Hazard, Centroids
 from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY, TEST_UNC_OUTPUT_COSTBEN
 from climada.util.api_client import Client
 
-apiclient = Client()
-ds = apiclient.get_dataset_info(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
-_target_dir, [test_unc_output_costben] = apiclient.download_dataset(ds)
+
+test_unc_output_costben = Client().get_dataset_file(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
+
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
@@ -162,10 +162,7 @@ class TestPlotter(unittest.TestCase):
         myexp.gdf['value'] = np.array([1, 1, 1])
         myexp.check()
 
-        try:
-            myexp.plot_basemap(url=ctx.providers.OpenStreetMap.Mapnik)
-        except urllib.error.HTTPError:
-            self.assertEqual(1, 0)
+        myexp.plot_basemap(url=ctx.providers.OpenStreetMap.Mapnik)
 
     def test_disc_rates(self):
         """Test plot function of discount rates."""

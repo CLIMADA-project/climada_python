@@ -97,13 +97,14 @@ Jump right in:
    Development with Git <guide/Guide_Git_Development>
    guide/Guide_CLIMADA_Tutorial
    guide/Guide_Configuration
-   guide/Guide_Continuous_Integration_and_Testing
-   guide/Guide_Reviewer_Checklist
+   guide/Guide_Testing
+   guide/Guide_continuous_integration_GitHub_actions
+   guide/Guide_Review
    guide/Guide_PythonDos-n-Donts
+   guide/Guide_Exception_Logging
    Performance and Best Practices <guide/Guide_Py_Performance>
-   Coding Conventions <guide/Guide_Miscellaneous>
+   CLIMADA Coding Conventions <guide/Guide_CLIMADA_conventions>
    Building the Documentation <README>
-   guide/github-actions
 
 
 .. toctree::

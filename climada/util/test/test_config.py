@@ -66,7 +66,7 @@ class TestConfig(unittest.TestCase):
             CONFIG.hazard.fire_fly.population.str()
         self.assertIn("there is no 'fire_fly' configured for 'hazard'", str(ve.exception))
         self.assertIn("check your config files: [", str(ve.exception))
-        
+
         with self.assertRaises(AttributeError) as ve:
             CONFIG.some_module.str()
         self.assertIn("there is no 'some_module' configured for 'climada.CONFIG'", str(ve.exception))
