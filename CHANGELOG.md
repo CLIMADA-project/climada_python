@@ -13,8 +13,21 @@ Code freeze date: YYYY-MM-DD
 Added:
 
 - `pyproj` >=3.5
-- `pyarrow` >=14.0
-- `numexpr` >=2.8
+- `numexpr` >=2.9
+
+Updated:
+
+- `contextily` >=1.3 &rarr; >=1.5
+- `dask` >=2023 &rarr; >=2024
+- `numba` >=0.57 &rarr; >=0.59
+- `pandas` >=2.1 &rarr; >=2.1,<2.2
+- `pint` >=0.22 &rarr; >=0.23
+- `scikit-learn` >=1.3 &rarr; >=1.4
+- `scipy` >=1.11 &rarr; >=1.12
+- `sparse` >=0.14 &rarr; >=0.15
+- `xarray` >=2023.8 &rarr; >=2024.1
+- `overpy` =0.6 &rarr; =0.7
+- `peewee` =3.16.3 &rarr; =3.17.1
 
 Removed:
 
