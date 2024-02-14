@@ -119,7 +119,7 @@ class TropCyclone(Hazard):
     """intensity threshold for storage in m/s"""
 
     vars_opt = Hazard.vars_opt.union({'category'})
-    """Name of the variables that aren't need to compute the impact."""
+    """Name of the variables that are not needed to compute the impact."""
 
     def __init__(
         self,
@@ -744,12 +744,14 @@ def _compute_windfields_sparse(
     # convert track variables to SI units
     si_track = tctrack_to_si(track, metric=metric)
 
-    # when done properly, finding and storing the close centroids is not a memory bottle neck and
-    # can be done before chunking:
-    centroids_close, mask_close, mask_close_alongtrack = get_close_centroids(
+    # When done properly, finding and storing the close centroids is not a memory bottle neck and
+    # can be done before chunking. Note that the longitudinal coordinates of `centroids_close` as
+    # returned by `get_close_centroids` are normalized to be consistent with the coordinates in
+    # `si_track`.
+    centroids_close, mask_centr, mask_centr_alongtrack = get_close_centroids(
         si_track, centroids.coord[idx_centr_filter], max_dist_eye_km, metric=metric,
     )
-    idx_centr_filter = idx_centr_filter[mask_close]
+    idx_centr_filter = idx_centr_filter[mask_centr]
     n_centr_close = centroids_close.shape[0]
     if n_centr_close == 0:
         return intensity_sparse, windfields_sparse
@@ -764,7 +766,7 @@ def _compute_windfields_sparse(
 
         # Split the track into chunks, compute the result for each chunk, and combine:
         return _compute_windfields_sparse_chunked(
-            mask_close_alongtrack,
+            mask_centr_alongtrack,
             track,
             centroids,
             idx_centr_filter,
@@ -804,7 +806,7 @@ def _compute_windfields_sparse(
     return intensity_sparse, windfields_sparse
 
 def _compute_windfields_sparse_chunked(
-    mask_close_alongtrack: np.ndarray,
+    mask_centr_alongtrack: np.ndarray,
     track: xr.Dataset,
     *args,
     max_memory_gb: float = DEF_MAX_MEMORY_GB,
@@ -814,7 +816,7 @@ def _compute_windfields_sparse_chunked(
 
     Parameters
     ----------
-    mask_close_alongtrack : np.ndarray of shape (npositions, ncentroids)
+    mask_centr_alongtrack : np.ndarray of shape (npositions, ncentroids)
         Each row is a mask that indicates the centroids within reach for one track position.
     track : xr.Dataset
         Single tropical cyclone track.
@@ -841,7 +843,7 @@ def _compute_windfields_sparse_chunked(
         # create overlap between consecutive chunks
         chunk_start = max(0, split_pos[-1] - 1)
         chunk_end = chunk_start + chunk_size
-        nreachable = mask_close_alongtrack[chunk_start:chunk_end].any(axis=0).sum()
+        nreachable = mask_centr_alongtrack[chunk_start:chunk_end].any(axis=0).sum()
         if nreachable > max_nreachable:
             split_pos.append(chunk_end - 1)
             chunk_size = 2
@@ -882,7 +884,7 @@ def _compute_windfields(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        Output of ``tctrack_to_si``. Which data variables are used in the computation of the wind
         speeds depends on the selected model.
     centroids : np.ndarray with two dimensions
         Each row is a centroid [lat, lon]. Centroids that are not within reach of the track are
@@ -1070,7 +1072,7 @@ def compute_angular_windspeeds(si_track, d_centr, mask_centr_close, model, cyclo
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        Output of ``tctrack_to_si``. Which data variables are used in the computation of the wind
         profile depends on the selected model.
     d_centr : np.ndarray of shape (npositions, ncentroids)
         Distance (in m) between centroids and track positions.
@@ -1079,7 +1081,7 @@ def compute_angular_windspeeds(si_track, d_centr, mask_centr_close, model, cyclo
     model : int
         Wind profile model selection according to MODEL_VANG.
     cyclostrophic : bool, optional
-        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
+        If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0).
         Default: False
 
     Returns
@@ -1125,11 +1127,11 @@ def get_close_centroids(
 
     Parameters
     ----------
-    si_track : xr.Dataset
-        Track information as returned by `tctrack_to_si`. Hence, longitudinal coordinates are
-        normalized around a central longitude. This makes sure that the buffered bounding box
-        around the track doesn't cross the antimeridian. The data variables used by this function
-        are "lat", and "lon".
+    si_track : xr.Dataset with dimension "time"
+        Track information as returned by ``tctrack_to_si``. Hence, longitudinal coordinates are
+        normalized around the central longitude stored in the "mid_lon" attribute. This makes sure
+        that the buffered bounding box around the track does not cross the antimeridian. The data
+        variables used by this function are "lat", and "lon".
     centroids : np.ndarray of shape (ncentroids, 2)
         Coordinates of centroids, each row is a pair [lat, lon]. The longitudinal coordinates are
         normalized within this function to be consistent with the track coordinates.
@@ -1143,14 +1145,16 @@ def get_close_centroids(
 
     Returns
     -------
-    centroids_close : np.ndarray of shape (nclose, 2)
+    centroids_close_normalized : np.ndarray of shape (nclose, 2)
         Coordinates of close centroids, each row is a pair [lat, lon]. The normalization of
         longitudinal coordinates is consistent with the track coordinates.
-    mask_close : np.ndarray of shape (ncentroids,)
+    mask_centr : np.ndarray of shape (ncentroids,)
         Mask that is True for close centroids and False for other centroids.
-    mask_close_alongtrack : np.ndarray of shape (npositions, nclose)
+    mask_centr_alongtrack : np.ndarray of shape (npositions, nclose)
         Each row is a mask that indicates the centroids within reach for one track position. Note
-        that these masks refer only to the "close centroids" to reduce memory requirements.
+        that these masks refer only to the "close centroids" to reduce memory requirements. The
+        number of positions `npositions` corresponds to the size of the "time" dimension of
+        `si_track`.
     """
     npositions = si_track.sizes["time"]
     ncentroids = centroids.shape[0]
@@ -1201,7 +1205,7 @@ def get_close_centroids(
     # will require 1.0 GB of memory.
     chunk_size = 10
     chunks = np.split(np.arange(npositions), np.arange(chunk_size, npositions, chunk_size))
-    mask_close_alongtrack = np.concatenate([
+    mask_centr_alongtrack = np.concatenate([
         (
             u_coord.dist_approx(
                 t_lat[None, chunk], t_lon[None, chunk],
@@ -1210,18 +1214,18 @@ def get_close_centroids(
             )[0] <= buffer_km
         ) for chunk in chunks
     ], axis=0)
-    [idx_close_sub] = mask_close_alongtrack.any(axis=0).nonzero()
+    [idx_close_sub] = mask_centr_alongtrack.any(axis=0).nonzero()
     idx_close = idx_close[idx_close_sub]
     centr_lat = centr_lat[idx_close_sub]
     centr_lon = centr_lon[idx_close_sub]
-    mask_close_alongtrack = mask_close_alongtrack[:, idx_close_sub]
+    mask_centr_alongtrack = mask_centr_alongtrack[:, idx_close_sub]
 
     # Derive mask from index.
-    mask_close = np.zeros((ncentroids,), dtype=bool)
-    mask_close[idx_close] = True
+    mask_centr = np.zeros((ncentroids,), dtype=bool)
+    mask_centr[idx_close] = True
 
-    centroids_close = np.stack([centr_lat, centr_lon], axis=1)
-    return centroids_close, mask_close, mask_close_alongtrack
+    centroids_close_normalized = np.stack([centr_lat, centr_lon], axis=1)
+    return centroids_close_normalized, mask_centr, mask_centr_alongtrack
 
 def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     """Translational vector and velocity (in m/s) at each track node.
@@ -1236,7 +1240,7 @@ def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     Parameters
     ----------
     si_track : xr.Dataset
-        Track information as returned by `tctrack_to_si`. The data variables used by this function
+        Track information as returned by ``tctrack_to_si``. The data variables used by this function
         are "lat", "lon", and "tstep". The results are stored in place as new data
         variables "vtrans" and "vtrans_norm".
     metric : str, optional
@@ -1312,7 +1316,7 @@ def _bs_holland_2008(si_track: xr.Dataset):
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. The data variables used by this function are "lat", "tstep",
+        Output of ``tctrack_to_si``. The data variables used by this function are "lat", "tstep",
         "vtrans_norm", "cen", and "env". The result is stored in place as a new data
         variable "hol_b".
     """
@@ -1356,7 +1360,7 @@ def _v_max_s_holland_2008(si_track: xr.Dataset):
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008). The data variables
+        Output of ``tctrack_to_si`` with "hol_b" variable (see _bs_holland_2008). The data variables
         used by this function are "env", "cen", and "hol_b". The results are stored in place as
         a new data variable "vmax". If a variable of that name already exists, its values are
         overwritten.
@@ -1386,7 +1390,7 @@ def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "vgrad" variable (see _vgrad). The data variables
+        Output of ``tctrack_to_si`` with "vgrad" variable (see _vgrad). The data variables
         used by this function are "vgrad", "env", and "cen". The results are stored in place as
         a new data variable "hol_b".
     """
@@ -1419,7 +1423,7 @@ def _x_holland_2010(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008). The data variables
+        Output of ``tctrack_to_si`` with "hol_b" variable (see _bs_holland_2008). The data variables
         used by this function are "rad", "vmax", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
@@ -1493,7 +1497,7 @@ def _stat_holland_2010(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" (see _bs_holland_2008) data variables. The data
+        Output of ``tctrack_to_si`` with "hol_b" (see _bs_holland_2008) data variables. The data
         variables used by this function are "vmax", "rad", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
@@ -1552,14 +1556,14 @@ def _stat_holland_1980(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable. The data
+        Output of ``tctrack_to_si`` with "hol_b" (see, e.g., _B_holland_1980) data variable. The data
         variables used by this function are "lat", "cp", "rad", "cen", "env", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
-        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
+        If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0).
         Default: False
 
     Returns
@@ -1617,14 +1621,14 @@ def _stat_er_2011(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. The data variables used by this function are "lat", "cp", "rad",
+        Output of ``tctrack_to_si``. The data variables used by this function are "lat", "cp", "rad",
         and "vmax".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
-        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0) in
+        If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0) in
         the computation of M_max. Default: False
 
     Returns
