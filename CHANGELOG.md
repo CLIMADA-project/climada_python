@@ -10,6 +10,22 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 4.1.0
+
+Release date: 2024-02-14
+
+### Dependency Changes
+
 Added:
 
 - `pyproj` >=3.5
@@ -61,10 +77,6 @@ Removed:
 - `climada.util.test.test_finance` and `climada.test.test_engine` updated to recent input data from worldbank [#841](https://github.com/CLIMADA-project/climada_python/pull/841)
 - Set `nodefaults` in Conda environment specs because `defaults` are not compatible with conda-forge [#845](https://github.com/CLIMADA-project/climada_python/pull/845)
 - Avoid redundant calls to `np.unique` in `Impact.impact_at_reg` [#848](https://github.com/CLIMADA-project/climada_python/pull/848)
-
-### Deprecated
-
-### Removed
 
 ## 4.0.1
 
