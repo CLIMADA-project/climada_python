@@ -193,19 +193,19 @@ class TropCyclone(Hazard):
         """
         Create new TropCyclone instance that contains windfields from the specified tracks.
 
-        This function sets the `intensity` attribute to contain, for each centroid,
+        This function sets the ``intensity`` attribute to contain, for each centroid,
         the maximum wind speed (1-minute sustained winds at 10 meters above ground) experienced
         over the whole period of each TC event in m/s. The wind speed is set to 0 if it doesn't
-        exceed the threshold `intensity_thres`.
+        exceed the threshold ``intensity_thres``.
 
-        The `category` attribute is set to the value of the `category`-attribute
+        The ``category`` attribute is set to the value of the ``category``-attribute
         of each of the given track data sets.
 
-        The `basin` attribute is set to the genesis basin for each event, which
-        is the first value of the `basin`-variable in each of the given track data sets.
+        The ``basin`` attribute is set to the genesis basin for each event, which
+        is the first value of the ``basin``-variable in each of the given track data sets.
 
-        Optionally, the time dependent, vectorial winds can be stored using the `store_windfields`
-        function parameter (see below).
+        Optionally, the time dependent, vectorial winds can be stored using the
+        ``store_windfields`` function parameter (see below).
 
         Parameters
         ----------
@@ -225,7 +225,7 @@ class TropCyclone(Hazard):
         ignore_distance_to_coast : boolean, optional
             If True, centroids far from coast are not ignored. Default: False.
         store_windfields : boolean, optional
-            If True, the Hazard object gets a list `windfields` of sparse matrices. For each track,
+            If True, the Hazard object gets a list ``windfields`` of sparse matrices. For each track,
             the full velocity vectors at each centroid and track position are stored in a sparse
             matrix of shape (npositions,  ncentroids * 2) that can be reshaped to a full ndarray
             of shape (npositions, ncentroids, 2). Default: False.
@@ -251,7 +251,7 @@ class TropCyclone(Hazard):
         max_memory_gb : float, optional
             To avoid memory issues, the computation is done for chunks of the track sequentially.
             The chunk size is determined depending on the available memory (in GB). Note that this
-            limit applies to each thread separately if a `pool` is used. Default: 8
+            limit applies to each thread separately if a ``pool`` is used. Default: 8
 
         Raises
         ------
@@ -539,7 +539,7 @@ class TropCyclone(Hazard):
             If True, store windfields. Default: False.
         metric : str, optional
             Specify an approximation method to use for earth distances: "equirect" (faster) or
-            "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+            "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
             Default: "equirect".
         intensity_thres : float, optional
             Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
@@ -675,7 +675,7 @@ def _compute_windfields_sparse(
     max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
     max_memory_gb: float = DEF_MAX_MEMORY_GB,
 ) -> Tuple[sparse.csr_matrix, Optional[sparse.csr_matrix]]:
-    """Version of `compute_windfields` that returns sparse matrices and limits memory usage
+    """Version of ``compute_windfields`` that returns sparse matrices and limits memory usage
 
     Parameters
     ----------
@@ -694,7 +694,7 @@ def _compute_windfields_sparse(
         If True, store windfields. Default: False.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
     intensity_thres : float, optional
         Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
@@ -717,7 +717,7 @@ def _compute_windfields_sparse(
         If store_windfields is True, the full velocity vectors at each centroid and track position
         are stored in a sparse matrix of shape (npositions,  ncentroids * 2) that can be reshaped
         to a full ndarray of shape (npositions, ncentroids, 2).
-        If store_windfields is False, `None` is returned.
+        If store_windfields is False, None is returned.
     """
     try:
         mod_id = MODEL_VANG[model]
@@ -812,7 +812,7 @@ def _compute_windfields_sparse_chunked(
     max_memory_gb: float = DEF_MAX_MEMORY_GB,
     **kwargs,
 ) -> Tuple[sparse.csr_matrix, Optional[sparse.csr_matrix]]:
-    """Call `_compute_windfields_sparse` for chunks of the track and re-assemble the results
+    """Call ``_compute_windfields_sparse`` for chunks of the track and re-assemble the results
 
     Parameters
     ----------
@@ -824,12 +824,12 @@ def _compute_windfields_sparse_chunked(
         Maximum memory requirements (in GB) for the computation of a single chunk of the track.
         Default: 8
     args, kwargs :
-        The remaining arguments are passed on to `_compute_windfields_sparse`.
+        The remaining arguments are passed on to ``_compute_windfields_sparse``.
 
     Returns
     -------
     intensity, windfields :
-        See `_compute_windfields_sparse` for a description of the return values.
+        See ``_compute_windfields_sparse`` for a description of the return values.
     """
     npositions = track.sizes["time"]
     # The memory requirements for each track position are estimated for the case of 10 arrays
@@ -894,7 +894,7 @@ def _compute_windfields(
         Wind profile model selection according to MODEL_VANG.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
     max_dist_eye_km : float, optional
         No wind speed calculation is done for centroids with a distance (in km) to the TC center
@@ -1006,7 +1006,7 @@ def tctrack_to_si(
         Track information.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
 
     Returns
@@ -1140,7 +1140,7 @@ def get_close_centroids(
         longitudinal direction according to the t_lat coordinates.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
 
     Returns
@@ -1245,7 +1245,7 @@ def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
         variables "vtrans" and "vtrans_norm".
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
     """
     npositions = si_track.sizes["time"]
@@ -1286,7 +1286,7 @@ def _bs_holland_2008(si_track: xr.Dataset):
 
     The result is stored in place as a new data variable "hol_b".
 
-    Unlike the original 1980 formula (see `_B_holland_1980`), this approach does not require any
+    Unlike the original 1980 formula (see ``_B_holland_1980``), this approach does not require any
     wind speed measurements, but is based on the more reliable pressure information.
 
     The parameter applies to 1-minute sustained winds at 10 meters above ground.
@@ -1300,7 +1300,7 @@ def _bs_holland_2008(si_track: xr.Dataset):
     b_s = -4.4 * 1e-5 * (penv - pcen)^2 + 0.01 * (penv - pcen)
           + 0.03 * (dp/dt) - 0.014 * |lat| + 0.15 * (v_trans)^hol_xx + 1.0
 
-    where `dp/dt` is the time derivative of central pressure and `hol_xx` is Holland's x
+    where ``dp/dt`` is the time derivative of central pressure and ``hol_xx`` is Holland's x
     parameter: hol_xx = 0.6 * (1 - (penv - pcen) / 215)
 
     The equation for b_s has been fitted statistically using hurricane best track records for
@@ -1309,7 +1309,7 @@ def _bs_holland_2008(si_track: xr.Dataset):
     Furthermore, b_s has been fitted under the assumption of a "cyclostrophic" wind field which
     means that the influence from Coriolis forces is assumed to be small. This is reasonable close
     to the radius of maximum wind where the Coriolis term (r*f/2) is small compared to the rest
-    (see `_stat_holland_1980`). More precisely: At the radius of maximum wind speeds, the typical
+    (see ``_stat_holland_1980``). More precisely: At the radius of maximum wind speeds, the typical
     order of the Coriolis term is 1 while wind speed is 50 (which changes away from the
     radius of maximum winds and as the TC moves away from the equator).
 
@@ -1354,8 +1354,8 @@ def _v_max_s_holland_2008(si_track: xr.Dataset):
 
     v_ms = [b_s / (rho * e) * (penv - pcen)]^0.5
 
-    where `b_s` is Holland b-value (see `_bs_holland_2008`), e is Euler's number, rho is the
-    density of air, `penv` is environmental, and `pcen` is central pressure.
+    where ``b_s`` is Holland b-value (see ``_bs_holland_2008``), e is Euler's number, rho is the
+    density of air, ``penv`` is environmental, and ``pcen`` is central pressure.
 
     Parameters
     ----------
@@ -1384,8 +1384,8 @@ def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
 
     B = v^2 * e * rho / (penv - pcen)
 
-    where v are maximum gradient-level winds `gradient_winds`, e is Euler's number, rho is the
-    density of air, `penv` is environmental, and `pcen` is central pressure.
+    where v are maximum gradient-level winds ``gradient_winds``, e is Euler's number, rho is the
+    density of air, ``penv`` is environmental, and ``pcen`` is central pressure.
 
     Parameters
     ----------
@@ -1417,8 +1417,8 @@ def _x_holland_2010(
     x = 0.5  [for r < r_max]
     x = 0.5 + (r - r_max) * (x_n - 0.5) / (r_n - r_max)  [for r >= r_max]
 
-    The peripheral exponent x_n is adjusted to fit the peripheral observation of wind speeds `v_n`
-    at radius `r_n`.
+    The peripheral exponent x_n is adjusted to fit the peripheral observation of wind speeds ``v_n``
+    at radius ``r_n``.
 
     Parameters
     ----------
@@ -1430,11 +1430,11 @@ def _x_holland_2010(
     mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     v_n : np.ndarray of shape (nnodes,) or float, optional
-        Peripheral wind speeds (in m/s) at radius `r_n` outside of radius of maximum winds `r_max`.
+        Peripheral wind speeds (in m/s) at radius ``r_n`` outside of radius of maximum winds ``r_max``.
         In absence of a second wind speed measurement, this value defaults to 17 m/s following
         Holland et al. 2010 (at a radius of 300 km).
     r_n_km : np.ndarray of shape (nnodes,) or float, optional
-        Radius (in km) where the peripheral wind speed `v_n` is measured (or assumed).
+        Radius (in km) where the peripheral wind speed ``v_n`` is measured (or assumed).
         In absence of a second wind speed measurement, this value defaults to 300 km following
         Holland et al. 2010.
 
@@ -1492,7 +1492,7 @@ def _stat_holland_2010(
 
     V(r) = v_max_s * [(r_max / r)^b_s * e^(1 - (r_max / r)^b_s)]^x
 
-    In terms of this function's arguments, b_s is `hol_b` and r is `d_centr`.
+    In terms of this function's arguments, b_s is ``hol_b`` and r is ``d_centr``.
 
     Parameters
     ----------
@@ -1504,7 +1504,7 @@ def _stat_holland_2010(
     mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     hol_x : np.ndarray of shape (nnodes, ncentroids) or float
-        The exponent according to `_x_holland_2010`.
+        The exponent according to ``_x_holland_2010``.
 
     Returns
     -------
@@ -1545,13 +1545,13 @@ def _stat_holland_1980(
 
     V(r) = [(B/rho) * (r_max/r)^B * (penv - pcen) * e^(-(r_max/r)^B) + (r*f/2)^2]^0.5 - (r*f/2)
 
-    In terms of this function's arguments, B is `hol_b` and r is `d_centr`.
+    In terms of this function's arguments, B is ``hol_b`` and r is ``d_centr``.
     The air density rho is assumed to be constant while the Coriolis parameter f is computed
-    from the latitude `lat` using the constant rotation rate of the earth.
+    from the latitude ``lat`` using the constant rotation rate of the earth.
 
     Even though the equation has been derived originally for gradient winds (when combined with the
-    output of `_B_holland_1980`), it can be used for surface winds by adjusting the parameter
-    `hol_b` (see function `_bs_holland_2008`).
+    output of ``_B_holland_1980``), it can be used for surface winds by adjusting the parameter
+    ``hol_b`` (see function ``_bs_holland_2008``).
 
     Parameters
     ----------
@@ -1605,8 +1605,8 @@ def _stat_er_2011(
     Implications for Storm Structure. Journal of the Atmospheric Sciences 68(10): 2236–2249.
     https://dx.doi.org/10.1175/JAS-D-10-05024.1
 
-    The wind speeds `v_ang` are extracted from the momentum via the relationship M = v_ang * r,
-    where r corresponds to `d_centr`. On the other hand, the momentum is derived from the momentum
+    The wind speeds ``v_ang`` are extracted from the momentum via the relationship M = v_ang * r,
+    where r corresponds to ``d_centr``. On the other hand, the momentum is derived from the momentum
     at the peak wind position using equation (36) from Emanuel and Rotunno 2011 with Ck == Cd:
 
     M = M_max * [2 * (r / r_max)^2 / (1 + (r / r_max)^2)].
@@ -1615,7 +1615,7 @@ def _stat_er_2011(
 
     M_max = r_max * v_max + 0.5 * f * r_max**2,
 
-    where the Coriolis parameter f is computed from the latitude `lat` using the constant rotation
+    where the Coriolis parameter f is computed from the latitude ``lat`` using the constant rotation
     rate of the earth.
 
     Parameters
