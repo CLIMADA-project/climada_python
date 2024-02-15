@@ -7,7 +7,7 @@ dependencies:
   - cartopy>=0.22
   - cfgrib>=0.9.9,<0.9.10  # 0.9.10 cannot read the icon_grib files from https://opendata.dwd.de
   - contextily>=1.5
-  - dask>=2024
+  - dask>=2024.1
   - eccodes>=2.27,<2.28  # 2.28 changed some labels, in particular: gust -> i20fg
   - gdal>=3.6
   - geopandas>=0.14
