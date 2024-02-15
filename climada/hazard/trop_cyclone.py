@@ -223,7 +223,11 @@ class TropCyclone(Hazard):
             "ER11" (Emanuel and Rotunno 2011).
             Default: "H08".
         ignore_distance_to_coast : boolean, optional
-            If True, centroids far from coast are not ignored. Default: False.
+            If True, centroids far from coast are not ignored.
+            If False, the centroids' distances to the coast are calculated with the
+            `Centroids.get_dist_coast()` method (unless there is "dist_coast" column in the
+            centroids' GeoDataFrame) and centroids far from coast are ignored.
+            Default: False.
         store_windfields : boolean, optional
             If True, the Hazard object gets a list ``windfields`` of sparse matrices. For each track,
             the full velocity vectors at each centroid and track position are stored in a sparse
