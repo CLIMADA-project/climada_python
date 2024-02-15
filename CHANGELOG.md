@@ -47,6 +47,8 @@ Removed:
 - In the TropCyclone class in the Holland model 2008 and 2010 implementation, a doublecounting of translational velocity is removed [#833](https://github.com/CLIMADA-project/climada_python/pull/833)
 - `climada.util.test.test_finance` and `climada.test.test_engine` updated to recent input data from worldbank [#841](https://github.com/CLIMADA-project/climada_python/pull/841)
 - Set `nodefaults` in Conda environment specs because `defaults` are not compatible with conda-forge [#845](https://github.com/CLIMADA-project/climada_python/pull/845)
+- Fix `util.coordinates.latlon_bounds` for cases where the specified buffer is very large so that the bounds cover more than the full longitudinal range `[-180, 180]` [#839](https://github.com/CLIMADA-project/climada_python/pull/839)
+- Fix `climada.hazard.trop_cyclone` for TC tracks crossing the antimeridian [#839](https://github.com/CLIMADA-project/climada_python/pull/839)
 
 ### Deprecated
 
