@@ -889,7 +889,7 @@ def _compute_windfields(
     centroids : np.ndarray with two dimensions
         Each row is a centroid [lat, lon]. Centroids that are not within reach of the track are
         ignored. Longitudinal coordinates are assumed to be normalized consistently with the
-        longitudinal coordinates in `si_track`.
+        longitudinal coordinates in ``si_track``.
     model : int
         Wind profile model selection according to MODEL_VANG.
     metric : str, optional
@@ -1153,8 +1153,8 @@ def get_close_centroids(
     mask_centr_alongtrack : np.ndarray of shape (npositions, nclose)
         Each row is a mask that indicates the centroids within reach for one track position. Note
         that these masks refer only to the "close centroids" to reduce memory requirements. The
-        number of positions `npositions` corresponds to the size of the "time" dimension of
-        `si_track`.
+        number of positions ``npositions`` corresponds to the size of the "time" dimension of
+        ``si_track``.
     """
     npositions = si_track.sizes["time"]
     ncentroids = centroids.shape[0]
