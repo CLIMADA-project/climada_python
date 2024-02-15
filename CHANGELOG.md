@@ -10,11 +10,40 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 4.1.0
+
+Release date: 2024-02-14
+
+### Dependency Changes
+
 Added:
 
 - `pyproj` >=3.5
-- `pyarrow` >=14.0
-- `numexpr` >=2.8
+- `numexpr` >=2.9
+
+Updated:
+
+- `contextily` >=1.3 &rarr; >=1.5
+- `dask` >=2023 &rarr; >=2024
+- `numba` >=0.57 &rarr; >=0.59
+- `pandas` >=2.1 &rarr; >=2.1,<2.2
+- `pint` >=0.22 &rarr; >=0.23
+- `scikit-learn` >=1.3 &rarr; >=1.4
+- `scipy` >=1.11 &rarr; >=1.12
+- `sparse` >=0.14 &rarr; >=0.15
+- `xarray` >=2023.8 &rarr; >=2024.1
+- `overpy` =0.6 &rarr; =0.7
+- `peewee` =3.16.3 &rarr; =3.17.1
 
 Removed:
 
@@ -49,10 +78,7 @@ Removed:
 - Set `nodefaults` in Conda environment specs because `defaults` are not compatible with conda-forge [#845](https://github.com/CLIMADA-project/climada_python/pull/845)
 - Fix `util.coordinates.latlon_bounds` for cases where the specified buffer is very large so that the bounds cover more than the full longitudinal range `[-180, 180]` [#839](https://github.com/CLIMADA-project/climada_python/pull/839)
 - Fix `climada.hazard.trop_cyclone` for TC tracks crossing the antimeridian [#839](https://github.com/CLIMADA-project/climada_python/pull/839)
-
-### Deprecated
-
-### Removed
+- Avoid redundant calls to `np.unique` in `Impact.impact_at_reg` [#848](https://github.com/CLIMADA-project/climada_python/pull/848)
 
 ## 4.0.1
 
