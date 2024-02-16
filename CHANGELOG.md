@@ -14,7 +14,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
-- Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. The methods to read matlab files were removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
+- Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 
 ### Fixed
 
@@ -23,9 +23,40 @@ Code freeze date: YYYY-MM-DD
 
 ### Deprecated
 
+- climada.hazard.centroids.centr.Centroids.from_mat
+- climada.hazard.centroids.centr.Centroids.from_base_grid
+- climada.hazard.centroids.centr.Centroids.from_lat_lon
+- climada.hazard.centroids.centr.Centroids.def set_area_pixel
+- climada.hazard.centroids.centr.Centroids.def set_area_approx
+- climada.hazard.centroids.centr.Centroids.set_dist_coast
+- climada.hazard.centroids.centr.Centroids.empty_geometry_points
+- climada.hazard.centroids.centr.Centroids.set_meta_to_lat_lon
+- climada.hazard.centroids.centr.Centroids.set_lat_lon_to_meta
+
 ### Removed
 
-- Read/write matlab file and vector file methods for Centroids and Hazard objects. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
+- climada.hazard.base.Hazard.clear
+- climada.hazard.base.Hazard.raster_to_vector
+- climada.hazard.base.Hazard.read_mat
+- climada.hazard.base.Hazard.reproject_raster
+- climada.hazard.base.Hazard.set_vector
+- climada.hazard.base.Hazard.vector_to_raster
+- climada.hazard.centroids.centr.Centroids.calc_pixels_polygons
+- climada.hazard.centroids.centr.Centroids.check
+- climada.hazard.centroids.centr.Centroids.clear
+- climada.hazard.centroids.centr.Centroids.equal
+- climada.hazard.centroids.centr.Centroids.read_excel
+- climada.hazard.centroids.centr.Centroids.read_hdf5
+- climada.hazard.centroids.centr.Centroids.read_mat
+- climada.hazard.centroids.centr.Centroids.set_elevation
+- climada.hazard.centroids.centr.Centroids.set_geometry_points
+- climada.hazard.centroids.centr.Centroids.set_lat_lon
+- climada.hazard.centroids.centr.Centroids.set_raster_file
+- climada.hazard.centroids.centr.Centroids.set_raster_from_pnt_bounds
+- climada.hazard.centroids.centr.Centroids.set_vector_file
+- climada.hazard.centroids.centr.Centroids.values_from_raster_files
+- climada.hazard.centroids.centr.Centroids.values_from_vector_files
+- climada.hazard.centroids.centr.generate_nat_earth_centroids
 
 ## 4.1.0
 
