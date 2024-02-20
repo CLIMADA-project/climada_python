@@ -32,3 +32,4 @@
 * Timo Schmid
 * Kam Lam Yeung
 * Sarah Hülsen
+* Timo Schmid
