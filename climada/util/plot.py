@@ -515,7 +515,7 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize
 
     Returns
     -------
-    fig, axis_sub : matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+    fig, axis_sub, fontsize : matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot, int
     """
     if isinstance(num_sub, int):
         num_row, num_col = _get_row_col_size(num_sub)

@@ -169,6 +169,9 @@ def lon_bounds(lon, buffer=0.0):
     >>> lon = lon_normalize(lon, center=lon_mid)
     >>> np.all((bounds[0] <= lon) & (lon <= bounds[2]))
 
+    If the bounds cover a full circle (360 degrees), this function will always return (-180, 180),
+    instead of (0, 360) or similar equivalent outputs.
+
     Example
     -------
     >>> lon_bounds(np.array([-179, 175, 178]))
@@ -195,9 +198,11 @@ def lon_bounds(lon, buffer=0.0):
     gap_max = np.argmax(lon_diff)
     lon_diff_max = lon_diff[gap_max]
     if lon_diff_max < 2:
-        # looks like the data covers the whole range [-180, 180] rather evenly
-        lon_min = max(lon_uniq[0] - buffer, -180)
-        lon_max = min(lon_uniq[-2] + buffer, 180)
+        # since the largest gap is comparably small, enforce the [-180, 180] value range
+        gap_max = lon_diff.size - 1
+    if lon_diff_max <= 2 * buffer:
+        # avoid (-1, 359) and similar equivalent outputs for bounds covering the full circle
+        lon_min, lon_max = (-180, 180)
     else:
         lon_min = lon_uniq[gap_max + 1]
         lon_max = lon_uniq[gap_max]

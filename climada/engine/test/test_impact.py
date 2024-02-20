@@ -27,6 +27,7 @@ from scipy import sparse
 import h5py
 from pyproj import CRS
 from rasterio.crs import CRS as rCRS
+import datetime as dt
 
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
@@ -66,6 +67,24 @@ def dummy_impact():
         ),
         haz_type="TC",
     )
+
+def dummy_impact_yearly():
+    """Return an impact containing events in multiple years"""
+    imp = dummy_impact()
+
+    years = np.arange(2010,2010+len(imp.date))
+
+    # Edit the date and frequency
+    imp.date = np.array([dt.date(year,1,1).toordinal() for year in years])
+    imp.frequency_unit = "1/year"
+    imp.frequency = np.ones(len(years))/len(years)
+
+    # Calculate the correct expected annual impact
+    freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
+    imp.eai_exp = imp.imp_mat.multiply(freq_mat).sum(axis=0).A1
+    imp.aai_agg = imp.eai_exp.sum()
+
+    return imp
 
 
 class TestImpact(unittest.TestCase):
@@ -867,6 +886,22 @@ class TestSelect(unittest.TestCase):
         imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
         with self.assertRaises(ValueError):
             imp.select(event_ids=[0], event_names=[1, 'two'], dates=(0, 2))
+
+    def test_select_reset_frequency(self):
+        """Test that reset_frequency option works correctly"""
+
+        imp = dummy_impact_yearly() # 6 events, 1 per year
+
+        # select first 4 events
+        n_yr = 4
+        sel_imp = imp.select(dates=(imp.date[0],imp.date[n_yr-1]), reset_frequency=True)
+
+        # check frequency-related attributes
+        np.testing.assert_array_equal(sel_imp.frequency, [1/n_yr]*n_yr)
+        self.assertEqual(sel_imp.aai_agg,imp.at_event[0:n_yr].sum()/n_yr)
+        np.testing.assert_array_equal(sel_imp.eai_exp,
+                                      imp.imp_mat[0:n_yr,:].todense().sum(axis=0).A1/n_yr)
+
 
 class TestConvertExp(unittest.TestCase):
     def test__build_exp(self):

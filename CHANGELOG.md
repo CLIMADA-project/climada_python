@@ -10,11 +10,43 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+- Fix `util.coordinates.latlon_bounds` for cases where the specified buffer is very large so that the bounds cover more than the full longitudinal range `[-180, 180]` [#839](https://github.com/CLIMADA-project/climada_python/pull/839)
+- Fix `climada.hazard.trop_cyclone` for TC tracks crossing the antimeridian [#839](https://github.com/CLIMADA-project/climada_python/pull/839)
+
+### Deprecated
+
+### Removed
+
+## 4.1.0
+
+Release date: 2024-02-14
+
+### Dependency Changes
+
 Added:
 
 - `pyproj` >=3.5
-- `pyarrow` >=14.0
-- `numexpr` >=2.8
+- `numexpr` >=2.9
+
+Updated:
+
+- `contextily` >=1.3 &rarr; >=1.5
+- `dask` >=2023 &rarr; >=2024
+- `numba` >=0.57 &rarr; >=0.59
+- `pandas` >=2.1 &rarr; >=2.1,<2.2
+- `pint` >=0.22 &rarr; >=0.23
+- `scikit-learn` >=1.3 &rarr; >=1.4
+- `scipy` >=1.11 &rarr; >=1.12
+- `sparse` >=0.14 &rarr; >=0.15
+- `xarray` >=2023.8 &rarr; >=2024.1
+- `overpy` =0.6 &rarr; =0.7
+- `peewee` =3.16.3 &rarr; =3.17.1
 
 Removed:
 
@@ -25,6 +57,9 @@ Removed:
 - `climada.util.calibrate` module for calibrating impact functions [#692](https://github.com/CLIMADA-project/climada_python/pull/692)
 - Convenience method `api_client.Client.get_dataset_file`, combining `get_dataset_info` and `download_dataset`, returning a single file objet. [#821](https://github.com/CLIMADA-project/climada_python/pull/821)
 - Read and Write methods to and from csv files for the `DiscRates` class. [#818](ttps://github.com/CLIMADA-project/climada_python/pull/818)
+- Add `CalcDeltaClimate` to unsequa module to allow uncertainty and sensitivity analysis of impact change calculations [#844](https://github.com/CLIMADA-project/climada_python/pull/844)
+- Add function `safe_divide` in util which handles division by zero and NaN values in the numerator or denominator [#844](https://github.com/CLIMADA-project/climada_python/pull/844)
+- Add reset_frequency option for the impact.select() function. [#847](https://github.com/CLIMADA-project/climada_python/pull/847)
 
 ### Changed
 
@@ -45,10 +80,7 @@ Removed:
 - In the TropCyclone class in the Holland model 2008 and 2010 implementation, a doublecounting of translational velocity is removed [#833](https://github.com/CLIMADA-project/climada_python/pull/833)
 - `climada.util.test.test_finance` and `climada.test.test_engine` updated to recent input data from worldbank [#841](https://github.com/CLIMADA-project/climada_python/pull/841)
 - Set `nodefaults` in Conda environment specs because `defaults` are not compatible with conda-forge [#845](https://github.com/CLIMADA-project/climada_python/pull/845)
-
-### Deprecated
-
-### Removed
+- Avoid redundant calls to `np.unique` in `Impact.impact_at_reg` [#848](https://github.com/CLIMADA-project/climada_python/pull/848)
 
 ## 4.0.1
 
