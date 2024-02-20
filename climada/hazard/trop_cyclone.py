@@ -249,6 +249,12 @@ class TropCyclone(Hazard):
                 Only used in H10. If True, replace the recorded value of vmax along the track by
                 an estimate from pressure, following equation (8) in Holland et al. 2010.
                 Default: True
+            vmax_in_brackets : bool, optional
+                Only used in H10. Specifies which of the two formulas in equation (6) of Holland et
+                al. 2010 to use. If False, the formula with vmax outside of the brackets is used.
+                Note that, a side-effect of the formula with vmax inside of the brackets is that
+                the wind speed maximum is attained a bit farther away from the center than
+                according to the recorded radius of maximum winds (RMW). Default: False
 
             Default: None
         ignore_distance_to_coast : boolean, optional
@@ -1279,6 +1285,7 @@ def _compute_angular_windspeeds_h10(
     gradient_to_surface_winds: float = DEF_GRADIENT_TO_SURFACE_WINDS,
     rho_air_const: float = DEF_RHO_AIR,
     vmax_from_cen: bool = True,
+    vmax_in_brackets: bool = False,
 ):
     """Compute (absolute) angular wind speeds according to the Holland et al. 2010 model
 
@@ -1306,6 +1313,12 @@ def _compute_angular_windspeeds_h10(
     vmax_from_cen : boolean, optional
         If True, replace the recorded value of vmax along the track by an estimate from pressure,
         following equation (8) in Holland et al. 2010. Default: True
+    vmax_in_brackets : bool, optional
+        Specifies which of the two formulas in equation (6) of Holland et al. 2010 to use. If
+        False, the formula with vmax outside of the brackets is used. Note that, a side-effect of
+        the formula with vmax inside of the brackets is that the wind speed maximum is attained a
+        bit farther away from the center than according to the recorded radius of maximum
+        winds (RMW). Default: False
 
     Returns
     -------
@@ -1317,8 +1330,10 @@ def _compute_angular_windspeeds_h10(
         _v_max_s_holland_2008(si_track)
     else:
         _B_holland_1980(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
-    hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
-    return _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
+    hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk, vmax_in_brackets=vmax_in_brackets)
+    return _stat_holland_2010(
+        si_track, d_centr, close_centr_msk, hol_x, vmax_in_brackets=vmax_in_brackets,
+    )
 
 def get_close_centroids(
     si_track: xr.Dataset,
@@ -1698,6 +1713,7 @@ def _x_holland_2010(
     mask_centr_close: np.ndarray,
     v_n: Union[float, np.ndarray] = 17.0,
     r_n_km: Union[float, np.ndarray] = 300.0,
+    vmax_in_brackets: bool = False,
 ) -> np.ndarray:
     """Compute exponent for wind model according to Holland et al. 2010.
 
@@ -1731,6 +1747,11 @@ def _x_holland_2010(
         Radius (in km) where the peripheral wind speed ``v_n`` is measured (or assumed).
         In absence of a second wind speed measurement, this value defaults to 300 km following
         Holland et al. 2010.
+    vmax_in_brackets : bool, optional
+        If True, use the alternative formula in equation (6) to solve for the peripheral exponent
+        x_n from the second measurement. Note that, a side-effect of the formula with vmax inside
+        of the brackets is that the wind speed maximum is attained a bit farther away from the
+        center than according to the recorded radius of maximum winds (RMW). Default: False
 
     Returns
     -------
@@ -1756,7 +1777,16 @@ def _x_holland_2010(
     # compute peripheral exponent from second measurement
     # (equation (6) from Holland et al. 2010 solved for x)
     r_max_norm = (r_max / r_n)**hol_b
-    x_n = np.log(v_n / v_max_s) / np.log(r_max_norm * np.exp(1 - r_max_norm))
+    if vmax_in_brackets:
+        x_n = np.log(v_n) / np.log(v_max_s**2 * r_max_norm * np.exp(1 - r_max_norm))
+
+        # With `vmax_in_brackets`, the maximum is shifted away from the recorded RMW. We truncate
+        # here to avoid an exaggerated shift. The value 1.0 has been found to be reasonable by
+        # manual testing of thresholds. Note that the truncation means that the peripheral wind
+        # speed v_n is not exactly attained in some cases.
+        x_n = np.fmin(x_n, 1.0)
+    else:
+        x_n = np.log(v_n / v_max_s) / np.log(r_max_norm * np.exp(1 - r_max_norm))
 
     # linearly interpolate between max exponent and peripheral exponent
     x_max = 0.5
@@ -1774,6 +1804,7 @@ def _stat_holland_2010(
     d_centr: np.ndarray,
     mask_centr_close: np.ndarray,
     hol_x: Union[float, np.ndarray],
+    vmax_in_brackets: bool = False,
 ) -> np.ndarray:
     """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
 
@@ -1788,6 +1819,10 @@ def _stat_holland_2010(
 
     In terms of this function's arguments, b_s is ``hol_b`` and r is ``d_centr``.
 
+    If `vmax_in_brackets` is True, the alternative formula in (6) is used:
+
+    V(r) = [v_max_s^2 * (r_max / r)^b_s * e^(1 - (r_max / r)^b_s)]^x
+
     Parameters
     ----------
     si_track : xr.Dataset
@@ -1799,6 +1834,11 @@ def _stat_holland_2010(
         Mask indicating for each track node which centroids are within reach of the windfield.
     hol_x : np.ndarray of shape (nnodes, ncentroids) or float
         The exponent according to ``_x_holland_2010``.
+    vmax_in_brackets : bool, optional
+        If True, use the alternative formula in equation (6). Note that, a side-effect of the
+        formula with vmax inside of the brackets is that the wind speed maximum is attained a bit
+        farther away from the center than according to the recorded radius of maximum
+        winds (RMW). Default: False
 
     Returns
     -------
@@ -1818,7 +1858,10 @@ def _stat_holland_2010(
     ]
 
     r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
-    v_ang[mask_centr_close] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**hol_x
+    if vmax_in_brackets:
+        v_ang[mask_centr_close] = (v_max_s**2 * r_max_norm * np.exp(1 - r_max_norm))**hol_x
+    else:
+        v_ang[mask_centr_close] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**hol_x
     return v_ang
 
 def _stat_holland_1980(
