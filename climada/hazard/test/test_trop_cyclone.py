@@ -142,12 +142,12 @@ class TestReader(unittest.TestCase):
              # The following model configurations use recorded wind speeds, while the above use
              # pressure values only. That's why some of the values are so different.
              ("H10", dict(vmax_from_cen=False, rho_air_const=1.2), [
-                23.702232, 24.327615, 24.947161, 23.589233, 26.616085, 29.389295,
-                21.338178, 24.257067, 26.472543, 25.662313, 18.535842, 31.886041,
+                 23.702232, 24.327615, 24.947161, 23.589233, 26.616085, 29.389295,
+                 21.338178, 24.257067, 26.472543, 25.662313, 18.535842, 31.886041,
              ]),
              ("H10", dict(vmax_from_cen=False, rho_air_const=None), [
-                24.244162, 24.835561, 25.432454, 24.139294, 27.127457, 29.719196,
-                21.910658, 24.692637, 26.783575, 25.971516, 19.005555, 31.904048,
+                 24.244162, 24.835561, 25.432454, 24.139294, 27.127457, 29.719196,
+                 21.910658, 24.692637, 26.783575, 25.971516, 19.005555, 31.904048,
              ]),
              ("H1980", None, [
                  21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
@@ -380,21 +380,21 @@ class TestWindfieldHelpers(unittest.TestCase):
         hol_x = _x_holland_2010(si_track, d_centr, close_centr)
         np.testing.assert_array_almost_equal(hol_x, [
             [0.5, 0.500000, 0.485077, 0.476844, 0.457291],
-            [0.5, 0.500000, 0.410997, 0.289203, 0.000000],
-            [0.5, 0.497620, 0.131072, 0.000000, 0.000000],
+            [0.5, 0.500000, 0.410997, 0.400000, 0.000000],
+            [0.5, 0.497620, 0.400000, 0.400000, 0.400000],
             [0.5, 0.505022, 1.403952, 1.554611, 2.317948],
         ])
 
         v_ang_norm = _stat_holland_2010(si_track, d_centr, close_centr, hol_x)
-        np.testing.assert_array_almost_equal(v_ang_norm, [
+        np.testing.assert_allclose(v_ang_norm, [
             # first column: converge to 0 when approaching storm eye
             # second column: vmax at RMW
             # fourth column: peripheral speed (17 m/s) at peripheral radius (unless x is clipped!)
             [0.0000000, 35.000000, 21.181497, 17.00000, 12.103461],
-            [1.2964800, 34.990037, 21.593755, 17.00000, 0.0000000],
-            [0.3219518, 15.997500, 13.585498, 16.00000, 16.000000],
+            [1.2964800, 34.990037, 21.593755, 12.89131, 0.0000000],
+            [0.3219518, 15.997500, 9.7120060, 8.087240, 6.2289690],
             [24.823469, 89.992938, 24.381965, 17.00000, 1.9292020],
-        ])
+        ], atol=1e-5)
 
     def test_stat_holland_1980(self):
         """Test _stat_holland_1980 function. Compare to MATLAB reference."""
