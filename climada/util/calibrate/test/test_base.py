@@ -48,7 +48,9 @@ def hazard():
     centroids = Centroids.from_lat_lon(lat=lat, lon=lon)
     event_id = np.array([1, 3, 10])
     intensity = csr_matrix([[1, 0.1], [2, 0.2], [3, 2]])
-    return Hazard(event_id=event_id, centroids=centroids, intensity=intensity)
+    return Hazard(
+        event_id=event_id, centroids=centroids, intensity=intensity, haz_type="TEST"
+    )
 
 
 def exposure():
@@ -58,7 +60,7 @@ def exposure():
             longitude=[0, 1, 100],
             latitude=[1, 2, 50],
             value=[1, 0.1, 1e6],
-            impf_=[1, 1, 1],
+            impf_TEST=[1, 1, 1],
         )
     )
 
@@ -124,9 +126,8 @@ class TestInputPostInit(unittest.TestCase):
             impact_to_dataframe=self.impact_to_dataframe,
         )
 
-        # Check hazard and exposure
-        self.assertIn("centr_", input.exposure.gdf)
-        npt.assert_array_equal(input.exposure.gdf["centr_"], [0, 1, -1])
+        # Check centroids assignment
+        npt.assert_array_equal(input.exposure.gdf["centr_TEST"], [0, 1, -1])
 
     def test_align_impact(self):
         """Check alignment of impact and data"""
@@ -237,9 +238,7 @@ class TestOutputEvaluator(unittest.TestCase):
         self.assertEqual(out_eval._impact_label, "Impact [my_unit]")
 
         self.input.impact_func_creator.assert_called_with(p1=1, p2=2.0)
-        mock.assert_called_with(
-            self.input.exposure, "impact_func", self.input.hazard
-        )
+        mock.assert_called_with(self.input.exposure, "impact_func", self.input.hazard)
 
 
 # Execute Tests

@@ -63,6 +63,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
                     mdd=np.array([0, 10 * slope]),
                     paa=np.ones(2),
                     id=1,
+                    haz_type="TEST",
                 )
             ]
         )
@@ -106,6 +107,7 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
                     mdd=np.array([0, 1, 3]),
                     paa=np.ones(3),
                     id=1,
+                    haz_type="TEST",
                 )
             ]
         )
@@ -155,6 +157,7 @@ class TestBayesianOptimizer(unittest.TestCase):
                     mdd=np.array([0, 10 * slope]),
                     paa=np.ones(2),
                     id=1,
+                    haz_type="TEST",
                 )
             ]
         )
@@ -170,8 +173,8 @@ class TestBayesianOptimizer(unittest.TestCase):
     def test_single(self):
         """Test with single parameter"""
         self.input.bounds = {"slope": (-1, 3)}
-        optimizer = BayesianOptimizer(self.input)
-        output = optimizer.run(init_points=10, n_iter=20, random_state=1)
+        optimizer = BayesianOptimizer(self.input, random_state=1)
+        output = optimizer.run(init_points=10, n_iter=20)
 
         # Check result (low accuracy)
         self.assertAlmostEqual(output.params["slope"], 1.0, places=2)
@@ -189,6 +192,7 @@ class TestBayesianOptimizer(unittest.TestCase):
                     mdd=np.array([0, 1, 3]),
                     paa=np.ones(3),
                     id=1,
+                    haz_type="TEST",
                 )
             ]
         )
@@ -199,8 +203,8 @@ class TestBayesianOptimizer(unittest.TestCase):
         )
         self.input.bounds = {"intensity_1": (-1, 4), "intensity_2": (-1, 4)}
         # Run optimizer
-        optimizer = BayesianOptimizer(self.input)
-        output = optimizer.run(n_iter=200, random_state=1)
+        optimizer = BayesianOptimizer(self.input, random_state=1)
+        output = optimizer.run(n_iter=200)
 
         # Check results (low accuracy)
         self.assertEqual(output.p_space.dim, 2)
@@ -230,8 +234,8 @@ class TestBayesianOptimizer(unittest.TestCase):
     def test_plots(self):
         """Check if executing the default plots works"""
         self.input.bounds = {"slope": (-1, 3)}
-        optimizer = BayesianOptimizer(self.input)
-        output = optimizer.run(init_points=10, n_iter=20, random_state=1)
+        optimizer = BayesianOptimizer(self.input, random_state=1)
+        output = optimizer.run(init_points=10, n_iter=20)
 
         output_eval = OutputEvaluator(self.input, output)
         output_eval.impf_set.plot()
