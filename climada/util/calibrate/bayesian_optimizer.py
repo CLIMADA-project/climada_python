@@ -18,18 +18,24 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Calibration with Bayesian Optimization
 """
 
-from dataclasses import dataclass, InitVar
+from dataclasses import dataclass, InitVar, field
 from typing import Mapping, Optional, Any, Union, List, Tuple
 from numbers import Number
 from itertools import combinations, repeat
+from collections import deque, namedtuple
+import logging
 
 import pandas as pd
+import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.axes as maxes
-from bayes_opt import BayesianOptimization
+from bayes_opt import BayesianOptimization, Events, UtilityFunction
 from bayes_opt.target_space import TargetSpace
 
-from .base import Output, Optimizer, OutputEvaluator
+from .base import Input, Output, Optimizer, OutputEvaluator
+
+
+LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
@@ -176,6 +182,246 @@ class BayesianOptimizerOutput(Output):
         return [plot_single(p_first, p_second) for p_first, p_second in iterable]
 
 
+Improvement = namedtuple(
+    "Improvement", ["iteration", "sample", "random", "target", "improvement"]
+)
+
+
+class StopEarly(Exception):
+    """An exception for stopping an optimization iteration early"""
+
+    pass
+
+
+@dataclass(eq=False)
+class BayesianOptimizerController(object):
+    """A class for controlling the iterations of a :py:class:`BayesianOptimizer`.
+
+    Each iteration in the optimizer consists of a random sampling of the parameter space
+    with :py:attr:`init_points` steps, followed by a Gaussian process sampling with
+    :py:attr:`n_iter` steps. During the latter, the :py:attr:`kappa` parameter is
+    reduced to reach :py:attr:`kappa_min` at the end of the iteration. The iteration is
+    stopped prematurely if improvements of the buest guess are below
+    :py:attr:`min_improvement` for :py:attr:`min_improvement_count` consecutive times.
+    At the beginning of the next iteration, :py:attr:`kappa` is reset to its original
+    value.
+
+    Optimization stops if :py:attr:`max_iterations` is reached or if an entire iteration
+    saw now improvement.
+
+    Attributes
+    ----------
+    init_points : int
+        Number of randomly sampled points during each iteration.
+    n_iter : int
+        Maximum number of points using Gaussian process sampling during each iteration.
+    min_improvement : float
+        Minimal relative improvement. If improvements are below this value
+        :py:attr:`min_improvement_count` times, the iteration is stopped.
+    min_improvement_count : int
+        Number of times the :py:attr:`min_improvement` must be undercut to stop the
+        iteration.
+    kappa : float
+        Parameter controlling exploration of the upper-confidence-bound acquisition
+        function of the sampling algorithm. Lower values mean less exploration of the
+        parameter space and more exploitation of local information. This value is
+        reduced throughout one iteration, reaching :py:attr:`kappa_min` at the
+        last iteration step.
+    kappa_min : float
+        Minimal value of :py:attr:`kappa` after :py:attr:`n_iter` steps.
+    max_iterations : int
+        Maximum number of iterations before optimization is stopped, irrespective of
+        convergence.
+    utility_func_kwargs
+        Further keyword arguments to the ``bayes_opt.UtilityFunction``.
+    """
+
+    # Init attributes
+    init_points: int = 0
+    n_iter: int = 0
+    min_improvement: float = 1e-3
+    min_improvement_count: int = 2
+    kappa: float = 2.576
+    kappa_min: float = 0.1
+    max_iterations: int = 10
+    utility_func_kwargs: dict[str, Union[int, float, str]] = field(default_factory=dict)
+
+    # Other attributes
+    kappa_decay: float = field(init=False, default=0.96)
+    steps: int = field(init=False, default=0)
+    iterations: int = field(init=False, default=0)
+    _improvements: deque[Improvement] = field(init=False, default_factory=deque)
+    _last_it_improved: int = 0
+    _last_it_end: int = 0
+
+    def __post_init__(self):
+        """Set the decay factor for :py:attr:`kappa`."""
+        self.kappa_decay = np.exp(
+            (np.log(self.kappa_min) - np.log(self.kappa)) / self.n_iter
+        )
+
+    @classmethod
+    def from_input(cls, inp: Input, sampling_base: float = 4, **kwargs):
+        """Create a controller from a calibration input
+
+        This uses the number of parameters to determine the appropriate values for
+        :py:attr:`init_points` and :py:attr:`n_iter`. Both values are set to
+        :math:`b^N`, where :math:`b` is the ``sampling_base`` parameter and :math:`N`
+        is the number of estimated parameters.
+
+        Parameters
+        ----------
+        inp : Input
+            Input to the calibration
+        sampling_base : float, optional
+            Base for determining the sample size. Increase this for denser sampling.
+            Defaults to 4.
+        kwargs
+            Keyword argument for the default constructor.
+        """
+        num_params = len(inp.bounds)
+        init_points = round(sampling_base**num_params)
+        n_iter = round(sampling_base**num_params)
+        return cls(init_points=init_points, n_iter=n_iter, **kwargs)
+
+    @property
+    def _previous_max(self):
+        """Return the maximum target value observed"""
+        if not self._improvements:
+            return -np.inf
+        return self._improvements[-1].target
+
+    def is_converged(self) -> bool:
+        """Check if convergence criteria are met"""
+        return True
+
+    def optimizer_params(self) -> dict[str, Union[int, float, str, UtilityFunction]]:
+        """Return parameters for the optimizer"""
+        return {
+            "init_points": self.init_points,
+            "n_iter": self.n_iter,
+            "acquisition_function": UtilityFunction(
+                kappa=self.kappa,
+                kappa_decay=self.kappa_decay,
+                **self.utility_func_kwargs,
+            ),
+        }
+
+    def _is_random_step(self):
+        """Return true if we sample randomly instead of Bayesian"""
+        return (self._last_it_end + self.steps) < self.init_points
+
+    def _append_improvement(self, target):
+        """Append a new improvement to the deque"""
+        impr = np.inf
+        if self._improvements:
+            impr = (self._improvements[-1].target / target) - 1
+
+        self._improvements.append(
+            Improvement(
+                sample=self.steps,
+                iteration=self.iterations,
+                target=target,
+                improvement=impr,
+                random=self._is_random_step(),
+            )
+        )
+
+    def _is_new_max(self, instance):
+        """Determine if a guessed value is the new maximum"""
+        if instance.max is None:
+            # During constrained optimization, there might not be a maximum
+            # value since the optimizer might've not encountered any points
+            # that fulfill the constraints.
+            return False
+
+        if instance.max["target"] > self._previous_max:
+            return True
+        return False
+
+    def _maybe_stop_early(self, instance):
+        """Throw if we want to stop this iteration early"""
+        # Create sequence of last improvements
+        last_improvements = [
+            self._improvements[-idx]
+            for idx in np.arange(
+                min(self.min_improvement_count, len(self._improvements))
+            )
+            + 1
+        ]
+        if (
+            # Same iteration
+            np.unique([impr.iteration for impr in last_improvements]).size == 1
+            # Not random
+            and not any(impr.random for impr in last_improvements)
+            # Less than min improvement
+            and all(
+                impr.improvement < self.min_improvement for impr in last_improvements
+            )
+        ):
+            LOGGER.info("Minimal improvement. Stop iteration.")
+            instance.dispatch(Events.OPTIMIZATION_END)
+            raise StopEarly()
+
+    def update(self, event, instance):
+        """Update the step tracker of this instance.
+
+        For step events, check if the latest guess is the new maximum. Also check if the
+        iteration will be stopped early.
+
+        For end events, check if any improvement occured. If not, stop the optimization.
+
+        Parameters
+        ----------
+        event : bayes_opt.Events
+            The event descriptor
+        instance : bayes_opt.BayesianOptimization
+            Optimization instance triggering the event
+
+        Raises
+        ------
+        StopEarly
+            If the optimization only achieves minimal improvement, stop the iteration
+            early with this exception.
+        StopIteration
+            If an entire iteration did not achieve improvement, stop the optimization.
+        """
+        if event == Events.OPTIMIZATION_STEP:
+            new_max = self._is_new_max(instance)
+            if new_max:
+                self._append_improvement(instance.max["target"])
+
+            self.steps += 1
+
+            # NOTE: Must call this after incrementing the step
+            if new_max:
+                self._maybe_stop_early(instance)
+
+        if event == Events.OPTIMIZATION_END:
+            self.iterations += 1
+            # Stop if we do not improve anymore
+            if (
+                self._last_it_end > 0
+                and self._last_it_improved == self._improvements[-1].iteration
+            ):
+                LOGGER.info("No improvement. Stop optimization.")
+                raise StopIteration()
+
+            self._last_it_improved = self._improvements[-1].iteration
+            self._last_it_end = self.steps
+
+    def improvements(self) -> pd.DataFrame:
+        """Return improvements as nice data
+
+        Returns
+        -------
+        improvements : pd.DataFrame
+        """
+        return pd.DataFrame.from_records(
+            data=[impr._asdict() for impr in self._improvements]
+        ).set_index("sample")
+
+
 @dataclass
 class BayesianOptimizer(Optimizer):
     """An optimization using ``bayes_opt.BayesianOptimization``
@@ -205,13 +451,13 @@ class BayesianOptimizer(Optimizer):
 
     Notes
     -----
-    The following requirements apply to the parameters of :py:class:`Input` when using
-    this class:
+    The following requirements apply to the parameters of
+    :py:class:`~climada.util.calibrate.base.Input` when using this class:
 
     bounds
-        Setting ``bounds`` in the ``Input`` is required because the optimizer first
-        "explores" the bound parameter space and then narrows its search to regions
-        where the cost function is low.
+        Setting :py:attr:`~climada.util.calibrate.base.Input.bounds` is required
+        because the optimizer first "explores" the bound parameter space and then
+        narrows its search to regions where the cost function is low.
     constraints
         Must be an instance of ``scipy.minimize.LinearConstraint`` or
         ``scipy.minimize.NonlinearConstraint``. See
@@ -253,7 +499,10 @@ class BayesianOptimizer(Optimizer):
         """Invert the cost function because BayesianOptimization maximizes the target"""
         return -self.input.cost_func(data, predicted)
 
-    def run(self, **opt_kwargs) -> BayesianOptimizerOutput:
+    def run(
+        self,
+        controller: BayesianOptimizerController,
+    ) -> BayesianOptimizerOutput:
         """Execute the optimization
 
         ``BayesianOptimization`` *maximizes* a target function. Therefore, this class
@@ -262,12 +511,8 @@ class BayesianOptimizer(Optimizer):
 
         Parameters
         ----------
-        init_points : int, optional
-            Number of initial samples taken from the parameter space. Defaults to 10^N,
-            where N is the number of parameters.
-        n_iter : int, optional
-            Number of iteration steps after initial sampling. Defaults to 10^N, where N
-            is the number of parameters.
+        controller : BayesianOptimizerController
+            The controller instance used to set the optimization iteration parameters.
         opt_kwargs
             Further keyword arguments passed to ``BayesianOptimization.maximize``.
 
@@ -277,13 +522,18 @@ class BayesianOptimizer(Optimizer):
             Optimization output. :py:attr:`BayesianOptimizerOutput.p_space` stores data
             on the sampled parameter space.
         """
-        # Retrieve parameters
-        num_params = len(self.input.bounds)
-        init_points = opt_kwargs.pop("init_points", 10**num_params)
-        n_iter = opt_kwargs.pop("n_iter", 10**num_params)
+        for event in (Events.OPTIMIZATION_STEP, Events.OPTIMIZATION_END):
+            self.optimizer.subscribe(event, controller)
 
-        # Run optimizer
-        self.optimizer.maximize(init_points=init_points, n_iter=n_iter, **opt_kwargs)
+        while controller.iterations < controller.max_iterations:
+            try:
+                LOGGER.info(f"Optimization iteration: {controller.iterations}")
+                self.optimizer.maximize(**controller.optimizer_params())
+            except StopEarly:
+                continue
+            except StopIteration:
+                # Exit the loop
+                break
 
         # Return output
         opt = self.optimizer.max
