@@ -329,14 +329,16 @@ class BayesianOptimizerController(object):
 
     def _is_new_max(self, instance):
         """Determine if a guessed value is the new maximum"""
-        if instance.max is None:
+        instance_max = instance.max
+        if not instance_max or instance_max.get("target") is None:
             # During constrained optimization, there might not be a maximum
             # value since the optimizer might've not encountered any points
             # that fulfill the constraints.
             return False
 
-        if instance.max["target"] > self._previous_max:
+        if instance_max["target"] > self._previous_max:
             return True
+
         return False
 
     def _maybe_stop_early(self, instance):
