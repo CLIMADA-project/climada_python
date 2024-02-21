@@ -21,7 +21,7 @@ Cross-calibration on top of a single calibration module
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar, field
 from typing import List, Any, Tuple, Sequence, Dict, Callable
-from copy import copy
+from copy import copy, deepcopy
 from itertools import repeat
 import logging
 
@@ -188,6 +188,7 @@ class EnsembleOptimizerOutput:
         impact_func_creator: Callable[..., ImpactFuncSet],
         haz_type,
         impf_id,
+        input=None,
     ):
         """Plot all impact functions with appropriate color coding and event data"""
         # Store data to plot
@@ -214,9 +215,15 @@ class EnsembleOptimizerOutput:
 
         # Create plot
         _, ax = plt.subplots()
-        colors = plt.get_cmap("turbo")(np.linspace(0, 1, self.data.shape[0]))
+
+        # Plot hazard histogram
+        # NOTE: Actually requires selection by exposure, but this is not trivial!
+        if input is not None:
+            ax2 = ax.twinx()
+            ax2.hist(input.hazard.intensity.data, bins=40, color="grey", alpha=0.5)
 
         # Sort data by final MDR value, then plot
+        colors = plt.get_cmap("turbo")(np.linspace(0, 1, self.data.shape[0]))
         data_plt = sorted(data_plt, key=lambda x: x["mdr"][-1], reverse=True)
         for idx, data_dict in enumerate(data_plt):
             ax.plot(
@@ -294,7 +301,9 @@ class EnsembleOptimizer(ABC):
     ) -> List[SingleEnsembleOptimizerOutput]:
         """Iterate over all samples sequentially"""
         return [
-            optimize(self.optimizer_type, input, init_kwargs, optimizer_run_kwargs)
+            optimize(
+                self.optimizer_type, input, init_kwargs, deepcopy(optimizer_run_kwargs)
+            )
             for input, init_kwargs in tqdm(
                 zip(self._inputs(), self._opt_init_kwargs()), total=len(self.samples)
             )
@@ -304,6 +313,8 @@ class EnsembleOptimizer(ABC):
         self, processes, **optimizer_run_kwargs
     ) -> List[SingleEnsembleOptimizerOutput]:
         """Iterate over all samples in parallel"""
+        iterations = len(self.samples)
+        opt_run_kwargs = (deepcopy(optimizer_run_kwargs) for _ in range(iterations))
         with ProcessPool(nodes=processes) as pool:
             return list(
                 tqdm(
@@ -312,10 +323,10 @@ class EnsembleOptimizer(ABC):
                         repeat(self.optimizer_type),
                         self._inputs(),
                         self._opt_init_kwargs(),
-                        repeat(optimizer_run_kwargs),
+                        opt_run_kwargs,
                         # chunksize=processes,
                     ),
-                    total=len(self.samples),
+                    total=iterations,
                 )
             )
 
