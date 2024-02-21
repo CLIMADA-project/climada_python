@@ -939,11 +939,17 @@ class Centroids():
         signed : bool
             If True, use signed distances (positive off shore and negative on land). Default: False
         precomputed : bool, optional
-            This argument is ignored, it is only kept for backwards compatibility. The distances
-            are never computed on-the-fly, but always read from a raster file containing
-            precomputed distances. Default: True
+            Whether distances should be read from a pre-computed raster (True) or computed
+            on-the-fly (False). Default: True.
+            
+            .. deprecated:: 4.1
+               Argument is ignored, because distances are not computed on-the-fly anymore.
+ 
         scheduler : str, optional
-            This argument is ignored, it is only kept for backwards compatibility. Default: None
+            Scheduler for on-the-fly computation.
+            
+            .. deprecated:: 4.1
+               Argument is ignored, because distances are not computed on-the-fly anymore.
         """
         if not precomputed or scheduler is not None:
             LOGGER.warning(
