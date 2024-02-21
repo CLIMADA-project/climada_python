@@ -248,6 +248,11 @@ class TestFunc(unittest.TestCase):
         bounds = u_coord.latlon_bounds(lat, lon, buffer=1)
         self.assertEqual(bounds, (179.5, -3.1, 186, 6))
 
+        # exceedingly large buffers are truncated to [-180, 180]
+        lat, lon = np.array([0, -2.1, 5]), np.array([-179.5, -175, -178])
+        bounds = u_coord.latlon_bounds(lat, lon, buffer=234)
+        self.assertEqual(bounds, (-180, -90, 180, 90))
+
         # longitude values need to be normalized before they lie between computed bounds:
         lon_mid = 0.5 * (bounds[0] + bounds[2])
         lon = u_coord.lon_normalize(lon, center=lon_mid)

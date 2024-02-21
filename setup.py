@@ -33,7 +33,7 @@ DEPS_TEST = [
 setup(
     name='climada',
 
-    version='4.1.0',
+    version='4.1.1-dev',
 
     description='CLIMADA in Python',
 
