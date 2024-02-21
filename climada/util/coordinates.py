@@ -472,6 +472,55 @@ def convert_wgs_to_utm(lon, lat):
     epsg_utm_base = 32601 + (0 if lat >= 0 else 100)
     return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
 
+def dist_to_coast(coord_lat, lon=None, highres=False, signed=False):
+    """Read interpolated (signed) distance to coast (in m) from NASA data
+
+    Note: The NASA raster file is 300 MB and will be downloaded on first run!
+
+    Parameters
+    ----------
+    coord_lat : GeoDataFrame or np.ndarray or float
+        One of the following:
+
+        * GeoDataFrame with geometry column in epsg:4326
+        * np.array with two columns, first for latitude of each point
+          and second with longitude in epsg:4326
+        * np.array with one dimension containing latitudes in epsg:4326
+        * float with a latitude value in epsg:4326
+
+    lon : np.ndarray or float, optional
+        If given, one of the following:
+
+        * np.array with one dimension containing longitudes in epsg:4326
+        * float with a longitude value in epsg:4326
+
+    highres : bool, optional
+        Use full resolution of NASA data (much slower). Default: False.
+    signed : bool
+        If True, distance is signed with positive values off shore and negative values on land.
+        Default: False
+
+    Returns
+    -------
+    dist : np.array
+        (Signed) distance to coast in meters.
+    """
+    if lon is None:
+        if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
+            if not equal_crs(coord_lat.crs, DEF_CRS):
+                raise ValueError('Input CRS is not %s' % str(DEF_CRS))
+            geom = coord_lat if isinstance(coord_lat, gpd.GeoSeries) else coord_lat["geometry"]
+            lon, lat = geom.x.values, geom.y.values
+        elif isinstance(coord_lat, np.ndarray) and coord_lat.shape[1] == 2:
+            lat, lon = coord_lat[:, 0], coord_lat[:, 1]
+        else:
+            raise ValueError('Missing longitude values.')
+    else:
+        lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
+        if lat.size != lon.size:
+            raise ValueError(f'Mismatching input coordinates size: {lat.size} != {lon.size}')
+    return dist_to_coast_nasa(lat, lon, highres=highres, signed=signed)
+
 def _get_dist_to_coast_nasa_tif():
     """Get the path to the NASA raster file for distance to coast.
     If the file (300 MB) is missing it will be automatically downloaded.
