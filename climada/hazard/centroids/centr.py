@@ -941,13 +941,13 @@ class Centroids():
         precomputed : bool, optional
             Whether distances should be read from a pre-computed raster (True) or computed
             on-the-fly (False). Default: True.
-            
+
             .. deprecated:: 4.1
                Argument is ignored, because distances are not computed on-the-fly anymore.
- 
+
         scheduler : str, optional
             Scheduler for on-the-fly computation.
-            
+
             .. deprecated:: 4.1
                Argument is ignored, because distances are not computed on-the-fly anymore.
         """
