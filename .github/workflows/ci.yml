@@ -70,8 +70,8 @@ jobs:
   test-petals:
     name: Petals
     uses: CLIMADA-project/climada_petals/.github/workflows/testing.yml@github-actions
-      with:
-        core_branch: ${{ github.ref }}
-        petals_branch: develop
-      permissions:
-        checks: write
+    with:
+      core_branch: ${{ github.ref }}
+      petals_branch: develop
+    permissions:
+      checks: write
