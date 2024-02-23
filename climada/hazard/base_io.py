@@ -635,7 +635,7 @@ class HazardIO():
                 return np.array(u_dt.datetime64_to_ordinal(array.values))
 
             # Handle access errors
-            except (ValueError, TypeError) as err:
+            except (ValueError, TypeError, AttributeError) as err:
                 if strict:
                     raise err
 
@@ -654,7 +654,7 @@ class HazardIO():
                 return array.dt.strftime("%Y-%m-%d").values
 
             # Handle access errors
-            except (ValueError, TypeError) as err:
+            except (ValueError, TypeError, AttributeError) as err:
                 if strict:
                     raise err
 
