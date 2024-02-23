@@ -24,8 +24,10 @@ from unittest.mock import patch, MagicMock
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
-from bayes_opt import BayesianOptimization, UtilityFunction, Events
+from bayes_opt import BayesianOptimization, Events
 from scipy.optimize import NonlinearConstraint
+import matplotlib.pyplot as plt
+from matplotlib.axes import Axes
 
 from climada.util.calibrate import Input, BayesianOptimizer, BayesianOptimizerController
 from climada.util.calibrate.bayesian_optimizer import (
@@ -219,6 +221,63 @@ class TestBayesianOptimizerOutput(unittest.TestCase):
         df["Calibration", "Allowed"] = [True, True, False]
         df.index.rename("Iteration", inplace=True)
         pd.testing.assert_frame_equal(output.p_space_to_dataframe(), df)
+
+    def test_plot_p_space(self):
+        """Test plotting of different parameter combinations"""
+        # Mock data
+        mock_df = pd.DataFrame(
+            {
+                ("Parameters", "param1"): [1, 2, 3],
+                ("Parameters", "param2"): [4, 5, 6],
+                ("Parameters", "param3"): [7, 8, 9],
+                ("Calibration", "Cost Function"): [10, 15, 20],
+            }
+        )
+
+        # Create instance of BayesianOptimizerOutput
+        output = BayesianOptimizerOutput(params=None, target=None, p_space=None)
+
+        # Mock the p_space_to_dataframe method
+        with patch.object(
+            BayesianOptimizerOutput, "p_space_to_dataframe", return_value=mock_df
+        ):
+            # Plot all
+            axes = output.plot_p_space()
+            self.assertEqual(len(axes), 3)
+            for ax in axes:
+                self.assertIsInstance(ax, Axes)
+                self.assertTrue(ax.has_data())
+
+            # # Keep x fixed
+            axes = output.plot_p_space(x="param2")
+            self.assertEqual(len(axes), 2)
+            for ax in axes:
+                self.assertEqual(ax.get_xlabel(), "(Parameters, param2)")
+
+            # # Keep y fixed
+            axes = output.plot_p_space(y="param1")
+            self.assertEqual(len(axes), 2)
+            for ax in axes:
+                self.assertEqual(ax.get_ylabel(), "(Parameters, param1)")
+
+            # # Plot single combination
+            ax = output.plot_p_space(x="param2", y="param1")
+            self.assertIsInstance(ax, Axes)
+            self.assertEqual(ax.get_xlabel(), "(Parameters, param2)")
+            self.assertEqual(ax.get_ylabel(), "(Parameters, param1)")
+
+        # Plot single parameter
+        ax = output.plot_p_space(
+            pd.DataFrame(
+                {
+                    ("Parameters", "param1"): [1, 2, 3],
+                    ("Calibration", "Cost Function"): [10, 15, 20],
+                }
+            )
+        )
+        self.assertIsInstance(ax, Axes)
+        self.assertEqual(ax.get_xlabel(), "(Parameters, param1)")
+        self.assertEqual(ax.get_ylabel(), "(Parameters, none)")
 
 
 class TestBayesianOptimizer(unittest.TestCase):

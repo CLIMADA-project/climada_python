@@ -162,7 +162,11 @@ class BayesianOptimizerOutput(Output):
         # Option 0: Only one parameter
         params = p_space_df["Parameters"].columns.to_list()
         if len(params) < 2:
-            return plot_single(x=params[0], y=repeat(0))
+            # Add zeros for scatter plot
+            p_space_df["Parameters", "none"] = np.zeros_like(
+                p_space_df["Parameters", params[0]]
+            )
+            return plot_single(x=params[0], y="none")
 
         # Option 1: Only a single plot
         if x is not None and y is not None:
