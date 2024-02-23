@@ -41,6 +41,8 @@ from rasterio.warp import reproject, Resampling, calculate_default_transform
 import sparse as sp
 from scipy import sparse
 import xarray as xr
+import netCDF4 as nc
+from scipy.interpolate import griddata
 
 from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
@@ -1890,6 +1892,63 @@ class Hazard():
         LOGGER.warning("The use of Hazard.read_hdf5 is deprecated."
                        "Use Hazard.from_hdf5 instead.")
         self.__dict__ = self.__class__.from_hdf5(*args, **kwargs).__dict__
+
+    @staticmethod
+    def _interpolate_to_grid(latitudes, longitudes, coords, inten_stats, method='linear'):
+
+        """
+        Interpolates intensity data onto a regular grid defined by latitudes and longitudes.
+        
+        Parameters:
+        - latitudes: 1D array of latitude values for the target grid.
+        - longitudes: 1D array of longitude values for the target grid.
+        - coords: (N, 2) array of original (latitude, longitude) pairs.
+        - inten_stats: Original flattened array of intensity values.
+        - method: Method of interpolation ('linear', 'nearest', 'cubic').
+        
+        Returns:
+        - grid_inten_stats: 2D array of intensity values interpolated onto the regular grid.
+        """
+        grid_lat, grid_lon = np.meshgrid(latitudes, longitudes, indexing='ij')
+        grid_inten_stats = griddata(coords, inten_stats, (grid_lat, grid_lon), method=method)
+        return grid_inten_stats
+
+    def write_local_exceedance_inten_netcdf(self, return_periods, filename):
+        """
+        Generates exceedance intensity data, interpolates it onto a regular grid,
+        and saves the interpolated data into a NetCDF file.
+        """
+        inten_stats = self.local_exceedance_inten(return_periods=return_periods)
+        coords = self.centroids.coord
+        
+        # Define the spatial extent and create regular grid arrays for latitude and longitude
+        min_lat, max_lat = np.min(coords[:, 0]), np.max(coords[:, 0])
+        min_lon, max_lon = np.min(coords[:, 1]), np.max(coords[:, 1])
+        lat_interval = (max_lat - min_lat) / (len(np.unique(coords[:, 0])) - 1)
+        lon_interval = (max_lon - min_lon) / (len(np.unique(coords[:, 1])) - 1)
+        latitudes = np.arange(min_lat, max_lat + lat_interval*0.1, lat_interval)  # Add a small buffer to include max value
+        longitudes = np.arange(min_lon, max_lon + lon_interval*0.1, lon_interval)  # Add a small buffer to include max value
+    
+        with nc.Dataset(filename, 'w', format='NETCDF4') as dataset:
+            dataset.createDimension('latitude', len(latitudes))
+            dataset.createDimension('longitude', len(longitudes))
+            
+            lat_var = dataset.createVariable('latitude', 'f4', ('latitude',))
+            lon_var = dataset.createVariable('longitude', 'f4', ('longitude',))
+            lat_var[:] = latitudes
+            lon_var[:] = longitudes
+            
+            for i, period in enumerate(return_periods):
+                grid_inten_stats = self._interpolate_to_grid(latitudes, longitudes, coords, inten_stats[i, :])
+                intensity_var_name = f'intensity_RP{period}'
+                intensity_var = dataset.createVariable(intensity_var_name, 'f4', ('latitude', 'longitude'))
+                intensity_var[:, :] = grid_inten_stats
+                intensity_var.units = self.units
+                intensity_var.description = f'Exceedance intensity map for {period}-year return period'
+                
+            dataset.description = 'Exceedance intensity data for various return periods'
+            lat_var.units = 'degrees_north'
+            lon_var.units = 'degrees_east'
 
     @classmethod
     def from_hdf5(cls, file_name):
