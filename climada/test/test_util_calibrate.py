@@ -35,6 +35,7 @@ from climada.util.calibrate import (
     BayesianOptimizer,
     OutputEvaluator,
     BayesianOptimizerOutputEvaluator,
+    BayesianOptimizerController,
 )
 
 from climada.util.calibrate.test.test_base import hazard, exposure
@@ -173,14 +174,18 @@ class TestBayesianOptimizer(unittest.TestCase):
     def test_single(self):
         """Test with single parameter"""
         self.input.bounds = {"slope": (-1, 3)}
+        controller = BayesianOptimizerController(
+            init_points=10, n_iter=20, max_iterations=1
+        )
         optimizer = BayesianOptimizer(self.input, random_state=1)
-        output = optimizer.run(init_points=10, n_iter=20)
+        output = optimizer.run(controller)
 
         # Check result (low accuracy)
         self.assertAlmostEqual(output.params["slope"], 1.0, places=2)
         self.assertAlmostEqual(output.target, 0.0, places=3)
         self.assertEqual(output.p_space.dim, 1)
         self.assertTupleEqual(output.p_space_to_dataframe().shape, (30, 2))
+        self.assertEqual(controller.iterations, 1)
 
     def test_multiple_constrained(self):
         """Test with multiple constrained parameters"""
@@ -204,13 +209,17 @@ class TestBayesianOptimizer(unittest.TestCase):
         self.input.bounds = {"intensity_1": (-1, 4), "intensity_2": (-1, 4)}
         # Run optimizer
         optimizer = BayesianOptimizer(self.input, random_state=1)
-        output = optimizer.run(n_iter=200)
+        controller = BayesianOptimizerController.from_input(
+            self.input, sampling_base=5, max_iterations=3
+        )
+        output = optimizer.run(controller)
 
         # Check results (low accuracy)
         self.assertEqual(output.p_space.dim, 2)
         self.assertAlmostEqual(output.params["intensity_1"], 1.0, places=2)
         self.assertAlmostEqual(output.params["intensity_2"], 3.0, places=1)
         self.assertAlmostEqual(output.target, 0.0, places=3)
+        self.assertGreater(controller.iterations, 1)
 
         # Check constraints in parameter space
         p_space = output.p_space_to_dataframe()
@@ -224,7 +233,8 @@ class TestBayesianOptimizer(unittest.TestCase):
                 ("Calibration", "Allowed"),
             },
         )
-        self.assertTupleEqual(p_space.shape, (300, 5))
+        self.assertGreater(p_space.shape[0], 50)  # Two times random iterations
+        self.assertEqual(p_space.shape[1], 5)
         p_allowed = p_space.loc[p_space["Calibration", "Allowed"], "Parameters"]
         npt.assert_array_equal(
             (p_allowed["intensity_1"] < p_allowed["intensity_2"]).to_numpy(),
@@ -235,7 +245,10 @@ class TestBayesianOptimizer(unittest.TestCase):
         """Check if executing the default plots works"""
         self.input.bounds = {"slope": (-1, 3)}
         optimizer = BayesianOptimizer(self.input, random_state=1)
-        output = optimizer.run(init_points=10, n_iter=20)
+        controller = BayesianOptimizerController.from_input(
+            self.input, max_iterations=1
+        )
+        output = optimizer.run(controller)
 
         output_eval = OutputEvaluator(self.input, output)
         output_eval.impf_set.plot()
