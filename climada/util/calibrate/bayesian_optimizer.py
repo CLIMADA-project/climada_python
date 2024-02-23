@@ -29,7 +29,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.axes as maxes
-from bayes_opt import BayesianOptimization, Events, UtilityFunction
+from bayes_opt import BayesianOptimization, Events, UtilityFunction, ScreenLogger
 from bayes_opt.target_space import TargetSpace
 
 from .base import Input, Output, Optimizer, OutputEvaluator
@@ -237,8 +237,8 @@ class BayesianOptimizerController(object):
     """
 
     # Init attributes
-    init_points: int = 0
-    n_iter: int = 0
+    init_points: int
+    n_iter: int
     min_improvement: float = 1e-3
     min_improvement_count: int = 2
     kappa: float = 2.576
@@ -256,9 +256,13 @@ class BayesianOptimizerController(object):
 
     def __post_init__(self):
         """Set the decay factor for :py:attr:`kappa`."""
-        self.kappa_decay = np.exp(
-            (np.log(self.kappa_min) - np.log(self.kappa)) / self.n_iter
-        )
+        if self.init_points < 0 or self.n_iter < 0:
+            raise ValueError("'init_points' and 'n_iter' must be 0 or positive")
+        self.kappa_decay = self._calc_kappa_decay()
+
+    def _calc_kappa_decay(self):
+        """Compute the decay factor for :py:attr:`kappa`."""
+        return np.exp((np.log(self.kappa_min) - np.log(self.kappa)) / self.n_iter)
 
     @classmethod
     def from_input(cls, inp: Input, sampling_base: float = 4, **kwargs):
@@ -290,10 +294,6 @@ class BayesianOptimizerController(object):
         if not self._improvements:
             return -np.inf
         return self._improvements[-1].target
-
-    def is_converged(self) -> bool:
-        """Check if convergence criteria are met"""
-        return True
 
     def optimizer_params(self) -> dict[str, Union[int, float, str, UtilityFunction]]:
         """Return parameters for the optimizer"""
@@ -365,7 +365,7 @@ class BayesianOptimizerController(object):
             instance.dispatch(Events.OPTIMIZATION_END)
             raise StopEarly()
 
-    def update(self, event, instance):
+    def update(self, event: str, instance: BayesianOptimization):
         """Update the step tracker of this instance.
 
         For step events, check if the latest guess is the new maximum. Also check if the
@@ -441,7 +441,8 @@ class BayesianOptimizer(Optimizer):
     input : Input
         The input data for this optimizer. See the Notes below for input requirements.
     verbose : int, optional
-        Verbosity of the optimizer output. Defaults to 1.
+        Verbosity of the optimizer output. Defaults to 0. The output is *not* affected
+        by the CLIMADA logging settings.
     random_state : int, optional
         Seed for initializing the random number generator. Defaults to 1.
     allow_duplicate_points : bool, optional
@@ -472,14 +473,12 @@ class BayesianOptimizer(Optimizer):
         The optimizer instance of this class.
     """
 
-    verbose: InitVar[int] = 1
+    verbose: int = 0
     random_state: InitVar[int] = 1
     allow_duplicate_points: InitVar[bool] = True
     bayes_opt_kwds: InitVar[Optional[Mapping[str, Any]]] = None
 
-    def __post_init__(
-        self, verbose, random_state, allow_duplicate_points, bayes_opt_kwds
-    ):
+    def __post_init__(self, random_state, allow_duplicate_points, bayes_opt_kwds):
         """Create optimizer"""
         if bayes_opt_kwds is None:
             bayes_opt_kwds = {}
@@ -491,7 +490,6 @@ class BayesianOptimizer(Optimizer):
             f=self._opt_func,
             pbounds=self.input.bounds,
             constraint=self.input.constraints,
-            verbose=verbose,
             random_state=random_state,
             allow_duplicate_points=allow_duplicate_points,
             **bayes_opt_kwds,
@@ -501,10 +499,7 @@ class BayesianOptimizer(Optimizer):
         """Invert the cost function because BayesianOptimization maximizes the target"""
         return -self.input.cost_func(data, predicted)
 
-    def run(
-        self,
-        controller: BayesianOptimizerController,
-    ) -> BayesianOptimizerOutput:
+    def run(self, controller: BayesianOptimizerController) -> BayesianOptimizerOutput:
         """Execute the optimization
 
         ``BayesianOptimization`` *maximizes* a target function. Therefore, this class
@@ -524,14 +519,29 @@ class BayesianOptimizer(Optimizer):
             Optimization output. :py:attr:`BayesianOptimizerOutput.p_space` stores data
             on the sampled parameter space.
         """
+        # Register the controller
         for event in (Events.OPTIMIZATION_STEP, Events.OPTIMIZATION_END):
             self.optimizer.subscribe(event, controller)
 
+        # Register the logger
+        if self.verbose > 0:
+            log = ScreenLogger(
+                verbose=self.verbose, is_constrained=self.optimizer.is_constrained
+            )
+            for event in (
+                Events.OPTIMIZATION_START,
+                Events.OPTIMIZATION_STEP,
+                Events.OPTIMIZATION_END,
+            ):
+                self.optimizer.subscribe(event, log)
+
+        # Run the optimization
         while controller.iterations < controller.max_iterations:
             try:
                 LOGGER.info(f"Optimization iteration: {controller.iterations}")
                 self.optimizer.maximize(**controller.optimizer_params())
             except StopEarly:
+                # Start a new iteration
                 continue
             except StopIteration:
                 # Exit the loop
