@@ -20,6 +20,7 @@ Define Centroids class.
 """
 
 import copy
+from deprecation import deprecated
 import logging
 from pathlib import Path
 from typing import Any, Literal, Union
@@ -1027,6 +1028,57 @@ class Centroids():
         if u_coord.equal_crs(self.gdf.crs, u_coord.NE_CRS):
             return self.gdf.geometry
         return self.to_crs(u_coord.NE_CRS, inplace=False).geometry
+
+    ##
+    # Deprecated methods
+    ##
+
+    @classmethod
+    @deprecated(details="Reading Centroids data from matlab files is not supported anymore.")
+    def from_mat(cls, file_name, var_names=None):
+        raise NotImplementedError("You are suggested to use an old version of climada (<=4.*) and"
+                                  " convert the file to hdf5 format.")
+
+    @staticmethod
+    @deprecated(details="Centroids as raster data is not supported in the current version of"
+                " climada.")
+    def from_base_grid(land=False, res_as=360, base_file=None):
+        raise NotImplementedError()
+
+    @classmethod
+    @deprecated(details="This method will be removed in a future version."
+                " Simply use the constructor instead.")
+    def from_lat_lon(cls, lat, lon, crs="EPSG:4326"):
+        return cls(lat=lat, lon=lon, crs=crs)
+
+    @deprecated(details="This method is futile and will be removed in a future version."
+                " `Centroids.get_area_pixel` can be run without initialization.")
+    def set_area_pixel(self, min_resol=1e-08, scheduler=None):
+        pass
+
+    @deprecated(details="This method is futile and will be removed in a future version."
+                " `Centroids.get_area_pixel` can be run without initialization.")
+    def set_area_approx(self, min_resol=1e-08):
+        pass
+
+    @deprecated(details="This method is futile and will be removed in a future version."
+                " `Centroids.get_dist_coast` can be run without initialization.")
+    def set_dist_coast(self, signed=False, precomputed=False, scheduler=None):
+        pass
+
+    @deprecated(details="This method has no effect and will be removed in a future version."
+                " In the current version of climada the geometry points of a `Centroids` object"
+                " cannot be removed as they are the backbone of the Centroids' GeoDataFrame.")
+    def empty_geometry_points(self):
+        pass
+
+    @deprecated(details="This method has no effect and will be removed in a future version.")
+    def set_meta_to_lat_lon(self):
+        pass
+
+    @deprecated(details="This method has no effect and will be removed in a future version.")
+    def set_lat_lon_to_meta(self, min_resol=1e-08):
+        pass
 
 
 def _meta_to_lat_lon(meta):
