@@ -1034,16 +1034,16 @@ class Centroids():
     ##
 
     @classmethod
-    @deprecated(details="Reading Centroids data from matlab files is not supported anymore."
-                " You are suggested to use an old version of climada (<=4.*) and convert the file to hdf5 format.")
+    @deprecated(details="Reading Centroids data from matlab files is not supported anymore.")
     def from_mat(cls, file_name, var_names=None):
-        pass
+        raise NotImplementedError("You are suggested to use an old version of climada (<=4.*) and"
+                                  " convert the file to hdf5 format.")
 
     @staticmethod
-    @deprecated(details="Centroids as raster data is not supported in the current version of climada."
-                " You are suggested to downgrade to an older version (<=4.*) or turn the grid into a ``GeoDataFrame``")
+    @deprecated(details="Centroids as raster data is not supported in the current version of"
+                " climada.")
     def from_base_grid(land=False, res_as=360, base_file=None):
-        pass
+        raise NotImplementedError()
 
     @classmethod
     @deprecated(details="This method will be removed in a future version."

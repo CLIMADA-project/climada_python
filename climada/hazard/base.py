@@ -311,7 +311,7 @@ class Hazard():
             reproject to given crs
         transform : rasterio.Affine
             affine transformation to apply
-        wdith : float, optional
+        width : float, optional
             number of lons for transform
         height : float, optional
             number of lats for transform
