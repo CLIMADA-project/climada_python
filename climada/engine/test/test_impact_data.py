@@ -98,18 +98,6 @@ class TestEmdatImport(unittest.TestCase):
         self.assertFalse(False in list(df['Disaster Subtype'] == 'Tropical cyclone'))
         self.assertFalse('Flood' in list(df['Disaster Subtype']))
 
-class TestGDPScaling(unittest.TestCase):
-    """test scaling of impact values proportional to GDP"""
-    def test_scale_impact2refyear(self):
-        """scale of impact values proportional to GDP"""
-        impact_scaled = im_d.scale_impact2refyear([10, 100, 1000, 100, 100],
-                                                  [1999, 2005, 2015, 2000, 2000],
-                                                  ['CZE', 'CZE', 'MEX', 'MEX', 'CZE'],
-                                                  reference_year=2015)
-        # scaled impact value might change if worldbank input data changes,
-        # check magnitude and adjust if test fails in the following line:
-        self.assertListEqual(impact_scaled, [28, 137, 1000, 165, 304])
-
 class TestEmdatProcessing(unittest.TestCase):
     def test_emdat_impact_event_2018(self):
         """test emdat_impact_event event impact data extraction, version 2018"""
@@ -156,7 +144,7 @@ class TestEmdatProcessing(unittest.TestCase):
         self.assertEqual(2000, df['reference_year'].min())
 
     def test_emdat_impact_yearlysum_no_futurewarning(self):
-        """Ensure that no FutureWarning is issued"""
+        """Ensure that no FutureWarning about `DataFrame.append` being deprecated is issued"""
         with warnings.catch_warnings():
             # Make sure that FutureWarning will cause an error
             warnings.simplefilter("error", category=FutureWarning)
@@ -182,20 +170,6 @@ class TestEmdatProcessing(unittest.TestCase):
 
         self.assertIn('USA', list(df['ISO']))
         self.assertIn('BGD', list(df['ISO']))
-
-    def test_emdat_damage_yearlysum(self):
-        """test emdat_impact_yearlysum yearly impact data extraction with scaling"""
-        df = im_d.emdat_impact_yearlysum(EMDAT_TEST_CSV, countries=['Bangladesh', 'USA'],
-                                         hazard='Flood', year_range=(2015, 2017),
-                                         reference_year=2000)
-
-        self.assertEqual(36, df.size)
-        self.assertAlmostEqual(df.impact.max(), 15150000000.0)
-        self.assertEqual(df.impact_scaled.min(), 10943000.0)
-        self.assertEqual(df["year"][5], 2017)
-        self.assertEqual(df["reference_year"].max(), 2000)
-        self.assertIn('USA', list(df['ISO']))
-        self.assertIn(50, list(df['region_id']))
 
     def test_emdat_countries_by_hazard_2020_pass(self):
         """test to get list of countries impacted by tropical cyclones from 2000 to 2019"""
@@ -241,24 +215,6 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertIn('SPI', countries2020)
         self.assertNotIn('SPI', countries)
 
-    def test_emdat_to_impact_scale(self):
-        """test import DR EM-DAT to Impact() for 1 country and ref.year (scaling)"""
-        impact_emdat = im_d.emdat_to_impact(EMDAT_TEST_CSV, 'DR',
-                                            year_range=[2010, 2016], countries=['USA'],
-                                            hazard_type_emdat='Drought',
-                                            reference_year=2016)[0]
-        self.assertEqual(5, impact_emdat.event_id.size)
-        self.assertEqual(4, impact_emdat.event_id[-1])
-        self.assertEqual(0, impact_emdat.event_id[0])
-        self.assertIn('2012-9235', impact_emdat.event_name)
-        self.assertEqual(1, len(impact_emdat.eai_exp))
-        self.assertAlmostEqual(impact_emdat.aai_agg, impact_emdat.eai_exp[0])
-        self.assertAlmostEqual(0.14285714, np.unique(impact_emdat.frequency)[0], places=3)
-        # scaled impact value might change if worldbank input data changes,
-        # check magnitude and adjust if test failes in the following 2 lines:
-        self.assertAlmostEqual(3.69, np.sum(impact_emdat.at_event * 1e-10), places=0)
-        self.assertAlmostEqual(5.28, impact_emdat.aai_agg * 1e-9, places=0)
-
     def test_emdat_to_impact_fakedata(self):
         """test import TC EM-DAT to Impact() for all countries in CSV"""
         impact_emdat, countries = im_d.emdat_to_impact(EMDAT_TEST_CSV_FAKE, 'FL',
@@ -301,7 +257,6 @@ class TestEmdatToImpact(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEmdatImport)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGDPScaling))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEmdatProcessing))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEmdatToImpact))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

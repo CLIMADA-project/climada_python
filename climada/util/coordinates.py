@@ -169,6 +169,9 @@ def lon_bounds(lon, buffer=0.0):
     >>> lon = lon_normalize(lon, center=lon_mid)
     >>> np.all((bounds[0] <= lon) & (lon <= bounds[2]))
 
+    If the bounds cover a full circle (360 degrees), this function will always return (-180, 180),
+    instead of (0, 360) or similar equivalent outputs.
+
     Example
     -------
     >>> lon_bounds(np.array([-179, 175, 178]))
@@ -195,9 +198,11 @@ def lon_bounds(lon, buffer=0.0):
     gap_max = np.argmax(lon_diff)
     lon_diff_max = lon_diff[gap_max]
     if lon_diff_max < 2:
-        # looks like the data covers the whole range [-180, 180] rather evenly
-        lon_min = max(lon_uniq[0] - buffer, -180)
-        lon_max = min(lon_uniq[-2] + buffer, 180)
+        # since the largest gap is comparably small, enforce the [-180, 180] value range
+        gap_max = lon_diff.size - 1
+    if lon_diff_max <= 2 * buffer:
+        # avoid (-1, 359) and similar equivalent outputs for bounds covering the full circle
+        lon_min, lon_max = (-180, 180)
     else:
         lon_min = lon_uniq[gap_max + 1]
         lon_max = lon_uniq[gap_max]
@@ -307,6 +312,7 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         Specify a unit for the distance. One of:
 
         * "km": distance in km.
+        * "m": distance in m.
         * "degree": angular distance in decimal degrees.
         * "radian": angular distance in radians.
 
@@ -322,6 +328,8 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
     """
     if units == "km":
         unit_factor = ONE_LAT_KM
+    elif units == "m":
+        unit_factor = ONE_LAT_KM * 1000.0
     elif units == "radian":
         unit_factor = np.radians(1.0)
     elif units == "degree":
@@ -354,10 +362,13 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         if log:
             vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
-            scal = 1 - 2 * hav
-            fact = dist / np.fmax(np.spacing(1), np.sqrt(1 - scal**2))
-            vtan = fact[..., None] * (vec2[:, None, :] - scal[..., None] * vec1[:, :, None])
+            vtan = vec2[:, None, :] - (1 - 2 * hav[..., None]) * vec1[:, :, None]
             vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
+            # faster version of `vtan_norm = np.linalg.norm(vtan, axis=-1)`
+            vtan_norm = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
+            # for consistency, set dist to 0 if vtan is 0
+            dist[vtan_norm < np.spacing(1)] = 0
+            vtan *= dist[..., None] / np.fmax(np.spacing(1), vtan_norm[..., None])
     else:
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
@@ -1536,9 +1547,8 @@ def get_country_code(lat, lon, gridded=False):
                                        method='nearest', fill_value=0)
         region_id = region_id.astype(int)
     else:
-        extent = (lon.min() - 0.001, lon.max() + 0.001,
-                  lat.min() - 0.001, lat.max() + 0.001)
-        countries = get_country_geometries(extent=extent)
+        (lon_min, lat_min, lon_max, lat_max) = latlon_bounds(lat, lon, 0.001)
+        countries = get_country_geometries(extent=(lon_min, lon_max, lat_min, lat_max))
         with warnings.catch_warnings():
             # in order to suppress the following
             # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely
@@ -1946,8 +1956,8 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
         band number to read. Default: 1
     window : rasterio.windows.Window, optional
         window to read
-    geometry : shapely.geometry, optional
-        consider pixels only in shape
+    geometry : list of shapely.geometry, optional
+        consider pixels only within these shapes
     dst_crs : crs, optional
         reproject to given crs
     transform : rasterio.Affine

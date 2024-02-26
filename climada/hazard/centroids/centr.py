@@ -244,6 +244,10 @@ class Centroids():
     def from_geodataframe(cls, gdf, geometry_alias='geom'):
         """Create Centroids instance from GeoDataFrame.
 
+        .. deprecated:: 3.3
+           This method will be removed in a future version. Pass the data you want to
+           construct the Centroids with to the constructor instead.
+
         The geometry, lat, and lon attributes are set from the GeoDataFrame.geometry attribute,
         while the columns are copied as attributes to the Centroids object in the form of
         numpy.ndarrays using pandas.Series.to_numpy. The Series dtype will thus be respected.
@@ -274,6 +278,11 @@ class Centroids():
         centr : Centroids
             Centroids with data from given GeoDataFrame
         """
+        LOGGER.warning(
+            "Centroids.from_geodataframe has been deprecated and will be removed in a "
+            "future version. Use ther default constructor instead."
+        )
+
         geometry = gdf.geometry
         lat = gdf.geometry.y.to_numpy(copy=True)
         lon = gdf.geometry.x.to_numpy(copy=True)
@@ -293,15 +302,14 @@ class Centroids():
 
         return centroids
 
-    def set_raster_from_pix_bounds(self, *args, **kwargs):
-        """This function is deprecated, use Centroids.from_pix_bounds instead."""
-        LOGGER.warning("The use of Centroids.set_raster_from_pix_bounds is deprecated. "
-                       "Use Centroids.from_pix_bounds instead.")
-        self.__dict__ = Centroids.from_pix_bounds(*args, **kwargs).__dict__
-
     @classmethod
     def from_pix_bounds(cls, xf_lat, xo_lon, d_lat, d_lon, n_lat, n_lon, crs=DEF_CRS):
         """Create Centroids object with meta attribute according to pixel border data.
+
+        .. deprecated:: 3.3
+           This method will be removed in a future version. CLIMADA will only support
+           regular grids with a constant lat/lon resolution then. Use
+           :py:meth:`from_pnt_bounds` instead.
 
         Parameters
         ----------
@@ -325,6 +333,11 @@ class Centroids():
         centr : Centroids
             Centroids with meta according to given pixel border data.
         """
+        LOGGER.warning(
+            "Centroids.from_pix_bounds has been deprecated and will be removed in a "
+            "future version. Use Centroids.from_pnt_bounds instead."
+        )
+
         meta = {
             'dtype': 'float32',
             'width': n_lon,
@@ -410,8 +423,8 @@ class Centroids():
         return self.values_from_raster_files([file_name], band=band, **kwargs)
 
     @classmethod
-    def from_raster_file(cls, file_name, src_crs=None, window=False,
-                         geometry=False, dst_crs=False, transform=None, width=None,
+    def from_raster_file(cls, file_name, src_crs=None, window=None,
+                         geometry=None, dst_crs=None, transform=None, width=None,
                          height=None, resampling=Resampling.nearest):
         """Create a new Centroids object from a raster file
 
@@ -426,8 +439,8 @@ class Centroids():
             source CRS. Provide it if error without it.
         window : rasterio.windows.Window, optional
             window to read
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shapes
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine
@@ -449,8 +462,8 @@ class Centroids():
             transform, width, height, resampling)
         return cls(meta=meta)
 
-    def values_from_raster_files(self, file_names, band=None, src_crs=None, window=False,
-                                 geometry=False, dst_crs=False, transform=None, width=None,
+    def values_from_raster_files(self, file_names, band=None, src_crs=None, window=None,
+                                 geometry=None, dst_crs=None, transform=None, width=None,
                                  height=None, resampling=Resampling.nearest):
         """Read raster of bands and set 0 values to the masked ones.
 
@@ -467,8 +480,8 @@ class Centroids():
             source CRS. Provide it if error without it.
         window : rasterio.windows.Window, optional
             window to read
-        geometry : shapely.geometry, optional
-            consider pixels only in shape
+        geometry : list of shapely.geometry, optional
+            consider pixels only within these shapes
         dst_crs : crs, optional
             reproject to given crs
         transform : rasterio.Affine
@@ -562,19 +575,24 @@ class Centroids():
             Sparse array of shape (len(val_name), len(geometry)).
         """
         if val_names is None:
-            val_names = ['intensity']
+            val_names = ["intensity"]
 
         values = []
         for file_name in file_names:
             tmp_lat, tmp_lon, tmp_geometry, data = u_coord.read_vector(
-                file_name, val_names, dst_crs=dst_crs)
-            if not (u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
-                    and np.allclose(tmp_lat, self.lat)
-                    and np.allclose(tmp_lon, self.lon)):
-                raise ValueError('Vector data inconsistent with contained vector.')
+                file_name, val_names, dst_crs=dst_crs
+            )
+            try:
+                assert u_coord.equal_crs(tmp_geometry.crs, self.geometry.crs)
+                np.testing.assert_allclose(tmp_lat, self.lat)
+                np.testing.assert_allclose(tmp_lon, self.lon)
+            except AssertionError as exc:
+                raise ValueError(
+                    "Vector data inconsistent with contained vector"
+                ) from exc
             values.append(sparse.csr_matrix(data))
 
-        return sparse.vstack(values, format='csr')
+        return sparse.vstack(values, format="csr")
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Centroids.from_mat instead."""

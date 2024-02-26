@@ -205,13 +205,11 @@ class TestLitPop(unittest.TestCase):
             lp.gridpoints_core_calc(data_arrays_demo(4))
 
         # wrong format:
-        with self.assertRaises(TypeError):
+        with self.assertRaises(ValueError):
             lp.gridpoints_core_calc(data, exponents=['a', 'b'])
         data.append('hello i am a string')
         with self.assertRaises(ValueError):
             lp.gridpoints_core_calc(data)
-        with self.assertRaises(TypeError):
-            lp.gridpoints_core_calc(777)
 
     def test_gridpoints_core_calc_default_1(self):
         """test function gridpoints_core_calc, i.e. core data combination
@@ -319,7 +317,7 @@ class TestLitPop(unittest.TestCase):
         self.assertEqual(result_array.shape, results_check.shape)
         self.assertAlmostEqual(result_array.sum(), tot)
         self.assertEqual(result_array[1,2], results_check[1,2])
-        np.testing.assert_array_almost_equal_nulp(result_array, results_check)
+        np.testing.assert_allclose(result_array, results_check)
 
     def test_grp_read_pass(self):
         """test _grp_read() to pass and return either dict with admin1 values or None"""

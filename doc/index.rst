@@ -10,6 +10,8 @@ CLIMADA stands for CLIMate ADAptation and is a probabilistic natural catastrophe
 
 CLIMADA is primarily developed and maintained by the `Weather and Climate Risks Group <https://wcr.ethz.ch/>`_ at `ETH Zürich <https://ethz.ch/en.html>`_.
 
+If you use CLIMADA for your own scientific work, please reference the appropriate publications according to the :doc:`misc/citation`.
+
 This is the documentation of the CLIMADA core module which contains all functionalities necessary for performing climate risk analysis and appraisal of adaptation options. Modules for generating different types of hazards and other specialized applications can be found in the `CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>`_ module.
 
 Jump right in:
@@ -95,11 +97,13 @@ Jump right in:
    Development with Git <guide/Guide_Git_Development>
    guide/Guide_CLIMADA_Tutorial
    guide/Guide_Configuration
-   guide/Guide_Continuous_Integration_and_Testing
-   guide/Guide_Reviewer_Checklist
+   guide/Guide_Testing
+   guide/Guide_continuous_integration_GitHub_actions
+   guide/Guide_Review
    guide/Guide_PythonDos-n-Donts
+   guide/Guide_Exception_Logging
    Performance and Best Practices <guide/Guide_Py_Performance>
-   Coding Conventions <guide/Guide_Miscellaneous>
+   CLIMADA Coding Conventions <guide/Guide_CLIMADA_conventions>
    Building the Documentation <README>
 
 
@@ -111,3 +115,4 @@ Jump right in:
    Changelog <misc/CHANGELOG>
    List of Authors <misc/AUTHORS>
    Contribution Guide <misc/CONTRIBUTING>
+   misc/citation

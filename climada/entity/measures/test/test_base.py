@@ -33,13 +33,13 @@ from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.measures.base import Measure, IMPF_ID_FACT
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
+from climada.test import get_test_file
 import climada.util.coordinates as u_coord
-import climada.hazard.test as hazard_test
 import climada.entity.exposures.test as exposures_test
 
 DATA_DIR = CONFIG.measures.test_data.dir()
 
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent / 'data' / 'atl_prob_no_name.mat'
+HAZ_TEST_MAT = get_test_file('atl_prob_no_name', file_format='matlab')
 ENT_TEST_MAT = Path(exposures_test.__file__).parent / 'data' / 'demo_today.mat'
 
 class TestApply(unittest.TestCase):
@@ -165,8 +165,7 @@ class TestApply(unittest.TestCase):
 
         self.assertEqual(new_exp.ref_year, exp.ref_year)
         self.assertEqual(new_exp.value_unit, exp.value_unit)
-        self.assertEqual(new_exp.tag.file_name, exp.tag.file_name)
-        self.assertEqual(new_exp.tag.description, exp.tag.description)
+        self.assertEqual(new_exp.description, exp.description)
         self.assertTrue(np.array_equal(new_exp.gdf.value.values, exp.gdf.value.values))
         self.assertTrue(np.array_equal(new_exp.gdf.latitude.values, exp.gdf.latitude.values))
         self.assertTrue(np.array_equal(new_exp.gdf.longitude.values, exp.gdf.longitude.values))
@@ -182,8 +181,7 @@ class TestApply(unittest.TestCase):
         hazard = Hazard('TC')
         new_haz = meas._change_all_hazard(hazard)
 
-        self.assertEqual(new_haz.tag.file_name, ref_haz.tag.file_name)
-        self.assertEqual(new_haz.tag.haz_type, ref_haz.tag.haz_type)
+        self.assertEqual(new_haz.haz_type, ref_haz.haz_type)
         self.assertTrue(np.array_equal(new_haz.frequency, ref_haz.frequency))
         self.assertTrue(np.array_equal(new_haz.date, ref_haz.date))
         self.assertTrue(np.array_equal(new_haz.orig, ref_haz.orig))
@@ -204,8 +202,7 @@ class TestApply(unittest.TestCase):
 
         self.assertEqual(new_exp.ref_year, ref_exp.ref_year)
         self.assertEqual(new_exp.value_unit, ref_exp.value_unit)
-        self.assertEqual(new_exp.tag.file_name, ref_exp.tag.file_name)
-        self.assertEqual(new_exp.tag.description, ref_exp.tag.description)
+        self.assertEqual(new_exp.description, ref_exp.description)
         self.assertTrue(np.array_equal(new_exp.gdf.value.values, ref_exp.gdf.value.values))
         self.assertTrue(np.array_equal(new_exp.gdf.latitude.values, ref_exp.gdf.latitude.values))
         self.assertTrue(np.array_equal(new_exp.gdf.longitude.values, ref_exp.gdf.longitude.values))
@@ -271,8 +268,7 @@ class TestApply(unittest.TestCase):
         # unchanged meta data
         self.assertEqual(res_exp.ref_year, exp.ref_year)
         self.assertEqual(res_exp.value_unit, exp.value_unit)
-        self.assertEqual(res_exp.tag.file_name, exp.tag.file_name)
-        self.assertEqual(res_exp.tag.description, exp.tag.description)
+        self.assertEqual(res_exp.description, exp.description)
         self.assertTrue(u_coord.equal_crs(res_exp.crs, exp.crs))
         self.assertFalse(hasattr(exp.gdf, "crs"))
         self.assertFalse(hasattr(res_exp.gdf, "crs"))
@@ -397,9 +393,6 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(imp.event_id, hazard.event_id))
         self.assertTrue(np.array_equal(imp.date, hazard.date))
         self.assertEqual(imp.event_name, hazard.event_name)
-        self.assertEqual(imp.tag['exp'].file_name, entity.exposures.tag.file_name)
-        self.assertEqual(imp.tag['haz'].file_name, hazard.tag.file_name)
-        self.assertEqual(imp.tag['impf_set'].file_name, entity.impact_funcs.tag.file_name)
         self.assertEqual(risk_transf.aai_agg, 0)
 
 
@@ -438,9 +431,6 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(imp.event_id, hazard.event_id))
         self.assertTrue(np.array_equal(imp.date, hazard.date))
         self.assertEqual(imp.event_name, hazard.event_name)
-        self.assertEqual(imp.tag['exp'].file_name, entity.exposures.tag.file_name)
-        self.assertEqual(imp.tag['haz'].file_name, hazard.tag.file_name)
-        self.assertEqual(imp.tag['impf_set'].file_name, entity.impact_funcs.tag.file_name)
         self.assertEqual(risk_transf.aai_agg, 2.3139691495470852e+08)
 
 # Execute Tests

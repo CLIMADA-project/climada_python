@@ -31,7 +31,6 @@ import matplotlib.pyplot as plt
 import xlsxwriter
 
 import climada.util.checker as u_check
-from climada.entity.tag import Tag
 import climada.util.finance as u_fin
 import climada.util.hdf5_handler as u_hdf5
 
@@ -60,8 +59,6 @@ class DiscRates():
 
     Attributes
     ---------
-    tag: climada.entity.tag.Tag
-        information about the source data
     years: np.array
         list of years
     rates: np.array
@@ -71,8 +68,7 @@ class DiscRates():
     def __init__(
         self,
         years : Optional[np.ndarray] = None,
-        rates : Optional[np.ndarray] = None,
-        tag : Optional[Tag] = None
+        rates : Optional[np.ndarray] = None
         ):
         """
         Fill discount rates with values and check consistency data
@@ -85,17 +81,13 @@ class DiscRates():
             Discount rates for each year in years.
             Default is numpy.array([]).
             Note: rates given in float, e.g., to set 1% rate use 0.01
-        tag : climate.entity.tag
-            Metadata. Default is None.
         """
         self.years = np.array([]) if years is None else years
         self.rates = np.array([]) if rates is None else rates
-        self.tag = Tag() if tag is None else tag
 
     def clear(self):
         """Reinitialize attributes."""
 
-        self.tag = Tag()
         # Following values are given for each defined year
         self.years = np.array([], int)
         self.rates = np.array([], float)
@@ -129,8 +121,7 @@ class DiscRates():
         pos_year = np.isin(self.years, year_range)
 
         return DiscRates(years=self.years[pos_year],
-                         rates=self.rates[pos_year],
-                         tag=self.tag)
+                         rates=self.rates[pos_year])
 
     def append(self, disc_rates):
         """
@@ -150,8 +141,6 @@ class DiscRates():
         if self.years.size == 0:
             self.__dict__ = copy.deepcopy(disc_rates.__dict__)
             return
-
-        self.tag.append(disc_rates.tag)
 
         new_year = array('l')
         new_rate = array('d')
@@ -224,7 +213,7 @@ class DiscRates():
         return axis
 
     @classmethod
-    def from_mat(cls, file_name, description='', var_names=None):
+    def from_mat(cls, file_name, var_names=None):
         """
         Read MATLAB file generated with previous MATLAB CLIMADA version.
 
@@ -254,7 +243,6 @@ class DiscRates():
         if var_names is None:
             var_names = DEF_VAR_MAT
         disc = u_hdf5.read(file_name)
-        tag = Tag(file_name=str(file_name), description=description)
         try:
             disc = disc[var_names['sup_field_name']]
         except KeyError:
@@ -268,16 +256,18 @@ class DiscRates():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        return cls(years=years, rates=rates, tag=tag)
+        return cls(years=years, rates=rates)
 
     def read_mat(self, *args, **kwargs):
-        """This function is deprecated, use DiscRates.from_mats instead."""
-        LOGGER.warning("The use of DiscRates.read_mats is deprecated."
-                       "Use DiscRates.from_mats instead.")
+        """This function is deprecated, use ``DiscRates.from_mat`` instead."""
+        LOGGER.warning(
+            "The use of DiscRates.read_mat is deprecated."
+            "Use DiscRates.from_mat instead."
+        )
         self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
 
     @classmethod
-    def from_excel(cls, file_name, description='', var_names=None):
+    def from_excel(cls, file_name, var_names=None):
         """
         Read excel file following template and store variables.
 
@@ -306,7 +296,6 @@ class DiscRates():
         if var_names is None:
             var_names = DEF_VAR_EXCEL
         dfr = pd.read_excel(file_name, var_names['sheet_name'])
-        tag = Tag(file_name=str(file_name), description=description)
         try:
             years = dfr[var_names['col_name']['year']].values. \
                 astype(int, copy=False)
@@ -314,14 +303,13 @@ class DiscRates():
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
-        return cls(years=years, rates=rates, tag=tag)
+        return cls(years=years, rates=rates)
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use DiscRates.from_excel instead."""
         LOGGER.warning("The use of DiscRates.read_excel is deprecated."
                        "Use DiscRates.from_excel instead.")
-        self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
-
+        self.__dict__ = DiscRates.from_excel(*args, **kwargs).__dict__
 
     def write_excel(self, file_name, var_names=None):
         """
@@ -354,3 +342,68 @@ class DiscRates():
             disc_ws.write(i_yr, 0, disc_yr)
             disc_ws.write(i_yr, 1, disc_rt)
         disc_wb.close()
+
+    @classmethod
+    def from_csv(
+        cls, file_name, year_column="year", disc_column="discount_rate", **kwargs
+    ):
+        """
+        Read DiscRate from a csv file following template and store variables.
+
+        Parameters
+        ----------
+        file_name: str
+            filename including path and extension
+        year_column: str, optional
+            name of the column that contains the years,
+            Default: "year"
+        disc_column: str, optional
+            name of the column that contains the discount rates,
+            Default: "discount_rate"
+        **kwargs:
+            any additional arguments, e.g., `sep`, `delimiter`, `head`,
+            are forwarded to ``pandas.read_csv``
+
+        Returns
+        -------
+        climada.entity.DiscRates :
+            The disc rates from the csv file
+        """
+        dfr = pd.read_csv(file_name, **kwargs)
+        try:
+            years = dfr[year_column].values.astype(int, copy=False)
+            rates = dfr[disc_column].values
+        except KeyError as err:
+            raise ValueError(
+                f"missing column in csv file ({year_column} or {disc_column})"
+            ) from err
+
+        return cls(years=years, rates=rates)
+
+    def write_csv(
+        self, file_name, year_column="year", disc_column="discount_rate", **kwargs
+    ):
+        """
+        Write DiscRate to a csv file following template and store variables.
+
+        Parameters
+        ----------
+        file_name: str
+            filename including path and extension
+        year_column: str, optional
+            name of the column that contains the years,
+            Default: "year"
+        disc_column: str, optional
+            name of the column that contains the discount rates,
+            Default: "discount_rate"
+        **kwargs:
+            any additional arguments, e.g., `sep`, `delimiter`, `head`,
+            are forwarded to ``pandas.read_csv``
+        """
+        dfr = pd.DataFrame(
+            {
+                year_column: self.years,
+                disc_column: self.rates,
+            }
+        )
+        dfr.to_csv(file_name, **kwargs)

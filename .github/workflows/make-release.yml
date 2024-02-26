@@ -1,0 +1,37 @@
+# This workflow will create a new release from main
+
+# the new version number is the old one increased by 1 in the given level [major, minor, patch]
+# first, some files are modified (_version.py, setup.py, CHANGELOG.md and doc/misc/README.md)
+# then, a new release is created on GitHub, tagged with v[new version number]
+
+name: Create a new release
+
+on:
+  workflow_dispatch:
+    inputs:
+      level:
+        description: 'Release Level'
+        required: true
+        default: 'patch'
+        type: choice
+        options:
+          - major
+          - minor
+          - patch
+
+jobs:
+  github:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@master
+        with:
+          token: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: Prepare new release
+        run: python .github/scripts/prepare_release.py ${{ inputs.level }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}
+      - name: Publish
+        run: python .github/scripts/make_release.py
+        env:
+          GITHUB_TOKEN: ${{ secrets.PERSONAL_ACCESS_TOKEN }}

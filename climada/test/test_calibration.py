@@ -29,10 +29,13 @@ from climada.engine import ImpactCalc
 from climada.engine.calibration_opt import calib_instance
 from climada.util.constants import ENT_DEMO_TODAY
 import climada.hazard.test as hazard_test
+from climada.test import get_test_file
 
-HAZ_TEST_MAT = Path(hazard_test.__file__).parent.joinpath('data', 'atl_prob_no_name.mat')
+
+HAZ_TEST_MAT = get_test_file('atl_prob_no_name', file_format='matlab')
 
 DATA_FOLDER = CONFIG.test_data.dir()
+
 
 class TestCalib(unittest.TestCase):
     """Test engine calibration method."""
@@ -47,7 +50,7 @@ class TestCalib(unittest.TestCase):
         hazard = Hazard.from_mat(HAZ_TEST_MAT)
 
         # get impact function from set
-        imp_func = ent.impact_funcs.get_func(hazard.tag.haz_type,
+        imp_func = ent.impact_funcs.get_func(hazard.haz_type,
                                              ent.exposures.gdf.impf_TC.median())
 
         # Assign centroids to exposures

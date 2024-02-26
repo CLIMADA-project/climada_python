@@ -82,7 +82,6 @@ def impact_yearset(imp, sampled_years, lam=None, correction_fac=True, seed=None)
 
     #save calculations in yimp
     yimp.event_id = np.arange(1, n_sampled_years+1)
-    yimp.tag['yimp object'] = True
     yimp.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
     yimp.frequency = np.ones(n_sampled_years)*sum(len(row) for row in sampling_vect
                                                             )/n_sampled_years
@@ -139,7 +138,6 @@ def impact_yearset_from_sampling_vect(imp, sampled_years, sampling_vect, correct
     yimp.at_event = imp_per_year
     n_sampled_years = len(sampled_years)
     yimp.event_id = np.arange(1, n_sampled_years+1)
-    yimp.tag['yimp object'] = True
     yimp.date = u_dt.str_to_date([str(date) + '-01-01' for date in sampled_years])
     yimp.frequency = np.ones(n_sampled_years)*sum(len(row) for row in sampling_vect
                                                             )/n_sampled_years
@@ -154,7 +152,7 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
     -----------
         n_sampled_years : int
             The target number of years the impact yearset shall contain.
-        lam: int
+        lam: float
             the applied Poisson distribution is centered around lambda events per year
         seed : int, optional
             seed for numpy.random, will be set if not None
@@ -167,14 +165,8 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
     """
     if seed is not None:
         np.random.seed(seed)
-    if lam != 1:
-        events_per_year = np.round(np.random.poisson(lam=lam,
-                                                     size=n_sampled_years)).astype('int')
-    else:
-        events_per_year = np.ones(len(n_sampled_years))
+    return np.round(np.random.poisson(lam=lam, size=n_sampled_years)).astype('int')
 
-
-    return events_per_year
 
 def sample_events(events_per_year, freqs_orig, seed=None):
     """Sample events uniformely from an array (indices_orig) without replacement
