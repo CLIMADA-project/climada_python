@@ -37,7 +37,7 @@ import xarray as xr
 
 from climada.hazard.base import Hazard
 from climada.hazard.tc_tracks import TCTracks, estimate_rmw
-from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
+from climada.hazard.tc_clim_change import get_knutson_scaling_factor
 from climada.hazard.centroids.centr import Centroids
 from climada.util import ureg
 import climada.util.constants as u_const
@@ -340,46 +340,93 @@ class TropCyclone(Hazard):
 
     def apply_climate_scenario_knu(
         self,
-        ref_year: int = 2050,
-        rcp_scenario: int = 45
+        percentile: str,
+        rcp_scenario: int,
+        target_year: int,
+        baseline: tuple = (1982, 2022)
     ):
         """
-        From current TC hazard instance, return new hazard set with
-        future events for a given RCP scenario and year based on the
-        parametrized values derived from Table 3 in Knutson et al 2015.
-        https://doi.org/10.1175/JCLI-D-15-0129.1 . The scaling for different
-        years and RCP scenarios is obtained by linear interpolation.
+        From current TC hazard instance, return new hazard set with future events
+        for a given RCP scenario and year based on the parametrized values derived
+        by Jewson 2021 (https://doi.org/10.1175/JAMC-D-21-0102.1) based on those
+        published by Knutson 2020 (https://doi.org/10.1175/BAMS-D-18-0194.1). The
+        scaling for different years and RCP scenarios is obtained by linear
+        interpolation.
 
-        Note: The parametrized values are derived from the overall changes
-        in statistical ensemble of tracks. Hence, this method should only be
-        applied to sufficiently large tropical cyclone event sets that
-        approximate the reference years 1981 - 2008 used in Knutson et. al.
-
-        The frequency and intensity changes are applied independently from
-        one another. The mean intensity factors can thus slightly deviate
-        from the Knutson value (deviation was found to be less than 1%
-        for default IBTrACS event sets 1980-2020 for each basin).
+        Note: Only frequency changes are applied as suggested by Jewson 2022
+        (https://doi.org/10.1007/s00477-021-02142-6). Applying only frequency anyway
+        changes mean intensities and most importantly avoids possible inconsistencies
+        (including possible counting) that may arise from the application of both
+        frequency and intensity changes, as the relatioship between these two is non
+        trivial to resolve.
 
         Parameters
         ----------
-        ref_year : int
-            year between 2000 ad 2100. Default: 2050
+        percentile: str
+            percentile of Knutson et al. 2020 estimates, representing the model
+            uncertainty in future changes in TC activity. These estimates come from a
+            review of state-of-the-art literature and models. As extreme percentiles,
+            the 5th and 95th are reported for variable cat05 and the 10th and 90th
+            for cat45 and intensity. All three (cat05, cat45, intensity) report the
+            25th, 50th and 75th percentiles. Refer to the mentioned publications above
+            for more details. Possible values are:
+                '5/10', '25', '50', '75', '90/95'
         rcp_scenario : int
-            26 for RCP 2.6, 45 for RCP 4.5, 60 for RCP 6.0 and 85 for RCP 8.5.
-            The default is 45.
-
+            possible scenarios:
+                26 for RCP 2.6
+                45 for RCP 4.5
+                60 for RCP 6.0
+                85 for RCP 8.5
+        target_year : int
+            future year to be simulated, between 2000 and 2100.
+        baseline : tuple of int
+            the starting and ending years that define the historical baseline.
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
             Tropical cyclone with frequencies and intensity scaled according
-            to the Knutson criterion for the given year and RCP. Returns
-            a new instance of climada.hazard.TropCyclone, self is not
+            to the Knutson criterion for the given year, RCP and percentile.
+            Returns a new instance of climada.hazard.TropCyclone, self is not
             modified.
         """
-        chg_int_freq = get_knutson_criterion()
-        scale_rcp_year  = calc_scale_knutson(ref_year, rcp_scenario)
-        haz_cc = self._apply_knutson_criterion(chg_int_freq, scale_rcp_year)
-        return haz_cc
+
+        map_rcp_names = {26: '2.6', 45: '4.5', 60: '6.0', 85: '8.5'}
+
+        tc_cc = copy.deepcopy(self)
+
+        sel_cat05 = np.isin(tc_cc.category, [0, 1, 2, 3, 4, 5])
+        sel_cat03 = np.isin(tc_cc.category, [0, 1, 2, 3])
+        sel_cat45 = np.isin(tc_cc.category, [4, 5])
+
+        for basin in np.unique(tc_cc.basin):
+            scale_year_rcp_05, scale_year_rcp_45 = [
+                        get_knutson_scaling_factor(
+                                percentile=percentile,
+                                variable=variable,
+                                basin=basin,
+                                baseline=baseline
+                                ).loc[target_year, map_rcp_names[rcp_scenario]]
+                                for variable in ['cat05', 'cat45']
+                                ]
+
+            bas_sel = np.array(tc_cc.basin) == basin
+
+            scale_year_rcp_03 = (scale_year_rcp_05 * np.sum(tc_cc.frequency[sel_cat05 & bas_sel]) -
+                                scale_year_rcp_45 * np.sum(tc_cc.frequency[sel_cat45 & bas_sel])
+                                ) / np.sum(tc_cc.frequency[sel_cat03 & bas_sel])
+
+            tc_cc.frequency[sel_cat03 & bas_sel] *= 1 + scale_year_rcp_03/100
+            tc_cc.frequency[sel_cat45 & bas_sel] *= 1 + scale_year_rcp_45/100
+
+            if any(tc_cc.frequency) < 0:
+
+                raise ValueError(
+                    " The application of the climate scenario leads to "
+                    " negative frequencies. One solution - if appropriate -"
+                    " could be to use a less extreme percentile."
+                    )
+
+        return tc_cc
 
     def set_climate_scenario_knu(self, *args, **kwargs):
         """This function is deprecated, use TropCyclone.apply_climate_scenario_knu instead."""
@@ -594,75 +641,6 @@ class TropCyclone(Hazard):
         new_haz.basin = [track.basin if isinstance(track.basin, str)
                          else str(track.basin.values[0])]
         return new_haz
-
-    def _apply_knutson_criterion(
-        self,
-        chg_int_freq: List,
-        scaling_rcp_year: float
-    ):
-        """
-        Apply changes to intensities and cumulative frequencies.
-
-        Parameters
-        ----------
-        chg_int_freq : list(dict))
-            list of criteria from climada.hazard.tc_clim_change
-        scaling_rcp_year : float
-            scale parameter because of chosen year and RCP
-
-        Returns
-        -------
-        tc_cc : climada.hazard.TropCyclone
-            Tropical cyclone with frequency and intensity scaled inspired by
-            the Knutson criterion. Returns a new instance of TropCyclone.
-        """
-
-        tc_cc = copy.deepcopy(self)
-
-        # Criterion per basin
-        for basin in np.unique(tc_cc.basin):
-
-            bas_sel = np.array(tc_cc.basin) == basin
-
-            # Apply intensity change
-            inten_chg = [chg
-                         for chg in chg_int_freq
-                         if (chg['variable'] == 'intensity' and
-                             chg['basin'] == basin)
-                         ]
-            for chg in inten_chg:
-                sel_cat_chg = np.isin(tc_cc.category, chg['category']) & bas_sel
-                inten_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
-                tc_cc.intensity = sparse.diags(
-                    np.where(sel_cat_chg, inten_scaling, 1)
-                    ).dot(tc_cc.intensity)
-
-            # Apply frequency change
-            freq_chg = [chg
-                        for chg in chg_int_freq
-                        if (chg['variable'] == 'frequency' and
-                            chg['basin'] == basin)
-                        ]
-            freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
-
-            # Scale frequencies by category
-            cat_larger_list = []
-            for chg in freq_chg:
-                cat_chg_list = [cat
-                                for cat in chg['category']
-                                if cat not in cat_larger_list
-                                ]
-                sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
-                if sel_cat_chg.any():
-                    freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
-                    tc_cc.frequency[sel_cat_chg] *= freq_scaling
-                cat_larger_list += cat_chg_list
-
-        if (tc_cc.frequency < 0).any():
-            raise ValueError("The application of the given climate scenario"
-                             "resulted in at least one negative frequency.")
-
-        return tc_cc
 
 def _compute_windfields_sparse(
     track: xr.Dataset,
