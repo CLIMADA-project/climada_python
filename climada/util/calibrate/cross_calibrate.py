@@ -252,6 +252,45 @@ class EnsembleOptimizerOutput:
 
         return ax
 
+    def plot_category(
+        self,
+        impact_func_creator: Callable[..., ImpactFuncSet],
+        haz_type,
+        impf_id,
+        input=None,
+        category=None,
+        category_col_dict=None,
+        **impf_set_plot_kwargs
+    ):
+
+        """Plot all impact functions with appropriate color coding according to a category"""
+        impf_set_arr = np.array(self._to_impf_sets(impact_func_creator))
+
+        if category_col_dict is None:
+            unique_categories = self.data[("Event", category)].unique()
+            print(unique_categories)
+            unique_colors = plt.get_cmap("Set1")(np.linspace(0, 1, len(unique_categories)))
+        else:
+            unique_categories = list(category_col_dict.keys())
+            unique_colors = list(category_col_dict.values())
+
+        fig,ax = plt.subplots()
+        for sel_category,color in zip(unique_categories,unique_colors):
+            cat_idx = self.data[("Event", category)] == sel_category
+
+            for i,impf_set in enumerate(impf_set_arr[cat_idx]):
+                impf = impf_set.get_func(haz_type=haz_type, fun_id=impf_id)
+                label = f"{sel_category}, n={cat_idx.sum()} "if i == 0 else None
+                ax.plot(impf.intensity, impf.paa * impf.mdd, **impf_set_plot_kwargs,
+                        color = color,label=label)
+                # impf.mdr.plot(axis=ax, **impf_set_plot_kwargs)#, label=sel_category)
+
+        ax.legend(title=category,bbox_to_anchor=(1.05, 1),loc='upper left',frameon=False)
+        # Cosmetics
+        ax.set_xlabel(f"Intensity [{impf.intensity_unit}]")
+        ax.set_ylabel("Impact")
+        return ax
+
 
 @dataclass
 class EnsembleOptimizer(ABC):
