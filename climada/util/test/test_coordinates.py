@@ -267,8 +267,8 @@ class TestFunc(unittest.TestCase):
 
         # edge with values closer to the antimeridian than buffers and global coverage
         lon = np.concatenate([[-179.99], np.arange(-179.7, 179.9, 0.2), [179.99]])
-        lat = np.repeat(0, lon.size)
-        bounds = u_coord.latlon_bounds(lat, lon, buffer = 0.1)
+        lat = np.zeros_like(lon)
+        bounds = u_coord.latlon_bounds(lat, lon, buffer=0.1)
         self.assertEqual(bounds, (-180, -0.1, 180, 0.1))
 
     def test_toggle_extent_bounds(self):
