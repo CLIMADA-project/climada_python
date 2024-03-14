@@ -10,13 +10,23 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
-### Added
-
 ### Changed
 
 - Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 
 ### Fixed
+
+### Added
+
+- climada.hazard.centroids.centr.Centroids.get_area_pixel
+- climada.hazard.centroids.centr.Centroids.get_dist_coast
+- climada.hazard.centroids.centr.Centroids.get_elevation
+- climada.hazard.centroids.centr.Centroids.get_meta
+- climada.hazard.centroids.centr.Centroids.get_pixel_shapes
+- climada.hazard.centroids.centr.Centroids.to_crs
+- climada.hazard.centroids.centr.Centroids.to_default_crs
+- climada.hazard.centroids.centr.Centroids.write_csv
+- climada.hazard.centroids.centr.Centroids.write_excel
 
 ### Deprecated
 
