@@ -2743,18 +2743,20 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
             return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
 
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['geometry'] = ddata.map_partitions(
+        df_val['_-geometry-prov'] = ddata.map_partitions(
                                  apply_point,
                                  meta=('geometry', gpd.array.GeometryDtype)
                              ).compute(scheduler=scheduler)
+
     # single process
     else:
-        df_val['geometry'] = gpd.GeoSeries(
-            gpd.points_from_xy(df_val.longitude, df_val.latitude), index=df_val.index, crs=crs)
+        df_val['_-geometry-prov'] = gpd.GeoSeries(
+            gpd.points_from_xy(df_val.longitude, df_val.latitude),
+            index=df_val.index)
 
-    # set crs
-    if crs:
-        df_val.set_crs(crs, inplace=True)
+    # A 'geometry' column must not be created in a GeoDataFrame except through the constructor
+    # or with set_geometry. That's why we first made a temporary columns with a weird name
+    df_val.set_geometry('_-geometry-prov', inplace=True, drop=True, crs=crs)
 
 
 def fao_code_def():
