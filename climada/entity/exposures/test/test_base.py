@@ -280,7 +280,7 @@ class TestChecker(unittest.TestCase):
         """Wrong exposures definition"""
         expo = good_exposures()
         expo.set_geometry_points()
-        expo.gdf.loc[0, 'latitude'] = 5
+        expo.gdf.latitude.values[0] = 5
 
         with self.assertRaises(ValueError):
             expo.check()
