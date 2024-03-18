@@ -928,30 +928,42 @@ class Centroids():
             self.set_meta_to_lat_lon()
         self.elevation = u_coord.read_raster_sample(topo_path, self.lat, self.lon)
 
-    def set_dist_coast(self, signed=False, precomputed=False, scheduler=None):
+    def set_dist_coast(self, signed=False, precomputed=True, scheduler=None):
         """Set dist_coast attribute for every pixel or point in meters.
+
+        The distances are read from a raster file containing precomputed distances (from NASA) at
+        0.01 degree (approximately 1 km) resolution.
 
         Parameters
         ----------
         signed : bool
-            If True, use signed distances (positive off shore and negative on land). Default: False.
-        precomputed : bool
-            If True, use precomputed distances (from NASA). Default: False.
-        scheduler : str
-            Used for dask map_partitions. "threads", "synchronous" or "processes"
+            If True, use signed distances (positive off shore and negative on land). Default: False
+        precomputed : bool, optional
+            Whether distances should be read from a pre-computed raster (True) or computed
+            on-the-fly (False). Default: True.
+
+            .. deprecated:: 4.1
+               Argument is ignored, because distances are not computed on-the-fly anymore.
+
+        scheduler : str, optional
+            Scheduler for on-the-fly computation.
+
+            .. deprecated:: 4.1
+               Argument is ignored, because distances are not computed on-the-fly anymore.
         """
+        if not precomputed or scheduler is not None:
+            LOGGER.warning(
+                "The `precomputed` and `scheduler` kwargs are deprecated and will be removed in"
+                " the future because `set_dist_coast` always uses precomputed distances."
+            )
         if (not self.lat.size or not self.lon.size) and not self.meta:
             LOGGER.warning('No lat/lon, no meta, nothing to do!')
             return
-        if precomputed:
-            if not self.lat.size or not self.lon.size:
-                self.set_meta_to_lat_lon()
-            self.dist_coast = u_coord.dist_to_coast_nasa(
-                self.lat, self.lon, highres=True, signed=signed)
-        else:
-            ne_geom = self._ne_crs_geom(scheduler)
-            LOGGER.debug('Computing distance to coast for %s centroids.', str(self.lat.size))
-            self.dist_coast = u_coord.dist_to_coast(ne_geom, signed=signed)
+        if not self.lat.size or not self.lon.size:
+            self.set_meta_to_lat_lon()
+        self.dist_coast = u_coord.dist_to_coast_nasa(
+            self.lat, self.lon, highres=True, signed=signed,
+        )
 
     def set_on_land(self, scheduler=None):
         """Set on_land attribute for every pixel or point.
@@ -1390,6 +1402,6 @@ def generate_nat_earth_centroids(res_as=360, path=None, dist_coast=False):
         path = NATEARTH_CENTROIDS[res_as]
 
     if dist_coast:
-        cen.set_dist_coast(precomputed=True, signed=False)
+        cen.set_dist_coast(signed=False)
         cen.dist_coast = np.float16(cen.dist_coast)
     cen.write_hdf5(path)

@@ -788,7 +788,8 @@ class TestFuncs(unittest.TestCase):
 
         self.assertGreater(
             track.dist_since_lf.values[-1],
-            u_coord.dist_to_coast(track.lat.values[-1], track.lon.values[-1]) / 1000)
+            u_coord.dist_to_coast_nasa(track.lat.values[-1], track.lon.values[-1]) / 1000,
+        )
         self.assertEqual(1020.5431562223974, track['dist_since_lf'].values[-1])
 
         # check distances on land always increase, in second landfall
