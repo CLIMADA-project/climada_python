@@ -29,7 +29,17 @@ pipeline {
   post {
     always {
       junit 'tests_xml/*.xml'
-      cobertura coberturaReportFile: 'coverage.xml', enableNewApi: false
+      recordCoverage(
+        qualityGates: [[
+          baseline: 'PROJECT',
+          metric: 'LINE',
+          threshold: 80.0
+        ]],
+        tools: [[
+          parser: 'COBERTURA',
+          pattern: 'coverage.xml'
+        ]]
+      )
     }
   }
 }
