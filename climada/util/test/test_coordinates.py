@@ -265,6 +265,12 @@ class TestFunc(unittest.TestCase):
         bounds = u_coord.latlon_bounds(lat, lon, buffer=1)
         self.assertEqual(bounds, (-180, -90, 180, 90))
 
+        # edge with values closer to the antimeridian than buffers and global coverage
+        lon = np.concatenate([[-179.99], np.arange(-179.7, 179.9, 0.2), [179.99]])
+        lat = np.zeros_like(lon)
+        bounds = u_coord.latlon_bounds(lat, lon, buffer=0.1)
+        self.assertEqual(bounds, (-180, -0.1, 180, 0.1))
+
     def test_toggle_extent_bounds(self):
         """Test the conversion between 'extent' and 'bounds'"""
         self.assertEqual(u_coord.toggle_extent_bounds((0, -1, 1, 3)), (0, 1, -1, 3))
