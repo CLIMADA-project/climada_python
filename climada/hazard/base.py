@@ -1994,26 +1994,22 @@ class Hazard():
                 
             dataset.description = 'Exceedance intensity data for various return periods'
             
-    def write_raster_local_return_periods(self, file_name, hazard_intensities):
+    def write_raster_local_return_periods(self, hazard_intensities, file_name):
         """Write local return periods map as GeoTIFF file.
     
         Parameters
         ----------
-        file_name: str
-            File name to write in tif format.
         hazard_intensities: np.array
             Hazard intensities to consider for calculating return periods.
+        file_name: str
+            File name to write in tif format.
         """
         # Calculate local return periods based on given hazard intensities
         variable = self.local_return_period(hazard_intensities)
         
         if self.centroids.meta:
-            # If metadata is available, use it directly for raster creation
             u_coord.write_raster(file_name, variable, self.centroids.meta)
         else:
-            # If metadata is not fully available, additional steps might be needed
-            # This part assumes you have a method to calculate or retrieve centroids geometry
-            # and a way to update or create the raster profile based on available data
             pixel_geom = self.centroids.calc_pixels_polygons()  # Hypothetical function
             profile = self.centroids.meta  # This would need to be adequately populated
             profile.update(driver='GTiff', dtype=rasterio.float32, count=1)
