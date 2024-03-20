@@ -1544,7 +1544,7 @@ class Hazard():
             inten_stats[inten_stats < 0] = 0
         return inten_stats
     
-    def local_return_period(self, hazard_intensities, intensity_threshold):
+    def local_return_period(self, hazard_intensities):
         """Compute local return periods for given hazard intensities.
     
         Parameters
@@ -1555,6 +1555,7 @@ class Hazard():
         Returns
         -------
         return_periods : np.array
+            Array containing computed local return periods for given hazard intensities.
         """
         # Ensure hazard_intensities is a numpy array
         hazard_intensities = np.array(hazard_intensities)
@@ -1573,17 +1574,16 @@ class Hazard():
             self._loc_return_period(
                 hazard_intensities,
                 self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-                return_periods[:, chk * cen_step:(chk + 1) * cen_step],
-                intensity_threshold)
+                return_periods[:, chk * cen_step:(chk + 1) * cen_step])
         
         if (chk + 1) * cen_step < num_cen:  # Check if there's a remainder
             self._loc_return_period(
                 hazard_intensities,
                 self.intensity[:, (chk + 1) * cen_step:].toarray(),
-                return_periods[:, (chk + 1) * cen_step:],
-                intensity_threshold)
+                return_periods[:, (chk + 1) * cen_step:])
         
         return return_periods
+
 
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
@@ -1623,17 +1623,14 @@ class Hazard():
     
     import matplotlib.pyplot as plt
 
-    def plot_local_rp(self, hazard_intensities, intensity_threshold, smooth=True, 
-                                  axis=None, figsize=(9, 13), adapt_fontsize=True, 
-                                  **kwargs):
+
+    def plot_local_rp(self, hazard_intensities, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, **kwargs):
         """Plot hazard local return periods for given hazard intensities.
     
         Parameters
         ----------
         hazard_intensities: np.array
             Hazard intensities to consider for calculating return periods.
-        intensity_threshold: float
-            Intensity threshold to consider for return period calculation.
         smooth: bool, optional
             Smooth plot to plot.RESOLUTION x plot.RESOLUTION.
         axis: matplotlib.axes._subplots.AxesSubplot, optional
@@ -1649,7 +1646,7 @@ class Hazard():
             Matplotlib axis with the plot.
         """
         self._set_coords_centroids()
-        return_periods = self.local_return_period(hazard_intensities, intensity_threshold)
+        return_periods = self.local_return_period(hazard_intensities)
         colbar_name = 'Return Period (years)'
         axis = u_plot.geo_im_from_array(return_periods, self.centroids.coord,
                                         colbar_name, "Local Return Periods", smooth=smooth, axes=axis,
@@ -1996,6 +1993,39 @@ class Hazard():
                 intensity_rp.description = f'Exceedance intensity map for {period}-year return period'
                 
             dataset.description = 'Exceedance intensity data for various return periods'
+            
+    def write_raster_local_return_periods(self, file_name, hazard_intensities):
+        """Write local return periods map as GeoTIFF file.
+    
+        Parameters
+        ----------
+        file_name: str
+            File name to write in tif format.
+        hazard_intensities: np.array
+            Hazard intensities to consider for calculating return periods.
+        """
+        # Calculate local return periods based on given hazard intensities
+        variable = self.local_return_period(hazard_intensities)
+        
+        if self.centroids.meta:
+            # If metadata is available, use it directly for raster creation
+            u_coord.write_raster(file_name, variable, self.centroids.meta)
+        else:
+            # If metadata is not fully available, additional steps might be needed
+            # This part assumes you have a method to calculate or retrieve centroids geometry
+            # and a way to update or create the raster profile based on available data
+            pixel_geom = self.centroids.calc_pixels_polygons()  # Hypothetical function
+            profile = self.centroids.meta  # This would need to be adequately populated
+            profile.update(driver='GTiff', dtype=rasterio.float32, count=1)
+            with rasterio.open(file_name, 'w', **profile) as dst:
+                LOGGER.info('Writing %s', file_name)
+                raster = rasterize(
+                    [(x, val) for (x, val) in zip(pixel_geom, variable.reshape(-1))],
+                    out_shape=(profile['height'], profile['width']),
+                    transform=profile['transform'], fill=0,
+                    all_touched=True, dtype=profile['dtype'])
+                dst.write(raster.astype(profile['dtype']), 1)
+
 
     def write_local_return_periods_netcdf(self, hazard_intensities, intensity_threshold, filename):
         """Generates local return period data and saves it into a NetCDF file.
@@ -2236,9 +2266,8 @@ class Hazard():
                 inten_sort[:, cen_idx], freq_sort[:, cen_idx],
                 self.intensity_thres, return_periods)
             
-            import numpy as np
                 
-    def _loc_return_period(self, hazard_intensities, inten, return_periods, intensity_threshold):
+    def _loc_return_period(self, hazard_intensities, inten, return_periods):
         """Compute local return periods for given hazard intensities for a specific chunk of data.
     
         Parameters
@@ -2257,11 +2286,25 @@ class Hazard():
         np.cumsum(freq_sort, axis=0, out=freq_sort)
     
         for cen_idx in range(inten.shape[1]):
-                sorted_inten_cen = inten_sort[:, cen_idx]
-                cum_freq_cen = freq_sort[:, cen_idx]
-        
-                return_periods[:, cen_idx] = self._cen_return_period(
-                    sorted_inten_cen, cum_freq_cen, intensity_threshold, hazard_intensities)
+            sorted_inten_cen = inten_sort[:, cen_idx]
+            cum_freq_cen = freq_sort[:, cen_idx]
+    
+            for i, intensity in enumerate(hazard_intensities):
+                # Find the first occurrence where the intensity is less than the sorted intensities
+                exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='right')
+    
+                # Calculate exceedance probability
+                if exceedance_index < len(cum_freq_cen):
+                    exceedance_probability = cum_freq_cen[-exceedance_index - 1]
+                else:
+                    exceedance_probability = 0  # Or set a default minimal probability
+    
+                # Calculate and store return period
+                if exceedance_probability > 0:
+                    return_periods[i, cen_idx] = 1 / exceedance_probability
+                else:
+                    return_periods[i, cen_idx] = np.nan  # Or handle as desired for non-exceedance
+
 
 
 
