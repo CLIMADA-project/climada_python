@@ -212,6 +212,10 @@ class TestClient(unittest.TestCase):
             client.get_litpop(['AUT', 'CHE'])
         self.assertIn(" can only query single countries. Download the data for multiple countries individually and concatenate ",
             str(cm.exception))
+        
+    def test_get_centroids_plot(self):
+        client = Client()
+        client.get_centroids(country='COM').plot()
 
     def test_get_dataset_file(self):
         client = Client()

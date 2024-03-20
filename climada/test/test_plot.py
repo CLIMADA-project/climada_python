@@ -26,18 +26,27 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pandas as pd
 import contextily as ctx
+from pathlib import Path
 
 from climada.engine.unsequa import  UncOutput
 from climada.engine import ImpactCalc, ImpactFreqCurve, CostBenefit
 from climada.entity import (Entity, ImpactFuncSet, Exposures, DiscRates, ImpfTropCyclone, Measure,
                             MeasureSet)
 from climada.hazard import Hazard, Centroids
-from climada.util.constants import HAZ_DEMO_MAT, ENT_DEMO_TODAY, TEST_UNC_OUTPUT_COSTBEN
+from climada.util.constants import ENT_DEMO_TODAY, TEST_UNC_OUTPUT_COSTBEN, HAZ_DEMO_FL
 from climada.util.api_client import Client
+from climada.test import get_test_file
 
 
 test_unc_output_costben = Client().get_dataset_file(name=TEST_UNC_OUTPUT_COSTBEN, status='test_dataset')
 
+
+
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
+"""
+Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
+Fraction is empty. Format: HDF5.
+"""
 
 class TestPlotter(unittest.TestCase):
     """Test plot functions."""
@@ -47,7 +56,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_intensity_pass(self):
         """Generate all possible plots of the hazard intensity."""
-        hazard = Hazard.from_mat(HAZ_DEMO_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
         hazard.event_name = [""] * hazard.event_id.size
         hazard.event_name[35] = "NNN_1185106_gen5"
         hazard.event_name[3898] = "NNN_1190604_gen8"
@@ -81,33 +90,21 @@ class TestPlotter(unittest.TestCase):
 
     def test_hazard_fraction_pass(self):
         """Generate all possible plots of the hazard fraction."""
-        hazard = Hazard.from_mat(HAZ_DEMO_MAT)
+        hazard = Hazard.from_raster([HAZ_DEMO_FL, HAZ_DEMO_FL])
         hazard.event_name = [""] * hazard.event_id.size
-        hazard.event_name[35] = "NNN_1185106_gen5"
-        hazard.event_name[11897] = "GORDON_gen7"
-        myax = hazard.plot_fraction(event=36)
-        self.assertIn('Event ID 36: NNN_1185106_gen5', myax.get_title())
+        hazard.event_name[0] = "NNN_1185106_gen5"
+        myax = hazard.plot_fraction(event=1)
+        self.assertIn('Event ID 1: NNN_1185106_gen5', myax.get_title())
 
-        myax = hazard.plot_fraction(event=-1)
-        self.assertIn('1-largest Event. ID 11898: GORDON_gen7', myax.get_title())
-
-        myax = hazard.plot_fraction(centr=59)
-        self.assertIn('Centroid 59: (30.0, -79.0)', myax.get_title())
-
-        myax = hazard.plot_fraction(centr=-1)
-        self.assertIn('1-largest Centroid. 79: (30.0, -77.0)', myax.get_title())
+        myax = hazard.plot_fraction(centr=1)
+        self.assertIn('Centroid 1: (10.424, -69.324)', myax.get_title())
 
     def test_hazard_rp_intensity(self):
         """"Plot exceedance intensity maps for different return periods"""
-        hazard = Hazard.from_mat(HAZ_DEMO_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
         (axis1, axis2), _ = hazard.plot_rp_intensity([25, 50])
         self.assertEqual('Return period: 25 years', axis1.get_title())
         self.assertEqual('Return period: 50 years', axis2.get_title())
-
-    def test_hazard_centroids(self):
-        """Plot centroids scatter points over earth."""
-        centroids = Centroids.from_base_grid()
-        centroids.plot()
 
     def test_exposures_value_pass(self):
         """Plot exposures values."""
@@ -140,7 +137,7 @@ class TestPlotter(unittest.TestCase):
         """Plot impact exceedence frequency curves."""
         myent = Entity.from_excel(ENT_DEMO_TODAY)
         myent.exposures.check()
-        myhaz = Hazard.from_mat(HAZ_DEMO_MAT)
+        myhaz = Hazard.from_hdf5(HAZ_TEST_TC)
         myhaz.event_name = [""] * myhaz.event_id.size
         myimp = ImpactCalc(myent.exposures, myent.impact_funcs, myhaz).impact()
         ifc = myimp.calc_freq_curve()

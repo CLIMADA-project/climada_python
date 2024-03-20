@@ -550,30 +550,33 @@ class TestAssign(unittest.TestCase):
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        centroids = Centroids(meta=meta)
+        centroids = Centroids.from_meta(meta=meta)
         df = pd.DataFrame({
             'longitude': np.array([
                 -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
                 -19.0, -19.0, -19.0, -19.0,
                 -20.1, 0.0, 10.1, 10.1, 10.1, 0.0, -20.2, -20.3,
                 -6.4, 9.8, 0.0,
-                ]),
+            ]),
             'latitude': np.array([
                 7.3, 7.3, 7.3, 7.3, 7.3, 7.3,
                 8.1, 7.9, 6.7, 6.5,
                 8.1, 8.2, 8.3, 0.0, -6.1, -6.2, -6.3, 0.0,
                 -1.9, -1.7, 0.0,
-                ])
+            ]),
         })
-        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
-                               crs=DEF_CRS)
-        assigned = u_coord.match_centroids(gdf,centroids)
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df.longitude, df.latitude),
+            crs=DEF_CRS,
+        )
+        assigned = u_coord.match_centroids(gdf, centroids)
 
         expected_result = [
             # constant y-value, varying x-value
-            -1, 0, 0, 0, 0, 1,
+            0, 0, 0, 0, 0, 1,
             # constant x-value, varying y-value
-            -1, 0, 0, 20,
+            0, 0, 0, 20,
             # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
             -1, -1, -1, -1, -1, -1, -1, -1,
             # some explicit points within the raster
@@ -595,9 +598,9 @@ class TestAssign(unittest.TestCase):
         centroids = Centroids(
             lat=coords_to_assign[:, 0],
             lon=coords_to_assign[:, 1],
-            geometry = gpd.GeoSeries(crs=DEF_CRS)
+            crs=DEF_CRS
         )
-        centroids_empty = Centroids()
+        centroids_empty = Centroids(lat=np.array([]), lon=np.array([]))
 
         expected_results = [
             # test with different thresholds (in km)
@@ -630,7 +633,7 @@ class TestAssign(unittest.TestCase):
         centroids = Centroids(
             lat=[1100000,1200000],
             lon=[2500000,2600000],
-            geometry = gpd.GeoSeries(crs='EPSG:2056')
+            crs='EPSG:2056'
         )
 
         with self.assertRaises(ValueError) as cm:
