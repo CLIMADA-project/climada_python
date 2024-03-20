@@ -30,8 +30,6 @@ Code freeze date: YYYY-MM-DD
 
 ### Deprecated
 
-- climada.hazard.centroids.centr.Centroids.from_mat
-- climada.hazard.centroids.centr.Centroids.from_base_grid
 - climada.hazard.centroids.centr.Centroids.from_lat_lon
 - climada.hazard.centroids.centr.Centroids.def set_area_pixel
 - climada.hazard.centroids.centr.Centroids.def set_area_approx
@@ -52,6 +50,8 @@ Code freeze date: YYYY-MM-DD
 - climada.hazard.centroids.centr.Centroids.check
 - climada.hazard.centroids.centr.Centroids.clear
 - climada.hazard.centroids.centr.Centroids.equal
+- climada.hazard.centroids.centr.Centroids.from_mat
+- climada.hazard.centroids.centr.Centroids.from_base_grid
 - climada.hazard.centroids.centr.Centroids.read_excel
 - climada.hazard.centroids.centr.Centroids.read_hdf5
 - climada.hazard.centroids.centr.Centroids.read_mat
