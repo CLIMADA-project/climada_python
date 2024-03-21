@@ -1967,10 +1967,57 @@ class Hazard():
         LOGGER.warning("The use of Hazard.read_hdf5 is deprecated."
                        "Use Hazard.from_hdf5 instead.")
         self.__dict__ = self.__class__.from_hdf5(*args, **kwargs).__dict__
+        
 
-    def write_local_exceedance_inten_netcdf(self, return_periods, filename):
+    def write_raster_local_exceedance_inten(self, return_periods, filename):
         """
-        Generates exceedance intensity data and saves the data into a NetCDF file.
+        Generates exceedance intensity data for specified return periods and 
+        saves it into a GeoTIFF file.
+    
+        Parameters
+        ----------
+        return_periods : np.array or list
+            Array or list of return periods (in years) for which to calculate 
+            and store exceedance intensities.
+        filename : str
+            Path and name of the file to write in tif format.
+        """
+        inten_stats = self.local_exceedance_inten(return_periods=return_periods)
+        num_bands = inten_stats.shape[0]
+        
+        if not self.centroids.meta:
+            raise ValueError("centroids.meta is required but not set.")
+    
+        pixel_geom = self.centroids.calc_pixels_polygons()
+        profile = self.centroids.meta.copy()
+        profile.update(driver='GTiff', dtype='float32', count=num_bands)
+        
+        with rasterio.open(filename, 'w', **profile) as dst:
+            LOGGER.info('Writing %s', filename)
+            for band in range(num_bands):
+                raster = rasterize(
+                    [(x, val) for (x, val) in zip(pixel_geom, inten_stats[band].reshape(-1))],
+                    out_shape=(profile['height'], profile['width']),
+                    transform=profile['transform'], fill=0,
+                    all_touched=True, dtype=profile['dtype'])
+                dst.write(raster, band + 1)
+                
+                band_name = f"Exceedance intensity for RP {return_periods[band]} years"
+                dst.set_band_description(band + 1, band_name)        
+                
+
+    def write_netcdf_local_exceedance_inten(self, return_periods, filename):
+        """
+        Generates exceedance intensity data for specified return periods and 
+        saves it into a NetCDF file.
+    
+        Parameters
+        ----------
+        return_periods : np.array or list
+            Array or list of return periods (in years) for which to calculate 
+            and store exceedance intensities.
+        filename : str
+            Path and name of the file to write the NetCDF data.
         """
         inten_stats = self.local_exceedance_inten(return_periods=return_periods)
         coords = self.centroids.coord
@@ -1994,7 +2041,8 @@ class Hazard():
                 
             dataset.description = 'Exceedance intensity data for various return periods'
             
-    def write_raster_local_return_periods(self, hazard_intensities, file_name):
+              
+    def write_raster_local_return_periods(self, hazard_intensities, filename):
         """Write local return periods map as GeoTIFF file.
     
         Parameters
@@ -2004,40 +2052,44 @@ class Hazard():
         file_name: str
             File name to write in tif format.
         """
-        # Calculate local return periods based on given hazard intensities
         variable = self.local_return_period(hazard_intensities)
         
-        if self.centroids.meta:
-            u_coord.write_raster(file_name, variable, self.centroids.meta)
-        else:
-            pixel_geom = self.centroids.calc_pixels_polygons()  # Hypothetical function
-            profile = self.centroids.meta  # This would need to be adequately populated
-            profile.update(driver='GTiff', dtype=rasterio.float32, count=1)
-            with rasterio.open(file_name, 'w', **profile) as dst:
-                LOGGER.info('Writing %s', file_name)
+        num_bands = variable.shape[0]
+        if not self.centroids.meta:
+            raise ValueError("centroids.meta is required but not set.")
+
+        pixel_geom = self.centroids.calc_pixels_polygons()
+        profile = self.centroids.meta.copy()
+        profile.update(driver='GTiff', dtype='float32', count=num_bands)
+        
+        with rasterio.open(filename, 'w', **profile) as dst:
+            LOGGER.info('Writing %s', filename)
+            for band in range(num_bands):
                 raster = rasterize(
-                    [(x, val) for (x, val) in zip(pixel_geom, variable.reshape(-1))],
+                    [(x, val) for (x, val) in zip(pixel_geom, variable[band].reshape(-1))],
                     out_shape=(profile['height'], profile['width']),
                     transform=profile['transform'], fill=0,
                     all_touched=True, dtype=profile['dtype'])
-                dst.write(raster.astype(profile['dtype']), 1)
+                dst.write(raster, band + 1)
+                
+                band_name = f"RP of intensity {hazard_intensities[band]} {self.units}"
+                dst.set_band_description(band + 1, band_name)
 
 
-    def write_local_return_periods_netcdf(self, hazard_intensities, intensity_threshold, filename):
+
+    def write_netcdf_local_return_periods(self, hazard_intensities, filename):
         """Generates local return period data and saves it into a NetCDF file.
-    
+
         Parameters
         ----------
         hazard_intensities: np.array
             Hazard intensities to consider for calculating return periods.
-        intensity_threshold: float
-            Intensity threshold to consider for return period calculation.
         filename: str
             Path and name of the file to write the NetCDF data.
         """
-        return_periods = self.local_return_period(hazard_intensities, intensity_threshold)
+        return_periods = self.local_return_period(hazard_intensities)
         coords = self.centroids.coord
-    
+        
         with nc.Dataset(filename, 'w', format='NETCDF4') as dataset:
             centroids_dim = dataset.createDimension('centroids', coords.shape[0])
     
@@ -2048,15 +2100,15 @@ class Hazard():
             latitudes.units = 'degrees_north'
             longitudes.units = 'degrees_east'
     
-            # Assuming hazard_intensities is a 1D array; adjust as necessary for your data structure
             for i, intensity in enumerate(hazard_intensities):
-                dataset_name = f'return_period_intensity{intensity}'
+                dataset_name = f'return_period_intensity_{int(intensity)}'
                 return_period_var = dataset.createVariable(dataset_name, 'f4', ('centroids',))
                 return_period_var[:] = return_periods[i, :]
                 return_period_var.units = 'years'
-                return_period_var.description = f'Local return period for hazard intensity {intensity}'
+                return_period_var.description = f'Local return period for hazard intensity {intensity} {self.units}'
     
-            dataset.description = 'Local return period data for various hazard intensities'
+            dataset.description = 'Local return period data for given hazard intensities'
+
 
     @classmethod
     def from_hdf5(cls, file_name):
@@ -2299,10 +2351,8 @@ class Hazard():
                 if exceedance_probability > 0:
                     return_periods[i, cen_idx] = 1 / exceedance_probability
                 else:
-                    return_periods[i, cen_idx] = np.nan  # Or handle as desired for non-exceedance
-
-
-
+                    return_periods[i, cen_idx] = np.nan  
+                    
 
     def _check_events(self):
         """Check that all attributes but centroids contain consistent data.
