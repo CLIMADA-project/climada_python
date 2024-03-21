@@ -41,6 +41,8 @@ from rasterio.warp import reproject, Resampling, calculate_default_transform
 import sparse as sp
 from scipy import sparse
 import xarray as xr
+import netCDF4 as nc
+from scipy.interpolate import griddata
 
 from climada.hazard.centroids.centr import Centroids
 import climada.util.plot as u_plot
@@ -1541,6 +1543,48 @@ class Hazard():
                    Reason: no negative intensity values were found in hazard.')
             inten_stats[inten_stats < 0] = 0
         return inten_stats
+    
+    def local_return_period(self, hazard_intensities):
+        """Compute local return periods for given hazard intensities.
+    
+        Parameters
+        ----------
+        hazard_intensities : np.array
+            Hazard intensities to consider.
+    
+        Returns
+        -------
+        return_periods : np.array
+            Array containing computed local return periods for given hazard intensities.
+        """
+        # Ensure hazard_intensities is a numpy array
+        hazard_intensities = np.array(hazard_intensities)
+        
+        num_cen = self.intensity.shape[1]
+        return_periods = np.zeros((len(hazard_intensities), num_cen))  # Adjusted for 2D structure
+        
+        # Process each centroid in chunks as in local_exceedance_inten
+        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
+        if not cen_step:
+            raise ValueError('Increase max_matrix_size configuration parameter to >'
+                             f'{self.intensity.shape[0]}')
+        
+        chk = -1
+        for chk in range(int(num_cen / cen_step)):
+            self._loc_return_period(
+                hazard_intensities,
+                self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
+                return_periods[:, chk * cen_step:(chk + 1) * cen_step])
+        
+        if (chk + 1) * cen_step < num_cen:  # Check if there's a remainder
+            self._loc_return_period(
+                hazard_intensities,
+                self.intensity[:, (chk + 1) * cen_step:].toarray(),
+                return_periods[:, (chk + 1) * cen_step:])
+        
+        return return_periods
+
+
 
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
                           smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True,
@@ -1576,6 +1620,39 @@ class Hazard():
                                         colbar_name, title, smooth=smooth, axes=axis,
                                         figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
         return axis, inten_stats
+    
+    import matplotlib.pyplot as plt
+
+
+    def plot_local_rp(self, hazard_intensities, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, **kwargs):
+        """Plot hazard local return periods for given hazard intensities.
+    
+        Parameters
+        ----------
+        hazard_intensities: np.array
+            Hazard intensities to consider for calculating return periods.
+        smooth: bool, optional
+            Smooth plot to plot.RESOLUTION x plot.RESOLUTION.
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            Axis to use.
+        figsize: tuple, optional
+            Figure size for plt.subplots.
+        kwargs: optional
+            Arguments for pcolormesh matplotlib function used in event plots.
+    
+        Returns
+        -------
+        axis: matplotlib.axes._subplots.AxesSubplot
+            Matplotlib axis with the plot.
+        """
+        self._set_coords_centroids()
+        return_periods = self.local_return_period(hazard_intensities)
+        colbar_name = 'Return Period (years)'
+        axis = u_plot.geo_im_from_array(return_periods, self.centroids.coord,
+                                        colbar_name, "Local Return Periods", smooth=smooth, axes=axis,
+                                        figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
+        return axis
+
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, adapt_fontsize=True,
                        **kwargs):
@@ -1890,6 +1967,148 @@ class Hazard():
         LOGGER.warning("The use of Hazard.read_hdf5 is deprecated."
                        "Use Hazard.from_hdf5 instead.")
         self.__dict__ = self.__class__.from_hdf5(*args, **kwargs).__dict__
+        
+
+    def write_raster_local_exceedance_inten(self, return_periods, filename):
+        """
+        Generates exceedance intensity data for specified return periods and 
+        saves it into a GeoTIFF file.
+    
+        Parameters
+        ----------
+        return_periods : np.array or list
+            Array or list of return periods (in years) for which to calculate 
+            and store exceedance intensities.
+        filename : str
+            Path and name of the file to write in tif format.
+        """
+        inten_stats = self.local_exceedance_inten(return_periods=return_periods)
+        num_bands = inten_stats.shape[0]
+        
+        if not self.centroids.meta:
+            raise ValueError("centroids.meta is required but not set.")
+    
+        pixel_geom = self.centroids.calc_pixels_polygons()
+        profile = self.centroids.meta.copy()
+        profile.update(driver='GTiff', dtype='float32', count=num_bands)
+        
+        with rasterio.open(filename, 'w', **profile) as dst:
+            LOGGER.info('Writing %s', filename)
+            for band in range(num_bands):
+                raster = rasterize(
+                    [(x, val) for (x, val) in zip(pixel_geom, inten_stats[band].reshape(-1))],
+                    out_shape=(profile['height'], profile['width']),
+                    transform=profile['transform'], fill=0,
+                    all_touched=True, dtype=profile['dtype'])
+                dst.write(raster, band + 1)
+                
+                band_name = f"Exceedance intensity for RP {return_periods[band]} years"
+                dst.set_band_description(band + 1, band_name)        
+                
+
+    def write_netcdf_local_exceedance_inten(self, return_periods, filename):
+        """
+        Generates exceedance intensity data for specified return periods and 
+        saves it into a NetCDF file.
+    
+        Parameters
+        ----------
+        return_periods : np.array or list
+            Array or list of return periods (in years) for which to calculate 
+            and store exceedance intensities.
+        filename : str
+            Path and name of the file to write the NetCDF data.
+        """
+        inten_stats = self.local_exceedance_inten(return_periods=return_periods)
+        coords = self.centroids.coord
+        
+        with nc.Dataset(filename, 'w', format='NETCDF4') as dataset:
+            centroids_dim = dataset.createDimension('centroids', coords.shape[0])
+            
+            latitudes = dataset.createVariable('latitude', 'f4', ('centroids',))
+            longitudes = dataset.createVariable('longitude', 'f4', ('centroids',))
+            latitudes[:] = coords[:, 0]
+            longitudes[:] = coords[:, 1]
+            latitudes.units = 'degrees_north'
+            longitudes.units = 'degrees_east'
+            
+            for i, period in enumerate(return_periods):
+                dataset_name = f'intensity_RP{period}'
+                intensity_rp = dataset.createVariable(dataset_name, 'f4', ('centroids',))
+                intensity_rp[:] = inten_stats[i, :]
+                intensity_rp.units = self.units
+                intensity_rp.description = f'Exceedance intensity map for {period}-year return period'
+                
+            dataset.description = 'Exceedance intensity data for various return periods'
+            
+              
+    def write_raster_local_return_periods(self, hazard_intensities, filename):
+        """Write local return periods map as GeoTIFF file.
+    
+        Parameters
+        ----------
+        hazard_intensities: np.array
+            Hazard intensities to consider for calculating return periods.
+        file_name: str
+            File name to write in tif format.
+        """
+        variable = self.local_return_period(hazard_intensities)
+        
+        num_bands = variable.shape[0]
+        if not self.centroids.meta:
+            raise ValueError("centroids.meta is required but not set.")
+
+        pixel_geom = self.centroids.calc_pixels_polygons()
+        profile = self.centroids.meta.copy()
+        profile.update(driver='GTiff', dtype='float32', count=num_bands)
+        
+        with rasterio.open(filename, 'w', **profile) as dst:
+            LOGGER.info('Writing %s', filename)
+            for band in range(num_bands):
+                raster = rasterize(
+                    [(x, val) for (x, val) in zip(pixel_geom, variable[band].reshape(-1))],
+                    out_shape=(profile['height'], profile['width']),
+                    transform=profile['transform'], fill=0,
+                    all_touched=True, dtype=profile['dtype'])
+                dst.write(raster, band + 1)
+                
+                band_name = f"RP of intensity {hazard_intensities[band]} {self.units}"
+                dst.set_band_description(band + 1, band_name)
+
+
+
+    def write_netcdf_local_return_periods(self, hazard_intensities, filename):
+        """Generates local return period data and saves it into a NetCDF file.
+
+        Parameters
+        ----------
+        hazard_intensities: np.array
+            Hazard intensities to consider for calculating return periods.
+        filename: str
+            Path and name of the file to write the NetCDF data.
+        """
+        return_periods = self.local_return_period(hazard_intensities)
+        coords = self.centroids.coord
+        
+        with nc.Dataset(filename, 'w', format='NETCDF4') as dataset:
+            centroids_dim = dataset.createDimension('centroids', coords.shape[0])
+    
+            latitudes = dataset.createVariable('latitude', 'f4', ('centroids',))
+            longitudes = dataset.createVariable('longitude', 'f4', ('centroids',))
+            latitudes[:] = coords[:, 0]
+            longitudes[:] = coords[:, 1]
+            latitudes.units = 'degrees_north'
+            longitudes.units = 'degrees_east'
+    
+            for i, intensity in enumerate(hazard_intensities):
+                dataset_name = f'return_period_intensity_{int(intensity)}'
+                return_period_var = dataset.createVariable(dataset_name, 'f4', ('centroids',))
+                return_period_var[:] = return_periods[i, :]
+                return_period_var.units = 'years'
+                return_period_var.description = f'Local return period for hazard intensity {intensity} {self.units}'
+    
+            dataset.description = 'Local return period data for given hazard intensities'
+
 
     @classmethod
     def from_hdf5(cls, file_name):
@@ -2094,6 +2313,46 @@ class Hazard():
             exc_inten[:, cen_idx] = self._cen_return_inten(
                 inten_sort[:, cen_idx], freq_sort[:, cen_idx],
                 self.intensity_thres, return_periods)
+            
+                
+    def _loc_return_period(self, hazard_intensities, inten, return_periods):
+        """Compute local return periods for given hazard intensities for a specific chunk of data.
+    
+        Parameters
+        ----------
+        hazard_intensities: np.array
+            Given hazard intensities for which to calculate return periods.
+        inten: np.array
+            The intensity array for a specific chunk of data.
+        return_periods: np.array
+            Array to store computed return periods for the given hazard intensities.
+        """
+        # Assuming inten is sorted and calculating cumulative frequency
+        sort_pos = np.argsort(inten, axis=0)[::-1, :]
+        inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
+        freq_sort = self.frequency[sort_pos]
+        np.cumsum(freq_sort, axis=0, out=freq_sort)
+    
+        for cen_idx in range(inten.shape[1]):
+            sorted_inten_cen = inten_sort[:, cen_idx]
+            cum_freq_cen = freq_sort[:, cen_idx]
+    
+            for i, intensity in enumerate(hazard_intensities):
+                # Find the first occurrence where the intensity is less than the sorted intensities
+                exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='right')
+    
+                # Calculate exceedance probability
+                if exceedance_index < len(cum_freq_cen):
+                    exceedance_probability = cum_freq_cen[-exceedance_index - 1]
+                else:
+                    exceedance_probability = 0  # Or set a default minimal probability
+    
+                # Calculate and store return period
+                if exceedance_probability > 0:
+                    return_periods[i, cen_idx] = 1 / exceedance_probability
+                else:
+                    return_periods[i, cen_idx] = np.nan  
+                    
 
     def _check_events(self):
         """Check that all attributes but centroids contain consistent data.
@@ -2157,6 +2416,50 @@ class Hazard():
         inten_fit[wrong_inten] = 0.
 
         return inten_fit
+    
+    @staticmethod
+    def _cen_return_period(inten, freq, inten_th, hazard_intensities):
+        """Estimate the return periods for given hazard intensities using the polynomial 
+        relationship derived from cumulative frequency and intensity values.
+    
+        Parameters
+        ----------
+        inten: np.array
+            Sorted intensity at centroid.
+        freq: np.array
+            Cumulative frequency at centroid.
+        inten_th: float
+            Intensity threshold.
+        hazard_intensities: np.array
+            Hazard intensities for which to estimate return periods.
+    
+        Returns
+        -------
+        return_periods: np.array
+            Estimated return periods for the given hazard intensities.
+        """
+        inten_above_threshold = inten > inten_th
+        inten_cen = inten[inten_above_threshold]
+        freq_cen = freq[inten_above_threshold]
+        
+        if not inten_cen.size:
+            return np.inf * np.ones(hazard_intensities.size)
+        
+        try:
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore")
+                pol_coef = np.polyfit(inten_cen, np.log(freq_cen), deg=1)
+        except ValueError:
+            return np.inf * np.ones(hazard_intensities.size)
+        
+        log_rp_estimates = np.polyval(pol_coef, hazard_intensities)
+        
+        return_periods = 1 / np.exp(log_rp_estimates)
+        
+        out_of_range = (hazard_intensities < np.min(inten_cen)) | (hazard_intensities > np.max(inten_cen))
+        return_periods[out_of_range] = np.inf
+        
+        return return_periods
 
     @staticmethod
     def _read_att_mat(data, file_name, var_names, centroids):
