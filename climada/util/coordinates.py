@@ -200,6 +200,7 @@ def lon_bounds(lon, buffer=0.0):
     if lon_diff_max < 2:
         # since the largest gap is comparably small, enforce the [-180, 180] value range
         gap_max = lon_diff.size - 1
+        lon_diff_max = lon_diff[gap_max]
     if lon_diff_max <= 2 * buffer:
         # avoid (-1, 359) and similar equivalent outputs for bounds covering the full circle
         lon_min, lon_max = (-180, 180)
