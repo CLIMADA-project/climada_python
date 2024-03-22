@@ -152,7 +152,7 @@ class TestImpactCalc(unittest.TestCase):
         try:
             ImpactCalc(exp, impfset, haz).impact()
         except Exception as e:
-            self.assertEqual(str(e),  "At least one impact function associated to the exposures has no match in the impact function set.\n "
+            self.assertEqual(str(e),  "At least one impact function associated to the exposures has no match in the impact function set.\n"
                 "The impact functions in the impact function set for hazard type \"TC\" have ids [2]. "
                 "The column \"impf_TC\" in the exposures contains the ids [1].\n" 
                 "Please make sure that all exposure points are associated with an impact function that is included in the impact function set.")
