@@ -134,9 +134,9 @@ class ImpactCalc():
         if any(if_id not in self.impfset.get_ids(haz_type=self.hazard.haz_type) for
                if_id in np.unique(self.exposures.gdf[impf_col].values)):
             raise AttributeError(
-                f"At least one impact function specified in the exposures has no match in the impact function set.\n "
-                f"The impact functions in the set for haztype {self.hazard.haz_type} have ids {self.impfset.get_ids(haz_type=self.hazard.haz_type)}. "
-                f"The exposures have associated {impf_col} ids {np.unique(self.exposures.gdf[impf_col].values)}.\n" 
+                f"At least one impact function associated to the exposures has no match in the impact function set.\n "
+                f"The impact functions in the impact function set for hazard type \"{self.hazard.haz_type}\" have ids {self.impfset.get_ids(haz_type=self.hazard.haz_type)}. "
+                f"The column \"{impf_col}\" in the exposures contains the ids {np.unique(self.exposures.gdf[impf_col].values).astype(int).tolist()}.\n" 
                 f"Please make sure that all exposure points are associated with an impact function that is included in the impact function set.")
         exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids, ignore_cover, ignore_deductible)
         if exp_gdf.size == 0:
