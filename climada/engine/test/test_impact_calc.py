@@ -142,12 +142,7 @@ class TestImpactCalc(unittest.TestCase):
         exp = Exposures()
         exp.gdf.loc[0,'impf_TC'] = 1
         exp.gdf.loc[1,'impf_TC'] = 2
-        impf_exp = ImpactFunc()
-        impf_exp.id = 1
-        impf_exp.intensity = np.array([0, 20])
-        impf_exp.paa = np.array([0, 1])
-        impf_exp.mdd = np.array([0, 0.5])
-        impf_exp.haz_type = 'TC'
+        impf_exp = ImpactFunc(haz_type='TC', id=1)
         impf_noexp = deepcopy(impf_exp)
         impf_noexp.id = 3
         impfset = ImpactFuncSet([impf_exp, impf_noexp])
