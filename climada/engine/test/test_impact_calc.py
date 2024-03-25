@@ -152,15 +152,15 @@ class TestImpactCalc(unittest.TestCase):
         impf_noexp.id = 3
         impfset = ImpactFuncSet([impf_exp, impf_noexp])
 
-        try:
+        with self.assertRaises(AttributeError) as cm:
             ImpactCalc(exp, impfset, haz).impact()
-        except Exception as e:
-            self.assertEqual(str(e),  "At least one impact function associated to"
-                             " the exposures has no match in the impact function set.\n"
-                "The impact functions in the impact function set for hazard type \"TC\" "
-                "have ids [1, 3]. The column \"impf_TC\" in the exposures contains the ids"
-                " [1, 2].\nPlease make sure that all exposure points are associated with an "
-                "impact function that is included in the impact function set.")
+        the_exception = cm.exception
+        self.assertEqual(the_exception.args[0], "At least one impact function "
+        "associated to the exposures has no match in the impact function set.\n"
+        "The impact functions in the impact function set for hazard type \"TC\" "
+        "have ids [1, 3]. The column \"impf_TC\" in the exposures contains the ids"
+        " [1, 2].\nPlease make sure that all exposure points are associated with an "
+        "impact function that is included in the impact function set.")
 
     def test_calc_impact_TC_pass(self):
         """Test compute impact"""
