@@ -131,8 +131,8 @@ class ImpactCalc():
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
 
         # check for compability of impact function id between impact function set and exposure
-        if any(if_id not in self.impfset.get_ids(haz_type=self.hazard.haz_type) for
-               if_id in np.unique(self.exposures.gdf[impf_col].values)):
+        if any(impf_id not in self.impfset.get_ids(haz_type=self.hazard.haz_type) for
+               impf_id in np.unique(self.exposures.gdf[impf_col].values)):
             raise AttributeError(
                 "At least one impact function associated to the exposures has no match "
                 "in the impact function set.\nThe impact functions in the impact function"
