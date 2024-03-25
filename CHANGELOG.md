@@ -14,6 +14,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
+
 ### Fixed
 
 ### Deprecated

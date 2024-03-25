@@ -112,7 +112,7 @@ class ImpactCalc():
         apply_deductible_to_mat : apply deductible to impact matrix
         apply_cover_to_mat : apply cover to impact matrix
         """
-        # check for compability of exposures and hazard type
+        # check for compatibility of exposures and hazard type
         if all(name not in self.exposures.gdf.columns for
                name in ['if_', f'if_{self.hazard.haz_type}',
                         'impf_', f'impf_{self.hazard.haz_type}']):
@@ -121,7 +121,7 @@ class ImpactCalc():
                 f"for hazard type {self.hazard.haz_type} in exposures."
                 )
 
-        # check for compability of impact function and hazard type
+        # check for compatibility of impact function and hazard type
         if not self.impfset.get_func(haz_type=self.hazard.haz_type):
             raise AttributeError(
                 "Impact calculation not possible. No impact functions found "
@@ -129,6 +129,20 @@ class ImpactCalc():
                 )
 
         impf_col = self.exposures.get_impf_column(self.hazard.haz_type)
+        known_impact_functions = self.impfset.get_ids(haz_type=self.hazard.haz_type)
+
+        # check for compatibility of impact function id between impact function set and exposure
+        if not all(self.exposures.gdf[impf_col].isin(known_impact_functions)):
+            unknown_impact_functions = list(self.exposures.gdf[
+                    ~self.exposures.gdf[impf_col].isin(known_impact_functions)
+                ][impf_col].drop_duplicates().astype(int).astype(str))
+            raise ValueError(
+                f"The associated impact function(s) with id(s) "
+                f"{', '.join(unknown_impact_functions)} have no match in impact function set for"
+                f" hazard type \'{self.hazard.haz_type}\'.\nPlease make sure that all exposure "
+                "points are associated with an impact function that is included in the impact "
+                "function set.")
+
         exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids, ignore_cover, ignore_deductible)
         if exp_gdf.size == 0:
             return self._return_empty(save_mat)
