@@ -141,21 +141,26 @@ class TestImpactCalc(unittest.TestCase):
         haz = Hazard('TC')
         exp = Exposures()
         exp.gdf.loc[0,'impf_TC'] = 1
-        impf = ImpactFunc()
-        impf.id = 2
-        impf.intensity = np.array([0, 20])
-        impf.paa = np.array([0, 1])
-        impf.mdd = np.array([0, 0.5])
-        impf.haz_type = 'TC'
-        impfset = ImpactFuncSet([impf])
-        
+        exp.gdf.loc[1,'impf_TC'] = 2
+        impf_exp = ImpactFunc()
+        impf_exp.id = 1
+        impf_exp.intensity = np.array([0, 20])
+        impf_exp.paa = np.array([0, 1])
+        impf_exp.mdd = np.array([0, 0.5])
+        impf_exp.haz_type = 'TC'
+        impf_noexp = deepcopy(impf_exp)
+        impf_noexp.id = 3
+        impfset = ImpactFuncSet([impf_exp, impf_noexp])
+
         try:
             ImpactCalc(exp, impfset, haz).impact()
         except Exception as e:
-            self.assertEqual(str(e),  "At least one impact function associated to the exposures has no match in the impact function set.\n"
-                "The impact functions in the impact function set for hazard type \"TC\" have ids [2]. "
-                "The column \"impf_TC\" in the exposures contains the ids [1].\n" 
-                "Please make sure that all exposure points are associated with an impact function that is included in the impact function set.")
+            self.assertEqual(str(e),  "At least one impact function associated to"
+                             " the exposures has no match in the impact function set.\n"
+                "The impact functions in the impact function set for hazard type \"TC\" "
+                "have ids [1, 3]. The column \"impf_TC\" in the exposures contains the ids"
+                " [1, 2].\nPlease make sure that all exposure points are associated with an "
+                "impact function that is included in the impact function set.")
 
     def test_calc_impact_TC_pass(self):
         """Test compute impact"""
