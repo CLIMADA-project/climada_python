@@ -137,10 +137,11 @@ class ImpactCalc():
                     ~self.exposures.gdf[impf_col].isin(known_impact_functions)
                 ][impf_col].drop_duplicates().astype(int).astype(str))
             raise ValueError(
-                f"The associated impact function(s) with id(s) {', '.join(unknown_impact_functions)}"
-                f" have no match in impact function set for hazard type \'{self.hazard.haz_type}\'.\n"
-                "Please make sure that all exposure points are associated with an impact "
-                "function that is included in the impact function set.")
+                f"The associated impact function(s) with id(s) "
+                f"{', '.join(unknown_impact_functions)} have no match in impact function set for"
+                f" hazard type \'{self.hazard.haz_type}\'.\nPlease make sure that all exposure "
+                "points are associated with an impact function that is included in the impact "
+                "function set.")
 
         exp_gdf = self.minimal_exp_gdf(impf_col, assign_centroids, ignore_cover, ignore_deductible)
         if exp_gdf.size == 0:
