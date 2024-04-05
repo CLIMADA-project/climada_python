@@ -10,7 +10,7 @@ defaults:
 
 jobs:
   build-and-test:
-    name: 'Core: Build Env, Install, Unit Tests'
+    name: 'Core / Unit Tests'
     runs-on: ubuntu-latest
     permissions:
       # For publishing results
@@ -57,22 +57,22 @@ jobs:
         if: always()
         with:
           junit_files: tests_xml/tests.xml
-          check_name: "Unit Test Results Python ${{ matrix.python-version }}"
+          check_name: "Core / Unit Test Results (${{ matrix.python-version }})"
           comment_mode: "off"
       -
         name: Upload Coverage Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-unittests-py${{ matrix.python-version }}
+          name: coverage-report-core-unittests-py${{ matrix.python-version }}
           path: coverage/
 
   test-petals:
-    name: Petals
+    name: Petals Compatibility
     uses: CLIMADA-project/climada_petals/.github/workflows/testing.yml@github-actions
     needs: build-and-test
     with:
       core_branch: ${{ github.ref }}
-      petals_branch: github-actions
+      petals_branch: github-actions  # TODO: Change this to 'develop' once Petals PR is merged!
     permissions:
       checks: write
