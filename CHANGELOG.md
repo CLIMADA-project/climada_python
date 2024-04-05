@@ -12,6 +12,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- GitHub actions workflow for unit tests [#114](https://github.com/CLIMADA-project/climada_petals/pull/114)
+
 ### Changed
 
 ### Fixed
