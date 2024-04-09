@@ -159,10 +159,14 @@ for envvar in [
     'TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES',
     'TRACKGEN_TEST_KILL_BEYOND_ADVISORIES',
     'TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL',
-    'TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA'
+    'TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA',
 ]:
     if os.getenv(envvar) is None:
         os.environ[envvar] = '1'
+
+if os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE') is None:
+    os.environ['TRACKGEN_TEST_BIAS_TARGET_PRESSURE'] = '0'
+
 
 if int(os.getenv('TRACKGEN_TEST_DECAY_AT_EXTREME_LATS')):
     MAX_WIND_BY_LAT_RANGE = {
@@ -2767,6 +2771,13 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
     # perturb target central pressure: truncated normal distribution
     target_peak_pert = central_pressure_pert / 2 * scipy.stats.truncnorm.ppf(rnd_pars_i[0], -2, 2)
     target_peak = track_chunk.target_central_pressure.values[0] + target_peak_pert
+    
+    if os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE'):
+        target_pressure_bias = float(os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE'))
+        if target_pressure_bias > 0:
+            LOGGER.warning('Applying a positive pressure biase to target pressures. Is this deliberate?')
+        target_peak = target_peak + target_pressure_bias
+
 
     if pcen[0] <= target_peak:
         # already at target, no intensification needed - keep at current intensity
