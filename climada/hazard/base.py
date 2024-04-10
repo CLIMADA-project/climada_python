@@ -1457,6 +1457,18 @@ class Hazard():
                                    dt.datetime.fromordinal(haz.date.min()).year) + 1
             haz.frequency = haz.frequency * year_span_old / year_span_new
 
+        # Check if new fraction is zero everywhere
+        if self.fraction.nnz != 0 and haz.fraction.nnz == 0:
+            raise RuntimeError(
+                "Your selection created a Hazard object where the fraction matrix is "
+                "zero everywhere. This hazard will have zero impact everywhere. "
+                "We are catching this condition because of an implementation detail: "
+                "A fraction matrix without nonzero-valued entries will be completely "
+                "ignored. This is surely not what you intended. If you really want to, "
+                "you can circumvent this error by setting your original fraction "
+                "matrix to zero everywhere, but there probably is no point in doing so."
+            )
+
         haz.sanitize_event_ids()
         return haz
 
