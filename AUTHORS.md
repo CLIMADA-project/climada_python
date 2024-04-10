@@ -32,3 +32,4 @@
 * Kam Lam Yeung
 * Sarah Hülsen
 * Timo Schmid
+* Samuel Juhel
