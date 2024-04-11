@@ -30,15 +30,18 @@ from climada.hazard import tc_tracks as tc
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.hazard.storm_europe import StormEurope
-from climada.util.constants import (HAZ_DEMO_FL, WS_DEMO_NC)
+from climada.util.constants import (HAZ_DEMO_FL, WS_DEMO_NC, DEF_CRS)
 from climada.util.api_client import Client
 from climada.util import coordinates as u_coord
 from climada.test import get_test_file
 
 DATA_DIR = CONFIG.test_data.dir()
 
-# Hazard test file from Git repository. Fraction is 1. Format: matlab.
-HAZ_TEST_MAT :Path = get_test_file('atl_prob_no_name', file_format='matlab')
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida', file_format='hdf5')
+"""
+Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
+Fraction is empty. Format: HDF5.
+"""
 
 class TestCentroids(unittest.TestCase):
     """Test centroids functionalities"""
@@ -47,18 +50,18 @@ class TestCentroids(unittest.TestCase):
         """Test write_raster: Hazard from raster data"""
         haz_fl = Hazard.from_raster([HAZ_DEMO_FL])
         haz_fl.haz_type = 'FL'
-        haz_fl.check()
 
         self.assertEqual(haz_fl.intensity.shape, (1, 1032226))
         self.assertEqual(haz_fl.intensity.min(), -9999.0)
         self.assertAlmostEqual(haz_fl.intensity.max(), 4.662774085998535)
 
-        haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
+        haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'), variable='intensity')
 
         haz_read = Hazard.from_raster([DATA_DIR.joinpath('test_write_hazard.tif')])
         haz_fl.haz_type = 'FL'
         self.assertTrue(np.allclose(haz_fl.intensity.toarray(), haz_read.intensity.toarray()))
         self.assertEqual(np.unique(np.array(haz_fl.fraction.toarray())).size, 2)
+        DATA_DIR.joinpath('test_write_hazard.tif').unlink()
 
     def test_read_raster_pool_pass(self):
         """Test from_raster constructor with pool"""
@@ -74,51 +77,118 @@ class TestCentroids(unittest.TestCase):
         pool.join()
 
     def test_read_write_vector_pass(self):
-        """Test write_raster: Hazard from vector data"""
-        haz_fl = Hazard('FL',
-                        event_id=np.array([1]),
-                        date=np.array([1]),
-                        frequency=np.array([1]),
-                        orig=np.array([1]),
-                        event_name=['1'],
-                        intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
-                        fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
-                        centroids=Centroids.from_lat_lon(
-                            np.array([1, 2, 3]), np.array([1, 2, 3])),)
-        haz_fl.check()
+        """Test write_raster: Rasterize intensity from vector data"""
+        haz_fl = Hazard(
+            'FL',
+            event_id=np.array([1]),
+            date=np.array([1]),
+            frequency=np.array([1]),
+            orig=np.array([1]),
+            event_name=['1'],
+            intensity=sparse.csr_matrix(np.array([0.11, 0.22, 0.33, 0.31])),
+            fraction=sparse.csr_matrix(np.array([0, 1, 2, 3]) ),
+            centroids=Centroids(
+                lon=np.array([1, 2, 3, 3]), lat=np.array([1, 2, 3, 1]), crs=DEF_CRS
+                )
+        )
 
-        haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'))
+        haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'), variable='intensity')
 
         haz_read = Hazard.from_raster([DATA_DIR.joinpath('test_write_hazard.tif')], haz_type='FL')
         self.assertEqual(haz_read.intensity.shape, (1, 9))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())),
-                                    np.array([0.0, 0.1, 0.2, 0.5])))
 
-    def test_write_fraction_pass(self):
-        """Test write_raster with fraction"""
-        haz_fl = Hazard('FL',
-                        event_id=np.array([1]),
-                        date=np.array([1]),
-                        frequency=np.array([1]),
-                        orig=np.array([1]),
-                        event_name=['1'],
-                        intensity=sparse.csr_matrix(np.array([0.5, 0.2, 0.1])),
-                        fraction=sparse.csr_matrix(np.array([0.5, 0.2, 0.1]) / 2),
-                        centroids=Centroids.from_lat_lon(
-                            np.array([1, 2, 3]), np.array([1, 2, 3])),)
-        haz_fl.check()
+        output_raster = np.array([
+            [1, 3], [2, 3], [3, 3],
+            [1, 2], [2, 2], [3, 2],
+            [1, 1], [2, 1], [3, 1]
+        ])
+        output_instensity = np.array([
+            0,       0,      0.33,
+            0,       0.22,   0,
+            0.11,    0,      0.31
+        ])
 
-        haz_fl.write_raster(DATA_DIR.joinpath('test_write_hazard.tif'), intensity=False)
+        np.testing.assert_array_equal(
+            haz_read.centroids.lon,
+            output_raster[:, 0]
+        )
+        np.testing.assert_array_equal(
+            haz_read.centroids.lat,
+            output_raster[:, 1]
+        )
+        np.testing.assert_array_almost_equal(
+            haz_read.intensity.toarray().flatten(),
+            output_instensity
+        )
 
-        haz_read = Hazard.from_raster([DATA_DIR.joinpath('test_write_hazard.tif')],
-                                      files_fraction=[DATA_DIR.joinpath('test_write_hazard.tif')],
-                                      haz_type='FL')
-        self.assertEqual(haz_read.intensity.shape, (1, 9))
+        DATA_DIR.joinpath('test_write_hazard.tif').unlink()
+
+    def test_read_write_vector_fraction_pass(self):
+        """Test write_raster: Rasterize fraction from vector data"""
+        haz_fl = Hazard(
+            'FL',
+            event_id=np.array([1]),
+            date=np.array([1]),
+            frequency=np.array([1]),
+            orig=np.array([1]),
+            event_name=['1'],
+            intensity=sparse.csr_matrix(np.array([-0.11, -0.22, -0.33, -0.31])),
+            fraction=sparse.csr_matrix(np.array([0.11, 0.22, 0.33, 0.31])),
+            centroids=Centroids(
+                lon=np.array([1, 2, 3, 3]), lat=np.array([1, 2, 3, 1]), crs=DEF_CRS
+                )
+        )
+
+        intensity_file = DATA_DIR.joinpath('test_write_hazard_intensity.tif')
+        fraction_file = DATA_DIR.joinpath('test_write_hazard_fraction.tif')
+
+        haz_fl.write_raster(fraction_file, variable='fraction')
+        haz_fl.write_raster(intensity_file, variable='intensity')
+
+        haz_read = Hazard.from_raster(
+            [intensity_file], [fraction_file], haz_type='FL'
+            )
         self.assertEqual(haz_read.fraction.shape, (1, 9))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.fraction.toarray())),
-                                    np.array([0.0, 0.05, 0.1, 0.25])))
-        self.assertTrue(np.allclose(np.unique(np.array(haz_read.intensity.toarray())),
-                                    np.array([0.0, 0.05, 0.1, 0.25])))
+        self.assertEqual(haz_read.intensity.shape, (1, 9))
+
+
+        output_raster = np.array([
+            [1, 3], [2, 3], [3, 3],
+            [1, 2], [2, 2], [3, 2],
+            [1, 1], [2, 1], [3, 1]
+        ])
+        output_fraction = np.array([
+            0,       0,      0.33,
+            0,       0.22,   0,
+            0.11,    0,      0.31
+        ])
+
+        output_intensity = np.array([
+            0,       0,      -0.33,
+            0,       -0.22,   0,
+            -0.11,    0,      -0.31
+        ])
+
+        np.testing.assert_array_equal(
+            haz_read.centroids.lon,
+            output_raster[:, 0]
+        )
+        np.testing.assert_array_equal(
+            haz_read.centroids.lat,
+            output_raster[:, 1]
+        )
+        np.testing.assert_array_almost_equal(
+            haz_read.fraction.toarray().flatten(),
+            output_fraction
+        )
+        np.testing.assert_array_almost_equal(
+            haz_read.intensity.toarray().flatten(),
+            output_intensity
+        )
+
+        DATA_DIR.joinpath(intensity_file).unlink()
+        DATA_DIR.joinpath(fraction_file).unlink()
+
 
 
 class TestStormEurope(unittest.TestCase):
@@ -270,7 +340,7 @@ class TestBase(unittest.TestCase):
 
         file_name = str(DATA_DIR.joinpath("test_haz.h5"))
         # Read demo matlab file
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
         hazard.event_name = list(map(str, hazard.event_name))
         for todense_flag in [False, True]:
             if todense_flag:
@@ -308,61 +378,15 @@ class TestBase(unittest.TestCase):
             )
             self.assertIsInstance(haz_read.fraction, sparse.csr_matrix)
 
-    def test_raster_to_vector_pass(self):
-        """Test raster_to_vector method"""
+    def test_read_raster_pass(self):
+        """Test from_raster method"""
 
         haz_fl = Hazard.from_raster([HAZ_DEMO_FL], haz_type="FL")
-        haz_fl.check()
-        meta_orig = haz_fl.centroids.meta
         inten_orig = haz_fl.intensity
         fract_orig = haz_fl.fraction
 
-        haz_fl.raster_to_vector()
-
-        self.assertEqual(haz_fl.centroids.meta, dict())
-        self.assertAlmostEqual(
-            haz_fl.centroids.lat.min(),
-            meta_orig["transform"][5]
-            + meta_orig["height"] * meta_orig["transform"][4]
-            - meta_orig["transform"][4] / 2,
-        )
-        self.assertAlmostEqual(
-            haz_fl.centroids.lat.max(),
-            meta_orig["transform"][5] + meta_orig["transform"][4] / 2,
-        )
-        self.assertAlmostEqual(
-            haz_fl.centroids.lon.max(),
-            meta_orig["transform"][2]
-            + meta_orig["width"] * meta_orig["transform"][0]
-            - meta_orig["transform"][0] / 2,
-        )
-        self.assertAlmostEqual(
-            haz_fl.centroids.lon.min(),
-            meta_orig["transform"][2] + meta_orig["transform"][0] / 2,
-        )
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.crs, meta_orig["crs"]))
         self.assertTrue(np.allclose(haz_fl.intensity.data, inten_orig.data))
         self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
-
-    def test_reproject_raster_pass(self):
-        """Test reproject_raster reference."""
-
-        haz_fl = Hazard.from_raster([HAZ_DEMO_FL])
-        haz_fl.check()
-
-        haz_fl.reproject_raster(dst_crs="epsg:2202")
-
-        self.assertEqual(haz_fl.intensity.shape, (1, 1046408))
-        self.assertIsInstance(haz_fl.intensity, sparse.csr_matrix)
-        self.assertIsInstance(haz_fl.fraction, sparse.csr_matrix)
-        self.assertEqual(haz_fl.fraction.shape, (1, 1046408))
-        self.assertTrue(u_coord.equal_crs(haz_fl.centroids.meta["crs"], "epsg:2202"))
-        self.assertEqual(haz_fl.centroids.meta["width"], 968)
-        self.assertEqual(haz_fl.centroids.meta["height"], 1081)
-        self.assertEqual(haz_fl.fraction.min(), 0)
-        self.assertEqual(haz_fl.fraction.max(), 1)
-        self.assertEqual(haz_fl.intensity.min(), -9999)
-        self.assertTrue(haz_fl.intensity.max() < 4.7)
 
 
 # Execute Tests
