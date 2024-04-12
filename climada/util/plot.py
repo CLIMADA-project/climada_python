@@ -36,6 +36,7 @@ from scipy.interpolate import griddata
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib import colormaps as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import box
 import cartopy.crs as ccrs
@@ -440,10 +441,10 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
             if cmap_name in ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2',
                     'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c']:
                 cmap = mpl.colors.ListedColormap(
-                    mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
+                    cm.get_cmap(cmap_name).colors[:array_sub_n]
                 )
             else:
-                cmap = mpl.cm.get_cmap(cmap_arg, array_sub_n)
+                cmap = cm.get_cmap(cmap_arg).resampled(array_sub_n)
         elif isinstance(cmap_arg, mpl.colors.ListedColormap):
             # If a user brings their own colormap it's probably qualitative
             cmap_name = 'defined by the user'
@@ -456,7 +457,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         # default qualitative colormap
         cmap_name = CMAP_CAT
         cmap = mpl.colors.ListedColormap(
-            mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
+            cm.get_cmap(cmap_name).colors[:array_sub_n]
         )
 
     if array_sub_n > cmap.N:

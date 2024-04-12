@@ -23,6 +23,7 @@ import unittest
 import cartopy
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colormaps as cm
 import cartopy.crs as ccrs
 
 import climada.util.plot as u_plot
@@ -67,7 +68,7 @@ class TestPlots(unittest.TestCase):
                                   1: 'int',
                                   2.0: 'float',
                                   'a': 'string'},
-                        pop_name=False, cmap=plt.get_cmap('Set1'))
+                        pop_name=False, cmap=cm.get_cmap('Set1'))
         plt.close()
 
         #test colormap warning
