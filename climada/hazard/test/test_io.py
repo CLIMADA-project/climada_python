@@ -179,7 +179,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 
             # Strings
             dataset["time"] = ["a", "b"]
-            with self.assertLogs("climada.hazard.base_io", "WARNING") as cm:
+            with self.assertLogs("climada.hazard.io", "WARNING") as cm:
                 hazard = Hazard.from_xarray_raster(dataset, "", "")
                 np.testing.assert_array_equal(hazard.date, np.ones(size))
                 np.testing.assert_array_equal(hazard.event_name, np.full(size, ""))
@@ -673,7 +673,7 @@ class TestHDF5(unittest.TestCase):
         hazard.event_id = CustomID()
 
         # Write the hazard and check the logs for the correct warning
-        with self.assertLogs(logger="climada.hazard.base_io", level="WARN") as cm:
+        with self.assertLogs(logger="climada.hazard.io", level="WARN") as cm:
             hazard.write_hdf5(file_name)
         self.assertIn("write_hdf5: the class member event_id is skipped", cm.output[0])
 
