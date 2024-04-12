@@ -32,8 +32,8 @@ from pathos.pools import ProcessPool as Pool
 from scipy import sparse
 
 from climada import CONFIG
-from climada.hazard.base_plot import HazardPlot
-from climada.hazard.base_io import HazardIO
+from climada.hazard.plot import HazardPlot
+from climada.hazard.io import HazardIO
 from climada.hazard.centroids.centr import Centroids
 import climada.util.checker as u_check
 import climada.util.constants as u_const
