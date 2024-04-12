@@ -614,6 +614,13 @@ class TestSelect(unittest.TestCase):
         ):
             hazard.select(event_id=[3, 4], reg_id=[2])
 
+        # Error should not be thrown if we set everything to zero
+        # NOTE: Setting the values of `data` to zero instead of the matrix values will
+        #       add explicitly stored zeros. Therefore, this test explicitly checks if
+        #       `eliminate_zeros` is called on `fraction` during `select`.
+        hazard.fraction.data[...] = 0
+        selection = hazard.select(event_id=[3, 4], reg_id=[2])
+        np.testing.assert_array_equal(selection.fraction.toarray(), [[0], [0]])
 
 class TestAppend(unittest.TestCase):
     """Test append method."""

@@ -1426,6 +1426,10 @@ class Hazard():
             LOGGER.info('No hazard centroids within extent and region')
             return None
 
+        # Sanitize fraction, because we check non-zero entries later
+        self.fraction.eliminate_zeros()
+
+        # Perform attribute selection
         sel_cen = sel_cen.nonzero()[0]
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
