@@ -1462,7 +1462,7 @@ class Hazard():
             haz.frequency = haz.frequency * year_span_old / year_span_new
 
         # Check if new fraction is zero everywhere
-        if self.fraction.nnz != 0 and haz.fraction.nnz == 0:
+        if self._get_fraction() is not None and haz._get_fraction() is None:
             raise RuntimeError(
                 "Your selection created a Hazard object where the fraction matrix is "
                 "zero everywhere. This hazard will have zero impact everywhere. "
