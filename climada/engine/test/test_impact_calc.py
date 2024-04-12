@@ -135,6 +135,26 @@ class TestImpactCalc(unittest.TestCase):
         except Exception as e:
             self.assertEqual(str(e), "Impact calculation not possible. No impact "
                              "functions found for hazard type TC in impf_set.")
+    def test_error_handling_mismatch_impf_ids(self):
+        """Test error handling in case impf ids in exposures
+        does not appear in impf_set"""
+        haz = Hazard('TC')
+        exp = Exposures()
+        exp.gdf.loc[0,'impf_TC'] = 1
+        exp.gdf.loc[1,'impf_TC'] = 2
+        impf_exp = ImpactFunc(haz_type='TC', id=1)
+        impf_noexp = deepcopy(impf_exp)
+        impf_noexp.id = 3
+        impfset = ImpactFuncSet([impf_exp, impf_noexp])
+
+        with self.assertRaises(ValueError) as cm:
+            ImpactCalc(exp, impfset, haz).impact()
+        the_exception = cm.exception
+        self.assertEqual(the_exception.args[0],
+                         "The associated impact function(s) with id(s) 2 have no match in "
+                         "impact function set for hazard type \'TC\'.\nPlease make sure "
+                         "that all exposure points are associated with an impact "
+                         "function that is included in the impact function set.")
 
     def test_calc_impact_TC_pass(self):
         """Test compute impact"""

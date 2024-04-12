@@ -178,7 +178,7 @@ class TropCyclone(Hazard):
     def from_tracks(
         cls,
         tracks: TCTracks,
-        centroids: Optional[Centroids] = None,
+        centroids: Centroids,
         pool: Optional[pathos.pools.ProcessPool] = None,
         model: str = 'H08',
         ignore_distance_to_coast: bool = False,
@@ -223,12 +223,16 @@ class TropCyclone(Hazard):
             "ER11" (Emanuel and Rotunno 2011).
             Default: "H08".
         ignore_distance_to_coast : boolean, optional
-            If True, centroids far from coast are not ignored. Default: False.
+            If True, centroids far from coast are not ignored.
+            If False, the centroids' distances to the coast are calculated with the
+            `Centroids.get_dist_coast()` method (unless there is "dist_coast" column in the
+            centroids' GeoDataFrame) and centroids far from coast are ignored.
+            Default: False.
         store_windfields : boolean, optional
-            If True, the Hazard object gets a list ``windfields`` of sparse matrices. For each track,
-            the full velocity vectors at each centroid and track position are stored in a sparse
-            matrix of shape (npositions,  ncentroids * 2) that can be reshaped to a full ndarray
-            of shape (npositions, ncentroids, 2). Default: False.
+            If True, the Hazard object gets a list ``windfields`` of sparse matrices. For each
+            track, the full velocity vectors at each centroid and track position are stored in a
+            sparse matrix of shape (npositions,  ncentroids * 2) that can be reshaped to a full
+            ndarray of shape (npositions, ncentroids, 2). Default: False.
         metric : str, optional
             Specify an approximation method to use for earth distances:
 
@@ -262,21 +266,18 @@ class TropCyclone(Hazard):
         TropCyclone
         """
         num_tracks = tracks.size
-        if centroids is None:
-            centroids = Centroids.from_base_grid(res_as=360, land=False)
-
-        if not centroids.coord.size:
-            centroids.set_meta_to_lat_lon()
 
         if ignore_distance_to_coast:
             # Select centroids with lat <= max_latitude
             [idx_centr_filter] = (np.abs(centroids.lat) <= max_latitude).nonzero()
         else:
             # Select centroids which are inside max_dist_inland_km and lat <= max_latitude
-            if not centroids.dist_coast.size:
-                centroids.set_dist_coast()
+            if 'dist_coast' not in centroids.gdf.columns:
+                dist_coast = centroids.get_dist_coast()
+            else:
+                dist_coast = centroids.gdf.dist_coast.values
             [idx_centr_filter] = (
-                (centroids.dist_coast <= max_dist_inland_km * 1000)
+                (dist_coast <= max_dist_inland_km * 1000)
                 & (np.abs(centroids.lat) <= max_latitude)
             ).nonzero()
 
@@ -539,7 +540,8 @@ class TropCyclone(Hazard):
             If True, store windfields. Default: False.
         metric : str, optional
             Specify an approximation method to use for earth distances: "equirect" (faster) or
-            "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
+            "geosphere" (more accurate). See ``dist_approx`` function in
+            ``climada.util.coordinates``.
             Default: "equirect".
         intensity_thres : float, optional
             Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
@@ -1430,9 +1432,9 @@ def _x_holland_2010(
     mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     v_n : np.ndarray of shape (nnodes,) or float, optional
-        Peripheral wind speeds (in m/s) at radius ``r_n`` outside of radius of maximum winds ``r_max``.
-        In absence of a second wind speed measurement, this value defaults to 17 m/s following
-        Holland et al. 2010 (at a radius of 300 km).
+        Peripheral wind speeds (in m/s) at radius ``r_n`` outside of radius of maximum winds
+        ``r_max``. In absence of a second wind speed measurement, this value defaults to 17 m/s
+        following Holland et al. 2010 (at a radius of 300 km).
     r_n_km : np.ndarray of shape (nnodes,) or float, optional
         Radius (in km) where the peripheral wind speed ``v_n`` is measured (or assumed).
         In absence of a second wind speed measurement, this value defaults to 300 km following
@@ -1556,8 +1558,8 @@ def _stat_holland_1980(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of ``tctrack_to_si`` with "hol_b" (see, e.g., _B_holland_1980) data variable. The data
-        variables used by this function are "lat", "cp", "rad", "cen", "env", and "hol_b".
+        Output of ``tctrack_to_si`` with "hol_b" (see, e.g., _B_holland_1980) data variable. The
+        data variables used by this function are "lat", "cp", "rad", "cen", "env", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
@@ -1621,8 +1623,8 @@ def _stat_er_2011(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of ``tctrack_to_si``. The data variables used by this function are "lat", "cp", "rad",
-        and "vmax".
+        Output of ``tctrack_to_si``. The data variables used by this function are "lat", "cp",
+        "rad", and "vmax".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
     mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
