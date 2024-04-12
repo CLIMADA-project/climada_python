@@ -13,6 +13,7 @@ Code freeze date: YYYY-MM-DD
 ### Changed
 
 - Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
+- Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
 
 ### Fixed
 
@@ -30,8 +31,6 @@ Code freeze date: YYYY-MM-DD
 
 ### Deprecated
 
-- climada.hazard.centroids.centr.Centroids.from_mat
-- climada.hazard.centroids.centr.Centroids.from_base_grid
 - climada.hazard.centroids.centr.Centroids.from_lat_lon
 - climada.hazard.centroids.centr.Centroids.def set_area_pixel
 - climada.hazard.centroids.centr.Centroids.def set_area_approx
@@ -52,6 +51,8 @@ Code freeze date: YYYY-MM-DD
 - climada.hazard.centroids.centr.Centroids.check
 - climada.hazard.centroids.centr.Centroids.clear
 - climada.hazard.centroids.centr.Centroids.equal
+- climada.hazard.centroids.centr.Centroids.from_mat
+- climada.hazard.centroids.centr.Centroids.from_base_grid
 - climada.hazard.centroids.centr.Centroids.read_excel
 - climada.hazard.centroids.centr.Centroids.read_hdf5
 - climada.hazard.centroids.centr.Centroids.read_mat
