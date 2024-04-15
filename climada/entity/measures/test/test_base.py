@@ -39,7 +39,11 @@ import climada.entity.exposures.test as exposures_test
 
 DATA_DIR = CONFIG.measures.test_data.dir()
 
-HAZ_TEST_MAT = get_test_file('atl_prob_no_name', file_format='matlab')
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida', file_format='hdf5')
+"""
+Hazard test file from Data API: Hurricanes from 1851 to 2011 over Florida with 100 centroids.
+Fraction is empty. Format: HDF5.
+"""
 ENT_TEST_MAT = Path(exposures_test.__file__).parent / 'data' / 'demo_today.mat'
 
 class TestApply(unittest.TestCase):
@@ -78,7 +82,7 @@ class TestApply(unittest.TestCase):
         meas = MeasureSet.from_mat(ENT_TEST_MAT)
         act_1 = meas.get_measure(name='Seawall')[0]
 
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
         exp.check()
@@ -112,7 +116,7 @@ class TestApply(unittest.TestCase):
         act_1 = meas.get_measure(name='Seawall')[0]
         act_1.exp_region_id = [1]
 
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf['region_id'] = np.zeros(exp.gdf.shape[0])
         exp.gdf.region_id.values[10:] = 1
@@ -246,7 +250,7 @@ class TestApply(unittest.TestCase):
 
         imp_set = ImpactFuncSet.from_mat(ENT_TEST_MAT)
 
-        haz = Hazard.from_mat(HAZ_TEST_MAT)
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
         exp.assign_centroids(haz)
 
         new_exp = copy.deepcopy(exp)
@@ -329,7 +333,7 @@ class TestApply(unittest.TestCase):
 
     def test_apply_ref_pass(self):
         """Test apply method: apply all measures but insurance"""
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
         entity = Entity.from_mat(ENT_TEST_MAT)
         entity.measures._data['TC'] = entity.measures._data.pop('XX')
@@ -365,7 +369,7 @@ class TestApply(unittest.TestCase):
     def test_calc_impact_pass(self):
         """Test calc_impact method: apply all measures but insurance"""
 
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
         entity = Entity.from_mat(ENT_TEST_MAT)
         entity.exposures.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)
@@ -399,7 +403,7 @@ class TestApply(unittest.TestCase):
     def test_calc_impact_transf_pass(self):
         """Test calc_impact method: apply all measures and insurance"""
 
-        hazard = Hazard.from_mat(HAZ_TEST_MAT)
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
         entity = Entity.from_mat(ENT_TEST_MAT)
         entity.exposures.gdf.rename(columns={'impf': 'impf_TC'}, inplace=True)

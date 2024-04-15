@@ -68,9 +68,6 @@ NE_EPSG = 4326
 NE_CRS = f"epsg:{NE_EPSG}"
 """Natural Earth CRS"""
 
-TMP_ELEVATION_FILE = SYSTEM_DIR.joinpath('tmp_elevation.tif')
-"""Path of elevation file written in set_elevation"""
-
 DEM_NODATA = -9999
 """Value to use for no data values in DEM, i.e see points"""
 
@@ -169,6 +166,9 @@ def lon_bounds(lon, buffer=0.0):
     >>> lon = lon_normalize(lon, center=lon_mid)
     >>> np.all((bounds[0] <= lon) & (lon <= bounds[2]))
 
+    If the bounds cover a full circle (360 degrees), this function will always return (-180, 180),
+    instead of (0, 360) or similar equivalent outputs.
+
     Example
     -------
     >>> lon_bounds(np.array([-179, 175, 178]))
@@ -195,9 +195,12 @@ def lon_bounds(lon, buffer=0.0):
     gap_max = np.argmax(lon_diff)
     lon_diff_max = lon_diff[gap_max]
     if lon_diff_max < 2:
-        # looks like the data covers the whole range [-180, 180] rather evenly
-        lon_min = max(lon_uniq[0] - buffer, -180)
-        lon_max = min(lon_uniq[-2] + buffer, 180)
+        # since the largest gap is comparably small, enforce the [-180, 180] value range
+        gap_max = lon_diff.size - 1
+        lon_diff_max = lon_diff[gap_max]
+    if lon_diff_max <= 2 * buffer:
+        # avoid (-1, 359) and similar equivalent outputs for bounds covering the full circle
+        lon_min, lon_max = (-180, 180)
     else:
         lon_min = lon_uniq[gap_max + 1]
         lon_max = lon_uniq[gap_max]
@@ -669,7 +672,7 @@ def nat_earth_resolution(resolution):
         raise ValueError('Natural Earth does not accept resolution %s m.' % resolution)
     return str(resolution) + 'm'
 
-def get_country_geometries(country_names=None, extent=None, resolution=10):
+def get_country_geometries(country_names=None, extent=None, resolution=10, center_crs=True):
     """Natural Earth country boundaries within given extent
 
     If no arguments are given, simply returns the whole natural earth dataset.
@@ -678,8 +681,9 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     starts including the projection information. (They are saving a whopping 147 bytes by omitting
     it.) Same goes for UTF.
 
-    If extent is provided, longitude values in 'geom' will all lie within 'extent' longitude
-    range. Therefore setting extent to e.g. [160, 200, -20, 20] will provide longitude values
+    If extent is provided and center_crs is True, longitude values in 'geom' will all lie
+    within 'extent' longitude range.
+    Therefore setting extent to e.g. [160, 200, -20, 20] will provide longitude values
     between 160 and 200 degrees.
 
     Parameters
@@ -691,6 +695,10 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         Extent, assumed to be in the same CRS as the natural earth data.
     resolution : float, optional
         10, 50 or 110. Resolution in m. Default: 10m
+    center_crs : bool
+        if True, the crs of the countries is centered such that
+        longitude values in 'geom' will all lie within 'extent' longitude range.
+        Default is True.
 
     Returns
     -------
@@ -752,7 +760,7 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
         bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=DEF_CRS)
         out = gpd.overlay(out, bbox, how="intersection")
-        if ~lon_normalized:
+        if ~lon_normalized and center_crs:
             lon_mid = 0.5 * (extent[0] + extent[1])
             # reset the CRS attribute after rewrapping (we don't really change the CRS)
             out = (
@@ -897,7 +905,7 @@ def assign_coordinates(*args, **kwargs):
     return match_coordinates(*args, **kwargs)
 
 def match_coordinates(coords, coords_to_assign, distance="euclidean",
-                       threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
+                      threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
     If there is no exact match for some entry, an attempt is made to assign the geographically
@@ -995,7 +1003,7 @@ def match_coordinates(coords, coords_to_assign, distance="euclidean",
 def match_centroids(coord_gdf, centroids, distance='euclidean',
                     threshold=NEAREST_NEIGHBOR_THRESHOLD):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
-    If disatances > threshold in points' distances, -1 is returned.
+    If distances > threshold in points' distances, -1 is returned.
     If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
 
     Parameters
@@ -1046,15 +1054,10 @@ def match_centroids(coord_gdf, centroids, distance='euclidean',
         # no error is raised and it is assumed that the user set the crs correctly
         pass
 
-    if centroids.meta:
-        assigned = match_grid_points(
-            coord_gdf.longitude.values, coord_gdf.latitude.values,
-            centroids.meta['width'], centroids.meta['height'],
-            centroids.meta['transform'])
-    else:
-        assigned = match_coordinates(
-            np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
-            centroids.coord, distance=distance, threshold=threshold)
+    assigned = match_coordinates(
+        np.stack([coord_gdf['latitude'].values, coord_gdf['longitude'].values], axis=1),
+        centroids.coord, distance=distance, threshold=threshold,
+    )
     return assigned
 
 @numba.njit
@@ -1462,7 +1465,8 @@ def get_country_code(lat, lon, gridded=False):
         region_id = region_id.astype(int)
     else:
         (lon_min, lat_min, lon_max, lat_max) = latlon_bounds(lat, lon, 0.001)
-        countries = get_country_geometries(extent=(lon_min, lon_max, lat_min, lat_max))
+        countries = get_country_geometries(
+            extent=(lon_min, lon_max, lat_min, lat_max), center_crs=False)
         with warnings.catch_warnings():
             # in order to suppress the following
             # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely

@@ -119,7 +119,7 @@ class TropCyclone(Hazard):
     """intensity threshold for storage in m/s"""
 
     vars_opt = Hazard.vars_opt.union({'category'})
-    """Name of the variables that aren't need to compute the impact."""
+    """Name of the variables that are not needed to compute the impact."""
 
     def __init__(
         self,
@@ -178,7 +178,7 @@ class TropCyclone(Hazard):
     def from_tracks(
         cls,
         tracks: TCTracks,
-        centroids: Optional[Centroids] = None,
+        centroids: Centroids,
         pool: Optional[pathos.pools.ProcessPool] = None,
         model: str = 'H08',
         ignore_distance_to_coast: bool = False,
@@ -193,19 +193,19 @@ class TropCyclone(Hazard):
         """
         Create new TropCyclone instance that contains windfields from the specified tracks.
 
-        This function sets the `intensity` attribute to contain, for each centroid,
+        This function sets the ``intensity`` attribute to contain, for each centroid,
         the maximum wind speed (1-minute sustained winds at 10 meters above ground) experienced
         over the whole period of each TC event in m/s. The wind speed is set to 0 if it doesn't
-        exceed the threshold `intensity_thres`.
+        exceed the threshold ``intensity_thres``.
 
-        The `category` attribute is set to the value of the `category`-attribute
+        The ``category`` attribute is set to the value of the ``category``-attribute
         of each of the given track data sets.
 
-        The `basin` attribute is set to the genesis basin for each event, which
-        is the first value of the `basin`-variable in each of the given track data sets.
+        The ``basin`` attribute is set to the genesis basin for each event, which
+        is the first value of the ``basin``-variable in each of the given track data sets.
 
-        Optionally, the time dependent, vectorial winds can be stored using the `store_windfields`
-        function parameter (see below).
+        Optionally, the time dependent, vectorial winds can be stored using the
+        ``store_windfields`` function parameter (see below).
 
         Parameters
         ----------
@@ -223,12 +223,16 @@ class TropCyclone(Hazard):
             "ER11" (Emanuel and Rotunno 2011).
             Default: "H08".
         ignore_distance_to_coast : boolean, optional
-            If True, centroids far from coast are not ignored. Default: False.
+            If True, centroids far from coast are not ignored.
+            If False, the centroids' distances to the coast are calculated with the
+            `Centroids.get_dist_coast()` method (unless there is "dist_coast" column in the
+            centroids' GeoDataFrame) and centroids far from coast are ignored.
+            Default: False.
         store_windfields : boolean, optional
-            If True, the Hazard object gets a list `windfields` of sparse matrices. For each track,
-            the full velocity vectors at each centroid and track position are stored in a sparse
-            matrix of shape (npositions,  ncentroids * 2) that can be reshaped to a full ndarray
-            of shape (npositions, ncentroids, 2). Default: False.
+            If True, the Hazard object gets a list ``windfields`` of sparse matrices. For each
+            track, the full velocity vectors at each centroid and track position are stored in a
+            sparse matrix of shape (npositions,  ncentroids * 2) that can be reshaped to a full
+            ndarray of shape (npositions, ncentroids, 2). Default: False.
         metric : str, optional
             Specify an approximation method to use for earth distances:
 
@@ -251,7 +255,7 @@ class TropCyclone(Hazard):
         max_memory_gb : float, optional
             To avoid memory issues, the computation is done for chunks of the track sequentially.
             The chunk size is determined depending on the available memory (in GB). Note that this
-            limit applies to each thread separately if a `pool` is used. Default: 8
+            limit applies to each thread separately if a ``pool`` is used. Default: 8
 
         Raises
         ------
@@ -262,21 +266,20 @@ class TropCyclone(Hazard):
         TropCyclone
         """
         num_tracks = tracks.size
-        if centroids is None:
-            centroids = Centroids.from_base_grid(res_as=360, land=False)
-
-        if not centroids.coord.size:
-            centroids.set_meta_to_lat_lon()
 
         if ignore_distance_to_coast:
             # Select centroids with lat <= max_latitude
-            coastal_idx = (np.abs(centroids.lat) <= max_latitude).nonzero()[0]
+            [idx_centr_filter] = (np.abs(centroids.lat) <= max_latitude).nonzero()
         else:
             # Select centroids which are inside max_dist_inland_km and lat <= max_latitude
-            if not centroids.dist_coast.size:
-                centroids.set_dist_coast()
-            coastal_idx = ((centroids.dist_coast <= max_dist_inland_km * 1000)
-                           & (np.abs(centroids.lat) <= max_latitude)).nonzero()[0]
+            if 'dist_coast' not in centroids.gdf.columns:
+                dist_coast = centroids.get_dist_coast()
+            else:
+                dist_coast = centroids.gdf.dist_coast.values
+            [idx_centr_filter] = (
+                (dist_coast <= max_dist_inland_km * 1000)
+                & (np.abs(centroids.lat) <= max_latitude)
+            ).nonzero()
 
         # Filter early with a larger threshold, but inaccurate (lat/lon) distances.
         # Later, there will be another filtering step with more accurate distances in km.
@@ -287,21 +290,23 @@ class TropCyclone(Hazard):
         # Restrict to coastal centroids within reach of any of the tracks
         t_lon_min, t_lat_min, t_lon_max, t_lat_max = tracks.get_bounds(deg_buffer=max_dist_eye_deg)
         t_mid_lon = 0.5 * (t_lon_min + t_lon_max)
-        coastal_centroids = centroids.coord[coastal_idx]
-        u_coord.lon_normalize(coastal_centroids[:, 1], center=t_mid_lon)
-        coastal_idx = coastal_idx[((t_lon_min <= coastal_centroids[:, 1])
-                                   & (coastal_centroids[:, 1] <= t_lon_max)
-                                   & (t_lat_min <= coastal_centroids[:, 0])
-                                   & (coastal_centroids[:, 0] <= t_lat_max))]
+        filtered_centroids = centroids.coord[idx_centr_filter]
+        u_coord.lon_normalize(filtered_centroids[:, 1], center=t_mid_lon)
+        idx_centr_filter = idx_centr_filter[
+            (t_lon_min <= filtered_centroids[:, 1])
+            & (filtered_centroids[:, 1] <= t_lon_max)
+            & (t_lat_min <= filtered_centroids[:, 0])
+            & (filtered_centroids[:, 0] <= t_lat_max)
+        ]
 
         LOGGER.info('Mapping %s tracks to %s coastal centroids.', str(tracks.size),
-                    str(coastal_idx.size))
+                    str(idx_centr_filter.size))
         if pool:
             chunksize = max(min(num_tracks // pool.ncpus, 1000), 1)
             tc_haz_list = pool.map(
                 cls.from_single_track, tracks.data,
                 itertools.repeat(centroids, num_tracks),
-                itertools.repeat(coastal_idx, num_tracks),
+                itertools.repeat(idx_centr_filter, num_tracks),
                 itertools.repeat(model, num_tracks),
                 itertools.repeat(store_windfields, num_tracks),
                 itertools.repeat(metric, num_tracks),
@@ -318,7 +323,7 @@ class TropCyclone(Hazard):
                     LOGGER.info("Progress: %d%%", perc)
                     last_perc = perc
                 tc_haz_list.append(
-                    cls.from_single_track(track, centroids, coastal_idx,
+                    cls.from_single_track(track, centroids, idx_centr_filter,
                                           model=model, store_windfields=store_windfields,
                                           metric=metric, intensity_thres=intensity_thres,
                                           max_dist_eye_km=max_dist_eye_km,
@@ -507,7 +512,7 @@ class TropCyclone(Hazard):
         cls,
         track: xr.Dataset,
         centroids: Centroids,
-        coastal_idx: np.ndarray,
+        idx_centr_filter: np.ndarray,
         model: str = 'H08',
         store_windfields: bool = False,
         metric: str = "equirect",
@@ -524,8 +529,8 @@ class TropCyclone(Hazard):
             Single tropical cyclone track.
         centroids : Centroids
             Centroids instance.
-        coastal_idx : np.ndarray
-            Indices of centroids close to coast.
+        idx_centr_filter : np.ndarray
+            Indices of centroids to restrict to (e.g. sufficiently close to coast).
         model : str, optional
             Parametric wind field model, one of "H1980" (the prominent Holland 1980 model),
             "H08" (Holland 1980 with b-value from Holland 2008), "H10" (Holland et al. 2010), or
@@ -535,7 +540,8 @@ class TropCyclone(Hazard):
             If True, store windfields. Default: False.
         metric : str, optional
             Specify an approximation method to use for earth distances: "equirect" (faster) or
-            "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+            "geosphere" (more accurate). See ``dist_approx`` function in
+            ``climada.util.coordinates``.
             Default: "equirect".
         intensity_thres : float, optional
             Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
@@ -557,7 +563,7 @@ class TropCyclone(Hazard):
         intensity_sparse, windfields_sparse = _compute_windfields_sparse(
             track=track,
             centroids=centroids,
-            coastal_idx=coastal_idx,
+            idx_centr_filter=idx_centr_filter,
             model=model,
             store_windfields=store_windfields,
             metric=metric,
@@ -663,7 +669,7 @@ class TropCyclone(Hazard):
 def _compute_windfields_sparse(
     track: xr.Dataset,
     centroids: Centroids,
-    coastal_idx: np.ndarray,
+    idx_centr_filter: np.ndarray,
     model: str = 'H08',
     store_windfields: bool = False,
     metric: str = "equirect",
@@ -671,7 +677,7 @@ def _compute_windfields_sparse(
     max_dist_eye_km: float = DEF_MAX_DIST_EYE_KM,
     max_memory_gb: float = DEF_MAX_MEMORY_GB,
 ) -> Tuple[sparse.csr_matrix, Optional[sparse.csr_matrix]]:
-    """Version of `compute_windfields` that returns sparse matrices and limits memory usage
+    """Version of ``compute_windfields`` that returns sparse matrices and limits memory usage
 
     Parameters
     ----------
@@ -679,8 +685,8 @@ def _compute_windfields_sparse(
         Single tropical cyclone track.
     centroids : Centroids
         Centroids instance.
-    coastal_idx : np.ndarray
-        Indices of centroids close to coast.
+    idx_centr_filter : np.ndarray
+        Indices of centroids to restrict to (e.g. sufficiently close to coast).
     model : str, optional
         Parametric wind field model, one of "H1980" (the prominent Holland 1980 model),
         "H08" (Holland 1980 with b-value from Holland 2008), "H10" (Holland et al. 2010), or
@@ -690,7 +696,7 @@ def _compute_windfields_sparse(
         If True, store windfields. Default: False.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
     intensity_thres : float, optional
         Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
@@ -713,7 +719,7 @@ def _compute_windfields_sparse(
         If store_windfields is True, the full velocity vectors at each centroid and track position
         are stored in a sparse matrix of shape (npositions,  ncentroids * 2) that can be reshaped
         to a full ndarray of shape (npositions, ncentroids, 2).
-        If store_windfields is False, `None` is returned.
+        If store_windfields is False, None is returned.
     """
     try:
         mod_id = MODEL_VANG[model]
@@ -721,12 +727,11 @@ def _compute_windfields_sparse(
         raise ValueError(f'Model not implemented: {model}.') from err
 
     ncentroids = centroids.coord.shape[0]
-    coastal_centr = centroids.coord[coastal_idx]
     npositions = track.sizes["time"]
     windfields_shape = (npositions, ncentroids * 2)
     intensity_shape = (1, ncentroids)
 
-    # start with the assumption that no centroids are within reach
+    # initialise arrays for the assumption that no centroids are within reach
     windfields_sparse = (
         sparse.csr_matrix(([], ([], [])), shape=windfields_shape)
         if store_windfields else None
@@ -740,39 +745,22 @@ def _compute_windfields_sparse(
 
     # convert track variables to SI units
     si_track = tctrack_to_si(track, metric=metric)
-    t_lat, t_lon = si_track["lat"].values, si_track["lon"].values
 
-    # normalize longitudinal coordinates of centroids
-    u_coord.lon_normalize(coastal_centr[:, 1], center=si_track.attrs["mid_lon"])
-
-    # Restrict to the bounding box of the whole track first (this can already reduce the number of
-    # centroids that are considered by a factor larger than 30).
-    max_dist_eye_lat = max_dist_eye_km / u_const.ONE_LAT_KM
-    max_dist_eye_lon = max_dist_eye_km / (
-        u_const.ONE_LAT_KM * np.cos(np.radians(np.abs(coastal_centr[:, 0]) + max_dist_eye_lat))
+    # When done properly, finding and storing the close centroids is not a memory bottle neck and
+    # can be done before chunking. Note that the longitudinal coordinates of `centroids_close` as
+    # returned by `get_close_centroids` are normalized to be consistent with the coordinates in
+    # `si_track`.
+    centroids_close, mask_centr, mask_centr_alongtrack = get_close_centroids(
+        si_track, centroids.coord[idx_centr_filter], max_dist_eye_km, metric=metric,
     )
-    coastal_idx = coastal_idx[
-        (t_lat.min() - coastal_centr[:, 0] <= max_dist_eye_lat)
-        & (coastal_centr[:, 0] - t_lat.max() <= max_dist_eye_lat)
-        & (t_lon.min() - coastal_centr[:, 1] <= max_dist_eye_lon)
-        & (coastal_centr[:, 1] - t_lon.max() <= max_dist_eye_lon)
-    ]
-    coastal_centr = centroids.coord[coastal_idx]
-
-    # After the previous filtering step, finding and storing the reachable centroids is not a
-    # memory bottle neck and can be done before chunking.
-    track_centr_msk = get_close_centroids(
-        t_lat, t_lon, coastal_centr, max_dist_eye_km, metric=metric,
-    )
-    coastal_idx = coastal_idx[track_centr_msk.any(axis=0)]
-    coastal_centr = centroids.coord[coastal_idx]
-    nreachable = coastal_centr.shape[0]
-    if nreachable == 0:
+    idx_centr_filter = idx_centr_filter[mask_centr]
+    n_centr_close = centroids_close.shape[0]
+    if n_centr_close == 0:
         return intensity_sparse, windfields_sparse
 
     # the total memory requirement in GB if we compute everything without chunking:
     # 8 Bytes per entry (float64), 10 arrays
-    total_memory_gb = npositions * nreachable * 8 * 10 / 1e9
+    total_memory_gb = npositions * n_centr_close * 8 * 10 / 1e9
     if total_memory_gb > max_memory_gb and npositions > 2:
         # If the number of positions is down to 2 already, we cannot split any further. In that
         # case, we just take the risk and try to do the computation anyway. It might still work
@@ -780,10 +768,10 @@ def _compute_windfields_sparse(
 
         # Split the track into chunks, compute the result for each chunk, and combine:
         return _compute_windfields_sparse_chunked(
-            track_centr_msk,
+            mask_centr_alongtrack,
             track,
             centroids,
-            coastal_idx,
+            idx_centr_filter,
             model=model,
             store_windfields=store_windfields,
             metric=metric,
@@ -792,27 +780,27 @@ def _compute_windfields_sparse(
             max_memory_gb=max_memory_gb,
         )
 
-    windfields, reachable_centr_idx = _compute_windfields(
-        si_track, coastal_centr, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km,
+    windfields, idx_centr_reachable = _compute_windfields(
+        si_track, centroids_close, mod_id, metric=metric, max_dist_eye_km=max_dist_eye_km,
     )
-    reachable_coastal_centr_idx = coastal_idx[reachable_centr_idx]
+    idx_centr_filter = idx_centr_filter[idx_centr_reachable]
     npositions = windfields.shape[0]
 
     intensity = np.linalg.norm(windfields, axis=-1).max(axis=0)
     intensity[intensity < intensity_thres] = 0
     intensity_sparse = sparse.csr_matrix(
-        (intensity, reachable_coastal_centr_idx, [0, intensity.size]),
+        (intensity, idx_centr_filter, [0, intensity.size]),
         shape=intensity_shape)
     intensity_sparse.eliminate_zeros()
 
     windfields_sparse = None
     if store_windfields:
-        n_reachable_coastal_centr = reachable_coastal_centr_idx.size
-        indices = np.zeros((npositions, n_reachable_coastal_centr, 2), dtype=np.int64)
-        indices[:, :, 0] = 2 * reachable_coastal_centr_idx[None]
-        indices[:, :, 1] = 2 * reachable_coastal_centr_idx[None] + 1
+        n_centr_filter = idx_centr_filter.size
+        indices = np.zeros((npositions, n_centr_filter, 2), dtype=np.int64)
+        indices[:, :, 0] = 2 * idx_centr_filter[None]
+        indices[:, :, 1] = 2 * idx_centr_filter[None] + 1
         indices = indices.ravel()
-        indptr = np.arange(npositions + 1) * n_reachable_coastal_centr * 2
+        indptr = np.arange(npositions + 1) * n_centr_filter * 2
         windfields_sparse = sparse.csr_matrix((windfields.ravel(), indices, indptr),
                                               shape=windfields_shape)
         windfields_sparse.eliminate_zeros()
@@ -820,17 +808,17 @@ def _compute_windfields_sparse(
     return intensity_sparse, windfields_sparse
 
 def _compute_windfields_sparse_chunked(
-    track_centr_msk: np.ndarray,
+    mask_centr_alongtrack: np.ndarray,
     track: xr.Dataset,
     *args,
     max_memory_gb: float = DEF_MAX_MEMORY_GB,
     **kwargs,
 ) -> Tuple[sparse.csr_matrix, Optional[sparse.csr_matrix]]:
-    """Call `_compute_windfields_sparse` for chunks of the track and re-assemble the results
+    """Call ``_compute_windfields_sparse`` for chunks of the track and re-assemble the results
 
     Parameters
     ----------
-    track_centr_msk : np.ndarray
+    mask_centr_alongtrack : np.ndarray of shape (npositions, ncentroids)
         Each row is a mask that indicates the centroids within reach for one track position.
     track : xr.Dataset
         Single tropical cyclone track.
@@ -838,12 +826,12 @@ def _compute_windfields_sparse_chunked(
         Maximum memory requirements (in GB) for the computation of a single chunk of the track.
         Default: 8
     args, kwargs :
-        The remaining arguments are passed on to `_compute_windfields_sparse`.
+        The remaining arguments are passed on to ``_compute_windfields_sparse``.
 
     Returns
     -------
     intensity, windfields :
-        See `_compute_windfields_sparse` for a description of the return values.
+        See ``_compute_windfields_sparse`` for a description of the return values.
     """
     npositions = track.sizes["time"]
     # The memory requirements for each track position are estimated for the case of 10 arrays
@@ -857,7 +845,7 @@ def _compute_windfields_sparse_chunked(
         # create overlap between consecutive chunks
         chunk_start = max(0, split_pos[-1] - 1)
         chunk_end = chunk_start + chunk_size
-        nreachable = track_centr_msk[chunk_start:chunk_end].any(axis=0).sum()
+        nreachable = mask_centr_alongtrack[chunk_start:chunk_end].any(axis=0).sum()
         if nreachable > max_nreachable:
             split_pos.append(chunk_end - 1)
             chunk_size = 2
@@ -898,16 +886,17 @@ def _compute_windfields(
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        Output of ``tctrack_to_si``. Which data variables are used in the computation of the wind
         speeds depends on the selected model.
     centroids : np.ndarray with two dimensions
-        Each row is a centroid [lat, lon].
-        Centroids that are not within reach of the track are ignored.
+        Each row is a centroid [lat, lon]. Centroids that are not within reach of the track are
+        ignored. Longitudinal coordinates are assumed to be normalized consistently with the
+        longitudinal coordinates in ``si_track``.
     model : int
         Wind profile model selection according to MODEL_VANG.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
     max_dist_eye_km : float, optional
         No wind speed calculation is done for centroids with a distance (in km) to the TC center
@@ -921,12 +910,12 @@ def _compute_windfields(
         the discrete time derivatives involved in the process are implemented using backward
         differences. However, the first position is usually not relevant for impact calculations
         since it is far off shore.
-    reachable_centr_idx : np.ndarray of shape (nreachable,)
+    idx_centr_reachable : np.ndarray of shape (nreachable,)
         List of indices of input centroids within reach of the TC track.
     """
     # start with the assumption that no centroids are within reach
     npositions = si_track.sizes["time"]
-    reachable_centr_idx = np.zeros((0,), dtype=np.int64)
+    idx_centr_reachable = np.zeros((0,), dtype=np.int64)
     windfields = np.zeros((npositions, 0, 2), dtype=np.float64)
 
     # compute distances (in m) and vectors to all centroids
@@ -936,25 +925,24 @@ def _compute_windfields(
         log=True, normalize=False, method=metric, units="m")
 
     # exclude centroids that are too far from or too close to the eye
-    close_centr_msk = (d_centr <= max_dist_eye_km * KM_TO_M) & (d_centr > 1)
-    if not np.any(close_centr_msk):
-        return windfields, reachable_centr_idx
+    mask_centr_close = (d_centr <= max_dist_eye_km * KM_TO_M) & (d_centr > 1)
+    if not np.any(mask_centr_close):
+        return windfields, idx_centr_reachable
 
     # restrict to the centroids that are within reach of any of the positions
-    track_centr_msk = close_centr_msk.any(axis=0)
-    close_centr_msk = close_centr_msk[:, track_centr_msk]
-    d_centr = d_centr[:, track_centr_msk]
-    v_centr_normed = v_centr_normed[:, track_centr_msk, :]
+    mask_centr_close_any = mask_centr_close.any(axis=0)
+    mask_centr_close = mask_centr_close[:, mask_centr_close_any]
+    d_centr = d_centr[:, mask_centr_close_any]
+    v_centr_normed = v_centr_normed[:, mask_centr_close_any, :]
 
     # normalize the vectors pointing from the eye to the centroids
-    v_centr_normed[~close_centr_msk] = 0
-    v_centr_normed[close_centr_msk] /= d_centr[close_centr_msk, None]
+    v_centr_normed[~mask_centr_close] = 0
+    v_centr_normed[mask_centr_close] /= d_centr[mask_centr_close, None]
 
     # derive (absolute) angular velocity from parametric wind profile
     v_ang_norm = compute_angular_windspeeds(
-        si_track, d_centr, close_centr_msk, model, cyclostrophic=False,
+        si_track, d_centr, mask_centr_close, model, cyclostrophic=False,
     )
-
 
     # Influence of translational speed decreases with distance from eye.
     # The "absorbing factor" is according to the following paper (see Fig. 7):
@@ -966,30 +954,30 @@ def _compute_windfields(
     #
     t_rad_bc = np.broadcast_to(si_track["rad"].values[:, None], d_centr.shape)
     v_trans_corr = np.zeros_like(d_centr)
-    v_trans_corr[close_centr_msk] = np.fmin(
-        1, t_rad_bc[close_centr_msk] / d_centr[close_centr_msk])
+    v_trans_corr[mask_centr_close] = np.fmin(
+        1, t_rad_bc[mask_centr_close] / d_centr[mask_centr_close])
 
     if model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
         # In these models, v_ang_norm already contains vtrans_norm, so subtract it first, before
         # converting to vectors and then adding (vectorial) vtrans again. Make sure to apply the
         # "absorbing factor" in both steps:
         vtrans_norm_bc = np.broadcast_to(si_track["vtrans_norm"].values[:, None], d_centr.shape)
-        v_ang_norm[close_centr_msk] -= (
-                vtrans_norm_bc[close_centr_msk] * v_trans_corr[close_centr_msk]
+        v_ang_norm[mask_centr_close] -= (
+                vtrans_norm_bc[mask_centr_close] * v_trans_corr[mask_centr_close]
         )
 
     # vectorial angular velocity
     windfields = (
             si_track.attrs["latsign"] * np.array([1.0, -1.0])[..., :] * v_centr_normed[:, :, ::-1]
     )
-    windfields[close_centr_msk] *= v_ang_norm[close_centr_msk, None]
+    windfields[mask_centr_close] *= v_ang_norm[mask_centr_close, None]
 
     # add angular and corrected translational velocity vectors
     windfields[1:] += si_track["vtrans"].values[1:, None, :] * v_trans_corr[1:, :, None]
     windfields[np.isnan(windfields)] = 0
     windfields[0, :, :] = 0
-    [reachable_centr_idx] = track_centr_msk.nonzero()
-    return windfields, reachable_centr_idx
+    [idx_centr_reachable] = mask_centr_close_any.nonzero()
+    return windfields, idx_centr_reachable
 
 def tctrack_to_si(
     track: xr.Dataset,
@@ -1020,7 +1008,7 @@ def tctrack_to_si(
         Track information.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
 
     Returns
@@ -1080,22 +1068,22 @@ def tctrack_to_si(
 
     return si_track
 
-def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclostrophic=False):
+def compute_angular_windspeeds(si_track, d_centr, mask_centr_close, model, cyclostrophic=False):
     """Compute (absolute) angular wind speeds according to a parametric wind profile
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. Which data variables are used in the computation of the wind
+        Output of ``tctrack_to_si``. Which data variables are used in the computation of the wind
         profile depends on the selected model.
     d_centr : np.ndarray of shape (npositions, ncentroids)
         Distance (in m) between centroids and track positions.
-    close_centr_msk : np.ndarray of shape (npositions, ncentroids)
+    mask_centr_close : np.ndarray of shape (npositions, ncentroids)
         For each track position one row indicating which centroids are within reach.
     model : int
         Wind profile model selection according to MODEL_VANG.
     cyclostrophic : bool, optional
-        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
+        If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0).
         Default: False
 
     Returns
@@ -1109,17 +1097,17 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
 
     if model in [MODEL_VANG['H1980'], MODEL_VANG['H08']]:
         result = _stat_holland_1980(
-            si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic,
+            si_track, d_centr, mask_centr_close, cyclostrophic=cyclostrophic,
         )
         if model == MODEL_VANG['H1980']:
             result *= GRADIENT_LEVEL_TO_SURFACE_WINDS
     elif model == MODEL_VANG['H10']:
         # this model is always cyclostrophic
         _v_max_s_holland_2008(si_track)
-        hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk)
-        result = _stat_holland_2010(si_track, d_centr, close_centr_msk, hol_x)
+        hol_x = _x_holland_2010(si_track, d_centr, mask_centr_close)
+        result = _stat_holland_2010(si_track, d_centr, mask_centr_close, hol_x)
     elif model == MODEL_VANG['ER11']:
-        result = _stat_er_2011(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
+        result = _stat_er_2011(si_track, d_centr, mask_centr_close, cyclostrophic=cyclostrophic)
     else:
         raise NotImplementedError
 
@@ -1128,76 +1116,118 @@ def compute_angular_windspeeds(si_track, d_centr, close_centr_msk, model, cyclos
     return result
 
 def get_close_centroids(
-    t_lat: np.ndarray,
-    t_lon: np.ndarray,
+    si_track: xr.Dataset,
     centroids: np.ndarray,
     buffer_km: float,
     metric: str = "equirect",
 ) -> np.ndarray:
     """Check whether centroids lay within a buffer around track positions
 
-    The longitudinal coordinates are assumed to be normalized around a central longitude. This
-    makes sure that the buffered bounding box around the track doesn't cross the antimeridian.
-
-    The only hypothetical problem occurs when a TC track is travelling so far in longitude that
-    adding a buffer exceeds 360 degrees (i.e. crosses the antimeridian).
-    Of course, this case is physically impossible.
+    Note that, hypothetically, a problem occurs when a TC track is travelling so far in longitude
+    that adding a buffer exceeds 360 degrees (i.e. crosses the antimeridian), which is physically
+    impossible, but might happen with synthetical or test data.
 
     Parameters
     ----------
-    t_lat : np.ndarray of shape (npositions,)
-        Latitudinal coordinates of track positions.
-    t_lon : np.ndarray of shape (npositions,)
-        Longitudinal coordinates of track positions, normalized around a central longitude.
+    si_track : xr.Dataset with dimension "time"
+        Track information as returned by ``tctrack_to_si``. Hence, longitudinal coordinates are
+        normalized around the central longitude stored in the "mid_lon" attribute. This makes sure
+        that the buffered bounding box around the track does not cross the antimeridian. The data
+        variables used by this function are "lat", and "lon".
     centroids : np.ndarray of shape (ncentroids, 2)
-        Coordinates of centroids, each row is a pair [lat, lon].
+        Coordinates of centroids, each row is a pair [lat, lon]. The longitudinal coordinates are
+        normalized within this function to be consistent with the track coordinates.
     buffer_km : float
         Size of the buffer (in km). The buffer is converted to a lat/lon buffer, rescaled in
         longitudinal direction according to the t_lat coordinates.
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
 
     Returns
     -------
-    mask : np.ndarray of shape (npositions, ncentroids)
+    centroids_close_normalized : np.ndarray of shape (nclose, 2)
+        Coordinates of close centroids, each row is a pair [lat, lon]. The normalization of
+        longitudinal coordinates is consistent with the track coordinates.
+    mask_centr : np.ndarray of shape (ncentroids,)
         Mask that is True for close centroids and False for other centroids.
+    mask_centr_alongtrack : np.ndarray of shape (npositions, nclose)
+        Each row is a mask that indicates the centroids within reach for one track position. Note
+        that these masks refer only to the "close centroids" to reduce memory requirements. The
+        number of positions ``npositions`` corresponds to the size of the "time" dimension of
+        ``si_track``.
     """
-    npositions = t_lat.size
+    npositions = si_track.sizes["time"]
     ncentroids = centroids.shape[0]
-    centr_lat, centr_lon = centroids[:, 0], centroids[:, 1]
+    t_lat, t_lon = si_track["lat"].values, si_track["lon"].values
+    centr_lat, centr_lon = centroids[:, 0].copy(), centroids[:, 1].copy()
+
+    # Normalize longitudinal coordinates of centroids.
+    u_coord.lon_normalize(centr_lon, center=si_track.attrs["mid_lon"])
+
+    # Restrict to the bounding box of the whole track first (this can already reduce the number of
+    # centroids that are considered by a factor larger than 30).
+    buffer_lat = buffer_km / u_const.ONE_LAT_KM
+    buffer_lon = buffer_km / (
+        u_const.ONE_LAT_KM * np.cos(np.radians(
+            np.fmin(89.999, np.abs(centr_lat) + buffer_lat)
+        ))
+    )
+    [idx_close] = (
+        (t_lat.min() - centr_lat <= buffer_lat)
+        & (centr_lat - t_lat.max() <= buffer_lat)
+        & (t_lon.min() - centr_lon <= buffer_lon)
+        & (centr_lon - t_lon.max() <= buffer_lon)
+    ).nonzero()
+    centr_lat = centr_lat[idx_close]
+    centr_lon = centr_lon[idx_close]
+
+    # Restrict to bounding boxes of each track position.
     buffer_lat = buffer_km / u_const.ONE_LAT_KM
     buffer_lon = buffer_km / (u_const.ONE_LAT_KM * np.cos(np.radians(
         np.fmin(89.999, np.abs(t_lat[:, None]) + buffer_lat)
     )))
-    # check for each track position which centroids are within rectangular buffers
-    [idx_rects] = (
+    [idx_close_sub] = (
         (t_lat[:, None] - buffer_lat <= centr_lat[None])
         & (t_lat[:, None] + buffer_lat >= centr_lat[None])
         & (t_lon[:, None] - buffer_lon <= centr_lon[None])
         & (t_lon[:, None] + buffer_lon >= centr_lon[None])
     ).any(axis=0).nonzero()
+    idx_close = idx_close[idx_close_sub]
+    centr_lat = centr_lat[idx_close_sub]
+    centr_lon = centr_lon[idx_close_sub]
 
+    # Restrict to metric distance radius around each track position.
+    #
     # We do the distance computation for chunks of the track since computing the distance requires
     # npositions*ncentroids*8*3 Bytes of memory. For example, Hurricane FAITH's life time was more
     # than 500 hours. At 0.5-hourly resolution and 1,000,000 centroids, that's 24 GB of memory for
-    # FAITH. With a chunk size of 10, this figure is down to 360 MB. The final mask will require
-    # 1.0 GB of memory.
+    # FAITH. With a chunk size of 10, this figure is down to 240 MB. The final along-track mask
+    # will require 1.0 GB of memory.
     chunk_size = 10
-    chunks = np.split(np.arange(t_lat.size), np.arange(chunk_size, t_lat.size, chunk_size))
-    dist_mask_rects = np.concatenate([
+    chunks = np.split(np.arange(npositions), np.arange(chunk_size, npositions, chunk_size))
+    mask_centr_alongtrack = np.concatenate([
         (
             u_coord.dist_approx(
                 t_lat[None, chunk], t_lon[None, chunk],
-                centr_lat[None, idx_rects], centr_lon[None, idx_rects],
+                centr_lat[None], centr_lon[None],
                 normalize=False, method=metric, units="km",
             )[0] <= buffer_km
         ) for chunk in chunks
     ], axis=0)
-    mask = np.zeros((npositions, ncentroids), dtype=bool)
-    mask[:, idx_rects] = dist_mask_rects
-    return mask
+    [idx_close_sub] = mask_centr_alongtrack.any(axis=0).nonzero()
+    idx_close = idx_close[idx_close_sub]
+    centr_lat = centr_lat[idx_close_sub]
+    centr_lon = centr_lon[idx_close_sub]
+    mask_centr_alongtrack = mask_centr_alongtrack[:, idx_close_sub]
+
+    # Derive mask from index.
+    mask_centr = np.zeros((ncentroids,), dtype=bool)
+    mask_centr[idx_close] = True
+
+    centroids_close_normalized = np.stack([centr_lat, centr_lon], axis=1)
+    return centroids_close_normalized, mask_centr, mask_centr_alongtrack
 
 def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     """Translational vector and velocity (in m/s) at each track node.
@@ -1212,12 +1242,12 @@ def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     Parameters
     ----------
     si_track : xr.Dataset
-        Track information as returned by `tctrack_to_si`. The data variables used by this function
+        Track information as returned by ``tctrack_to_si``. The data variables used by this function
         are "lat", "lon", and "tstep". The results are stored in place as new data
         variables "vtrans" and "vtrans_norm".
     metric : str, optional
         Specify an approximation method to use for earth distances: "equirect" (faster) or
-        "geosphere" (more accurate). See `dist_approx` function in `climada.util.coordinates`.
+        "geosphere" (more accurate). See ``dist_approx`` function in ``climada.util.coordinates``.
         Default: "equirect".
     """
     npositions = si_track.sizes["time"]
@@ -1258,7 +1288,7 @@ def _bs_holland_2008(si_track: xr.Dataset):
 
     The result is stored in place as a new data variable "hol_b".
 
-    Unlike the original 1980 formula (see `_B_holland_1980`), this approach does not require any
+    Unlike the original 1980 formula (see ``_B_holland_1980``), this approach does not require any
     wind speed measurements, but is based on the more reliable pressure information.
 
     The parameter applies to 1-minute sustained winds at 10 meters above ground.
@@ -1272,7 +1302,7 @@ def _bs_holland_2008(si_track: xr.Dataset):
     b_s = -4.4 * 1e-5 * (penv - pcen)^2 + 0.01 * (penv - pcen)
           + 0.03 * (dp/dt) - 0.014 * |lat| + 0.15 * (v_trans)^hol_xx + 1.0
 
-    where `dp/dt` is the time derivative of central pressure and `hol_xx` is Holland's x
+    where ``dp/dt`` is the time derivative of central pressure and ``hol_xx`` is Holland's x
     parameter: hol_xx = 0.6 * (1 - (penv - pcen) / 215)
 
     The equation for b_s has been fitted statistically using hurricane best track records for
@@ -1281,14 +1311,14 @@ def _bs_holland_2008(si_track: xr.Dataset):
     Furthermore, b_s has been fitted under the assumption of a "cyclostrophic" wind field which
     means that the influence from Coriolis forces is assumed to be small. This is reasonable close
     to the radius of maximum wind where the Coriolis term (r*f/2) is small compared to the rest
-    (see `_stat_holland_1980`). More precisely: At the radius of maximum wind speeds, the typical
+    (see ``_stat_holland_1980``). More precisely: At the radius of maximum wind speeds, the typical
     order of the Coriolis term is 1 while wind speed is 50 (which changes away from the
     radius of maximum winds and as the TC moves away from the equator).
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. The data variables used by this function are "lat", "tstep",
+        Output of ``tctrack_to_si``. The data variables used by this function are "lat", "tstep",
         "vtrans_norm", "cen", and "env". The result is stored in place as a new data
         variable "hol_b".
     """
@@ -1326,13 +1356,13 @@ def _v_max_s_holland_2008(si_track: xr.Dataset):
 
     v_ms = [b_s / (rho * e) * (penv - pcen)]^0.5
 
-    where `b_s` is Holland b-value (see `_bs_holland_2008`), e is Euler's number, rho is the
-    density of air, `penv` is environmental, and `pcen` is central pressure.
+    where ``b_s`` is Holland b-value (see ``_bs_holland_2008``), e is Euler's number, rho is the
+    density of air, ``penv`` is environmental, and ``pcen`` is central pressure.
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008). The data variables
+        Output of ``tctrack_to_si`` with "hol_b" variable (see _bs_holland_2008). The data variables
         used by this function are "env", "cen", and "hol_b". The results are stored in place as
         a new data variable "vmax". If a variable of that name already exists, its values are
         overwritten.
@@ -1356,13 +1386,13 @@ def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
 
     B = v^2 * e * rho / (penv - pcen)
 
-    where v are maximum gradient-level winds `gradient_winds`, e is Euler's number, rho is the
-    density of air, `penv` is environmental, and `pcen` is central pressure.
+    where v are maximum gradient-level winds ``gradient_winds``, e is Euler's number, rho is the
+    density of air, ``penv`` is environmental, and ``pcen`` is central pressure.
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "vgrad" variable (see _vgrad). The data variables
+        Output of ``tctrack_to_si`` with "vgrad" variable (see _vgrad). The data variables
         used by this function are "vgrad", "env", and "cen". The results are stored in place as
         a new data variable "hol_b".
     """
@@ -1373,7 +1403,7 @@ def _B_holland_1980(si_track: xr.Dataset):  # pylint: disable=invalid-name
 def _x_holland_2010(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
-    close_centr: np.ndarray,
+    mask_centr_close: np.ndarray,
     v_n: Union[float, np.ndarray] = 17.0,
     r_n_km: Union[float, np.ndarray] = 300.0,
 ) -> np.ndarray:
@@ -1389,24 +1419,24 @@ def _x_holland_2010(
     x = 0.5  [for r < r_max]
     x = 0.5 + (r - r_max) * (x_n - 0.5) / (r_n - r_max)  [for r >= r_max]
 
-    The peripheral exponent x_n is adjusted to fit the peripheral observation of wind speeds `v_n`
-    at radius `r_n`.
+    The peripheral exponent x_n is adjusted to fit the peripheral observation of wind speeds ``v_n``
+    at radius ``r_n``.
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" variable (see _bs_holland_2008). The data variables
+        Output of ``tctrack_to_si`` with "hol_b" variable (see _bs_holland_2008). The data variables
         used by this function are "rad", "vmax", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
-    close_centr : np.ndarray of shape (nnodes, ncentroids)
+    mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     v_n : np.ndarray of shape (nnodes,) or float, optional
-        Peripheral wind speeds (in m/s) at radius `r_n` outside of radius of maximum winds `r_max`.
-        In absence of a second wind speed measurement, this value defaults to 17 m/s following
-        Holland et al. 2010 (at a radius of 300 km).
+        Peripheral wind speeds (in m/s) at radius ``r_n`` outside of radius of maximum winds
+        ``r_max``. In absence of a second wind speed measurement, this value defaults to 17 m/s
+        following Holland et al. 2010 (at a radius of 300 km).
     r_n_km : np.ndarray of shape (nnodes,) or float, optional
-        Radius (in km) where the peripheral wind speed `v_n` is measured (or assumed).
+        Radius (in km) where the peripheral wind speed ``v_n`` is measured (or assumed).
         In absence of a second wind speed measurement, this value defaults to 300 km following
         Holland et al. 2010.
 
@@ -1417,7 +1447,7 @@ def _x_holland_2010(
     """
     hol_x = np.zeros_like(d_centr)
     r_max, v_max_s, hol_b, d_centr, v_n, r_n = [
-        np.broadcast_to(ar, d_centr.shape)[close_centr]
+        np.broadcast_to(ar, d_centr.shape)[mask_centr_close]
         for ar in [
             si_track["rad"].values[:, None],
             si_track["vmax"].values[:, None],
@@ -1437,20 +1467,20 @@ def _x_holland_2010(
 
     # linearly interpolate between max exponent and peripheral exponent
     x_max = 0.5
-    hol_x[close_centr] = x_max + np.fmax(0, d_centr - r_max) * (x_n - x_max) / (r_n - r_max)
+    hol_x[mask_centr_close] = x_max + np.fmax(0, d_centr - r_max) * (x_n - x_max) / (r_n - r_max)
 
     # Negative hol_x values appear when v_max_s is very close to or even lower than v_n (which
     # should never happen in theory). In those cases, wind speeds might decrease outside of the eye
     # wall and increase again towards the peripheral radius (which is actually unphysical).
     # We clip hol_x to 0, otherwise wind speeds keep increasing indefinitely away from the eye:
-    hol_x[close_centr] = np.fmax(hol_x[close_centr], 0.0)
+    hol_x[mask_centr_close] = np.fmax(hol_x[mask_centr_close], 0.0)
 
     return hol_x
 
 def _stat_holland_2010(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
-    close_centr: np.ndarray,
+    mask_centr_close: np.ndarray,
     hol_x: Union[float, np.ndarray],
 ) -> np.ndarray:
     """Symmetric and static surface wind fields (in m/s) according to Holland et al. 2010
@@ -1464,19 +1494,19 @@ def _stat_holland_2010(
 
     V(r) = v_max_s * [(r_max / r)^b_s * e^(1 - (r_max / r)^b_s)]^x
 
-    In terms of this function's arguments, b_s is `hol_b` and r is `d_centr`.
+    In terms of this function's arguments, b_s is ``hol_b`` and r is ``d_centr``.
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" (see _bs_holland_2008) data variables. The data
+        Output of ``tctrack_to_si`` with "hol_b" (see _bs_holland_2008) data variables. The data
         variables used by this function are "vmax", "rad", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
-    close_centr : np.ndarray of shape (nnodes, ncentroids)
+    mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     hol_x : np.ndarray of shape (nnodes, ncentroids) or float
-        The exponent according to `_x_holland_2010`.
+        The exponent according to ``_x_holland_2010``.
 
     Returns
     -------
@@ -1485,7 +1515,7 @@ def _stat_holland_2010(
     """
     v_ang = np.zeros_like(d_centr)
     v_max_s, r_max, hol_b, d_centr, hol_x = [
-        np.broadcast_to(ar, d_centr.shape)[close_centr]
+        np.broadcast_to(ar, d_centr.shape)[mask_centr_close]
         for ar in [
             si_track["vmax"].values[:, None],
             si_track["rad"].values[:, None],
@@ -1496,13 +1526,13 @@ def _stat_holland_2010(
     ]
 
     r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
-    v_ang[close_centr] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**hol_x
+    v_ang[mask_centr_close] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**hol_x
     return v_ang
 
 def _stat_holland_1980(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
-    close_centr: np.ndarray,
+    mask_centr_close: np.ndarray,
     cyclostrophic: bool = False
 ) -> np.ndarray:
     """Symmetric and static wind fields (in m/s) according to Holland 1980.
@@ -1517,25 +1547,25 @@ def _stat_holland_1980(
 
     V(r) = [(B/rho) * (r_max/r)^B * (penv - pcen) * e^(-(r_max/r)^B) + (r*f/2)^2]^0.5 - (r*f/2)
 
-    In terms of this function's arguments, B is `hol_b` and r is `d_centr`.
+    In terms of this function's arguments, B is ``hol_b`` and r is ``d_centr``.
     The air density rho is assumed to be constant while the Coriolis parameter f is computed
-    from the latitude `lat` using the constant rotation rate of the earth.
+    from the latitude ``lat`` using the constant rotation rate of the earth.
 
     Even though the equation has been derived originally for gradient winds (when combined with the
-    output of `_B_holland_1980`), it can be used for surface winds by adjusting the parameter
-    `hol_b` (see function `_bs_holland_2008`).
+    output of ``_B_holland_1980``), it can be used for surface winds by adjusting the parameter
+    ``hol_b`` (see function ``_bs_holland_2008``).
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si` with "hol_b" (see, e.g., _B_holland_1980) data variable. The data
-        variables used by this function are "lat", "cp", "rad", "cen", "env", and "hol_b".
+        Output of ``tctrack_to_si`` with "hol_b" (see, e.g., _B_holland_1980) data variable. The
+        data variables used by this function are "lat", "cp", "rad", "cen", "env", and "hol_b".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
-    close_centr : np.ndarray of shape (nnodes, ncentroids)
+    mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
-        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0).
+        If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0).
         Default: False
 
     Returns
@@ -1545,7 +1575,7 @@ def _stat_holland_1980(
     """
     v_ang = np.zeros_like(d_centr)
     r_max, hol_b, penv, pcen, coriolis_p, d_centr = [
-        np.broadcast_to(ar, d_centr.shape)[close_centr]
+        np.broadcast_to(ar, d_centr.shape)[mask_centr_close]
         for ar in [
             si_track["rad"].values[:, None],
             si_track["hol_b"].values[:, None],
@@ -1562,13 +1592,13 @@ def _stat_holland_1980(
 
     r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
     sqrt_term = hol_b / RHO_AIR * r_max_norm * (penv - pcen) * np.exp(-r_max_norm) + r_coriolis**2
-    v_ang[close_centr] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
+    v_ang[mask_centr_close] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
 
 def _stat_er_2011(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
-    close_centr: np.ndarray,
+    mask_centr_close: np.ndarray,
     cyclostrophic: bool = False,
 ) -> np.ndarray:
     """Symmetric and static wind fields (in m/s) according to Emanuel and Rotunno 2011
@@ -1577,8 +1607,8 @@ def _stat_er_2011(
     Implications for Storm Structure. Journal of the Atmospheric Sciences 68(10): 2236–2249.
     https://dx.doi.org/10.1175/JAS-D-10-05024.1
 
-    The wind speeds `v_ang` are extracted from the momentum via the relationship M = v_ang * r,
-    where r corresponds to `d_centr`. On the other hand, the momentum is derived from the momentum
+    The wind speeds ``v_ang`` are extracted from the momentum via the relationship M = v_ang * r,
+    where r corresponds to ``d_centr``. On the other hand, the momentum is derived from the momentum
     at the peak wind position using equation (36) from Emanuel and Rotunno 2011 with Ck == Cd:
 
     M = M_max * [2 * (r / r_max)^2 / (1 + (r / r_max)^2)].
@@ -1587,20 +1617,20 @@ def _stat_er_2011(
 
     M_max = r_max * v_max + 0.5 * f * r_max**2,
 
-    where the Coriolis parameter f is computed from the latitude `lat` using the constant rotation
+    where the Coriolis parameter f is computed from the latitude ``lat`` using the constant rotation
     rate of the earth.
 
     Parameters
     ----------
     si_track : xr.Dataset
-        Output of `tctrack_to_si`. The data variables used by this function are "lat", "cp", "rad",
-        and "vmax".
+        Output of ``tctrack_to_si``. The data variables used by this function are "lat", "cp",
+        "rad", and "vmax".
     d_centr : np.ndarray of shape (nnodes, ncentroids)
         Distance (in m) between centroids and track nodes.
-    close_centr : np.ndarray of shape (nnodes, ncentroids)
+    mask_centr_close : np.ndarray of shape (nnodes, ncentroids)
         Mask indicating for each track node which centroids are within reach of the windfield.
     cyclostrophic : bool, optional
-        If True, don't apply the influence of the Coriolis force (set the Coriolis terms to 0) in
+        If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0) in
         the computation of M_max. Default: False
 
     Returns
@@ -1610,7 +1640,7 @@ def _stat_er_2011(
     """
     v_ang = np.zeros_like(d_centr)
     r_max, v_max, coriolis_p, d_centr = [
-        np.broadcast_to(ar, d_centr.shape)[close_centr]
+        np.broadcast_to(ar, d_centr.shape)[mask_centr_close]
         for ar in [
             si_track["rad"].values[:, None],
             si_track["vmax"].values[:, None],
@@ -1631,5 +1661,5 @@ def _stat_er_2011(
     momentum = momentum_max * 2 * r_max_norm / (1 + r_max_norm)
 
     # extract the velocity from the rescaled momentum through division by r
-    v_ang[close_centr] = np.fmax(0, momentum / (d_centr + 1e-11))
+    v_ang[mask_centr_close] = np.fmax(0, momentum / (d_centr + 1e-11))
     return v_ang

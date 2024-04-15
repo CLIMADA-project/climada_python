@@ -451,12 +451,12 @@ class Impact():
         at_reg_event = np.hstack(
             [
                 self.imp_mat[:, np.where(agg_regions == reg)[0]].sum(1)
-                for reg in np.unique(agg_reg_unique)
+                for reg in agg_reg_unique
             ]
         )
 
         at_reg_event = pd.DataFrame(
-            at_reg_event, columns=np.unique(agg_reg_unique), index=self.event_id
+            at_reg_event, columns=agg_reg_unique, index=self.event_id
         )
 
         return at_reg_event
