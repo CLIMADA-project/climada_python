@@ -33,6 +33,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib import colormaps as cm
 
 from climada import CONFIG
 
@@ -1034,7 +1035,7 @@ class UncOutput():
             if len(n) > 0 :
                 n = n[0]
                 cmap = mpl.colors.ListedColormap(
-                    plt.get_cmap(MAP_CMAP).colors[:len(labels)]
+                    cm.get_cmap(MAP_CMAP).colors[:len(labels)]
                     )
                 colors = list(cmap.colors)
                 colors[n] = tuple(np.repeat(0.93, 3))
