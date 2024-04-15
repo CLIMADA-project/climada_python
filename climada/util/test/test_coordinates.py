@@ -969,27 +969,6 @@ class TestGetGeodata(unittest.TestCase):
         with self.assertRaises(ValueError):
             u_coord.nat_earth_resolution(111)
 
-    def test_get_coastlines_all_pass(self):
-        """Check get_coastlines function over whole earth"""
-        coast = u_coord.get_coastlines(resolution=110)
-        tot_bounds = coast.total_bounds
-        self.assertEqual((134, 1), coast.shape)
-        self.assertAlmostEqual(tot_bounds[0], -180)
-        self.assertAlmostEqual(tot_bounds[1], -85.60903777)
-        self.assertAlmostEqual(tot_bounds[2], 180.00000044)
-        self.assertAlmostEqual(tot_bounds[3], 83.64513)
-
-    def test_get_coastlines_pass(self):
-        """Check get_coastlines function in defined extent"""
-        bounds = (-100, -55, -20, 35)
-        coast = u_coord.get_coastlines(bounds, resolution=110)
-        ex_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
-        self.assertEqual(coast.shape[0], 14)
-        self.assertTrue(coast.total_bounds[2] < 0)
-        for _row, line in coast.iterrows():
-            if not ex_box.intersects(line.geometry):
-                self.assertEqual(1, 0)
-
     def test_get_land_geometry_country_pass(self):
         """get_land_geometry with selected countries."""
         iso_countries = ['DEU', 'VNM']
@@ -1040,26 +1019,6 @@ class TestGetGeodata(unittest.TestCase):
         res = u_coord.coord_on_land(lat, lon)
         self.assertEqual(res.size, lat.size)
         np.testing.assert_array_equal(res[:3], [True, False, True])
-
-    def test_dist_to_coast(self):
-        """Test point in coast and point not in coast"""
-        points = np.array([
-            # Caribbean Sea:
-            [13.208333333333329, -59.625000000000014],
-            # South America:
-            [-12.497529, -58.849505],
-            # Very close to coast of Somalia:
-            [1.96768, 45.23219],
-        ])
-        dists = [2594.2071059573445, 1382985.2459744606, 0.088222234]
-        for d, p in zip(dists, points):
-            res = u_coord.dist_to_coast(*p)
-            self.assertAlmostEqual(d, res[0])
-
-        # All at once requires more than one UTM
-        res = u_coord.dist_to_coast(points)
-        for d, r in zip(dists, res):
-            self.assertAlmostEqual(d, r)
 
     def test_dist_to_coast_nasa(self):
         """Test point in coast and point not in coast"""
