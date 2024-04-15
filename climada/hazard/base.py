@@ -1197,6 +1197,10 @@ class Hazard():
             LOGGER.info('No hazard centroids within extent and region')
             return None
 
+        # Sanitize fraction, because we check non-zero entries later
+        self.fraction.eliminate_zeros()
+
+        # Perform attribute selection
         for (var_name, var_val) in self.__dict__.items():
             if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
                     and var_val.size > 0:
@@ -1226,6 +1230,18 @@ class Hazard():
             year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year -
                                    dt.datetime.fromordinal(haz.date.min()).year) + 1
             haz.frequency = haz.frequency * year_span_old / year_span_new
+
+        # Check if new fraction is zero everywhere
+        if self._get_fraction() is not None and haz._get_fraction() is None:
+            raise RuntimeError(
+                "Your selection created a Hazard object where the fraction matrix is "
+                "zero everywhere. This hazard will have zero impact everywhere. "
+                "We are catching this condition because of an implementation detail: "
+                "A fraction matrix without nonzero-valued entries will be completely "
+                "ignored. This is surely not what you intended. If you really want to, "
+                "you can circumvent this error by setting your original fraction "
+                "matrix to zero everywhere, but there probably is no point in doing so."
+            )
 
         haz.sanitize_event_ids()
         return haz

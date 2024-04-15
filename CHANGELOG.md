@@ -17,6 +17,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
+
 ### Added
 
 - climada.hazard.centroids.centr.Centroids.get_area_pixel
