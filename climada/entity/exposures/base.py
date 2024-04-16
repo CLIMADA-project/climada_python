@@ -498,7 +498,6 @@ class Exposures():
         --------
         Exposures
         """
-        exp = cls()
         meta, value = u_coord.read_raster(file_name, [band], src_crs, window,
                                           geometry, dst_crs, transform, width,
                                           height, resampling)
@@ -507,14 +506,16 @@ class Exposures():
         lry = uly + meta['height'] * yres
         x_grid, y_grid = np.meshgrid(np.arange(ulx + xres / 2, lrx, xres),
                                      np.arange(uly + yres / 2, lry, yres))
+        return cls(
+            {
+                'longitude': x_grid.flatten(),
+                'latitude': y_grid.flatten(),
+                'value': value.reshape(-1),
+            },
+            meta=meta,
+            crs=meta['crs'],
+        )
 
-        if exp.crs is None:
-            exp.set_crs()
-        exp.gdf['longitude'] = x_grid.flatten()
-        exp.gdf['latitude'] = y_grid.flatten()
-        exp.gdf['value'] = value.reshape(-1)
-        exp.meta = meta
-        return exp
 
     def plot_scatter(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', axis=None, figsize=(9, 13),
@@ -749,7 +750,7 @@ class Exposures():
 
     def plot_basemap(self, mask=None, ignore_zero=False, pop_name=True,
                      buffer=0.0, extend='neither', zoom=10,
-                     url=None, axis=None, **kwargs):
+                     url=ctx.providers.CartoDB.Positron, axis=None, **kwargs):
         """Scatter points over satellite image using contextily
 
         Parameters
@@ -771,7 +772,7 @@ class Exposures():
             zoom coefficient used in the satellite image
         url : Any, optional
             image source, e.g., ``ctx.providers.OpenStreetMap.Mapnik``.
-            Default: ``ctx.providers.Stamen.Terrain``
+            Default: ``ctx.providers.CartoDB.Positron``
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         kwargs : optional

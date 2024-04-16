@@ -22,6 +22,7 @@ WORK IN PROGRESS
 import contextily as ctx
 import geopandas as gpd
 import matplotlib.patches as patches
+from matplotlib import colormaps as cm
 from shapely import wkt
 
 def plot_salvador_ma():
@@ -110,11 +111,11 @@ def plot_exposure_ss(exposures, point=None):
         ax.set_ylim(1536680.51725147, 1539512.429812354)
     else:
         # create new map for viviendas
-        cmap_viv = plt.cm.get_cmap('autumn', 4)
+        cmap_viv = cm.get_cmap('autumn').resampled(4)
         cmap_viv = mpl.colors.LinearSegmentedColormap.from_list('Custom cmap',
             [cmap_viv(i) for i in range(cmap_viv.N)], cmap_viv.N)
         # create new map for aups
-        cmap_aup = plt.cm.get_cmap('winter', 4)
+        cmap_aup = cm.get_cmap('winter').resampled(4)
         cmap_aup = mpl.colors.LinearSegmentedColormap.from_list('Custom cmap',
             [cmap_aup(i) for i in range(cmap_aup.N)], cmap_aup.N)
 

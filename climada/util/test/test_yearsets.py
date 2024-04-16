@@ -60,11 +60,14 @@ class TestYearSets(unittest.TestCase):
     def test_sample_from_poisson(self):
         """Test sampling amount of events per year."""
         n_sample_years = 1000
-        lam = np.sum(IMP.frequency)
-        events_per_year = yearsets.sample_from_poisson(n_sample_years, lam)
+        for lam in [0, 1, 2.5]:
+            events_per_year = yearsets.sample_from_poisson(n_sample_years, lam, seed=1)
 
-        self.assertEqual(events_per_year.size, n_sample_years)
-        self.assertAlmostEqual(np.round(np.mean(events_per_year)), 2)
+            self.assertEqual(events_per_year.size, n_sample_years)
+            self.assertAlmostEqual(np.mean(events_per_year), lam, places=1)
+
+        self.assertRaises(TypeError, yearsets.sample_from_poisson, n_sample_years, None)
+        self.assertRaises(ValueError, yearsets.sample_from_poisson, n_sample_years, -1)
 
     def test_sample_events(self):
         """Test the sampling of 34 events out of a pool of 20 events."""
