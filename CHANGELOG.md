@@ -18,6 +18,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
+
 ### Added
 
 - climada.hazard.centroids.centr.Centroids.get_area_pixel
@@ -66,6 +68,7 @@ Code freeze date: YYYY-MM-DD
 - climada.hazard.centroids.centr.Centroids.values_from_raster_files
 - climada.hazard.centroids.centr.Centroids.values_from_vector_files
 - climada.hazard.centroids.centr.generate_nat_earth_centroids
+- `requirements/env_docs.yml`. The regular environment specs are now used to build the online documentation [#687](https://github.com/CLIMADA-project/climada_python/pull/687)
 
 ## 4.1.1
 
