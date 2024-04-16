@@ -67,6 +67,7 @@ Code freeze date: YYYY-MM-DD
 - climada.hazard.centroids.centr.Centroids.values_from_raster_files
 - climada.hazard.centroids.centr.Centroids.values_from_vector_files
 - climada.hazard.centroids.centr.generate_nat_earth_centroids
+- `requirements/env_docs.yml`. The regular environment specs are now used to build the online documentation [#687](https://github.com/CLIMADA-project/climada_python/pull/687)
 
 ## 4.1.1
 
