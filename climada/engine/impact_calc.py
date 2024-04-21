@@ -251,8 +251,11 @@ class ImpactCalc():
             )
         if exp_gdf.size == 0:
             LOGGER.warning("No exposures with value >0 in the vicinity of the hazard.")
-        self._orig_exp_idx = mask.to_numpy().nonzero()[0]  # update index of kept exposures points in exp_gdf
-                                                # within the full exposures
+        
+        # update index of kept exposures points in exp_gdf
+        # within the full exposures
+        self._orig_exp_idx = mask.to_numpy().nonzero()[0]  
+
         return exp_gdf
 
     def imp_mat_gen(self, exp_gdf, impf_col):
