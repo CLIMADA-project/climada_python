@@ -187,7 +187,7 @@ if int(os.getenv('TRACKGEN_TEST_DECAY_AT_EXTREME_LATS')):
             'lat_max': {'lat': [15], 'max_wind': [30]}
         },
         'SI': {
-            'lat_min': {'lat': [-50, -47,5, -42.5, -37.5], 'max_wind': [0, 57, 74, 86]},
+            'lat_min': {'lat': [-50, -47.5, -42.5, -37.5], 'max_wind': [0, 57, 74, 86]},
             'lat_max': {'lat': [-7.5, -2.5, -1], 'max_wind': [155, 49, 0]}
         },
         'SP': {
