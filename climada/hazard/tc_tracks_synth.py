@@ -154,18 +154,20 @@ TRACK_EXTENSION_PARS = {
 # - relative change in translation speed has a mean of 0% /hour and std 4.2%/hr,
 #   autocorr=0
 
-for envvar in [
-    'TRACKGEN_TEST_DECAY_AT_EXTREME_LATS',
-    'TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES',
-    'TRACKGEN_TEST_KILL_BEYOND_ADVISORIES',
-    'TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL',
-    'TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA',
-]:
+envvar_defaults = {
+    'TRACKGEN_TEST_DECAY_AT_EXTREME_LATS': '1',
+    'TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES': '1',
+    'TRACKGEN_TEST_KILL_BEYOND_ADVISORIES': '1',
+    'TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL': '1',
+    'TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA': '1',
+    'TRACKGEN_TEST_BIAS_TARGET_PRESSURE': '0'
+}
+for envvar, default in envvar_defaults.items():
     if os.getenv(envvar) is None:
-        os.environ[envvar] = '1'
-
-if os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE') is None:
-    os.environ['TRACKGEN_TEST_BIAS_TARGET_PRESSURE'] = '0'
+        LOGGER.debug(f'No value for {envvar} found in the environment: setting to {default} by default')
+        os.environ[envvar] = default
+    else:
+        LOGGER.debug(f'Found environment variable set for {envvar}: {str(os.getenv(envvar))}')
 
 
 if int(os.getenv('TRACKGEN_TEST_DECAY_AT_EXTREME_LATS')):
