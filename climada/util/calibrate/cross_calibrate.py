@@ -20,7 +20,7 @@ Cross-calibration on top of a single calibration module
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, InitVar, field
-from typing import List, Any, Tuple, Sequence, Dict, Callable
+from typing import List, Any, Tuple, Sequence, Dict, Callable, Optional
 from copy import copy, deepcopy
 from itertools import repeat
 import logging
@@ -260,32 +260,40 @@ class EnsembleOptimizerOutput:
         input=None,
         category=None,
         category_col_dict=None,
-        **impf_set_plot_kwargs
+        **impf_set_plot_kwargs,
     ):
-
         """Plot all impact functions with appropriate color coding according to a category"""
         impf_set_arr = np.array(self._to_impf_sets(impact_func_creator))
 
         if category_col_dict is None:
             unique_categories = self.data[("Event", category)].unique()
             print(unique_categories)
-            unique_colors = plt.get_cmap("Set1")(np.linspace(0, 1, len(unique_categories)))
+            unique_colors = plt.get_cmap("Set1")(
+                np.linspace(0, 1, len(unique_categories))
+            )
         else:
             unique_categories = list(category_col_dict.keys())
             unique_colors = list(category_col_dict.values())
 
-        fig,ax = plt.subplots()
-        for sel_category,color in zip(unique_categories,unique_colors):
+        fig, ax = plt.subplots()
+        for sel_category, color in zip(unique_categories, unique_colors):
             cat_idx = self.data[("Event", category)] == sel_category
 
-            for i,impf_set in enumerate(impf_set_arr[cat_idx]):
+            for i, impf_set in enumerate(impf_set_arr[cat_idx]):
                 impf = impf_set.get_func(haz_type=haz_type, fun_id=impf_id)
-                label = f"{sel_category}, n={cat_idx.sum()} "if i == 0 else None
-                ax.plot(impf.intensity, impf.paa * impf.mdd, **impf_set_plot_kwargs,
-                        color = color,label=label)
+                label = f"{sel_category}, n={cat_idx.sum()} " if i == 0 else None
+                ax.plot(
+                    impf.intensity,
+                    impf.paa * impf.mdd,
+                    **impf_set_plot_kwargs,
+                    color=color,
+                    label=label,
+                )
                 # impf.mdr.plot(axis=ax, **impf_set_plot_kwargs)#, label=sel_category)
 
-        ax.legend(title=category,bbox_to_anchor=(1.05, 1),loc='upper left',frameon=False)
+        ax.legend(
+            title=category, bbox_to_anchor=(1.05, 1), loc="upper left", frameon=False
+        )
         # Cosmetics
         ax.set_xlabel(f"Intensity [{impf.intensity_unit}]")
         ax.set_ylabel("Impact")
@@ -423,10 +431,26 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
 class TragedyEnsembleOptimizer(EnsembleOptimizer):
     """"""
 
-    def __post_init__(self):
+    ensemble_size: InitVar[Optional[int]] = None
+    random_state: InitVar[int] = 1
+
+    def __post_init__(self, ensemble_size, random_state):
         """Create the single samples"""
         notna_idx = np.argwhere(self.input.data.notna().to_numpy())
         self.samples = notna_idx[:, np.newaxis].tolist()  # Must extend by one dimension
+
+        # Subselection for a given ensemble size
+        if ensemble_size is not None:
+            if ensemble_size < 1:
+                raise ValueError("Ensemble size must be >=1")
+            if ensemble_size > len(self.samples):
+                raise ValueError(
+                    "Ensemble size must be smaller than maximum number of samples "
+                    f"(here: {len(self.samples)})"
+                )
+
+            rng = default_rng(random_state)
+            self.samples = rng.choice(self.samples, ensemble_size, replace=False)
 
         return super().__post_init__()
 
