@@ -22,11 +22,13 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, InitVar
 from typing import Callable, Mapping, Optional, Tuple, Union, Any, Dict
 from numbers import Number
+from pathlib import Path
 
 import pandas as pd
 import numpy as np
 from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint
 import seaborn as sns
+import h5py
 
 from climada.hazard import Hazard
 from climada.entity import Exposures, ImpactFuncSet
@@ -185,6 +187,37 @@ class Output:
     params: Mapping[str, Number]
     target: Number
 
+    def to_hdf5(self, filepath: Union[Path, str], mode:str = "x"):
+        """Write the output into an H5 file
+
+        This stores the data as attributes because we only store single numbers, not
+        arrays
+
+        Parameters
+        ----------
+        filepath : Path or str
+            The filepath to store the data.
+        mode : str (optional)
+            The mode for opening the file. Defaults to ``x`` (Create file, fail if
+            exists).
+        """
+        with h5py.File(filepath, mode=mode) as file:
+            # Store target
+            grp = file.create_group("base")
+            grp.attrs["target"] = self.target
+
+            # Store params
+            grp_params = grp.create_group("params")
+            for p_name, p_val in self.params.items():
+                grp_params.attrs[p_name] = p_val
+
+    @classmethod
+    def from_hdf5(cls, filepath: Union[Path, str]):
+        """Create an output object from an H5 file"""
+        with h5py.File(filepath) as file:
+            target = file["base"].attrs["target"]
+            params = dict(file["base"]["params"].attrs.items())
+            return cls(params=params, target=target)
 
 @dataclass
 class OutputEvaluator:

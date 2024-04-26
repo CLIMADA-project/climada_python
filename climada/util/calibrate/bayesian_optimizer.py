@@ -24,6 +24,7 @@ from numbers import Number
 from itertools import combinations, repeat
 from collections import deque, namedtuple
 import logging
+from pathlib import Path
 
 import pandas as pd
 import numpy as np
@@ -38,6 +39,26 @@ from .base import Input, Output, Optimizer, OutputEvaluator
 LOGGER = logging.getLogger(__name__)
 
 
+@dataclass
+class _FakeConstraint:
+    """Fake the behavior of the constrait for cycling the BayesianOutputOptimizer"""
+
+    results: np.ndarray
+
+    @property
+    def lb(self):
+        """Return the lower bound"""
+        return np.array([0])
+
+    def allowed(self, values):
+        """Return if the values are allowed. This only mocks the true behavior"""
+        if self.results.shape != values.shape:
+            raise ValueError("Inserting wrong constraint values")
+        return self.results
+
+
+# TODO: Add read/write method
+# TODO: Export this class
 @dataclass
 class BayesianOptimizerOutput(Output):
     """Output of a calibration with :py:class:`BayesianOptimizer`
@@ -82,6 +103,59 @@ class BayesianOptimizerOutput(Output):
         # Rename index and return
         data.index.rename("Iteration", inplace=True)
         return data
+
+    def to_hdf5(self, filepath: Union[Path, str], mode: str = "x"):
+        """Write this output to an H5 file"""
+        # Write base class information
+        super().to_hdf5(filepath=filepath, mode=mode)
+
+        # Write parameter space
+        p_space_df = self.p_space_to_dataframe()
+        p_space_df.to_hdf(filepath, mode="a", key="p_space")
+
+    @classmethod
+    def from_hdf5(cls, filepath: Union[Path, str]):
+        """Read BayesianOptimizerOutput from an H5 file
+
+        Warning
+        -------
+        This results in an object with broken :py:attr:`p_space` object. Do not further
+        modify this parameter space. This function is only intended to load the
+        parameter space again for analysis/plotting.
+        """
+        output = Output.from_hdf5(filepath)
+        p_space_df = pd.read_hdf(filepath, mode="r", key="p_space")
+        p_space_df["Calibration", "Target"] = -p_space_df[
+            "Calibration", "Cost Function"
+        ]
+
+        # Reorganize data
+        bounds = {param: (np.nan, np.nan) for param in p_space_df["Parameters"].columns}
+        constraint = None
+        if "Constraints Function" in p_space_df["Calibration"].columns:
+            constraint = _FakeConstraint(
+                p_space_df["Calibration", "Allowed"].to_numpy()
+            )
+
+        p_space = TargetSpace(
+            target_func=lambda x: x,
+            pbounds=bounds,
+            constraint=constraint,
+            allow_duplicate_points=True,
+        )
+        for _, row in p_space_df.iterrows():
+            constraint_value = (
+                None
+                if constraint is None
+                else row["Calibration", "Constraints Function"]
+            )
+            p_space.register(
+                params=row["Parameters"].to_numpy(),
+                target=row["Calibration", "Target"],
+                constraint_value=constraint_value,
+            )
+
+        return cls(params=output.params, target=output.target, p_space=p_space)
 
     def plot_p_space(
         self,
@@ -685,14 +759,18 @@ class BayesianOptimizerOutputEvaluator(OutputEvaluator):
                 # Plot defaults
                 color_hist = plot_hist_kws.pop("color", "tab:orange")
                 alpha_hist = plot_hist_kws.pop("alpha", 0.3)
+                bins = plot_hist_kws.pop("bins", 40)
+                label = plot_hist_kws.pop("label", "Hazard intensity\noccurence")
 
+                # Histogram plot
                 ax2 = ax.twinx()
                 ax2.hist(
                     haz_vals.data,
-                    bins=40,
+                    bins=bins,
                     color=color_hist,
                     alpha=alpha_hist,
-                    label="Hazard intensity\noccurence",
+                    label=label,
+                    **plot_hist_kws,
                 )
                 ax2.set(ylabel="Hazard intensity occurence (#Exposure points)")
                 ax.axvline(
