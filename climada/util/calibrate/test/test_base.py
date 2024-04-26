@@ -20,6 +20,8 @@ Tests for calibration module
 
 import unittest
 from unittest.mock import patch, create_autospec, MagicMock
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 import numpy as np
 import numpy.testing as npt
@@ -205,6 +207,20 @@ class TestOptimizer(unittest.TestCase):
         )
         self.optimizer = ConcreteOptimizer(self.input)
 
+
+class TestOuput(unittest.TestCase):
+    """Test the optimizer output"""
+
+    def test_cycle(self):
+        """Test if cycling an output object works"""
+        output = Output(params={"p1": 1.0, "p_2": 10}, target=2.0)
+        with TemporaryDirectory() as tmpdir:
+            outfile = Path(tmpdir, "out.h5")
+            output.to_hdf5(outfile)
+            self.assertTrue(outfile.is_file())
+            output_2 = Output.from_hdf5(outfile)
+        self.assertEqual(output.target, output_2.target)
+        self.assertDictEqual(output.params, output_2.params)
 
 class TestOutputEvaluator(unittest.TestCase):
     """Test the output evaluator"""

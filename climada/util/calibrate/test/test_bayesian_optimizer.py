@@ -20,13 +20,14 @@ Tests for calibration module
 
 import unittest
 from unittest.mock import patch, MagicMock
+from tempfile import TemporaryDirectory
+from pathlib import Path
 
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 from bayes_opt import BayesianOptimization, Events
 from scipy.optimize import NonlinearConstraint
-import matplotlib.pyplot as plt
 from matplotlib.axes import Axes
 
 from climada.util.calibrate import Input, BayesianOptimizer, BayesianOptimizerController
@@ -185,8 +186,8 @@ class TestBayesianOptimizerController(unittest.TestCase):
 class TestBayesianOptimizerOutput(unittest.TestCase):
     """Tests for the output class of BayesianOptimizer"""
 
-    def test_p_space_to_dataframe(self):
-        """"""
+    def setUp(self):
+        """Create a default output"""
         bayes_opt = BayesianOptimization(
             f=lambda x: -(x**2),
             pbounds={"x": (-10, 10)},
@@ -198,13 +199,16 @@ class TestBayesianOptimizerOutput(unittest.TestCase):
         bayes_opt.probe({"x": 1.0}, lazy=False)
         bayes_opt.probe({"x": -0.9}, lazy=False)
 
-        output = BayesianOptimizerOutput(
+        self.output = BayesianOptimizerOutput(
             params=bayes_opt.max["params"],
             target=bayes_opt.max["target"],
             p_space=bayes_opt.space,
         )
-        self.assertDictEqual(output.params, {"x": 1.0})
-        self.assertEqual(output.target, -1.0)
+
+    def test_p_space_to_dataframe(self):
+        """"""
+        self.assertDictEqual(self.output.params, {"x": 1.0})
+        self.assertEqual(self.output.target, -1.0)
 
         idx = pd.MultiIndex.from_tuples(
             [
@@ -220,7 +224,19 @@ class TestBayesianOptimizerOutput(unittest.TestCase):
         df["Calibration", "Constraints Function"] = df["Parameters", "x"]
         df["Calibration", "Allowed"] = [True, True, False]
         df.index.rename("Iteration", inplace=True)
-        pd.testing.assert_frame_equal(output.p_space_to_dataframe(), df)
+        pd.testing.assert_frame_equal(self.output.p_space_to_dataframe(), df)
+
+    def test_cycle(self):
+        """Check if the output can be cycled to produce the same p_space_df"""
+        with TemporaryDirectory() as tmpdir:
+            outpath = Path(tmpdir, "file.h5")
+            self.output.to_hdf5(outpath)
+            self.assertTrue(outpath.is_file())
+
+            output = BayesianOptimizerOutput.from_hdf5(outpath)
+        pd.testing.assert_frame_equal(
+            self.output.p_space_to_dataframe(), output.p_space_to_dataframe()
+        )
 
     def test_plot_p_space(self):
         """Test plotting of different parameter combinations"""
