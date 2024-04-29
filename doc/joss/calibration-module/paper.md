@@ -125,7 +125,7 @@ def calibrate(hazard: Hazard, exposure: Exposure, impact_data: pd.DataFrame):
     output_evaluator.plot_impf_variability(select_best(p_space_df, 0.03))
 ```
 
-In a tutorial, we use data on tropical cyclone (TC) damages in the North Atlantic basin between 2010 and 2017 from the Emergence Events Database EM-DAT [@emdat].
+In a tutorial, we use data on tropical cyclone (TC) damages in the North Atlantic basin between 2010 and 2017 from the Emergence Events Database EM-DAT [@delforge_em-dat_2023].
 As hazard event set we use the associated TC tracks from IBTrACS [@knapp_international_2010] and the windfield model by @holland_revised_2008.
 As exposure, we use asset values estimated from gross domestic product, population distribution, and nightlight intensity [@eberenz_asset_2020].
 Executing the calibration with these data and the above settings yields plots for the sampled parameter space (see \autoref{fig:pspace}) and impact functions (see \autoref{fig:impfs}).
