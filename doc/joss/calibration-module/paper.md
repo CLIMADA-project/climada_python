@@ -30,8 +30,8 @@ bibliography: paper.bib
 # Summary
 
 Impact functions model the vulnerability of people and assets exposed to weather and climate hazards.
-Given probabilistic hazard event sets or weather forecasts, they therefore enable the computation of associated risks or impacts, respectively.
-Because impact functions are difficult to determine on larger spatial and temporal scales of interest, they are often calibrated using hazard and impact data from past events.
+Given probabilistic hazard event sets or weather forecasts, they enable the computation of associated risks or impacts, respectively.
+Because impact functions are difficult to determine on larger spatial and temporal scales of interest, they are often calibrated using hazard, exposure, and impact data from past events.
 We present a module for calibrating impact functions based on such data using established calibration techniques like Bayesian optimization.
 It is implemented as submodule of the climate risk modeling platform CLIMADA and fully integrates into its workflow.
 
@@ -44,7 +44,7 @@ One major source of uncertainty in such computations is the vulnerability [@roug
 Typically modeled as impact function that yields the percentage of affected exposure depending on hazard intensity, vulnerability is difficult to determine *a prioi*.
 Using hazard footprints, exposure, and recorded impacts from past events, researchers therefore employ calibration techniques to estimate unknown impact functions and use these functions for future risk projections or impact forecasts [@eberenz_regional_2021; @luthi_globally_2021; @welker_comparing_2021; @roosli_towards_2021; @kam_impact-based_2023; @Schmid2023a; @riedel_fluvial_2024].
 
-CLIMADA is a widely used framework for calculating weather- and climate-related impacts and risks [@aznar-siguan_climada_2019].
+CLIMADA is a widely used framework for calculating weather- and climate-related impacts and risks [@aznar-siguan_climada_2019; @gabriela_aznar_siguan_2023_8383171].
 The aforementioned works calibrated impact functions with different optimization algorithms within the CLIMADA ecosystem, but lack a consistent implementation of these algorithms.
 OASIS, another well-adopted loss modeling framework, also does not feature tools for impact function calibration, and regards vulnerability solely as model input [@oasis].
 With the proposed calibration module, we aim at unifying the approaches to impact function calibration, while providing an extensible structure that can be easily adjusted to particular applications.
@@ -62,7 +62,7 @@ This only requires minimal user input for indicating the sampling density.
 
 # Example Code
 
-Given a hazard event set, and exposure, and associated impact data in the appropriate CLIMADA dats structures, the calibration input can quickly be defined.
+Given a hazard event set, and exposure, and associated impact data in the appropriate CLIMADA data structures, the calibration input can quickly be defined.
 Users have to supply a cost function, the parameter space bounds, a function that creates an impact function from the estimated parameter set, and a function that transforms a CLIMADA ``Impact`` object into the same structure as the input impact data.
 
 ```python
