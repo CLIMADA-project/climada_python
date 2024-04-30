@@ -12,7 +12,7 @@ authors:
     affiliation: "1, 2"
     corresponding: true
   - name: Chahan M. Kropf
-    orcid: 0000-0000-0000-0000
+    orcid: 0000-0002-3761-2292
     affiliation: "1, 2"
   - name: Timo Schmid
     orcid: 0000-0000-0000-0000
@@ -45,8 +45,8 @@ Typically modeled as impact function that yields the percentage of affected expo
 Using hazard footprints, exposure, and recorded impacts from past events, researchers therefore employ calibration techniques to estimate unknown impact functions and use these functions for future risk projections or impact forecasts [@eberenz_regional_2021; @luthi_globally_2021; @welker_comparing_2021; @roosli_towards_2021; @kam_impact-based_2023; @Schmid2023a; @riedel_fluvial_2024].
 
 CLIMADA is a widely used framework for calculating weather- and climate-related impacts and risks [@aznar-siguan_climada_2019; @gabriela_aznar_siguan_2023_8383171].
-The aforementioned works calibrated impact functions with different optimization algorithms within the CLIMADA ecosystem, but lack a consistent implementation of these algorithms.
-OASIS, another well-adopted loss modeling framework, also does not feature tools for impact function calibration, and regards vulnerability solely as model input [@oasis].
+The aforementioned studies calibrate impact functions with different optimization algorithms within the CLIMADA ecosystem, but lack a consistent implementation of these algorithms.
+OASIS LMF, another well-adopted loss modeling framework, also does not feature tools for impact function calibration, and regards vulnerability solely as model input [@oasis].
 With the proposed calibration module, we aim at unifying the approaches to impact function calibration, while providing an extensible structure that can be easily adjusted to particular applications.
 
 # Module Structure
