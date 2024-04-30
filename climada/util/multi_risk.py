@@ -13,10 +13,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle impact_yearsets
 """
 import itertools
-import copy
 import datetime
 import warnings
-from itertools import product
+import copy
 
 import numpy as np
 import pandas as pd
@@ -73,6 +72,7 @@ def find_common_time_definition(dates):
     resolutions = []
 
     for date_array in dates:
+        date_array = np.unique(date_array)
         if len(date_array) == 1:
             warnings.warn("Array with a single date encountered. It will not contribute to the common time definition.")
             continue
@@ -129,7 +129,7 @@ def upscale_dates(impact, by='year'):
     return imp
 
 
-def aggregate_impact_by_date(impact, how='sum', exp=None):
+def aggregate_events(impact, how='sum', exp=None, by="date"):
     """
     Aggregate events to have lower resolution. Maximum impact per year
     at each exposure point is exposure value if exp is not None.
@@ -141,7 +141,7 @@ def aggregate_impact_by_date(impact, how='sum', exp=None):
     how : How to aggregate impacts, options are 'sum' or 'max'
     exp : Exposure
         Exposure of Impact to cap the impact value at the value of the exposure
-
+    by : Attribute to use to aggregate events. Options are "date" or "event_name"
     Raises
     ------
     AttributeError
@@ -154,16 +154,27 @@ def aggregate_impact_by_date(impact, how='sum', exp=None):
 
     """
     impact_upscaled_dates = copy.deepcopy(impact)
+    if by == "date":
+        aggr_ref = impact_upscaled_dates.date
+        arr_to_aggr = np.array(impact_upscaled_dates.date)
+        event_name = np.unique(impact_upscaled_dates.date)
+
+    elif by == "event_name":
+        aggr_ref = impact_upscaled_dates.event_name
+        arr_to_aggr = np.array(impact_upscaled_dates.event_name)
+        event_name = np.unique(impact_upscaled_dates.event_name)
+    else:
+        raise ValueError("Invalid by value. Events can be aggregated by 'date' or by 'event_name'")
     if how == 'sum':
-        mask = [np.ma.make_mask(np.array(impact_upscaled_dates.date) == event).astype(int)
-                for event in np.unique(impact_upscaled_dates.date)]
+        mask = [np.ma.make_mask(arr_to_aggr == event).astype(int)
+                for event in np.unique(aggr_ref)]
         mask_matrix = sp.sparse.csr_matrix(mask)
         imp_mat = mask_matrix.dot(impact_upscaled_dates.imp_mat)
 
     elif how == 'max':
         imp_mat = sp.sparse.csr_matrix(sp.sparse.vstack(
-            [impact_upscaled_dates.imp_mat[(np.array(impact_upscaled_dates.date) == date).astype(bool)].max(axis=0)
-             for date in np.unique(impact_upscaled_dates.date)]))
+            [impact_upscaled_dates.imp_mat[(arr_to_aggr == event).astype(bool)].max(axis=0)
+             for event in np.unique(aggr_ref)]))
     else:
         warnings.warn("Unsupported value for 'how' parameter. Only 'sum' and 'max' methods are currently supported.")
 
@@ -177,7 +188,6 @@ def aggregate_impact_by_date(impact, how='sum', exp=None):
     at_event, eai_exp, aai_agg = ImpactCalc.risk_metrics(imp_mat, frequency)
     date = np.unique(impact_upscaled_dates.date)
     event_id = np.arange(1, len(at_event) + 1)
-    event_name = np.unique(event_id)
     impact_aggr = Impact(
         event_id=event_id,
         event_name=event_name,
@@ -198,7 +208,8 @@ def aggregate_impact_by_date(impact, how='sum', exp=None):
 
 def fill_impact_gaps(impact_dict):
     """
-    Fill in the gaps in impact of each impact in impact_dict to have the same events and coordinates.
+    Fill in the gaps in impact of each impact in impact_dict to have the same events and coordinates between
+    impacts.
 
     Parameters
     ----------
@@ -228,7 +239,7 @@ def fill_impact_gaps(impact_dict):
         new_mat = lil_matrix((len(all_dates), len(all_coords)))
 
         # Step 3: Fill the new matrix with the data from the impact
-        for date, coord, data in zip(imp.date[imp.imp_mat.nonzero()[0]],
+        for date, coord, data in zip(np.array(imp.date)[imp.imp_mat.nonzero()[0]],
                                      imp.coord_exp[imp.imp_mat.nonzero()[1]], imp.imp_mat.data):
 
             new_mat[date_mapping[date], coord_mapping[tuple(coord)]] = data
@@ -252,9 +263,7 @@ def fill_impact_gaps(impact_dict):
     return filled_impacts
 
 
-import itertools
-
-def calculate_combinations_dict(impact_dict, how='sum', by='date', exp=None, combinations=None,combination_type='all'):
+def calculate_combinations_dict(impact_dict, how='sum', by='date', exp=None, combination_type='all'):
     """
     Calculates combinations of impacts from a dictionary.
 
@@ -297,6 +306,71 @@ def calculate_combinations_dict(impact_dict, how='sum', by='date', exp=None, com
     return combined_impacts
 
 
+def get_indices(impact, n_samples, list_string):
+    """Return the indices of the event names ordered based on the given lists of strings."""
+
+    n_samples = int(n_samples)
+
+    indices = {str1: np.unique([i for i, elem in enumerate(impact.event_name) if
+                      (str(str1) in elem)]) for str1 in list_string}
+
+    indices = [np.random.choice(indices[str1]) for str1 in list_string for
+               n in range(n_samples)]
+
+    return indices
+
+def order_events_by_indices(impact, indices):
+    """
+    Order event names based on given strings contained in the event names.
+
+    Parameters
+    ----------
+    impact: Impact
+        with event_name based on the given strings
+    indices : indices by which to order the events
+
+    Raises
+    ------
+    AttributeError
+        If no list is providing
+
+    Returns
+    -------
+    impact : Impact
+        Impact yearset.
+
+    """
+    impact_ordered = Impact()
+    impact_ordered.imp_mat = impact.imp_mat[indices]
+    impact_ordered.event_name = [impact.event_name[index] for index in indices]
+    impact_ordered.event_id = impact.event_id[indices]
+    frequency = impact.frequency[indices]
+    impact_ordered.frequency = frequency*(len(impact.event_id)/len(impact_ordered.event_id))
+    impact_ordered.at_event = impact.at_event[indices]
+    impact_ordered.aai_agg = np.median(impact_ordered.at_event)
+    impact_ordered.coord_exp = impact.coord_exp
+    impact_ordered.date = impact.date[indices]
+    return impact_ordered
+
+
+def sample_events(impact, event_names, n_samples, by="event_name"):
+    """
+    Sample events based on common event names
+       Parameters
+       ----------
+        impact: Impact object
+        event_names: Event names to sample from
+        n_samples: number of samples to create
+        Returns
+        -------
+        combined_impacts : dict
+            Dictionary of combined impacts with hazard keys
+        """
+    indices = get_indices(impact, n_samples, event_names)
+    impact_ordered = order_events_by_indices(impact, indices)
+    return impact_ordered
+
+
 def combine_impacts(impact_list, how='sum', by='date', exp=None):
     """
     Parameters
@@ -323,17 +397,18 @@ def combine_impacts(impact_list, how='sum', by='date', exp=None):
             raise ValueError("imp_mat contains only zero values")
 
         # Check if all imp_mat are of the same shape
-        if np.any(imp.date != imp0.date) and by=='date':
-            raise ValueError("All impacts must have the same dates to be combined by date. Use the method fill_impact_gaps"
-                             "first.")
-        if np.any(imp.event_name != imp0.event_name) and by=='event_name':
-            raise ValueError("All impacts must have the same event_name to be combined by event_name")
-
-        if np.any(imp.event_id != imp0.event_id) and by == 'event_id':
-            raise ValueError("All impacts must have the same event_id to be combined by event_id")
+        if by == 'date' and np.any(imp.date != imp0.date):
+            raise ValueError("All impacts must have the same dates to be combined by date. "
+                             "Use the method fill_impact_gaps"
+                             "or select a common subset by putting the option only_common_events=True.")
+        if by == 'event_name' and np.any(imp.event_name != imp0.event_name):
+            raise ValueError("All impacts must have the same event_name to be combined by event_name. "
+                             "Use the method fill_impact_gaps"
+                             "or select a common subset by putting the option only_common_events=True.")
 
         if np.any(imp.coord_exp != imp0.coord_exp):
-            raise ValueError("All impacts must have the same coordinates to be combined. Use the method fill_impact_gaps"
+            raise ValueError("All impacts must have the same coordinates to be combined. "
+                             "Use the method fill_impact_gaps"
                              "first.")
 
         if imp.unit != imp0.unit:
@@ -341,14 +416,14 @@ def combine_impacts(impact_list, how='sum', by='date', exp=None):
                              "affecting exposures with different unit, you may normalize the impact first.")
 
     if by == 'event_name' or by == 'date':
-        aggr_attr = {'event_name': imp.event_name, 'date':imp.date}
+        aggr_attr = {'event_name': imp.event_name, 'date': imp.date}
         unique_elements = np.unique(aggr_attr[by])
         # Create a dictionary mapping unique elements to integers
         element_to_int = {element: i + 1 for i, element in enumerate(unique_elements)}
 
         # Map unique elements to integers using the dictionary
         imp.event_id = np.array([element_to_int[element] for element in aggr_attr[by]])
-    elif by != 'event_id':
+    else:
         raise NotImplementedError("This method is not implemented to combine impacts.")
 
     if how == 'sum':
@@ -404,6 +479,55 @@ def combine_impacts(impact_list, how='sum', by='date', exp=None):
         frequency_unit="1/year",
     )
     return impact_aggr
+
+
+def find_common_event_names(impact_list):
+    """
+    Finds the common event names across an initial impact and additional impacts provided in a list or dictionary.
+    This function is useful for identifying simultaneous events affecting the same exposure.
+
+    Parameters
+    ----------
+    impact : Impact object
+        An initial impact object whose event names are considered.
+    impact_list : list or dict of Impact objects
+        Additional impacts to compare with the initial impact.
+
+    Returns
+    -------
+    common_event_names : set
+        A set of event names that are common across all provided impacts.
+    """
+    if isinstance(impact_list, dict):
+        # If it's a dictionary, use the values
+        value_iterator = iter(impact_list.values())
+    elif isinstance(impact_list, list):
+        # If it's a list, use the list itself
+        value_iterator = iter(impact_list)
+    else:
+        raise TypeError("The input must be a dictionary or a list")
+
+    try:
+        # Get the set of event names from the first item
+        common_event_names = set(next(value_iterator).event_name)
+    except StopIteration:
+        # Return an empty set if the collection is empty
+        return set()
+
+    # Perform intersection with the sets from all other items
+    for item in value_iterator:
+        common_event_names.intersection_update(set(item.event_name))
+
+    return list(common_event_names)
+
+
+def select_common_events(impact_dict):
+    impact_dict_copy = copy.deepcopy(impact_dict)
+    common_event_names = find_common_event_names(impact_dict)
+    for impact in impact_dict:
+        impact_dict_copy[impact] = impact_dict[impact].select(event_names=common_event_names)
+    return impact_dict_copy
+
 
 def mask_single_hazard_impact(impact, impact_list):
     """ Mask points in impact matrix of an impact where other impacts provided in impact_list do not cause impacts
@@ -487,6 +611,7 @@ def corr_btw_hazards(hazard_dict, temporal=True, spatial=False):
         df = pd.DataFrame.from_dict({hazard: np.array(filled_intensities[hazard].todense().flatten())[0]
                                      for hazard in filled_intensities})
     return df.corr()
+
 
 def corr_btw_impacts(impact_dict, temporal=True, spatial=False):
     """
