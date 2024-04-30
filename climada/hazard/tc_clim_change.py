@@ -117,7 +117,7 @@ def get_knutson_scaling_factor(
 
     knutson_data = get_knutson_data()
 
-    nrcps, gmst_years = gmst_info['gmst_data'].shape
+    num_of_rcps, gmst_years = gmst_info['gmst_data'].shape
 
     if ((base_start_year <= gmst_info['gmst_start_year']) or
         (base_start_year >= gmst_info['gmst_end_year']) or
@@ -142,9 +142,9 @@ def get_knutson_scaling_factor(
         knutson_value = 1
 
     beta = 0.5 * log(0.01 * knutson_value + 1)
-    tc_properties = np.empty((nrcps, gmst_years))
+    tc_properties = np.empty((num_of_rcps, gmst_years))
 
-    for i in range(nrcps):
+    for i in range(num_of_rcps):
         for j in range(gmst_years):
             tc_properties[i, j] = exp(beta * gmst_info['gmst_data'][i, j])
 
@@ -153,8 +153,8 @@ def get_knutson_scaling_factor(
     base_start_index = base_start_year - gmst_info['gmst_start_year']
     base_end_index = base_end_year - gmst_info['gmst_start_year']
 
-    baseline_properties = np.empty(nrcps)
-    for i in range(nrcps):
+    baseline_properties = np.empty(num_of_rcps)
+    for i in range(num_of_rcps):
         baseline_properties[i] = mean(
             tc_properties[i, base_start_index:base_end_index + 1]
             )
@@ -163,7 +163,7 @@ def get_knutson_scaling_factor(
     # (the last decade hits the end of the SST series so is calculated differently)
 
     mid_years = np.empty(windows_props['windows'])
-    predicted_property_pcs = np.empty((windows_props['windows'], nrcps))
+    predicted_property_pcs = np.empty((windows_props['windows'], num_of_rcps))
 
     count = 0
     for window in range(windows_props['windows']):
@@ -175,7 +175,7 @@ def get_knutson_scaling_factor(
             gmst_years - mid_index - 1,
             mid_index
         )
-        for i in range(nrcps):
+        for i in range(num_of_rcps):
             ind1 = mid_index - actual_smoothing
             ind2 = mid_index + actual_smoothing + 1
             prediction = mean(tc_properties[i, ind1:ind2])
