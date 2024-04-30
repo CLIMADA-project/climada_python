@@ -79,11 +79,18 @@ def get_knutson_scaling_factor(
         tropical cyclones), 'cat45' (frequencies of category 4 and 5 tropical cyclones)
         and 'intensity' (mean intensity of all tropical cyclones)
     percentile: str
-        percentiles of Knutson et al. 2020 estimates, representing the model
-        uncertainty in future changes in TC activity. These estimates come from a 
-        review of state-of-the-art literature and models. Please refer to the 
-        mentioned publications above for more details. Possible values are:
-            '5/10', '25', '50', '75', '90/95'
+        percentiles of Knutson et al. 2020 estimates, representing the model uncertainty
+        in future changes in TC activity. These estimates come from a review of state-of-the-art
+        literature and models. For the 'cat05' variable (i.e. frequency of all tropical cyclones)
+        the 5th, 25th, 50th, 75th and 95th percentiles are provided. For 'cat45' and 'intensity',
+        the provided percentiles are the 10th, 25th, 50th, 75th and 90th. Please refer to the
+        mentioned publications for more details.
+        possible percentiles:
+            '5/10' either the 5th or 10th percentile depending on variable (see text above)
+            '25' for the 25th percentile
+            '50' for the 50th percentile
+            '75' for the 75th percentile
+            '90/95' either the 90th or 95th percentile depending on variable  (see text above)
         Default: '50'
     basin : str
         region of interest, possible choices are:
@@ -107,7 +114,7 @@ def get_knutson_scaling_factor(
 
     base_start_year, base_end_year = baseline
     gmst_info = get_gmst_info()
-    
+
     knutson_data = get_knutson_data()
 
     nrcps, gmst_years = gmst_info['gmst_data'].shape
