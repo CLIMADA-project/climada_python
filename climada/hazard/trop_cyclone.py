@@ -417,9 +417,11 @@ class TropCyclone(Hazard):
 
             bas_sel = np.array(tc_cc.basin) == basin
 
-            scale_year_rcp_03 = (scale_year_rcp_05 * np.sum(tc_cc.frequency[sel_cat05 & bas_sel]) -
-                                scale_year_rcp_45 * np.sum(tc_cc.frequency[sel_cat45 & bas_sel])
-                                ) / np.sum(tc_cc.frequency[sel_cat03 & bas_sel])
+            cat_05_freqs_change = scale_year_rcp_05 * np.sum(tc_cc.frequency[sel_cat05 & bas_sel])
+            cat_45_freqs_change = scale_year_rcp_45 * np.sum(tc_cc.frequency[sel_cat45 & bas_sel])
+            cat_03_freqs = np.sum(tc_cc.frequency[sel_cat03 & bas_sel])
+
+            scale_year_rcp_03 = (cat_05_freqs_change-cat_45_freqs_change) / cat_03_freqs
 
             tc_cc.frequency[sel_cat03 & bas_sel] *= 1 + scale_year_rcp_03/100
             tc_cc.frequency[sel_cat45 & bas_sel] *= 1 + scale_year_rcp_45/100
