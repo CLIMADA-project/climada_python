@@ -47,7 +47,6 @@ class TestInterpolation(unittest.TestCase):
         self.assertEqual(imp_fun.haz_type, 'TC')
         self.assertEqual(imp_fun.id, 2)
 
-
     def test_from_sigmoid(self):
         """Check default impact function: sigmoid function"""
         inten = (0, 100, 5)
@@ -59,6 +58,34 @@ class TestInterpolation(unittest.TestCase):
         self.assertTrue(np.array_equal(imp_fun.intensity, np.arange(0, 100, 5)))
         self.assertEqual(imp_fun.haz_type, 'RF')
         self.assertEqual(imp_fun.id, 2)
+
+    def test_from_poly_s_shape(self):
+        """Check default impact function: polynomial s-shape"""
+        inten = (0, 5, 1)
+        impf = ImpactFunc.from_poly_s_shape(
+            inten, threshold=0.2, half_point=1, upper_limit=0.8, exponent=4,
+            haz_type='RF', impf_id=2, intensity_unit='m'
+            )
+        correct_mdd = np.array([0, 0.4, 0.76995746, 0.79470418, 0.79843158])
+        self.assertTrue(np.array_equal(impf.paa, np.ones(5)))
+        np.testing.assert_array_almost_equal(impf.mdd, correct_mdd)
+        self.assertTrue(np.array_equal(impf.intensity, np.arange(0, 5, 1)))
+        self.assertEqual(impf.haz_type, 'RF')
+        self.assertEqual(impf.id, 2)
+        self.assertEqual(impf.intensity_unit, 'm')
+
+        # If threshold > half_point, mdd should all be 0
+        impf = ImpactFunc.from_poly_s_shape(
+            inten, threshold=2, half_point=1, upper_limit=0.8, exponent=4,
+            haz_type='RF', impf_id=2, intensity_unit='m'
+            )
+        correct_mdd = np.array([0, 0.4, 0.76995746, 0.79470418, 0.79843158])
+        self.assertTrue(np.array_equal(impf.paa, np.ones(5)))
+        np.testing.assert_array_almost_equal(impf.mdd, np.zeros(5))
+        self.assertTrue(np.array_equal(impf.intensity, np.arange(0, 5, 1)))
+        self.assertEqual(impf.haz_type, 'RF')
+        self.assertEqual(impf.id, 2)
+        self.assertEqual(impf.intensity_unit, 'm')
 
 # Execute Tests
 if __name__ == "__main__":
