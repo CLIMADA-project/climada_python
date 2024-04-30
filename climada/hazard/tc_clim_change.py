@@ -47,6 +47,11 @@ MAP_VARS_NAMES = {'cat05': 0, 'cat45': 1, 'intensity': 2}
 
 MAP_PERC_NAMES = {'5/10': 0, '25': 1, '50': 2, '75': 3, '90/95': 4}
 
+WINDOWS_PROPS = {
+    'windows': 21, 'start' : 2000,
+    'interval' : 5, 'smoothing' : 5
+    }
+
 def get_knutson_scaling_factor(
             variable: str='cat05',
             percentile: str='50',
@@ -106,12 +111,6 @@ def get_knutson_scaling_factor(
         times (indexes) and for RCPs 2.6, 4.5, 6.0 and 8.5 (columns).
     """
 
-    # this could become an input variable in the future
-    windows_props = {
-        'windows': 21, 'start' : 2000,
-        'interval' : 5, 'smoothing' : 5
-        }
-
     base_start_year, base_end_year = baseline
     gmst_info = get_gmst_info()
 
@@ -162,16 +161,16 @@ def get_knutson_scaling_factor(
     # loop over decades and calculate predicted_properties and fractional changes
     # (the last decade hits the end of the SST series so is calculated differently)
 
-    mid_years = np.empty(windows_props['windows'])
-    predicted_property_pcs = np.empty((windows_props['windows'], num_of_rcps))
+    mid_years = np.empty(WINDOWS_PROPS['windows'])
+    predicted_property_pcs = np.empty((WINDOWS_PROPS['windows'], num_of_rcps))
 
     count = 0
-    for window in range(windows_props['windows']):
-        mid_year = windows_props['start'] + (window) * windows_props['interval']
+    for window in range(WINDOWS_PROPS['windows']):
+        mid_year = WINDOWS_PROPS['start'] + (window) * WINDOWS_PROPS['interval']
         mid_years[window] = mid_year
         mid_index = mid_year - gmst_info['gmst_start_year']
         actual_smoothing = min(
-            windows_props['smoothing'],
+            WINDOWS_PROPS['smoothing'],
             gmst_years - mid_index - 1,
             mid_index
         )
