@@ -41,17 +41,11 @@ from math import log, exp
 import pandas as pd
 import numpy as np
 
-MAP_BASINS_NAMES = dict(
-    zip(['NA', 'WP', 'EP', 'NI', 'SI', 'SP'], range(6))
-    )
+MAP_BASINS_NAMES = {'NA': 0, 'WP': 1, 'EP': 2, 'NI': 3, 'SI': 4, 'SP': 5}
 
-MAP_VARS_NAMES = dict(
-    zip(['cat05', 'cat45', 'intensity'], range(3))
-    )
+MAP_VARS_NAMES = {'cat05': 0, 'cat45': 1, 'intensity': 2}
 
-MAP_PERC_NAMES = dict(
-    zip(['5/10', '25', '50', '75', '90/95'], range(5))
-    )
+MAP_PERC_NAMES = {'5/10': 0, '25': 1, '50': 2, '75': 3, '90/95': 4}
 
 def get_knutson_scaling_factor(
             percentile: str,
