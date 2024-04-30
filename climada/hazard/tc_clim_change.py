@@ -33,7 +33,7 @@ SOFTWARE.
 
 ---
 
-Define scaling parameters to model impact of climate change on tropical cyclones.
+Define scaling factors to model impact of climate change on tropical cyclones.
 """
 
 from statistics import mean
