@@ -54,9 +54,9 @@ def get_knutson_scaling_factor(
             baseline: tuple=(1982, 2022)
     ):
     """
-    This code combines data in Knutson et al. (2020) and GMST data
-    (historical and CMIP5 simulated) to produce TC projections for
-    4 RCPs and any historical baseline. The code uses GMST data
+    This code combines data in Knutson et al. (2020) and global mean surface
+    temperature (GMST) data (historical and CMIP5 simulated) to produce TC
+    projections for 4 RCPs and any historical baseline. The code uses GMST data
     implements to interpolate and extrapolate the Knutson data
     relative to the specified baseline time period for various RCPs
     with a log-linear model. The methodology was developed and explained 
