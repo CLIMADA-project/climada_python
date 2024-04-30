@@ -1,5 +1,5 @@
 ---
-title: 'A Module for Calibrating Impact Functions in the Climate Risk Modelling Platform CLIMADA'
+title: 'A Module for Calibrating Impact Functions in the Climate Risk Modeling Platform CLIMADA'
 tags:
   - Python
   - climate risk
@@ -33,7 +33,7 @@ Impact functions model the vulnerability of people and assets exposed to weather
 Given probabilistic hazard event sets or weather forecasts, they enable the computation of associated risks or impacts, respectively.
 Because impact functions are difficult to determine on larger spatial and temporal scales of interest, they are often calibrated using hazard, exposure, and impact data from past events.
 We present a module for calibrating impact functions based on such data using established calibration techniques like Bayesian optimization.
-It is implemented as submodule of the climate risk modeling platform CLIMADA and fully integrates into its workflow.
+It is implemented as submodule of the climate risk modeling platform CLIMADA [@gabriela_aznar_siguan_2023_8383171], and fully integrates into its workflow.
 
 # Statement of need
 
@@ -41,12 +41,12 @@ Natural hazards like storms, floods, droughts, and extreme temperatures will be 
 In 2022 alone, natural disasters affected 185 million people and caused economic losses of more than US$ 200 billion [@cred_2022_2023].
 Forecasting the impacts of imminent events as well as determining climate risk according to future socio-economic pathways is crucial for decision-making in societal, humanitarian, political, socio-economic, and ecological issues [@smith_human_2014].
 One major source of uncertainty in such computations is the vulnerability [@rougier_risk_2013].
-Typically modeled as impact function that yields the percentage of affected exposure depending on hazard intensity, vulnerability is difficult to determine *a prioi*.
+Typically modeled as impact function[^1] that yields the percentage of affected exposure depending on hazard intensity, vulnerability is difficult to determine *a prioi*.
 Using hazard footprints, exposure, and recorded impacts from past events, researchers therefore employ calibration techniques to estimate unknown impact functions and use these functions for future risk projections or impact forecasts [@eberenz_regional_2021; @luthi_globally_2021; @welker_comparing_2021; @roosli_towards_2021; @kam_impact-based_2023; @Schmid2023a; @riedel_fluvial_2024].
 
-CLIMADA is a widely used framework for calculating weather- and climate-related impacts and risks [@aznar-siguan_climada_2019; @gabriela_aznar_siguan_2023_8383171].
+CLIMADA is a widely used, open-source framework for calculating weather- and climate-related impacts and risks [@aznar-siguan_climada_2019], and for appraising the benefits of adaptation options [@bresch_climada_2021].
 The aforementioned studies calibrate impact functions with different optimization algorithms within the CLIMADA ecosystem, but lack a consistent implementation of these algorithms.
-OASIS LMF, another well-adopted loss modeling framework, also does not feature tools for impact function calibration, and regards vulnerability solely as model input [@oasis].
+OASIS LMF, another well-adopted, open-source loss modeling framework, also does not feature tools for impact function calibration, and regards vulnerability solely as model input [@oasis].
 With the proposed calibration module, we aim at unifying the approaches to impact function calibration, while providing an extensible structure that can be easily adjusted to particular applications.
 
 # Module Structure
@@ -63,7 +63,7 @@ This only requires minimal user input for indicating the sampling density.
 # Example Code
 
 Given a hazard event set, and exposure, and associated impact data in the appropriate CLIMADA data structures, the calibration input can quickly be defined.
-Users have to supply a cost function, the parameter space bounds, a function that creates an impact function from the estimated parameter set, and a function that transforms a CLIMADA ``Impact`` object into the same structure as the input impact data.
+Users have to supply a cost function, the parameter space bounds, a function that creates an impact function from the estimated parameter set, and a function that transforms a CLIMADA `Impact` object into the same structure as the input impact data.
 
 ```python
 import pandas as pd
@@ -72,6 +72,7 @@ from sklearn.metrics import mean_squared_log_error
 from climada.hazard import Hazard
 from climada.entity import Exposure, ImpactFuncSet, ImpfTropCyclone
 from climada.engine import Impact
+
 from climada.util.calibrate import (
     Input,
     BayesianOptimizer,
@@ -92,8 +93,8 @@ def calibrate(hazard: Hazard, exposure: Exposure, impact_data: pd.DataFrame):
             [ImpfTropCyclone.from_emanuel_usa(v_half=v_half, scale=scale)]
         )
 
-    def aggregate_impact_country_level(impact: Impact) -> pd.DataFrame:
-        """Aggregate modeled impacts and return as DataFrame"""
+    def aggregate_impact(impact: Impact) -> pd.DataFrame:
+        """Aggregate modeled impacts per region ID and return as DataFrame"""
         return impact.impact_at_reg()
 
     # Prepare the calibration input
@@ -104,7 +105,7 @@ def calibrate(hazard: Hazard, exposure: Exposure, impact_data: pd.DataFrame):
         bounds={"v_half": (25.8, 150), "scale": (0.01, 1)},
         cost_func=mean_squared_log_error,
         impact_func_creator=impact_function_tropical_cyclone,
-        impact_to_dataframe=aggregate_impact_country_level,
+        impact_to_dataframe=aggregate_impact,
     )
 
     # Execute the calibration
@@ -135,3 +136,5 @@ Executing the calibration with these data and the above settings yields plots fo
 ![Impact functions for tropical cyclone asset damages in the North Atlantic basin found with Bayesian optimization. The dark blue line shows the optimal function given by the parameter set noted with 'x' in \autoref{fig:pspace}. Light blue lines give the functions whose cost function value is not greater than 103% of the optimal function. The orange histogram denotes the hazard intensities observed.\label{fig:impfs}](impfs.png){ width=80% }
 
 # References
+
+[^1]: Other common names are "vulnerability function" or "damage function".
