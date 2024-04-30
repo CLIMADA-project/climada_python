@@ -185,7 +185,7 @@ class TestNightlight(unittest.TestCase):
             # compressed image to a gzip file
             with gzip.GzipFile(SYSTEM_DIR.joinpath(gzfile), 'wb') as f:
                 f.write(mem.getvalue())
-             
+
         try:
             # with arguments
             night, coord_nl, fn_light = nightlight.load_nightlight_noaa(ref_year=year, sat_name=sat_name)

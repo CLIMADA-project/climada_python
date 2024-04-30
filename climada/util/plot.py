@@ -36,6 +36,7 @@ from scipy.interpolate import griddata
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib import colormaps as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from shapely.geometry import box
 import cartopy.crs as ccrs
@@ -251,7 +252,7 @@ def _plot_scattered_data(method, array_sub, geo_coord, var_name, title,
 
 
 def geo_im_from_array(array_sub, coord, var_name, title,
-                      proj=None, smooth=True, axes=None, figsize=(9, 13), adapt_fontsize=True,
+                      proj=None, smooth=True, shapes=True, axes=None, figsize=(9, 13), adapt_fontsize=True,
                       **kwargs):
     """Image(s) plot defined in array(s) over input coordinates.
 
@@ -272,6 +273,9 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         coordinate reference system used in coordinates, by default None
     smooth : bool, optional
         smooth plot to RESOLUTIONxRESOLUTION, by default True
+    shapes : bool, optional
+        Overlay Earth's countries coastlines to matplotlib.pyplot axis.
+        The default is True
     axes : Axes or ndarray(Axes), optional
         by default None
     figsize : tuple, optional
@@ -311,7 +315,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if axes is None:
         proj_plot = proj
         if isinstance(proj, ccrs.PlateCarree):
-            # for PlateCarree, center plot around data's central lon 
+            # for PlateCarree, center plot around data's central lon
             # without overwriting the data's original projection info
             xmin, xmax = u_coord.lon_bounds(np.concatenate([c[:, 1] for c in list_coord]))
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
@@ -349,7 +353,8 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                          extent[2], extent[3]), crs=proj)
 
         # Add coastline to axis
-        add_shapes(axis)
+        if shapes:
+            add_shapes(axis)
         # Create colormesh, colorbar and labels in axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                      pad=0.1, axes_class=plt.Axes)
@@ -436,10 +441,10 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
             if cmap_name in ['Pastel1', 'Pastel2', 'Paired', 'Accent', 'Dark2',
                     'Set1', 'Set2', 'Set3', 'tab10', 'tab20', 'tab20b', 'tab20c']:
                 cmap = mpl.colors.ListedColormap(
-                    mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
+                    cm.get_cmap(cmap_name).colors[:array_sub_n]
                 )
             else:
-                cmap = mpl.cm.get_cmap(cmap_arg, array_sub_n)
+                cmap = cm.get_cmap(cmap_arg).resampled(array_sub_n)
         elif isinstance(cmap_arg, mpl.colors.ListedColormap):
             # If a user brings their own colormap it's probably qualitative
             cmap_name = 'defined by the user'
@@ -452,7 +457,7 @@ def geo_scatter_categorical(array_sub, geo_coord, var_name, title,
         # default qualitative colormap
         cmap_name = CMAP_CAT
         cmap = mpl.colors.ListedColormap(
-            mpl.cm.get_cmap(cmap_name).colors[:array_sub_n]
+            cm.get_cmap(cmap_name).colors[:array_sub_n]
         )
 
     if array_sub_n > cmap.N:
@@ -511,7 +516,7 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize
 
     Returns
     -------
-    fig, axis_sub : matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
+    fig, axis_sub, fontsize : matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot, int
     """
     if isinstance(num_sub, int):
         num_row, num_col = _get_row_col_size(num_sub)

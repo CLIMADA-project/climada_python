@@ -110,14 +110,12 @@ class TestPlot(unittest.TestCase):
             HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
             run_datetime=dt.datetime(2018,1,1),
             event_date=dt.datetime(2018,1,3))
-        haz1.centroids.lat += 0.6
-        haz1.centroids.lon -= 1.2
+        haz1.centroids.gdf.geometry = haz1.centroids.gdf.geometry.translate(-1.2, 0.6)
         haz2 = StormEurope.from_cosmoe_file(
             HAZ_DIR.joinpath('storm_europe_cosmoe_forecast_vmax_testfile.nc'),
             run_datetime=dt.datetime(2018,1,1),
             event_date=dt.datetime(2018,1,3))
-        haz2.centroids.lat += 0.6
-        haz2.centroids.lon -= 1.2
+        haz2.centroids.gdf.geometry = haz2.centroids.gdf.geometry.translate(-1.2, 0.6)
         #exposure
         data = {}
         data['latitude'] = haz1.centroids.lat
