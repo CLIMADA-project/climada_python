@@ -66,6 +66,7 @@ class TestInterpolation(unittest.TestCase):
             inten, threshold=0.2, half_point=1, upper_limit=0.8, exponent=4,
             haz_type='RF', impf_id=2, intensity_unit='m'
             )
+        # Correct values can be directly computed with the functions formula
         correct_mdd = np.array([0, 0.4, 0.76995746, 0.79470418, 0.79843158])
         self.assertTrue(np.array_equal(impf.paa, np.ones(5)))
         np.testing.assert_array_almost_equal(impf.mdd, correct_mdd)
