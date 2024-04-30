@@ -48,10 +48,10 @@ MAP_VARS_NAMES = {'cat05': 0, 'cat45': 1, 'intensity': 2}
 MAP_PERC_NAMES = {'5/10': 0, '25': 1, '50': 2, '75': 3, '90/95': 4}
 
 def get_knutson_scaling_factor(
-            percentile: str,
-            basin='NA',
-            variable='cat05',
-            baseline=(1982, 2022)
+            variable: str='cat05',
+            percentile: str='50',
+            basin: str='NA',
+            baseline: tuple=(1982, 2022)
     ):
     """
     This code combines data in Knutson et al. (2020) and GMST data
@@ -74,22 +74,20 @@ def get_knutson_scaling_factor(
 
     Parameters
     ----------
+    variable: int
+        variable of interest, possible choices are 'cat05' (frequencies of all
+        tropical cyclones), 'cat45' (frequencies of category 4 and 5 tropical cyclones)
+        and 'intensity' (mean intensity of all tropical cyclones)
     percentile: str
-        percentile of Knutson et al. 2020 estimates, representing the model
-        uncertainty in future changes in TC activity. These estimates come from a
-        review of state-of-the-art literature and models. As extreme percentiles,
-        the 5th, and 95th are reported for variable cat05 and the 10th and 90th
-        for cat45 and intensity. All three (cat05, cat45, intensity) report the
-        25th, 50th and 75th percentiles. Refer to the mentioned publications above
-        for more details. Possible values are:
+        percentiles of Knutson et al. 2020 estimates, representing the model
+        uncertainty in future changes in TC activity. These estimates come from a 
+        review of state-of-the-art literature and models. Please refer to the 
+        mentioned publications above for more details. Possible values are:
             '5/10', '25', '50', '75', '90/95'
         Default: '50'
     basin : str
         region of interest, possible choices are:
             'NA', 'WP', 'EP', 'NI', 'SI', 'SP'
-    variable: int
-        variable of interest, possible choices are
-        'cat05', 'cat45', 'intensity'
     baseline : tuple of int
         the starting and ending years that define the historical
         baseline. The historical baseline period must fall within

@@ -341,10 +341,10 @@ class TropCyclone(Hazard):
 
     def apply_climate_scenario_knu(
         self,
-        percentile: str,
-        rcp_scenario: int,
-        target_year: int,
-        baseline: tuple = (1982, 2022)
+        percentile: str='50',
+        rcp_scenario: int=45,
+        target_year: int=2050,
+        baseline: tuple=None
     ):
         """
         From current TC hazard instance, return new hazard set with future events
@@ -364,14 +364,12 @@ class TropCyclone(Hazard):
         Parameters
         ----------
         percentile: str
-            percentile of Knutson et al. 2020 estimates, representing the model
-            uncertainty in future changes in TC activity. These estimates come from a
-            review of state-of-the-art literature and models. As extreme percentiles,
-            the 5th and 95th are reported for variable cat05 and the 10th and 90th
-            for cat45 and intensity. All three (cat05, cat45, intensity) report the
-            25th, 50th and 75th percentiles. Refer to the mentioned publications above
-            for more details. Possible values are:
+            percentiles of Knutson et al. 2020 estimates, representing the model
+            uncertainty in future changes in TC activity. These estimates come from a 
+            review of state-of-the-art literature and models. Please refer to the 
+            mentioned publications above for more details. Possible values are:
                 '5/10', '25', '50', '75', '90/95'
+            Default: '50'
         rcp_scenario : int
             possible scenarios:
                 26 for RCP 2.6
@@ -379,9 +377,11 @@ class TropCyclone(Hazard):
                 60 for RCP 6.0
                 85 for RCP 8.5
         target_year : int
-            future year to be simulated, between 2000 and 2100.
+            future year to be simulated, between 2000 and 2100. Default: 2050.
         baseline : tuple of int
             the starting and ending years that define the historical baseline.
+            Default is None as this depends on the years coverage of the underlying
+            event set.
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
