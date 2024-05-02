@@ -33,9 +33,9 @@ Impact functions model the vulnerability of people and assets exposed to weather
 Given probabilistic hazard event sets or weather forecasts, they enable the computation of associated risks or impacts, respectively.
 Because impact functions are difficult to determine on larger spatial and temporal scales of interest, they are often calibrated using hazard, exposure, and impact data from past events.
 We present a module for calibrating impact functions based on such data using established calibration techniques like Bayesian optimization.
-It is implemented as submodule of the climate risk modeling platform CLIMADA [@gabriela_aznar_siguan_2023_8383171], and fully integrates into its workflow.
+It is implemented as Python submodule `climada.util.calibrate` of the climate risk modeling platform CLIMADA [@gabriela_aznar_siguan_2023_8383171], and fully integrates into its workflow.
 
-# Statement of need
+# Statement of Need
 
 Natural hazards like storms, floods, droughts, and extreme temperatures will be exacerbated by climate change.
 In 2022 alone, natural disasters affected 185 million people and caused economic losses of more than US$ 200 billion [@cred_2022_2023].
