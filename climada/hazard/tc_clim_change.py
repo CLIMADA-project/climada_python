@@ -48,8 +48,10 @@ MAP_VARS_NAMES = {'cat05': 0, 'cat45': 1, 'intensity': 2}
 MAP_PERC_NAMES = {'5/10': 0, '25': 1, '50': 2, '75': 3, '90/95': 4}
 
 WINDOWS_PROPS = {
-    'windows': 21, 'start' : 2000,
-    'interval' : 5, 'smoothing' : 5
+    'windows': 21,
+    'start': 2000,
+    'interval': 5,
+    'smoothing': 5
     }
 
 def get_knutson_scaling_factor(
@@ -126,8 +128,8 @@ def get_knutson_scaling_factor(
         raise ValueError("The selected historical baseline falls outside"
                          "the GMST data period 1880-2100")
 
-    # calculate beta and annual values from this knutson_value
-    # (these annual values correspond to y in the paper)
+    base_start_index = base_start_year - gmst_info['gmst_start_year']
+    base_end_index = base_end_year - gmst_info['gmst_start_year']
 
     var_id = MAP_VARS_NAMES[variable]
     perc_id = MAP_PERC_NAMES[percentile]
@@ -140,53 +142,41 @@ def get_knutson_scaling_factor(
         # no scaling factors are defined for this basin. Most likely SA.
         knutson_value = 1
 
+    # calculate beta and annual values from this knutson_value
+    # (these annual values correspond to y in the paper)
+
     beta = 0.5 * log(0.01 * knutson_value + 1)
-    tc_properties = np.empty((num_of_rcps, gmst_years))
-
-    for i in range(num_of_rcps):
-        for j in range(gmst_years):
-            tc_properties[i, j] = exp(beta * gmst_info['gmst_data'][i, j])
-
+    # num_of_rcps x num of gmst years
+    tc_properties = np.exp(beta * gmst_info['gmst_data'])
+    baseline = np.array([
+        np.mean(tc_properties[rcp_num, base_start_index:base_end_index + 1])
+        for rcp_num in range(num_of_rcps)
+    ])
     # calculate baselines for each RCP as averages of the annual values
-
-    base_start_index = base_start_year - gmst_info['gmst_start_year']
-    base_end_index = base_end_year - gmst_info['gmst_start_year']
-
-    baseline_properties = np.empty(num_of_rcps)
-    for i in range(num_of_rcps):
-        baseline_properties[i] = mean(
-            tc_properties[i, base_start_index:base_end_index + 1]
-            )
 
     # loop over decades and calculate predicted_properties and fractional changes
     # (the last decade hits the end of the SST series so is calculated differently)
 
-    mid_years = np.empty(WINDOWS_PROPS['windows'])
-    predicted_property_pcs = np.empty((WINDOWS_PROPS['windows'], num_of_rcps))
+    mid_years = WINDOWS_PROPS['start'] + np.arange(WINDOWS_PROPS['windows'])*WINDOWS_PROPS['interval']
+    predicted_change = np.empty((WINDOWS_PROPS['windows'], num_of_rcps))
 
-    count = 0
     for window in range(WINDOWS_PROPS['windows']):
-        mid_year = WINDOWS_PROPS['start'] + (window) * WINDOWS_PROPS['interval']
-        mid_years[window] = mid_year
-        mid_index = mid_year - gmst_info['gmst_start_year']
+        mid_index = mid_years[window] - gmst_info['gmst_start_year']
         actual_smoothing = min(
             WINDOWS_PROPS['smoothing'],
             gmst_years - mid_index - 1,
             mid_index
         )
-        for i in range(num_of_rcps):
-            ind1 = mid_index - actual_smoothing
-            ind2 = mid_index + actual_smoothing + 1
-            prediction = mean(tc_properties[i, ind1:ind2])
-            predicted_property_pcs[count, i] = 100 * (
-                prediction - baseline_properties[i]
-                ) / baseline_properties[i]
-        count += 1
+        ind1 = mid_index - actual_smoothing
+        ind2 = mid_index + actual_smoothing + 1
 
-    future_change_variable = pd.DataFrame(predicted_property_pcs,
-                                          index=mid_years,
-                                          columns=gmst_info['rcps'])
-    return future_change_variable
+        prediction = np.mean(tc_properties[:, ind1:ind2], 1)
+        predicted_change[window] = ((prediction - baseline) /
+                                    baseline) * 100
+
+    return pd.DataFrame(predicted_change,
+                        index=mid_years,
+                        columns=gmst_info['rcps'])
 
 def get_gmst_info():
     """
