@@ -36,10 +36,12 @@ SOFTWARE.
 Define scaling factors to model impact of climate change on tropical cyclones.
 """
 
-from statistics import mean
-from math import log, exp
+from math import log
+import logging
 import pandas as pd
 import numpy as np
+
+LOGGER = logging.getLogger(__name__)
 
 MAP_BASINS_NAMES = {'NA': 0, 'WP': 1, 'EP': 2, 'NI': 3, 'SI': 4, 'SP': 5}
 
@@ -134,16 +136,31 @@ def get_knutson_scaling_factor(
     var_id = MAP_VARS_NAMES[variable]
     perc_id = MAP_PERC_NAMES[percentile]
 
+    # calculate beta and annual values from this knutson_value
+    # (these annual values correspond to y in the paper)
+
+    # Steps:
+    # 1. transform annual GMST values using e^βT
+    # 2. calculate the average of these transformed values over the two time periods
+    # 3. calculate the fractional change in the averages
+
+    # calculate baselines for each RCP as averages of the annual values
+
+    # loop over decades and calculate predicted_properties and fractional changes
+
+    mid_years = WINDOWS_PROPS['start'] + np.arange(WINDOWS_PROPS['windows'])*WINDOWS_PROPS['interval']
+    predicted_change = np.ones((WINDOWS_PROPS['windows'], num_of_rcps))
+
     try:
         basin_id = MAP_BASINS_NAMES[basin]
         knutson_value = knutson_data[var_id, basin_id, perc_id]
 
     except KeyError:
-        # no scaling factors are defined for this basin. Most likely SA.
-        knutson_value = 1
-
-    # calculate beta and annual values from this knutson_value
-    # (these annual values correspond to y in the paper)
+        LOGGER.warning(f"No scaling factors are defined for basin {basin} therefore"
+                       "no change will be projected for tracks in this basin")
+        return pd.DataFrame(predicted_change,
+                        index=mid_years,
+                        columns=gmst_info['rcps'])
 
     beta = 0.5 * log(0.01 * knutson_value + 1)
     # num_of_rcps x num of gmst years
@@ -152,13 +169,6 @@ def get_knutson_scaling_factor(
         np.mean(tc_properties[rcp_num, base_start_index:base_end_index + 1])
         for rcp_num in range(num_of_rcps)
     ])
-    # calculate baselines for each RCP as averages of the annual values
-
-    # loop over decades and calculate predicted_properties and fractional changes
-    # (the last decade hits the end of the SST series so is calculated differently)
-
-    mid_years = WINDOWS_PROPS['start'] + np.arange(WINDOWS_PROPS['windows'])*WINDOWS_PROPS['interval']
-    predicted_change = np.empty((WINDOWS_PROPS['windows'], num_of_rcps))
 
     for window in range(WINDOWS_PROPS['windows']):
         mid_index = mid_years[window] - gmst_info['gmst_start_year']
