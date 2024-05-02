@@ -41,7 +41,7 @@ Natural hazards like storms, floods, droughts, and extreme temperatures will be 
 In 2022 alone, natural disasters affected 185 million people and caused economic losses of more than US$ 200 billion [@cred_2022_2023].
 Forecasting the impacts of imminent events as well as determining climate risk according to future socio-economic pathways is crucial for decision-making in societal, humanitarian, political, socio-economic, and ecological issues [@smith_human_2014].
 One major source of uncertainty in such computations is the vulnerability [@rougier_risk_2013].
-Typically modeled as impact function[^1] that yields the percentage of affected exposure depending on hazard intensity, vulnerability is difficult to determine *a prioi*.
+Typically modeled as impact function[^1] that yields the percentage of affected exposure depending on hazard intensity, vulnerability is difficult to determine *a priori*.
 Using hazard footprints, exposure, and recorded impacts from past events, researchers therefore employ calibration techniques to estimate unknown impact functions and use these functions for future risk projections or impact forecasts [@eberenz_regional_2021; @luthi_globally_2021; @welker_comparing_2021; @roosli_towards_2021; @kam_impact-based_2023; @Schmid2023a; @riedel_fluvial_2024].
 
 CLIMADA is a widely used, open-source framework for calculating weather- and climate-related impacts and risks [@aznar-siguan_climada_2019], and for appraising the benefits of adaptation options [@bresch_climada_2021].
