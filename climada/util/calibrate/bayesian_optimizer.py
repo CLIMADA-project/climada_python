@@ -28,8 +28,11 @@ from pathlib import Path
 
 import pandas as pd
 import numpy as np
+import matplotlib as mpl
 import matplotlib.pyplot as plt
 import matplotlib.axes as maxes
+import matplotlib.patches as mpatches
+import matplotlib.ticker as mticker
 from bayes_opt import BayesianOptimization, Events, UtilityFunction, ScreenLogger
 from bayes_opt.target_space import TargetSpace
 
@@ -57,8 +60,46 @@ class _FakeConstraint:
         return self.results
 
 
-# TODO: Add read/write method
-# TODO: Export this class
+def select_best(
+    p_space_df: pd.DataFrame,
+    cost_limit: float,
+    absolute: bool = True,
+    cost_col=("Calibration", "Cost Function"),
+) -> pd.DataFrame:
+    """Select the best parameter space samples defined by a cost function limit
+
+    The limit is a factor of the minimum value relative to itself (``absolute=True``) or
+    to the range of cost function values (``absolute=False``). A ``cost_limit`` of 0.1
+    will select all rows where the cost function is within
+
+    - 110% of the minimum value if ``absolute=True``.
+    - 10% of the range between minimum and maximum cost function value if
+        ``absolute=False``.
+
+    Parameters
+    ----------
+    p_space_df : pd.DataFrame
+        The parameter space to select from.
+    cost_limit : float
+        The limit factor used for selection.
+    absolute : bool, optional
+        Whether the limit factor is applied to the minimum value (``True``) or the range
+        of values (``False``). Defaults to ``True``.
+    cost_col : Column specifier, optional
+        The column indicating cost function values. Defaults to
+        ``("Calibration", "Cost Function")``.
+
+    Returns
+    -------
+    pd.DataFrame
+        A subselection of the input data frame.
+    """
+    min_val = p_space_df[cost_col].min()
+    cost_range = min_val if absolute else p_space_df[cost_col].max() - min_val
+    max_val = min_val + cost_range * cost_limit
+    return p_space_df.loc[p_space_df[cost_col] <= max_val]
+
+
 @dataclass
 class BayesianOptimizerOutput(Output):
     """Output of a calibration with :py:class:`BayesianOptimizer`
@@ -374,7 +415,10 @@ class BayesianOptimizerController(object):
         return self._improvements[-1].target
 
     def optimizer_params(self) -> dict[str, Union[int, float, str, UtilityFunction]]:
-        """Return parameters for the optimizer"""
+        """Return parameters for the optimizer
+
+        In the current implementation, these do not change.
+        """
         return {
             "init_points": self.init_points,
             "n_iter": self.n_iter,
@@ -385,7 +429,7 @@ class BayesianOptimizerController(object):
             ),
         }
 
-    def _is_random_step(self):
+    def _is_random_step(self) -> bool:
         """Return true if we sample randomly instead of Bayesian"""
         return (self._last_it_end + self.steps) < self.init_points
 
@@ -491,7 +535,7 @@ class BayesianOptimizerController(object):
             self._last_it_end = self.steps
 
     def improvements(self) -> pd.DataFrame:
-        """Return improvements as nice data
+        """Return improvements as nicely formatted data
 
         Returns
         -------
@@ -663,58 +707,60 @@ class BayesianOptimizerOutputEvaluator(OutputEvaluator):
 
     def plot_impf_variability(
         self,
-        cost_func_diff: float = 0.1,
         p_space_df: Optional[pd.DataFrame] = None,
         plot_haz: bool = True,
+        plot_opt_kws: Optional[dict] = None,
         plot_impf_kws: Optional[dict] = None,
         plot_hist_kws: Optional[dict] = None,
+        plot_axv_kws: Optional[dict] = None,
     ):
         """Plot impact function variability with parameter combinations of
         almost equal cost function values
 
         Args:
-            cost_func_diff (float, optional): Max deviation from optimal cost
-                function value (as fraction). Defaults to 0.1 (i.e. 10%).
-            p_space_df (pd.DataFrame, optional): parameter space. Defaults to None.
+            p_space_df (pd.DataFrame, optional): Parameter space to plot functions from.
+                If ``None``, this uses the space returned by
+                :py:meth:`~BayesianOptimizerOutput.p_space_to_dataframe`. Use
+                :py:func:`select_best` for a convenient subselection of parameters close
+                to the optimum.
             plot_haz (bool, optional): Whether or not to plot hazard intensity
                 distibution. Defaults to False.
-            plot_impf_kws (dict, optional): Keyword arguments for impact
+            plot_opt_kws (dict, optional): Keyword arguments for optimal impact
                 function plot. Defaults to None.
+            plot_impf_kws (dict, optional): Keyword arguments for all impact
+                function plots. Defaults to None.
             plot_hist_kws (dict, optional): Keyword arguments for hazard
-                intensity distribution plot. Defaults to None.
+                intensity histogram plot. Defaults to None.
+            plot_axv_kws (dict, optional): Keyword arguments for hazard intensity range
+                plot (axvspan).
         """
 
         # Initialize plot keyword arguments
+        if plot_opt_kws is None:
+            plot_opt_kws = {}
         if plot_impf_kws is None:
             plot_impf_kws = {}
         if plot_hist_kws is None:
             plot_hist_kws = {}
+        if plot_axv_kws is None:
+            plot_axv_kws = {}
 
         # Retrieve hazard type and parameter space
         haz_type = self.input.hazard.haz_type
         if p_space_df is None:
             p_space_df = self.output.p_space_to_dataframe()
 
-        # Retrieve parameters of impact functions with cost function values
-        # within 'cost_func_diff' % of the best estimate
-        params_within_range = p_space_df["Parameters"]
-        plot_space_label = "Parameter space"
-        if cost_func_diff is not None:
-            max_cost_func_val = p_space_df["Calibration", "Cost Function"].min() * (
-                1 + cost_func_diff
-            )
-            params_within_range = params_within_range.loc[
-                p_space_df["Calibration", "Cost Function"] <= max_cost_func_val
-            ]
-            plot_space_label = (
-                f"within {int(cost_func_diff*100)} percent " f"of best fit"
-            )
-
         # Set plot defaults
-        color = plot_impf_kws.pop("color", "tab:blue")
-        lw = plot_impf_kws.pop("lw", 2)
-        zorder = plot_impf_kws.pop("zorder", 3)
-        label = plot_impf_kws.pop("label", "best fit")
+        colors = mpl.colormaps["tab20"].colors
+        lw = plot_opt_kws.pop("lw", 2)
+        label_opt = plot_opt_kws.pop("label", "Optimal Function")
+        color_opt = plot_opt_kws.pop("color", colors[0])
+        zorder_opt = plot_opt_kws.pop("zorder", 4)
+
+        label_impf = plot_impf_kws.pop("label", "All Functions")
+        color_impf = plot_impf_kws.pop("color", colors[1])
+        alpha_impf = plot_impf_kws.pop("alpha", 0.5)
+        zorder_impf = plot_impf_kws.pop("zorder", 3)
 
         # get number of impact functions and create a plot for each
         n_impf = len(self.impf_set.get_func(haz_type=haz_type))
@@ -728,63 +774,76 @@ class BayesianOptimizerOutputEvaluator(OutputEvaluator):
             ax.plot(
                 best_impf.intensity,
                 best_impf.mdd * best_impf.paa * 100,
-                color=color,
+                color=color_opt,
                 lw=lw,
-                zorder=zorder,
-                label=label,
-                **plot_impf_kws,
+                zorder=zorder_opt,
+                label=label_opt,
+                **plot_opt_kws,
             )
 
             # Plot all impact functions within 'cost_func_diff' % of best estimate
-            for row in range(params_within_range.shape[0]):
-                label_temp = plot_space_label if row == 0 else None
+            for idx, (_, row) in enumerate(p_space_df.iterrows()):
+                label_temp = label_impf if idx == 0 else None
 
-                sel_params = params_within_range.iloc[row, :].to_dict()
-                temp_impf_set = self.input.impact_func_creator(**sel_params)
+                temp_impf_set = self.input.impact_func_creator(**row["Parameters"])
                 temp_impf = temp_impf_set.get_func(haz_type=haz_type)[impf_idx]
 
                 ax.plot(
                     temp_impf.intensity,
                     temp_impf.mdd * temp_impf.paa * 100,
-                    color="grey",
-                    alpha=0.4,
+                    color=color_impf,
+                    alpha=alpha_impf,
+                    zorder=zorder_impf,
                     label=label_temp,
                 )
+
+            handles, _ = ax.get_legend_handles_labels()
+            ax.set(
+                xlabel=f"Intensity ({self.input.hazard.units})",
+                ylabel="Mean Damage Ratio (MDR)",
+                xlim=(min(best_impf.intensity), max(best_impf.intensity)),
+            )
+            ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=100))
 
             # Plot hazard intensity value distributions
             if plot_haz:
                 haz_vals = self.input.hazard.intensity[
                     :, self.input.exposure.gdf[f"centr_{haz_type}"]
-                ]
+                ].data
 
                 # Plot defaults
-                color_hist = plot_hist_kws.pop("color", "tab:orange")
-                alpha_hist = plot_hist_kws.pop("alpha", 0.3)
                 bins = plot_hist_kws.pop("bins", 40)
-                label = plot_hist_kws.pop("label", "Hazard intensity\noccurence")
+                label_hist = plot_hist_kws.pop("label", "Hazard Intensity")
+                color_hist = plot_hist_kws.pop("color", colors[2])
+                color_axv = plot_axv_kws.pop("color", colors[3])
+                alpha_axv = plot_axv_kws.pop("alpha", 0.5)
 
                 # Histogram plot
                 ax2 = ax.twinx()
+                ax.set_facecolor("none")
+                ax.set_zorder(2)
+                ax2.set_zorder(1)
+                ax2.axvspan(
+                    haz_vals.min(), haz_vals.max(), color=color_axv, alpha=alpha_axv
+                )
                 ax2.hist(
-                    haz_vals.data,
+                    haz_vals,
                     bins=bins,
                     color=color_hist,
-                    alpha=alpha_hist,
-                    label=label,
+                    label=label_hist,
                     **plot_hist_kws,
                 )
-                ax2.set(ylabel="Hazard intensity occurence (#Exposure points)")
-                ax.axvline(
-                    x=haz_vals.max(), label="Maximum hazard value", color="tab:orange"
-                )
-                ax2.legend(loc="lower right")
+                ax2.set_ylabel("Exposure Points", color=color_hist)
 
-            ax.set(
-                xlabel=f"Intensity ({self.input.hazard.units})",
-                ylabel="Mean Damage Ratio (MDR) in %",
-                xlim=(min(best_impf.intensity), max(best_impf.intensity)),
-            )
-            ax.legend()
+                handles = handles + [
+                    mpatches.Patch(color=color_hist, label=label_hist),
+                    mpatches.Patch(color=color_axv, label=f"{label_hist} Range"),
+                ]
+                ax.yaxis.label.set_color(color_opt)
+                ax.tick_params(axis="y", colors=color_opt)
+                ax2.tick_params(axis="y", colors=color_hist)
+
+            ax.legend(handles=handles)
             axes.append(ax)
 
         if n_impf > 1:
