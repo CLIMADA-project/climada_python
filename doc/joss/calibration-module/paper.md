@@ -57,7 +57,7 @@ All optimizers receive data through a common `Input` object, which provides all 
 This enables users to quickly switch between optimizers without disrupting their workflow.
 Pre-defined optimizers are based on the `scipy.optimize` module [@virtanen_scipy_2020] and the `BayesianOptimization` package [@nogueira_bayesian_2014].
 The latter is especially useful for calibration tasks because it supports constraints and only requires bounds of the parameter space as prior information.
-We provide an `BayesianOptimizerController` that iteratively explores and "exploits" the parameter space to find the global optimum and stop the optimization process then.
+We provide a `BayesianOptimizerController` that iteratively explores and "exploits" the parameter space to find the global optimum and stop the optimization process then.
 This only requires minimal user input for indicating the sampling density.
 
 # Example Code
@@ -126,15 +126,19 @@ def calibrate(hazard: Hazard, exposure: Exposure, impact_data: pd.DataFrame):
     output_evaluator.plot_impf_variability(select_best(p_space_df, 0.03))
 ```
 
-In a tutorial, we use data on tropical cyclone (TC) damages in the North Atlantic basin between 2010 and 2017 from the Emergence Events Database EM-DAT [@delforge_em-dat_2023].
+Within the CLIMADA documentation, we provide a tutorial Jupyter script[^2] demonstrating the setup of all calibration data for executing code like the one above.
+In this tutorial, we use data on tropical cyclone (TC) damages in the North Atlantic basin between 2010 and 2017 from the Emergency Events Database EM-DAT [@delforge_em-dat_2023], which lists total damages per cyclone and country.
 As hazard event set we use the associated TC tracks from IBTrACS [@knapp_international_2010] and the windfield model by @holland_revised_2008.
 As exposure, we use asset values estimated from gross domestic product, population distribution, and nightlight intensity [@eberenz_asset_2020].
-Executing the calibration with these data and the above settings yields plots for the sampled parameter space (see \autoref{fig:pspace}) and impact functions (see \autoref{fig:impfs}).
+For an easier setup and visualization, we chose to only calibrate two parameters of the impact function.
+However, parameter spaces of any dimension may be sampled the same way.
+Executing the calibration with these data and the above code yields plots for the sampled parameter space (see \autoref{fig:pspace}) and impact functions (see \autoref{fig:impfs}).
 
 ![Parameter space sampling with Bayesian optimization. The 'x' marks the optimal parameter set found by the algorithm. Colors indicate the respective values of the cost function (here: mean squared log error between recorded and modeled impacts).\label{fig:pspace}](pspace.png){ width=80% }
 
-![Impact functions for tropical cyclone asset damages in the North Atlantic basin found with Bayesian optimization. The dark blue line shows the optimal function given by the parameter set noted with 'x' in \autoref{fig:pspace}. Light blue lines give the functions whose cost function value is not greater than 103% of the optimal function. The orange histogram denotes the hazard intensities observed.\label{fig:impfs}](impfs.png){ width=80% }
+![Impact functions for tropical cyclone asset damages in the North Atlantic basin found with Bayesian optimization. The dark blue line shows the optimal function given by the parameter set noted with 'x' in \autoref{fig:pspace}. Light blue lines give the functions whose cost function value is not greater than 103% of the estimated optimum. The orange histogram denotes the hazard intensities observed.\label{fig:impfs}](impfs.png){ width=80% }
 
 # References
 
 [^1]: Other common names are "vulnerability function" or "damage function".
+[^2]: See \url{https://climada-python--692.org.readthedocs.build/en/692/tutorial/climada_util_calibrate.html}.
