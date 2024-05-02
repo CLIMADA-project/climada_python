@@ -50,9 +50,8 @@ MAP_VARS_NAMES = {'cat05': 0, 'cat45': 1, 'intensity': 2}
 MAP_PERC_NAMES = {'5/10': 0, '25': 1, '50': 2, '75': 3, '90/95': 4}
 
 WINDOWS_PROPS = {
-    'windows': 21,
     'start': 2000,
-    'interval': 5,
+    'end': 2100,
     'smoothing': 5
     }
 
@@ -60,7 +59,8 @@ def get_knutson_scaling_factor(
             variable: str='cat05',
             percentile: str='50',
             basin: str='NA',
-            baseline: tuple=(1982, 2022)
+            baseline: tuple=(1982, 2022),
+            yearly_steps: int=5
     ):
     """
     This code combines data in Knutson et al. (2020) and global mean surface
@@ -148,8 +148,8 @@ def get_knutson_scaling_factor(
 
     # loop over decades and calculate predicted_properties and fractional changes
 
-    mid_years = WINDOWS_PROPS['start'] + np.arange(WINDOWS_PROPS['windows'])*WINDOWS_PROPS['interval']
-    predicted_change = np.ones((WINDOWS_PROPS['windows'], num_of_rcps))
+    mid_years = np.arange(WINDOWS_PROPS['start'], WINDOWS_PROPS['end']+1, yearly_steps)
+    predicted_change = np.ones((mid_years.shape[0], num_of_rcps))
 
     try:
         basin_id = MAP_BASINS_NAMES[basin]
@@ -159,8 +159,8 @@ def get_knutson_scaling_factor(
         LOGGER.warning(f"No scaling factors are defined for basin {basin} therefore"
                        "no change will be projected for tracks in this basin")
         return pd.DataFrame(predicted_change,
-                        index=mid_years,
-                        columns=gmst_info['rcps'])
+                            index=mid_years,
+                            columns=gmst_info['rcps'])
 
     beta = 0.5 * log(0.01 * knutson_value + 1)
     # num_of_rcps x num of gmst years
@@ -170,8 +170,8 @@ def get_knutson_scaling_factor(
         for rcp_num in range(num_of_rcps)
     ])
 
-    for window in range(WINDOWS_PROPS['windows']):
-        mid_index = mid_years[window] - gmst_info['gmst_start_year']
+    for i, mid_year in enumerate(mid_years):
+        mid_index = mid_year - gmst_info['gmst_start_year']
         actual_smoothing = min(
             WINDOWS_PROPS['smoothing'],
             gmst_years - mid_index - 1,
@@ -181,8 +181,8 @@ def get_knutson_scaling_factor(
         ind2 = mid_index + actual_smoothing + 1
 
         prediction = np.mean(tc_properties[:, ind1:ind2], 1)
-        predicted_change[window] = ((prediction - baseline) /
-                                    baseline) * 100
+        predicted_change[i] = ((prediction - baseline) /
+                               baseline) * 100
 
     return pd.DataFrame(predicted_change,
                         index=mid_years,

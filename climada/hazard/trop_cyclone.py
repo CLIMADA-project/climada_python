@@ -344,7 +344,8 @@ class TropCyclone(Hazard):
         percentile: str='50',
         rcp_scenario: str='4.5',
         target_year: int=2050,
-        baseline: tuple=None
+        baseline: tuple=None,
+        **kwargs
     ):
         """
         From current TC hazard instance, return new hazard set with future events
@@ -410,7 +411,8 @@ class TropCyclone(Hazard):
                                 percentile=percentile,
                                 variable=variable,
                                 basin=basin,
-                                baseline=baseline
+                                baseline=baseline,
+                                **kwargs
                                 ).loc[target_year, rcp_scenario]
                                 for variable in ['cat05', 'cat45']
                                 ]
@@ -427,7 +429,6 @@ class TropCyclone(Hazard):
             tc_cc.frequency[sel_cat45 & bas_sel] *= 1 + scale_year_rcp_45/100
 
             if any(tc_cc.frequency) < 0:
-
                 raise ValueError(
                     " The application of the climate scenario leads to "
                     " negative frequencies. One solution - if appropriate -"
