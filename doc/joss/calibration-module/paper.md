@@ -15,7 +15,7 @@ authors:
     orcid: 0000-0002-3761-2292
     affiliation: "1, 2"
   - name: Timo Schmid
-    orcid: 0000-0000-0000-0000
+    orcid: 0000-0002-6788-2154
     affiliation: "1, 2"
 affiliations:
  - name: Institute for Environmental Decisions, ETH Zürich, Zürich, Switzerland
