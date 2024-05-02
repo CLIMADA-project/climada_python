@@ -31,6 +31,7 @@ from matplotlib.patches import Patch
 from matplotlib.ticker import PercentFormatter, ScalarFormatter
 from matplotlib.colors import ListedColormap, BoundaryNorm
 import cartopy.crs as ccrs
+from matplotlib import colormaps as cm
 import pyproj
 import shapely
 from cartopy.io import shapereader
@@ -88,7 +89,7 @@ warnprob_colors = np.array(
 warnprob_colors_extended = np.repeat(warnprob_colors, 10, axis=0)
 CMAP_WARNPROB = ListedColormap(warnprob_colors_extended)
 # colors for impact forecast
-color_map_pre = plt.get_cmap("plasma", 90)
+color_map_pre = cm.get_cmap("plasma").resampled(90)
 impact_colors = color_map_pre(np.linspace(0, 1, 90))
 white_extended = np.repeat([[255 / 255, 255 / 255, 255 / 255, 1]], 10, axis=0)
 impact_colors_extended = np.append(white_extended, impact_colors, axis=0)
