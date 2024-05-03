@@ -61,31 +61,47 @@ class TestInterpolation(unittest.TestCase):
 
     def test_from_poly_s_shape(self):
         """Check default impact function: polynomial s-shape"""
-        inten = (0, 5, 1)
+
+        haz_type = 'RF'
+        threshold = 0.2
+        half_point = 1
+        scale = 0.8
+        exponent = 4
+        impf_id = 2
+        unit = 'm'
+        intensity = (0, 5, 5)
+
+        def test_aux_vars(impf):
+            self.assertTrue(np.array_equal(impf.paa, np.ones(5)))
+            self.assertTrue(np.array_equal(impf.intensity, np.linspace(0, 5, 5)))
+            self.assertEqual(impf.haz_type, haz_type)
+            self.assertEqual(impf.id, impf_id)
+            self.assertEqual(impf.intensity_unit, unit)
+
         impf = ImpactFunc.from_poly_s_shape(
-            inten, threshold=0.2, half_point=1, upper_limit=0.8, exponent=4,
-            haz_type='RF', impf_id=2, intensity_unit='m'
+            intensity=intensity, threshold=threshold, half_point=half_point, scale=scale,
+            exponent=exponent, haz_type=haz_type, impf_id=impf_id, intensity_unit=unit
             )
-        correct_mdd = np.array([0, 0.4, 0.76995746, 0.79470418, 0.79843158])
-        self.assertTrue(np.array_equal(impf.paa, np.ones(5)))
+        # True value can easily be computed with a calculator
+        correct_mdd = np.array([0, 0.59836395, 0.78845941, 0.79794213, 0.79938319])
         np.testing.assert_array_almost_equal(impf.mdd, correct_mdd)
-        self.assertTrue(np.array_equal(impf.intensity, np.arange(0, 5, 1)))
-        self.assertEqual(impf.haz_type, 'RF')
-        self.assertEqual(impf.id, 2)
-        self.assertEqual(impf.intensity_unit, 'm')
+        test_aux_vars(impf)
 
         # If threshold > half_point, mdd should all be 0
         impf = ImpactFunc.from_poly_s_shape(
-            inten, threshold=2, half_point=1, upper_limit=0.8, exponent=4,
-            haz_type='RF', impf_id=2, intensity_unit='m'
+            intensity=intensity, threshold=half_point*2, half_point=half_point, scale=scale,
+            exponent=exponent, haz_type=haz_type, impf_id=impf_id, intensity_unit=unit
             )
-        correct_mdd = np.array([0, 0.4, 0.76995746, 0.79470418, 0.79843158])
-        self.assertTrue(np.array_equal(impf.paa, np.ones(5)))
         np.testing.assert_array_almost_equal(impf.mdd, np.zeros(5))
-        self.assertTrue(np.array_equal(impf.intensity, np.arange(0, 5, 1)))
-        self.assertEqual(impf.haz_type, 'RF')
-        self.assertEqual(impf.id, 2)
-        self.assertEqual(impf.intensity_unit, 'm')
+        test_aux_vars(impf)
+
+        with self.assertRaises(ValueError):
+            ImpactFunc.from_poly_s_shape(
+                intensity=intensity, threshold=half_point,
+                half_point=half_point, scale=scale,
+                exponent=-1, haz_type=haz_type,
+                impf_id=impf_id, intensity_unit=unit
+            )
 
 # Execute Tests
 if __name__ == "__main__":
