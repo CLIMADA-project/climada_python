@@ -105,6 +105,8 @@ def get_knutson_scaling_factor(
         the starting and ending years that define the historical
         baseline. The historical baseline period must fall within
         the GSMT data period, i.e., 1880-2100.
+    yearly_steps : int
+        yearly resolution at which projections are provided. Default is 5 years.
     Returns
     -------
     future_change_variable : pd.DataFrame
