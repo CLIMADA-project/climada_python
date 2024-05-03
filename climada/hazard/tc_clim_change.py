@@ -7,7 +7,7 @@ CLIMADA is free software: you can redistribute it and/or modify it under the
 terms of the GNU General Public License as published by the Free
 Software Foundation, version 3.
 
-Parts of this module are modifications of work originally published under the following license:
+Most of this module are modifications of work originally published under the following license:
 
 MIT License
 
@@ -33,7 +33,7 @@ SOFTWARE.
 
 ---
 
-Define scaling factors to model impact of climate change on tropical cyclones.
+Define scaling factors to model the impact of climate change on tropical cyclones.
 """
 
 from math import log
@@ -127,7 +127,8 @@ def get_knutson_scaling_factor(
         (base_end_year >= gmst_info['gmst_end_year'])):
 
         raise ValueError("The selected historical baseline falls outside"
-                         "the GMST data period 1880-2100")
+                         f"the GMST data period {gmst_info['gmst_start_year']}"
+                         f"-{gmst_info['gmst_end_year']}")
 
     var_id = MAP_VARS_NAMES[variable]
     perc_id = MAP_PERC_NAMES[percentile]
