@@ -53,11 +53,11 @@ MAP_PERC_NAMES = {'5/10': 0, '25': 1, '50': 2, '75': 3, '90/95': 4}
 YEAR_WINDOWS_PROPS = {'start': 2000, 'end': 2100, 'smoothing': 5}
 
 def get_knutson_scaling_factor(
-            variable: str='cat05',
-            percentile: str='50',
-            basin: str='NA',
-            baseline: tuple=(1982, 2022),
-            yearly_steps: int=5
+        variable: str='cat05',
+        percentile: str='50',
+        basin: str='NA',
+        baseline: tuple=(1982, 2022),
+        yearly_steps: int=5
     ):
     """
     This code combines data in Knutson et al. (2020) and global mean surface
@@ -104,7 +104,7 @@ def get_knutson_scaling_factor(
     baseline : tuple of int
         the starting and ending years that define the historical
         baseline. The historical baseline period must fall within
-        the GSMT data period, i.e., 1880-2100.
+        the GSMT data period, i.e., 1880-2100. Default is 1982-2022.
     yearly_steps : int
         yearly resolution at which projections are provided. Default is 5 years.
     Returns
@@ -336,8 +336,8 @@ def get_knutson_data():
         https://doi.org/10.1175/BAMS-D-18-0194.1.
 
     for 4 variables (i.e., cat05 frequency, cat45 frequency, intensity, precipitation rate), 
-    6 regions, i.e., N. Atl (NA), NW Pac. (WP), NE Pac (EP)., N. Ind (NI), S. Ind. (SI), SW Pac. (SP),
-    and 5 percentiles, i.e., 5% or 10%, 25%, 50%, 75%, 95% or 90%.
+    6 regions, i.e., N. Atl (NA), NW Pac. (WP), NE Pac (EP)., N. Ind (NI), S. Ind. (SI),
+    SW Pac. (SP), and 5 percentiles, i.e., 5% or 10%, 25%, 50%, 75%, 95% or 90%.
 
     Returns
     -------
