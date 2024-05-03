@@ -10,7 +10,7 @@ defaults:
 
 jobs:
   build-and-test:
-    name: 'Core / Unit Tests'
+    name: 'Core / Unit Test Pipeline'
     runs-on: ubuntu-latest
     permissions:
       # For publishing results
