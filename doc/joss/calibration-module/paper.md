@@ -38,7 +38,7 @@ It is implemented as Python submodule `climada.util.calibrate` of the climate ri
 # Statement of Need
 
 Natural hazards like storms, floods, droughts, and extreme temperatures will be exacerbated by climate change.
-In 2022 alone, natural disasters affected 185 million people and caused economic losses of more than US$ 200 billion [@cred_2022_2023].
+In 2022 alone, weather- and climate-related disasters affected 185 million people and caused economic losses of more than US$ 200 billion [@cred_2022_2023].
 Forecasting the impacts of imminent events as well as determining climate risk according to future socio-economic pathways is crucial for decision-making in societal, humanitarian, political, socio-economic, and ecological issues [@smith_human_2014].
 One major source of uncertainty in such computations is the vulnerability [@rougier_risk_2013].
 Typically modeled as impact function[^1] that yields the percentage of affected exposure depending on hazard intensity, vulnerability is difficult to determine *a priori*.
