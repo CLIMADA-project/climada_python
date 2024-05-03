@@ -226,12 +226,14 @@ class ImpactFunc():
         haz_type: str,
         impf_id: int = 1,
         **kwargs):
-        """Sigmoid type impact function hinging on three parameter.
+        r"""Sigmoid type impact function hinging on three parameter.
 
         This type of impact function is very flexible for any sort of study,
         hazard and resolution. The sigmoid is defined as:
 
-        .. math:: f(x) = \frac{L}{1+e^{-k(x-x0)}}
+        .. math::
+
+           f(x) = \frac{L}{1+e^{-k(x-x0)}}
 
         For more information: https://en.wikipedia.org/wiki/Logistic_function
 
@@ -285,10 +287,11 @@ class ImpactFunc():
         haz_type: str,
         impf_id: int = 1,
         **kwargs):
-        """S-shape polynomial impact function hinging on four parameter.
+        r"""S-shape polynomial impact function hinging on four parameter.
 
         .. math::
-            f(I) = \frac{luk(I)^{exponent}}{1 + luk(I)^{exponent}}}\cdot scale
+
+            f(I) = \frac{luk(I)^{exponent}}{1 + luk(I)^{exponent}}\cdot scale \\
             luk(I) = \frac{\max[I - threshold, 0]}{half\_point - threshold}
 
         This function is inspired by Emanuel et al. (2011)
