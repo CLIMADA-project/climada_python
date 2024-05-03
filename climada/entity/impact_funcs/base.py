@@ -277,19 +277,19 @@ class ImpactFunc():
     @classmethod
     def from_poly_s_shape(
         cls,
-        intensity: tuple[float, float, float],
+        intensity: tuple[float, float, int],
         threshold: float,
         half_point: float,
-        upper_limit: float,
+        scale: float,
         exponent: float,
         haz_type: str,
         impf_id: int = 1,
         **kwargs):
         """S-shape polynomial impact function hinging on four parameter.
 
-        f(I) = D(I)**exponent / (1 + D(I)**exponent) * upper_limit
+        .. math:: f(I) = \\frac{Luk(I)**exponent}{1 + Luk(I)**exponent}}\\cdot scale
 
-        D(I) = max[I - threshold, 0] / (half_point - threshold)
+        .. math:: Luk(I) = \\frac{max[I - threshold, 0]}{half_point - threshold}
 
         This function is inspired by Emanuel et al. (2011)
         https://doi.org/10.1175/WCAS-D-11-00007.1
@@ -297,16 +297,17 @@ class ImpactFunc():
         Parameters
         ----------
         intensity: tuple(float, float, float)
-            tuple of 3 intensity numbers along np.arange(min, max, step)
+            tuple of 3 intensity numbers along np.linsapce(min, max, num)
         threshold : float
             Intensity threshold below which there is no impact.
             Should in general be larger than 0 for computational efficiency
             of impacts.
         half_point : float
             Intensity at which 50% of maxixmum impact is expected.
-            Must be larger than thres.
-        upper_limit : float
-            Maximum impact value. Must be larger than 0.
+            If smaller than threshold, mdd = 0 for all intensities.
+        scale : float
+            Multiplicative factor for the whole function. Typically,
+            this sets the maximum value at large intensities.
         exponent: float
             Exponent of the polynomial. Must be larger than 0.
         haz_type: str
@@ -321,20 +322,23 @@ class ImpactFunc():
         impf : climada.entity.impact_funcs.ImpactFunc
             s-shapep polynomial impact function
         """
-        intensity = np.arange(*intensity)
+        if exponent <= 0:
+            raise ValueError('Exponent value must larger than 0')
+
+        inten = np.linspace(*intensity)
 
         if threshold > half_point:
-            mdd = np.zeros_like(intensity)
+            mdd = np.zeros_like(inten)
         else:
-            D = (intensity - threshold) / (half_point - threshold)
-            D[D < 0] = 0
-            mdd = D**exponent / (1 + D**exponent) * upper_limit
-        paa = np.ones_like(intensity)
+            Luk = (inten - threshold) / (half_point - threshold)
+            Luk[Luk < 0] = 0
+            mdd = Luk**exponent / (1 + Luk**exponent) * scale
+        paa = np.ones_like(inten)
 
         impf = cls(
             haz_type=haz_type,
             id=impf_id,
-            intensity=intensity,
+            intensity=inten,
             paa=paa,
             mdd=mdd,
             **kwargs
