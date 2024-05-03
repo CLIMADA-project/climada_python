@@ -198,7 +198,7 @@ def get_gmst_info():
     Returns
     -------
     gmst_info : dict
-        dictionary with keys:
+        dictionary with four keys, which are:
         - rcps: list of strings referring to RCPs 2.6, 4.5, 6.0 and 8.5
         - gmst_start_year: integer with the GMST data starting year, 1880
         - gmst_end_year: integer with the GMST data ending year, 2100
