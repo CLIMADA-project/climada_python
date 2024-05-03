@@ -49,11 +49,8 @@ MAP_VARS_NAMES = {'cat05': 0, 'cat45': 1, 'intensity': 2}
 
 MAP_PERC_NAMES = {'5/10': 0, '25': 1, '50': 2, '75': 3, '90/95': 4}
 
-WINDOWS_PROPS = {
-    'start': 2000,
-    'end': 2100,
-    'smoothing': 5
-    }
+# it defines the first and last projection years as well as the largest smoothing window
+YEAR_WINDOWS_PROPS = {'start': 2000, 'end': 2100, 'smoothing': 5}
 
 def get_knutson_scaling_factor(
             variable: str='cat05',
@@ -130,25 +127,18 @@ def get_knutson_scaling_factor(
         raise ValueError("The selected historical baseline falls outside"
                          "the GMST data period 1880-2100")
 
-    base_start_index = base_start_year - gmst_info['gmst_start_year']
-    base_end_index = base_end_year - gmst_info['gmst_start_year']
-
     var_id = MAP_VARS_NAMES[variable]
     perc_id = MAP_PERC_NAMES[percentile]
-
-    # calculate beta and annual values from this knutson_value
-    # (these annual values correspond to y in the paper)
 
     # Steps:
     # 1. transform annual GMST values using e^βT
     # 2. calculate the average of these transformed values over the two time periods
     # 3. calculate the fractional change in the averages
+    # please refer to section 4. Methods of Jewson (2021) for more details.
 
-    # calculate baselines for each RCP as averages of the annual values
-
-    # loop over decades and calculate predicted_properties and fractional changes
-
-    mid_years = np.arange(WINDOWS_PROPS['start'], WINDOWS_PROPS['end']+1, yearly_steps)
+    mid_years = np.arange(YEAR_WINDOWS_PROPS['start'],
+                          YEAR_WINDOWS_PROPS['end']+1,
+                          yearly_steps)
     predicted_change = np.ones((mid_years.shape[0], num_of_rcps))
 
     try:
@@ -162,25 +152,34 @@ def get_knutson_scaling_factor(
                             index=mid_years,
                             columns=gmst_info['rcps'])
 
-    beta = 0.5 * log(0.01 * knutson_value + 1)
-    # num_of_rcps x num of gmst years
-    tc_properties = np.exp(beta * gmst_info['gmst_data'])
+    base_start_in_gmst_ind = base_start_year - gmst_info['gmst_start_year']
+    base_end_in_gmst_ind = base_end_year - gmst_info['gmst_start_year']
+
+    # Step 1.
+    beta = 0.5 * log(0.01 * knutson_value + 1) # equation 6 in Jewson (2021)
+    tc_properties = np.exp(beta * gmst_info['gmst_data']) # equation 3 in Jewson (2021)
+
+    # Step 2.
     baseline = np.array([
-        np.mean(tc_properties[rcp_num, base_start_index:base_end_index + 1])
+        np.mean(tc_properties[rcp_num,
+                              base_start_in_gmst_ind:base_end_in_gmst_ind + 1])
         for rcp_num in range(num_of_rcps)
     ])
 
+    # Step 3.
     for i, mid_year in enumerate(mid_years):
-        mid_index = mid_year - gmst_info['gmst_start_year']
+        mid_year_in_gmst_ind = mid_year - gmst_info['gmst_start_year']
         actual_smoothing = min(
-            WINDOWS_PROPS['smoothing'],
-            gmst_years - mid_index - 1,
-            mid_index
+            YEAR_WINDOWS_PROPS['smoothing'],
+            gmst_years - mid_year_in_gmst_ind - 1,
+            mid_year_in_gmst_ind
         )
-        ind1 = mid_index - actual_smoothing
-        ind2 = mid_index + actual_smoothing + 1
+        ind1 = mid_year_in_gmst_ind - actual_smoothing
+        ind2 = mid_year_in_gmst_ind + actual_smoothing + 1
 
         prediction = np.mean(tc_properties[:, ind1:ind2], 1)
+
+        # assess fractional changes
         predicted_change[i] = ((prediction - baseline) /
                                baseline) * 100
 
