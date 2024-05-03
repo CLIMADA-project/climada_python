@@ -231,7 +231,7 @@ class ImpactFunc():
         This type of impact function is very flexible for any sort of study,
         hazard and resolution. The sigmoid is defined as:
 
-        .. math:: f(x) = \\frac{L}{1+exp^{-k(x-x0)}}
+        .. math:: f(x) = \frac{L}{1+e^{-k(x-x0)}}
 
         For more information: https://en.wikipedia.org/wiki/Logistic_function
 
@@ -287,9 +287,9 @@ class ImpactFunc():
         **kwargs):
         """S-shape polynomial impact function hinging on four parameter.
 
-        .. math:: f(I) = \\frac{luk(I)**exponent}{1 + luk(I)**exponent}}\\cdot scale
-
-        .. math:: luk(I) = \\frac{max[I - threshold, 0]}{half_point - threshold}
+        .. math::
+            f(I) = \frac{luk(I)^{exponent}}{1 + luk(I)^{exponent}}}\cdot scale
+            luk(I) = \frac{\max[I - threshold, 0]}{half\_point - threshold}
 
         This function is inspired by Emanuel et al. (2011)
         https://doi.org/10.1175/WCAS-D-11-00007.1
