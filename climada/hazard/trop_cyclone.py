@@ -342,9 +342,8 @@ class TropCyclone(Hazard):
     def apply_climate_scenario_knu(
         self,
         percentile: str='50',
-        rcp_scenario: str='4.5',
+        scenario: str='4.5',
         target_year: int=2050,
-        baseline: tuple=None,
         **kwargs
     ):
         """
@@ -365,12 +364,13 @@ class TropCyclone(Hazard):
         Parameters
         ----------
         percentile: str
-            percentiles of Knutson et al. 2020 estimates, representing the model uncertainty
-            in future changes in TC activity. These estimates come from a review of state-of-the-art
-            literature and models. For the 'cat05' variable (i.e. frequency of all tropical cyclones)
-            the 5th, 25th, 50th, 75th and 95th percentiles are provided. For 'cat45' and 'intensity',
-            the provided percentiles are the 10th, 25th, 50th, 75th and 90th. Please refer to the
-            mentioned publications for more details.
+            percentiles of Knutson et al. 2020 estimates, representing the mode
+            uncertainty in future changes in TC activity. These estimates come from
+            a review of state-of-the-art literature and models. For the 'cat05' variable
+            (i.e. frequency of all tropical cyclones) the 5th, 25th, 50th, 75th and 95th
+            percentiles are provided. For 'cat45' and 'intensity', the provided percentiles
+            are the 10th, 25th, 50th, 75th and 90th. Please refer to the mentioned publications
+            for more details.
             possible percentiles:
                 '5/10' either the 5th or 10th percentile depending on variable (see text above)
                 '25' for the 25th percentile
@@ -378,7 +378,7 @@ class TropCyclone(Hazard):
                 '75' for the 75th percentile
                 '90/95' either the 90th or 95th percentile depending on variable  (see text above)
             Default: '50'
-        rcp_scenario : str
+        scenario : str
             possible scenarios:
                 '2.6' for RCP 2.6
                 '4.5' for RCP 4.5
@@ -386,10 +386,6 @@ class TropCyclone(Hazard):
                 '8.5' for RCP 8.5
         target_year : int
             future year to be simulated, between 2000 and 2100. Default: 2050.
-        baseline : tuple of int
-            the starting and ending years that define the historical baseline.
-            Default is None as this depends on the years coverage of the underlying
-            event set.
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
@@ -405,15 +401,17 @@ class TropCyclone(Hazard):
         sel_cat03 = np.isin(tc_cc.category, [0, 1, 2, 3])
         sel_cat45 = np.isin(tc_cc.category, [4, 5])
 
+        years = np.array([dt.datetime.fromordinal(date).year for date in self.date])
+
         for basin in np.unique(tc_cc.basin):
             scale_year_rcp_05, scale_year_rcp_45 = [
                         get_knutson_scaling_factor(
                                 percentile=percentile,
                                 variable=variable,
                                 basin=basin,
-                                baseline=baseline,
+                                baseline=(np.min(years), np.max(years)),
                                 **kwargs
-                                ).loc[target_year, rcp_scenario]
+                                ).loc[target_year, scenario]
                                 for variable in ['cat05', 'cat45']
                                 ]
 
