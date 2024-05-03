@@ -508,10 +508,11 @@ class TestClimateSce(unittest.TestCase):
             category=np.array([2, 0, 4, 1]),
             event_id=np.arange(4),
             frequency=np.ones(4) * 0.5,
+            date=np.array([723795, 728395, 738395, 724395])
         )
 
         tc_cc = tc.apply_climate_scenario_knu(percentile='50',
-                                              rcp_scenario=45,
+                                              scenario='4.5',
                                               target_year=2050)
         self.assertFalse(
             np.allclose(tc.frequency[1], tc_cc.frequency[1])
@@ -546,6 +547,7 @@ class TestClimateSce(unittest.TestCase):
             frequency=np.repeat(1/(4*ntiles), 4*ntiles),
             category=np.array(ntiles * [2, 0, 4, 1]),
             event_id=np.arange(intensity.shape[0]),
+            date=np.array([723795, 728395, 738395, 724395])
         )
 
         NA_scaling_05, NA_scaling_45 = [
@@ -568,7 +570,7 @@ class TestClimateSce(unittest.TestCase):
         cat45_sel = np.array([False, False, True, False]*ntiles)
         cat03_sel = ~cat45_sel
 
-        NA_scaling_03 = (NA_scaling_05 * np.sum(tc.frequency[cat05_sel & NA_bas_sel]) 
+        NA_scaling_03 = (NA_scaling_05 * np.sum(tc.frequency[cat05_sel & NA_bas_sel])
                          - NA_scaling_45 * np.sum(tc.frequency[cat45_sel & NA_bas_sel])
                         ) / np.sum(tc.frequency[cat03_sel & NA_bas_sel])
 
@@ -577,14 +579,14 @@ class TestClimateSce(unittest.TestCase):
                         ) / np.sum(tc.frequency[cat03_sel & WP_bas_sel])
 
         tc_cc = tc.apply_climate_scenario_knu(percentile='50',
-                                              rcp_scenario=85,
+                                              scenario='8.5',
                                               target_year=2035)
 
         for i_tile in range(ntiles):
             offset = i_tile * 4
             # factors to events in basin NA
             np.testing.assert_array_equal(
-                tc.frequency[offset + 1] * (1 + NA_scaling_03/100), 
+                tc.frequency[offset + 1] * (1 + NA_scaling_03/100),
                 tc_cc.frequency[offset + 1]
                 )
             np.testing.assert_array_equal(
