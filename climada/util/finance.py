@@ -123,9 +123,8 @@ def income_group(cntry_iso, ref_year, shp_file=None):
         # take value from natural earth repository
         close_year, close_val = nat_earth_adm0(cntry_iso, 'INCOME_GRP',
                                                shp_file=shp_file)
-    finally:
-        LOGGER.info('Income group %s %s: %s.', cntry_iso, close_year, close_val)
 
+    LOGGER.info('Income group %s %s: %s.', cntry_iso, close_year, close_val)
     return close_year, close_val
 
 def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):

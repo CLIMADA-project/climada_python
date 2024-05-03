@@ -291,7 +291,7 @@ JupyterLab
 
    .. code-block:: shell
 
-      mamba env activate climada_env
+      mamba activate climada_env
       jupyter-lab
 
    JupyterLab will open in a new window of your default browser.
