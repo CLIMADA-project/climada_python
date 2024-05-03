@@ -231,12 +231,20 @@ class Calc():
             'names' : param_labels,
             'bounds' : [[0, 1]]*len(param_labels)
             }
-
+        #not sure if we want to still force users to enter a value for N in the
+        #case of the 'ff' sampler. In the meantime, trigger a warning.
+        if sampling_method == 'ff':
+            LOGGER.warning("""You are using the 'ff' sampler which does not require
+                           a value for 'N. The entered N value will be ignored
+                           in the sampling process.""")
         uniform_base_sample = self._make_uniform_base_sample(N, problem_sa,
                                                              sampling_method,
                                                              sampling_kwargs)
         df_samples = pd.DataFrame(uniform_base_sample, columns=param_labels)
         for param in list(df_samples):
+            if param not in self.distr_dict: #dummy_0 param added to uniform_base_sample
+                                             #when using ff method, need to ignore it?
+                continue
             df_samples[param] = df_samples[param].apply(
                 self.distr_dict[param].ppf
                 )
@@ -292,8 +300,14 @@ class Calc():
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         import importlib # pylint: disable=import-outside-toplevel
         salib_sampling_method = importlib.import_module(f'SALib.sample.{sampling_method}')
-        sample_uniform = salib_sampling_method.sample(
-            problem = problem_sa, N = N, **sampling_kwargs)
+
+        if sampling_method == 'ff': #the ff sampling has a fixed sample size and
+                                    #does not require the N parameter
+            sample_uniform = salib_sampling_method.sample(
+                problem = problem_sa, **sampling_kwargs)
+        else:
+            sample_uniform = salib_sampling_method.sample(
+                problem = problem_sa, N = N, **sampling_kwargs)
         return sample_uniform
 
     def sensitivity(self, unc_output, sensitivity_method = 'sobol',
@@ -358,7 +372,7 @@ class Calc():
 
         sens_output = copy.deepcopy(unc_output)
 
-        #Certaint Salib method required model input (X) and output (Y), others
+        #Certain Salib method required model input (X) and output (Y), others
         #need only ouput (Y)
         salib_kwargs = method.analyze.__code__.co_varnames  # obtain all kwargs of the salib method
         X = unc_output.samples_df.to_numpy() if 'X' in salib_kwargs else None
@@ -498,6 +512,10 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         else:
             sens_indices = method.analyze(problem_sa, Y,
                                                     **sensitivity_kwargs)
+        if method == 'ff':
+            if sensitivity_kwargs['second_order'] == True:
+                #parse sens_indices to a square matrix to ensure consistency with unsequa
+                pass
         sens_first_order = np.array([
             np.array(si_val_array)
             for si, si_val_array in sens_indices.items()
