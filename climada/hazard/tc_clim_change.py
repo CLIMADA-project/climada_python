@@ -336,16 +336,17 @@ def get_knutson_data():
         https://doi.org/10.1175/BAMS-D-18-0194.1.
 
     for 4 variables (i.e., cat05 frequency, cat45 frequency, intensity, precipitation rate), 
-    6 regions (i.e., N. Atl, NW Pac., NE Pac., N. Ind, S. Ind., SW Pac.) and 
-    5 metrics (i.e., 5% or 10%, 25%, 50%, 75%, 95% or 90%).
+    6 regions, i.e., N. Atl (NA), NW Pac. (WP), NE Pac (EP)., N. Ind (NI), S. Ind. (SI), SW Pac. (SP),
+    and 5 percentiles, i.e., 5% or 10%, 25%, 50%, 75%, 95% or 90%.
 
     Returns
     -------
     knutson_data : np.array of dimension (4x6x5)
         array contaning data used by Knutson et al. (2020) to project changes in cat05 frequency,
         cat45 frequency, intensity and precipitation rate (first array's dimension), for the
-        N. Atl, NW Pac., NE Pac., N. Ind, S. Ind., SW Pac. regions (second array's dimension)
-        for the 5%/10%, 25%, 50%, 75%, 95%/90% percentiles (thirs array's dimension).
+        N. Atl (NA), NW Pac. (WP), NE Pac (EP)., N. Ind (NI), S. Ind. (SI), SW Pac. (SP) regions
+        (second array's dimension) for the 5%/10%, 25%, 50%, 75%, 95%/90% percentiles
+        (thirs array's dimension).
     """
 
     knutson_data = np.empty((4,6,5))
