@@ -39,6 +39,7 @@ from climada.hazard.trop_cyclone import (
 from climada.hazard.centroids.centr import Centroids
 import climada.hazard.test as hazard_test
 
+
 DATA_DIR = Path(hazard_test.__file__).parent.joinpath('data')
 
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
@@ -126,6 +127,25 @@ class TestReader(unittest.TestCase):
             intensity = tc_haz.intensity.toarray()[0, :]
             msk = (intensity > 0)
             np.testing.assert_array_equal(windfield_norms[msk], intensity[msk])
+
+    def test_cross_antimeridian(self):
+        # Two locations on the island Taveuni (Fiji), one west and one east of 180° longitude.
+        # We list the second point twice, with different lon-normalization:
+        cen = Centroids.from_lat_lon([-16.95, -16.8, -16.8], [179.9, 180.1, -179.9])
+        cen.set_dist_coast(precomputed=True)
+
+        # Cyclone YASA (2020) passed directly over Fiji
+        tr = TCTracks.from_ibtracs_netcdf(storm_id=["2020346S13168"])
+
+        inten = TropCyclone.from_tracks(tr, centroids=cen).intensity.toarray()[0, :]
+
+        # Centroids 1 and 2 are identical, they just use a different normalization for lon. This
+        # should not affect the result at all:
+        self.assertEqual(inten[1], inten[2])
+
+        # All locations should be clearly affected by strong winds of appx. 40 m/s. The exact
+        # values are not so important for this test:
+        np.testing.assert_allclose(inten, 40, atol=10)
 
     def test_windfield_models(self):
         """Test _tc_from_track function with different wind field models."""
@@ -256,31 +276,54 @@ class TestWindfieldHelpers(unittest.TestCase):
 
     def test_get_close_centroids_pass(self):
         """Test get_close_centroids function."""
-        t_lat = np.array([0, -0.5, 0])
-        t_lon = np.array([0.9, 2, 3.2])
+        si_track = xr.Dataset({
+            "lat": ("time", np.array([0, -0.5, 0])),
+            "lon": ("time", np.array([0.9, 2, 3.2])),
+        }, attrs={"mid_lon": 0.0})
         centroids = np.array([
             [0, -0.2], [0, 0.9], [-1.1, 1.2], [1, 2.1], [0, 4.3], [0.6, 3.8], [0.9, 4.1],
         ])
-        test_mask = np.array([[False, True, False, False, False, False, False],
-                              [False, False, True, False, False, False, False],
-                              [False, False, False, False, False, True, False]])
-        mask = get_close_centroids(t_lat, t_lon, centroids, 112.0)
-        np.testing.assert_equal(mask, test_mask)
+        centroids_close, mask_close, mask_close_alongtrack = (
+            get_close_centroids(si_track, centroids, 112.0)
+        )
+        self.assertEqual(centroids_close.shape[0], mask_close.sum())
+        self.assertEqual(mask_close_alongtrack.shape[0], si_track.sizes["time"])
+        self.assertEqual(mask_close_alongtrack.shape[1], centroids_close.shape[0])
+        np.testing.assert_equal(mask_close_alongtrack.any(axis=0), True)
+        np.testing.assert_equal(mask_close, np.array(
+            [False, True, True, False, False, True, False]
+        ))
+        np.testing.assert_equal(mask_close_alongtrack, np.array([
+            [True, False, False],
+            [False, True, False],
+            [False, False, True],
+        ]))
+        np.testing.assert_equal(centroids_close, centroids[mask_close])
 
         # example where antimeridian is crossed
-        t_lat = np.linspace(-10, 10, 11)
-        t_lon = np.linspace(170, 200, 11)
-        t_lon[t_lon > 180] -= 360
+        si_track = xr.Dataset({
+            "lat": ("time", np.linspace(-10, 10, 11)),
+            "lon": ("time", np.linspace(170, 200, 11)),
+        }, attrs={"mid_lon": 180.0})
         centroids = np.array([[-11, 169], [-7, 176], [4, -170], [10, 170], [-10, -160]])
-        test_mask = np.array([True, True, True, False, False])
-        mask = get_close_centroids(t_lat, t_lon, centroids, 600.0)
-        np.testing.assert_equal(mask.any(axis=0), test_mask)
+        centroids_close, mask_close, mask_close_alongtrack = (
+            get_close_centroids(si_track, centroids, 600.0)
+        )
+        self.assertEqual(centroids_close.shape[0], mask_close.sum())
+        self.assertEqual(mask_close_alongtrack.shape[0], si_track.sizes["time"])
+        self.assertEqual(mask_close_alongtrack.shape[1], centroids_close.shape[0])
+        np.testing.assert_equal(mask_close_alongtrack.any(axis=0), True)
+        np.testing.assert_equal(mask_close, np.array([True, True, True, False, False]))
+        np.testing.assert_equal(centroids_close, np.array([
+            # the longitudinal coordinate of the third centroid is normalized
+            [-11, 169], [-7, 176], [4, 190],
+        ]))
 
     def test_B_holland_1980_pass(self):
         """Test _B_holland_1980 function."""
         si_track = xr.Dataset({
-            "env": ("time",  MBAR_TO_PA * np.array([1010, 1010])),
-            "cen": ("time",  MBAR_TO_PA * np.array([995, 980])),
+            "env": ("time", MBAR_TO_PA * np.array([1010, 1010])),
+            "cen": ("time", MBAR_TO_PA * np.array([995, 980])),
             "vgrad": ("time",  [35, 40]),
         })
         _B_holland_1980(si_track)
@@ -475,7 +518,7 @@ class TestClimateSce(unittest.TestCase):
             np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
         self.assertTrue(np.allclose(tc.frequency, tc_cc.frequency))
 
-    def test_apply_criterion_track(self):
+    def test_apply_criterion_track2(self):
         """Test _apply_criterion function."""
         criterion = [{'basin': 'NA', 'category': [1, 2, 3, 4, 5],
                    'year': 2100, 'change': 1.045, 'variable': 'intensity'}

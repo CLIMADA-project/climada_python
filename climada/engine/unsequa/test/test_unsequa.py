@@ -34,7 +34,8 @@ from climada.entity import ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.entity import Exposures
 from climada.hazard import Hazard
-from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit
+from climada.engine import ImpactCalc
+from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit, CalcDeltaImpact
 
 from climada.util.constants import (EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE,
                                     TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN)
@@ -324,6 +325,90 @@ class TestOutput(unittest.TestCase):
         self.assertEqual(unc_data_load.sensitivity_kwargs, unc_data_save.sensitivity_kwargs)
         filename.unlink()
 
+class TestCalcDelta(unittest.TestCase):
+    """Test the calcluate delta impact uncertainty class"""
+
+    def test_calc_uncertainty_pass(self):
+        """Test compute the uncertainty distribution for an impact"""
+
+        exp_unc, impf_unc, _ = make_input_vars()
+        haz = haz_dem()
+        haz2 = haz_dem()
+        haz2.intensity *=2
+        unc_calc = CalcDeltaImpact(exp_unc, impf_dem(), haz, exp_dem(), impf_unc, haz2)
+        unc_data = unc_calc.make_sample(N=2)
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+
+        for [x_exp, x_paa, x_mdd], delta_aai_aag in zip(unc_data.samples_df.values, unc_data.aai_agg_unc_df.values):
+            exp1 = exp_unc.evaluate(x_exp=x_exp)
+            exp2 = exp_dem()
+            impf1 = impf_dem()
+            impf2 = impf_unc.evaluate(x_paa=x_paa, x_mdd=x_mdd)
+            haz1 = haz
+
+            imp1 = ImpactCalc(exp1, impf1, haz1).impact()
+            imp2 = ImpactCalc(exp2, impf2, haz2).impact()
+
+            self.assertAlmostEqual((imp2.aai_agg - imp1.aai_agg)/imp1.aai_agg, delta_aai_aag)
+
+
+        self.assertEqual(unc_data.unit, exp_dem().value_unit)
+        self.assertListEqual(unc_calc.rp, [5, 10, 20, 50, 100, 250])
+        self.assertEqual(unc_calc.calc_eai_exp, False)
+        self.assertEqual(unc_calc.calc_at_event, False)
+
+        self.assertEqual(
+            unc_data.aai_agg_unc_df.size,
+            unc_data.n_samples
+            )
+        self.assertEqual(
+            unc_data.freq_curve_unc_df.size,
+            unc_data.n_samples * len(unc_calc.rp)
+            )
+        self.assertTrue(unc_data.eai_exp_unc_df.empty)
+        self.assertTrue(unc_data.at_event_unc_df.empty)
+
+    def test_calc_sensitivity_pass(self):
+        """Test compute sensitivity default for CalcDeltaImpact input"""
+
+        exp_unc, impf_unc, _ = make_input_vars()
+        haz = haz_dem()
+        haz2 = haz_dem()
+        haz2.intensity *= 2
+        unc_calc = CalcDeltaImpact(exp_unc, impf_dem(), haz, exp_dem(), impf_unc, haz2)
+        unc_data = unc_calc.make_sample(N=4)
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+
+        unc_data = unc_calc.sensitivity(
+            unc_data,
+            sensitivity_kwargs = {'calc_second_order': True}
+            )
+
+        self.assertEqual(unc_data.sensitivity_method, 'sobol')
+        self.assertTupleEqual(unc_data.sensitivity_kwargs,
+                             tuple({'calc_second_order': 'True'}.items())
+                             )
+
+        for name, attr in unc_data.__dict__.items():
+            if 'sens_df' in name:
+                if 'eai' in name:
+                    self.assertTrue(attr.empty)
+                elif 'at_event' in name:
+                    self.assertTrue(attr.empty)
+                else:
+                    np.testing.assert_array_equal(
+                        attr.param.unique(),
+                        np.array(['x_exp', 'x_paa', 'x_mdd'])
+                        )
+
+                    np.testing.assert_array_equal(
+                        attr.si.unique(),
+                        np.array(['S1', 'S1_conf', 'ST', 'ST_conf', 'S2', 'S2_conf'])
+                        )
+
+                    self.assertEqual(len(attr),
+                                     len(unc_data.param_labels) * (4 + 3 + 3)
+                                     )
 
 class TestCalcImpact(unittest.TestCase):
     """Test the calcluate impact uncertainty class"""
@@ -779,5 +864,6 @@ if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputVar)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutput))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcImpact))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcDelta))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcCostBenefit))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

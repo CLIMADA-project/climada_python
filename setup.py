@@ -33,7 +33,7 @@ DEPS_TEST = [
 setup(
     name='climada',
 
-    version='4.0.2-dev',
+    version='4.1.2-dev',
 
     description='CLIMADA in Python',
 
@@ -81,6 +81,7 @@ setup(
         'pillow',
         'pint',
         'pycountry',
+        'pyproj',
         'rasterio',
         'salib',
         'scikit-learn',

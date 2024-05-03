@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty class.
 """
 
-__all__ = ['UncOutput', 'UncCostBenefitOutput', 'UncImpactOutput']
+__all__ = ['UncOutput', 'UncCostBenefitOutput', 'UncImpactOutput', 'UncDeltaImpactOutput']
 
 import logging
 import datetime as dt
@@ -33,6 +33,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib as mpl
+from matplotlib import colormaps as cm
 
 from climada import CONFIG
 
@@ -470,7 +471,7 @@ class UncOutput():
         return axes
 
     def plot_uncertainty(self, metric_list=None, orig_list=None, figsize=None,
-                         log=False, axes=None):
+                         log=False, axes=None, calc_delta=False):
         """
         Plot the  uncertainty distribution
 
@@ -496,6 +497,8 @@ class UncOutput():
             Use log10 scale for x axis. Default is False.
         axes : matplotlib.pyplot.axes, optional
             Axes handles to use for the plot. The default is None.
+        calc_delta: boolean, optional
+            Adapt x axis label for CalcDeltaImpact unc_output. Default is False.
 
         Raises
         ------
@@ -559,6 +562,21 @@ class UncOutput():
                 if ax is not None:
                     ax.remove()
                 continue
+            # Check if the column data is empty or contains only NaNs
+            data, m_unit = u_vtm(unc_df_plt[col])
+            data = pd.Series(data)
+            if data.empty or data.isna().all() or data.dropna().shape[0] < 2:
+                print(f"No data to plot for '{col}'.")
+                if ax is not None:
+                    ax.text(0.5, 0.5, 'No data to plot', fontsize=18,
+                            horizontalalignment='center', verticalalignment='center', 
+                            transform=ax.transAxes)
+                    ax.set_xlabel(col)
+                    ax.set_ylabel('density of samples')
+                    ax.tick_params(labelsize=fontsize)
+                    for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
+                        item.set_fontsize(fontsize)
+                continue
             data, m_unit = u_vtm(unc_df_plt[col])
             data = pd.Series(data)
             if data.empty:
@@ -594,6 +612,9 @@ class UncOutput():
                     [0.3 * ymax, 0.3 * ymax], color='black',
                     label="std=%.2f%s" %(std, m_unit))
             xlabel = col + ' [' + m_unit + ' ' + self.unit + '] '
+            if calc_delta:
+                # Modify the xlabel when calc_delta is True
+                xlabel = col + ' change [%]'
             if log:
                 ax.set_xlabel( xlabel + ' (log10 scale)')
             else:
@@ -610,34 +631,36 @@ class UncOutput():
         return axes
 
 
-    def plot_rp_uncertainty(self, orig_list=None, figsize=(16, 6), axes=None):
+    def plot_rp_uncertainty(self, orig_list=None, figsize=(16, 6), axes=None, 
+                            calc_delta=False):
         """
         Plot the distribution of return period uncertainty
-
+    
         Parameters
         ----------
         orig_list : list[float], optional
             List of the original (without uncertainty) values for each
-            sub-metric of the mtrics in metric_list. The ordering is identical.
+            sub-metric of the metrics in metric_list. The ordering is identical.
             The default is None.
         figsize : tuple(int or float, int or float), optional
             The figsize argument of matplotlib.pyplot.subplots()
-            The default is (8, 6)
+            The default is (16, 6)
         axes: matplotlib.pyplot.axes, optional
             Axes handles to use for the plot. The default is None.
-
+        calc_delta: boolean, optional
+            Adapt axis labels for CalcDeltaImpact unc_output. Default is False.
+    
         Raises
         ------
         ValueError
             If no metric distribution was computed the plot cannot be made.
-
+    
         Returns
         -------
-        ax : matplotlib.pyplot.axes
+        axes : matplotlib.pyplot.axes
             The axis handle of the plot.
-
         """
-
+    
         try:
             unc_df = self.freq_curve_unc_df
         except AttributeError:
@@ -646,26 +669,29 @@ class UncOutput():
             raise ValueError("No return period uncertainty data present "
                     "Please run an uncertainty analysis with the desired "
                     "return period specified.")
-
+    
         add_orig=True
         if orig_list is None:
             add_orig=False
-
-        if  axes is  None:
+    
+        if axes is None:
             _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
-
+    
         [min_l, max_l], m_unit = u_vtm([unc_df.min().min(), unc_df.max().max()], n_sig_dig=4)
-
+    
+        # Plotting for the first axes
         ax = axes[0]
-
         prop_cycle = plt.rcParams['axes.prop_cycle']
         colors = prop_cycle.by_key()['color']
-
+    
         for n, (_name, values) in enumerate(unc_df.items()):
+            if values.isna().all() or len(values.dropna()) < 2:
+                print(f"Skipping plot for '{_name}': insufficient data.")
+                continue
             values = u_cmv(values, m_unit, n_sig_dig=4)
             count, division = np.histogram(values, bins=100)
             count = count / count.max()
-            losses = [(bin_i + bin_f )/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
+            losses = [(bin_i + bin_f)/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
             ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
             ax.fill_between(losses, count + 2*n, 2*n)
             if add_orig:
@@ -674,37 +700,53 @@ class UncOutput():
                     [orig_val, orig_val], [2*n, 2*(n+1)],
                     color=colors[n], linestyle='dotted', linewidth=2,
                     label="orig=%.2f%s" %(orig_val, m_unit)
-                    )
-
+                )
+    
         ax.set_xlim(min_l, max_l)
         ax.set_ylim(0, 2*unc_df.shape[1])
-        ax.set_xlabel('Impact [%s %s]' %(m_unit, self.unit))
-        ax.set_ylabel('Return period [years]')
         ax.set_yticks(np.arange(0, 2*unc_df.shape[1], 2))
         ax.set_yticklabels([s[2:] for s in unc_df.columns])
         ax.legend(loc='lower right')
-
+    
+        # Set x-axis label for the first axes
+        if calc_delta:
+            ax.set_xlabel('Impact change [%]')
+        else:
+            ax.set_xlabel('Impact [%s %s]' % (m_unit, self.unit))
+    
+        ax.set_ylabel('Return period [years]')
+    
+        # Plotting for the second axes
         ax = axes[1]
-
-        high = u_cmv(self.get_unc_df('freq_curve').quantile(0.95).values, m_unit, n_sig_dig=4)
-        middle = u_cmv(self.get_unc_df('freq_curve').quantile(0.5).values, m_unit, n_sig_dig=4)
-        low = u_cmv(self.get_unc_df('freq_curve').quantile(0.05).values, m_unit, n_sig_dig=4)
-
+        high = u_cmv(self.get_unc_df('freq_curve').quantile(0.95).values, 
+                     m_unit, n_sig_dig=4)
+        middle = u_cmv(self.get_unc_df('freq_curve').quantile(0.5).values, 
+                       m_unit, n_sig_dig=4)
+        low = u_cmv(self.get_unc_df('freq_curve').quantile(0.05).values, 
+                    m_unit, n_sig_dig=4)
+    
         x = [float(rp[2:]) for rp in unc_df.columns]
-        ax.plot(x, high, linestyle='--', color = 'blue',
-                alpha=0.5, label='0.95 percentile')
+        ax.plot(x, high, linestyle='--', color='blue', alpha=0.5, 
+                label='0.95 percentile')
         ax.plot(x, middle, label='0.5 percentile')
-        ax.plot(x, low, linestyle='dashdot', color='blue',
-                alpha=0.5, label='0.05 percentile')
+        ax.plot(x, low, linestyle='dashdot', color='blue', alpha=0.5, 
+                label='0.05 percentile')
         ax.fill_between(x, low, high, alpha=0.2)
         if add_orig:
-            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4),
-                    color='green', linestyle='dotted', label='orig')
+            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green', 
+                    linestyle='dotted', label='orig')
         ax.set_xlabel('Return period [year]')
-        ax.set_ylabel('Impact [' + m_unit + ' ' + self.unit + ']')
+    
+        # Set y-axis label for the second axes
+        if calc_delta:
+            ax.set_ylabel('Impact change [%]')
+        else:
+            ax.set_ylabel('Impact [' + m_unit + ' ' + self.unit + ']')
+    
         ax.legend()
-
+    
         return axes
+
 
 
     def plot_sensitivity(self, salib_si='S1', salib_si_conf='S1_conf',
@@ -995,7 +1037,7 @@ class UncOutput():
             if len(n) > 0 :
                 n = n[0]
                 cmap = mpl.colors.ListedColormap(
-                    plt.get_cmap(MAP_CMAP).colors[:len(labels)]
+                    cm.get_cmap(MAP_CMAP).colors[:len(labels)]
                     )
                 colors = list(cmap.colors)
                 colors[n] = tuple(np.repeat(0.93, 3))
@@ -1007,6 +1049,7 @@ class UncOutput():
                 )
 
         return ax
+
 
     def to_hdf5(self, filename=None):
         """
@@ -1101,10 +1144,11 @@ class UncOutput():
 
 
 class UncImpactOutput(UncOutput):
-    """Extension of UncOutput specific for CalcImpact, returned by the  uncertainty() method.
+    """Extension of UncOutput specific for CalcImpact, returned by the 
+        uncertainty() method.
     """
-    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
-                 at_event_unc_df, coord_df):
+    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, 
+                 eai_exp_unc_df, at_event_unc_df, coord_df):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
@@ -1139,6 +1183,52 @@ class UncImpactOutput(UncOutput):
         self.eai_exp_sens_df = None
         self.at_event_unc_df = at_event_unc_df
         self.at_event_sens_df = None
+        self.coord_df = coord_df
+
+class UncDeltaImpactOutput(UncOutput):
+    """Extension of UncOutput specific for CalcDeltaImpact, returned by the  uncertainty() method.
+    """
+    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
+                 at_event_initial_unc_df, at_event_final_unc_df, coord_df):
+        """Constructor
+
+        Uncertainty output values from impact.calc for each sample
+
+        Parameters
+        ----------
+        samples_df : pandas.DataFrame
+            input parameters samples
+        unit : str
+            value unit
+        aai_agg_unc_df : pandas.DataFrame
+            Each row contains the value of aai_aag for one sample (row of
+            samples_df)
+        freq_curve_unc_df : pandas.DataFrame
+            Each row contains the values of the impact exceedence frequency
+            curve for one sample (row of samples_df)
+        eai_exp_unc_df : pandas.DataFrame
+            Each row contains the values of eai_exp for one sample (row of
+            samples_df)
+        at_event_initial_unc_df : pandas.DataFrame
+            Each row contains the values of at_event for one sample (row of
+            samples_df)
+        at_event_final_unc_df : pandas.DataFrame
+            Each row contains the values of at_event for one sample (row of
+            samples_df)
+        coord_df : pandas.DataFrame
+            Coordinates of the exposure
+        """
+        super().__init__(samples_df, unit)
+        self.aai_agg_unc_df = aai_agg_unc_df
+        self.aai_agg_sens_df = None
+        self.freq_curve_unc_df = freq_curve_unc_df
+        self.freq_curve_sens_df = None
+        self.eai_exp_unc_df = eai_exp_unc_df
+        self.eai_exp_sens_df = None
+        self.at_event_initial_unc_df = at_event_initial_unc_df
+        self.at_event_initial_sens_df = None
+        self.at_event_final_unc_df = at_event_final_unc_df
+        self.at_event_final_sens_df = None
         self.coord_df = coord_df
 
 
