@@ -287,9 +287,9 @@ class ImpactFunc():
         **kwargs):
         """S-shape polynomial impact function hinging on four parameter.
 
-        .. math:: f(I) = \\frac{Luk(I)**exponent}{1 + Luk(I)**exponent}}\\cdot scale
+        .. math:: f(I) = \\frac{luk(I)**exponent}{1 + luk(I)**exponent}}\\cdot scale
 
-        .. math:: Luk(I) = \\frac{max[I - threshold, 0]}{half_point - threshold}
+        .. math:: luk(I) = \\frac{max[I - threshold, 0]}{half_point - threshold}
 
         This function is inspired by Emanuel et al. (2011)
         https://doi.org/10.1175/WCAS-D-11-00007.1
@@ -330,9 +330,9 @@ class ImpactFunc():
         if threshold > half_point:
             mdd = np.zeros_like(inten)
         else:
-            Luk = (inten - threshold) / (half_point - threshold)
-            Luk[Luk < 0] = 0
-            mdd = Luk**exponent / (1 + Luk**exponent) * scale
+            luk = (inten - threshold) / (half_point - threshold)
+            luk[luk < 0] = 0
+            mdd = luk**exponent / (1 + luk**exponent) * scale
         paa = np.ones_like(inten)
 
         impf = cls(
