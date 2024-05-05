@@ -526,29 +526,29 @@ class TestCalcImpact(unittest.TestCase):
             )
         self.assertTrue(unc_data.eai_exp_unc_df.empty)
         self.assertTrue(unc_data.at_event_unc_df.empty)
-    
+
     def test_calc_sensitivity_pawn_pass(self):
         """Test compute sensitivity using the 'pawn' method"""
-    
+
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
         unc_data = unc_calc.make_sample(N=4)  # Generate samples
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
-    
+
         # Call the sensitivity method with PAWN-specific arguments
         unc_data = unc_calc.sensitivity(
             unc_data,
             sensitivity_method='pawn',
             sensitivity_kwargs={'S': 10, 'seed': 12345}  # Arguments relevant to PAWN
         )
-    
+
         self.assertEqual(unc_data.sensitivity_method, 'pawn')
-    
+
         self.assertEqual('x_exp', unc_data.aai_agg_sens_df.param[0])
         self.assertEqual('CV', unc_data.aai_agg_sens_df.si[12])
         self.assertEqual(0.1875, unc_data.aai_agg_sens_df.aai_agg[2])
-        
+
         self.assertEqual(
             unc_data.aai_agg_unc_df.size,
             unc_data.n_samples
@@ -560,30 +560,30 @@ class TestCalcImpact(unittest.TestCase):
             )
         self.assertTrue(unc_data.eai_exp_unc_df.empty)
         self.assertTrue(unc_data.at_event_unc_df.empty)
-   
+
     def test_calc_sensitivity_dgsm_pass(self):
         """Test compute sensitivity using the DGSM method"""
-    
+
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-    
+
         # Generate samples using the finite_diff sampling method
         unc_data = unc_calc.make_sample(N=4, sampling_method='finite_diff')
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
-    
+
         unc_data = unc_calc.sensitivity(
             unc_data,
             sensitivity_method='dgsm',
             sensitivity_kwargs={'num_resamples': 100, 'conf_level': 0.95, 'seed': 12345}
         )
-    
+
         self.assertEqual(unc_data.sensitivity_method, 'dgsm')
 
         self.assertEqual('x_exp', unc_data.freq_curve_sens_df.param[0])
         self.assertEqual('dgsm', unc_data.freq_curve_sens_df.si[8])
         self.assertAlmostEqual(0.060215, unc_data.freq_curve_sens_df.rp100[6], places=6)
-        
+
         self.assertEqual(
             unc_data.aai_agg_unc_df.size,
             unc_data.n_samples
@@ -598,28 +598,28 @@ class TestCalcImpact(unittest.TestCase):
 
     def test_calc_sensitivity_fast_pass(self):
         """Test compute sensitivity using the FAST method"""
-    
+
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-    
+
         # Generate samples using the fast_sampler sampling method
         unc_data = unc_calc.make_sample(N=256, sampling_method='fast_sampler')
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
-    
+
         # Call the sensitivity method with FAST-specific arguments
         unc_data = unc_calc.sensitivity(
             unc_data,
             sensitivity_method='fast',
             sensitivity_kwargs={'M': 4, 'seed': 12345}  # Arguments relevant to FAST
         )
-    
+
         self.assertEqual(unc_data.sensitivity_method, 'fast')
-    
+
         self.assertEqual('x_exp', unc_data.freq_curve_sens_df.param[0])
         self.assertEqual('S1_conf', unc_data.freq_curve_sens_df.si[8])
         self.assertAlmostEqual(0.056517, unc_data.freq_curve_sens_df.rp100[6], places=6)
-        
+
         self.assertEqual(
             unc_data.aai_agg_unc_df.size,
             unc_data.n_samples
@@ -631,31 +631,31 @@ class TestCalcImpact(unittest.TestCase):
             )
         self.assertTrue(unc_data.eai_exp_unc_df.empty)
         self.assertTrue(unc_data.at_event_unc_df.empty)
-        
+
     def test_calc_sensitivity_rbd_fast_pass(self):
         """Test compute sensitivity using the RBD FAST method"""
-    
+
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
         unc_calc = CalcImpact(exp_unc, impf_unc, haz)
-    
+
         # Generate samples using the fast_sampler sampling method
         unc_data = unc_calc.make_sample(N=24, sampling_method='morris')
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
-    
+
         # Call the sensitivity method with FAST-specific arguments
         unc_data = unc_calc.sensitivity(
             unc_data,
             sensitivity_method='rbd_fast',
             sensitivity_kwargs={'M': 4, 'seed': 12345}  # Arguments relevant to FAST
         )
-    
+
         self.assertEqual(unc_data.sensitivity_method, 'rbd_fast')
-    
+
         self.assertEqual('x_exp', unc_data.freq_curve_sens_df.param[0])
         self.assertEqual('S1_conf', unc_data.freq_curve_sens_df.si[3])
         self.assertAlmostEqual(0.1622, unc_data.freq_curve_sens_df.rp50[4], places=4)
-        
+
         self.assertEqual(
             unc_data.aai_agg_unc_df.size,
             unc_data.n_samples
@@ -667,7 +667,7 @@ class TestCalcImpact(unittest.TestCase):
             )
         self.assertTrue(unc_data.eai_exp_unc_df.empty)
         self.assertTrue(unc_data.at_event_unc_df.empty)
-        
+
 
     def test_calc_sensitivity_morris_pass(self):
         """Test compute sensitivity default"""
@@ -714,7 +714,7 @@ class TestCalcImpact(unittest.TestCase):
                     self.assertEqual(len(attr),
                                      len(unc_data.param_labels) * 4
                                      )
-                
+
 
 class TestCalcCostBenefit(unittest.TestCase):
     """Test the calcluate impact uncertainty class"""

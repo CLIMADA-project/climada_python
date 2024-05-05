@@ -215,6 +215,17 @@ class Calc():
         unc_output : climada.engine.uncertainty.unc_output.UncOutput()
             Uncertainty data object with the samples
 
+        Notes
+        -----
+        The 'ff' sampling method does not require a value for the N parameter.
+        The inputed N value is hence ignored in the sampling process in the case
+        of this method.
+        The 'ff' sampling method requires a number of uncerainty parameters to be
+        a power of 2. The users can generate dummy variables to achieve this
+        requirement. Please refer to https://salib.readthedocs.io/en/latest/api.html
+        for more details.
+
+
         See Also
         --------
         SALib.sample: sampling methods from SALib SALib.sample
@@ -303,7 +314,14 @@ class Calc():
 
         if sampling_method == 'ff': #the ff sampling has a fixed sample size and
                                     #does not require the N parameter
-            sample_uniform = salib_sampling_method.sample(
+            if (problem_sa['num_vars'] & (problem_sa['num_vars'] - 1) != 0):
+                raise ValueError("The number of parameters must be a power of 2 "
+                                 "to use the ff sampling method. You can generate "
+                                 "dummy parameters to overcome this limitation."
+                                 " See https://salib.readthedocs.io/en/latest/api.html")
+
+            else:
+                sample_uniform = salib_sampling_method.sample(
                 problem = problem_sa, **sampling_kwargs)
         else:
             sample_uniform = salib_sampling_method.sample(
@@ -512,10 +530,20 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         else:
             sens_indices = method.analyze(problem_sa, Y,
                                                     **sensitivity_kwargs)
-        if method == 'ff':
+        if method.__name__ == 'SALib.analyze.ff':
             if sensitivity_kwargs['second_order'] == True:
-                #parse sens_indices to a square matrix to ensure consistency with unsequa
-                pass
+                #parse interaction terms of sens_indices to a square matrix
+                #to ensure consistency with unsequa
+                interactions = np.full((len(param_labels), len(param_labels)), np.nan)
+                interactions_names = np.empty((len(param_labels), len(param_labels)), dtype=str)
+                for i,ie in enumerate(sens_indices['interaction_names']):
+                    interactions[[param_labels.index(ie[0]), param_labels.index(ie[1])],
+                                  [param_labels.index(ie[1]), param_labels.index(ie[0])]] = sens_indices['IE'][i]
+                    interactions_names[[param_labels.index(ie[0]), param_labels.index(ie[1])],
+                                  [param_labels.index(ie[1]), param_labels.index(ie[0])]] = ie
+                sens_indices['IE'] = interactions
+                sens_indices['interaction_names'] = interactions_names
+
         sens_first_order = np.array([
             np.array(si_val_array)
             for si, si_val_array in sens_indices.items()
