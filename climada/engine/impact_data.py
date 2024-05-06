@@ -162,7 +162,60 @@ VARNAMES_EMDAT = \
             'Adm Level': 'Adm Level',
             'Admin1 Code': 'Admin1 Code',
             'Admin2 Code': 'Admin2 Code',
-            'Geo Locations': 'Geo Locations'}}
+            'Geo Locations': 'Geo Locations'},
+     2024: {'Dis No': 'DisNo.',
+            'Historic': 'Historic',
+            'Classification Key': 'Classification Key',
+            'External IDs': 'External IDs',
+            #'Year': 'Start Year', #use Start Year as year is apparently now missing
+            #'Seq': 'Seq',
+            'Disaster Group': 'Disaster Group',
+            'Disaster Subgroup': 'Disaster Subgroup',
+            'Disaster Type': 'Disaster Type',
+            'Disaster Subtype': 'Disaster Subtype',
+            #'Disaster Subsubtype': 'Disaster Subsubtype',
+            'Event Name': 'Event Name',
+            'Country': 'Country',
+            'ISO': 'ISO',
+            'Region': 'Region',
+            'Subregion': 'Subregion',
+            #'Continent': 'Continent',
+            'Location': 'Location',
+            'Origin': 'Origin',
+            'Associated Types': 'Associated Types',
+            #'Associated Dis2': 'Associated Dis2',
+            'OFDA/BHA Response': 'OFDA/BHA Response',
+            'Appeal': 'Appeal',
+            'Declaration': 'Declaration',
+            "AID Contribution ('000 US$)": "AID Contribution ('000 US$)",
+            'Dis Mag Value': 'Magnitude',
+            'Dis Mag Scale': 'Magnitude Scale',
+            'Latitude': 'Latitude',
+            'Longitude': 'Longitude',
+            #'Local Time': 'Local Time',
+            'River Basin': 'River Basin',
+            'Start Year': 'Start Year',
+            'Start Month': 'Start Month',
+            'Start Day': 'Start Day',
+            'End Year': 'End Year',
+            'End Month': 'End Month',
+            'End Day': 'End Day',
+            'Total Deaths': 'Total Deaths',
+            'No Injured': 'No. Injured',
+            'No Affected': 'No. Affected',
+            'No Homeless': 'No. Homeless',
+            'Total Affected': 'Total Affected',
+            "Reconstruction Costs ('000 US$)": "Reconstruction Costs ('000 US$)",
+            "Reconstruction Costs, Adjusted ('000 US$)": "Reconstruction Costs, Adjusted ('000 US$)",
+            "Insured Damages ('000 US$)": "Insured Damage ('000 US$)",
+            "Insured Damages, Adjusted ('000 US$)": "Insured Damage, Adjusted ('000 US$)",
+            "Total Damages ('000 US$)": "Total Damage ('000 US$)",
+            "Total Damages, Adjusted ('000 US$)": "Total Damage, Adjusted ('000 US$)",
+            'CPI': 'CPI',
+            'Admin Units' : 'Admin Units',
+            'Entry Date': 'Entry Date',
+            'Last Update': 'Last Update'}}
+            #'Geo Locations': 'Geo Locations'}}
 
 
 def assign_hazard_to_emdat(certainty_level, intensity_path_haz, names_path_haz,
@@ -559,11 +612,11 @@ def clean_emdat_df(emdat_file, countries=None, hazard=None, year_range=None,
     """
     # (1) load EM-DAT data from CSV to DataFrame, skipping the header:
     if isinstance(emdat_file, (str, Path)):
-        df_emdat = pd.read_csv(emdat_file, encoding="ISO-8859-1", header=0)
+        df_emdat = pd.read_csv(emdat_file, encoding="utf-8-sig", header=0)#ISO-8859-1
         counter = 0
         while not ('Country' in df_emdat.columns and 'ISO' in df_emdat.columns):
             counter += 1
-            df_emdat = pd.read_csv(emdat_file, encoding="ISO-8859-1", header=counter)
+            df_emdat = pd.read_csv(emdat_file, encoding="utf-8-sig", header=counter)#ISO-8859-1
             if counter == 10:
                 break
         del counter
