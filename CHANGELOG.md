@@ -23,6 +23,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 
 ### Added
 
+- Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
 - climada.hazard.centroids.centr.Centroids.get_area_pixel
 - climada.hazard.centroids.centr.Centroids.get_dist_coast
 - climada.hazard.centroids.centr.Centroids.get_elevation
