@@ -340,7 +340,7 @@ class ImpactFunc():
         else:
             luk = (inten - threshold) / (half_point - threshold)
             luk[luk < 0] = 0
-            mdd = luk**exponent / (1 + luk**exponent) * scale
+            mdd = scale * luk**exponent / (1 + luk**exponent)
         paa = np.ones_like(inten)
 
         impf = cls(
