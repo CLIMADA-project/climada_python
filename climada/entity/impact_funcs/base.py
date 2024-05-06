@@ -288,8 +288,13 @@ class ImpactFunc():
 
         .. math::
 
-            f(I) = \frac{\textrm{luk}(I)^{\textrm{exponent}}}{1 + \textrm{luk}(I)^{\textrm{exponent}}}\cdot \textrm{scale} \\
-            \textrm{luk}(I) = \frac{\max[I - \textrm{threshold}, 0]}{\textrm{half_point} - \textrm{threshold}}
+            f(I) = \frac{\textrm{luk}(I)^{\textrm{exponent}}}{
+                1 + \textrm{luk}(I)^{\textrm{exponent}}
+            }
+                \cdot \textrm{scale} \\
+            \textrm{luk}(I) = \frac{\max[I - \textrm{threshold}, 0]}{
+                \textrm{half_point} - \textrm{threshold}
+            }
 
         This function is inspired by Emanuel et al. (2011)
         https://doi.org/10.1175/WCAS-D-11-00007.1
