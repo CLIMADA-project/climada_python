@@ -95,7 +95,16 @@ class TestInterpolation(unittest.TestCase):
         np.testing.assert_array_almost_equal(impf.mdd, np.zeros(5))
         test_aux_vars(impf)
 
-        with self.assertRaises(ValueError):
+        # If exponent = 0, mdd should be constant
+        impf = ImpactFunc.from_poly_s_shape(
+            intensity=intensity, threshold=threshold, half_point=half_point, scale=scale,
+            exponent=0, haz_type=haz_type, impf_id=impf_id, intensity_unit=unit
+            )
+        np.testing.assert_array_almost_equal(impf.mdd, np.ones(5) * scale / 2)
+        test_aux_vars(impf)
+
+        # If exponent < 0, raise error.
+        with self.assertRaisesRegex(ValueError, "Exponent value"):
             ImpactFunc.from_poly_s_shape(
                 intensity=intensity, threshold=half_point,
                 half_point=half_point, scale=scale,

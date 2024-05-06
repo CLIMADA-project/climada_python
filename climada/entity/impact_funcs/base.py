@@ -311,13 +311,13 @@ class ImpactFunc():
             of impacts.
         half_point : float
             Intensity at which 50% of maximum impact is expected.
-            If smaller than threshold, mdd = 0 (and f(I)=0) for all
+            If half_point <= threshold, mdd = 0 (and f(I)=0) for all
             intensities.
         scale : float
             Multiplicative factor for the whole function. Typically,
             this sets the maximum value at large intensities.
         exponent: float
-            Exponent of the polynomial. Must be larger than 0.
+            Exponent of the polynomial. Value must be exponent >= 0.
             Emanuel et al. (2011) uses the value 3.
         haz_type: str
             Reference string for the hazard (e.g., 'TC', 'RF', 'WS', ...)
@@ -335,12 +335,12 @@ class ImpactFunc():
         impf : climada.entity.impact_funcs.ImpactFunc
             s-shaped polynomial impact function
         """
-        if exponent <= 0:
+        if exponent < 0:
             raise ValueError('Exponent value must larger than 0')
 
         inten = np.linspace(*intensity)
 
-        if threshold > half_point:
+        if threshold >= half_point:
             mdd = np.zeros_like(inten)
         else:
             luk = (inten - threshold) / (half_point - threshold)
