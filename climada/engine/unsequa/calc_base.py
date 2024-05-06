@@ -356,7 +356,8 @@ class Calc():
             Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str, optional
             Sensitivity analysis method from SALib.analyse. Possible choices: 'fast', 'rbd_fast',
-            'morris', 'sobol', 'delta', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy'.
+            'morris', 'sobol', 'delta', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy',
+            'hdmr'.
             Note that in Salib, sampling methods and sensitivity
             analysis methods should be used in specific pairs:
             https://salib.readthedocs.io/en/latest/api.html
@@ -531,18 +532,19 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
             sens_indices = method.analyze(problem_sa, Y,
                                                     **sensitivity_kwargs)
         if method.__name__ == 'SALib.analyze.ff':
-            if sensitivity_kwargs['second_order'] == True:
-                #parse interaction terms of sens_indices to a square matrix
-                #to ensure consistency with unsequa
-                interactions = np.full((len(param_labels), len(param_labels)), np.nan)
-                interactions_names = np.empty((len(param_labels), len(param_labels)), dtype=str)
-                for i,ie in enumerate(sens_indices['interaction_names']):
-                    interactions[[param_labels.index(ie[0]), param_labels.index(ie[1])],
-                                  [param_labels.index(ie[1]), param_labels.index(ie[0])]] = sens_indices['IE'][i]
-                    interactions_names[[param_labels.index(ie[0]), param_labels.index(ie[1])],
-                                  [param_labels.index(ie[1]), param_labels.index(ie[0])]] = ie
-                sens_indices['IE'] = interactions
-                sens_indices['interaction_names'] = interactions_names
+            if 'second_order' in sensitivity_kwargs:
+                if sensitivity_kwargs['second_order']:
+                    #parse interaction terms of sens_indices to a square matrix
+                    #to ensure consistency with unsequa
+                    interactions = np.full((len(param_labels), len(param_labels)), np.nan)
+                    interactions_names = np.empty((len(param_labels), len(param_labels)), dtype=str)
+                    for i,ie in enumerate(sens_indices['interaction_names']):
+                        interactions[[param_labels.index(ie[0]), param_labels.index(ie[1])],
+                                      [param_labels.index(ie[1]), param_labels.index(ie[0])]] = sens_indices['IE'][i]
+                        interactions_names[[param_labels.index(ie[0]), param_labels.index(ie[1])],
+                                      [param_labels.index(ie[1]), param_labels.index(ie[0])]] = ie
+                    sens_indices['IE'] = interactions
+                    sens_indices['interaction_names'] = interactions_names
 
         sens_first_order = np.array([
             np.array(si_val_array)
