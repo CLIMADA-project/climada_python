@@ -457,36 +457,6 @@ def grid_is_regular(coord):
         regular = True
     return regular, count_lat[0], count_lon[0]
 
-def get_coastlines(bounds=None, resolution=110):
-    """Get Polygones of coast intersecting given bounds
-
-    Parameters
-    ----------
-    bounds : tuple
-        min_lon, min_lat, max_lon, max_lat in EPSG:4326
-    resolution : float, optional
-        10, 50 or 110. Resolution in m. Default: 110m, i.e. 1:110.000.000
-
-    Returns
-    -------
-    coastlines : GeoDataFrame
-        Polygons of coast intersecting given bounds.
-    """
-    resolution = nat_earth_resolution(resolution)
-    shp_file = shapereader.natural_earth(resolution=resolution,
-                                         category='physical',
-                                         name='coastline')
-    coast_df = gpd.read_file(shp_file)
-    coast_df.crs = NE_CRS
-    if bounds is None:
-        return coast_df[['geometry']]
-    tot_coast = np.zeros(1)
-    while not np.any(tot_coast):
-        tot_coast = coast_df.envelope.intersects(box(*bounds))
-        bounds = (bounds[0] - 20, bounds[1] - 20,
-                  bounds[2] + 20, bounds[3] + 20)
-    return coast_df[tot_coast][['geometry']]
-
 def convert_wgs_to_utm(lon, lat):
     """Get EPSG code of UTM projection for input point in EPSG 4326
 
@@ -505,49 +475,30 @@ def convert_wgs_to_utm(lon, lat):
     epsg_utm_base = 32601 + (0 if lat >= 0 else 100)
     return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
 
-def utm_zones(wgs_bounds):
-    """Get EPSG code and bounds of UTM zones covering specified region
+def dist_to_coast(coord_lat, lon=None, highres=False, signed=False):
+    """Read interpolated (signed) distance to coast (in m) from NASA data
+
+    Note: The NASA raster file is 300 MB and will be downloaded on first run!
 
     Parameters
     ----------
-    wgs_bounds : tuple
-        lon_min, lat_min, lon_max, lat_max
-
-    Returns
-    -------
-    zones : list of pairs (zone_epsg, zone_wgs_bounds)
-        EPSG code and bounding box in WGS coordinates.
-    """
-    lon_min, lat_min, lon_max, lat_max = wgs_bounds
-    lon_min, lon_max = max(-179.99, lon_min), min(179.99, lon_max)
-    utm_min, utm_max = [math.floor((l + 180) / 6) for l in [lon_min, lon_max]]
-    zones = []
-    for utm in range(utm_min, utm_max + 1):
-        epsg = 32601 + utm
-        bounds = (-180 + 6 * utm, 0, -180 + 6 * (utm + 1), 90)
-        if lat_max >= 0:
-            zones.append((epsg, bounds))
-        if lat_min < 0:
-            bounds = (bounds[0], -90, bounds[2], 0)
-            zones.append((epsg + 100, bounds))
-    return zones
-
-def dist_to_coast(coord_lat, lon=None, signed=False):
-    """Compute (signed) distance to coast from input points in meters.
-
-    Parameters
-    ----------
-    coord_lat : GeoDataFrame or np.array or float
+    coord_lat : GeoDataFrame or np.ndarray or float
         One of the following:
-            * GeoDataFrame with geometry column in epsg:4326
-            * np.array with two columns, first for latitude of each point
-              and second with longitude in epsg:4326
-            * np.array with one dimension containing latitudes in epsg:4326
-            * float with a latitude value in epsg:4326
-    lon : np.array or float, optional
-        One of the following:
-            * np.array with one dimension containing longitudes in epsg:4326
-            * float with a longitude value in epsg:4326
+
+        * GeoDataFrame with geometry column in epsg:4326
+        * np.array with two columns, first for latitude of each point
+          and second with longitude in epsg:4326
+        * np.array with one dimension containing latitudes in epsg:4326
+        * float with a latitude value in epsg:4326
+
+    lon : np.ndarray or float, optional
+        If given, one of the following:
+
+        * np.array with one dimension containing longitudes in epsg:4326
+        * float with a longitude value in epsg:4326
+
+    highres : bool, optional
+        Use full resolution of NASA data (much slower). Default: False.
     signed : bool
         If True, distance is signed with positive values off shore and negative values on land.
         Default: False
@@ -557,53 +508,21 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
     dist : np.array
         (Signed) distance to coast in meters.
     """
-    if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
-        if not equal_crs(coord_lat.crs, NE_CRS):
-            raise ValueError('Input CRS is not %s' % str(NE_CRS))
-        geom = coord_lat
-    else:
-        if lon is None:
-            if isinstance(coord_lat, np.ndarray) and coord_lat.shape[1] == 2:
-                lat, lon = coord_lat[:, 0], coord_lat[:, 1]
-            else:
-                raise ValueError('Missing longitude values.')
+    if lon is None:
+        if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
+            if not equal_crs(coord_lat.crs, DEF_CRS):
+                raise ValueError('Input CRS is not %s' % str(DEF_CRS))
+            geom = coord_lat if isinstance(coord_lat, gpd.GeoSeries) else coord_lat["geometry"]
+            lon, lat = geom.x.values, geom.y.values
+        elif isinstance(coord_lat, np.ndarray) and coord_lat.shape[1] == 2:
+            lat, lon = coord_lat[:, 0], coord_lat[:, 1]
         else:
-            lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
-            if lat.size != lon.size:
-                raise ValueError('Mismatching input coordinates size: %s != %s'
-                                 % (lat.size, lon.size))
-        geom = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lon, lat), crs=NE_CRS)
-
-    pad = 20
-    bounds = (geom.total_bounds[0] - pad, geom.total_bounds[1] - pad,
-              geom.total_bounds[2] + pad, geom.total_bounds[3] + pad)
-    coast = get_coastlines(bounds, 10).geometry
-    coast = gpd.GeoDataFrame(geometry=coast, crs=NE_CRS)
-    dist = np.empty(geom.shape[0])
-    zones = utm_zones(geom.geometry.total_bounds)
-    for izone, (epsg, bounds) in enumerate(zones):
-        to_crs = f"epsg:{epsg}"
-        zone_mask = (
-            (bounds[1] <= geom.geometry.y)
-            & (geom.geometry.y <= bounds[3])
-            & (bounds[0] <= geom.geometry.x)
-            & (geom.geometry.x <= bounds[2])
-        )
-        if np.count_nonzero(zone_mask) == 0:
-            continue
-        LOGGER.info("dist_to_coast: UTM %d (%d/%d)",
-                    epsg, izone + 1, len(zones))
-        bounds = geom[zone_mask].total_bounds
-        bounds = (bounds[0] - pad, bounds[1] - pad,
-                  bounds[2] + pad, bounds[3] + pad)
-        coast_mask = coast.envelope.intersects(box(*bounds))
-        utm_coast = coast[coast_mask].geometry.unary_union
-        utm_coast = gpd.GeoDataFrame(geometry=[utm_coast], crs=NE_CRS)
-        utm_coast = utm_coast.to_crs(to_crs).geometry[0]
-        dist[zone_mask] = geom[zone_mask].to_crs(to_crs).distance(utm_coast)
-    if signed:
-        dist[coord_on_land(geom.geometry.y, geom.geometry.x)] *= -1
-    return dist
+            raise ValueError('Missing longitude values.')
+    else:
+        lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
+        if lat.size != lon.size:
+            raise ValueError(f'Mismatching input coordinates size: {lat.size} != {lon.size}')
+    return dist_to_coast_nasa(lat, lon, highres=highres, signed=signed)
 
 def _get_dist_to_coast_nasa_tif():
     """Get the path to the NASA raster file for distance to coast.

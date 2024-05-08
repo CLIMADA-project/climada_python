@@ -659,27 +659,37 @@ class Centroids():
         """
         return u_coord.read_raster_sample(topo_path, self.lat, self.lon)
 
-    def get_dist_coast(self, signed=False, precomputed=False):
+    def get_dist_coast(self, signed=False, precomputed=True):
         """Get dist_coast attribute for every pixel or point in meters.
+
+        The distances are read from a raster file containing precomputed distances (from NASA) at
+        0.01 degree (approximately 1 km) resolution.
 
         Parameters
         ----------
         signed : bool, optional
             If True, use signed distances (positive off shore and negative on land). Default: False
         precomputed : bool, optional
-            If True, use precomputed distances (from NASA). Default: False
+            Whether distances should be read from a pre-computed raster (True) or computed
+            on-the-fly (False). Default: True.
+
+            .. deprecated:: 5.0
+               Argument is ignored, because distances are not computed on-the-fly anymore.
 
         Returns
         -------
         dist : np.array
             (Signed) distance to coast in meters.
         """
+        if not precomputed:
+            LOGGER.warning(
+                "The `precomputed` argument is deprecated and will be removed in the future"
+                " because `get_dist_coast` always uses precomputed distances."
+            )
         ne_geom = self._ne_crs_geom()
-        if precomputed:
-            return u_coord.dist_to_coast_nasa(
-                ne_geom.y.values, ne_geom.x.values, highres=True, signed=signed)
-        LOGGER.debug('Computing distance to coast for %s centroids.', str(self.size))
-        return u_coord.dist_to_coast(ne_geom, signed=signed)
+        return u_coord.dist_to_coast_nasa(
+            ne_geom.y.values, ne_geom.x.values, highres=True, signed=signed,
+        )
 
     def get_meta(self, resolution=None):
         """Returns a meta raster based on the centroids bounds.
@@ -1034,18 +1044,21 @@ class Centroids():
     ##
 
     @classmethod
-    @deprecated(details="Reading Centroids data from matlab files is not supported anymore.")
+    @deprecated(details="Reading Centroids data from matlab files is not supported anymore."
+                        "This method has been removed with climada 5.0")
     def from_mat(cls, file_name, var_names=None):
-        """deprecated, raises NotImplementedError"""
+        """Reading Centroids data from matlab files is not supported anymore.
+        This method has been removed with climada 5.0"""
         raise NotImplementedError("You are suggested to use an old version of climada (<=4.*) and"
                                   " convert the file to hdf5 format.")
 
     @staticmethod
-    @deprecated(details="Centroids as raster data is not supported in the current version of"
-                " climada.")
+    @deprecated(details="This method has been removed with climada 5.0")
     def from_base_grid(land=False, res_as=360, base_file=None):
-        """deprecated, raises NotImplementedError"""
-        raise NotImplementedError()
+        """This method has been removed with climada 5.0"""
+        raise NotImplementedError("Create the Centroids from a custom base file or from Natural"
+                                  " Earth (files are available in Climada, look up ``climada.util"
+                                  ".constants.NATEARTH_CENTROIDS`` for their location)")
 
     @classmethod
     @deprecated(details="This method will be removed in a future version."

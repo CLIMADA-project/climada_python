@@ -595,6 +595,26 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
         self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
 
+    def test_select_new_fraction_zero(self):
+        """Check if a new fraction of only zeros is handled correctly"""
+        hazard = dummy_hazard()
+        hazard.centroids.gdf["region_id"] = [1, 1, 2]
+
+        # Select a part of the hazard where fraction is zero only
+        with self.assertRaisesRegex(
+            RuntimeError,
+            "Your selection created a Hazard object where the fraction matrix is zero "
+            "everywhere"
+        ):
+            hazard.select(event_id=[3, 4], reg_id=[2])
+
+        # Error should not be thrown if we set everything to zero
+        # NOTE: Setting the values of `data` to zero instead of the matrix values will
+        #       add explicitly stored zeros. Therefore, this test explicitly checks if
+        #       `eliminate_zeros` is called on `fraction` during `select`.
+        hazard.fraction.data[...] = 0
+        selection = hazard.select(event_id=[3, 4], reg_id=[2])
+        np.testing.assert_array_equal(selection.fraction.toarray(), [[0], [0]])
 
 class TestAppend(unittest.TestCase):
     """Test append method."""
