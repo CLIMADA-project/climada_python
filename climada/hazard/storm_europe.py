@@ -557,9 +557,7 @@ class StormEurope(Hazard):
         if create_meshgrid:
             lats, lons = np.array([np.repeat(lats, len(lons)),
                                    np.tile(lons, len(lats))])
-        cent = Centroids.from_lat_lon(lats, lons)
-        cent.set_area_pixel()
-        cent.set_on_land()
+        cent = Centroids(lat=lats, lon=lons, on_land='natural_earth')
 
         return cent
 
@@ -658,26 +656,27 @@ class StormEurope(Hazard):
             intensity = intensity.multiply(intensity > self.intensity_thres)
 
         cent = self.centroids
+        area_pixel = cent.get_area_pixel()
 
         if sel_cen is not None:
             pass
         elif on_land is True:
-            sel_cen = cent.on_land
+            sel_cen = cent.on_land.astype(bool)
         else:  # select all centroids
-            sel_cen = np.ones_like(cent.area_pixel, dtype=bool)
+            sel_cen = np.ones_like(area_pixel, dtype=bool)
 
         ssi = np.zeros(intensity.shape[0])
 
         if method == 'dawkins':
-            area_c = cent.area_pixel / 1000 / 1000 * sel_cen
+            area_c = area_pixel / 1000 / 1000 * sel_cen
             for i, inten_i in enumerate(intensity):
-                ssi_i = area_c * inten_i.power(3).todense().T
+                ssi_i = inten_i.power(3).dot(area_c)
                 # matrix crossproduct (row x column vector)
                 ssi[i] = ssi_i.item(0)
 
         elif method == 'wisc_gust':
             for i, inten_i in enumerate(intensity[:, sel_cen]):
-                area = np.sum(cent.area_pixel[inten_i.indices]) / 1000 / 1000
+                area = np.sum(area_pixel[inten_i.indices]) / 1000 / 1000
                 inten_mean = np.mean(inten_i)
                 ssi[i] = area * np.power(inten_mean, 3)
 
@@ -774,8 +773,7 @@ class StormEurope(Hazard):
         """
         # bool vector selecting the targeted centroids
         if reg_id is not None:
-            if self.centroids.region_id.size == 0:
-                self.centroids.set_region_id()
+            self.centroids.set_region_id(overwrite=False)
             if not isinstance(reg_id, list):
                 reg_id = [reg_id]
             sel_cen = np.isin(self.centroids.region_id, reg_id)

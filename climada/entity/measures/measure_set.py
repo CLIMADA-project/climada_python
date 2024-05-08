@@ -26,7 +26,7 @@ import copy
 import logging
 from typing import Optional, List
 
-import matplotlib.pyplot as plt
+from  matplotlib import colormaps as cm
 import numpy as np
 import pandas as pd
 import xlsxwriter
@@ -310,7 +310,7 @@ class MeasureSet():
         ValueError
         """
         for key_haz, meas_dict in self._data.items():
-            def_color = plt.cm.get_cmap('Greys', len(meas_dict))
+            def_color = cm.get_cmap('Greys').resampled(len(meas_dict))
             for i_meas, (name, meas) in enumerate(meas_dict.items()):
                 if (name != meas.name) | (name == ''):
                     raise ValueError("Wrong Measure.name: %s != %s."

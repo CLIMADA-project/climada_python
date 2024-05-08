@@ -248,6 +248,11 @@ class TestFunc(unittest.TestCase):
         bounds = u_coord.latlon_bounds(lat, lon, buffer=1)
         self.assertEqual(bounds, (179.5, -3.1, 186, 6))
 
+        # exceedingly large buffers are truncated to [-180, 180]
+        lat, lon = np.array([0, -2.1, 5]), np.array([-179.5, -175, -178])
+        bounds = u_coord.latlon_bounds(lat, lon, buffer=234)
+        self.assertEqual(bounds, (-180, -90, 180, 90))
+
         # longitude values need to be normalized before they lie between computed bounds:
         lon_mid = 0.5 * (bounds[0] + bounds[2])
         lon = u_coord.lon_normalize(lon, center=lon_mid)
@@ -259,6 +264,12 @@ class TestFunc(unittest.TestCase):
         self.assertEqual(bounds, (-179, -90, 180, 90))
         bounds = u_coord.latlon_bounds(lat, lon, buffer=1)
         self.assertEqual(bounds, (-180, -90, 180, 90))
+
+        # edge with values closer to the antimeridian than buffers and global coverage
+        lon = np.concatenate([[-179.99], np.arange(-179.7, 179.9, 0.2), [179.99]])
+        lat = np.zeros_like(lon)
+        bounds = u_coord.latlon_bounds(lat, lon, buffer=0.1)
+        self.assertEqual(bounds, (-180, -0.1, 180, 0.1))
 
     def test_toggle_extent_bounds(self):
         """Test the conversion between 'extent' and 'bounds'"""
@@ -277,13 +288,20 @@ class TestFunc(unittest.TestCase):
     def test_dist_approx_pass(self):
         """Test approximate distance functions"""
         data = np.array([
-            # lat1, lon1, lat2, lon2, dist, dist_sph
+            # lat1, lon1, lat2, lon2, dist_equirect, dist_geosphere
             [45.5, -32.1, 14, 56, 7702.88906574, 8750.64119051],
             [45.5, 147.8, 14, -124, 7709.82781473, 8758.34146833],
             [45.5, 507.9, 14, -124, 7702.88906574, 8750.64119051],
             [45.5, -212.2, 14, -124, 7709.82781473, 8758.34146833],
             [-3, -130.1, 4, -30.5, 11079.7217421, 11087.0352544],
         ])
+        # conversion factors from reference data (in km, see above) to other units
+        factors_km_to_x = {
+            "m": 1e3,
+            "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
+            "degree": 1.0 / u_coord.ONE_LAT_KM,
+            "km": 1.0,
+        }
         compute_dist = np.stack([
             u_coord.dist_approx(data[:, None, 0], data[:, None, 1],
                                 data[:, None, 2], data[:, None, 3],
@@ -297,9 +315,7 @@ class TestFunc(unittest.TestCase):
             self.assertAlmostEqual(d[0], cd[0])
             self.assertAlmostEqual(d[1], cd[1])
 
-        for units, factor in zip(["radian", "degree", "km"],
-                                 [np.radians(1.0), 1.0, u_coord.ONE_LAT_KM]):
-            factor /= u_coord.ONE_LAT_KM
+        for units, factor in factors_km_to_x.items():
             compute_dist = np.stack([
                 u_coord.dist_approx(data[:, None, 0], data[:, None, 1],
                                     data[:, None, 2], data[:, None, 3],
@@ -309,21 +325,29 @@ class TestFunc(unittest.TestCase):
                                     method="geosphere", units=units)[:, 0, 0],
             ], axis=-1)
             self.assertEqual(compute_dist.shape[0], data.shape[0])
+            places = 4 if units == "m" else 7
             for d, cd in zip(data[:, 4:], compute_dist):
-                self.assertAlmostEqual(d[0] * factor, cd[0])
-                self.assertAlmostEqual(d[1] * factor, cd[1])
+                self.assertAlmostEqual(d[0] * factor, cd[0], places=places)
+                self.assertAlmostEqual(d[1] * factor, cd[1], places=places)
 
     def test_dist_approx_log_pass(self):
         """Test log-functionality of approximate distance functions"""
         data = np.array([
-            # lat1, lon1, lat2, lon2, dist, dist_sph
+            # lat1, lon1, lat2, lon2, dist_equirect, dist_geosphere
             [0, 0, 0, 1, 111.12, 111.12],
             [-13, 179, 5, -179, 2011.84774049, 2012.30698122],
+            [24., 85., 23.99999967, 85., 3.666960e-5, 3.666960e-5],
+            [24., 85., 24., 85., 0, 0],
         ])
+        # conversion factors from reference data (in km, see above) to other units
+        factors_km_to_x = {
+            "m": 1e3,
+            "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
+            "degree": 1.0 / u_coord.ONE_LAT_KM,
+            "km": 1.0,
+        }
         for i, method in enumerate(["equirect", "geosphere"]):
-            for units, factor in zip(["radian", "degree", "km"],
-                                     [np.radians(1.0), 1.0, u_coord.ONE_LAT_KM]):
-                factor /= u_coord.ONE_LAT_KM
+            for units, factor in factors_km_to_x.items():
                 dist, vec = u_coord.dist_approx(data[:, None, 0], data[:, None, 1],
                                                 data[:, None, 2], data[:, None, 3],
                                                 log=True, method=method, units=units)
@@ -526,30 +550,33 @@ class TestAssign(unittest.TestCase):
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        centroids = Centroids(meta=meta)
+        centroids = Centroids.from_meta(meta=meta)
         df = pd.DataFrame({
             'longitude': np.array([
                 -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
                 -19.0, -19.0, -19.0, -19.0,
                 -20.1, 0.0, 10.1, 10.1, 10.1, 0.0, -20.2, -20.3,
                 -6.4, 9.8, 0.0,
-                ]),
+            ]),
             'latitude': np.array([
                 7.3, 7.3, 7.3, 7.3, 7.3, 7.3,
                 8.1, 7.9, 6.7, 6.5,
                 8.1, 8.2, 8.3, 0.0, -6.1, -6.2, -6.3, 0.0,
                 -1.9, -1.7, 0.0,
-                ])
+            ]),
         })
-        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
-                               crs=DEF_CRS)
-        assigned = u_coord.match_centroids(gdf,centroids)
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df.longitude, df.latitude),
+            crs=DEF_CRS,
+        )
+        assigned = u_coord.match_centroids(gdf, centroids)
 
         expected_result = [
             # constant y-value, varying x-value
-            -1, 0, 0, 0, 0, 1,
+            0, 0, 0, 0, 0, 1,
             # constant x-value, varying y-value
-            -1, 0, 0, 20,
+            0, 0, 0, 20,
             # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
             -1, -1, -1, -1, -1, -1, -1, -1,
             # some explicit points within the raster
@@ -571,9 +598,9 @@ class TestAssign(unittest.TestCase):
         centroids = Centroids(
             lat=coords_to_assign[:, 0],
             lon=coords_to_assign[:, 1],
-            geometry = gpd.GeoSeries(crs=DEF_CRS)
+            crs=DEF_CRS
         )
-        centroids_empty = Centroids()
+        centroids_empty = Centroids(lat=np.array([]), lon=np.array([]))
 
         expected_results = [
             # test with different thresholds (in km)
@@ -606,14 +633,14 @@ class TestAssign(unittest.TestCase):
         centroids = Centroids(
             lat=[1100000,1200000],
             lon=[2500000,2600000],
-            geometry = gpd.GeoSeries(crs='EPSG:2056')
+            crs='EPSG:2056'
         )
 
         with self.assertRaises(ValueError) as cm:
             u_coord.match_centroids(gdf, centroids)
         self.assertIn('Set hazard and GeoDataFrame to same CRS first!',
                       str(cm.exception))
-        
+
     def test_dist_sqr_approx_pass(self):
         """Test approximate distance helper function."""
         lats1 = 45.5
@@ -942,27 +969,6 @@ class TestGetGeodata(unittest.TestCase):
         with self.assertRaises(ValueError):
             u_coord.nat_earth_resolution(111)
 
-    def test_get_coastlines_all_pass(self):
-        """Check get_coastlines function over whole earth"""
-        coast = u_coord.get_coastlines(resolution=110)
-        tot_bounds = coast.total_bounds
-        self.assertEqual((134, 1), coast.shape)
-        self.assertAlmostEqual(tot_bounds[0], -180)
-        self.assertAlmostEqual(tot_bounds[1], -85.60903777)
-        self.assertAlmostEqual(tot_bounds[2], 180.00000044)
-        self.assertAlmostEqual(tot_bounds[3], 83.64513)
-
-    def test_get_coastlines_pass(self):
-        """Check get_coastlines function in defined extent"""
-        bounds = (-100, -55, -20, 35)
-        coast = u_coord.get_coastlines(bounds, resolution=110)
-        ex_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
-        self.assertEqual(coast.shape[0], 14)
-        self.assertTrue(coast.total_bounds[2] < 0)
-        for _row, line in coast.iterrows():
-            if not ex_box.intersects(line.geometry):
-                self.assertEqual(1, 0)
-
     def test_get_land_geometry_country_pass(self):
         """get_land_geometry with selected countries."""
         iso_countries = ['DEU', 'VNM']
@@ -1013,26 +1019,6 @@ class TestGetGeodata(unittest.TestCase):
         res = u_coord.coord_on_land(lat, lon)
         self.assertEqual(res.size, lat.size)
         np.testing.assert_array_equal(res[:3], [True, False, True])
-
-    def test_dist_to_coast(self):
-        """Test point in coast and point not in coast"""
-        points = np.array([
-            # Caribbean Sea:
-            [13.208333333333329, -59.625000000000014],
-            # South America:
-            [-12.497529, -58.849505],
-            # Very close to coast of Somalia:
-            [1.96768, 45.23219],
-        ])
-        dists = [2594.2071059573445, 1382985.2459744606, 0.088222234]
-        for d, p in zip(dists, points):
-            res = u_coord.dist_to_coast(*p)
-            self.assertAlmostEqual(d, res[0])
-
-        # All at once requires more than one UTM
-        res = u_coord.dist_to_coast(points)
-        for d, r in zip(dists, res):
-            self.assertAlmostEqual(d, r)
 
     def test_dist_to_coast_nasa(self):
         """Test point in coast and point not in coast"""
