@@ -2647,7 +2647,7 @@ def _model_synth_tc_intensity(tracks_list,
             for idx in range(track.time.size)
         ])
 
-        if np.any(extended_cat >= 0):  
+        if np.any(extended_cat >= 0):
             # Kill the extended track 12 hours after dropping below Cat 1
             buffer_frames = int(np.ceil(12/time_step_h))
             cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + buffer_frames, extended_cat.size-1)
@@ -2774,10 +2774,10 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
     target_peak_pert = central_pressure_pert / 2 * scipy.stats.truncnorm.ppf(rnd_pars_i[0], -2, 2)
     target_peak = track_chunk.target_central_pressure.values[0] + target_peak_pert
     
-    if os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE'):
-        target_pressure_bias = float(os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE'))
+    target_pressure_bias = float(os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE'))
+    if target_pressure_bias != 0:
         if target_pressure_bias > 0:
-            LOGGER.warning('Applying a positive pressure biase to target pressures. Is this deliberate?')
+            LOGGER.warning('Applying a positive pressure bias to target pressures. Is this deliberate?')
         target_peak = target_peak + target_pressure_bias
 
 
