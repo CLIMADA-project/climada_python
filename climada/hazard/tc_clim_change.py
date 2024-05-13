@@ -65,7 +65,7 @@ def get_knutson_scaling_factor(
     projections for 4 RCPs and any historical baseline. The code uses GMST data
     implements to interpolate and extrapolate the Knutson data
     relative to the specified baseline time period for various RCPs
-    with a log-linear model. The methodology was developed and explained 
+    with a log-linear model. The methodology was developed and explained
     in Jewson et al., (2021).
 
     Related publications:
@@ -335,11 +335,11 @@ def get_knutson_data():
     """
     Get data to generate figures 1b to 4b in Knutson et al., (2020):
 
-    Tropical cyclones and climate change assessment. Part II: Projected 
-        response to anthropogenic warming. Bull. Amer. Meteor. Soc., 101 (3), E303–E322, 
+    Tropical cyclones and climate change assessment. Part II: Projected
+        response to anthropogenic warming. Bull. Amer. Meteor. Soc., 101 (3), E303–E322,
         https://doi.org/10.1175/BAMS-D-18-0194.1.
 
-    for 4 variables (i.e., cat05 frequency, cat45 frequency, intensity, precipitation rate), 
+    for 4 variables (i.e., cat05 frequency, cat45 frequency, intensity, precipitation rate),
     6 regions, i.e., N. Atl (NA), NW Pac. (WP), NE Pac (EP)., N. Ind (NI), S. Ind. (SI),
     SW Pac. (SP), and 5 percentiles, i.e., 5% or 10%, 25%, 50%, 75%, 95% or 90%.
 
@@ -356,7 +356,7 @@ def get_knutson_data():
     knutson_data = np.empty((4,6,5))
 
     # fig 1 in Knutson et al. 2020
-    # (except min, max metrics and global region): cat05 frequency 
+    # (except min, max metrics and global region): cat05 frequency
     knutson_data[0,0]=[-34.49,-24.875,-14.444,3.019,28.737]
     knutson_data[0,1]=[-30.444,-20,-10.27,0.377,17.252]
     knutson_data[0,2]=[-32.075,-18.491,-3.774,11.606,36.682]
