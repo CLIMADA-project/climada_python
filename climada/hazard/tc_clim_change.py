@@ -193,7 +193,13 @@ def get_knutson_scaling_factor(
 def get_gmst_info():
     """
     Get Global Mean Surface Temperature (GMST) data from 1880 to 2100 for
-    RCPs 2.6, 4.5, 6.0 and 8.5.
+    RCPs 2.6, 4.5, 6.0 and 8.5. Data are provided in:
+
+    Jewson (2021): Conversion of the Knutson et al. (2020) Tropical Cyclone
+    Climate Change Projections to Risk Model Baselines,
+    https://doi.org/10.1175/JAMC-D-21-0102.1
+
+    and in supporting documentation and code.
 
     Returns
     -------
