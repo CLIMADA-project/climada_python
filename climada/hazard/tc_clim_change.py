@@ -333,7 +333,7 @@ def get_gmst_info():
 
 def get_knutson_data():
     """
-    Get data to generate figures 1b to 4b in Knutson et al., (2020):
+    Retrieve projections data in Knutson et al., (2020):
 
     Tropical cyclones and climate change assessment. Part II: Projected
         response to anthropogenic warming. Bull. Amer. Meteor. Soc., 101 (3), E303–E322,
@@ -342,6 +342,11 @@ def get_knutson_data():
     for 4 variables (i.e., cat05 frequency, cat45 frequency, intensity, precipitation rate),
     6 regions, i.e., N. Atl (NA), NW Pac. (WP), NE Pac (EP)., N. Ind (NI), S. Ind. (SI),
     SW Pac. (SP), and 5 percentiles, i.e., 5% or 10%, 25%, 50%, 75%, 95% or 90%.
+
+    The data are available at:
+        S Jewson, T Knutson, S Camargo, J Chan, K Emanuel, C Ho, J Kossin, M Mohapatra, M Satoh,
+        M Sugi, K Walsh, & L Wu. (2021). Knutson et al 2020 Tropical Cyclone Projections Data (v0.2)
+        [Data set]. Zenodo. https://doi.org/10.5281/zenodo.4757343
 
     Returns
     -------
@@ -353,42 +358,36 @@ def get_knutson_data():
         (thirs array's dimension).
     """
 
-    knutson_data = np.empty((4,6,5))
-
-    # fig 1 in Knutson et al. 2020
-    # (except min, max metrics and global region): cat05 frequency
-    knutson_data[0,0]=[-34.49,-24.875,-14.444,3.019,28.737]
-    knutson_data[0,1]=[-30.444,-20,-10.27,0.377,17.252]
-    knutson_data[0,2]=[-32.075,-18.491,-3.774,11.606,36.682]
-    knutson_data[0,3]=[-35.094,-15.115,-4.465,5.785,29.405]
-    knutson_data[0,4]=[-32.778,-22.522,-17.297,-8.995,7.241]
-    knutson_data[0,5]=[-40.417,-26.321,-18.113,-8.21,4.689]
-
-    # fig 2 in Knutson et al. 2020
-    # (except min, max metrics and global region): cat45 frequency
-    knutson_data[1,0]=[-38.038,-22.264,11.321,38.302,81.874]
-    knutson_data[1,1]=[-25.811,-14.34,-4.75,16.146,41.979]
-    knutson_data[1,2]=[-24.83,-6.792,22.642,57.297,104.315]
-    knutson_data[1,3]=[-30.566,-16.415,5.283,38.491,79.119]
-    knutson_data[1,4]=[-23.229,-13.611,4.528,26.645,63.514]
-    knutson_data[1,5]=[-42.453,-29.434,-14.467,-0.541,19.061]
-
-    # fig 3 in Knutson et al. 2020
-    # (except min, max metrics and global region): intensity
-    knutson_data[2,0]=[0.543,1.547,2.943,4.734,6.821]
-    knutson_data[2,1]=[1.939,3.205,5.328,6.549,9.306]
-    knutson_data[2,2]=[-2.217,0.602,5.472,9.191,10.368]
-    knutson_data[2,3]=[-0.973,1.944,4.324,6.15,7.808]
-    knutson_data[2,4]=[1.605,3.455,5.405,7.69,10.884]
-    knutson_data[2,5]=[-6.318,-0.783,0.938,5.314,12.213]
-
-    # fig 4 in Knutson et al. 2020:
-    # (except min, max metrics and global region): precipitation rate
-    knutson_data[3,0]=[5.848,9.122,15.869,20.352,22.803]
-    knutson_data[3,1]=[6.273,12.121,16.486,18.323,23.784]
-    knutson_data[3,2]=[6.014,8.108,21.081,29.324,31.838]
-    knutson_data[3,3]=[12.703,14.347,17.649,19.182,20.77]
-    knutson_data[3,4]=[2.2,11.919,19.73,23.115,26.243]
-    knutson_data[3,5]=[-1.299,5.137,7.297,11.091,15.419]
+    # The knutson_data array has dimension:
+    # 4 (tropical cyclones variables) x 6 (tropical cyclone regions) x 5 (percentiles)
+    knutson_data = np.array([[
+                                [-34.49,-24.875,-14.444,3.019,28.737],
+                                [-30.444,-20,-10.27,0.377,17.252],
+                                [-32.075,-18.491,-3.774,11.606,36.682],
+                                [-35.094,-15.115,-4.465,5.785,29.405],
+                                [-32.778,-22.522,-17.297,-8.995,7.241],
+                                [-40.417,-26.321,-18.113,-8.21,4.689]],
+                            [
+                                [-38.038,-22.264,11.321,38.302,81.874],
+                                [-25.811,-14.34,-4.75,16.146,41.979],
+                                [-24.83,-6.792,22.642,57.297,104.315],
+                                [-30.566,-16.415,5.283,38.491,79.119],
+                                [-23.229,-13.611,4.528,26.645,63.514],
+                                [-42.453,-29.434,-14.467,-0.541,19.061]],
+                            [
+                                [0.543,1.547,2.943,4.734,6.821],
+                                [1.939,3.205,5.328,6.549,9.306],
+                                [-2.217,0.602,5.472,9.191,10.368],
+                                [-0.973,1.944,4.324,6.15,7.808],
+                                [1.605,3.455,5.405,7.69,10.884],
+                                [-6.318,-0.783,0.938,5.314,12.213]],
+                            [
+                                [5.848,9.122,15.869,20.352,22.803],
+                                [6.273,12.121,16.486,18.323,23.784],
+                                [6.014,8.108,21.081,29.324,31.838],
+                                [12.703,14.347,17.649,19.182,20.77],
+                                [2.2,11.919,19.73,23.115,26.243],
+                                [-1.299,5.137,7.297,11.091,15.419]
+                            ]])
 
     return knutson_data
