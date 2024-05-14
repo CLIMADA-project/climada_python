@@ -20,7 +20,7 @@ Test Hazard base class.
 """
 
 import unittest
-import datetime as dt
+
 from pathlib import Path
 import numpy as np
 from scipy import sparse
@@ -30,11 +30,10 @@ from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 import climada.util.dates_times as u_dt
-from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL
+from climada.util.constants import HAZ_TEMPLATE_XLS
 import climada.util.coordinates as u_coord
 
 from climada.test import get_test_file
-import climada.hazard.test as hazard_test
 
 
 DATA_DIR :Path = CONFIG.hazard.test_data.dir()
@@ -75,7 +74,7 @@ def dummy_hazard():
     )
 
 class TestLoader(unittest.TestCase):
-    """Test loading funcions from the Hazard class"""
+    """Test loading functions from the Hazard class"""
 
     def setUp(self):
         """Test fixure: Build a valid hazard"""
@@ -905,11 +904,11 @@ class TestAppend(unittest.TestCase):
         haz1 = Hazard('TC', units='m/s')
         haz3 = Hazard('EQ')
         with self.assertRaises(ValueError):
-             Hazard.concat([haz1, haz3])
+            Hazard.concat([haz1, haz3])
 
         haz4 = Hazard('TC', units='cm')
         with self.assertRaises(ValueError):
-             Hazard.concat([haz1, haz4])
+            Hazard.concat([haz1, haz4])
 
     def test_change_centroids(self):
         """Set new centroids for hazard"""
@@ -1012,6 +1011,7 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(inten_stats[3][33], 88.510983305123631)
         self.assertAlmostEqual(inten_stats[2][99], 79.717518054203623)
 
+
 class TestYearset(unittest.TestCase):
     """Test return period statistics"""
 
@@ -1040,90 +1040,6 @@ class TestYearset(unittest.TestCase):
                                                  14131, 14141, 14151, 14161, 14171, 14181,
                                                  14191, 14201, 14211, 14221, 14231, 14241,
                                                  14251])))
-
-class TestReaderExcel(unittest.TestCase):
-    """Test reader functionality of the Hazard class"""
-
-    def test_hazard_pass(self):
-        """Read an hazard excel file correctly."""
-
-        # Read demo excel file
-        description = 'One single file.'
-        hazard = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
-
-        # Check results
-        n_events = 100
-        n_centroids = 45
-
-        self.assertEqual(hazard.units, '')
-
-        self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
-        self.assertEqual(hazard.centroids.coord[0][0], -25.95)
-        self.assertEqual(hazard.centroids.coord[0][1], 32.57)
-        self.assertEqual(hazard.centroids.coord[n_centroids - 1][0], -24.7)
-        self.assertEqual(hazard.centroids.coord[n_centroids - 1][1], 33.88)
-
-        self.assertEqual(len(hazard.event_name), 100)
-        self.assertEqual(hazard.event_name[12], 'event013')
-
-        self.assertEqual(hazard.event_id.dtype, int)
-        self.assertEqual(hazard.event_id.shape, (n_events,))
-        self.assertEqual(hazard.event_id[0], 1)
-        self.assertEqual(hazard.event_id[n_events - 1], 100)
-
-        self.assertEqual(hazard.date.dtype, int)
-        self.assertEqual(hazard.date.shape, (n_events,))
-        self.assertEqual(hazard.date[0], 675874)
-        self.assertEqual(hazard.date[n_events - 1], 676329)
-
-        self.assertEqual(hazard.event_name[0], 'event001')
-        self.assertEqual(hazard.event_name[50], 'event051')
-        self.assertEqual(hazard.event_name[-1], 'event100')
-
-        self.assertEqual(hazard.frequency.dtype, float)
-        self.assertEqual(hazard.frequency.shape, (n_events,))
-        self.assertEqual(hazard.frequency[0], 0.01)
-        self.assertEqual(hazard.frequency[n_events - 2], 0.001)
-
-        self.assertEqual(hazard.frequency_unit, DEF_FREQ_UNIT)
-
-        self.assertEqual(hazard.intensity.dtype, float)
-        self.assertEqual(hazard.intensity.shape, (n_events, n_centroids))
-
-        self.assertEqual(hazard.fraction.dtype, float)
-        self.assertEqual(hazard.fraction.shape, (n_events, n_centroids))
-        self.assertEqual(hazard.fraction[0, 0], 1)
-        self.assertEqual(hazard.fraction[10, 19], 1)
-        self.assertEqual(hazard.fraction[n_events - 1, n_centroids - 1], 1)
-
-        self.assertTrue(np.all(hazard.orig))
-
-        self.assertEqual(hazard.haz_type, 'TC')
-
-class TestHDF5(unittest.TestCase):
-    """Test reader functionality of the ExposuresExcel class"""
-
-    def test_write_read_unsupported_type(self):
-        """Check if the write command correctly handles unsupported types"""
-        file_name = str(DATA_DIR.joinpath('test_unsupported.h5'))
-
-        # Define an unsupported type
-        class CustomID:
-            id = 1
-
-        # Create a hazard with unsupported type as attribute
-        hazard = dummy_hazard()
-        hazard.event_id = CustomID()
-
-        # Write the hazard and check the logs for the correct warning
-        with self.assertLogs(logger="climada.hazard.base", level="WARN") as cm:
-            hazard.write_hdf5(file_name)
-        self.assertIn("write_hdf5: the class member event_id is skipped", cm.output[0])
-
-        # Load the file again and compare to previous instance
-        hazard_read = Hazard.from_hdf5(file_name)
-        self.assertTrue(np.array_equal(hazard.date, hazard_read.date))
-        self.assertTrue(np.array_equal(hazard_read.event_id, np.array([])))  # Empty array
 
 
 class TestCentroids(unittest.TestCase):
@@ -1264,8 +1180,6 @@ class TestImpactFuncs(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLoader)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRemoveDupl))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestSelect))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestStats))
