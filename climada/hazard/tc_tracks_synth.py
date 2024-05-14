@@ -164,10 +164,10 @@ envvar_defaults = {
 }
 for envvar, default in envvar_defaults.items():
     if os.getenv(envvar) is None:
-        LOGGER.debug(f'No value for {envvar} found in the environment: setting to {default} by default')
+        LOGGER.info(f'No value for {envvar} found in the environment: setting to {default} by default')
         os.environ[envvar] = default
     else:
-        LOGGER.debug(f'Found environment variable set for {envvar}: {str(os.getenv(envvar))}')
+        LOGGER.info(f'Found environment variable set for {envvar}: {str(os.getenv(envvar))}')
 
 
 if int(os.getenv('TRACKGEN_TEST_DECAY_AT_EXTREME_LATS')):
@@ -2527,13 +2527,9 @@ def _model_synth_tc_intensity(tracks_list,
     if not extend_track:
         for (track,_) in tracks_intensified:
             if not track.orig_event_flag:
-                if np.max(np.diff(track.max_sustained_wind.values)) > 20:
-                    print(f"BEFORE PROBLEM: {track.sid}")
                 _estimate_params_track(track)
                 track.attrs['category'] = climada.hazard.tc_tracks.set_category(
                     track.max_sustained_wind.values, track.max_sustained_wind_unit)
-                if np.max(np.diff(track.max_sustained_wind.values)) > 20:
-                    print(f"AFTER PROBLEM: {track.sid}")
         new_tracks_list = [
             drop_temporary_variables(track, track_vars_attrs)
             for (track,_) in tracks_intensified
