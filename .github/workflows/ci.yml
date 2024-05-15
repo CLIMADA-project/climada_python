@@ -6,11 +6,11 @@ on: [push]
 # Use bash explicitly for being able to enter the conda environment
 defaults:
   run:
-    shell: bash -l {0}
+    shell: bash -el {0}
 
 jobs:
   build-and-test:
-    name: Build Env, Install, Unit Tests
+    name: 'Core / Unit Test Pipeline'
     runs-on: ubuntu-latest
     permissions:
       # For publishing results
@@ -41,8 +41,6 @@ jobs:
           create-args: >-
             python=${{ matrix.python-version }}
             make
-          init-shell: >-
-            bash
           # Persist environment for branch, Python version, single day
           cache-environment-key: env-${{ github.ref }}-${{ matrix.python-version }}-${{ steps.date.outputs.date }}
       -
@@ -59,12 +57,22 @@ jobs:
         if: always()
         with:
           junit_files: tests_xml/tests.xml
-          check_name: "Unit Test Results Python ${{ matrix.python-version }}"
+          check_name: "Core / Unit Test Results (${{ matrix.python-version }})"
           comment_mode: "off"
       -
         name: Upload Coverage Reports
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: coverage-report-unittests-py${{ matrix.python-version }}
+          name: coverage-report-core-unittests-py${{ matrix.python-version }}
           path: coverage/
+
+  test-petals:
+    name: Petals Compatibility
+    uses: CLIMADA-project/climada_petals/.github/workflows/testing.yml@develop
+    needs: build-and-test
+    with:
+      core_branch: ${{ github.ref }}
+      petals_branch: develop
+    permissions:
+      checks: write
