@@ -77,6 +77,70 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
               }
 """MATLAB variable names"""
 
+class _InitArguments():
+    """helper class for sorting out `Exposrues.__init__` arguments"""
+
+    def _consolidate(self, meta, nam, val, default=None):
+        if not (val is None or meta.get(nam) is None or val == meta.get(nam)):
+            raise ValueError(f"conflicting arguments: the given value for {nam}"
+                             " is different from its value in meta")
+        return meta.get(nam, val) or default
+
+    def __init__(self,
+            data=None,
+            index=None,
+            columns=None,
+            dtype=None,
+            copy=False,
+            geometry=None,
+            crs=None,
+            meta=None,
+            description=None,
+            ref_year=None,
+            value_unit=None,
+            scheduler=None,
+        ):
+        """
+        Parameters
+        ----------
+        data : dict, iterable, DataFrame, ndarray
+        index : Index, array
+        columns : Index, array
+        dtype : dtype
+        copy : bool
+        geometry : array of Point, Polygon, MultiPolygon
+        crs : Any
+            forwarded to pyproj.CRS.from_user_input
+        meta : dict
+        description : str
+        ref_year : int
+        value_unit : str
+        scheduler : str
+            forwarded to dask.dataframe.map_partitions
+            if geometry is going to be calculated
+        """
+        meta = meta or {}
+        if not isinstance(meta, dict):
+            raise TypeError("meta must be of type dict")
+
+        self.description = self._consolidate(meta, 'description', description)
+        self.ref_year = self._consolidate(meta, 'ref_year', ref_year, DEF_REF_YEAR)
+        self.value_unit = self._consolidate(meta, 'value_unit', value_unit, DEF_VALUE_UNIT)
+
+        arg_crs = self._consolidate(meta, 'crs', crs, DEF_CRS)
+        try:
+            data_crs = data.geometry.crs
+        except AttributeError:
+            data_crs = None
+        if data_crs and arg_crs and not u_coord.equal_crs(data_crs, arg_crs):
+            raise ValueError("Inconsistent crs definition in data and data.geometry")
+        self.crs = arg_crs or data_crs or None
+
+        self.geometry = kwargs.pop('geometry', self.from_data('geometry'))
+        self.latitude = kwargs.pop('latitude', self.from_data('latitude'))
+        self.longitude = kwargs.pop('latitude', self.from_data('longitude'))
+
+
 class Exposures():
     """geopandas GeoDataFrame with metada and columns (pd.Series) defined in
     Attributes.
@@ -142,13 +206,20 @@ class Exposures():
             return self.meta.get('crs')
 
     def __init__(self, *args, meta=None, description=None, ref_year=DEF_REF_YEAR,
-                 value_unit=DEF_VALUE_UNIT, crs=None, **kwargs):
+                 value_unit=DEF_VALUE_UNIT, crs=None, scheduler=None, **kwargs):
         """Creates an Exposures object from a GeoDataFrame
 
         Parameters
         ----------
         args :
             Arguments of the GeoDataFrame constructor
+            data : dict, dataframe, ndarray, iterable,
+            index : index, array, 
+            columns : index, array,
+            dtype : dtype,
+            copy : bool,
+            geometry : array, str,
+            crs : Any (pyproj.CRS.from_user_input!)
         kwargs :
             Named arguments of the GeoDataFrame constructor, additionally
         meta : dict, optional
@@ -162,52 +233,34 @@ class Exposures():
         crs : object, anything accepted by pyproj.CRS.from_user_input
             Coordinate reference system. Defaults to the entry of the same name in `meta`, or to
             the CRS of the GeoDataFrame (if provided) or to 'epsg:4326'.
+        scheduler : str, optional
+            if set, used for `dask.dataframe.map_partitions`
+            “threads”, “synchronous” or “processes”.
+            Default is `None`, i.e., the calculation of geometry points from latitude, longitude
+            is done as single process.
         """
-        # meta data
-        self.meta = {} if meta is None else meta
-        if not isinstance(self.meta, dict):
-            raise ValueError("meta must be a dictionary")
-        self.description = self.meta.get('description') if description is None else description
-        self.ref_year = self.meta.get('ref_year', DEF_REF_YEAR) if ref_year is None else ref_year
-        self.value_unit = (self.meta.get('value_unit', DEF_VALUE_UNIT)
-                           if value_unit is None else value_unit)
 
-        # remaining generic attributes from derived classes
-        for mda in type(self)._metadata:
-            if mda not in Exposures._metadata:
-                if mda in kwargs:
-                    setattr(self, mda, kwargs.pop(mda))
-                elif mda in self.meta:
-                    setattr(self, mda, self.meta[mda])
-                else:
-                    setattr(self, mda, None)
+        init_args = _InitArguments(*args, meta=meta, description=description, ref_year=ref_year,
+                                   value_unit=value_unit, crs=crs, scheduler=scheduler, **kwargs)
 
-        # crs (property) and geometry
-        data = args[0] if args else kwargs.get('data', {})
-        try:
-            data_crs = data.geometry.crs
-        except AttributeError:
-            data_crs = None
-        if data_crs and data.crs and not u_coord.equal_crs(data_crs, data.crs):
-            raise ValueError("Inconsistent crs definition in data and data.geometry")
+        self.ref_year = init_args.ref_year
+        self.value_unit = init_args.value_unit
+        self.description = init_args.description
+        self.meta = init_args.meta
+        self.crs = init_args.crs
 
-        crs = (crs if crs is not None
-               else self.meta['crs'] if 'crs' in self.meta
-               else data_crs if data_crs
-               else None)
-        if 'crs' in self.meta and not u_coord.equal_crs(self.meta['crs'], crs):
-            raise ValueError("Inconsistent CRS definition, crs and meta arguments don't match")
-        if data_crs and not u_coord.equal_crs(data_crs, crs):
-            raise ValueError("Inconsistent CRS definition, data doesn't match meta or crs argument")
-        if not crs:
-            crs = DEF_CRS
+        if init_args.geometry:
 
         geometry = kwargs.get('geometry')
         if geometry and isinstance(geometry, str):
             raise ValueError("Exposures is not able to handle customized 'geometry' column names.")
+        if not geometry:
+            lat_lon_df = gpd.GeoDataFrame(dict(latitude=latitude, longitude=longitude))
+            u_coord.set_df_geometry_points(lat_lon_df, scheduler=scheduler)
+            geometry = lat_lon_df.geometry
 
         # make the data frame
-        self.set_gdf(GeoDataFrame(*args, **kwargs), crs=crs)
+        self.set_gdf(GeoDataFrame(*args, geometry=geometry, crs=crs, **kwargs))
 
     def __str__(self):
         return '\n'.join(
@@ -293,11 +346,14 @@ class Exposures():
         # clear the meta dictionary entry
         if 'crs' in self.meta:
             old_crs = self.meta.pop('crs')
+        else:
+            old_crs = None
         crs = crs if crs else self.crs if self.crs else DEF_CRS
         # adjust the dataframe
         if 'geometry' in self.gdf.columns:
             try:
-                self.gdf.set_crs(crs, inplace=True)
+                self.gdf.set_crs(crs, inplace=True,
+                                 allow_override=not u_coord.equal_crs(old_crs, crs))
             except ValueError:
                 # restore popped crs and leave
                 self.meta['crs'] = old_crs
@@ -321,6 +377,11 @@ class Exposures():
         # set the dataframe
         self.gdf = gdf
         # update the coordinate reference system
+        if not "geometry" in self.gdf:
+            try:
+                self.set_geometry_points(scheduler=self.scheduler)
+            except AttributeError:  # GeoDataFrame has not longitude column
+                self.gdf.set_geometry([], inplace=True, crs=crs)
         self.set_crs(crs)
 
     def get_impf_column(self, haz_type=''):
@@ -446,8 +507,10 @@ class Exposures():
         Parameters
         ----------
         scheduler : str, optional
-            used for dask map_partitions.
-            “threads”, “synchronous” or “processes”
+            if set, used for `dask.dataframe.map_partitions`
+            “threads”, “synchronous” or “processes”.
+            Default is `None`, i.e., the calculation of geometry points from latitude, longitude
+            is done as single process.
         """
         u_coord.set_df_geometry_points(self.gdf, scheduler=scheduler, crs=self.crs)
 

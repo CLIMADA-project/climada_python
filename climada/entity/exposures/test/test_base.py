@@ -26,6 +26,7 @@ from sklearn.metrics import DistanceMetric
 import rasterio
 from rasterio.windows import Window
 import scipy as sp
+from shapely.geometry import Point
 
 from climada import CONFIG
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, \
@@ -461,12 +462,15 @@ class TestGeoDFFuncs(unittest.TestCase):
 
     def test_constructor_pass(self):
         """Test initialization with input GeoDataFrame"""
-        in_gpd = gpd.GeoDataFrame()
-        in_gpd['value'] = np.zeros(10)
-        in_gpd.ref_year = 2015
+        in_gpd = gpd.GeoDataFrame(dict(
+            latitude=range(10),
+            longitude=[0] * 10,
+            value=np.zeros(10)
+        ))
         in_exp = Exposures(in_gpd, ref_year=2015)
         self.assertEqual(in_exp.ref_year, 2015)
         np.testing.assert_array_equal(in_exp.gdf.value, np.zeros(10))
+        self.assertEqual(in_exp.gdf.geometry[0], Point(0, 0))
 
     def test_error_on_access_item(self):
         """Test error output when trying to access items as in CLIMADA 1.x"""
@@ -489,9 +493,9 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertRaises(ValueError, probe.set_gdf, pd.DataFrame())
 
         probe.set_gdf(empty_gdf)
-        self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame()))
+        self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame().set_geometry([])))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertFalse(hasattr(probe.gdf, "crs"))
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.gdf.crs))
 
         probe.set_gdf(gdf_with_geometry)
         self.assertTrue(probe.gdf.equals(gdf_with_geometry))
@@ -501,7 +505,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_gdf(gdf_without_geometry)
         self.assertTrue(probe.gdf.equals(good_exposures().gdf))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertFalse(hasattr(probe.gdf, "crs"))
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.gdf.crs))
 
     def test_set_crs(self):
         """Test setting the CRS"""
@@ -520,8 +524,9 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
         probe.set_crs(DEF_CRS)
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertRaises(ValueError, probe.set_crs, 'epsg:3395')
-        self.assertTrue(u_coord.equal_crs('EPSG:4326', probe.meta.get('crs')))
+        probe.set_crs('epsg:3395')
+        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.meta.get('crs')))
+        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.crs))
 
     def test_to_crs_epsg_crs(self):
         """ Check that if crs and epsg are both provided a ValueError is raised"""
