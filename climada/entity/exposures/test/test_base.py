@@ -86,7 +86,7 @@ class TestFuncs(unittest.TestCase):
     def test__init__meta_type(self):
         """ Check if meta of type list raises a ValueError in __init__"""
         with self.assertRaises(ValueError) as cm:
-            Exposures(meta=[])
+            Exposures(meta="{}")
         self.assertEqual("meta must be a dictionary",
                       str(cm.exception))
 
@@ -241,11 +241,11 @@ class TestChecker(unittest.TestCase):
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
-        expo.gdf.drop(['longitude'], inplace=True, axis=1)
+        expo.gdf.drop(['value'], inplace=True, axis=1)
 
         with self.assertRaises(ValueError) as cm:
             expo.check()
-        self.assertIn('longitude missing', str(cm.exception))
+        self.assertIn('value missing', str(cm.exception))
 
     def test_error_logs_wrong_crs(self):
         """Ambiguous crs definition"""
@@ -277,14 +277,6 @@ class TestChecker(unittest.TestCase):
         self.assertIn("Inconsistent CRS definition, gdf (EPSG:4326) attribute doesn't match "
                       "meta (epsg:4230) attribute.", str(cm.exception))
 
-    def test_error_geometry_fail(self):
-        """Wrong exposures definition"""
-        expo = good_exposures()
-        expo.set_geometry_points()
-        expo.gdf.latitude.values[0] = 5
-
-        with self.assertRaises(ValueError):
-            expo.check()
 
 class TestIO(unittest.TestCase):
     """Check constructor Exposures through DataFrames readers"""
@@ -344,16 +336,20 @@ class TestAddSea(unittest.TestCase):
     """Check constructor Exposures through DataFrames readers"""
     def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
-        exp = Exposures()
-        exp.gdf['value'] = np.arange(0, 1.0e6, 1.0e5)
         min_lat, max_lat = 27.5, 30
         min_lon, max_lon = -18, -12
-        exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
-        exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
-        exp.gdf['region_id'] = np.ones(10)
-        exp.gdf['impf_TC'] = np.ones(10)
-        exp.ref_year = 2015
-        exp.value_unit = 'XSD'
+        
+        exp = Exposures(
+            data = dict(
+                value = np.arange(0, 1.0e6, 1.0e5),
+                latitude = np.linspace(min_lat, max_lat, 10),
+                longitude = np.linspace(min_lon, max_lon, 10),
+                region_id = np.ones(10),
+                impf_TC = np.ones(10),
+            ),
+            ref_year = 2015,
+            value_unit = 'XSD',
+        )
         exp.check()
 
         sea_coast = 100
@@ -369,38 +365,42 @@ class TestAddSea(unittest.TestCase):
         max_lat = max_lat + sea_coast
         min_lon = min_lon - sea_coast
         max_lon = max_lon + sea_coast
-        self.assertEqual(np.min(exp_sea.gdf.latitude), min_lat)
-        self.assertEqual(np.min(exp_sea.gdf.longitude), min_lon)
-        np.testing.assert_array_equal(exp_sea.gdf.value.values[:10], np.arange(0, 1.0e6, 1.0e5))
+        self.assertEqual(np.min(exp_sea.latitude), min_lat)
+        self.assertEqual(np.min(exp_sea.longitude), min_lon)
+        np.testing.assert_array_equal(exp_sea.value[:10], np.arange(0, 1.0e6, 1.0e5))
         self.assertEqual(exp_sea.ref_year, exp.ref_year)
         self.assertEqual(exp_sea.value_unit, exp.value_unit)
 
-        on_sea_lat = exp_sea.gdf.latitude.values[11:]
-        on_sea_lon = exp_sea.gdf.longitude.values[11:]
+        on_sea_lat = exp_sea.latitude[11:]
+        on_sea_lon = exp_sea.longitude[11:]
         res_on_sea = u_coord.coord_on_land(on_sea_lat, on_sea_lon)
         res_on_sea = ~res_on_sea
         self.assertTrue(np.all(res_on_sea))
 
         dist = DistanceMetric.get_metric('haversine')
         self.assertAlmostEqual(dist.pairwise([
-            [exp_sea.gdf.longitude.values[-1], exp_sea.gdf.latitude.values[-1]],
-            [exp_sea.gdf.longitude.values[-2], exp_sea.gdf.latitude.values[-2]],
+            [exp_sea.longitude[-1], exp_sea.latitude[-1]],
+            [exp_sea.longitude[-2], exp_sea.latitude[-2]],
         ])[0][1], sea_res_km)
 
 
 class TestConcat(unittest.TestCase):
     """Check constructor Exposures through DataFrames readers"""
     def setUp(self):
-        exp = Exposures(crs='epsg:3395')
-        exp.gdf['value'] = np.arange(0, 1.0e6, 1.0e5)
         min_lat, max_lat = 27.5, 30
         min_lon, max_lon = -18, -12
-        exp.gdf['latitude'] = np.linspace(min_lat, max_lat, 10)
-        exp.gdf['longitude'] = np.linspace(min_lon, max_lon, 10)
-        exp.gdf['region_id'] = np.ones(10)
-        exp.gdf['impf_TC'] = np.ones(10)
-        exp.ref_year = 2015
-        exp.value_unit = 'XSD'
+        exp = Exposures(
+            crs='epsg:3395',
+            value = np.arange(0, 1.0e6, 1.0e5),
+            lat = np.linspace(min_lat, max_lat, 10),
+            lon = np.linspace(min_lon, max_lon, 10),
+            ref_year = 2015,
+            value_unit = 'XSD',
+            data = dict(
+                region_id = np.ones(10),
+                impf_TC = np.ones(10),
+            ),
+        )
         self.dummy = exp
 
     def test_concat_pass(self):
@@ -432,8 +432,8 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_copy.ref_year, exp.ref_year)
         self.assertEqual(exp_copy.value_unit, exp.value_unit)
         self.assertEqual(exp_copy.description, exp.description)
-        np.testing.assert_array_equal(exp_copy.gdf.latitude.values, exp.gdf.latitude.values)
-        np.testing.assert_array_equal(exp_copy.gdf.longitude.values, exp.gdf.longitude.values)
+        np.testing.assert_array_equal(exp_copy.latitude, exp.latitude)
+        np.testing.assert_array_equal(exp_copy.longitude, exp.longitude)
 
     def test_to_crs_inplace_pass(self):
         """Test to_crs function inplace."""
@@ -525,7 +525,6 @@ class TestGeoDFFuncs(unittest.TestCase):
         probe.set_crs(DEF_CRS)
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
         probe.set_crs('epsg:3395')
-        self.assertTrue(u_coord.equal_crs('epsg:3395', probe.meta.get('crs')))
         self.assertTrue(u_coord.equal_crs('epsg:3395', probe.crs))
 
     def test_to_crs_epsg_crs(self):
