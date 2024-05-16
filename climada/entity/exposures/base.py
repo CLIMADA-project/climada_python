@@ -743,9 +743,9 @@ class Exposures():
             raster = self.gdf.value.values.reshape((self.meta['height'],
                                                     self.meta['width']))
             # check raster starts by upper left corner
-            if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
+            if self.latitude[0] < self.latitude[-1]:
                 raster = np.flip(raster, axis=0)
-            if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
+            if self.longitude[0] > self.longitude[-1]:
                 raise ValueError('Points are not ordered according to meta raster.')
         else:
             raster, meta = u_coord.points_to_raster(self.gdf, ['value'], res, raster_res, scheduler)
@@ -763,11 +763,11 @@ class Exposures():
         if isinstance(proj_data, ccrs.PlateCarree):
             # use different projections for plot and data to shift the central lon in the plot
             xmin, ymin, xmax, ymax = u_coord.latlon_bounds(
-                self.gdf.latitude.values, self.gdf.longitude.values)
+                self.latitude, self.longitude)
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         else:
-            xmin, ymin, xmax, ymax = (self.gdf.longitude.min(), self.gdf.latitude.min(),
-                                      self.gdf.longitude.max(), self.gdf.latitude.max())
+            xmin, ymin, xmax, ymax = (self.longitude.min(), self.gdf.latitude.min(),
+                                      self.longitude.max(), self.gdf.latitude.max())
 
         if not axis:
             _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize,
@@ -1034,9 +1034,9 @@ class Exposures():
             raster = self.gdf[value_name].values.reshape((self.meta['height'],
                                                           self.meta['width']))
             # check raster starts by upper left corner
-            if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
+            if self.latitude[0] < self.latitude[-1]:
                 raster = np.flip(raster, axis=0)
-            if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
+            if self.longitude[0] > self.longitude[-1]:
                 raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:

@@ -111,7 +111,7 @@ class TestImpact(unittest.TestCase):
         np.testing.assert_array_almost_equal(imp.at_event, fake_at_event)
         np.testing.assert_array_almost_equal(
             imp.coord_exp,
-            np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
+            np.stack([exp.latitude, exp.longitude], axis=1)
             )
 
     def test_pyproj_crs(self):

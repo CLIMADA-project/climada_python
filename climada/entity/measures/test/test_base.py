@@ -171,8 +171,8 @@ class TestApply(unittest.TestCase):
         self.assertEqual(new_exp.value_unit, exp.value_unit)
         self.assertEqual(new_exp.description, exp.description)
         self.assertTrue(np.array_equal(new_exp.gdf.value.values, exp.gdf.value.values))
-        self.assertTrue(np.array_equal(new_exp.gdf.latitude.values, exp.gdf.latitude.values))
-        self.assertTrue(np.array_equal(new_exp.gdf.longitude.values, exp.gdf.longitude.values))
+        self.assertTrue(np.array_equal(new_exp.latitude, exp.latitude))
+        self.assertTrue(np.array_equal(new_exp.longitude, exp.longitude))
         self.assertTrue(np.array_equal(exp.gdf[INDICATOR_IMPF + 'TC'].values, np.ones(new_exp.gdf.shape[0])))
         self.assertTrue(np.array_equal(new_exp.gdf[INDICATOR_IMPF + 'TC'].values, np.ones(new_exp.gdf.shape[0]) * 3))
 
@@ -208,8 +208,8 @@ class TestApply(unittest.TestCase):
         self.assertEqual(new_exp.value_unit, ref_exp.value_unit)
         self.assertEqual(new_exp.description, ref_exp.description)
         self.assertTrue(np.array_equal(new_exp.gdf.value.values, ref_exp.gdf.value.values))
-        self.assertTrue(np.array_equal(new_exp.gdf.latitude.values, ref_exp.gdf.latitude.values))
-        self.assertTrue(np.array_equal(new_exp.gdf.longitude.values, ref_exp.gdf.longitude.values))
+        self.assertTrue(np.array_equal(new_exp.latitude, ref_exp.latitude))
+        self.assertTrue(np.array_equal(new_exp.longitude, ref_exp.longitude))
 
     def test_not_filter_exposures_pass(self):
         """Test _filter_exposures method with []"""
@@ -274,8 +274,6 @@ class TestApply(unittest.TestCase):
         self.assertEqual(res_exp.value_unit, exp.value_unit)
         self.assertEqual(res_exp.description, exp.description)
         self.assertTrue(u_coord.equal_crs(res_exp.crs, exp.crs))
-        self.assertFalse(hasattr(exp.gdf, "crs"))
-        self.assertFalse(hasattr(res_exp.gdf, "crs"))
 
         # regions (that is just input data, no need for testing, but it makes the changed and unchanged parts obious)
         self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[0], 4))
@@ -286,15 +284,15 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(res_exp.gdf.value.values[:25], new_exp.gdf.value.values[:25]))
         self.assertTrue(np.all(np.not_equal(res_exp.gdf.value.values[:25], exp.gdf.value.values[:25])))
         self.assertTrue(np.all(np.not_equal(res_exp.gdf.impf_TC.values[:25], new_exp.gdf.impf_TC.values[:25])))
-        self.assertTrue(np.array_equal(res_exp.gdf.latitude.values[:25], new_exp.gdf.latitude.values[:25]))
-        self.assertTrue(np.array_equal(res_exp.gdf.longitude.values[:25], new_exp.gdf.longitude.values[:25]))
+        self.assertTrue(np.array_equal(res_exp.latitude[:25], new_exp.latitude[:25]))
+        self.assertTrue(np.array_equal(res_exp.longitude[:25], new_exp.longitude[:25]))
 
         # unchanged exposures
         self.assertTrue(np.array_equal(res_exp.gdf.value.values[25:], exp.gdf.value.values[25:]))
         self.assertTrue(np.all(np.not_equal(res_exp.gdf.value.values[25:], new_exp.gdf.value.values[25:])))
         self.assertTrue(np.array_equal(res_exp.gdf.impf_TC.values[25:], exp.gdf.impf_TC.values[25:]))
-        self.assertTrue(np.array_equal(res_exp.gdf.latitude.values[25:], exp.gdf.latitude.values[25:]))
-        self.assertTrue(np.array_equal(res_exp.gdf.longitude.values[25:], exp.gdf.longitude.values[25:]))
+        self.assertTrue(np.array_equal(res_exp.latitude[25:], exp.latitude[25:]))
+        self.assertTrue(np.array_equal(res_exp.longitude[25:], exp.longitude[25:]))
 
         # unchanged impact functions
         self.assertEqual(list(res_ifs.get_func().keys()), [meas.haz_type])
@@ -387,8 +385,8 @@ class TestApply(unittest.TestCase):
         self.assertAlmostEqual(imp.at_event[12], 1.470194187501225e+07)
         self.assertAlmostEqual(imp.at_event[41], 4.7226357936631286e+08)
         self.assertAlmostEqual(imp.at_event[11890], 1.742110428135755e+07)
-        self.assertTrue(np.array_equal(imp.coord_exp[:, 0], entity.exposures.gdf.latitude))
-        self.assertTrue(np.array_equal(imp.coord_exp[:, 1], entity.exposures.gdf.longitude))
+        self.assertTrue(np.array_equal(imp.coord_exp[:, 0], entity.exposures.latitude))
+        self.assertTrue(np.array_equal(imp.coord_exp[:, 1], entity.exposures.longitude))
         self.assertAlmostEqual(imp.eai_exp[0], 1.15677655725858e+08)
         self.assertAlmostEqual(imp.eai_exp[-1], 7.528669956120645e+07)
         self.assertAlmostEqual(imp.tot_value, 6.570532945599105e+11)

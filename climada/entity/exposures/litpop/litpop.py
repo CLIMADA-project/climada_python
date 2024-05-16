@@ -206,8 +206,8 @@ class LitPop(Exposures):
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (exp.gdf.longitude.min(), exp.gdf.latitude.min(),
-                 exp.gdf.longitude.max(), exp.gdf.latitude.max()),
+                (exp.longitude.min(), exp.gdf.latitude.min(),
+                 exp.longitude.max(), exp.gdf.latitude.max()),
                 u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
             exp.meta = {
                 'width': cols,
@@ -442,8 +442,8 @@ class LitPop(Exposures):
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (exp.gdf.longitude.min(), exp.gdf.latitude.min(),
-                 exp.gdf.longitude.max(), exp.gdf.latitude.max()),
+                (exp.longitude.min(), exp.gdf.latitude.min(),
+                 exp.longitude.max(), exp.gdf.latitude.max()),
                 u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
             exp.meta = {
                 'width': cols,
@@ -567,8 +567,8 @@ class LitPop(Exposures):
         if min(len(exp.gdf.latitude.unique()), len(exp.gdf.longitude.unique())) > 1:
         #if exp.gdf.shape[0] > 1 and len(exp.gdf.latitude.unique()) > 1:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (exp.gdf.longitude.min(), exp.gdf.latitude.min(),
-                 exp.gdf.longitude.max(), exp.gdf.latitude.max()),
+                (exp.longitude.min(), exp.gdf.latitude.min(),
+                 exp.longitude.max(), exp.gdf.latitude.max()),
                 u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
             exp.meta = {
                 'width': cols,
