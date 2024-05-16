@@ -650,12 +650,12 @@ class TestCentroidsReaderWriter(unittest.TestCase):
             False,
         )
 
-    def test_from_exposure_exceptions(self):
+    def test_from_empty_exposures(self):
         gdf = gpd.GeoDataFrame({
         })
         exposures = Exposures(gdf)
-        with self.assertRaises(ValueError):
-            Centroids.from_exposures(exposures)
+        centroids = Centroids.from_exposures(exposures)
+        self.assertEqual(centroids.gdf.shape, (0, 1))  # there is an empty geometry column
 
     def test_read_write_hdf5(self):
         tmpfile = Path('test_write_hdf5.out.hdf5')

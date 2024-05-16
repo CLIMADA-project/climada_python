@@ -293,27 +293,8 @@ class Centroids():
             if not any(pattern in column for pattern in EXP_SPECIFIC_COLS)
         ]
 
-        # Legacy behaviour
-        # Exposures can be without geometry column
-        #TODO: remove once exposures is real geodataframe with geometry.
-        if 'geometry' in exposures.gdf.columns:
-            gdf = exposures.gdf[col_names]
-            return cls.from_geodataframe(gdf)
-
-        if 'latitude' in exposures.gdf.columns and 'longitude' in exposures.gdf.columns:
-            gdf = exposures.gdf[col_names]
-            return cls(
-                lat=exposures.gdf['latitude'],
-                lon=exposures.gdf['longitude'],
-                crs=exposures.crs,
-                **dict(gdf.items()),
-            )
-
-        raise ValueError(
-            "The given exposures object has no coordinates information."
-            "The exposures' GeoDataFrame must have either point geometries"
-            " or latitude and longitude values."
-        )
+        gdf = exposures.gdf[col_names]
+        return cls.from_geodataframe(gdf)
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):
