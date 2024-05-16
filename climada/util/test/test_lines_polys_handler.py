@@ -68,7 +68,7 @@ def check_unchanged_geom_gdf(self, gdf_geom, gdf_pnt):
         sub_gdf_pnt = gdf_pnt.xs(n, level=1)
         rows_sel = sub_gdf_pnt.index.to_numpy()
         sub_gdf = gdf_geom.loc[rows_sel]
-        self.assertTrue(np.alltrue(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
+        self.assertTrue(np.all(sub_gdf.geometry.geom_equals(sub_gdf_pnt.geometry_orig)))
     for col in gdf_pnt.columns:
         if col not in COL_CHANGING:
             np.testing.assert_allclose(gdf_pnt[col].unique(), gdf_geom[col].unique())
@@ -115,14 +115,14 @@ class TestExposureGeomToPnt(unittest.TestCase):
             8.54188667e+10, 8.54188667e+10, 1.43895450e+11, 1.43895450e+11,
             1.16221500e+11, 3.70562500e+11, 1.35359600e+11, 3.83689000e+10
             ])
-        np.testing.assert_allclose(exp_pnt.gdf.value, val_avg)
+        np.testing.assert_allclose(exp_pnt.value, val_avg)
         lat = np.array([
             53.15019278, 52.90814037, 52.48232657, 52.23482697, 52.23482697,
             51.26574748, 51.30438894, 51.71676713, 51.71676713, 51.71676713,
             52.13772724, 52.13772724, 52.61538869, 53.10328543, 52.54974468,
             52.11286591
             ])
-        np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
+        np.testing.assert_allclose(exp_pnt.latitude, lat)
 
         #to_meters=TRUE, FIX, dissag_val
         res = 20000
@@ -132,7 +132,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             )
         self.check_unchanged_exp(EXP_POLY, exp_pnt)
         val = res**2
-        self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
+        self.assertEqual(np.unique(exp_pnt.value)[0], val)
         lat = np.array([
             53.13923671, 53.13923671, 53.13923671, 53.13923671, 53.43921725,
             53.43921725, 52.90782155, 52.90782155, 52.90782155, 52.90782155,
@@ -150,7 +150,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             53.38649582, 53.38649582, 53.38649582, 52.55795685, 52.55795685,
             52.55795685, 52.55795685, 52.23308448, 52.23308448
             ])
-        np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
+        np.testing.assert_allclose(exp_pnt.latitude, lat)
 
         #projected crs, to_meters=TRUE, FIX, dissag_val
         res = 20000
@@ -226,8 +226,10 @@ class TestExposureGeomToPnt(unittest.TestCase):
             disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None
             )
         self.check_unchanged_exp(exp_poly, exp_pnt_grid)
-        for col in ['value', 'latitude', 'longitude']:
-            np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
+
+        np.testing.assert_allclose(exp_pnt.value, exp_pnt_grid.value)
+        np.testing.assert_allclose(exp_pnt.latitude, exp_pnt_grid.latitude)
+        np.testing.assert_allclose(exp_pnt.longitude, exp_pnt_grid.longitude)
 
         x_grid = np.append(x_grid, x_grid+10)
         y_grid = np.append(y_grid, y_grid+10)
@@ -241,9 +243,10 @@ class TestExposureGeomToPnt(unittest.TestCase):
             disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None
             )
         self.check_unchanged_exp(exp_poly, exp_pnt_grid)
-        for col in ['value', 'latitude', 'longitude']:
-            np.testing.assert_allclose(exp_pnt.gdf[col], exp_pnt_grid.gdf[col])
 
+        np.testing.assert_allclose(exp_pnt.value, exp_pnt_grid.value)
+        np.testing.assert_allclose(exp_pnt.latitude, exp_pnt_grid.latitude)
+        np.testing.assert_allclose(exp_pnt.longitude, exp_pnt_grid.longitude)
 
     def test_point_exposure_from_lines(self):
         """Test disaggregation of lines to points"""
@@ -280,7 +283,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             51.93188219, 51.10694216, 52.48596301, 50.87543042, 51.0801347 ,
             50.82145186, 50.81341953, 51.07235498, 50.9105503
             ])
-        np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
+        np.testing.assert_allclose(exp_pnt.latitude, lat)
 
 class TestGeomImpactCalcs(unittest.TestCase):
     """Test main functions on impact calculation and impact aggregation"""
@@ -349,7 +352,7 @@ class TestGeomImpactCalcs(unittest.TestCase):
         aai_agg1 =  0.0470814
 
         exp = EXP_POINT.copy()
-        exp.set_lat_lon()
+        #exp.set_lat_lon()
         imp11 = ImpactCalc(exp, IMPF_SET, HAZ).impact()
         check_impact(self, imp1, HAZ, EXP_POINT, aai_agg1, imp11.eai_exp)
 
@@ -702,7 +705,7 @@ class TestLPUtils(unittest.TestCase):
         gdf_orig = GDF_POLY.copy()
         gdf_orig['new_geom'] = gdf_orig.geometry
         swap_gdf = u_lp._swap_geom_cols(gdf_orig, 'old_geom', 'new_geom')
-        self.assertTrue(np.alltrue(swap_gdf.geometry.geom_equals(gdf_orig.new_geom)))
+        self.assertTrue(np.all(swap_gdf.geometry.geom_equals(gdf_orig.new_geom)))
 
 
 if __name__ == "__main__":

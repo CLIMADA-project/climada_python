@@ -505,6 +505,14 @@ class Exposures():
         """obsolete and deprecated since climada 5.0
         """
 
+    @deprecated(details="latitude and longitude columns are no longer meaningful in Exposures` GeoDataFrames."
+                " They can be retrieved from Exposures.latitude and .longitude properties")
+    def set_lat_lon(self):
+        """Set latitude and longitude attributes from geometry attribute."""
+        LOGGER.info('Setting latitude and longitude attributes.')
+        self.data['latitude'] = self.latitude
+        self.data['longitude'] = self.longitude
+
     def set_from_raster(self, *args, **kwargs):
         """This function is deprecated, use Exposures.from_raster instead."""
         LOGGER.warning("The use of Exposures.set_from_raster is deprecated."

@@ -206,9 +206,9 @@ class LitPop(Exposures):
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (exp.longitude.min(), exp.gdf.latitude.min(),
-                 exp.longitude.max(), exp.gdf.latitude.max()),
-                u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
+                (exp.longitude.min(), exp.latitude.min(),
+                 exp.longitude.max(), exp.latitude.max()),
+                u_coord.get_resolution(exp.longitude, exp.latitude))
             exp.meta = {
                 'width': cols,
                 'height': rows,
@@ -442,9 +442,9 @@ class LitPop(Exposures):
 
         try:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (exp.longitude.min(), exp.gdf.latitude.min(),
-                 exp.longitude.max(), exp.gdf.latitude.max()),
-                u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
+                (exp.longitude.min(), exp.latitude.min(),
+                 exp.longitude.max(), exp.latitude.max()),
+                u_coord.get_resolution(exp.longitude, exp.latitude))
             exp.meta = {
                 'width': cols,
                 'height': rows,
@@ -564,12 +564,14 @@ class LitPop(Exposures):
             description=description
         )
 
-        if min(len(exp.gdf.latitude.unique()), len(exp.gdf.longitude.unique())) > 1:
-        #if exp.gdf.shape[0] > 1 and len(exp.gdf.latitude.unique()) > 1:
+        if (exp.gdf.shape[0] > 1 
+            and exp.longitude.max() > exp.longitude.min()
+            and exp.latitude.max() > exp.latitude.min()):
+        #if exp.gdf.shape[0] > 1 and len(exp.latitude.unique()) > 1:
             rows, cols, ras_trans = u_coord.pts_to_raster_meta(
-                (exp.longitude.min(), exp.gdf.latitude.min(),
-                 exp.longitude.max(), exp.gdf.latitude.max()),
-                u_coord.get_resolution(exp.gdf.longitude, exp.gdf.latitude))
+                (exp.longitude.min(), exp.latitude.min(),
+                 exp.longitude.max(), exp.latitude.max()),
+                u_coord.get_resolution(exp.longitude, exp.latitude))
             exp.meta = {
                 'width': cols,
                 'height': rows,
@@ -790,7 +792,7 @@ def _get_litpop_single_polygon(polygon, reference_year, res_arcsec, data_dir,
         gdf['region_id'] = region_id
     else:
         gdf['region_id'] = u_coord.get_country_code(
-            gdf.latitude, gdf.longitude, gridded=True
+            gdf.geometry.y, gdf.geometry.x, gridded=True
         )
     # remove entries outside polygon with `dropna` and return GeoDataFrame:
     return gdf.dropna(), meta_out
