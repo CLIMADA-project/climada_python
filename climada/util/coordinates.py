@@ -1758,6 +1758,8 @@ def equal_crs(crs_one, crs_two):
     """
     if crs_one is None:
         return crs_two is None
+    if crs_two is None:
+        return False
     return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
 
 def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,
@@ -2663,14 +2665,14 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
             return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
 
         ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['geometry'] = ddata.map_partitions(
+        df_val.set_geometry(ddata.map_partitions(
                                  apply_point,
                                  meta=('geometry', gpd.array.GeometryDtype)
-                             ).compute(scheduler=scheduler)
+                             ).compute(scheduler=scheduler), inplace=True)
     # single process
     else:
-        df_val['geometry'] = gpd.GeoSeries(
-            gpd.points_from_xy(df_val.longitude, df_val.latitude), index=df_val.index, crs=crs)
+        df_val.set_geometry(gpd.GeoSeries(
+            gpd.points_from_xy(df_val.longitude, df_val.latitude), index=df_val.index, crs=crs), inplace=True)
 
     # set crs
     if crs:

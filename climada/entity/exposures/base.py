@@ -21,7 +21,8 @@ Define Exposures class.
 
 __all__ = ['Exposures', 'add_sea', 'INDICATOR_IMPF', 'INDICATOR_CENTR']
 
-from collections.abc import Iterable
+
+from deprecation import deprecated
 import logging
 import copy
 from pathlib import Path
@@ -31,7 +32,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from geopandas import GeoDataFrame
+from geopandas import GeoDataFrame, GeoSeries
 import rasterio
 from rasterio.warp import Resampling
 import contextily as ctx
@@ -164,7 +165,7 @@ class Exposures():
         return self.data["value"].values
 
     @staticmethod
-    def _consolidate(alternative_data, name, value, default=None):
+    def _consolidate(alternative_data, name, value, default=None, equals=lambda x, y: x == y):
         altvalue = alternative_data.get(name)    
         if value is None and altvalue is None:
             return default
@@ -173,10 +174,10 @@ class Exposures():
         if altvalue is None:
             return value
         try:
-            if all(altvalue == value):
+            if all(equals(altvalue, value)):
                 return value
         except TypeError:
-            if altvalue == value:
+            if equals(altvalue, value):
                 return value
         raise ValueError(f"conflicting arguments: the given {name}"
                          " is different from their corresponding value(s) in meta or data")
@@ -266,20 +267,26 @@ class Exposures():
         self.ref_year = self._consolidate(meta, "ref_year", ref_year, DEF_REF_YEAR)
         self.value_unit = self._consolidate(meta, "value_unit", value_unit, DEF_VALUE_UNIT)
 
-        crs = self._consolidate(meta, "crs", crs, DEF_CRS)
+        crs = self._consolidate(meta, "crs", crs, equals=u_coord.equal_crs)
 
-        if geometry is None:
-            # this is going to add a "geometry" column to the dataframe
+        # finalize geometry, set crs
+        if geometry is None:  # -> calculate from lat/lon
+            # create temporary dataframe for calculating the geometry column
             calcdf = GeoDataFrame(dict(latitude=lat, longitude=lon), copy=False)
             u_coord.set_df_geometry_points(
                 df_val=calcdf,
                 scheduler=scheduler,
-                crs=crs)
+                crs=crs or DEF_CRS)
             geometry = calcdf.loc[:,"geometry"]
-        elif crs and not u_coord.equal_crs(geometry.crs, crs):
-            if geometry.crs:
-                LOGGER.warning("going to override the crs")
-            geometry = geometry.set_crs(crs, allow_override=True)
+        elif isinstance(geometry, str):  # -> raise exception
+            raise TypeError("Exposures is not able to handle customized 'geometry' column names.")
+        elif isinstance(geometry, GeoSeries):  # -> set crs if necessary
+            if crs and not u_coord.equal_crs(crs, geometry.crs):
+                geometry = geometry.set_crs(crs, allow_override=True)
+            if not crs and not geometry.crs:
+                geometry = geometry.set_crs(DEF_CRS)
+        else:  # e.g. a list of Points -> turn into GeoSeries
+            geometry = GeoSeries(geometry, crs=crs or DEF_CRS)
 
         self.data = GeoDataFrame(
             data=geodata.loc[:,[c for c in geodata.columns
@@ -287,6 +294,7 @@ class Exposures():
             copy=copy,
             geometry=geometry)
 
+        # add a 'value' column in case it is not already part of data
         if value is not None and self.data.get("value") is None:
             self.data["value"] = value
 
@@ -350,17 +358,16 @@ class Exposures():
         elif not any([col.startswith(INDICATOR_CENTR) for col in self.gdf.columns]):
             LOGGER.info("%s not set.", INDICATOR_CENTR)
 
-    def set_crs(self, crs=None):
+    def set_crs(self, crs=DEF_CRS):
         """Set the Coordinate Reference System.
         If the epxosures GeoDataFrame has a 'geometry' column it will be updated too.
 
         Parameters
         ----------
         crs : object, optional
-            anything anything accepted by pyproj.CRS.from_user_input
-            if the original value is None it will be set to the default CRS.
+            anything anything accepted by pyproj.CRS.from_user_input.
         """
-        self.data.geometry.set_crs(crs or DEF_CRS, inplace=True, allow_override=True)
+        self.data.geometry.set_crs(crs, inplace=True, allow_override=True)
 
     def set_gdf(self, gdf:GeoDataFrame, crs=None):
         """Set the `gdf` GeoDataFrame and update the CRS
@@ -493,20 +500,10 @@ class Exposures():
                         distance=distance, threshold=threshold)
         self.gdf[centr_haz] = assigned_centr
 
-
+    @deprecated(details="Obsolete method call. As of climada 5.0, geometry points are set during object initialization")
     def set_geometry_points(self, scheduler=None):
-        """Set geometry attribute of GeoDataFrame with Points from latitude and
-        longitude attributes.
-
-        Parameters
-        ----------
-        scheduler : str, optional
-            if set, used for `dask.dataframe.map_partitions`
-            “threads”, “synchronous” or “processes”.
-            Default is `None`, i.e., the calculation of geometry points from latitude, longitude
-            is done as single process.
+        """obsolete and deprecated since climada 5.0
         """
-        #u_coord.set_df_geometry_points(self.gdf, scheduler=scheduler, crs=self.crs)
 
     def set_from_raster(self, *args, **kwargs):
         """This function is deprecated, use Exposures.from_raster instead."""
@@ -869,6 +866,7 @@ class Exposures():
         var_meta = {}
         for var in type(self)._metadata:
             var_meta[var] = getattr(self, var)
+        var_meta['crs'] = self.crs
         store.get_storer('exposures').attrs.metadata = var_meta
 
         store.close()

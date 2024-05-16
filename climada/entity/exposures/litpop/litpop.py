@@ -67,6 +67,13 @@ class LitPop(Exposures):
     """
     _metadata = Exposures._metadata + ['exponents', 'fin_mode', 'gpw_version']
 
+    def __init__(self, *args, meta=None, exponents=None, fin_mode=None, gpw_version=None, **kwargs):
+        super().__init__(*args, meta=meta, **kwargs)
+        meta = meta or {}
+        self.exponents = Exposures._consolidate(meta, 'exponents', exponents, (1,1))
+        self.fin_mode = Exposures._consolidate(meta, 'fin_mode', fin_mode, 'pc')
+        self.gpw_version = Exposures._consolidate(meta, 'gpw_version', gpw_version, GPW_VERSION)
+
     def set_countries(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
         LOGGER.warning("The use of LitPop.set_countries is deprecated."
