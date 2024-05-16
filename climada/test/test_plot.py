@@ -153,8 +153,8 @@ class TestPlotter(unittest.TestCase):
 
     def test_ctx_osm_pass(self):
         """Test basemap function using osm images"""
-        myexp = Exposures(latitude=[30, 40, 50],
-                          longitude=[0, 0, 0],
+        myexp = Exposures(lat=[30, 40, 50],
+                          lon=[0, 0, 0],
                           value=[1, 1, 1])
         myexp.check()
         myexp.plot_basemap(url=ctx.providers.OpenStreetMap.Mapnik)

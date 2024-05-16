@@ -620,8 +620,8 @@ class Exposures():
         else:
             pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
         value = self.gdf.value[mask][pos_vals].values
-        coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
-                          self.gdf.longitude[mask][pos_vals].values], axis=1)
+        coord = np.stack([self.gdf.geometry[mask][pos_vals].y.values,
+                          self.gdf.geometry[mask][pos_vals].x.values], axis=1)
         return u_plot.geo_scatter_from_array(array_sub=value,
                                              geo_coord=coord,
                                              var_name=f'Value ({self.value_unit})',
@@ -689,8 +689,8 @@ class Exposures():
         else:
             pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
         value = self.gdf.value[mask][pos_vals].values
-        coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
-                          self.gdf.longitude[mask][pos_vals].values], axis=1)
+        coord = np.stack([self.gdf.geometry[mask][pos_vals].y.values,
+                          self.gdf.geometry[mask][pos_vals].x.values], axis=1)
         return u_plot.geo_bin_from_array(array_sub=value,
                                          geo_coord=coord,
                                          var_name=f'Value ({self.value_unit})',

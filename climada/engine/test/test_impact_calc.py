@@ -50,8 +50,8 @@ def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=
     """Test properties of imapcts"""
     self.assertEqual(len(haz.event_id), len(imp.at_event))
     self.assertIsInstance(imp, Impact)
-    np.testing.assert_allclose(imp.coord_exp[:,0], exp.gdf.latitude)
-    np.testing.assert_allclose(imp.coord_exp[:,1], exp.gdf.longitude)
+    np.testing.assert_allclose(imp.coord_exp[:,0], exp.latitude)
+    np.testing.assert_allclose(imp.coord_exp[:,1], exp.longitude)
     self.assertAlmostEqual(imp.aai_agg, aai_agg, 3)
     np.testing.assert_allclose(imp.eai_exp, eai_exp, rtol=1e-5)
     np.testing.assert_allclose(imp.at_event, at_event, rtol=1e-5)
