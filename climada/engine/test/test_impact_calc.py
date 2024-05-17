@@ -414,7 +414,10 @@ class TestImpactCalc(unittest.TestCase):
 
     def test_stitch_impact_matrix(self):
         """Check how sparse matrices from a generator are stitched together"""
-        icalc = ImpactCalc(Exposures({'blank': [1, 2, 3, 4]}), ImpactFuncSet(), Hazard())
+        icalc = ImpactCalc(Exposures(
+            {"blank": [1, 2, 3, 4]},
+            geometry = [],
+        ), ImpactFuncSet(), Hazard())
         icalc.hazard.event_id = np.array([1, 2, 3])
         icalc._orig_exp_idx = np.array([0, 1, 2, 3])
 
@@ -445,7 +448,10 @@ class TestImpactCalc(unittest.TestCase):
 
     def test_stitch_risk_metrics(self):
         """Test computing risk metrics from an impact matrix generator"""
-        icalc = ImpactCalc(Exposures({'blank': [1, 2, 3]}), ImpactFuncSet(), Hazard())
+        icalc = ImpactCalc(Exposures(
+            {"blank": [1, 2, 3]},
+            geometry = [],
+        ), ImpactFuncSet(), Hazard())
         icalc.hazard.event_id = np.array([1, 2])
         icalc.hazard.frequency = np.array([2, 0.5])
         icalc._orig_exp_idx = np.array([0, 1, 2])
