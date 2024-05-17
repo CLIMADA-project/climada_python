@@ -13,21 +13,6 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - GitHub actions workflow for CLIMADA Petals compatibility tests [#855](https://github.com/CLIMADA-project/climada_python/pull/855)
-
-### Changed
-
-- Remove content tables and make minor improvements (fix typos and readability) in
-CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull/872)
-- Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
-- Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
-- Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
-
-### Fixed
-
-- Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
-
-### Added
-
 - Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
 - climada.hazard.centroids.centr.Centroids.get_area_pixel
 - climada.hazard.centroids.centr.Centroids.get_dist_coast
@@ -38,6 +23,24 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - climada.hazard.centroids.centr.Centroids.to_default_crs
 - climada.hazard.centroids.centr.Centroids.write_csv
 - climada.hazard.centroids.centr.Centroids.write_excel
+- climada.exposures.exposures.Exposures.geometry
+- climada.exposures.exposures.Exposures.latitude
+- climada.exposures.exposures.Exposures.longitude
+- climada.exposures.exposures.Exposures.value
+
+### Changed
+
+- Remove content tables and make minor improvements (fix typos and readability) in
+CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull/872)
+- Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
+- Exposures complete overhaul. Notably the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization, while
+latitude and longitude column are no longer persent there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
+- Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
+- Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
+
+### Fixed
+
+- Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
 
 ### Deprecated
 
@@ -48,6 +51,8 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - climada.hazard.centroids.centr.Centroids.empty_geometry_points
 - climada.hazard.centroids.centr.Centroids.set_meta_to_lat_lon
 - climada.hazard.centroids.centr.Centroids.set_lat_lon_to_meta
+- climada.entity.exposures.Exposures.set_lat_lon`
+- climada.entity.exposures.Exposures.set_geometry_points`
 
 ### Removed
 

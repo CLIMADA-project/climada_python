@@ -500,23 +500,25 @@ class Exposures():
                         distance=distance, threshold=threshold)
         self.gdf[centr_haz] = assigned_centr
 
-    @deprecated(details="Obsolete method call. As of climada 5.0, geometry points are set during object initialization")
+    @deprecated(details="Obsolete method call. As of climada 5.0, geometry points are set during"
+                " object initialization")
     def set_geometry_points(self, scheduler=None):
         """obsolete and deprecated since climada 5.0
         """
 
-    @deprecated(details="latitude and longitude columns are no longer meaningful in Exposures` GeoDataFrames."
-                " They can be retrieved from Exposures.latitude and .longitude properties")
+    @deprecated(details="latitude and longitude columns are no longer meaningful in Exposures`"
+                " GeoDataFrames. They can be retrieved from Exposures.latitude and .longitude"
+                " properties")
     def set_lat_lon(self):
         """Set latitude and longitude attributes from geometry attribute."""
         LOGGER.info('Setting latitude and longitude attributes.')
         self.data['latitude'] = self.latitude
         self.data['longitude'] = self.longitude
 
+    @deprecated(details="The use of Exposures.set_from_raster is deprecated."
+                " Use Exposures.from_raster instead.")
     def set_from_raster(self, *args, **kwargs):
         """This function is deprecated, use Exposures.from_raster instead."""
-        LOGGER.warning("The use of Exposures.set_from_raster is deprecated."
-                       "Use Exposures.from_raster instead.")
         self.__dict__ = Exposures.from_raster(*args, **kwargs).__dict__
 
     @classmethod
