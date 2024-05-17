@@ -137,6 +137,8 @@ class Centroids():
     @property
     def on_land(self):
         """ Get the on_land property """
+        if 'on_land' not in self.gdf:
+            return None
         if self.gdf.on_land.isna().all():
             return None
         return self.gdf['on_land'].values
@@ -144,6 +146,8 @@ class Centroids():
     @property
     def region_id(self):
         """ Get the assigned region_id """
+        if 'region_id' not in self.gdf:
+            return None
         if self.gdf.region_id.isna().all():
             return None
         return self.gdf['region_id'].values
@@ -288,6 +292,7 @@ class Centroids():
         ------
         ValueError
         """
+        # exclude exposures specific columns
         col_names = [
             column for column in exposures.gdf.columns
             if not any(pattern in column for pattern in EXP_SPECIFIC_COLS)
