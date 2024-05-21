@@ -222,8 +222,6 @@ class TropCyclone(Hazard):
             Centroids where to model TC. Default: global centroids at 360 arc-seconds resolution.
         pool : pathos.pool, optional
             Pool that will be used for parallel computation of wind fields. Default: None
-        description : str, optional
-            Description of the event set. Default: "".
         model : str, optional
             Parametric wind field model to use:
             "H1980" (the prominent Holland 1980 model) from the paper:
