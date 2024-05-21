@@ -225,9 +225,23 @@ class TropCyclone(Hazard):
         description : str, optional
             Description of the event set. Default: "".
         model : str, optional
-            Parametric wind field model to use: one of "H1980" (the prominent Holland 1980 model),
-            "H08" (Holland 1980 with b-value from Holland 2008), "H10" (Holland et al. 2010), or
-            "ER11" (Emanuel and Rotunno 2011).
+            Parametric wind field model to use:
+            "H1980" (the prominent Holland 1980 model) from the paper:
+                Holland, G.J. (1980): An Analytic Model of the Wind and Pressure Profiles
+                in Hurricanes. Monthly Weather Review 108(8): 1212–1218.
+                https://doi.org/10.1175/1520-0493(1980)108<1212:AAMOTW>2.0.CO;2,
+
+            "H08" (Holland 1980 with b-value from Holland 2008) from the paper:
+                Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
+                Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1,
+            "H10" (Holland et al. 2010) from the paper:
+                Holland et al. (2010): A Revised Model for Radial Profiles of Hurricane Winds. Monthly
+                Weather Review 138(12): 4393–4401. https://doi.org/10.1175/2010MWR3317.1,
+            or
+            "ER11" (Emanuel and Rotunno 2011) from the paper:
+                Emanuel, K., Rotunno, R. (2011): Self-Stratification of Tropical Cyclone Outflow. Part I:
+                Implications for Storm Structure. Journal of the Atmospheric Sciences 68(10): 2236–2249.
+                https://dx.doi.org/10.1175/JAS-D-10-05024.1.
             Default: "H08".
         model_kwargs : dict, optional
             If given, forward these kwargs to the selected wind model. None of the parameters is
