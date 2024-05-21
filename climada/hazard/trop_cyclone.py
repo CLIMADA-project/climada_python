@@ -1821,9 +1821,11 @@ def _stat_holland_2010(
 
     In terms of this function's arguments, b_s is ``hol_b`` and r is ``d_centr``.
 
-    If `vmax_in_brackets` is True, the alternative formula in (6) is used:
+    If ``vmax_in_brackets`` is True, the alternative formula in (6) is used:
 
-    V(r) = [v_max_s^2 * (r_max / r)^b_s * e^(1 - (r_max / r)^b_s)]^x
+    .. math::
+    
+        V(r) = [v_max_s^2 * (r_max / r)^b_s * e^(1 - (r_max / r)^b_s)]^x
 
     Parameters
     ----------
