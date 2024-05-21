@@ -1188,6 +1188,7 @@ def compute_angular_windspeeds(
     Returns
     -------
     ndarray of shape (npositions, ncentroids)
+        containing the magnitude of the angular windspeed per track position per centroid location
     """
     model_kwargs = {} if model_kwargs is None else model_kwargs
     compute_funs = {
@@ -1243,6 +1244,7 @@ def _compute_angular_windspeeds_h1980(
     Returns
     -------
     ndarray of shape (npositions, ncentroids)
+        containing the magnitude of the angular windspeed per track position per centroid location
     """
     _vgrad(si_track, gradient_to_surface_winds)
     _rho_air(si_track, rho_air_const)
@@ -1286,6 +1288,7 @@ def _compute_angular_windspeeds_h08(
     Returns
     -------
     ndarray of shape (npositions, ncentroids)
+        containing the magnitude of the angular windspeed per track position per centroid location
     """
     _rho_air(si_track, rho_air_const)
     _bs_holland_2008(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
@@ -1337,6 +1340,7 @@ def _compute_angular_windspeeds_h10(
     Returns
     -------
     ndarray of shape (npositions, ncentroids)
+        containing the magnitude of the angular windspeed per track position per centroid location
     """
     _rho_air(si_track, rho_air_const)
     if vmax_from_cen:
