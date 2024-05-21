@@ -437,11 +437,11 @@ class TestWindfieldHelpers(unittest.TestCase):
             # first column: converge to 0 when approaching storm eye
             # second column: vmax at RMW
             # fourth column: peripheral speed (17 m/s) at peripheral radius (unless x is clipped!)
-            [0.0000000, 35.000000, 21.181497, 17.00000, 12.103461],
-            [1.2964800, 34.990037, 21.593755, 12.89131, 0.0000000],
-            [0.3219518, 15.997500, 9.7120060, 8.087240, 6.2289690],
-            [24.823469, 89.992938, 24.381965, 17.00000, 1.9292020],
-        ], atol=1e-5)
+            [ 0.000000, 35.000000, 21.181497, 17.000000, 12.1034610],
+            [ 1.296480, 34.990037, 21.593755, 12.891313,  0.0000000],
+            [ 0.321952, 15.997500,  9.712006,  8.087240,  6.2289690],
+            [24.823469, 89.992938, 24.381965, 17.000000,  1.9292020],
+        ], atol=1e-6)
 
     def test_stat_holland_1980(self):
         """Test _stat_holland_1980 function. Compare to MATLAB reference."""
