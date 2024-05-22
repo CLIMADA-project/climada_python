@@ -1009,7 +1009,7 @@ def match_centroids(coord_gdf, centroids, distance='euclidean',
     Parameters
     ----------
     coord_gdf : gpd.GeoDataFrame
-        GeoDataframe with defined latitude/longitude column and crs
+        GeoDataframe with defined geometry column and crs
     centroids : Centroids
         (Hazard) centroids to match (as raster or vector centroids).
     distance : str, optional
