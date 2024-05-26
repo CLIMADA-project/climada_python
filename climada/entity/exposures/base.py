@@ -486,7 +486,7 @@ class Exposures():
             reproject to given crs
         transform : rasterio.Affine
             affine transformation to apply
-        wdith : float
+        width : float
             number of lons for transform
         height : float
             number of lats for transform

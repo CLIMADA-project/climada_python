@@ -10,15 +10,25 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+- GitHub actions workflow for CLIMADA Petals compatibility tests [#855](https://github.com/CLIMADA-project/climada_python/pull/855)
+
 ### Changed
 
+- Remove content tables and make minor improvements (fix typos and readability) in
+CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull/872)
 - Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 - Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
+- Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
 
 ### Fixed
 
+- Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
+
 ### Added
 
+- Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
 - climada.hazard.centroids.centr.Centroids.get_area_pixel
 - climada.hazard.centroids.centr.Centroids.get_dist_coast
 - climada.hazard.centroids.centr.Centroids.get_elevation
@@ -65,6 +75,7 @@ Code freeze date: YYYY-MM-DD
 - climada.hazard.centroids.centr.Centroids.values_from_raster_files
 - climada.hazard.centroids.centr.Centroids.values_from_vector_files
 - climada.hazard.centroids.centr.generate_nat_earth_centroids
+- `requirements/env_docs.yml`. The regular environment specs are now used to build the online documentation [#687](https://github.com/CLIMADA-project/climada_python/pull/687)
 
 ## 4.1.1
 

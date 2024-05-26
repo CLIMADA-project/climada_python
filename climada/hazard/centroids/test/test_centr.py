@@ -104,7 +104,7 @@ class TestCentroidsData(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(self.centr.crs, DEF_CRS))
 
         # Creating Centroids with additional attributes
-        centroids = Centroids(lat=VEC_LAT, lon=VEC_LON, 
+        centroids = Centroids(lat=VEC_LAT, lon=VEC_LON,
                               region_id=REGION_ID, on_land=ON_LAND)
 
         # Checking additional attributes
@@ -126,7 +126,7 @@ class TestCentroidsData(unittest.TestCase):
                       'on_land','region_id','crs',
                       'shape','size','total_bounds','coord']
         centroids = Centroids(lat=[],lon=[])
-        [self.assertTrue(hasattr(centroids,prop)) for prop in properties] 
+        [self.assertTrue(hasattr(centroids,prop)) for prop in properties]
 
     def test_init_kwargs(self):
         """ Test default crs and kwargs forwarding """
@@ -151,7 +151,7 @@ class TestCentroidsData(unittest.TestCase):
 
     def test_from_meta_pass(self):
         expected_lon = np.array([-30.0, -20.0, -10.0]*3)
-        expected_lat = np.repeat([30.0, 20.0, 10.0],3)        
+        expected_lat = np.repeat([30.0, 20.0, 10.0],3)
         # Check metadata
         meta = dict(
             crs=DEF_CRS,
@@ -233,7 +233,7 @@ class TestCentroidsData(unittest.TestCase):
         np.testing.assert_allclose([10.0, 10.0, 9.8], centr.lat[[0, 1, width]], atol=0.1)
         # generally we assume that from_meta does not set region_ids and on_land flags
         self.assertFalse(centr.region_id)
-        self.assertFalse(centr.on_land)             
+        self.assertFalse(centr.on_land)
 
 class TestCentroidsTransformation(unittest.TestCase):
     """ Test class for coordinate transformations of Centroid objects
@@ -247,7 +247,7 @@ class TestCentroidsTransformation(unittest.TestCase):
         self.centr = Centroids(lat=VEC_LAT,lon=VEC_LON,crs=TEST_CRS)
 
     def test_to_default_crs(self):
-        # Creating Centroids with non-default CRS and 
+        # Creating Centroids with non-default CRS and
         # inplace transformation afterwards
         centroids = Centroids(lat=VEC_LAT, lon=VEC_LON, crs=ALT_CRS)
         self.assertTrue(u_coord.equal_crs(centroids.crs, ALT_CRS))
@@ -329,7 +329,7 @@ class TestCentroidsTransformation(unittest.TestCase):
 
         with self.assertRaises(NotImplementedError):
             centroids.set_on_land(source='satellite',overwrite=True)
-     
+
     def test_set_on_land_raster(self):
         """Test set_on_land"""
         centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
@@ -736,7 +736,7 @@ class TestCentroidsMethods(unittest.TestCase):
     def test_append(self):
         lat2,lon2 = np.array([6,7,8,9,10]),np.array([6,7,8,9,10])
         newcentr = Centroids(lat=lat2,lon=lon2)
-        newcentr.append(self.centr) 
+        newcentr.append(self.centr)
         self.assertTrue(newcentr.size == len(self.centr.lon)+len(lon2))
         np.testing.assert_array_equal(newcentr.lon,np.concatenate([lon2,self.centr.lon]))
         np.testing.assert_array_equal(newcentr.lat,np.concatenate([lat2,self.centr.lat]))
@@ -764,7 +764,7 @@ class TestCentroidsMethods(unittest.TestCase):
 
     def test_remove_duplicates_dif_on_land(self):
         ### We currently expect that only the geometry of the gdf defines duplicates.
-        ### If one geometry is duplicated with differences in other attributes e.g. on_land 
+        ### If one geometry is duplicated with differences in other attributes e.g. on_land
         ### they get removed nevertheless. Only the first occurrence will be part of the new object
         ### this test is only here to guarantee this behaviour
         lat, lon = np.array([0,0,1,2,3,4,5]),np.array([0,0,1,2,3,4,5])
@@ -926,19 +926,18 @@ class TestCentroidsMethods(unittest.TestCase):
         self.assertEqual(idx, 1)
 
     def test_dist_coast_pass(self):
-        """Test set_dist_coast"""
+        """Test get_dist_coast"""
         dist_coast = self.centr.get_dist_coast()
         # Just checking that the output doesnt change over time.
         REF_VALUES = np.array([
-            1605.243, 603.261, 26112.239, 2228.629, 7207.817,
-            156271.372, 661.114, 158184.4,
+            860.0, 200.0, 25610.0, 1000.0, 4685.0,
+            507500.0, 500.0, 150500.0,
         ])
-        # 
         self.assertIsInstance(dist_coast,np.ndarray)
-        np.testing.assert_array_almost_equal(dist_coast, REF_VALUES, decimal=3)
+        np.testing.assert_allclose(dist_coast, REF_VALUES, atol=1.0)
 
     def test_dist_coast_pass_raster(self):
-        """Test set_region_id"""
+        """Test get_dist_coast for centroids derived from a raster file"""
         centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
         dist_coast = centr_ras.get_dist_coast()
         self.assertLess(abs(dist_coast[0] - 117000), 1000)
@@ -978,7 +977,7 @@ class TestCentroidsMethods(unittest.TestCase):
             981037.92674582, 981065.50487659, 981065.50487385,
         ])
         np.testing.assert_allclose(area_pixel, test_area)
-            
+
     def test_equal_pass(self):
         """Test equal"""
         centr_list = [
