@@ -71,6 +71,7 @@ def interpolate_years(year_start, year_end):
     values = np.linspace(0, 1, num=year_end - year_start + 1)
     return values
 
+# Would it be better to have a Snapshot Class that hold a singular snapshot?
 
 class SnapshotsCollection:
     def __init__(self, exposure_set, hazard_set, impfset, snapshot_years):
@@ -117,27 +118,18 @@ class CalcImpactsSnapshots:
 
     # An init param could be the region aggregation you want
 
-    def calc_impacts_list(self):
+    def calc_impacts_snapshots(self):
         impacts_list = {}
         for year, [exp, haz] in self.snapshots.data_dict.items():
             impacts_list[year] = ImpactCalc(exp, self.snapshots.impfset, haz).impact()
         return impacts_list
 
-    # Calculate the eai_exp for each year
-    def interpolate_eai_exp(self, imp0, imp1, start_year, end_year, frequency):
-        yearly_eai_exp = []
-        for year in range(start_year, end_year + 1):
-            imp_mat_intrpl = interpolate_sm(
-                imp0.imp_mat, imp1.imp_mat, year, start_year, end_year
-            )
-            # sum across the rows of the sparse matrix
-            eai_exp = ImpactCalc.eai_exp_from_mat(imp_mat_intrpl, frequency)
-            yearly_eai_exp.append(eai_exp)
-        return yearly_eai_exp
-
-    def snapshot_combinaisons(self, year0, year1):
+    def bayesian_viktorpliers(year0, year1):
         prop_H1 = interpolate_years(year0, year1)
         prop_H0 = 1 - prop_H1
+        return prop_H0, prop_H1
+
+    def snapshot_combinaisons(self, year0, year1):
 
         exp_y0 = self.snapshots.data_dict[year0][0]
         exp_y1 = self.snapshots.data_dict[year1][0]
@@ -155,40 +147,58 @@ class CalcImpactsSnapshots:
         imp_E0H1 = ImpactCalc(exp_y0, self.snapshots.impfset, haz_y1).impact()
         imp_E1H1 = ImpactCalc(exp_y1, self.snapshots.impfset, haz_y1).impact()
 
-        return prop_H0, prop_H1, imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1
+        return imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1
 
-    def bayesian_mixer(self):
+    # Calculate the eai_exp for each year
+    def interpolate_eai_exp(self, imp0, imp1, start_year, end_year, frequency):
+        yearly_eai_exp = []
+        for year in range(start_year, end_year + 1):
+            imp_mat_intrpl = interpolate_sm(
+                imp0.imp_mat, imp1.imp_mat, year, start_year, end_year
+            )
+            # sum across the rows of the sparse matrix
+            eai_exp = ImpactCalc.eai_exp_from_mat(imp_mat_intrpl, frequency)
+            yearly_eai_exp.append(eai_exp)
+        return yearly_eai_exp
+
+    def bayesian_mixer(self, start_year, end_year):
         # 1. Interpolate in between years
+        prop_H0, prop_H1 = self.bayesian_mixer(start_year, end_year)
+        imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = (
+            self.snapshot_combinaisons(start_year, end_year)
+        )
+        frequency0 = self.snapshots.data_dict[start_year][1].frequency
+        frequency1 = self.snapshots.data_dict[end_year][1].frequency
+
+        yearly_eai_exp_0 = self.interpolate_eai_exp(
+            imp_E0H0, imp_E1H0, start_year, end_year, frequency0
+        )
+        yearly_eai_exp_1 = self.interpolate_eai_exp(
+            imp_E0H1, imp_E1H1, start_year, end_year, frequency1
+        )
+        yearly_aai_0 = [
+            ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_0
+        ]
+        yearly_aai_1 = [
+            ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_1
+        ]
+        # Average Annual Impact across the years
+        yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
+        return yearly_aai
+
+
+    def calc_all_years(self):
+        all_yearly_aai = []
         for i in range(len(self.snapshots.snapshots_years) - 1):
             start_year, end_year = (
                 self.snapshots.snapshots_years[i],
                 self.snapshots.snapshots_years[i + 1],
             )
-            prop_H0, prop_H1, imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = (
-                self.snapshot_combinaisons(start_year, end_year)
-            )
-            frequency0 = self.snapshots.data_dict[start_year][1].frequency
-            frequency1 = self.snapshots.data_dict[end_year][1].frequency
-
-            yearly_eai_exp_0 = self.interpolate_eai_exp(
-                imp_E0H0, imp_E1H0, start_year, end_year, frequency0
-            )
-            yearly_eai_exp_1 = self.interpolate_eai_exp(
-                imp_E0H1, imp_E1H1, start_year, end_year, frequency1
-            )
-            yearly_aai_0 = [
-                ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_0
-            ]
-            yearly_aai_1 = [
-                ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_1
-            ]
-
-        # Average Annual Impact across the years
-        yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
-        # EAI region_id across the years
-        # self.yearly_eai_region_id = np.multiply(prop_H0.reshape(-1,1), yearly_eai_region_id_0) + np.multiply(prop_H1.reshape(-1,1), yearly_eai_region_id_1)
-        return yearly_aai
-
+            if i == 0:
+                all_yearly_aai.append(self.bayesian_mixer(start_year, end_year))
+            else:
+                all_yearly_aai.append(self.bayesian_mixer(start_year, end_year)[1:])
+        return np.concatenate(all_yearly_aai)
 
 #### WIP
 
