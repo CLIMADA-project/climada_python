@@ -356,14 +356,19 @@ class Calc():
             Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str, optional
             Sensitivity analysis method from SALib.analyse. Possible choices: 'fast', 'rbd_fast',
-            'morris', 'sobol', 'delta', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy',
-            'hdmr'.
+            'morris', 'sobol', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy', 'hdmr'.
             Note that in Salib, sampling methods and sensitivity
             analysis methods should be used in specific pairs:
             https://salib.readthedocs.io/en/latest/api.html
         sensitivity_kwargs: dict, optional
             Keyword arguments of the chosen SALib analyse method.
             The default is to use SALib's default arguments.
+
+        Notes
+        -----
+        The variables 'Em','Term','X','Y' are removed from the output of the
+        'hdmr' method to ensure compatibility with unsequa.
+        The 'Delta' method is currently not supported.
 
         Returns
         -------
@@ -559,7 +564,7 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
                                           #[param_labels.index(ie[1]), param_labels.index(ie[0])]] = sens_indices['IE'][i]
                 sens_indices['IE'] = interactions
         if method.__name__ == 'SALib.analyze.hdmr':
-            keys_to_remove = ['Em', 'Term','X', 'Y'] #need to delete emulator as is a dict
+            keys_to_remove = ['Em','Term','X','Y'] #need to delete emulator as is a dict
                                             #and useless duplicate of names
             [keys_to_remove.append(si)  for si, si_val_array in sens_indices.items()
              if (np.array(si_val_array).size > nparams**2)]
