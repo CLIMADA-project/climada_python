@@ -203,7 +203,7 @@ class Calc():
             Number of samples as used in the sampling method from SALib
         sampling_method : str, optional
             The sampling method as defined in SALib. Possible choices:
-            'dgsm', 'fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli',
+            'saltelli', 'latin', 'morris', 'dgsm', 'fast_sampler', 'ff', 'finite_diff',
              https://salib.readthedocs.io/en/latest/api.html
             The default is 'saltelli'.
         sampling_kwargs : kwargs, optional
@@ -242,24 +242,27 @@ class Calc():
             'names' : param_labels,
             'bounds' : [[0, 1]]*len(param_labels)
             }
-        #not sure if we want to still force users to enter a value for N in the
-        #case of the 'ff' sampler. In the meantime, trigger a warning.
+        #for the ff sampler, no value of N is needed. For API consistency the user
+        #must input a value that is ignored and a warning is given. 
         if sampling_method == 'ff':
             LOGGER.warning("""You are using the 'ff' sampler which does not require
-                           a value for 'N. The entered N value will be ignored
+                           a value for N. The entered N value will be ignored
                            in the sampling process.""")
         uniform_base_sample = self._make_uniform_base_sample(N, problem_sa,
                                                              sampling_method,
                                                              sampling_kwargs)
         df_samples = pd.DataFrame(uniform_base_sample, columns=param_labels)
+        params_ignored = [] #store dummy parameters that will be ignored
         for param in list(df_samples):
-            if param not in self.distr_dict: #dummy_0 param added to uniform_base_sample
-                                             #when using ff method, need to ignore it?
-                continue
-            df_samples[param] = df_samples[param].apply(
-                self.distr_dict[param].ppf
-                )
-
+            if (param not in self.distr_dict and "dummy_" in param):
+                params_ignored.append(param)
+            else:
+                df_samples[param] = df_samples[param].apply(
+                    self.distr_dict[param].ppf
+                    )
+        if params_ignored:
+            LOGGER.warning("""The automatically generated dummy parameters:  """
+                           +str(params_ignored)+ """ are being ignored.""")
         sampling_kwargs = {
             key: str(val)
             for key, val in sampling_kwargs.items()
@@ -290,7 +293,7 @@ class Calc():
             SALib sampling method.
         sampling_method: string
             The sampling method as defined in SALib. Possible choices:
-            'dgsm', 'fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli',
+            'saltelli', 'latin', 'morris', 'dgsm', 'fast_sampler', 'ff', 'finite_diff',
             https://salib.readthedocs.io/en/latest/api.html
         sampling_kwargs: dict()
             Optional keyword arguments passed on to the SALib sampling method.
@@ -315,7 +318,7 @@ class Calc():
         if sampling_method == 'ff': #the ff sampling has a fixed sample size and
                                     #does not require the N parameter
             if (problem_sa['num_vars'] & (problem_sa['num_vars'] - 1) != 0):
-                raise ValueError("The number of parameters must be a power of 2 "
+                raise ValueError("The number of parameters must be a power of 2. "
                                  "to use the ff sampling method. You can generate "
                                  "dummy parameters to overcome this limitation."
                                  " See https://salib.readthedocs.io/en/latest/api.html")
@@ -355,8 +358,8 @@ class Calc():
         unc_output : climada.engine.unsequa.UncOutput
             Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str, optional
-            Sensitivity analysis method from SALib.analyse. Possible choices: 'fast', 'rbd_fast',
-            'morris', 'sobol', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy', 'hdmr'.
+            Sensitivity analysis method from SALib.analyse. Possible choices: 'sobol', 'fast', 
+            'rbd_fast', 'morris', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy', 'hdmr'.
             Note that in Salib, sampling methods and sensitivity
             analysis methods should be used in specific pairs:
             https://salib.readthedocs.io/en/latest/api.html
@@ -544,16 +547,16 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
                 #to ensure consistency with unsequa
                 interaction_names = sens_indices.pop('interaction_names')
                 interactions = np.full((nparams, nparams), np.nan)
-                for i,ie in enumerate(interaction_names):
-                    interactions[param_labels.index(ie[0]),
-                                 param_labels.index(ie[1])] = sens_indices['IE'][i]
+                for i,interaction_name in enumerate(interaction_names):
+                    interactions[param_labels.index(interaction_name[0]),
+                                 param_labels.index(interaction_name[1])] = sens_indices['IE'][i]
                 sens_indices['IE'] = interactions
 
         if method.__name__ == 'SALib.analyze.hdmr':
             keys_to_remove = ['Em','Term','X','Y'] #need to delete emulator as is a dict
                                                 #and other useless variables
-            [keys_to_remove.append(si)  for si, si_val_array in sens_indices.items()
-             if np.array(si_val_array).size > nparams**2]
+            [keys_to_remove.append(si) for si, si_val_array in sens_indices.items()
+            if np.array(si_val_array).size > nparams**2]
             sens_indices = {k: v for k, v in sens_indices.items()
                             if k not in keys_to_remove}
             names = sens_indices.pop('names')
@@ -586,7 +589,8 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
 
     sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
     # Assume sens_first_order_dict is a dictionary where values are lists/arrays of varying lengths
-    #sens_first_order_df = pd.DataFrame({k: pd.Series(v, dtype=object) for k, v in sens_first_order_dict.items()}) #!for some reason this make the plotting methods fail
+    # !for some reason this make the plotting methods fail
+    #sens_first_order_df = pd.DataFrame({k: pd.Series(v, dtype=object) for k, v in sens_first_order_dict.items()})
 
     if not sens_first_order_df.empty:
         si_names_first_order, param_names_first_order = _si_param_first(param_labels, sens_indices)
