@@ -33,8 +33,91 @@ from geopandas import GeoDataFrame
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, INDICATOR_CENTR
 from climada.hazard.base import Hazard
 import climada.util.checker as u_check
+import functools
 
 LOGGER = logging.getLogger(__name__)
+
+class Measure2():
+
+    def __init__(start_year, end_year, exposures_change, impfset_change, hazard_change):
+        self.exp_map = exposures_change
+        self.impfset_map = impfset_change
+        self.haz_map= hazard_change
+        self.years = (start_year, end_year)
+
+    def apply(self, exposures, impfset, hazard):
+        """
+        Implement measure with all its defined parameters.
+
+        Parameters
+        ----------
+        exposures : climada.entity.Exposures
+            exposures instance
+        imp_fun_set : climada.entity.ImpactFuncSet
+            impact function set instance
+        hazard : climada.hazard.Hazard
+            hazard instance
+
+        Returns
+        -------
+        new_exp : climada.entity.Exposure
+            Exposure with implemented measure with all defined parameters
+        new_ifs : climada.entity.ImpactFuncSet
+            Impact function set with implemented measure with all defined parameters
+        new_haz : climada.hazard.Hazard
+            Hazard with implemented measure with all defined parameters
+        """
+        # change exposures
+        new_exp = self.exp_map(exposures)
+        # change impact functions
+        new_impfs = self.impfset_map(impfset)
+        # change hazard
+        new_haz = self.haz_map(hazard)
+
+        return new_exp, new_impfs, new_haz
+
+def helper_hazard_change(hazard, intensity_multiplier=1, intensity_substract=0):
+    haz_modified = copy.deepcopy(hazard)
+    haz_modified.intensity.data *= intensity_multiplier
+    haz_modified.intensity.data -= intensity_substract
+    haz_modified.intensity.data[haz_modified.intensity.data < 0] = 0
+    haz_modified.intensity.eliminate_zeros()
+    return haz_modified
+
+def helper_impfset_change(
+        impfset, haz_type='',
+        impf_mdd_modifier={1:(1,0)},
+        impf_paa_modifier={1:(1,0)},
+        impf_intensity_modifier={1:(1,0)},
+        new_funcs
+        ):
+    impfset_modified = copy.deepcopy(impfset)
+    for impf in impfset.get_func(haz_type):
+        if impf.id in impf_intensity_modifier.keys():
+            impf_inten = impf_intensity_modifier[impf.id][0]
+            impf.intensity = np.maximum(
+                impf.intensity * impf_inten[0] - impf_inten[1], 0.0
+                )
+        if impf.id in impf_mdd_modifier.keys():
+            impf_mdd = impf_mdd_modifier[impf.id][0]
+            impf.mdd = np.maximum(
+                impf.mdd * impf_mdd[0] + impf_mdd[1], 0.0
+                )
+        if impf.id in impf_paa_modifier.keys():
+            impf_paa = impf_mdd_modifier[impf.id][0]
+            impf.paa = np.maximum(
+                impf.paa * impf_paa[0] + impf_paa[1], 0.0
+                )
+    return impfset_modified
+
+def helper_exposure_change(
+        exposures, reassign_impf_id=None, remove_values=None
+    ):
+    exp_modified = exposures.copy()
+    exp_modified.gdf[f'impf_' + {haz_type}] = reassign_impf_id
+    exp_modified.gdf['values'][remove_values] = 0
+    return exp_modified
+
 
 IMPF_ID_FACT = 1000
 """Factor internally used as id for impact functions when region selected."""
