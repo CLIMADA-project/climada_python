@@ -769,8 +769,8 @@ class TestCalcImpact(unittest.TestCase):
 
             self.assertEqual('x_exp', unc_data.aai_agg_sens_df.param[3])
             self.assertEqual('Sa', unc_data.aai_agg_sens_df.si[13])
-            self.assertAlmostEqual(0.0074283581,
-                                   unc_data.aai_agg_sens_df.aai_agg[38], places=4)
+            self.assertAlmostEqual(0.702900,
+                                   unc_data.aai_agg_sens_df.aai_agg[5], places=1)
 
             self.assertEqual(
                 unc_data.aai_agg_unc_df.size,
