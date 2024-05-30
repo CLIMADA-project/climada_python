@@ -536,23 +536,8 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         else:
             sens_indices = method.analyze(problem_sa, Y,
                                                     **sensitivity_kwargs)
-        #if method.__name__ == 'SALib.analyze.ff':
-        #    if 'second_order' in sensitivity_kwargs:
-        #        if sensitivity_kwargs['second_order']:
-        #            #parse interaction terms of sens_indices to a square matrix
-        #            #to ensure consistency with unsequa
-        #            interactions = np.full((len(param_labels), len(param_labels)), np.nan)
-        #            interactions_names = np.empty((len(param_labels), len(param_labels)), dtype=str)
-        #            for i,ie in enumerate(sens_indices['interaction_names']):
-        #                interactions[[param_labels.index(ie[0]), param_labels.index(ie[1])],
-        #                              [param_labels.index(ie[1]), param_labels.index(ie[0])]] = sens_indices['IE'][i]
-        #                interactions_names[[param_labels.index(ie[0]), param_labels.index(ie[1])],
-        #                              [param_labels.index(ie[1]), param_labels.index(ie[0])]] = ie
-        #            sens_indices['IE'] = interactions
-        #            sens_indices['interaction_names'] = interactions_names
         #refactor incoherent SALib output
         nparams = len(param_labels)
-        #ninteractions = factorial(nparams)/(2*factorial(nparams-2))
         if method.__name__ == 'SALib.analyze.ff':
             if sensitivity_kwargs['second_order']:
                 #parse interaction terms of sens_indices to a square matrix
@@ -560,30 +545,28 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
                 interaction_names = sens_indices.pop('interaction_names')
                 interactions = np.full((nparams, nparams), np.nan)
                 for i,ie in enumerate(interaction_names):
-                            interactions[param_labels.index(ie[0]), param_labels.index(ie[1])] = sens_indices['IE'][i]
-                                          #[param_labels.index(ie[1]), param_labels.index(ie[0])]] = sens_indices['IE'][i]
+                    interactions[param_labels.index(ie[0]),
+                                 param_labels.index(ie[1])] = sens_indices['IE'][i]
                 sens_indices['IE'] = interactions
+
         if method.__name__ == 'SALib.analyze.hdmr':
             keys_to_remove = ['Em','Term','X','Y'] #need to delete emulator as is a dict
-                                            #and useless duplicate of names
+                                                #and other useless variables
             [keys_to_remove.append(si)  for si, si_val_array in sens_indices.items()
-             if (np.array(si_val_array).size > nparams**2)]
-            sens_indices = {k: v for k, v in sens_indices.items() if k not in keys_to_remove}
-            #del sens_indices['Em']#need to delete emulator as is a dict
-            #del sens_indices['Term']#and useless duplicate of names
+             if np.array(si_val_array).size > nparams**2]
+            sens_indices = {k: v for k, v in sens_indices.items()
+                            if k not in keys_to_remove}
             names = sens_indices.pop('names')
             for si, si_val_array in sens_indices.items():
-                if (np.array(si_val_array).ndim == 1 and #for everything that is 1d and has lentgh > n params, refactor to 2D
-                    np.array(si_val_array).size > nparams):
+                if (np.array(si_val_array).ndim == 1 and    #for everything that is 1d and has
+                    np.array(si_val_array).size > nparams): #lentgh > n params, refactor to 2D
                     si_new_array = np.full((nparams, nparams), np.nan)
-                    np.fill_diagonal(si_new_array, si_val_array[0:nparams]) #simple terms goes on diag
+                    np.fill_diagonal(si_new_array, si_val_array[0:nparams]) #simple terms go on diag
                     for i,ie in enumerate(names[nparams:]):
                         t1, t2 = ie.split('/') #interaction terms
-                        si_new_array[param_labels.index(t1), param_labels.index(t2)] = si_val_array[nparams+i]
+                        si_new_array[param_labels.index(t1),
+                                      param_labels.index(t2)] = si_val_array[nparams+i]
                     sens_indices[si] = si_new_array
-                elif (np.array(si_val_array).size > nparams**2):
-                    keys_to_remove.append(si) #everything else that has size > nparams**2 is discarded
-
 
 
         sens_first_order = np.array([
