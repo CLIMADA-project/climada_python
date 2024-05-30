@@ -670,7 +670,7 @@ class TestCalcImpact(unittest.TestCase):
 
 
     def test_calc_sensitivity_morris_pass(self):
-        """Test compute sensitivity default"""
+        """Test compute sensitivity using the 'morris' method"""
 
         exp_unc, impf_unc, _ = make_input_vars()
         haz = haz_dem()
@@ -715,6 +715,74 @@ class TestCalcImpact(unittest.TestCase):
                                      len(unc_data.param_labels) * 4
                                      )
 
+    def test_calc_sensitivity_ff_pass(self):
+        """Test compute sensitivity using the 'ff' method"""
+
+        exp_unc, impf_unc, haz_unc = make_input_vars()
+        unc_calc = CalcImpact(exp_unc, impf_unc, haz_unc)
+        unc_data = unc_calc.make_sample(N=4, sampling_method='ff')  # Generate samples
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+
+        # Call the sensitivity method with PAWN-specific arguments
+        unc_data = unc_calc.sensitivity(
+            unc_data,
+            sensitivity_method='ff',
+            sensitivity_kwargs={'second_order': True}  # Arguments relevant to PAWN
+        )
+
+        self.assertEqual(unc_data.sensitivity_method, 'ff')
+
+        self.assertEqual('x_exp', unc_data.aai_agg_sens_df.param[0])
+        self.assertEqual('IE', unc_data.aai_agg_sens_df.si[4])
+        self.assertAlmostEqual(865181825.901295,
+                               unc_data.aai_agg_sens_df.aai_agg[10], places=6)
+
+        self.assertEqual(
+            unc_data.aai_agg_unc_df.size,
+            unc_data.n_samples
+            )
+
+        self.assertEqual(
+            unc_data.freq_curve_unc_df.size,
+            unc_data.n_samples * len(unc_calc.rp)
+            )
+        self.assertTrue(unc_data.eai_exp_unc_df.empty)
+        self.assertTrue(unc_data.at_event_unc_df.empty)
+
+    def test_calc_sensitivity_hdmr_pass(self):
+            """Test compute sensitivity using the 'hdmr' method"""
+
+            exp_unc, impf_unc, haz_unc = make_input_vars()
+            haz = haz_dem()
+            unc_calc = CalcImpact(exp_unc, impf_unc, haz_unc)
+            unc_data = unc_calc.make_sample(N=100)  # Generate samples
+            unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+
+            # Call the sensitivity method with PAWN-specific arguments
+            unc_data = unc_calc.sensitivity(
+                unc_data,
+                sensitivity_method='hdmr',
+                sensitivity_kwargs={}  # Arguments relevant to PAWN
+            )
+
+            self.assertEqual(unc_data.sensitivity_method, 'hdmr')
+
+            self.assertEqual('x_exp', unc_data.aai_agg_sens_df.param[3])
+            self.assertEqual('Sa', unc_data.aai_agg_sens_df.si[13])
+            self.assertAlmostEqual(0.0074283581,
+                                   unc_data.aai_agg_sens_df.aai_agg[38], places=4)
+
+            self.assertEqual(
+                unc_data.aai_agg_unc_df.size,
+                unc_data.n_samples
+                )
+
+            self.assertEqual(
+                unc_data.freq_curve_unc_df.size,
+                unc_data.n_samples * len(unc_calc.rp)
+                )
+            self.assertTrue(unc_data.eai_exp_unc_df.empty)
+            self.assertTrue(unc_data.at_event_unc_df.empty)
 
 class TestCalcCostBenefit(unittest.TestCase):
     """Test the calcluate impact uncertainty class"""
