@@ -33,7 +33,7 @@ from geopandas import GeoDataFrame
 from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, INDICATOR_CENTR
 from climada.hazard.base import Hazard
 import climada.util.checker as u_check
-import functools
+from climada.engine import ImpactCalc
 
 LOGGER = logging.getLogger(__name__)
 
@@ -84,12 +84,24 @@ def helper_hazard_change(hazard, intensity_multiplier=1, intensity_substract=0):
     haz_modified.intensity.eliminate_zeros()
     return haz_modified
 
+def hazard_intensity_rp_cutoff(cut_off_rp, hazard):
+    return None
+
+def impact_intensity_rp_cutoff(cut_off_rp, exposures, impfset, hazard):
+    imp = ImpactCalc(exposures, impfset, hazard).impact(save_mat=False)
+    sort_idxs = np.argsort(imp.at_event)[::-1]
+    exceed_freq = np.cumsum(imp.frequency[sort_idxs])
+    events_above_cutoff = sort_idxs[exceed_freq > cut_off_rp]
+    intensity_substract = hazard.intensity.data
+    intensity_substract[events_above_cutoff] = 0
+    return intensity_substract
+
 def helper_impfset_change(
         impfset, haz_type='',
         impf_mdd_modifier={1:(1,0)},
         impf_paa_modifier={1:(1,0)},
         impf_intensity_modifier={1:(1,0)},
-        new_funcs
+        replace_impf=None
         ):
     impfset_modified = copy.deepcopy(impfset)
     for impf in impfset.get_func(haz_type):
@@ -108,6 +120,8 @@ def helper_impfset_change(
             impf.paa = np.maximum(
                 impf.paa * impf_paa[0] + impf_paa[1], 0.0
                 )
+    replace_impf = {} if replace_impf is None else replace_impf
+
     return impfset_modified
 
 def helper_exposure_change(
