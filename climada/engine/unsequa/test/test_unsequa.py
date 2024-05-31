@@ -556,6 +556,62 @@ class TestCalcImpact(unittest.TestCase):
         self.assertTrue(unc_data.eai_exp_unc_df.empty)
         self.assertTrue(unc_data.at_event_unc_df.empty)
 
+    def test_calc_sensitivity_all_pass(self):
+        """Test compute sensitivity using all different sensitivity methods"""
+
+        exp_unc, impf_unc, haz_unc = make_input_vars()
+        haz = haz_dem()
+
+        # dict to store the parameters and results for the tests
+        test_dict = {
+            'pawn': {
+                'exp_var' : exp_unc,
+                'impf_var' : impf_unc,
+                'haz_var' : haz,
+                'sampling_method' : 'sobol',
+                'N' : 4,
+                'sensitivity_kwargs' : {
+                    'S' : 10,
+                    'seed' : 12345
+                    },
+                'test_param_name' : 'x_exp', #by default always test parameter at fixed position?
+                'test_si_name' : 'CV', #item
+                'test_si_value' : 0.1875 #item
+
+            },}
+
+        def test_sensitivity_method(sensitivity_method, param_dict):
+            """Function to test each seaprate sensitivity method"""
+            unc_calc = CalcImpact(param_dict['exp_var'], param_dict['impf_var'], param_dict['haz_var'])
+            unc_data = unc_calc.make_sample(N=param_dict['N'])  # Generate samples
+            unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
+
+            # Call the sensitivity method with PAWN-specific arguments
+            unc_data = unc_calc.sensitivity(
+                unc_data,
+                sensitivity_method=sensitivity_method,
+                sensitivity_kwargs=param_dict['sensitivity_kwargs'])
+
+            self.assertEqual(param_dict['test_param_name'], unc_data.aai_agg_sens_df.param[0])
+            self.assertEqual(param_dict['test_si_name'], unc_data.aai_agg_sens_df.si[12])
+            self.assertEqual(param_dict['test_si_value'], unc_data.aai_agg_sens_df.aai_agg[2])
+
+            self.assertEqual(
+                unc_data.aai_agg_unc_df.size,
+                unc_data.n_samples
+                )
+
+            self.assertEqual(
+                unc_data.freq_curve_unc_df.size,
+                unc_data.n_samples * len(unc_calc.rp)
+                )
+            self.assertTrue(unc_data.eai_exp_unc_df.empty)
+            self.assertTrue(unc_data.at_event_unc_df.empty)
+
+        # loop over each method and do test
+        for sensitivity_method in test_dict:
+            test_sensitivity_method(sensitivity_method, test_dict[sensitivity_method])
+
     def test_calc_sensitivity_pawn_pass(self):
         """Test compute sensitivity using the 'pawn' method"""
 
