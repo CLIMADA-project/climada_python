@@ -55,6 +55,7 @@ MAP_CMAP = 'Dark2' #Default color map for the sensitivity map
 
 #Table of recommended pairing between salib sampling and sensitivity methods
 # NEEDS TO BE UPDATED REGULARLY!! https://salib.readthedocs.io/en/latest/api.html
+# Currently, we do not support the 'delta' method due to Singular matrix issues,
 SALIB_COMPATIBILITY = {
     #'delta': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
     'dgsm': ['finite_diff'],

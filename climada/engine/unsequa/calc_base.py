@@ -243,11 +243,11 @@ class Calc():
             'bounds' : [[0, 1]]*len(param_labels)
             }
         #for the ff sampler, no value of N is needed. For API consistency the user
-        #must input a value that is ignored and a warning is given. 
+        #must input a value that is ignored and a warning is given.
         if sampling_method == 'ff':
-            LOGGER.warning("""You are using the 'ff' sampler which does not require
-                           a value for N. The entered N value will be ignored
-                           in the sampling process.""")
+            LOGGER.warning("You are using the 'ff' sampler which does not require "
+                           "a value for N. The entered N value will be ignored"
+                           "in the sampling process.")
         uniform_base_sample = self._make_uniform_base_sample(N, problem_sa,
                                                              sampling_method,
                                                              sampling_kwargs)
@@ -319,7 +319,7 @@ class Calc():
                                     #does not require the N parameter
             if (problem_sa['num_vars'] & (problem_sa['num_vars'] - 1) != 0):
                 raise ValueError("The number of parameters must be a power of 2. "
-                                 "to use the ff sampling method. You can generate "
+                                 "To use the ff sampling method, you can generate "
                                  "dummy parameters to overcome this limitation."
                                  " See https://salib.readthedocs.io/en/latest/api.html")
 
@@ -358,7 +358,7 @@ class Calc():
         unc_output : climada.engine.unsequa.UncOutput
             Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str, optional
-            Sensitivity analysis method from SALib.analyse. Possible choices: 'sobol', 'fast', 
+            Sensitivity analysis method from SALib.analyse. Possible choices: 'sobol', 'fast',
             'rbd_fast', 'morris', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy', 'hdmr'.
             Note that in Salib, sampling methods and sensitivity
             analysis methods should be used in specific pairs:
@@ -541,32 +541,34 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
                                                     **sensitivity_kwargs)
         #refactor incoherent SALib output
         nparams = len(param_labels)
-        if method.__name__ == 'SALib.analyze.ff':
+        if method.__name__[-3:] == '.ff': #ff method
             if sensitivity_kwargs['second_order']:
                 #parse interaction terms of sens_indices to a square matrix
                 #to ensure consistency with unsequa
                 interaction_names = sens_indices.pop('interaction_names')
                 interactions = np.full((nparams, nparams), np.nan)
+                #loop over interaction names and extract each param pair,
+                #then match to the corresponding param from param_labels
                 for i,interaction_name in enumerate(interaction_names):
                     interactions[param_labels.index(interaction_name[0]),
                                  param_labels.index(interaction_name[1])] = sens_indices['IE'][i]
                 sens_indices['IE'] = interactions
 
-        if method.__name__ == 'SALib.analyze.hdmr':
-            keys_to_remove = ['Em','Term','X','Y'] #need to delete emulator as is a dict
-                                                #and other useless variables
-            [keys_to_remove.append(si) for si, si_val_array in sens_indices.items()
-            if np.array(si_val_array).size > nparams**2]
+        if method.__name__[-5:] == '.hdmr': #hdmr method
+            #first, remove variables that are incompatible with unsequa output
+            keys_to_remove = ['Em','Term','select', 'RT', 'Y_em', 'idx', 'X', 'Y']
             sens_indices = {k: v for k, v in sens_indices.items()
                             if k not in keys_to_remove}
-            names = sens_indices.pop('names')
+            names = sens_indices.pop('names') #names of terms
+
+            #second, refactor to 2D
             for si, si_val_array in sens_indices.items():
                 if (np.array(si_val_array).ndim == 1 and    #for everything that is 1d and has
                     np.array(si_val_array).size > nparams): #lentgh > n params, refactor to 2D
                     si_new_array = np.full((nparams, nparams), np.nan)
                     np.fill_diagonal(si_new_array, si_val_array[0:nparams]) #simple terms go on diag
-                    for i,ie in enumerate(names[nparams:]):
-                        t1, t2 = ie.split('/') #interaction terms
+                    for i,interaction_name in enumerate(names[nparams:]):
+                        t1, t2 = interaction_name.split('/') #interaction terms
                         si_new_array[param_labels.index(t1),
                                       param_labels.index(t2)] = si_val_array[nparams+i]
                     sens_indices[si] = si_new_array
@@ -575,8 +577,9 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         sens_first_order = np.array([
             np.array(si_val_array)
             for si, si_val_array in sens_indices.items()
-            if (np.array(si_val_array).ndim == 1 and si!='names'
-                and np.array(si_val_array).size == len(param_labels))  # dirty trick due to Salib incoherent output
+            if (np.array(si_val_array).ndim == 1 # dirty trick due to Salib incoherent output
+                and si!='names'
+                and np.array(si_val_array).size == len(param_labels))
             ]).ravel()
         sens_first_order_dict[submetric_name] = sens_first_order
 
@@ -590,7 +593,8 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
     sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
     # Assume sens_first_order_dict is a dictionary where values are lists/arrays of varying lengths
     # !for some reason this make the plotting methods fail
-    #sens_first_order_df = pd.DataFrame({k: pd.Series(v, dtype=object) for k, v in sens_first_order_dict.items()})
+    #sens_first_order_df = pd.DataFrame({k: pd.Series(v, dtype=object)
+    #                                    for k, v in sens_first_order_dict.items()})
 
     if not sens_first_order_df.empty:
         si_names_first_order, param_names_first_order = _si_param_first(param_labels, sens_indices)
