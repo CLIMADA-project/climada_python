@@ -36,6 +36,8 @@ from climada.entity import Exposures
 from climada.hazard import Hazard
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit, CalcDeltaImpact
+from climada.engine.unsequa.calc_base import LOGGER as ILOG
+
 
 from climada.util.constants import (EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE,
                                     TEST_UNC_OUTPUT_IMPACT, TEST_UNC_OUTPUT_COSTBEN)
@@ -461,7 +463,7 @@ class TestCalcImpact(unittest.TestCase):
             np.array(['x_exp', 'x_haz'])
             )
 
-        # #latin sampling
+        #latin sampling
         unc_data = unc_calc.make_sample(N=1, sampling_method='latin',
                         sampling_kwargs = {'seed': 11245})
         self.assertEqual(unc_data.n_samples, 1)
@@ -471,6 +473,33 @@ class TestCalcImpact(unittest.TestCase):
             np.array(['x_exp', 'x_haz'])
             )
 
+    def test_make_sample_ff_fail(self):
+            """Test for warning and error messages when sampling using the 'ff' method"""
+
+            exp_unc, impf_unc, haz_unc = make_input_vars()
+            haz = haz_dem()
+
+            # Warning ff sampling
+            unc_calc = CalcImpact(exp_unc, impf_unc, haz_unc)
+            warning_msg = "You are using the 'ff' sampler which does not require "
+            "a value for N. The entered N value will be ignored"
+            "in the sampling process."
+
+            with self.assertLogs(ILOG, level='WARNING') as logs:
+                unc_data = unc_calc.make_sample(N=4, sampling_method='ff')
+            self.assertEqual(len(logs.output), 1)
+            self.assertIn(warning_msg, logs.output[0])
+
+            # Error ff sampling
+            unc_calc = CalcImpact(exp_unc, impf_unc, haz)
+            with self.assertRaises(ValueError) as cm:
+                unc_data = unc_calc.make_sample(N=4, sampling_method='ff')
+            the_exception = cm.exception
+            self.assertEqual(the_exception.args[0],
+                             "The number of parameters must be a power of 2. "
+                             "To use the ff sampling method, you can generate "
+                             "dummy parameters to overcome this limitation."
+                             " See https://salib.readthedocs.io/en/latest/api.html")
 
     def test_calc_uncertainty_pass(self):
         """Test compute the uncertainty distribution for an impact"""
@@ -723,11 +752,11 @@ class TestCalcImpact(unittest.TestCase):
         unc_data = unc_calc.make_sample(N=4, sampling_method='ff')  # Generate samples
         unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
-        # Call the sensitivity method with PAWN-specific arguments
+        # Call the sensitivity method with ff-specific arguments
         unc_data = unc_calc.sensitivity(
             unc_data,
             sensitivity_method='ff',
-            sensitivity_kwargs={'second_order': True}  # Arguments relevant to PAWN
+            sensitivity_kwargs={'second_order': True}  # Arguments relevant to ff
         )
 
         self.assertEqual(unc_data.sensitivity_method, 'ff')
@@ -758,11 +787,11 @@ class TestCalcImpact(unittest.TestCase):
             unc_data = unc_calc.make_sample(N=100)  # Generate samples
             unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
-            # Call the sensitivity method with PAWN-specific arguments
+            # Call the sensitivity method with ff-specific arguments
             unc_data = unc_calc.sensitivity(
                 unc_data,
                 sensitivity_method='hdmr',
-                sensitivity_kwargs={}  # Arguments relevant to PAWN
+                sensitivity_kwargs={}
             )
 
             self.assertEqual(unc_data.sensitivity_method, 'hdmr')
@@ -783,6 +812,7 @@ class TestCalcImpact(unittest.TestCase):
                 )
             self.assertTrue(unc_data.eai_exp_unc_df.empty)
             self.assertTrue(unc_data.at_event_unc_df.empty)
+
 
 class TestCalcCostBenefit(unittest.TestCase):
     """Test the calcluate impact uncertainty class"""
