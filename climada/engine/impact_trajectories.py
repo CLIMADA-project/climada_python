@@ -19,17 +19,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import copy
+from dataclasses import dataclass
 
 import numpy as np
 from datetime import datetime
 from scipy.sparse import lil_matrix
 
+from climada import hazard
+from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.hazard import Hazard
 from climada.engine.impact_calc import ImpactCalc
 
 
 ### Utils functions
-
 
 def get_dates(haz: Hazard):
     return [datetime.fromordinal(date) for date in haz.date]
@@ -71,7 +74,43 @@ def interpolate_years(year_start, year_end):
     values = np.linspace(0, 1, num=year_end - year_start + 1)
     return values
 
+def bayesian_viktypliers(year0, year1):
+    prop_H1 = interpolate_years(year0, year1)
+    prop_H0 = 1 - prop_H1
+    return prop_H0, prop_H1
+
+
+def snapshot_combinaisons(snapshot0, snapshot1):
+    impfset0 = snapshot0.impfset
+    impfset1 = snapshot1.impfset
+    assert impfset0 is impfset1 # We don't allow for different impfset
+
+    exp_y0 = snapshot0.exposure
+    exp_y1 = snapshot1.exposure
+    haz_y0 = snapshot0.hazard
+    haz_y1 = snapshot1.hazard
+
+    # Case 1 - H2000# Impact 1)  Hazard 2000  and Exposure 2000
+    imp_E0H0 = ImpactCalc(exp_y0, impfset0, haz_y0).impact()
+    imp_E1H0 = ImpactCalc(
+        exp_y1, impfset0, haz_y0
+    ).impact()  # Impact 2)  Hazard 2000  and Exposure 2020
+
+    # Case 2 - H2020
+    # Impact 1)  Hazard 2000  and Exposure 2000
+    imp_E0H1 = ImpactCalc(exp_y0, impfset0, haz_y1).impact()
+    imp_E1H1 = ImpactCalc(exp_y1, impfset0, haz_y1).impact()
+
+    return imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1
+
 # Would it be better to have a Snapshot Class that hold a singular snapshot?
+@dataclass
+class Snapshot:
+    exposure: Exposures
+    hazard: Hazard
+    impfset: ImpactFuncSet
+    year: int
+
 
 class SnapshotsCollection:
     def __init__(self, exposure_set, hazard_set, impfset, snapshot_years):
@@ -79,9 +118,9 @@ class SnapshotsCollection:
         self.hazard_set = hazard_set
         self.impfset = impfset
         self.snapshots_years = snapshot_years
-        self.data_dict = {
-            year: [exposure_set[year], hazard_set[year]] for year in snapshot_years
-        }
+        self.data_dict = {}
+        for year in self.snapshots_years:
+            self.data_dict[year] = Snapshot(exposure_set[year], hazard_set[year], impfset, year)
 
     # Check that at least first and last snap are complete
     # and otherwise it is ok
@@ -124,30 +163,6 @@ class CalcImpactsSnapshots:
             impacts_list[year] = ImpactCalc(exp, self.snapshots.impfset, haz).impact()
         return impacts_list
 
-    def bayesian_viktorpliers(year0, year1):
-        prop_H1 = interpolate_years(year0, year1)
-        prop_H0 = 1 - prop_H1
-        return prop_H0, prop_H1
-
-    def snapshot_combinaisons(self, year0, year1):
-
-        exp_y0 = self.snapshots.data_dict[year0][0]
-        exp_y1 = self.snapshots.data_dict[year1][0]
-        haz_y0 = self.snapshots.data_dict[year0][1]
-        haz_y1 = self.snapshots.data_dict[year1][1]
-
-        # Case 1 - H2000# Impact 1)  Hazard 2000  and Exposure 2000
-        imp_E0H0 = ImpactCalc(exp_y0, self.snapshots.impfset, haz_y0).impact()
-        imp_E1H0 = ImpactCalc(
-            exp_y1, self.snapshots.impfset, haz_y0
-        ).impact()  # Impact 2)  Hazard 2000  and Exposure 2020
-
-        # Case 2 - H2020
-        # Impact 1)  Hazard 2000  and Exposure 2000
-        imp_E0H1 = ImpactCalc(exp_y0, self.snapshots.impfset, haz_y1).impact()
-        imp_E1H1 = ImpactCalc(exp_y1, self.snapshots.impfset, haz_y1).impact()
-
-        return imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1
 
     # Calculate the eai_exp for each year
     def interpolate_eai_exp(self, imp0, imp1, start_year, end_year, frequency):
@@ -163,12 +178,12 @@ class CalcImpactsSnapshots:
 
     def bayesian_mixer(self, start_year, end_year):
         # 1. Interpolate in between years
-        prop_H0, prop_H1 = self.bayesian_mixer(start_year, end_year)
+        prop_H0, prop_H1 = bayesian_viktypliers(start_year, end_year)
         imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = (
             self.snapshot_combinaisons(start_year, end_year)
         )
-        frequency0 = self.snapshots.data_dict[start_year][1].frequency
-        frequency1 = self.snapshots.data_dict[end_year][1].frequency
+        frequency0 = self.snapshots.data_dict[start_year].hazard.frequency
+        frequency1 = self.snapshots.data_dict[end_year].hazard.frequency
 
         yearly_eai_exp_0 = self.interpolate_eai_exp(
             imp_E0H0, imp_E1H0, start_year, end_year, frequency0
