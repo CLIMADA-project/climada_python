@@ -24,15 +24,13 @@ __all__ = ['Measure']
 import copy
 import logging
 from pathlib import Path
-from typing import Optional, Tuple
+from typing import Optional, Tuple, Callable
 
 import numpy as np
-import pandas as pd
-from geopandas import GeoDataFrame
 
-from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, INDICATOR_CENTR
+from climada.entity.exposures.base import Exposures
+from climada.entity import ImpactFuncSet
 from climada.hazard.base import Hazard
-import climada.util.checker as u_check
 from climada.engine import ImpactCalc
 
 LOGGER = logging.getLogger(__name__)
@@ -45,9 +43,9 @@ class Measure():
             name: str,
             start_year: int,
             end_year: int,
-            exposures_change: function,
-            impfset_change: function,
-            hazard_change: function
+            exposures_change: Callable[[Exposures], Exposures] = lambda x: x,
+            impfset_change: Callable[[Hazard], Hazard] = lambda x: x,
+            hazard_change: Callable[[ImpactFuncSet], ImpactFuncSet] = lambda x: x
             ):
         self.name = name
         self.exp_map = exposures_change
@@ -105,14 +103,16 @@ class Measure():
 
 
 def helper_hazard(
-        hazard, intensity_multiplier=1, intensity_substract=0
+        intensity_multiplier=1, intensity_substract=0
         ):
-    haz_modified = copy.deepcopy(hazard)
-    haz_modified.intensity.data *= intensity_multiplier
-    haz_modified.intensity.data -= intensity_substract
-    haz_modified.intensity.data[haz_modified.intensity.data < 0] = 0
-    haz_modified.intensity.eliminate_zeros()
-    return haz_modified
+    def hazard_change(hazard):
+        haz_modified = copy.deepcopy(hazard)
+        haz_modified.intensity.data *= intensity_multiplier
+        haz_modified.intensity.data -= intensity_substract
+        haz_modified.intensity.data[haz_modified.intensity.data < 0] = 0
+        haz_modified.intensity.eliminate_zeros()
+        return haz_modified
+    return hazard_change
 
 def hazard_intensity_rp_cutoff(
         cut_off_rp, hazard
@@ -120,7 +120,7 @@ def hazard_intensity_rp_cutoff(
     return hazard.local_exceedance_inten(return_periods=(cut_off_rp))
 
 def impact_intensity_rp_cutoff(
-        cut_off_rp, exposures, impfset, hazard, exposures_region_id$
+        cut_off_rp, exposures, impfset, hazard, exposures_region_id
         ):
     if exposures_region_id:
         # compute impact only in selected region
@@ -142,40 +142,45 @@ def impact_intensity_rp_cutoff(
     return intensity_substract
 
 def helper_impfset(
-        impfset, haz_type='',
+        haz_type,
         impf_mdd_modifier={1:(1,0)},
         impf_paa_modifier={1:(1,0)},
         impf_intensity_modifier={1:(1,0)},
         replace_impf=None
         ):
-    impfset_modified = copy.deepcopy(impfset)
-    for impf in impfset.get_func(haz_type):
-        if impf.id in impf_intensity_modifier.keys():
-            impf_inten = impf_intensity_modifier[impf.id][0]
-            impf.intensity = np.maximum(
-                impf.intensity * impf_inten[0] - impf_inten[1], 0.0
-                )
-        if impf.id in impf_mdd_modifier.keys():
-            impf_mdd = impf_mdd_modifier[impf.id][0]
-            impf.mdd = np.maximum(
-                impf.mdd * impf_mdd[0] + impf_mdd[1], 0.0
-                )
-        if impf.id in impf_paa_modifier.keys():
-            impf_paa = impf_mdd_modifier[impf.id][0]
-            impf.paa = np.maximum(
-                impf.paa * impf_paa[0] + impf_paa[1], 0.0
-                )
     replace_impf = {} if replace_impf is None else replace_impf
-
-    return impfset_modified
+    def impfset_change(impfset):
+        impfset_modified = copy.deepcopy(impfset)
+        for impf in impfset.get_func(haz_type):
+            if impf.id in impf_intensity_modifier.keys():
+                impf_inten = impf_intensity_modifier[impf.id]
+                impf.intensity = np.maximum(
+                    impf.intensity * impf_inten[0] - impf_inten[1], 0.0
+                    )
+            if impf.id in impf_mdd_modifier.keys():
+                impf_mdd = impf_mdd_modifier[impf.id]
+                impf.mdd = np.maximum(
+                    impf.mdd * impf_mdd[0] + impf_mdd[1], 0.0
+                    )
+            if impf.id in impf_paa_modifier.keys():
+                impf_paa = impf_paa_modifier[impf.id]
+                impf.paa = np.maximum(
+                    impf.paa * impf_paa[0] + impf_paa[1], 0.0
+                    )
+        return impfset_modified
+    return impfset_change
 
 def helper_exposure(
-        exposures, reassign_impf_id=None, remove_values=None
+        reassign_impf_id=None, haz_type='', remove_values=None
     ):
-    exp_modified = exposures.copy()
-    exp_modified.gdf[f'impf_' + {haz_type}] = reassign_impf_id
-    exp_modified.gdf['values'][remove_values] = 0
-    return exp_modified
+    if remove_values is None:
+        remove_values = []
+    def exposures_change(exposures):
+        exp_modified = exposures.copy()
+        exp_modified.gdf[f'impf_{haz_type}'] = reassign_impf_id
+        exp_modified.gdf['value'][remove_values] = 0
+        return exp_modified
+    return exposures_change
 
 
 
