@@ -37,13 +37,31 @@ from climada.engine import ImpactCalc
 
 LOGGER = logging.getLogger(__name__)
 
-class Measure2():
+##todo: risk transfer, change hazard/exposures completely
+class Measure():
 
-    def __init__(start_year, end_year, exposures_change, impfset_change, hazard_change):
+    def __init__(
+            self,
+            name: str,
+            start_year: int,
+            end_year: int,
+            exposures_change: function,
+            impfset_change: function,
+            hazard_change: function
+            ):
+        self.name = name
         self.exp_map = exposures_change
         self.impfset_map = impfset_change
         self.haz_map= hazard_change
         self.years = (start_year, end_year)
+
+    @property
+    def start_year(self):
+        return self.years[0]
+
+    @property
+    def end_year(self):
+        return self.years[1]
 
     def apply(self, exposures, impfset, hazard):
         """
@@ -76,7 +94,19 @@ class Measure2():
 
         return new_exp, new_impfs, new_haz
 
-def helper_hazard_change(hazard, intensity_multiplier=1, intensity_substract=0):
+    def impact(
+            self, exposures, impfset, hazard,
+            save_mat=False, assign_centroids=True
+            ):
+        meas_exp, meas_impfset, meas_haz = self.apply(exposures, impfset, hazard)
+        impact = ImpactCalc(meas_exp, meas_impfset, meas_haz)\
+              .impact(save_mat=save_mat, assign_centroids=assign_centroids)
+        return impact
+
+
+def helper_hazard(
+        hazard, intensity_multiplier=1, intensity_substract=0
+        ):
     haz_modified = copy.deepcopy(hazard)
     haz_modified.intensity.data *= intensity_multiplier
     haz_modified.intensity.data -= intensity_substract
@@ -84,19 +114,34 @@ def helper_hazard_change(hazard, intensity_multiplier=1, intensity_substract=0):
     haz_modified.intensity.eliminate_zeros()
     return haz_modified
 
-def hazard_intensity_rp_cutoff(cut_off_rp, hazard):
-    return None
+def hazard_intensity_rp_cutoff(
+        cut_off_rp, hazard
+        ):
+    return hazard.local_exceedance_inten(return_periods=(cut_off_rp))
 
-def impact_intensity_rp_cutoff(cut_off_rp, exposures, impfset, hazard):
-    imp = ImpactCalc(exposures, impfset, hazard).impact(save_mat=False)
+def impact_intensity_rp_cutoff(
+        cut_off_rp, exposures, impfset, hazard, exposures_region_id$
+        ):
+    if exposures_region_id:
+        # compute impact only in selected region
+        in_reg = np.logical_or.reduce(
+            [exposures.gdf.region_id.values == reg for reg in exposures_region_id]
+        )
+        exp_imp = Exposures(exposures.gdf[in_reg], crs=exposures.crs)
+    else:
+        exp_imp = exposures
+    imp = ImpactCalc(exp_imp, impfset, hazard).impact(save_mat=False)
     sort_idxs = np.argsort(imp.at_event)[::-1]
     exceed_freq = np.cumsum(imp.frequency[sort_idxs])
     events_above_cutoff = sort_idxs[exceed_freq > cut_off_rp]
     intensity_substract = hazard.intensity.data
-    intensity_substract[events_above_cutoff] = 0
+    for event in events_above_cutoff:
+        intensity_substract[
+            hazard.intensity.indptr[event]:hazard.intensity.indptr[event + 1]
+            ] = 0
     return intensity_substract
 
-def helper_impfset_change(
+def helper_impfset(
         impfset, haz_type='',
         impf_mdd_modifier={1:(1,0)},
         impf_paa_modifier={1:(1,0)},
@@ -124,7 +169,7 @@ def helper_impfset_change(
 
     return impfset_modified
 
-def helper_exposure_change(
+def helper_exposure(
         exposures, reassign_impf_id=None, remove_values=None
     ):
     exp_modified = exposures.copy()
@@ -133,6 +178,9 @@ def helper_exposure_change(
     return exp_modified
 
 
+
+
+'''
 IMPF_ID_FACT = 1000
 """Factor internally used as id for impact functions when region selected."""
 
@@ -626,3 +674,4 @@ class Measure():
             new_haz.intensity = new_haz_inten.tocsr()
 
         return new_exp, new_impfs, new_haz
+'''
