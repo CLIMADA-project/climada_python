@@ -487,8 +487,8 @@ class TestCalcImpact(unittest.TestCase):
 
             with self.assertLogs(ILOG, level='WARNING') as logs:
                 unc_data = unc_calc.make_sample(N=4, sampling_method='ff')
-            self.assertEqual(len(logs.output), 1)
-            self.assertIn(warning_msg, logs.output[0])
+                self.assertEqual(len(logs.output), 1)
+                self.assertIn(warning_msg, logs.output[0])
 
             # Error ff sampling
             unc_calc = CalcImpact(exp_unc, impf_unc, haz)
