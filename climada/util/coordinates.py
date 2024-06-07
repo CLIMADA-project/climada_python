@@ -2412,13 +2412,16 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
     df_poly = gpd.GeoDataFrame(points_df[val_names])
     if not scheduler:
-        df_poly['geometry'] = apply_box(points_df)
+        df_poly['_-geometry-prov'] = apply_box(points_df)
     else:
         ddata = dd.from_pandas(points_df[['latitude', 'longitude']],
                                npartitions=cpu_count())
-        df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
+        df_poly['_-geometry-prov'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
-    df_poly.set_crs(crs if crs else points_df.crs if points_df.crs else DEF_CRS, inplace=True)
+    df_poly.set_geometry('_-geometry-prov',
+                         crs=crs if crs else points_df.crs if points_df.crs else DEF_CRS, 
+                         inplace=True,
+                         drop=True)
 
     # renormalize longitude if necessary
     if equal_crs(df_poly.crs, DEF_CRS):
@@ -2655,7 +2658,7 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
         try:
             crs = df_val.geometry.crs
         except AttributeError:
-            crs = None
+            pass
 
     # work in parallel
     if scheduler:
