@@ -2419,7 +2419,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
         df_poly['_-geometry-prov'] = ddata.map_partitions(apply_box, meta=Polygon) \
                                    .compute(scheduler=scheduler)
     df_poly.set_geometry('_-geometry-prov',
-                         crs=crs if crs else points_df.crs if points_df.crs else DEF_CRS, 
+                         crs=crs if crs else points_df.crs if points_df.crs else DEF_CRS,
                          inplace=True,
                          drop=True)
 
