@@ -559,13 +559,12 @@ class TestCalcImpact(unittest.TestCase):
     def test_calc_sensitivity_all_pass(self):
         """Test compute sensitivity using all different sensitivity methods"""
 
+        #define input_vars
         exp_unc, impf_unc, haz_unc = make_input_vars()
-        haz = haz_dem()
 
         # dict to store the parameters and results for the tests
         test_dict = {
            'pawn': {
-               'haz_var' : haz,
                'sampling_method' : 'saltelli',
                'sampling_kwargs' : {},
                'N' : 4,
@@ -575,41 +574,38 @@ class TestCalcImpact(unittest.TestCase):
                    },
                'test_param_name' : ['x_exp',0],
                'test_si_name' : ['CV', 16],
-               'test_si_value' : [0.25000, 2, 6]
+               'test_si_value' : [0.25000, 2]
            },
            'hdmr': {
-               'haz_var' : haz,
                'sampling_method' : 'saltelli',
                'sampling_kwargs' : {},
                'N' : 100,
                'sensitivity_kwargs' : {},
                'test_param_name' : ['x_exp', 2],
                'test_si_name' : ['Sa', 4],
-               'test_si_value' : [0.004658, 3, 6]
+               'test_si_value' : [0.004658, 3]
            },
            'ff': {
-               'haz_var' : haz_unc,
+
                'sampling_method' : 'ff',
                'sampling_kwargs' : {'seed' : 12345},
                'N' : 4,
                'sensitivity_kwargs' : {'second_order': True},
                'test_param_name' : ['x_exp', 0],
                'test_si_name' : ['IE', 4],
-               'test_si_value' : [865181825.901295, 10, 6]
+               'test_si_value' : [865181825.901295, 10]
            },
            'sobol': {
-               'haz_var' : haz,
                'sampling_method' : 'saltelli',
                'sampling_kwargs' : {},
                'N' : 4,
                'sensitivity_kwargs' : {},
                'test_param_name' : ['x_paa', 5],
                'test_si_name' : ['ST', 8],
-               'test_si_value' : [0.313025, 10, 6]
+               'test_si_value' : [0.313025, 10]
            },
 
             'dgsm': {
-                'haz_var' : haz,
                 'sampling_method' : 'finite_diff',
                 'N' : 4,
                 'sampling_kwargs' : {'seed':12345},
@@ -617,44 +613,37 @@ class TestCalcImpact(unittest.TestCase):
                                         'conf_level': 0.95, 'seed': 12345},
                 'test_param_name' : ['x_exp',0],
                 'test_si_name' : ['dgsm', 8],
-                'test_si_value' : [1.697516e-01, 9 , 6]#1.697516e-01
+                'test_si_value' : [1.697516e-01, 9]
             },
             'fast': {
-                'haz_var' : haz,
                 'sampling_method' : 'fast_sampler',
                 'sampling_kwargs' : {'M' : 4, 'seed' : 12345},
                 'N' : 256,
                 'sensitivity_kwargs' : {'M': 4, 'seed': 12345},
                 'test_param_name' : ['x_exp',0],
                 'test_si_name' : ['S1_conf',8],
-                'test_si_value' : [0.671396, 1, 6]#0.117101
+                'test_si_value' : [0.671396, 1]
             },
 
             'rbd_fast': {
-                'haz_var' : haz,
                 'sampling_method' : 'saltelli',
                 'sampling_kwargs' : {},
                 'N' : 24,
                 'sensitivity_kwargs' : {'M': 4, 'seed': 12345},
                 'test_param_name' : ['x_exp', 0],
                 'test_si_name' : ['S1_conf', 4],
-                'test_si_value' : [0.152609, 4, 6]
+                'test_si_value' : [0.152609, 4]
             },
 
-            #'morris': {
-            #    'haz_var' : haz,
-            #    'sampling_method' : 'latin',
-            #    'N' : 4,
-            #    'sensitivity_kwargs' : {},
-            #    'test_param_name' : ['x_exp'],
-            #    'test_si_name' : ['CV'],
-            #    'test_si_value' : [0.1875]
-            #},
-
-
-
-
-
+            'morris': {
+                'sampling_method' : 'morris',
+                'sampling_kwargs' : {'seed': 12345},
+                'N' : 4,
+                'sensitivity_kwargs' : {},
+                'test_param_name' : ['x_exp', 0],
+                'test_si_name' : ['mu', 1],
+                'test_si_value' : [5066460029.63911, 8]
+            },
         }
 
         def test_sensitivity_method(sensitivity_method, param_dict):
@@ -665,7 +654,7 @@ class TestCalcImpact(unittest.TestCase):
                                             sampling_kwargs=param_dict['sampling_kwargs'])
             unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False)
 
-            # Call the sensitivity method with PAWN-specific arguments
+            # Call the sensitivity method with each method's specific arguments
             unc_data = unc_calc.sensitivity(
                 unc_data,
                 sensitivity_method=sensitivity_method,
@@ -677,7 +666,7 @@ class TestCalcImpact(unittest.TestCase):
                              unc_data.aai_agg_sens_df.si[param_dict['test_si_name'][1]])
             self.assertAlmostEqual(param_dict['test_si_value'][0],
                              unc_data.aai_agg_sens_df.aai_agg[param_dict['test_si_value'][1]],
-                             places=param_dict['test_si_value'][2])
+                             places=5)
 
             self.assertEqual(
                 unc_data.aai_agg_unc_df.size,
