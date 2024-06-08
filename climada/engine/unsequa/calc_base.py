@@ -252,17 +252,12 @@ class Calc():
                                                              sampling_method,
                                                              sampling_kwargs)
         df_samples = pd.DataFrame(uniform_base_sample, columns=param_labels)
-        params_ignored = [] #store dummy parameters that will be ignored
+
         for param in list(df_samples):
-            if (param not in self.distr_dict and "dummy_" in param):
-                params_ignored.append(param)
-            else:
-                df_samples[param] = df_samples[param].apply(
-                    self.distr_dict[param].ppf
-                    )
-        if params_ignored:
-            LOGGER.warning("""The automatically generated dummy parameters:  """
-                           +str(params_ignored)+ """ are being ignored.""")
+            df_samples[param] = df_samples[param].apply(
+                self.distr_dict[param].ppf
+                )
+
         sampling_kwargs = {
             key: str(val)
             for key, val in sampling_kwargs.items()
