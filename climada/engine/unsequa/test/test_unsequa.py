@@ -353,6 +353,21 @@ class TestCalcDelta(unittest.TestCase):
 
             self.assertAlmostEqual((imp2.aai_agg - imp1.aai_agg)/imp1.aai_agg, delta_aai_aag)
 
+        #test when computing absolute delta
+        unc_data = unc_calc.uncertainty(unc_data, calc_eai_exp=False, calc_at_event=False,
+                                         relative_delta=False)
+
+        for [x_exp, x_paa, x_mdd], delta_aai_aag in zip(unc_data.samples_df.values, unc_data.aai_agg_unc_df.values):
+            exp1 = exp_unc.evaluate(x_exp=x_exp)
+            exp2 = exp_dem()
+            impf1 = impf_dem()
+            impf2 = impf_unc.evaluate(x_paa=x_paa, x_mdd=x_mdd)
+            haz1 = haz
+
+            imp1 = ImpactCalc(exp1, impf1, haz1).impact()
+            imp2 = ImpactCalc(exp2, impf2, haz2).impact()
+
+            self.assertAlmostEqual(imp2.aai_agg - imp1.aai_agg, delta_aai_aag)
 
         self.assertEqual(unc_data.unit, exp_dem().value_unit)
         self.assertListEqual(unc_calc.rp, [5, 10, 20, 50, 100, 250])
