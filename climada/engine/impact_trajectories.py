@@ -180,7 +180,7 @@ class CalcImpactsSnapshots:
         # 1. Interpolate in between years
         prop_H0, prop_H1 = bayesian_viktypliers(start_year, end_year)
         imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = (
-            self.snapshot_combinaisons(start_year, end_year)
+            snapshot_combinaisons(start_year, end_year)
         )
         frequency0 = self.snapshots.data_dict[start_year].hazard.frequency
         frequency1 = self.snapshots.data_dict[end_year].hazard.frequency
