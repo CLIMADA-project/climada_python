@@ -171,7 +171,7 @@ class CalcImpactsSnapshots:
         impacts_list = {}
         for snapshot in self.snapshots.data:
             impacts_list[snapshot.year] = ImpactCalc(
-                snapshot.exposure, self.snapshots.impfset, snapshot, hazard
+                snapshot.exposure, self.snapshots.impfset, snapshot.hazard
             ).impact()
         return impacts_list
 
