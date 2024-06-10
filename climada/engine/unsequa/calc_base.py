@@ -312,15 +312,14 @@ class Calc():
 
         if sampling_method == 'ff': #the ff sampling has a fixed sample size and
                                     #does not require the N parameter
-            if (problem_sa['num_vars'] & (problem_sa['num_vars'] - 1) != 0):
+            if problem_sa['num_vars'] & (problem_sa['num_vars'] - 1) != 0:
                 raise ValueError("The number of parameters must be a power of 2. "
                                  "To use the ff sampling method, you can generate "
                                  "dummy parameters to overcome this limitation."
                                  " See https://salib.readthedocs.io/en/latest/api.html")
 
-            else:
-                sample_uniform = salib_sampling_method.sample(
-                problem = problem_sa, **sampling_kwargs)
+            sample_uniform = salib_sampling_method.sample(
+            problem = problem_sa, **sampling_kwargs)
         else:
             sample_uniform = salib_sampling_method.sample(
                 problem = problem_sa, N = N, **sampling_kwargs)
