@@ -315,10 +315,10 @@ class Measure():
         else:
             raise ValueError(f'{self.exposures_set} is neither a string nor an Exposures object')
 
-        if not np.array_equal(np.unique(exposures.gdf.latitude.values),
-                              np.unique(new_exp.gdf.latitude.values)) or \
-        not np.array_equal(np.unique(exposures.gdf.longitude.values),
-                           np.unique(new_exp.gdf.longitude.values)):
+        if not np.array_equal(np.unique(exposures.latitude),
+                              np.unique(new_exp.latitude)) or \
+        not np.array_equal(np.unique(exposures.longitude),
+                           np.unique(new_exp.longitude)):
             LOGGER.warning('Exposures locations have changed.')
 
         return new_exp

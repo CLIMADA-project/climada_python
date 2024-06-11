@@ -70,11 +70,11 @@ class TestReader(unittest.TestCase):
 
         self.assertTrue('region_id' not in expo.gdf)
 
-        self.assertEqual(expo.gdf.latitude.shape, (n_expos,))
-        self.assertEqual(expo.gdf.latitude[0], 26.93389900000)
-        self.assertEqual(expo.gdf.latitude[n_expos - 1], 26.34795700000)
-        self.assertEqual(expo.gdf.longitude[0], -80.12879900000)
-        self.assertEqual(expo.gdf.longitude[n_expos - 1], -80.15885500000)
+        self.assertEqual(expo.latitude.size, n_expos)
+        self.assertEqual(expo.latitude[0], 26.93389900000)
+        self.assertEqual(expo.latitude[n_expos - 1], 26.34795700000)
+        self.assertEqual(expo.longitude[0], -80.12879900000)
+        self.assertEqual(expo.longitude[n_expos - 1], -80.15885500000)
 
         self.assertEqual(expo.ref_year, 2016)
         self.assertEqual(expo.value_unit, 'USD')
