@@ -36,7 +36,7 @@ from climada.entity import Exposures
 from climada.hazard import Hazard
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import InputVar, CalcImpact, UncOutput, CalcCostBenefit, CalcDeltaImpact
-from climada.engine.unsequa.calc_base import LOGGER as ILOG
+from climada.engine.unsequa.calc_base import LOGGER
 
 
 from climada.util.constants import (EXP_DEMO_H5, HAZ_DEMO_H5, ENT_DEMO_TODAY, ENT_DEMO_FUTURE,
@@ -500,7 +500,7 @@ class TestCalcImpact(unittest.TestCase):
             "a value for N. The entered N value will be ignored"
             "in the sampling process."
 
-            with self.assertLogs(ILOG, level='WARNING') as logs:
+            with self.assertLogs(LOGGER, level='WARNING') as logs:
                 unc_data = unc_calc.make_sample(N=4, sampling_method='ff')
                 self.assertEqual(len(logs.output), 1)
                 self.assertIn(warning_msg, logs.output[0])
@@ -661,7 +661,7 @@ class TestCalcImpact(unittest.TestCase):
             },
         }
 
-        def test_sensitivity_method(sensitivity_method, param_dict):
+        def test_sensitivity_method(exp_unc, impf_unc, haz_unc, sensitivity_method, param_dict):
             """Function to test each seaprate sensitivity method"""
             unc_calc = CalcImpact(exp_unc, impf_unc, haz_unc)
             unc_data = unc_calc.make_sample(N=param_dict['N'],
@@ -696,8 +696,9 @@ class TestCalcImpact(unittest.TestCase):
             self.assertTrue(unc_data.at_event_unc_df.empty)
 
         # loop over each method and do test
-        for sensitivity_method in test_dict:
-            test_sensitivity_method(sensitivity_method, test_dict[sensitivity_method])
+        for sensitivity_method, method_params in test_dict.items():
+            test_sensitivity_method(exp_unc, impf_unc, haz_unc,
+                                    sensitivity_method, method_params)
 
 
 class TestCalcCostBenefit(unittest.TestCase):
