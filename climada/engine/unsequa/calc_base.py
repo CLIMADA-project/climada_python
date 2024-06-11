@@ -585,10 +585,6 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         sens_second_order_dict[submetric_name] = sens_second_order
 
     sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
-    # Assume sens_first_order_dict is a dictionary where values are lists/arrays of varying lengths
-    # !for some reason this make the plotting methods fail
-    #sens_first_order_df = pd.DataFrame({k: pd.Series(v, dtype=object)
-    #                                    for k, v in sens_first_order_dict.items()})
 
     if not sens_first_order_df.empty:
         si_names_first_order, param_names_first_order = _si_param_first(param_labels, sens_indices)
