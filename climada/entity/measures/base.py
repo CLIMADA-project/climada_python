@@ -42,6 +42,7 @@ class Measure():
             name: str,
             start_year: int,
             end_year: int,
+            haz_type: str,
             exposures_change: Callable[[Exposures], Exposures] = lambda x: x,
             impfset_change: Callable[[Hazard], Hazard] = lambda x: x,
             hazard_change: Callable[[ImpactFuncSet], ImpactFuncSet] = lambda x: x
@@ -51,6 +52,7 @@ class Measure():
         self.impfset_map = impfset_change
         self.haz_map= hazard_change
         self.years = (start_year, end_year)
+        self.haz_type = haz_type
 
     @property
     def start_year(self):
@@ -74,7 +76,7 @@ class Measure():
         new_exp : climada.entity.Exposure
             Exposure with implemented measure with all defined parameters
         """
-        return self.exp_map(exposures, year=None)
+        return self.exp_map(exposures, year=year)
 
     def apply_to_impfset(self, impfset, year=None):
         """
@@ -90,7 +92,7 @@ class Measure():
         new_impfset : climada.entity.ImpactFuncSet
             Impact function set with implemented measure with all defined parameters
         """
-        return self.impfset_map(impfset, year=None)
+        return self.impfset_map(impfset, year=year)
 
     def apply_to_hazard(self, hazard, year=None):
         """
@@ -106,7 +108,7 @@ class Measure():
         new_haz : climada.hazard.Hazard
             Hazard with implemented measure with all defined parameters
         """
-        return self.haz_map(hazard, year=None)
+        return self.haz_map(hazard, year=year)
 
     def apply(self, exposures, impfset, hazard, year=None):
         """
@@ -201,7 +203,7 @@ def helper_impfset(
         impf_paa_modifier={1:(1,0)},
         impf_intensity_modifier={1:(1,0)},
         ):
-    def impfset_change(impfset):
+    def impfset_change(impfset, year=None):
         impfset_modified = copy.deepcopy(impfset)
         for impf in impfset.get_func(haz_type):
             if impf.id in impf_intensity_modifier.keys():
@@ -223,13 +225,13 @@ def helper_impfset(
     return impfset_change
 
 def helper_exposure(
-        reassign_impf_id=None, haz_type='', remove_values=None
+        reassign_impf_id, haz_type, set_to_zero=None
     ):
-    if remove_values is None:
-        remove_values = []
-    def exposures_change(exposures):
+    if set_to_zero is None:
+        set_to_zero = []
+    def exposures_change(exposures, year):
         exp_modified = exposures.copy()
         exp_modified.gdf[f'impf_{haz_type}'] = reassign_impf_id
-        exp_modified.gdf['value'][remove_values] = 0
+        exp_modified.gdf['value'][set_to_zero] = 0
         return exp_modified
     return exposures_change

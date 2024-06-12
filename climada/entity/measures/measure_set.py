@@ -23,7 +23,8 @@ __all__ = ['MeasureSet']
 
 import logging
 from typing import Iterable
-
+import numpy as np
+from scipy.sparse import csr_matrix
 
 from climada.entity.measures.base import Measure
 
@@ -51,8 +52,11 @@ class MeasureSet():
             The measures to include in the MeasureSet
 
         """
-        for meas in measures:
-            self.append(meas)
+        haz_type = np.unique([meas.haz_type for meas in measures])[0]
+        self.haz_type = haz_type
+        self._data = {
+            meas.name: meas for meas in measures
+        }
 
     def append(self, measure):
         """Append an Measure. Override if same name and haz_type.
@@ -68,52 +72,27 @@ class MeasureSet():
         """
         if not isinstance(measure, Measure):
             raise ValueError("Input value is not of type Measure.")
-        if meas.haz_type not in self.measures:
-            self._data[meas.haz_type] = dict()
-        self._data[meas.haz_type][meas.name] = measure
+        if measure.haz_type != self.haz_type:
+            raise ValueError("Input measures for different hazard type")
+        self._data[meas.name] = measure
 
-    def measures(self, haz_type=None, name=None):
-        """Get ImpactFunc(s) of input hazard type and/or id.
-        If no input provided, all impact functions are returned.
+    def measures(self, names=None):
+        """Get measures
 
         Parameters
         ----------
-        haz_type : str, optional
-            hazard type
         name : str, optional
             measure name
 
         Returns
         -------
-        Measure (if haz_type and name),
-        list(Measure) (if haz_type or name),
-        {Measure.haz_type : {Measure.name : Measure}} (if None)
         """
-        if (haz_type is not None) and (name is not None):
-            try:
-                return self._data[haz_type][name]
-            except KeyError:
-                LOGGER.info("No Measure with hazard %s and id %s.",
-                            haz_type, name)
-                return list()
-        elif haz_type is not None:
-            try:
-                return list(self._data[haz_type].values())
-            except KeyError:
-                LOGGER.info("No Measure with hazard %s.", haz_type)
-                return list()
-        elif name is not None:
-            haz_return = self.get_hazard_types(name)
-            if not haz_return:
-                LOGGER.info("No Measure with name %s.", name)
-            meas_return = []
-            for haz in haz_return:
-                meas_return.append(self._data[haz][name])
-            return meas_return
-        else:
+        if names is None:
             return self._data
+        return {name:meas for name, meas in self._data.items() if name in names}
 
-    def names(self, haz_type=None):
+    @property
+    def names(self):
         """Get measures names contained for the hazard type provided.
         Return all names for each hazard type if no input hazard type.
 
@@ -127,19 +106,10 @@ class MeasureSet():
         list(Measure.name) (if haz_type provided),
         {Measure.haz_type : list(Measure.name)} (if no haz_type)
         """
-        if haz_type is None:
-            out_dict = dict()
-            for haz, haz_dict in self._data.items():
-                out_dict[haz] = list(haz_dict.keys())
-            return out_dict
+        return list(self._data.keys())
 
-        try:
-            return list(self._data[haz_type].keys())
-        except KeyError:
-            LOGGER.info("No Measure with hazard %s.", haz_type)
-            return list()
-
-    def size(self, haz_type=None, name=None):
+    @property
+    def size(self):
         """Get number of measures contained with input hazard type and
         /or id. If no input provided, get total number of impact functions.
 
@@ -154,11 +124,58 @@ class MeasureSet():
         -------
         int
         """
-        if (haz_type is not None) and (name is not None) and \
-        (isinstance(self.get_measure(haz_type, name), Measure)):
-            return 1
-        if (haz_type is not None) or (name is not None):
-            return len(self.get_measure(haz_type, name))
-        return sum(len(meas_list) for meas_list in self.get_names().values())
+        return len(self._data)
 
-    def combine(self, haz_type=None, name=None):
+    def combine(self, names=None, start_year=None, end_year=None):
+        names = self.names if names is None else names
+        if start_year is None:
+            start_year = np.min([meas.start_year for meas in self.measures(names).values()])
+        if end_year is None:
+            end_year = np.max([meas.end_year for meas in self.measures(names).values()])
+        meas_list = list(self.measures(names).values())
+
+        def comb_haz_map(hazard, year=None):
+            hazard_modified = meas_list[0].apply_to_hazard(hazard)
+            for measure in meas_list[1:]:
+                new_haz = measure.apply_to_hazard(hazard)
+                hazard_modified.intensity = csr_matrix(
+                    np.minimum(new_haz.intensity.todense(), hazard_modified.intensity.todense())
+                )
+                hazard_modified.fraction = csr_matrix(
+                    np.minimum(new_haz.fraction.todense(), hazard_modified.fraction.todense())
+                )
+                hazard_modified.frequency = np.minimum(
+                    new_haz.frequency, hazard_modified.frequency
+                    )
+            return hazard_modified
+
+        def comb_impfset_map(impfset, year=None):
+            impfset_modified = meas_list[0].apply_to_impfset(impfset)
+            for measure in meas_list[1:]:
+                new_impfset = measure.apply_to_impfset(impfset)
+                for new_impf in new_impfset.get_func(self.haz_type):
+                    impf_modified = impfset_modified.get_func(self.haz_type, new_impf.id)
+                    impf_modified.paa = np.minimum(new_impf.paa, impf_modified.paa)
+                    impf_modified.mdd = np.minimum(new_impf.mdd, impf_modified.mdd)
+                    impf_modified.intensity = np.maximum(new_impf.intensity, impf_modified.intensity)
+            return impfset_modified
+
+        def comb_exp_map(exposures, year=None):
+            exposures_modified = meas_list[0].apply_to_exposures(exposures)
+            for measure in meas_list[1:]:
+                new_exposures = measure.apply_to_exposures(exposures)
+                exposures_modified.gdf['value'] = np.minimum(new_exposures.gdf['value'], exposures_modified.gdf['value'])
+                impf_col = f'impf_{measure.haz_type}'
+                changed_impf_ids = np.array(new_exposures.gdf[impf_col] != exposures.gdf[impf_col])
+                exposures_modified.gdf[changed_impf_ids] = new_exposures.gdf[changed_impf_ids]
+            return exposures_modified
+
+        return Measure(
+            name=names,
+            haz_type=self.haz_type,
+            start_year=start_year,
+            end_year=end_year,
+            exposures_change=comb_exp_map,
+            impfset_change=comb_impfset_map,
+            hazard_change=comb_haz_map
+        )
