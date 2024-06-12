@@ -60,7 +60,7 @@ class Measure():
     def end_year(self):
         return self.years[1]
 
-    def apply_to_exposures(self, exposures):
+    def apply_to_exposures(self, exposures, year=None):
         """
         Implement measure to exposures.
 
@@ -74,9 +74,9 @@ class Measure():
         new_exp : climada.entity.Exposure
             Exposure with implemented measure with all defined parameters
         """
-        return self.exp_map(exposures)
+        return self.exp_map(exposures, year=None)
 
-    def apply_to_impfset(self, impfset):
+    def apply_to_impfset(self, impfset, year=None):
         """
         Implement measure to impact function set
 
@@ -90,9 +90,9 @@ class Measure():
         new_impfset : climada.entity.ImpactFuncSet
             Impact function set with implemented measure with all defined parameters
         """
-        return self.impfset_map(impfset)
+        return self.impfset_map(impfset, year=None)
 
-    def apply_to_hazard(self, hazard):
+    def apply_to_hazard(self, hazard, year=None):
         """
         Implement measure to hazard.
 
@@ -106,9 +106,9 @@ class Measure():
         new_haz : climada.hazard.Hazard
             Hazard with implemented measure with all defined parameters
         """
-        return self.haz_map(hazard)
+        return self.haz_map(hazard, year=None)
 
-    def apply(self, exposures, impfset, hazard):
+    def apply(self, exposures, impfset, hazard, year=None):
         """
         Implement measure with all its defined parameters.
 
@@ -131,28 +131,34 @@ class Measure():
             Hazard with implemented measure with all defined parameters
         """
         # change exposures
-        new_exp = self.exp_map(exposures)
+        new_exp = self.exp_map(exposures, year)
         # change impact functions
-        new_impfs = self.impfset_map(impfset)
+        new_impfs = self.impfset_map(impfset, year)
         # change hazard
         new_haz = self.haz_map(hazard)
-
         return new_exp, new_impfs, new_haz
 
-    def impact(self, exposures, impfset, hazard,**kwargs):
-        meas_exp, meas_impfset, meas_haz = self.apply(exposures, impfset, hazard)
+    def impact(self, exposures, impfset, hazard, year=None, **kwargs):
+        meas_exp, meas_impfset, meas_haz = self.apply(exposures, impfset, hazard, year=year)
         return ImpactCalc(meas_exp, meas_impfset, meas_haz).impact(**kwargs)
 
 def helper_hazard(
         intensity_multiplier=1, intensity_substract=0
         ):
-    def hazard_change(hazard):
+    def hazard_change(hazard, year):
         haz_modified = copy.deepcopy(hazard)
         haz_modified.intensity.data *= intensity_multiplier
         haz_modified.intensity.data -= intensity_substract
         haz_modified.intensity.data[haz_modified.intensity.data < 0] = 0
         haz_modified.intensity.eliminate_zeros()
         return haz_modified
+    return hazard_change
+
+def replace_hazard(
+        measure_hazards
+        ):
+    def hazard_change(hazard, year):
+        return measure_hazards[year]
     return hazard_change
 
 def hazard_intensity_rp_cutoff(
@@ -182,14 +188,19 @@ def impact_intensity_rp_cutoff(
             ] = 0
     return intensity_substract
 
+def change_impfset(
+        measure_impfsets
+    ):
+    def impfset_change(impfset, year):
+        return measure_impfsets[year]
+    return impfset_change
+
 def helper_impfset(
         haz_type,
         impf_mdd_modifier={1:(1,0)},
         impf_paa_modifier={1:(1,0)},
         impf_intensity_modifier={1:(1,0)},
-        replace_impf=None
         ):
-    replace_impf = {} if replace_impf is None else replace_impf
     def impfset_change(impfset):
         impfset_modified = copy.deepcopy(impfset)
         for impf in impfset.get_func(haz_type):

@@ -160,3 +160,5 @@ class MeasureSet():
         if (haz_type is not None) or (name is not None):
             return len(self.get_measure(haz_type, name))
         return sum(len(meas_list) for meas_list in self.get_names().values())
+
+    def combine(self, haz_type=None, name=None):
