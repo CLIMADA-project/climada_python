@@ -235,7 +235,7 @@ The CLIMADA Python package defines the following `extras <https://peps.python.or
    * - ``test``
      - for running and evaluating tests
    * - ``dev``
-     - combination of ``doc`` and ``test``
+     - combination of ``doc`` and ``test``, and additional tools for development
 
 For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
 On macOS and on Linux it is pre-installed. On Windows, it can easily be installed with Conda:

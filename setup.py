@@ -30,6 +30,11 @@ DEPS_TEST = [
     "pytest-subtests",
 ]
 
+# Requirements for development
+DEPS_DEV = DEPS_DOC + DEPS_TEST + [
+    "pre-commit",
+]
+
 setup(
     name='climada',
 
@@ -99,7 +104,7 @@ setup(
     extras_require={
         "doc": DEPS_DOC,
         "test": DEPS_TEST,
-        "dev": DEPS_DOC + DEPS_TEST
+        "dev": DEPS_DEV,
     },
 
     packages=find_namespace_packages(include=['climada*']),

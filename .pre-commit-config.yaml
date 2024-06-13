@@ -1,0 +1,17 @@
+# See https://pre-commit.com for more information
+default_language_version:
+  python: python3.9
+
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      - id: end-of-file-fixer
+      - id: trailing-whitespace
+
+  # Using this mirror lets us use mypyc-compiled black, which is about 2x faster
+  - repo: https://github.com/psf/black-pre-commit-mirror
+    rev: '24.4.2'
+    hooks:
+      - id: black-jupyter
