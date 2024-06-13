@@ -16,6 +16,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Update SALib sensitivity and sampling methods from newest version (SALib 1.4.7) [#828](https://github.com/CLIMADA-project/climada_python/issues/828)
+- Allow for computation of relative and absolute delta impacts in `CalcDeltaClimate`
 - Remove content tables and make minor improvements (fix typos and readability) in
 CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull/872)
 - Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
@@ -158,6 +160,7 @@ Changed:
 
 - `geopandas` >=0.13 &rarr; >=0.14
 - `pandas` >=1.5,<2.0 &rarr; >=2.1
+- `salib` >=1.3.0 &rarr; >=1.4.7
 
 Removed:
 
