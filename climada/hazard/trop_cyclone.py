@@ -201,9 +201,9 @@ class TropCyclone(Hazard):
         Create new TropCyclone instance that contains windfields from the specified tracks.
 
         This function sets the ``intensity`` attribute to contain, for each centroid,
-        the maximum wind speed (1-minute sustained winds at 10 meters above ground) experienced
-        over the whole period of each TC event in m/s. The wind speed is set to 0 if it doesn't
-        exceed the threshold ``intensity_thres``.
+        the maximum wind speed (1-minute sustained winds at 10 meters above ground)
+        experienced over the whole period of each TC event in m/s. The wind speed is set
+        to 0 if it doesn't exceed the threshold ``intensity_thres``.
 
         The ``category`` attribute is set to the value of the ``category``-attribute
         of each of the given track data sets.
@@ -219,90 +219,96 @@ class TropCyclone(Hazard):
         tracks : climada.hazard.TCTracks
             Tracks of storm events.
         centroids : Centroids, optional
-            Centroids where to model TC. Default: global centroids at 360 arc-seconds resolution.
+            Centroids where to model TC. Default: global centroids at 360 arc-seconds
+            resolution.
         pool : pathos.pool, optional
-            Pool that will be used for parallel computation of wind fields. Default: None
+            Pool that will be used for parallel computation of wind fields. Default:
+            None
         model : str, optional
-            Parametric wind field model to use:
-            "H1980" (the prominent Holland 1980 model) from the paper:
-                Holland, G.J. (1980): An Analytic Model of the Wind and Pressure Profiles
-                in Hurricanes. Monthly Weather Review 108(8): 1212–1218.
-                https://doi.org/10.1175/1520-0493(1980)108<1212:AAMOTW>2.0.CO;2,
+            Parametric wind field model to use. Default: "H08".
 
-            "H08" (Holland 1980 with b-value from Holland 2008) from the paper:
-                Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
-                Weather Review, 136(9), 3432–3445. https://doi.org/10.1175/2008MWR2395.1,
-            "H10" (Holland et al. 2010) from the paper:
-                Holland et al. (2010): A Revised Model for Radial Profiles of Hurricane Winds. Monthly
-                Weather Review 138(12): 4393–4401. https://doi.org/10.1175/2010MWR3317.1,
-            or
-            "ER11" (Emanuel and Rotunno 2011) from the paper:
-                Emanuel, K., Rotunno, R. (2011): Self-Stratification of Tropical Cyclone Outflow. Part I:
-                Implications for Storm Structure. Journal of the Atmospheric Sciences 68(10): 2236–2249.
-                https://dx.doi.org/10.1175/JAS-D-10-05024.1.
-            Default: "H08".
+            * ``"H1980"`` (the prominent Holland 1980 model) from the paper:
+                    Holland, G.J. (1980): An Analytic Model of the Wind and Pressure
+                    Profiles in Hurricanes. Monthly Weather Review 108(8): 1212–1218.
+                    ``https://doi.org/10.1175/1520-0493(1980)108<1212:AAMOTW>2.0.CO;2``
+            * ``"H08"`` (Holland 1980 with b-value from Holland 2008) from the paper:
+                    Holland, G. (2008). A revised hurricane pressure-wind model. Monthly
+                    Weather Review, 136(9), 3432–3445.
+                    https://doi.org/10.1175/2008MWR2395.1
+            * ``"H10"`` (Holland et al. 2010) from the paper:
+                    Holland et al. (2010): A Revised Model for Radial Profiles of
+                    Hurricane Winds. Monthly Weather Review 138(12): 4393–4401.
+                    https://doi.org/10.1175/2010MWR3317.1
+            * ``"ER11"`` (Emanuel and Rotunno 2011) from the paper:
+                    Emanuel, K., Rotunno, R. (2011): Self-Stratification of Tropical
+                    Cyclone Outflow. Part I: Implications for Storm Structure. Journal
+                    of the Atmospheric Sciences 68(10): 2236–2249.
+                    https://dx.doi.org/10.1175/JAS-D-10-05024.1
         model_kwargs : dict, optional
-            If given, forward these kwargs to the selected wind model. None of the parameters is
-            currently supported by the ER11 model. The Holland models support the following
-            parameters, in alphabetical order:
+            If given, forward these kwargs to the selected wind model. None of the
+            parameters is currently supported by the ER11 model. Default: None.
+            The Holland models support the following parameters, in alphabetical order:
 
             gradient_to_surface_winds : float, optional
-                The gradient-to-surface wind reduction factor to use. In H1980, the wind profile is
-                computed on the gradient level, and wind speeds are converted to the surface level
-                using this factor. In H08 and H10, the wind profile is computed on the surface
-                level, but the clipping interval of the B-value depends on this factor.
-                Default: 0.9
+                The gradient-to-surface wind reduction factor to use. In H1980, the wind
+                profile is computed on the gradient level, and wind speeds are converted
+                to the surface level using this factor. In H08 and H10, the wind profile
+                is computed on the surface level, but the clipping interval of the
+                B-value depends on this factor. Default: 0.9
             rho_air_const : float or None, optional
-                The constant value for air density (in kg/m³) to assume in the formulas from
-                Holland 1980. By default, the constant value suggested in Holland 1980 is used. If
-                set to None, the air density is computed from pressure following equation (9) in
-                Holland et al. 2010. Default: 1.15
+                The constant value for air density (in kg/m³) to assume in the formulas
+                from Holland 1980. By default, the constant value suggested in Holland
+                1980 is used. If set to None, the air density is computed from pressure
+                following equation (9) in Holland et al. 2010. Default: 1.15
             vmax_from_cen : boolean, optional
-                Only used in H10. If True, replace the recorded value of vmax along the track by
-                an estimate from pressure, following equation (8) in Holland et al. 2010.
-                Default: True
+                Only used in H10. If True, replace the recorded value of vmax along the
+                track by an estimate from pressure, following equation (8) in Holland et
+                al. 2010. Default: True
             vmax_in_brackets : bool, optional
-                Only used in H10. Specifies which of the two formulas in equation (6) of Holland et
-                al. 2010 to use. If False, the formula with vmax outside of the brackets is used.
-                Note that, a side-effect of the formula with vmax inside of the brackets is that
-                the wind speed maximum is attained a bit farther away from the center than
-                according to the recorded radius of maximum winds (RMW). Default: False
+                Only used in H10. Specifies which of the two formulas in equation (6) of
+                Holland et al. 2010 to use. If False, the formula with vmax outside of
+                the brackets is used. Note that, a side-effect of the formula with vmax
+                inside of the brackets is that the wind speed maximum is attained a bit
+                farther away from the center than according to the recorded radius of
+                maximum winds (RMW). Default: False
 
-            Default: None
         ignore_distance_to_coast : boolean, optional
             If True, centroids far from coast are not ignored.
             If False, the centroids' distances to the coast are calculated with the
-            `Centroids.get_dist_coast()` method (unless there is "dist_coast" column in the
-            centroids' GeoDataFrame) and centroids far from coast are ignored.
+            `Centroids.get_dist_coast()` method (unless there is "dist_coast" column in
+            the centroids' GeoDataFrame) and centroids far from coast are ignored.
             Default: False.
         store_windfields : boolean, optional
-            If True, the Hazard object gets a list ``windfields`` of sparse matrices. For each
-            track, the full velocity vectors at each centroid and track position are stored in a
-            sparse matrix of shape (npositions,  ncentroids * 2) that can be reshaped to a full
-            ndarray of shape (npositions, ncentroids, 2). Default: False.
+            If True, the Hazard object gets a list ``windfields`` of sparse matrices.
+            For each track, the full velocity vectors at each centroid and track
+            position are stored in a sparse matrix of shape (npositions,
+            ncentroids * 2) that can be reshaped to a full ndarray of shape (npositions,
+            ncentroids, 2). Default: False.
         metric : str, optional
             Specify an approximation method to use for earth distances:
 
-            * "equirect": Distance according to sinusoidal projection. Fast, but inaccurate for
-              large distances and high latitudes.
-            * "geosphere": Exact spherical distance. Much more accurate at all distances, but slow.
+            * "equirect": Distance according to sinusoidal projection. Fast, but
+              inaccurate for large distances and high latitudes.
+            * "geosphere": Exact spherical distance. Much more accurate at all
+              distances, but slow.
 
             Default: "equirect".
         intensity_thres : float, optional
             Wind speeds (in m/s) below this threshold are stored as 0. Default: 17.5
         max_latitude : float, optional
-            No wind speed calculation is done for centroids with latitude larger than this
-            parameter. Default: 61
+            No wind speed calculation is done for centroids with latitude larger than
+            this parameter. Default: 61
         max_dist_inland_km : float, optional
-            No wind speed calculation is done for centroids with a distance (in km) to the coast
-            larger than this parameter. Default: 1000
+            No wind speed calculation is done for centroids with a distance (in km) to
+            the coast larger than this parameter. Default: 1000
         max_dist_eye_km : float, optional
-            No wind speed calculation is done for centroids with a distance (in km) to the TC
-            center ("eye") larger than this parameter. Default: 300
+            No wind speed calculation is done for centroids with a distance (in km) to
+            the TC center ("eye") larger than this parameter. Default: 300
         max_memory_gb : float, optional
-            To avoid memory issues, the computation is done for chunks of the track sequentially.
-            The chunk size is determined depending on the available memory (in GB). Note that this
-            limit applies to each thread separately if a ``pool`` is used. Default: 8
+            To avoid memory issues, the computation is done for chunks of the track
+            sequentially. The chunk size is determined depending on the available memory
+            (in GB). Note that this limit applies to each thread separately if a
+            ``pool`` is used. Default: 8
 
         Raises
         ------
@@ -1840,7 +1846,7 @@ def _stat_holland_2010(
     If ``vmax_in_brackets`` is True, the alternative formula in (6) is used:
 
     .. math::
-    
+
         V(r) = [v_max_s^2 * (r_max / r)^b_s * e^(1 - (r_max / r)^b_s)]^x
 
     Parameters
