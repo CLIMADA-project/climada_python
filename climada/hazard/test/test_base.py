@@ -223,13 +223,21 @@ class TestLoader(unittest.TestCase):
         self.assertEqual(matrix[0, 0], 3)
         self.assertFalse(matrix.has_canonical_format)
 
+        def check_canonical_matrix(mat):
+            self.assertTrue(mat.has_canonical_format)
+            self.assertEqual(mat[0, 0], 3)
+            np.testing.assert_array_equal(mat.data, [3])
+
+        # Check canonical format when initializing
+        hazard_new = Hazard("TC", intensity=matrix.copy(), fraction=matrix.copy())
+        matrix_attrs = ("intensity", "fraction")
+        for attr in matrix_attrs:
+            check_canonical_matrix(getattr(hazard_new, attr))
+
         # Check conversion to canonical format when assigning
         for attr in ("intensity", "fraction"):
             setattr(self.hazard, attr, matrix.copy())
-            hazard_matrix = getattr(self.hazard, attr)
-            self.assertTrue(hazard_matrix.has_canonical_format)
-            self.assertEqual(hazard_matrix[0, 0], 3)
-            np.testing.assert_array_equal(hazard_matrix.data, [3])
+            check_canonical_matrix(getattr(self.hazard, attr))
 
 class TestRemoveDupl(unittest.TestCase):
     """Test remove_duplicates method."""
