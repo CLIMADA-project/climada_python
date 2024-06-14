@@ -1004,12 +1004,18 @@ class HazardIO():
         LOGGER.info('Writing %s', file_name)
         with h5py.File(file_name, 'w') as hf_data:
             str_dt = h5py.special_dtype(vlen=str)
-            for (var_name, var_val) in self.__dict__.items():
+            for var_name in self.__dict__:
                 if var_name == 'centroids':
                     # Centroids have their own write_hdf5 method,
                     # which is invoked at the end of this method (s.b.)
-                    pass
-                elif isinstance(var_val, sparse.csr_matrix):
+                    continue
+                # Prune private attributes
+                if var_name in self.vars_oblig:
+                    var_name = var_name.lstrip("_")
+
+                var_val = getattr(self, var_name)  # Also works with properties
+
+                if isinstance(var_val, sparse.csr_matrix):
                     if todense:
                         hf_data.create_dataset(var_name, data=var_val.toarray())
                     else:
@@ -1065,11 +1071,18 @@ class HazardIO():
         haz = cls()
         hazard_kwargs = dict()
         with h5py.File(file_name, 'r') as hf_data:
-            for (var_name, var_val) in haz.__dict__.items():
+            for var_name in haz.__dict__:
+                # Prune private attributes
+                if var_name in haz.vars_oblig:
+                    var_name = var_name.lstrip("_")
+
                 if var_name not in hf_data.keys():
                     continue
                 if var_name == 'centroids':
                     continue
+
+                var_val = getattr(haz, var_name)  # Also works with properties
+
                 if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                     hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):

@@ -124,18 +124,18 @@ class TestLoader(unittest.TestCase):
     def test_check_wrongInten_fail(self):
         """Wrong hazard definition"""
         self.hazard.intensity = sparse.csr_matrix([[1, 2], [1, 2]])
-
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegex(
+            ValueError, "Invalid Hazard._intensity row size: 3 != 2."
+        ):
             self.hazard.check()
-        self.assertIn('Invalid Hazard.intensity row size: 3 != 2.', str(cm.exception))
 
     def test_check_wrongFrac_fail(self):
         """Wrong hazard definition"""
         self.hazard.fraction = sparse.csr_matrix([[1], [1], [1]])
-
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegex(
+            ValueError, "Invalid Hazard._fraction column size: 2 != 1."
+        ):
             self.hazard.check()
-        self.assertIn('Invalid Hazard.fraction column size: 2 != 1.', str(cm.exception))
 
     def test_check_wrongEvName_fail(self):
         """Wrong hazard definition"""
@@ -211,6 +211,25 @@ class TestLoader(unittest.TestCase):
         self.assertEqual(len(haz.get_event_date()), haz.date.size)
         self.assertEqual(haz.get_event_date()[560],
                          u_dt.date_to_str(haz.date[560]))
+
+    def test_matrix_consistency(self):
+        """Check that the csr_matrix is brought in canonical format"""
+        # Non-canonical: All data points will be summed onto the first matrix entry
+        data = [0, 1, 2]
+        indices = [0, 0, 0]
+        indptr = [0, 3, 3, 3]
+        matrix = sparse.csr_matrix((data, indices, indptr), shape=(3, 2))
+        self.assertEqual(matrix.data.max(), 2)
+        self.assertEqual(matrix[0, 0], 3)
+        self.assertFalse(matrix.has_canonical_format)
+
+        # Check conversion to canonical format when assigning
+        for attr in ("intensity", "fraction"):
+            setattr(self.hazard, attr, matrix.copy())
+            hazard_matrix = getattr(self.hazard, attr)
+            self.assertTrue(hazard_matrix.has_canonical_format)
+            self.assertEqual(hazard_matrix[0, 0], 3)
+            np.testing.assert_array_equal(hazard_matrix.data, [3])
 
 class TestRemoveDupl(unittest.TestCase):
     """Test remove_duplicates method."""

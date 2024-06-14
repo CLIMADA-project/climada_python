@@ -90,8 +90,8 @@ class Hazard(HazardIO, HazardPlot):
                   'centroids',
                   'event_id',
                   'frequency',
-                  'intensity',
-                  'fraction'
+                  '_intensity',
+                  '_fraction'
                   }
     """Name of the variables needed to compute the impact. Types: scalar, str,
     list, 1dim np.array of size num_events, scipy.sparse matrix of shape
@@ -181,15 +181,47 @@ class Hazard(HazardIO, HazardPlot):
         self.event_name = event_name if event_name is not None else list()
         self.date = date if date is not None else np.array([], int)
         self.orig = orig if orig is not None else np.array([], bool)
-        # following values are defined for each event and centroid
-        self.intensity = intensity if intensity is not None else sparse.csr_matrix(
-            np.empty((0, 0)))  # events x centroids
-        self.fraction = fraction if fraction is not None else sparse.csr_matrix(
-            self.intensity.shape)  # events x centroids
+
+        # The following values are defined for each event and centroid
+        # Shape: ( events x centroids )
+        self._intensity = intensity
+        self._fraction = fraction
 
         self.pool = pool
         if self.pool:
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+
+    @property
+    def intensity(self) -> sparse.csr_matrix:
+        """Hazard intensity matrix"""
+        if self._intensity is None:
+            return sparse.csr_matrix(np.empty((0, 0)))
+
+        return self._intensity
+
+    @intensity.setter
+    def intensity(self, value: sparse.csr_matrix):
+        """Set intensity matrix to new value"""
+        self._intensity = value
+        self._intensity.check_format()
+        self._intensity.sort_indices()
+        self._intensity.sum_duplicates()
+
+    @property
+    def fraction(self):
+        """Hazard fraction matrix"""
+        if self._fraction is None:
+            return sparse.csr_matrix(self.intensity.shape)
+
+        return self._fraction
+
+    @fraction.setter
+    def fraction(self, value: sparse.csr_matrix):
+        """Set fraction matrix to new value"""
+        self._fraction = value
+        self._fraction.check_format()
+        self._fraction.sort_indices()
+        self._fraction.sum_duplicates()
 
     @classmethod
     def get_default(cls, attribute):
