@@ -214,19 +214,22 @@ class TestLoader(unittest.TestCase):
 
     def test_matrix_consistency(self):
         """Check that the csr_matrix is brought in canonical format"""
-        # Non-canonical: All data points will be summed onto the first matrix entry
-        data = [0, 1, 2]
-        indices = [0, 0, 0]
-        indptr = [0, 3, 3, 3]
+        # Non-canonical: First three data points will be summed onto the first matrix
+        # entry, forth will be an explicit zero entry
+        data = [0, 1, 2, 0]
+        indices = [0, 0, 0, 1]
+        indptr = [0, 4, 4, 4]
         matrix = sparse.csr_matrix((data, indices, indptr), shape=(3, 2))
-        self.assertEqual(matrix.data.max(), 2)
-        self.assertEqual(matrix[0, 0], 3)
+        np.testing.assert_array_equal(matrix.data, data)
+        np.testing.assert_array_equal(matrix[0, [0, 1]].toarray(), [[3, 0]])
+        self.assertEqual(matrix.nnz, 4)
         self.assertFalse(matrix.has_canonical_format)
 
         def check_canonical_matrix(mat):
             self.assertTrue(mat.has_canonical_format)
             self.assertEqual(mat[0, 0], 3)
             np.testing.assert_array_equal(mat.data, [3])
+            self.assertEqual(mat.nnz, 1)
 
         # Check canonical format when initializing
         hazard_new = Hazard("TC", intensity=matrix.copy(), fraction=matrix.copy())

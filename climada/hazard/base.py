@@ -201,10 +201,11 @@ class Hazard(HazardIO, HazardPlot):
         """Set intensity matrix to new value"""
         self._intensity = value
         self._intensity.check_format()
+        self._intensity.eliminate_zeros()
         self._intensity.sum_duplicates()
 
     @property
-    def fraction(self):
+    def fraction(self) -> sparse.csr_matrix:
         """Hazard fraction matrix"""
         return self._fraction
 
@@ -213,6 +214,7 @@ class Hazard(HazardIO, HazardPlot):
         """Set fraction matrix to new value"""
         self._fraction = value
         self._fraction.check_format()
+        self._fraction.eliminate_zeros()
         self._fraction.sum_duplicates()
 
     @classmethod
