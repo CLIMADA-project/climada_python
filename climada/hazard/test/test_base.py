@@ -1011,6 +1011,18 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(inten_stats[3][33], 88.510983305123631)
         self.assertAlmostEqual(inten_stats[2][99], 79.717518054203623)
 
+    def test_local_return_period(self):
+        """Compare local return periods against reference."""
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
+        threshold_intensities = np.array([10., 20.])
+        return_stats = haz.local_return_period(threshold_intensities)
+        np.testing.assert_allclose(
+            return_stats[:, [15,54,87]],
+            np.array(
+                [[1.82746879, 2.22375691, 1.31000814],
+                [3.33333333, 3.87019231, 2.34693878]]
+                )
+        )
 
 class TestYearset(unittest.TestCase):
     """Test return period statistics"""

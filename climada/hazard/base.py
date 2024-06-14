@@ -33,6 +33,7 @@ import h5py
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import geopandas as gpd
 from pathos.pools import ProcessPool as Pool
 import rasterio
 import rasterio.features
@@ -1394,7 +1395,7 @@ class Hazard():
     import matplotlib.pyplot as plt
 
 
-    def plot_local_rp(self, hazard_intensities, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, **kwargs):
+    def plot_local_rp(self, hazard_intensities, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, cmap = 'viridis_r', **kwargs):
         """Plot hazard local return periods for given hazard intensities.
     
         Parameters
@@ -1415,13 +1416,23 @@ class Hazard():
         axis: matplotlib.axes._subplots.AxesSubplot
             Matplotlib axis with the plot.
         """
-        self._set_coords_centroids()
+        ### code to replace self._set_coords_centroids()
+        if self.centroids.get_meta() and not self.centroids.coord.size:
+            xgrid, ygrid = u_coord.raster_to_meshgrid(
+                self.centroids.get_meta()['transform'], self.centroids.get_meta()['width'], self.centroids.get_meta()['height'])
+            self.centroids.lon = xgrid.flatten()
+            self.centroids.lat = ygrid.flatten()
+            self.centroids.geometry = gpd.GeoSeries(crs=self.meta['crs'])
+        ###
         return_periods = self.local_return_period(hazard_intensities)
         colbar_name = 'Return Period (years)'
+        title = list()
+        for haz_int in hazard_intensities:
+            title.append('Intensity: ' + f'{haz_int} {self.units}')
         axis = u_plot.geo_im_from_array(return_periods, self.centroids.coord,
-                                        colbar_name, "Local Return Periods", smooth=smooth, axes=axis,
-                                        figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
-        return axis
+                                        colbar_name, title, smooth=smooth, axes=axis,
+                                        figsize=figsize, adapt_fontsize=adapt_fontsize, cmap=cmap, **kwargs)
+        return axis, return_periods
 
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, adapt_fontsize=True,
@@ -1789,11 +1800,16 @@ class Hazard():
         inten_stats = self.local_exceedance_inten(return_periods=return_periods)
         num_bands = inten_stats.shape[0]
         
-        if not self.centroids.meta:
-            raise ValueError("centroids.meta is required but not set.")
-    
-        pixel_geom = self.centroids.calc_pixels_polygons()
-        profile = self.centroids.meta.copy()
+        if not self.centroids.get_meta():
+            raise ValueError("centroids.get_meta() is required but not set.")
+
+        ### this code is to replace pixel_geom = self.centroids.calc_pixels_polygons()
+        if abs(abs(self.centroids.get_meta()['transform'].a) -
+               abs(self.centroids.get_meta()['transform'].e)) > 1.0e-5:
+            raise ValueError('Area can not be computed for not squared pixels.')
+        pixel_geom = self.centroids.geometry.buffer(self.centroids.get_meta()['transform'].a / 2).envelope
+        ###
+        profile = self.centroids.get_meta().copy()
         profile.update(driver='GTiff', dtype='float32', count=num_bands)
         
         with rasterio.open(filename, 'w', **profile) as dst:
