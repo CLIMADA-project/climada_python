@@ -50,12 +50,19 @@ Define the Cash Flows class.
 # total_npv = analysis.calc_total(impl_year=2020, start_year=2020, end_year=2040, discounted=False, disc=disc)
 # print("Total Net Present Value:", total_npv)
 
+# Defaults
+DISC_RATE = DiscRates(years=np.arange(1950, 2100), rates = np.ones(years.size))
+
 
 from typing import Optional, Tuple
 from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from climada.entity import DiscRates
+
+
+
 
 class CashFlow(ABC):
 
@@ -217,12 +224,12 @@ class CashFlow(ABC):
 class Cost(CashFlow):
 
     def __init__(self, mkt_price_year: float, 
-                 initial_cash_flow: float = 0.0, 
-                 yearly_cash_flow: float = 0.0, 
+                 init_cost: float = 0.0, 
+                 maint_cost: float = 0.0, 
                  annual_growth_rate: float = 0.0, 
                  custom_cash_flows_df: pd.DataFrame = None):
         
-        super().__init__(mkt_price_year, initial_cash_flow=initial_cash_flow, yearly_cash_flow=yearly_cash_flow, annual_growth_rate=annual_growth_rate, custom_cash_flows_df=custom_cash_flows_df)
+        super().__init__(mkt_price_year, initial_cash_flow=init_cost, yearly_cash_flow=maint_cost, annual_growth_rate=annual_growth_rate, custom_cash_flows_df=custom_cash_flows_df)
 
     # Calculate the cash flow at a given year
     def _calc_cash_flow_at_year(self, impl_year, year):
