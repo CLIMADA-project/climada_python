@@ -191,6 +191,34 @@ class Hazard(HazardIO, HazardPlot):
         if self.pool:
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
 
+    def __eq__(self, other):
+        # Check single value attributes
+        if np.any([
+            self.haz_type != other.haz_type,
+            self.frequency_unit != other.frequency_unit,
+            self.units != other.units,
+            self.size != other.size
+        ]):
+            return False
+        # Check the 1-dimensional attributes
+        if np.any([
+            np.any(self.event_id != other.event_id),
+            np.any(self.frequency != other.frequency),
+            np.any(self.date != other.date),
+            np.any(self.event_name != other.event_name)
+        ]):
+            return False
+        # Check the 2-dimensional attributes
+        if (self.fraction != other.fraction).size != 0:
+            return False
+        if (self.intensity != other.intensity).size != 0:
+            return False
+        # Check the centroids attribute
+        if (self.centroids != other.centroids):
+            return False
+        return True
+
+
     @classmethod
     def get_default(cls, attribute):
         """Get the Hazard type default for a given attribute.
