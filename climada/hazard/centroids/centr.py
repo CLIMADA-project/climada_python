@@ -479,7 +479,7 @@ class Centroids():
         return sel_cen
 
     #TODO replace with nice GeoDataFrame util plot method.
-    def plot(self, axis=None, figsize=(9, 13), **kwargs):
+    def plot_deprecated(self, axis=None, figsize=(9, 13), **kwargs):
         """Plot centroids scatter points over earth
 
         Parameters
@@ -516,6 +516,25 @@ class Centroids():
         axis.scatter(self.lon, self.lat, transform=proj_data, **kwargs)
         plt.tight_layout()
         return axis
+    
+    def plot(self, figsize=(9, 13), *args, **kwargs):
+        """Plot centroids geodataframe using geopandas plotting function
+
+        Parameters
+        ----------
+        figsize: (float, float), optional
+            figure size for plt.subplots
+            The default is (9, 13)
+        args : optional
+            positional arguments for geopandas plot function
+        kwargs : optional
+            keyword arguments for geopandas plot function
+            
+        Returns
+        -------
+        ax : matplotlib.axes instance
+        """
+        return self.gdf.plot(figsize, *args, **kwargs)
 
     def set_region_id(self, level='country', overwrite=False):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
