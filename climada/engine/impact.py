@@ -1240,10 +1240,18 @@ class Impact():
             ).intersection(file.keys())
             kwargs.update({attr: file[attr][:] for attr in array_attrs})
 
-            # Special handling for 'event_name' because it's a list of strings
+            # Special handling for 'event_name' because it should be a list of strings
             if "event_name" in file:
                 # pylint: disable=no-member
-                kwargs["event_name"] = list(file["event_name"].asstr()[:])
+                try:
+                    event_name = file["event_name"].asstr()[:]
+                except TypeError:
+                    LOGGER.warn(
+                        "'event_name' could not be decoded to a string. Reading raw "
+                        "values instead."
+                    )
+                    event_name = file["event_name"][:]
+                kwargs["event_name"] = list(event_name)
 
         # Create the impact object
         return cls(**kwargs)
