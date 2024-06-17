@@ -212,6 +212,17 @@ class TestLoader(unittest.TestCase):
         self.assertEqual(haz.get_event_date()[560],
                          u_dt.date_to_str(haz.date[560]))
 
+    def test_matrix_update(self):
+        """Check that the csr_matrix can be updated with element access"""
+        self.hazard.intensity[[0, 2], 1] = 10
+        np.testing.assert_array_equal(
+            self.hazard.intensity.toarray(), [[1, 10], [1, 2], [1, 10]]
+        )
+        self.hazard.fraction[:, 1] = 0
+        np.testing.assert_array_equal(
+            self.hazard.fraction.toarray(), [[1, 0], [1, 0], [1, 0]]
+        )
+
     def test_matrix_consistency(self):
         """Check that the csr_matrix is brought in canonical format"""
         # Non-canonical: First three data points will be summed onto the first matrix
