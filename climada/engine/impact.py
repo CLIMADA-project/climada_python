@@ -1246,7 +1246,7 @@ class Impact():
                 try:
                     event_name = file["event_name"].asstr()[:]
                 except TypeError:
-                    LOGGER.warn(
+                    LOGGER.warning(
                         "'event_name' could not be decoded to a string. Reading raw "
                         "values instead."
                     )
