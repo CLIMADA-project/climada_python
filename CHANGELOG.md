@@ -10,6 +10,10 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+- GitHub actions workflow for CLIMADA Petals compatibility tests [#855](https://github.com/CLIMADA-project/climada_python/pull/855)
+
 ### Changed
 
 - Remove content tables and make minor improvements (fix typos and readability) in
