@@ -904,8 +904,9 @@ class TestAppend(unittest.TestCase):
             haz1.append(haz2)
 
     def test_concat_raise_value_error(self):
-        """Raise error if hazards with different units of type"""
-        haz1 = Hazard('TC', units='m/s')
+        """Raise error if hazards with different units, type or crs"""
+        haz1 = Hazard('TC', units='m/s',
+                      centroids=Centroids(lat=[],lon=[], crs="epsg:4326"))
         haz3 = Hazard('EQ')
         with self.assertRaises(ValueError):
             Hazard.concat([haz1, haz3])
@@ -913,6 +914,10 @@ class TestAppend(unittest.TestCase):
         haz4 = Hazard('TC', units='cm')
         with self.assertRaises(ValueError):
             Hazard.concat([haz1, haz4])
+            
+        haz5 = Hazard('TC', centroids=Centroids(lat=[],lon=[], crs="epsg:7777"))
+        with self.assertRaises(ValueError):
+            Hazard.concat([haz1, haz5])
 
     def test_change_centroids(self):
         """Set new centroids for hazard"""
