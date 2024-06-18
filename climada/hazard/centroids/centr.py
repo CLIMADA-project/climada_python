@@ -496,14 +496,17 @@ class Centroids():
         -------
         ax : cartopy.mpl.geoaxes.GeoAxes instance
         """
-        
         fig, ax = plt.subplots(figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()})
-
         ax.add_feature(cfeature.BORDERS)
         ax.add_feature(cfeature.COASTLINE)
         ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
-        self.gdf.plot(ax=ax, *args, **kwargs)
 
+        if self.gdf.crs != DEF_CRS:
+            copy_gdf = copy.deepcopy(self)
+            copy_gdf.to_default_crs()
+            copy_gdf.gdf.plot(ax=ax, *args, **kwargs)
+        else:
+            self.gdf.plot(ax=ax, *args, **kwargs)
         return ax
 
     def set_region_id(self, level='country', overwrite=False):
