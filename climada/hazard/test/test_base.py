@@ -916,7 +916,7 @@ class TestAppend(unittest.TestCase):
             Hazard.concat([haz1, haz4])
             
         haz5 = Hazard('TC', centroids=Centroids(lat=[],lon=[], crs="epsg:7777"))
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError, "different Coordinate-Reference-Systems"):
             Hazard.concat([haz1, haz5])
 
     def test_change_centroids(self):
