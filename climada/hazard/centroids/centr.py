@@ -28,6 +28,7 @@ import warnings
 
 import h5py
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -35,11 +36,9 @@ import pandas as pd
 from pyproj.crs.crs import CRS
 import rasterio
 from shapely.geometry.point import Point
-import cartopy.feature as cfeature
 
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
-import climada.util.plot as u_plot
 
 __all__ = ['Centroids']
 
@@ -480,7 +479,7 @@ class Centroids():
         return sel_cen
     
     def plot(self, figsize=(9, 13), *args, **kwargs):
-        """Plot centroids geodataframe using geopandas and cartopy plotting functions
+        """Plot centroids geodataframe using geopandas and cartopy plotting functions.
 
         Parameters
         ----------
@@ -496,18 +495,18 @@ class Centroids():
         -------
         ax : cartopy.mpl.geoaxes.GeoAxes instance
         """
-        fig, ax = plt.subplots(figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()})
-        ax.add_feature(cfeature.BORDERS)
-        ax.add_feature(cfeature.COASTLINE)
-        ax.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
+        fig, axis = plt.subplots(figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()})
+        axis.add_feature(cfeature.BORDERS)
+        axis.add_feature(cfeature.COASTLINE)
+        axis.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
 
         if self.gdf.crs != DEF_CRS:
             copy_gdf = copy.deepcopy(self)
             copy_gdf.to_default_crs()
-            copy_gdf.gdf.plot(ax=ax, *args, **kwargs)
+            copy_gdf.gdf.plot(ax=axis, *args, **kwargs)
         else:
-            self.gdf.plot(ax=ax, *args, **kwargs)
-        return ax
+            self.gdf.plot(ax=axis, *args, **kwargs)
+        return axis
 
     def set_region_id(self, level='country', overwrite=False):
         """Set region_id as country ISO numeric code attribute for every pixel or point.
