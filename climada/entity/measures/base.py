@@ -43,9 +43,9 @@ class Measure():
             start_year: int,
             end_year: int,
             haz_type: str,
-            exposures_change: Callable[[Exposures], Exposures] = lambda x: x,
-            impfset_change: Callable[[Hazard], Hazard] = lambda x: x,
-            hazard_change: Callable[[ImpactFuncSet], ImpactFuncSet] = lambda x: x
+            exposures_change: Callable[[Exposures, int], Exposures] = lambda x: x,
+            impfset_change: Callable[[ImpactFuncSet, int], ImpactFuncSet] = lambda x: x,
+            hazard_change: Callable[[Hazard, int], Hazard] = lambda x: x
             ):
         self.name = name
         self.exp_map = exposures_change
@@ -76,7 +76,7 @@ class Measure():
         new_exp : climada.entity.Exposure
             Exposure with implemented measure with all defined parameters
         """
-        return self.exp_map(exposures, year=year)
+        return self.exp_map(exposures, year)
 
     def apply_to_impfset(self, impfset, year=None):
         """
@@ -92,7 +92,7 @@ class Measure():
         new_impfset : climada.entity.ImpactFuncSet
             Impact function set with implemented measure with all defined parameters
         """
-        return self.impfset_map(impfset, year=year)
+        return self.impfset_map(impfset, year)
 
     def apply_to_hazard(self, hazard, year=None):
         """
@@ -108,7 +108,7 @@ class Measure():
         new_haz : climada.hazard.Hazard
             Hazard with implemented measure with all defined parameters
         """
-        return self.haz_map(hazard, year=year)
+        return self.haz_map(hazard, year)
 
     def apply(self, exposures, impfset, hazard, year=None):
         """
@@ -147,7 +147,7 @@ class Measure():
 def helper_hazard(
         intensity_multiplier=1, intensity_substract=0
         ):
-    def hazard_change(hazard):
+    def hazard_change(hazard, year=None):
         haz_modified = copy.deepcopy(hazard)
         haz_modified.intensity.data *= intensity_multiplier
         haz_modified.intensity.data -= intensity_substract
@@ -229,7 +229,7 @@ def helper_exposure(
     ):
     if set_to_zero is None:
         set_to_zero = []
-    def exposures_change(exposures, year):
+    def exposures_change(exposures, year=None):
         exp_modified = exposures.copy()
         exp_modified.gdf[f'impf_{haz_type}'] = reassign_impf_id
         exp_modified.gdf['value'][set_to_zero] = 0
