@@ -816,8 +816,8 @@ class Hazard(HazardIO, HazardPlot):
         """
         if len(haz_list) == 0:
             return cls()
-        haz_concat = haz_list[0].__class__()
-        haz_concat.haz_type = haz_list[0].haz_type
+        haz_concat = haz_list[0].__class__(centroids=Centroids(lat=[], lon=[],
+                                                               crs=haz_list[0].centroids.crs))
         for attr_name, attr_val in vars(haz_list[0]).items():
             # to save memory, only copy simple attributes like
             # "units" that are not explicitly handled by Hazard.append

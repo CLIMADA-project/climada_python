@@ -366,7 +366,8 @@ class Centroids():
         """
         if not u_coord.equal_crs(self.crs, centr.crs):
             raise ValueError(
-                "The centroids have different Coordinate-Reference-Systems (CRS)"
+                f"The given centroids use different CRS: {self.crs}, {centr.crs}. "
+                "The centroids are incompatible and cannot be concatenated."
             )
         self.gdf = pd.concat([self.gdf, centr.gdf])
 
