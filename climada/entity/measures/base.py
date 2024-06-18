@@ -137,7 +137,7 @@ class Measure():
         # change impact functions
         new_impfs = self.impfset_map(impfset, year)
         # change hazard
-        new_haz = self.haz_map(hazard)
+        new_haz = self.haz_map(hazard, year)
         return new_exp, new_impfs, new_haz
 
     def impact(self, exposures, impfset, hazard, year=None, **kwargs):
@@ -147,7 +147,7 @@ class Measure():
 def helper_hazard(
         intensity_multiplier=1, intensity_substract=0
         ):
-    def hazard_change(hazard, year):
+    def hazard_change(hazard):
         haz_modified = copy.deepcopy(hazard)
         haz_modified.intensity.data *= intensity_multiplier
         haz_modified.intensity.data -= intensity_substract
