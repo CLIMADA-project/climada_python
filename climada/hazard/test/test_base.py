@@ -908,15 +908,18 @@ class TestAppend(unittest.TestCase):
         haz1 = Hazard('TC', units='m/s',
                       centroids=Centroids(lat=[],lon=[], crs="epsg:4326"))
         haz3 = Hazard('EQ')
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError,
+                                    "different types"):
             Hazard.concat([haz1, haz3])
 
         haz4 = Hazard('TC', units='cm')
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError,
+                                    "different units"):
             Hazard.concat([haz1, haz4])
             
         haz5 = Hazard('TC', centroids=Centroids(lat=[],lon=[], crs="epsg:7777"))
-        with self.assertRaisesRegex(ValueError, "different Coordinate-Reference-Systems"):
+        with self.assertRaisesRegex(ValueError,
+                                    "different Coordinate-Reference-Systems (CRS)"):
             Hazard.concat([haz1, haz5])
 
     def test_change_centroids(self):
