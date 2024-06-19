@@ -74,7 +74,7 @@ class MeasureSet():
             raise ValueError("Input value is not of type Measure.")
         if measure.haz_type != self.haz_type:
             raise ValueError("Input measures for different hazard type")
-        self._data[meas.name] = measure
+        self._data[measure.name] = measure
 
     def measures(self, names=None):
         """Get measures
@@ -126,7 +126,7 @@ class MeasureSet():
         """
         return len(self._data)
 
-    def combine(self, names=None, start_year=None, end_year=None):
+    def combine(self, names=None, start_year=None, end_year=None, combo_name=None):
         names = self.names if names is None else names
         if start_year is None:
             start_year = np.min([meas.start_year for meas in self.measures(names).values()])
@@ -171,11 +171,12 @@ class MeasureSet():
             return exposures_modified
 
         return Measure(
-            name=names,
+            name=  '_'.join(names) if combo_name is None else combo_name,
             haz_type=self.haz_type,
             start_year=start_year,
             end_year=end_year,
             exposures_change=comb_exp_map,
             impfset_change=comb_impfset_map,
-            hazard_change=comb_haz_map
+            hazard_change=comb_haz_map, 
+            combo = names
         )

@@ -31,11 +31,33 @@ from climada.entity.exposures.base import Exposures
 from climada.entity import ImpactFuncSet
 from climada.hazard.base import Hazard
 from climada.engine import ImpactCalc
+from .cost_income import CostIncome
 
 LOGGER = logging.getLogger(__name__)
 
 ##todo: risk transfer, change hazard/exposures/impfset completely
 class Measure():
+    """ Contains a measure to be applied to a set of exposures, impact functions and hazard.
+
+    Attributes
+    ----------
+    name : str
+        Name of the measure
+    start_year : int
+        Start year of the measure
+    end_year : int
+        End year of the measure
+    haz_type : str
+        Type of hazard
+    exposures_change : callable
+        Function to change exposures
+    impfset_change : callable
+        Function to change impact function set
+    hazard_change : callable
+        Function to change hazard
+    cost_income : climada.entity.measures.cost_income.CostIncome
+        Cost and income object
+    """
 
     def __init__(
             self,
@@ -45,14 +67,42 @@ class Measure():
             haz_type: str,
             exposures_change: Callable[[Exposures, int], Exposures] = lambda x: x,
             impfset_change: Callable[[ImpactFuncSet, int], ImpactFuncSet] = lambda x: x,
-            hazard_change: Callable[[Hazard, int], Hazard] = lambda x: x
-            ):
+            hazard_change: Callable[[Hazard, int], Hazard] = lambda x: x,
+            combo: list[str] = None, # list of measure names that this measure is a combination of
+            **kwargs
+        ):
+        """
+        Initialize a new Measure object with specified data.
+
+        Parameters
+        ----------
+        name : str
+            Name of the measure
+        start_year : int
+            Start year of the measure
+        end_year : int
+            End year of the measure
+        haz_type : str
+            Type of hazard
+        exposures_change : callable
+            Function to change exposures
+        impfset_change : callable
+            Function to change impact function set
+        hazard_change : callable
+            Function to change hazard
+        kwargs : dict
+            Parameters for cost and income
+
+        """ 
         self.name = name
         self.exp_map = exposures_change
         self.impfset_map = impfset_change
         self.haz_map= hazard_change
         self.years = (start_year, end_year)
         self.haz_type = haz_type
+        self.combo = combo
+        # Genereate cost income object from kwargs
+        self.cost_income = CostIncome(**kwargs)
 
     @property
     def start_year(self):
