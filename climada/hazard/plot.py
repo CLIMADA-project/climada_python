@@ -19,9 +19,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Hazard Plotting Methods.
 """
 
+import geopandas as gpd
 import numpy as np
 import matplotlib.pyplot as plt
 
+import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
 
 
@@ -65,6 +67,45 @@ class HazardPlot():
                                         colbar_name, title, smooth=smooth, axes=axis,
                                         figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
         return axis, inten_stats
+    
+    def plot_local_rp(self, hazard_intensities, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, cmap = 'viridis_r', **kwargs):
+        """Plot hazard local return periods for given hazard intensities.
+    
+        Parameters
+        ----------
+        hazard_intensities: np.array
+            Hazard intensities to consider for calculating return periods.
+        smooth: bool, optional
+            Smooth plot to plot.RESOLUTION x plot.RESOLUTION.
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            Axis to use.
+        figsize: tuple, optional
+            Figure size for plt.subplots.
+        kwargs: optional
+            Arguments for pcolormesh matplotlib function used in event plots.
+    
+        Returns
+        -------
+        axis: matplotlib.axes._subplots.AxesSubplot
+            Matplotlib axis with the plot.
+        """
+        ### code to replace self._set_coords_centroids()
+        if self.centroids.get_meta() and not self.centroids.coord.size:
+            xgrid, ygrid = u_coord.raster_to_meshgrid(
+                self.centroids.get_meta()['transform'], self.centroids.get_meta()['width'], self.centroids.get_meta()['height'])
+            self.centroids.lon = xgrid.flatten()
+            self.centroids.lat = ygrid.flatten()
+            self.centroids.geometry = gpd.GeoSeries(crs=self.centroids.get_meta()['crs'])
+        ###
+        return_periods = self.local_return_period(hazard_intensities)
+        colbar_name = 'Return Period (years)'
+        title = list()
+        for haz_int in hazard_intensities:
+            title.append('Intensity: ' + f'{haz_int} {self.units}')
+        axis = u_plot.geo_im_from_array(return_periods, self.centroids.coord,
+                                        colbar_name, title, smooth=smooth, axes=axis,
+                                        figsize=figsize, adapt_fontsize=adapt_fontsize, cmap=cmap, **kwargs)
+        return axis, return_periods
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, adapt_fontsize=True,
                        **kwargs):

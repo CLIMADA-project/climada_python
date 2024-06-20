@@ -450,6 +450,46 @@ class Hazard(HazardIO, HazardPlot):
             LOGGER.debug('Resetting event_id.')
             self.event_id = np.arange(1, self.event_id.size + 1)
 
+    def local_return_period(self, hazard_intensities):
+        """Compute local return periods for given hazard intensities.
+    
+        Parameters
+        ----------
+        hazard_intensities : np.array
+            Hazard intensities to consider.
+    
+        Returns
+        -------
+        return_periods : np.array
+            Array containing computed local return periods for given hazard intensities.
+        """
+        # Ensure hazard_intensities is a numpy array
+        hazard_intensities = np.array(hazard_intensities)
+        
+        num_cen = self.intensity.shape[1]
+        return_periods = np.zeros((len(hazard_intensities), num_cen))  # Adjusted for 2D structure
+        
+        # Process each centroid in chunks as in local_exceedance_inten
+        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
+        if not cen_step:
+            raise ValueError('Increase max_matrix_size configuration parameter to >'
+                             f'{self.intensity.shape[0]}')
+        
+        chk = -1
+        for chk in range(int(num_cen / cen_step)):
+            self._loc_return_period(
+                hazard_intensities,
+                self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
+                return_periods[:, chk * cen_step:(chk + 1) * cen_step])
+        
+        if (chk + 1) * cen_step < num_cen:  # Check if there's a remainder
+            self._loc_return_period(
+                hazard_intensities,
+                self.intensity[:, (chk + 1) * cen_step:].toarray(),
+                return_periods[:, (chk + 1) * cen_step:])
+        
+        return return_periods
+    
     def get_event_id(self, event_name):
         """Get an event id from its name. Several events might have the same
         name.
@@ -613,6 +653,44 @@ class Hazard(HazardIO, HazardPlot):
             exc_inten[:, cen_idx] = self._cen_return_inten(
                 inten_sort[:, cen_idx], freq_sort[:, cen_idx],
                 self.intensity_thres, return_periods)
+            
+    def _loc_return_period(self, hazard_intensities, inten, return_periods):
+        """Compute local return periods for given hazard intensities for a specific chunk of data.
+    
+        Parameters
+        ----------
+        hazard_intensities: np.array
+            Given hazard intensities for which to calculate return periods.
+        inten: np.array
+            The intensity array for a specific chunk of data.
+        return_periods: np.array
+            Array to store computed return periods for the given hazard intensities.
+        """
+        # Assuming inten is sorted and calculating cumulative frequency
+        sort_pos = np.argsort(inten, axis=0)[::-1, :]
+        inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
+        freq_sort = self.frequency[sort_pos]
+        np.cumsum(freq_sort, axis=0, out=freq_sort)
+    
+        for cen_idx in range(inten.shape[1]):
+            sorted_inten_cen = inten_sort[:, cen_idx]
+            cum_freq_cen = freq_sort[:, cen_idx]
+    
+            for i, intensity in enumerate(hazard_intensities):
+                # Find the first occurrence where the intensity is less than the sorted intensities
+                exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='right')
+    
+                # Calculate exceedance probability
+                if exceedance_index < len(cum_freq_cen):
+                    exceedance_probability = cum_freq_cen[-exceedance_index - 1]
+                else:
+                    exceedance_probability = 0  # Or set a default minimal probability
+    
+                # Calculate and store return period
+                if exceedance_probability > 0:
+                    return_periods[i, cen_idx] = 1 / exceedance_probability
+                else:
+                    return_periods[i, cen_idx] = np.nan  
 
     def _check_events(self):
         """Check that all attributes but centroids contain consistent data.
