@@ -24,7 +24,7 @@ import datetime as dt
 import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
-from rioxarray import open_rasterio
+import rasterio
 
 from pyproj import CRS
 import numpy as np
@@ -696,10 +696,11 @@ class TestWriteExceedAndRP(unittest.TestCase):
 
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
         haz.write_raster_local_exceedance_inten([10, 20, 50], filename = self.test_file_path)
-        dataarray = open_rasterio(self.test_file_path)
+        raster = rasterio.open(self.test_file_path)
+        dataarray = np.array([ raster.read(i + 1) for i in range(raster.count)])
 
         np.testing.assert_array_almost_equal(
-            np.transpose(np.flip(dataarray.data, axis = 1), axes= [0, 2, 1]),
+            np.transpose(np.flip(dataarray, axis = 1), axes= [0, 2, 1]),
             haz.local_exceedance_inten([10, 20, 50]).reshape((3, 10, 10)),
             decimal=4
         )
@@ -712,10 +713,11 @@ class TestWriteExceedAndRP(unittest.TestCase):
 
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
         haz.write_raster_local_return_periods([10., 20., 30.], filename = self.test_file_path)
-        dataarray = open_rasterio(self.test_file_path)
+        raster = rasterio.open(self.test_file_path)
+        dataarray = np.array([ raster.read(i + 1) for i in range(raster.count)])
 
         np.testing.assert_array_almost_equal(
-            dataarray.data,
+            dataarray,
             haz.local_return_period([10., 20., 30.]).reshape((3, 10, 10)),
             decimal=4
         )
