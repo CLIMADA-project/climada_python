@@ -21,8 +21,10 @@ Test Hazard base class.
 import unittest
 from unittest.mock import patch
 import datetime as dt
+import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from rioxarray import open_rasterio
 
 from pyproj import CRS
 import numpy as np
@@ -32,7 +34,9 @@ import xarray as xr
 from climada.hazard.base import Hazard
 from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL, DEF_CRS
 from climada.hazard.test.test_base import DATA_DIR, dummy_hazard
+from climada.test import get_test_file
 
+HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
 
 class TestReadDefaultNetCDF(unittest.TestCase):
     """Test reading a NetCDF file where the coordinates to read match the dimensions"""
@@ -682,6 +686,56 @@ class TestHDF5(unittest.TestCase):
         self.assertTrue(np.array_equal(hazard.date, hazard_read.date))
         self.assertTrue(np.array_equal(hazard_read.event_id, np.array([])))  # Empty array
 
+class TestWriteExceedAndRP(unittest.TestCase):
+    """Test writing raster and netCDF files from exceedance intensitiy and return period maps""" 
+
+    def test_write_raster_exceed_inten(self):
+        """Test write TIFF file from local exceedance intensity"""
+        self.temp_dir = TemporaryDirectory()
+        self.test_file_path = os.path.join(self.temp_dir.name, 'test_file.tif')
+
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
+        haz.write_raster_local_exceedance_inten([10, 20, 50], filename = self.test_file_path)
+        dataarray = open_rasterio(self.test_file_path)
+
+        np.testing.assert_array_almost_equal(
+            np.transpose(np.flip(dataarray.data, axis = 1), axes= [0, 2, 1]),
+            haz.local_exceedance_inten([10, 20, 50]).reshape((3, 10, 10)),
+            decimal=4
+        )
+        self.temp_dir.cleanup()
+    
+    def test_write_raster_local_return_periods(self):
+        """Test write TIFF file from local return periods intensity"""
+        self.temp_dir = TemporaryDirectory()
+        self.test_file_path = os.path.join(self.temp_dir.name, 'test_file.tif')
+
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
+        haz.write_raster_local_return_periods([10., 20., 30.], filename = self.test_file_path)
+        dataarray = open_rasterio(self.test_file_path)
+
+        np.testing.assert_array_almost_equal(
+            dataarray.data,
+            haz.local_return_period([10., 20., 30.]).reshape((3, 10, 10)),
+            decimal=4
+        )
+        self.temp_dir.cleanup()
+    
+    def test_write_netcdf_local_return_periods(self):
+        """Test write netCDF file from local return periods intensity"""
+        self.temp_dir = TemporaryDirectory()
+        self.test_file_path = os.path.join(self.temp_dir.name, 'test_file.nc')
+
+        haz = Hazard.from_hdf5(HAZ_TEST_TC)
+        haz.write_netcdf_local_return_periods([10., 20., 30.], filename = self.test_file_path)
+        dataset = xr.load_dataset(self.test_file_path)
+
+        np.testing.assert_array_almost_equal(
+            dataset.to_array().data[2:,:],
+            haz.local_return_period([10., 20., 30.]),
+            decimal=4
+        )
+        self.temp_dir.cleanup()
 
 # Execute Tests
 if __name__ == "__main__":
