@@ -1422,7 +1422,7 @@ class Hazard():
                 self.centroids.get_meta()['transform'], self.centroids.get_meta()['width'], self.centroids.get_meta()['height'])
             self.centroids.lon = xgrid.flatten()
             self.centroids.lat = ygrid.flatten()
-            self.centroids.geometry = gpd.GeoSeries(crs=self.meta['crs'])
+            self.centroids.geometry = gpd.GeoSeries(crs=self.centroids.get_meta()['crs'])
         ###
         return_periods = self.local_return_period(hazard_intensities)
         colbar_name = 'Return Period (years)'

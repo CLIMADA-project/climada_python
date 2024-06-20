@@ -22,6 +22,8 @@ Test Hazard base class.
 import unittest
 import numpy as np
 import datetime as dt
+import os
+from tempfile import TemporaryDirectory
 from pathlib import Path
 from scipy import sparse
 from rioxarray import open_rasterio
@@ -204,15 +206,22 @@ class TestCentroids(unittest.TestCase):
 
     def test_write_raster_local_return_periods(self):
         """Test write TIFF file from local exceedance intensity"""
+        self.temp_dir = TemporaryDirectory()
+        self.test_file_path = os.path.join(self.temp_dir.name, 'test_file.tif')
+
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
-        haz.write_raster_local_return_periods([10., 20., 30.], filename = f'{CONFIG.test_data.dir()}/test_write_raster_local_return_periods.tif')
-        dataarray = open_rasterio(f'{CONFIG.test_data.dir()}/test_write_raster_local_return_periods.tif')
+        haz.write_raster_local_return_periods([10., 20., 30.], filename = self.test_file_path)
+        #haz.write_raster_local_return_periods([10., 20., 30.], filename = f'{CONFIG.test_data.dir()}/test_write_raster_local_return_periods.tif')
+        #dataarray = open_rasterio(f'{CONFIG.test_data.dir()}/test_write_raster_local_return_periods.tif')
+        dataarray = open_rasterio(self.test_file_path)
+
         np.testing.assert_array_almost_equal(
             dataarray.data[[0, 1, 2], [2, 5, 8], [1, 6, 7]],
             np.array([2.42105263, 2.59677419, 4.01496259])
         )
         np.testing.assert_array_equal(dataarray.data.shape, (3, 10, 10))
-
+        self.temp_dir.cleanup()
+        
     def test_write_netcdf_local_return_periods(self):
         """Test write netcdf file from local exceedance intensity"""
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
