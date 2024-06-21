@@ -61,9 +61,10 @@ class Hazard(HazardIO, HazardPlot):
     In particular, a "non-canonical" matrix may store "duplicates", i.e. multiple values
     that map to the same matrix position. This is supported, and the default behavior is
     to sum up these values. To avoid any inconsistencies, call :py:meth:`check_matrices`
-    once you inserted all data. This will explicitly sum all values at the same matrix position and eliminate explicit zeros.
-    This class will call :py:func:`climada.util.checker.prune_csr_matrix` whenever a
-    csr_matrix is assigned to one of the aforementioned attributes.
+    once you inserted all data. This will explicitly sum all values at the same matrix
+    position and eliminate explicit zeros. This class will call
+    :py:func:`climada.util.checker.prune_csr_matrix` whenever a csr_matrix is assigned
+    to one of the aforementioned attributes.
 
     Attributes
     ----------
