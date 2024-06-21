@@ -258,7 +258,7 @@ class TestClient(unittest.TestCase):
     def test_purge_cache(self):
         client = Client()
 
-        active_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v2")
+        active_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v3")
         outdated_ds = client.get_dataset_info(data_type="litpop", name="LitPop_150arcsec_ABW", version="v1")
         test_ds = client.get_dataset_info(data_type="storm_europe", name="test_storm_europe_icon_2021012800", version="v1", status="test_dataset")
         expired_ds = client.get_dataset_info(data_type="tropical_cyclone", name="rename_files2", version="v1", status="expired")
@@ -289,7 +289,7 @@ class TestClient(unittest.TestCase):
 
             client.purge_cache(target_dir=temp_dir, keep_testfiles=False)
             self.assertTrue(  # uptodate active dataset file still there
-                Path(temp_dir).joinpath('exposures/litpop/LitPop_150arcsec_ABW/v2/LitPop_150arcsec_ABW.hdf5').exists()
+                Path(temp_dir).joinpath('exposures/litpop/LitPop_150arcsec_ABW/v3/LitPop_150arcsec_ABW.hdf5').exists()
             )
             self.assertFalse(  # test data removed, empty directories removed
                 Path(temp_dir).joinpath('hazard/').exists()

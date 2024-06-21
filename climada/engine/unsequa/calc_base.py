@@ -203,8 +203,8 @@ class Calc():
             Number of samples as used in the sampling method from SALib
         sampling_method : str, optional
             The sampling method as defined in SALib. Possible choices:
-            'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
-            https://salib.readthedocs.io/en/latest/api.html
+            'saltelli', 'latin', 'morris', 'dgsm', 'fast_sampler', 'ff', 'finite_diff',
+             https://salib.readthedocs.io/en/latest/api.html
             The default is 'saltelli'.
         sampling_kwargs : kwargs, optional
             Optional keyword arguments passed on to the SALib sampling_method.
@@ -214,6 +214,17 @@ class Calc():
         -------
         unc_output : climada.engine.uncertainty.unc_output.UncOutput()
             Uncertainty data object with the samples
+
+        Notes
+        -----
+        The 'ff' sampling method does not require a value for the N parameter.
+        The inputed N value is hence ignored in the sampling process in the case
+        of this method.
+        The 'ff' sampling method requires a number of uncerainty parameters to be
+        a power of 2. The users can generate dummy variables to achieve this
+        requirement. Please refer to https://salib.readthedocs.io/en/latest/api.html
+        for more details.
+
 
         See Also
         --------
@@ -231,11 +242,17 @@ class Calc():
             'names' : param_labels,
             'bounds' : [[0, 1]]*len(param_labels)
             }
-
+        #for the ff sampler, no value of N is needed. For API consistency the user
+        #must input a value that is ignored and a warning is given.
+        if sampling_method == 'ff':
+            LOGGER.warning("You are using the 'ff' sampler which does not require "
+                           "a value for N. The entered N value will be ignored"
+                           "in the sampling process.")
         uniform_base_sample = self._make_uniform_base_sample(N, problem_sa,
                                                              sampling_method,
                                                              sampling_kwargs)
         df_samples = pd.DataFrame(uniform_base_sample, columns=param_labels)
+
         for param in list(df_samples):
             df_samples[param] = df_samples[param].apply(
                 self.distr_dict[param].ppf
@@ -271,7 +288,7 @@ class Calc():
             SALib sampling method.
         sampling_method: string
             The sampling method as defined in SALib. Possible choices:
-            'saltelli', 'fast_sampler', 'latin', 'morris', 'dgsm', 'ff'
+            'saltelli', 'latin', 'morris', 'dgsm', 'fast_sampler', 'ff', 'finite_diff',
             https://salib.readthedocs.io/en/latest/api.html
         sampling_kwargs: dict()
             Optional keyword arguments passed on to the SALib sampling method.
@@ -292,8 +309,20 @@ class Calc():
         #c.f. https://stackoverflow.com/questions/2724260/why-does-pythons-import-require-fromlist
         import importlib # pylint: disable=import-outside-toplevel
         salib_sampling_method = importlib.import_module(f'SALib.sample.{sampling_method}')
-        sample_uniform = salib_sampling_method.sample(
-            problem = problem_sa, N = N, **sampling_kwargs)
+
+        if sampling_method == 'ff': #the ff sampling has a fixed sample size and
+                                    #does not require the N parameter
+            if problem_sa['num_vars'] & (problem_sa['num_vars'] - 1) != 0:
+                raise ValueError("The number of parameters must be a power of 2. "
+                                 "To use the ff sampling method, you can generate "
+                                 "dummy parameters to overcome this limitation."
+                                 " See https://salib.readthedocs.io/en/latest/api.html")
+
+            sample_uniform = salib_sampling_method.sample(
+            problem = problem_sa, **sampling_kwargs)
+        else:
+            sample_uniform = salib_sampling_method.sample(
+                problem = problem_sa, N = N, **sampling_kwargs)
         return sample_uniform
 
     def sensitivity(self, unc_output, sensitivity_method = 'sobol',
@@ -323,16 +352,20 @@ class Calc():
         unc_output : climada.engine.unsequa.UncOutput
             Uncertainty data object in which to store the sensitivity indices
         sensitivity_method : str, optional
-            sensitivity analysis method from SALib.analyse
-            Possible choices:
-                'fast', 'rbd_fact', 'morris', 'sobol', 'delta', 'ff'
-            The default is 'sobol'.
-            Note that in Salib, sampling methods and sensitivity analysis
-            methods should be used in specific pairs.
+            Sensitivity analysis method from SALib.analyse. Possible choices: 'sobol', 'fast',
+            'rbd_fast', 'morris', 'dgsm', 'ff', 'pawn', 'rhdm', 'rsa', 'discrepancy', 'hdmr'.
+            Note that in Salib, sampling methods and sensitivity
+            analysis methods should be used in specific pairs:
             https://salib.readthedocs.io/en/latest/api.html
         sensitivity_kwargs: dict, optional
             Keyword arguments of the chosen SALib analyse method.
             The default is to use SALib's default arguments.
+
+        Notes
+        -----
+        The variables 'Em','Term','X','Y' are removed from the output of the
+        'hdmr' method to ensure compatibility with unsequa.
+        The 'Delta' method is currently not supported.
 
         Returns
         -------
@@ -360,7 +393,7 @@ class Calc():
 
         sens_output = copy.deepcopy(unc_output)
 
-        #Certaint Salib method required model input (X) and output (Y), others
+        #Certain Salib method required model input (X) and output (Y), others
         #need only ouput (Y)
         salib_kwargs = method.analyze.__code__.co_varnames  # obtain all kwargs of the salib method
         X = unc_output.samples_df.to_numpy() if 'X' in salib_kwargs else None
@@ -500,10 +533,47 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         else:
             sens_indices = method.analyze(problem_sa, Y,
                                                     **sensitivity_kwargs)
+        #refactor incoherent SALib output
+        nparams = len(param_labels)
+        if method.__name__[-3:] == '.ff': #ff method
+            if sensitivity_kwargs['second_order']:
+                #parse interaction terms of sens_indices to a square matrix
+                #to ensure consistency with unsequa
+                interaction_names = sens_indices.pop('interaction_names')
+                interactions = np.full((nparams, nparams), np.nan)
+                #loop over interaction names and extract each param pair,
+                #then match to the corresponding param from param_labels
+                for i,interaction_name in enumerate(interaction_names):
+                    interactions[param_labels.index(interaction_name[0]),
+                                 param_labels.index(interaction_name[1])] = sens_indices['IE'][i]
+                sens_indices['IE'] = interactions
+
+        if method.__name__[-5:] == '.hdmr': #hdmr method
+            #first, remove variables that are incompatible with unsequa output
+            keys_to_remove = ['Em','Term','select', 'RT', 'Y_em', 'idx', 'X', 'Y']
+            sens_indices = {k: v for k, v in sens_indices.items()
+                            if k not in keys_to_remove}
+            names = sens_indices.pop('names') #names of terms
+
+            #second, refactor to 2D
+            for si, si_val_array in sens_indices.items():
+                if (np.array(si_val_array).ndim == 1 and    #for everything that is 1d and has
+                    np.array(si_val_array).size > nparams): #lentgh > n params, refactor to 2D
+                    si_new_array = np.full((nparams, nparams), np.nan)
+                    np.fill_diagonal(si_new_array, si_val_array[0:nparams]) #simple terms go on diag
+                    for i,interaction_name in enumerate(names[nparams:]):
+                        t1, t2 = interaction_name.split('/') #interaction terms
+                        si_new_array[param_labels.index(t1),
+                                      param_labels.index(t2)] = si_val_array[nparams+i]
+                    sens_indices[si] = si_new_array
+
+
         sens_first_order = np.array([
             np.array(si_val_array)
             for si, si_val_array in sens_indices.items()
-            if (np.array(si_val_array).ndim == 1 and si!='names')  # dirty trick due to Salib incoherent output
+            if (np.array(si_val_array).ndim == 1 # dirty trick due to Salib incoherent output
+                and si!='names'
+                and np.array(si_val_array).size == len(param_labels))
             ]).ravel()
         sens_first_order_dict[submetric_name] = sens_first_order
 
@@ -515,6 +585,7 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         sens_second_order_dict[submetric_name] = sens_second_order
 
     sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
+
     if not sens_first_order_df.empty:
         si_names_first_order, param_names_first_order = _si_param_first(param_labels, sens_indices)
         sens_first_order_df.insert(0, 'si', si_names_first_order)
