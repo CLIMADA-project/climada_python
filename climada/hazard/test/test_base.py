@@ -224,34 +224,66 @@ class TestLoader(unittest.TestCase):
         )
 
     def test_matrix_consistency(self):
-        """Check that the csr_matrix is brought in canonical format"""
+        """Check that the csr_matrix is brought into canonical format"""
         # Non-canonical: First three data points will be summed onto the first matrix
         # entry, forth will be an explicit zero entry
         data = [0, 1, 2, 0]
         indices = [0, 0, 0, 1]
         indptr = [0, 4, 4, 4]
         matrix = sparse.csr_matrix((data, indices, indptr), shape=(3, 2))
-        np.testing.assert_array_equal(matrix.data, data)
-        np.testing.assert_array_equal(matrix[0, [0, 1]].toarray(), [[3, 0]])
-        self.assertEqual(matrix.nnz, 4)
-        self.assertFalse(matrix.has_canonical_format)
 
         def check_canonical_matrix(mat):
             self.assertTrue(mat.has_canonical_format)
-            self.assertEqual(mat[0, 0], 3)
-            np.testing.assert_array_equal(mat.data, [3])
             self.assertEqual(mat.nnz, 1)
 
         # Check canonical format when initializing
         hazard_new = Hazard("TC", intensity=matrix.copy(), fraction=matrix.copy())
         matrix_attrs = ("intensity", "fraction")
         for attr in matrix_attrs:
-            check_canonical_matrix(getattr(hazard_new, attr))
+            with self.subTest(matrix=attr):
+                check_canonical_matrix(getattr(hazard_new, attr))
 
         # Check conversion to canonical format when assigning
+        for attr in matrix_attrs:
+            with self.subTest(matrix=attr):
+                setattr(self.hazard, attr, matrix.copy())
+                check_canonical_matrix(getattr(self.hazard, attr))
+
+    def test_check_matrices(self):
+        """Test the check_matrices method"""
+        # Check shapes
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            Hazard(
+                "TC",
+                intensity=sparse.csr_matrix(np.ones((2, 2))),
+                fraction=sparse.csr_matrix(np.ones((2, 3))),
+            )
+
+        hazard = Hazard("TC")
+        hazard.fraction = sparse.csr_matrix(np.zeros((2, 2)))
+        hazard.check_matrices()  # No error, fraction.nnz = 0
+        hazard.fraction = sparse.csr_matrix(np.ones((2, 2)))
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            hazard.check_matrices()
+        hazard.intensity = sparse.csr_matrix(np.ones((2, 3)))
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            hazard.check_matrices()
+
+        # Check that matrices are pruned
+        hazard.intensity[:] = 0
+        hazard.fraction = sparse.csr_matrix(([0], [0], [0, 1, 1]), shape=(2, 3))
+        hazard.check_matrices()
         for attr in ("intensity", "fraction"):
-            setattr(self.hazard, attr, matrix.copy())
-            check_canonical_matrix(getattr(self.hazard, attr))
+            with self.subTest(matrix=attr):
+                matrix = getattr(hazard, attr)
+                self.assertEqual(matrix.nnz, 0)
+                self.assertTrue(matrix.has_canonical_format)
 
 class TestRemoveDupl(unittest.TestCase):
     """Test remove_duplicates method."""

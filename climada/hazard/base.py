@@ -203,6 +203,7 @@ class Hazard(HazardIO, HazardPlot):
             np.empty((0, 0)))  # events x centroids
         self.fraction = fraction if fraction is not None else sparse.csr_matrix(
             self.intensity.shape)  # events x centroids
+        self.check_matrices()
 
         self.pool = pool
         if self.pool:
@@ -237,15 +238,19 @@ class Hazard(HazardIO, HazardPlot):
         --------
         :py:func:`climada.util.checker.prune_csr_matrix`
 
+        Todo
+        -----
+        * Check consistency with centroids
+
         Raises
         ------
         ValueError
-            If matrices are ill-formed or ill-shaped
+            If matrices are ill-formed or ill-shaped in relation to each other
         """
         u_check.prune_csr_matrix(self.intensity)
         u_check.prune_csr_matrix(self.fraction)
-        if self.intensity.shape != self.fraction.shape:
-            if self.fraction.nnz > 0:
+        if self.fraction.nnz > 0:
+            if self.intensity.shape != self.fraction.shape:
                 raise ValueError(
                     "Intensity and fraction matrices must have the same shape"
                 )
