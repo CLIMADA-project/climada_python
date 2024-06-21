@@ -89,14 +89,6 @@ class HazardPlot():
         axis: matplotlib.axes._subplots.AxesSubplot
             Matplotlib axis with the plot.
         """
-        ### code to replace self._set_coords_centroids()
-        if self.centroids.get_meta() and not self.centroids.coord.size:
-            xgrid, ygrid = u_coord.raster_to_meshgrid(
-                self.centroids.get_meta()['transform'], self.centroids.get_meta()['width'], self.centroids.get_meta()['height'])
-            self.centroids.lon = xgrid.flatten()
-            self.centroids.lat = ygrid.flatten()
-            self.centroids.geometry = gpd.GeoSeries(crs=self.centroids.get_meta()['crs'])
-        ###
         return_periods = self.local_return_period(threshold_intensities)
         colbar_name = 'Return Period (years)'
         title = list()
