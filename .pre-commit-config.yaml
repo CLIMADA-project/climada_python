@@ -1,6 +1,6 @@
 # See https://pre-commit.com for more information
 default_language_version:
-  python: python3.9
+  python: python3
 
 # See https://pre-commit.com/hooks.html for more hooks
 repos:
