@@ -176,3 +176,10 @@ data/ISIMIP_crop/
 
 # climada data results folder:
 results/
+
+# Hidden files we want to track
+!.gitignore
+!.pre-commit-config.yaml
+!.pylintrc
+!.readthedocs.yml
+!.github
