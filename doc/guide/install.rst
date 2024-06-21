@@ -213,7 +213,7 @@ Install Developer Dependencies (Optional)
 
 Building the documentation and running the entire test suite of CLIMADA requires additional dependencies which are not installed by default.
 They are also not needed for using CLIMADA.
-However, if you want to develop CLIMADA, we recommend you install them.
+However, if you want to develop CLIMADA, we strongly recommend you install them.
 
 With the ``climada_env`` activated, enter the workspace directory and then the CLIMADA repository as above.
 Then, add the ``dev`` extra specification to the ``pip install`` command (**mind the quotation marks**, and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
@@ -245,6 +245,14 @@ On macOS and on Linux it is pre-installed. On Windows, it can easily be installe
    mamba install -n climada_env make
 
 Instructions for running the test scripts can be found in the :doc:`Testing Guide <Guide_Testing>`.
+
+The developer dependencies also include `pre-commit <https://pre-commit.com/#intro>`_, which is used to run pre-commit hooks, such as code linting and formatting, when creating a new commit. In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install the hooks by running (you can also install [this extension](https://marketplace.visualstudio.com/items?itemName=elagil.pre-commit-helper) if you use Visual Studio Code):
+
+.. code-block:: shell
+
+   pre-commit install
+
+We strongly recommend you read :ref:`What happens with pre-commit hooks? <pre-commit_hooks>` if you do so.
 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
