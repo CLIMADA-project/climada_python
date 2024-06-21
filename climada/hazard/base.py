@@ -467,27 +467,20 @@ class Hazard(HazardIO, HazardPlot):
         threshold_intensities = np.array(threshold_intensities)
         
         num_cen = self.intensity.shape[1]
-        return_periods = np.zeros((len(threshold_intensities), num_cen))  # Adjusted for 2D structure
+        return_periods = np.zeros((len(threshold_intensities), num_cen))
         
         # Process each centroid in chunks as in local_exceedance_inten
-        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-        if not cen_step:
+        block_size = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
+        if not block_size:
             raise ValueError('Increase max_matrix_size configuration parameter to >'
                              f'{self.intensity.shape[0]}')
         
-        chk = -1
-        for chk in range(int(num_cen / cen_step)):
-            self._loc_return_period(
+        for start_col in range(0, num_cen, block_size):
+            end_col = min(start_col + block_size, num_cen)
+            return_periods[:, start_col:end_col] = self._loc_return_period(
                 threshold_intensities,
-                self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-                return_periods[:, chk * cen_step:(chk + 1) * cen_step])
-        
-        if (chk + 1) * cen_step < num_cen:  # Check if there's a remainder
-            self._loc_return_period(
-                threshold_intensities,
-                self.intensity[:, (chk + 1) * cen_step:].toarray(),
-                return_periods[:, (chk + 1) * cen_step:])
-        
+                self.intensity[:, start_col:end_col].toarray())
+            
         return return_periods
     
     def get_event_id(self, event_name):
@@ -654,7 +647,7 @@ class Hazard(HazardIO, HazardPlot):
                 inten_sort[:, cen_idx], freq_sort[:, cen_idx],
                 self.intensity_thres, return_periods)
             
-    def _loc_return_period(self, threshold_intensities, inten, return_periods):
+    def _loc_return_period(self, threshold_intensities, inten):
         """Compute local return periods for given hazard intensities for a specific chunk of data.
     
         Parameters
@@ -663,14 +656,17 @@ class Hazard(HazardIO, HazardPlot):
             Given hazard intensities for which to calculate return periods.
         inten: np.array
             The intensity array for a specific chunk of data.
-        return_periods: np.array
-            Array to store computed return periods for the given hazard intensities.
+
+        Returns
+        -------
+            np.array
         """
         # Assuming inten is sorted and calculating cumulative frequency
         sort_pos = np.argsort(inten, axis=0)[::-1, :]
         inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
         freq_sort = self.frequency[sort_pos]
         np.cumsum(freq_sort, axis=0, out=freq_sort)
+        return_periods = np.zeros((len(threshold_intensities), inten.shape[1]))
     
         for cen_idx in range(inten.shape[1]):
             sorted_inten_cen = inten_sort[:, cen_idx]
@@ -678,7 +674,7 @@ class Hazard(HazardIO, HazardPlot):
     
             for i, intensity in enumerate(threshold_intensities):
                 # Find the first occurrence where the intensity is less than the sorted intensities
-                exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='right')
+                exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='left')
     
                 # Calculate exceedance probability
                 if exceedance_index < len(cum_freq_cen):
@@ -690,7 +686,8 @@ class Hazard(HazardIO, HazardPlot):
                 if exceedance_probability > 0:
                     return_periods[i, cen_idx] = 1 / exceedance_probability
                 else:
-                    return_periods[i, cen_idx] = np.nan  
+                    return_periods[i, cen_idx] = np.nan
+        return return_periods
 
     def _check_events(self):
         """Check that all attributes but centroids contain consistent data.

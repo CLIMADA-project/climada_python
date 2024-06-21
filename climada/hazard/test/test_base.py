@@ -1026,20 +1026,22 @@ class TestStats(unittest.TestCase):
     def test_local_return_period(self):
         """Compare local return periods against reference."""
         haz = dummy_hazard()
-        haz.intensity = sparse.csr_matrix([[1.1, 2.1, 3.1],
-                                   [0.1, 3.1, 2.1],
-                                   [4.1, 1.1, 0.1],
-                                   [2.1, 3.1, 3.1]])
-        haz.frequency = np.full(4, .5)
+        haz.intensity = sparse.csr_matrix([
+            [1., 5., 1.],
+            [2., 2., 0.],
+            [3., 2., 1.],
+            [3., 2., 1.]
+            ])
+        haz.frequency = np.full(4, 1.)
         threshold_intensities = np.array([1., 2., 4.])
         return_stats = haz.local_return_period(threshold_intensities)
         np.testing.assert_allclose(
             return_stats,
             np.array([
-                [0.66666667, 0.5, 0.66666667],
-                [1., 0.66666667, 0.66666667],
-                [2., np.nan, np.nan]
-                ])
+                [0.25, 0.25, 0.33333333],
+                [0.33333333, 0.25, np.nan],
+                [np.nan, 1., np.nan]
+            ])
         )
 
 
