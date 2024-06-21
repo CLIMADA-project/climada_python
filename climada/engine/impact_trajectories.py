@@ -21,6 +21,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 import copy
 from dataclasses import dataclass
 
+import pandas as pd
 import numpy as np
 import itertools
 from datetime import datetime
@@ -112,7 +113,127 @@ def snapshot_combinaisons(snapshot0, snapshot1):
     return imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1
 
 
-# Would it be better to have a Snapshot Class that hold a singular snapshot?
+def interpolate_imp_mat(imp0, imp1, start_year, end_year):
+        return [
+            interpolate_sm(imp0.imp_mat, imp1.imp_mat, year, start_year, end_year)
+            for year in range(start_year, end_year + 1)
+        ]
+
+def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None):
+    '''
+    Calculate the frequency curve
+
+    Parameters:
+    imp_mat_intrpl (np.array): The interpolated impact matrix
+    frequency (np.array): The frequency of the hazard
+    return_per (np.array): The return period
+
+    Returns:
+    ifc_return_per (np.array): The impact exceeding frequency
+    ifc_impact (np.array): The impact exceeding the return period
+    '''
+
+    # Calculate the at_event make the np.array
+    at_event = np.sum(imp_mat_intrpl, axis=1).A1
+
+    # Sort descendingly the impacts per events
+    sort_idxs = np.argsort(at_event)[::-1]
+    # Calculate exceedence frequency
+    exceed_freq = np.cumsum(frequency[sort_idxs])
+    # Set return period and impact exceeding frequency
+    ifc_return_per = 1 / exceed_freq[::-1]
+    ifc_impact = at_event[sort_idxs][::-1]
+
+    if return_per is not None:
+        interp_imp = np.interp(return_per, ifc_return_per, ifc_impact)
+        ifc_return_per = return_per
+        ifc_impact = interp_imp
+
+    return ifc_impact
+
+
+def calc_yearly_eais(imp_mats_0, imp_mats_1, frequency_0, frequency_1):
+    yearly_eai_exp_0 = [
+        ImpactCalc.eai_exp_from_mat(imp_mat, frequency_0) for imp_mat in imp_mats_0
+    ]
+    yearly_eai_exp_1 = [
+        ImpactCalc.eai_exp_from_mat(imp_mat, frequency_1) for imp_mat in imp_mats_1
+    ]
+    return yearly_eai_exp_0, yearly_eai_exp_1
+
+def calc_yearly_rps(imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_periods):
+    rp_0 = [
+        calc_freq_curve(imp_mat, frequency_0, return_periods) for imp_mat in imp_mats_0
+    ]
+    rp_1 = [
+        calc_freq_curve(imp_mat, frequency_1, return_periods) for imp_mat in imp_mats_1
+    ]
+    return rp_0, rp_1
+
+def calc_yearly_aais(yearly_eai_exp_0, yearly_eai_exp_1):
+    yearly_aai_0 = [
+            ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_0
+    ]
+    yearly_aai_1 = [
+            ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_1
+    ]
+    return yearly_aai_0, yearly_aai_1
+
+
+def bayesian_mixer(start_snapshot, end_snapshot, metrics=["eai", "aai", "rp"], return_periods=[100, 500, 1000]):
+        # 1. Interpolate in between years
+        prop_H0, prop_H1 = bayesian_viktypliers(start_snapshot.year, end_snapshot.year)
+        imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = snapshot_combinaisons(
+            start_snapshot, end_snapshot
+        )
+        frequency_0 = start_snapshot.hazard.frequency
+        frequency_1 = end_snapshot.hazard.frequency
+
+        imp_mats_0 = interpolate_imp_mat(imp_E0H0, imp_E1H0, start_snapshot.year, end_snapshot.year)
+        imp_mats_1 = interpolate_imp_mat(imp_E0H1, imp_E1H1, start_snapshot.year, end_snapshot.year)
+
+        yearly_eai_exp_0, yearly_eai_exp_1 = calc_yearly_eais(imp_mats_0, imp_mats_1, frequency_0, frequency_1)
+
+        res = []
+
+        if "eai" in metrics:
+            yearly_eai = (
+                np.multiply(prop_H0.reshape(-1,1), yearly_eai_exp_0) +
+                np.multiply(prop_H1.reshape(-1,1), yearly_eai_exp_1)
+            )
+            eai_df = pd.DataFrame(index=list(range(start_snapshot.year, end_snapshot.year+1)),
+                                  data=yearly_eai)
+            eai_df["group"] = pd.NA
+            eai_df["metric"] = "eai"
+            eai_df.reset_index(inplace=True)
+            res.append(eai_df)
+
+        if "aai" in metrics:
+            yearly_aai_0, yearly_aai_1 = calc_yearly_aais(yearly_eai_exp_0, yearly_eai_exp_1)
+            yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
+            aai_df = pd.DataFrame(index=list(range(start_snapshot.year, end_snapshot.year+1)),
+                                  data=yearly_aai)
+            aai_df["group"] = pd.NA
+            aai_df["metric"] = "aai"
+            aai_df.reset_index(inplace=True)
+            res.append(aai_df)
+
+        if "rp" in metrics:
+            tmp = []
+            for rp in return_periods:
+                rp_0, rp_1 = calc_yearly_rps(imp_mats_0, imp_mats_1, frequency_0, frequency_1, rp)
+                yearly_rp = np.multiply(prop_H0.reshape(-1,1), rp_0) + np.multiply(prop_H1.reshape(-1,1), rp_1)
+                tmp_df = pd.DataFrame(index=list(range(start_snapshot.year, end_snapshot.year+1)),
+                                      data=yearly_rp)
+                tmp_df["group"] = pd.NA
+                tmp_df["metric"] = f"rp_{rp}"
+                tmp_df.reset_index(inplace=True)
+                tmp.append(tmp_df)
+            rp_df = pd.concat(tmp)
+            res.append(rp_df)
+
+        return pd.concat(res)
+
 @dataclass
 class Snapshot:
     exposure: Exposures
@@ -174,43 +295,6 @@ class CalcImpactsSnapshots:
                 snapshot.exposure, self.snapshots.impfset, snapshot.hazard
             ).impact()
         return impacts_list
-
-    # Calculate the eai_exp for each year
-    def interpolate_eai_exp(self, imp0, imp1, start_year, end_year, frequency):
-        yearly_eai_exp = []
-        for year in range(start_year, end_year + 1):
-            imp_mat_intrpl = interpolate_sm(
-                imp0.imp_mat, imp1.imp_mat, year, start_year, end_year
-            )
-            # sum across the rows of the sparse matrix
-            eai_exp = ImpactCalc.eai_exp_from_mat(imp_mat_intrpl, frequency)
-            yearly_eai_exp.append(eai_exp)
-        return yearly_eai_exp
-
-    def bayesian_mixer(self, start_snapshot, end_snapshot):
-        # 1. Interpolate in between years
-        prop_H0, prop_H1 = bayesian_viktypliers(start_snapshot.year, end_snapshot.year)
-        imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = snapshot_combinaisons(
-            start_snapshot, end_snapshot
-        )
-        frequency0 = start_snapshot.hazard.frequency
-        frequency1 = end_snapshot.hazard.frequency
-
-        yearly_eai_exp_0 = self.interpolate_eai_exp(
-            imp_E0H0, imp_E1H0, start_snapshot.year, end_snapshot.year, frequency0
-        )
-        yearly_eai_exp_1 = self.interpolate_eai_exp(
-            imp_E0H1, imp_E1H1, start_snapshot.year, end_snapshot.year, frequency1
-        )
-        yearly_aai_0 = [
-            ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_0
-        ]
-        yearly_aai_1 = [
-            ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_1
-        ]
-        # Average Annual Impact across the years
-        yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
-        return yearly_aai
 
     def calc_all_years(self):
         all_yearly_aai = []
