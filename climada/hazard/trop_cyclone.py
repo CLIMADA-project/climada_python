@@ -1304,7 +1304,7 @@ def _compute_angular_windspeeds_h10(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
     close_centr_msk: np.ndarray,
-    cyclostrophic: bool = False,
+    cyclostrophic: bool = True,
     gradient_to_surface_winds: float = DEF_GRADIENT_TO_SURFACE_WINDS,
     rho_air_const: float = DEF_RHO_AIR,
     vmax_from_cen: bool = True,
@@ -1324,7 +1324,7 @@ def _compute_angular_windspeeds_h10(
     close_centr_msk : np.ndarray of shape (npositions, ncentroids)
         For each track position one row indicating which centroids are within reach.
     cyclostrophic : bool, optional
-        This parameter is ignored because this model is always cyclostrophic. Default: False
+        This parameter is ignored because this model is always cyclostrophic. Default: True
     gradient_to_surface_winds : float, optional
         The gradient-to-surface wind reduction factor to use. the wind profile is computed on the
         surface level, but the clipping interval of the B-value depends on this factor.
@@ -1348,6 +1348,11 @@ def _compute_angular_windspeeds_h10(
     ndarray of shape (npositions, ncentroids)
         containing the magnitude of the angular windspeed per track position per centroid location
     """
+    if not cyclostrophic:
+        LOGGER.debug(
+            'The function _compute_angular_windspeeds_h10 was called with parameter '
+            '"cyclostrophic" equal to false. Please be aware that this setting is ignored as the'
+            ' Holland et al. 2010 model is always cyclostrophic.')
     _rho_air(si_track, rho_air_const)
     if vmax_from_cen:
         _bs_holland_2008(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
