@@ -90,7 +90,7 @@ class TestChecks(unittest.TestCase):
     def test_prune_csr_matrix(self):
         """Check that csr matrices are brought into canonical format"""
         # Non-canonical: First three data points will be summed onto the first matrix
-        # entry, forth will be an explicit zero entry
+        # entry, fourth will be an explicit zero entry
         data = [0, 1, 2, 0]
         indices = [0, 0, 0, 1]
         indptr = [0, 4, 4, 4]
