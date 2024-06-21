@@ -1080,12 +1080,12 @@ class HazardIO():
                 band_name = f"Exceedance intensity for RP {return_periods[band]} years"
                 dst.set_band_description(band + 1, band_name)   
                 
-    def write_raster_local_return_periods(self, hazard_intensities, filename, output_resolution=None):
+    def write_raster_local_return_periods(self, threshold_intensities, filename, output_resolution=None):
         """Write local return periods map as GeoTIFF file.
     
         Parameters
         ----------
-        hazard_intensities: np.array
+        threshold_intensities: np.array
             Hazard intensities to consider for calculating return periods.
         filename: str
             File name to write in tif format.
@@ -1095,11 +1095,11 @@ class HazardIO():
         """
         
         # Calculate the local return periods
-        variable = self.local_return_period(hazard_intensities)
+        variable = self.local_return_period(threshold_intensities)
         
         # Obtain the meta information for the raster file
         meta = self.centroids.get_meta(resolution=output_resolution)
-        meta.update(driver='GTiff', dtype=rasterio.float32, count=len(hazard_intensities))
+        meta.update(driver='GTiff', dtype=rasterio.float32, count=len(threshold_intensities))
         res = meta["transform"][0]  # resolution from lon coordinates
     
         if meta['height'] * meta['width'] == self.centroids.size:
@@ -1109,7 +1109,7 @@ class HazardIO():
             geometry = self.centroids.get_pixel_shapes(res=res)
             with rasterio.open(filename, 'w', **meta) as dst:
                 LOGGER.info('Writing %s', filename)
-                for i_ev in range(len(hazard_intensities)):
+                for i_ev in range(len(threshold_intensities)):
                     raster = rasterio.features.rasterize(
                         (
                             (geom, value)
@@ -1125,21 +1125,21 @@ class HazardIO():
                     dst.write(raster.astype(meta['dtype']), i_ev + 1)
     
                     # Set the band description
-                    band_name = f"RP of intensity {hazard_intensities[i_ev]} {self.units}"
+                    band_name = f"RP of intensity {threshold_intensities[i_ev]} {self.units}"
                     dst.set_band_description(i_ev + 1, band_name)
             
 
-    def write_netcdf_local_return_periods(self, hazard_intensities, filename):
+    def write_netcdf_local_return_periods(self, threshold_intensities, filename):
         """Generates local return period data and saves it into a NetCDF file.
 
         Parameters
         ----------
-        hazard_intensities: np.array
+        threshold_intensities: np.array
             Hazard intensities to consider for calculating return periods.
         filename: str
             Path and name of the file to write the NetCDF data.
         """
-        return_periods = self.local_return_period(hazard_intensities)
+        return_periods = self.local_return_period(threshold_intensities)
         coords = self.centroids.coord
         
         with nc.Dataset(filename, 'w', format='NETCDF4') as dataset:
@@ -1152,7 +1152,7 @@ class HazardIO():
             latitudes.units = 'degrees_north'
             longitudes.units = 'degrees_east'
     
-            for i, intensity in enumerate(hazard_intensities):
+            for i, intensity in enumerate(threshold_intensities):
                 dataset_name = f'return_period_intensity_{int(intensity)}'
                 return_period_var = dataset.createVariable(dataset_name, 'f4', ('centroids',))
                 return_period_var[:] = return_periods[i, :]

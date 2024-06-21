@@ -450,12 +450,12 @@ class Hazard(HazardIO, HazardPlot):
             LOGGER.debug('Resetting event_id.')
             self.event_id = np.arange(1, self.event_id.size + 1)
 
-    def local_return_period(self, hazard_intensities):
+    def local_return_period(self, threshold_intensities):
         """Compute local return periods for given hazard intensities.
     
         Parameters
         ----------
-        hazard_intensities : np.array
+        threshold_intensities : np.array
             Hazard intensities to consider.
     
         Returns
@@ -463,11 +463,11 @@ class Hazard(HazardIO, HazardPlot):
         return_periods : np.array
             Array containing computed local return periods for given hazard intensities.
         """
-        # Ensure hazard_intensities is a numpy array
-        hazard_intensities = np.array(hazard_intensities)
+        # Ensure threshold_intensities is a numpy array
+        threshold_intensities = np.array(threshold_intensities)
         
         num_cen = self.intensity.shape[1]
-        return_periods = np.zeros((len(hazard_intensities), num_cen))  # Adjusted for 2D structure
+        return_periods = np.zeros((len(threshold_intensities), num_cen))  # Adjusted for 2D structure
         
         # Process each centroid in chunks as in local_exceedance_inten
         cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
@@ -478,13 +478,13 @@ class Hazard(HazardIO, HazardPlot):
         chk = -1
         for chk in range(int(num_cen / cen_step)):
             self._loc_return_period(
-                hazard_intensities,
+                threshold_intensities,
                 self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
                 return_periods[:, chk * cen_step:(chk + 1) * cen_step])
         
         if (chk + 1) * cen_step < num_cen:  # Check if there's a remainder
             self._loc_return_period(
-                hazard_intensities,
+                threshold_intensities,
                 self.intensity[:, (chk + 1) * cen_step:].toarray(),
                 return_periods[:, (chk + 1) * cen_step:])
         
@@ -654,12 +654,12 @@ class Hazard(HazardIO, HazardPlot):
                 inten_sort[:, cen_idx], freq_sort[:, cen_idx],
                 self.intensity_thres, return_periods)
             
-    def _loc_return_period(self, hazard_intensities, inten, return_periods):
+    def _loc_return_period(self, threshold_intensities, inten, return_periods):
         """Compute local return periods for given hazard intensities for a specific chunk of data.
     
         Parameters
         ----------
-        hazard_intensities: np.array
+        threshold_intensities: np.array
             Given hazard intensities for which to calculate return periods.
         inten: np.array
             The intensity array for a specific chunk of data.
@@ -676,7 +676,7 @@ class Hazard(HazardIO, HazardPlot):
             sorted_inten_cen = inten_sort[:, cen_idx]
             cum_freq_cen = freq_sort[:, cen_idx]
     
-            for i, intensity in enumerate(hazard_intensities):
+            for i, intensity in enumerate(threshold_intensities):
                 # Find the first occurrence where the intensity is less than the sorted intensities
                 exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='right')
     

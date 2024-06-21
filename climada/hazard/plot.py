@@ -68,12 +68,12 @@ class HazardPlot():
                                         figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
         return axis, inten_stats
     
-    def plot_local_rp(self, hazard_intensities, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, cmap = 'viridis_r', **kwargs):
+    def plot_local_rp(self, threshold_intensities, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, cmap = 'viridis_r', **kwargs):
         """Plot hazard local return periods for given hazard intensities.
     
         Parameters
         ----------
-        hazard_intensities: np.array
+        threshold_intensities: np.array
             Hazard intensities to consider for calculating return periods.
         smooth: bool, optional
             Smooth plot to plot.RESOLUTION x plot.RESOLUTION.
@@ -97,10 +97,10 @@ class HazardPlot():
             self.centroids.lat = ygrid.flatten()
             self.centroids.geometry = gpd.GeoSeries(crs=self.centroids.get_meta()['crs'])
         ###
-        return_periods = self.local_return_period(hazard_intensities)
+        return_periods = self.local_return_period(threshold_intensities)
         colbar_name = 'Return Period (years)'
         title = list()
-        for haz_int in hazard_intensities:
+        for haz_int in threshold_intensities:
             title.append('Intensity: ' + f'{haz_int} {self.units}')
         axis = u_plot.geo_im_from_array(return_periods, self.centroids.coord,
                                         colbar_name, title, smooth=smooth, axes=axis,

@@ -723,6 +723,23 @@ class TestWriteExceedAndRP(unittest.TestCase):
         )
         self.temp_dir.cleanup()
     
+    def test_write_raster_local_return_periods_not_raster(self):
+        """Test write TIFF file from local return periods intensity"""
+        self.temp_dir = TemporaryDirectory()
+        self.test_file_path = os.path.join(self.temp_dir.name, 'test_file.tif')
+
+        haz = dummy_hazard()
+        haz.write_raster_local_return_periods([.1, 1.], filename = self.test_file_path)
+        raster = rasterio.open(self.test_file_path)
+        dataarray = np.array([ raster.read(i + 1) for i in range(raster.count)])
+
+        np.testing.assert_array_almost_equal(
+            dataarray.max(axis=1),
+            haz.local_return_period([.1, 1.]),
+            decimal=4
+        )
+        self.temp_dir.cleanup()
+    
     def test_write_netcdf_local_return_periods(self):
         """Test write netCDF file from local return periods intensity"""
         self.temp_dir = TemporaryDirectory()
