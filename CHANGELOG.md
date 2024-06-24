@@ -22,6 +22,7 @@ Code freeze date: YYYY-MM-DD
 CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull/872)
 - Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 - Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
+- Update the Holland et al. 2010 TC windfield model and introduce `model_kwargs` parameter to adjust model parameters [#846](https://github.com/CLIMADA-project/climada_python/pull/846)
 - Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
 
 ### Fixed
