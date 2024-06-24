@@ -27,6 +27,7 @@ from typing import Any, Literal, Union
 import warnings
 
 import h5py
+import cartopy
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
 import geopandas as gpd
@@ -479,11 +480,13 @@ class Centroids():
             )
         return sel_cen
     
-    def plot(self, figsize=(9, 13), *args, **kwargs):
+    def plot(self, axis=None, figsize=(9, 13), *args, **kwargs):
         """Plot centroids geodataframe using geopandas and cartopy plotting functions.
 
         Parameters
         ----------
+        axis: optional
+            user-defined cartopy.mpl.geoaxes.GeoAxes instance
         figsize: (float, float), optional
             figure size for plt.subplots
             The default is (9, 13)
@@ -496,7 +499,14 @@ class Centroids():
         -------
         ax : cartopy.mpl.geoaxes.GeoAxes instance
         """
-        fig, axis = plt.subplots(figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()})
+        if axis == None:
+            fig, axis = plt.subplots(figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()})
+        if type(axis) != cartopy.mpl.geoaxes.GeoAxes:
+            raise AttributeError(
+                f"The axis provided is of type: {type(axis)} "
+                "The function requires a cartopy.mpl.geoaxes.GeoAxes."
+            )
+
         axis.add_feature(cfeature.BORDERS)
         axis.add_feature(cfeature.COASTLINE)
         axis.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
@@ -504,9 +514,9 @@ class Centroids():
         if self.gdf.crs != DEF_CRS:
             copy_gdf = copy.deepcopy(self)
             copy_gdf.to_default_crs()
-            copy_gdf.gdf.plot(ax=axis, *args, **kwargs)
+            copy_gdf.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
         else:
-            self.gdf.plot(ax=axis, *args, **kwargs)
+            self.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
         return axis
 
     def set_region_id(self, level='country', overwrite=False):
