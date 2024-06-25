@@ -512,7 +512,7 @@ class Centroids():
         axis.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
 
         if self.gdf.crs != DEF_CRS:
-            centroids_plot = to_default_crs(inplace=False)
+            centroids_plot = self.to_default_crs(inplace=False)
             centroids_plot.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
         else:
             self.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
