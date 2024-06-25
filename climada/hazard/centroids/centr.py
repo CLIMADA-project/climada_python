@@ -512,9 +512,8 @@ class Centroids():
         axis.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
 
         if self.gdf.crs != DEF_CRS:
-            copy_gdf = copy.deepcopy(self)
-            copy_gdf.to_default_crs()
-            copy_gdf.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
+            centroids_plot = to_default_crs(inplace=False)
+            centroids_plot.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
         else:
             self.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
         return axis
