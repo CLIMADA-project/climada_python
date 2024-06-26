@@ -185,7 +185,7 @@ def get_eai_exp(eai_exp, group_map):
         eai_region_id[group_name] = (np.sum(eai_exp[:,exp_indices],axis=1))
     return eai_region_id
 
-def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups=None, all_groups_name="all"):
+def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups=None, all_groups_name=pd.NA):
     # 1. Interpolate in between years
     prop_H0, prop_H1 = bayesian_viktypliers(start_snapshot.year, end_snapshot.year)
     imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = snapshot_combinaisons(
