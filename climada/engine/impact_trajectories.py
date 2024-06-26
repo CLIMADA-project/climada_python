@@ -304,7 +304,9 @@ class CalcImpactsSnapshots:
         for start_snapshot, end_snapshot in pairwise(self.snapshots.data):
             results_df.append(bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods))
         results_df = pd.concat(results_df,axis=0)
-        results_df.drop_duplicates()
+
+        # duplicate rows arise from overlapping end and start if there's more than two snapshots
+        results_df.drop_duplicates(inplace=True)
         return results_df[["group","year","metric","result"]]
 
 
