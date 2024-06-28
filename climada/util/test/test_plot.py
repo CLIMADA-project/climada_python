@@ -25,6 +25,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colormaps as cm
 import cartopy.crs as ccrs
+from geopandas import GeoDataFrame
+from shapely import Point
 
 import climada.util.plot as u_plot
 
@@ -150,6 +152,20 @@ class TestPlots(unittest.TestCase):
         self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
+    def test_subplots_from_gdf(self):
+        return_periods = GeoDataFrame(
+            data = ((2., 5.), (3., 6.), (None, 2.), (1., 7.)),
+            columns = ('10.0', '20.0')
+        )
+        return_periods['geometry'] = (Point(45., 26.), Point(46., 26.), Point(45., 27.), Point(46., 27.))
+        return_periods.columns.name = (('name', 'Return Period'),
+                        ('unit', 'Years'),
+                        ('col_name', 'Threshold Intensity'),
+                        ('col_unit', 'm/s'))
+        (axis1, axis2) = u_plot.subplots_from_gdf(return_periods)
+        self.assertEqual('Threshold Intensity: 10.0 m/s', axis1.get_title())
+        self.assertEqual('Threshold Intensity: 20.0 m/s', axis2.get_title())
+        plt.close()
 
 # Execute Tests
 if __name__ == "__main__":

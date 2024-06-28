@@ -1022,6 +1022,27 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(inten_stats[1][66], 70.608592953031405)
         self.assertAlmostEqual(inten_stats[3][33], 88.510983305123631)
         self.assertAlmostEqual(inten_stats[2][99], 79.717518054203623)
+        
+    def test_local_return_period(self):
+        """Compare local return periods against reference."""
+        haz = dummy_hazard()
+        haz.intensity = sparse.csr_matrix([
+            [1., 5., 1.],
+            [2., 2., 0.],
+            [3., 2., 1.],
+            [3., 2., 1.]
+            ])
+        haz.frequency = np.full(4, 1.)
+        threshold_intensities = np.array([1., 2., 4.])
+        return_stats = haz.local_return_period(threshold_intensities)
+        np.testing.assert_allclose(
+            return_stats[return_stats.columns[1:]].values.T,
+            np.array([
+                [0.25, 0.25, 0.33333333],
+                [0.33333333, 0.25, np.nan],
+                [np.nan, 1., np.nan]
+            ])
+        )
 
 
 class TestYearset(unittest.TestCase):

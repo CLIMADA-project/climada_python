@@ -44,6 +44,7 @@ from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from rasterio.crs import CRS
 import requests
+from geopandas import GeoDataFrame
 
 from climada.util.constants import CMAP_EXPOSURES, CMAP_CAT, CMAP_RASTER
 from climada.util.files_handler import to_list
@@ -874,3 +875,58 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
     # Draw legend if we need
     if legend:
         ax.legend(bars, data.keys())
+
+
+def subplots_from_gdf(gdf, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, **kwargs):
+        """Plot hazard local return periods for given hazard intensities.
+    
+        Parameters
+        ----------
+        gdf: gpd.GeoDataFrame
+            return periods per threshold intensity
+        smooth: bool, optional
+            Smooth plot to plot.RESOLUTION x plot.RESOLUTION. Default is True
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            Axis to use. Default is None
+        figsize: tuple, optional
+            Figure size for plt.subplots. Default is (9, 13)
+        adapt_fontsize: bool, optional
+            If set to true, the size of the fonts will be adapted to the size of the figure.
+            Otherwise the default matplotlib font size is used. Default is True.
+        kwargs: optional
+            Arguments for pcolormesh matplotlib function used in event plots.
+    
+        Returns
+        -------
+        axis: matplotlib.axes._subplots.AxesSubplot
+            Matplotlib axis with the plot.
+        """
+        if not isinstance(gdf, GeoDataFrame):
+            raise ValueError("gdf is not a GeoDataFrame")
+        gdf = gdf[['geometry', *[col for col in gdf.columns if col != 'geometry']]]
+        try:
+            meta = {key: val for key, val in gdf.columns.name}
+            colbar_name = f"{meta['name']} ({meta['unit']})"
+            title_subplots = [f"{meta['col_name']}: {thres_inten} {meta['col_unit']}" 
+                              for thres_inten in gdf.columns[1:]]
+            
+            # change default plot kwargs if plotting return periods
+            if meta['name'] == 'Return Period':
+                if 'camp' not in kwargs.keys():
+                    kwargs.update({'cmap': 'viridis_r'})
+                if 'norm' not in kwargs.keys():
+                    kwargs.update(
+                        {'norm': mpl.colors.LogNorm(vmin=gdf.values[:,1:].min(), vmax=gdf.values[:,1:].max()),
+                        'vmin': None, 'vmax': None}
+                    )
+        except:
+            colbar_name, title_subplots = None, [f"{col}" for col in gdf.columns[1:]] 
+        
+        axis = geo_im_from_array(
+            gdf.values[:,1:].T, 
+            gdf.geometry.get_coordinates().values[:,::-1],
+            colbar_name, title_subplots,
+            smooth=smooth, axes=axis,
+            figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
+        
+        return axis
