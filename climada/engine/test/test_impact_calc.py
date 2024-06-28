@@ -70,6 +70,16 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(HAZ.event_id, icalc.hazard.event_id)
         np.testing.assert_array_equal(HAZ.event_name, icalc.hazard.event_name)
 
+        # Test check matrices
+        hazard = deepcopy(HAZ)
+        hazard.intensity[0, hazard.intensity.indices[0]] = 0
+        hazard.fraction = sparse.csr_matrix(np.ones((1, 1)))
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            ImpactCalc(ENT.exposures, ENT.impact_funcs, hazard)
+            self.assertEqual(hazard.intensity.nnz, HAZ.intensity.nnz - 1)  # was pruned
+
     def test_metrics(self):
         """Test methods to get impact metrics"""
         mat = sparse.csr_matrix(np.array(

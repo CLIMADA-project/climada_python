@@ -49,6 +49,23 @@ class Hazard(HazardIO, HazardPlot):
     Contains events of some hazard type defined at centroids. Loads from
     files with format defined in FILE_EXT.
 
+    Attention
+    ---------
+    This class uses instances of
+    `scipy.sparse.csr_matrix
+    <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html>`_
+    to store :py:attr:`intensity` and :py:attr:`fraction`. This data types comes with
+    its particular pitfalls. Depending on how the objects are instantiated and modified,
+    a matrix might end up in a "non-canonical" state. In this state, its ``.data``
+    attribute does not necessarily represent the values apparent in the final matrix.
+    In particular, a "non-canonical" matrix may store "duplicates", i.e. multiple values
+    that map to the same matrix position. This is supported, and the default behavior is
+    to sum up these values. To avoid any inconsistencies, call :py:meth:`check_matrices`
+    once you inserted all data. This will explicitly sum all values at the same matrix
+    position and eliminate explicit zeros. This class will call
+    :py:func:`climada.util.checker.prune_csr_matrix` whenever a csr_matrix is assigned
+    to one of the aforementioned attributes.
+
     Attributes
     ----------
     haz_type : str
@@ -90,8 +107,8 @@ class Hazard(HazardIO, HazardPlot):
                   'centroids',
                   'event_id',
                   'frequency',
-                  'intensity',
-                  'fraction'
+                  '_intensity',
+                  '_fraction'
                   }
     """Name of the variables needed to compute the impact. Types: scalar, str,
     list, 1dim np.array of size num_events, scipy.sparse matrix of shape
@@ -186,10 +203,57 @@ class Hazard(HazardIO, HazardPlot):
             np.empty((0, 0)))  # events x centroids
         self.fraction = fraction if fraction is not None else sparse.csr_matrix(
             self.intensity.shape)  # events x centroids
+        self.check_matrices()
 
         self.pool = pool
         if self.pool:
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+
+    @property
+    def intensity(self) -> sparse.csr_matrix:
+        """Hazard intensity matrix"""
+        return self._intensity
+
+    @intensity.setter
+    def intensity(self, value: sparse.csr_matrix):
+        """Set intensity matrix to new value"""
+        self._intensity = value
+        u_check.prune_csr_matrix(self._intensity)
+
+    @property
+    def fraction(self) -> sparse.csr_matrix:
+        """Hazard fraction matrix"""
+        return self._fraction
+
+    @fraction.setter
+    def fraction(self, value: sparse.csr_matrix):
+        """Set fraction matrix to new value"""
+        self._fraction = value
+        u_check.prune_csr_matrix(self._fraction)
+
+    def check_matrices(self):
+        """Ensure that matrices are consistently shaped and stored
+
+        See Also
+        --------
+        :py:func:`climada.util.checker.prune_csr_matrix`
+
+        Todo
+        -----
+        * Check consistency with centroids
+
+        Raises
+        ------
+        ValueError
+            If matrices are ill-formed or ill-shaped in relation to each other
+        """
+        u_check.prune_csr_matrix(self.intensity)
+        u_check.prune_csr_matrix(self.fraction)
+        if self.fraction.nnz > 0:
+            if self.intensity.shape != self.fraction.shape:
+                raise ValueError(
+                    "Intensity and fraction matrices must have the same shape"
+                )
 
     @classmethod
     def get_default(cls, attribute):
