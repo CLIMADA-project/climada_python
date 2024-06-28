@@ -105,6 +105,14 @@ class TestPlotter(unittest.TestCase):
         (axis1, axis2), _ = hazard.plot_rp_intensity([25, 50])
         self.assertEqual('Return period: 25 years', axis1.get_title())
         self.assertEqual('Return period: 50 years', axis2.get_title())
+    
+    def test_plot_local_rp(self):
+        """"Plot local return period maps for different hazard intensities"""
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+        (axis1, axis2), return_stats = hazard.plot_local_rp([10., 20.])
+        self.assertEqual('Intensity: 10.0 m/s', axis1.get_title())
+        self.assertEqual('Intensity: 20.0 m/s', axis2.get_title())
+        np.testing.assert_array_equal(return_stats.shape, (2, 100))
 
     def test_exposures_value_pass(self):
         """Plot exposures values."""
