@@ -27,6 +27,7 @@ import logging
 from typing import Optional,List
 import warnings
 
+import geopandas as gpd
 import numpy as np
 from pathos.pools import ProcessPool as Pool
 from scipy import sparse
@@ -460,9 +461,16 @@ class Hazard(HazardIO, HazardPlot):
     
         Returns
         -------
-        return_periods : np.array
-            Array containing computed local return periods for given hazard intensities.
+        gdf : gpd.GeoDataFrame
+            GeoDataFrame containing return periods for given threshold intensity
+            description of units of values and threshold intensities in gdf.columns.name
         """
+        #check frequency unit
+        if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
+            LOGGER.warning("The Hazard's frequency unit is %s and not %s which "
+                "most likely leads to incorrect results",
+                self.frequency_unit, u_const.DEF_FREQ_UNIT)
+
         # Ensure threshold_intensities is a numpy array
         threshold_intensities = np.array(threshold_intensities)
         
@@ -480,8 +488,17 @@ class Hazard(HazardIO, HazardPlot):
             return_periods[:, start_col:end_col] = self._loc_return_period(
                 threshold_intensities,
                 self.intensity[:, start_col:end_col].toarray())
-            
-        return return_periods
+        
+        # create the output GeoDataFrame
+        gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
+        col_names = [f'{tresh_inten}' for tresh_inten in threshold_intensities]
+        gdf.columns.name = (('name', 'Return Period'),
+                    ('unit', 'Years'),
+                    ('col_name', 'Threshold Intensity'),
+                    ('col_unit', self.units))
+        gdf[col_names] = return_periods.T
+
+        return gdf
     
     def get_event_id(self, event_name):
         """Get an event id from its name. Several events might have the same
