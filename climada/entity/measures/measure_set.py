@@ -180,3 +180,5 @@ class MeasureSet():
             hazard_change=comb_haz_map, 
             combo = names
         )
+
+    
