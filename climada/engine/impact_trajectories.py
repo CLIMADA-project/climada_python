@@ -179,8 +179,13 @@ def calc_yearly_aais(yearly_eai_exp_0, yearly_eai_exp_1):
     ]
     return yearly_aai_0, yearly_aai_1
 
+def get_eai_exp(eai_exp, group_map):
+    eai_region_id = {}
+    for group_name, exp_indices in group_map.items():
+        eai_region_id[group_name] = (np.sum(eai_exp[:,exp_indices],axis=1))
+    return eai_region_id
 
-def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods):
+def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups=None, all_groups_name=pd.NA):
     # 1. Interpolate in between years
     prop_H0, prop_H1 = bayesian_viktypliers(start_snapshot.year, end_snapshot.year)
     imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = snapshot_combinaisons(
@@ -198,28 +203,13 @@ def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods):
 
     year_idx = pd.Index(list (range(start_snapshot.year, end_snapshot.year+1)), name="year" )
 
-    # For the at_event needs rework
-    # if "eai" in metrics:
-    #     yearly_eai = (
-    #         np.multiply(prop_H0.reshape(-1,1), yearly_eai_exp_0) +
-    #         np.multiply(prop_H1.reshape(-1,1), yearly_eai_exp_1)
-    #     )
-    #     eai_df = pd.DataFrame(index=year_idx,
-    #                           data=yearly_eai,
-    #                           columns=["result"]
-    #                           )
-    #     eai_df["group"] = pd.NA
-    #     eai_df["metric"] = "eai"
-    #     eai_df.reset_index(inplace=True)
-    #     res.append(eai_df)
-
     if "aai" in metrics:
         yearly_aai_0, yearly_aai_1 = calc_yearly_aais(yearly_eai_exp_0, yearly_eai_exp_1)
         yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
         aai_df = pd.DataFrame(index=year_idx,
                               columns=["result"],
                               data=yearly_aai)
-        aai_df["group"] = pd.NA
+        aai_df["group"] = all_groups_name
         aai_df["metric"] = "aai"
         aai_df.reset_index(inplace=True)
         res.append(aai_df)
@@ -231,9 +221,22 @@ def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods):
                                   columns=return_periods,
                                   data=yearly_rp).melt(value_name="result", var_name="rp", ignore_index=False)
         rp_df.reset_index(inplace=True)
-        rp_df["group"] = pd.NA
+        rp_df["group"] = all_groups_name
         rp_df["metric"] = f"rp_"+rp_df["rp"].astype(str)
         res.append(rp_df)
+
+    if groups is not None:
+        yearly_eai = (
+            np.multiply(prop_H0.reshape(-1,1), yearly_eai_exp_0) +
+            np.multiply(prop_H1.reshape(-1,1), yearly_eai_exp_1)
+        )
+        yearly_eai_group = get_eai_exp(yearly_eai, groups)
+        eai_group_df = pd.DataFrame(index=year_idx,
+                                    data=yearly_eai_group).melt(value_name="result",
+                                                                var_name="group", ignore_index=False)
+        eai_group_df["metric"] = "eai_group"
+        eai_group_df.reset_index(inplace=True)
+        res.append(eai_group_df)
 
     return pd.concat(res,axis=0)
 
@@ -299,11 +302,18 @@ class CalcImpactsSnapshots:
             ).impact()
         return impacts_list
 
-    def calc_all_years(self, metrics=["eai", "aai", "rp"], return_periods=[100, 500, 1000]):
+    def calc_all_years(self, metrics=["eai", "aai", "rp"], return_periods=[100, 500, 1000], compute_groups=False):
         results_df = []
+        if compute_groups:
+            groups = self.group_map_exp_dict
+        else:
+            groups = None
         for start_snapshot, end_snapshot in pairwise(self.snapshots.data):
-            results_df.append(bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods))
+            results_df.append(bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups))
         results_df = pd.concat(results_df,axis=0)
+
+        # duplicate rows arise from overlapping end and start if there's more than two snapshots
+        results_df.drop_duplicates(inplace=True)
         return results_df[["group","year","metric","result"]]
 
 
