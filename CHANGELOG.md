@@ -28,6 +28,8 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 ### Fixed
 
 - Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
+- Allow downgrading the Python bugfix version to improve environment compatibility [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
+- Fix broken links in `CONTRIBUTING.md` [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
 
 ### Added
 
