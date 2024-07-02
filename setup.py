@@ -57,7 +57,7 @@ setup(
 
     keywords='climate adaptation',
 
-    python_requires=">=3.9,<3.12",
+    python_requires=">=3.10,<3.13",
 
     install_requires=[
         'bottleneck',
