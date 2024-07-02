@@ -1019,7 +1019,7 @@ class TestImpactH5IO(unittest.TestCase):
 
     def test_write_hdf5_type_fail(self):
         """Test that writing attributes with varying types results in an error"""
-        self.impact.event_name = [1, "a", 1.0, "b", "c", "d"]
+        self.impact.event_name = ["a", 1, 1.0, "b", "c", "d"]
         with self.assertRaisesRegex(
             TypeError, "'event_name' must be a list of strings"
         ):
