@@ -937,11 +937,6 @@ class Impact():
 
         The impact matrix can be stored in a sparse or dense format.
 
-        Notes
-        -----
-        This writer does not support attributes with variable types. Please make sure
-        that ``event_name`` is a list of equally-typed values, e.g., all ``str``.
-
         Parameters
         ----------
         file_path : str or Path
@@ -950,6 +945,11 @@ class Impact():
             If ``True``, write the impact matrix as dense matrix that can be more easily
             interpreted by common H5 file readers but takes up (vastly) more space.
             Defaults to ``False``.
+
+        Raises
+        ------
+        TypeError
+            If :py:attr:`event_name` does not contain strings exclusively.
         """
         # Define writers for all types (will be filled later)
         type_writers = dict()
@@ -983,7 +983,7 @@ class Impact():
 
         def _str_type_helper(values: Collection):
             """Return string datatype if we assume 'values' contains strings"""
-            if isinstance(next(iter(values)), str):
+            if all((isinstance(val, str) for val in values)):
                 return h5py.string_dtype()
             return None
 
@@ -1037,6 +1037,8 @@ class Impact():
             # Now write all attributes
             # NOTE: Remove leading underscore to write '_tot_value' as regular attribute
             for name, value in self.__dict__.items():
+                if name == "event_name" and _str_type_helper(value) is None:
+                    raise TypeError("'event_name' must be a list of strings")
                 write(file, name.lstrip("_"), value)
 
     def write_sparse_csr(self, file_name):
@@ -1240,10 +1242,18 @@ class Impact():
             ).intersection(file.keys())
             kwargs.update({attr: file[attr][:] for attr in array_attrs})
 
-            # Special handling for 'event_name' because it's a list of strings
+            # Special handling for 'event_name' because it should be a list of strings
             if "event_name" in file:
                 # pylint: disable=no-member
-                kwargs["event_name"] = list(file["event_name"].asstr()[:])
+                try:
+                    event_name = file["event_name"].asstr()[:]
+                except TypeError:
+                    LOGGER.warning(
+                        "'event_name' is not stored as strings. Trying to decode "
+                        "values with 'str()' instead."
+                    )
+                    event_name = map(str, file["event_name"][:])
+                kwargs["event_name"] = list(event_name)
 
         # Create the impact object
         return cls(**kwargs)
