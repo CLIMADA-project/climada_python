@@ -23,7 +23,8 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 - Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
 - Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
-- `Impact.from_hdf5` now supports `event_name` data that is not strings. It will read the raw data then and issue a warning [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
+- `Impact.from_hdf5` now calls `str` on `event_name` data that is not strings, and issue a warning then [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
+- `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 
 ### Fixed
 
