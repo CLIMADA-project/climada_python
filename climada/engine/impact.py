@@ -1037,6 +1037,8 @@ class Impact():
             # Now write all attributes
             # NOTE: Remove leading underscore to write '_tot_value' as regular attribute
             for name, value in self.__dict__.items():
+                if name == "event_name" and _str_type_helper(value) is None:
+                    raise TypeError("'event_name' must be a list of strings")
                 write(file, name.lstrip("_"), value)
 
     def write_sparse_csr(self, file_name):
@@ -1247,10 +1249,10 @@ class Impact():
                     event_name = file["event_name"].asstr()[:]
                 except TypeError:
                     LOGGER.warning(
-                        "'event_name' could not be decoded to a string. Reading raw "
-                        "values instead."
+                        "'event_name' is not stored as strings. Trying to decode "
+                        "values with 'str()' instead."
                     )
-                    event_name = file["event_name"][:]
+                    event_name = map(str, file["event_name"][:])
                 kwargs["event_name"] = list(event_name)
 
         # Create the impact object
