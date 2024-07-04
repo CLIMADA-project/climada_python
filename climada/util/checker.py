@@ -182,8 +182,8 @@ def prune_csr_matrix(matrix: sparse.csr_matrix):
     Parameters
     ----------
     matrix : csr_matrix
-        The matrix to check. It will be modified *inplace*. No apparent matrix values
-        will change.
+        The matrix to check. It will be modified *inplace*. Its ``.data`` attribute
+        might change, but apparent matrix values will stay the same.
 
     Raises
     ------
