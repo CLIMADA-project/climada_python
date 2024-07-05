@@ -480,7 +480,7 @@ class Centroids():
             )
         return sel_cen
     
-    def plot(self, axis=None, figsize=(9, 13), *args, **kwargs):
+    def plot(self, *, axis=None, figsize=(9, 13), **kwargs):
         """Plot centroids geodataframe using geopandas and cartopy plotting functions.
 
         Parameters
