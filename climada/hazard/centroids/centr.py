@@ -513,9 +513,9 @@ class Centroids():
 
         if self.gdf.crs != DEF_CRS:
             centroids_plot = self.to_default_crs(inplace=False)
-            centroids_plot.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
+            centroids_plot.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), **kwargs)
         else:
-            self.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), *args, **kwargs)
+            self.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), **kwargs)
         return axis
 
     def set_region_id(self, level='country', overwrite=False):
