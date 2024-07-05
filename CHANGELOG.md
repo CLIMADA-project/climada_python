@@ -16,6 +16,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Use Geopandas GeoDataFrame.plot() for centroids plotting function [896](https://github.com/CLIMADA-project/climada_python/pull/896)
 - Update SALib sensitivity and sampling methods from newest version (SALib 1.4.7) [#828](https://github.com/CLIMADA-project/climada_python/issues/828)
 - Allow for computation of relative and absolute delta impacts in `CalcDeltaClimate`
 - Remove content tables and make minor improvements (fix typos and readability) in
