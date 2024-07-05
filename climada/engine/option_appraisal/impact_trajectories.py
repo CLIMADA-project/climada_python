@@ -234,7 +234,7 @@ def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups
         eai_group_df = pd.DataFrame(index=year_idx,
                                     data=yearly_eai_group).melt(value_name="result",
                                                                 var_name="group", ignore_index=False)
-        eai_group_df["metric"] = "eai_group"
+        eai_group_df["metric"] = "aai"
         eai_group_df.reset_index(inplace=True)
         res.append(eai_group_df)
 
@@ -287,9 +287,9 @@ class SnapshotsCollection:
 
 
 class CalcImpactsSnapshots:
-    def __init__(self, snapshots: SnapshotsCollection):
+    def __init__(self, snapshots: SnapshotsCollection, group_map_exp_dict=None):
         self.snapshots = snapshots
-        self.group_map_exp_dict = None
+        self.group_map_exp_dict = group_map_exp_dict
         self.yearly_eai_exp_tuples = []
 
     # An init param could be the region aggregation you want

@@ -316,7 +316,7 @@ def _plot_yearly_waterfall(waterfall_df, metric='aai', value_unit='USD'):
 
 
 
-def _plot_correct_waterfall(waterfall_df, metric='aai', value_unit='USD'):
+def _plot_two_years_waterfall(waterfall_df, metric='aai', value_unit='USD'):
     # Get the reference and future years
     ref_year = waterfall_df['year'].min()
     fut_year = waterfall_df['year'].max()
@@ -367,7 +367,6 @@ def _plot_correct_waterfall(waterfall_df, metric='aai', value_unit='USD'):
             ax.text(labels[i], cum_value, f'{values[i]:.0e}', ha='center', va='bottom', color='black')
 
     if 'measure_risk' in waterfall_df.columns:
-        averted_risk = fut_data['averted_risk']
         measure_risk = fut_data['measure_risk']
 
         # Add an arrow indicating averted risk
@@ -379,8 +378,8 @@ def _plot_correct_waterfall(waterfall_df, metric='aai', value_unit='USD'):
         ax.text(labels[-1], arrow_midpoint, 'Averted Risk', ha='center', va='center', color='white', fontsize=14)
 
     # Construct y-axis label and title based on parameters
-    value_label = f'Impact ({value_unit})'
-    title_label = f'Risk at {ref_year} and {fut_year} ({metric})'
+    value_label = f'{metric} ({value_unit})'
+    title_label = f'Risk at {ref_year} and {fut_year} ({metric}) for measure'
     
     ax.set_title(title_label)
     ax.set_ylabel(value_label)
@@ -433,6 +432,9 @@ def calc_averted_risk_metrics(arm_df):
                 sub_df = arm_df[(arm_df['group'].isna()) & (arm_df['metric'] == metric)]
             else:
                 sub_df = arm_df[(arm_df['group'] == group) & (arm_df['metric'] == metric)]
+            # If the sub_df is empty, continue to the next iteration
+            if sub_df.empty:
+                continue
 
             # Get the risk metrics for the no measure
             no_meas_df = sub_df[sub_df['measure'] == 'no_measure'].sort_values('year')
@@ -455,8 +457,8 @@ def calc_averted_risk_metrics(arm_df):
                 else:
                     averted_arm_df = pd.concat([averted_arm_df, sub_averted_risk_df], ignore_index=True)
 
-    # Reset the index
-    averted_arm_df.reset_index(drop=True, inplace=True)
+    # Drop duplicates and reset the index
+    averted_arm_df = averted_arm_df.drop_duplicates().reset_index(drop=True)
 
     return averted_arm_df
 
@@ -489,11 +491,10 @@ def plot_risk_metrics(arm_df, metric='aai', group=np.nan, averted=False, discoun
     n = max(1, len(filt_arm_df['year'].unique()) // 20)  # Display every nth year, with a maximum of 20 labels
     plt.xticks(ticks=np.arange(0, len(filt_arm_df['year'].unique()), n), rotation=45)
 
-    # Compressing the conditional logic for y-axis and title labels
-    label_prefix = ('Discounted ' if discounted else '') + ('Averted ' if averted else '')
-    value_label = f'{label_prefix}{metric} ({value_unit})'
-    plt.ylabel(value_label)
-    plt.title(f'{value_label} for each Measure over Years')
+    # More compressed label construction
+    label_prefix = f"{'Discounted ' if discounted else ''}{'Averted ' if averted else ''}"
+    plt.ylabel(f"{label_prefix}{metric} ({value_unit})")
+    plt.title(f"{label_prefix}{metric} per Year" + (f" for Group: {group}" if not pd.isna(group) else ""))
 
     # Move the legend to the right side, outside the plot
     plt.legend(title='Measure', bbox_to_anchor=(1.05, 1), loc='upper left', borderaxespad=0.)
@@ -549,6 +550,10 @@ def calc_npv_arm_df(df, disc=None):
                                      (disc_df['metric'] == metric) & 
                                      (disc_df['group'] == group_in)]
                 
+                # If the sub_df is empty, continue to the next iteration - Later rasie an error that no data is available
+                if sub_df.empty:
+                    continue
+            
                 cash_flows = sub_df['result'].values
                 start_year = sub_df['year'].min()
                 end_year = sub_df['year'].max()
@@ -568,6 +573,10 @@ def calc_npv_arm_df(df, disc=None):
     
     # Drop the 'year' column from npv_df
     npv_df = npv_df.drop(columns=['year'])
+
+    # Drop duplicates and reset the index
+    disc_df = disc_df.drop_duplicates().reset_index(drop=True)
+    npv_df = npv_df.drop_duplicates().reset_index(drop=True)
     
     return disc_df, npv_df
 
@@ -618,12 +627,18 @@ def create_indv_meas_mod_arm_df(arm_df, measure_set, consider_measure_times=True
 
                         # Get the 'no_measure' result for this year, metric, and group
                         result = arm_df.loc[mask, 'result'].values
+                        # Skip if there is no result
+                        if len(result) == 0:
+                            continue
 
                         # Create a new DataFrame for this row
                         new_row = pd.DataFrame({'measure': [measure_name], 'group': [group_in], 'year': [year], 'metric': [metric], 'result': result})
 
                         # Concatenate the new row to the DataFrame
                         time_arm_df = pd.concat([time_arm_df, new_row], ignore_index=True)
+    
+    # Remove duplicates and reset the index
+    time_arm_df = time_arm_df.drop_duplicates().reset_index(drop=True)
 
     return time_arm_df
 
@@ -689,8 +704,8 @@ def create_meas_mod_arm_df(arm_df, measure_set, consider_measure_times=True):
     # Concatenate the DataFrames
     mod_arm_df = pd.concat([mod_arm_indv_meas_df, mod_arm_combo_meas_df], ignore_index=True)
 
-    # Reset the index
-    mod_arm_df.reset_index(drop=True, inplace=True)
+    # Remove duplicates and reset the index
+    mod_arm_df = mod_arm_df.drop_duplicates().reset_index(drop=True)
 
     return mod_arm_df
 
@@ -872,33 +887,30 @@ def calc_CB_df(arm_df, measure_set, start_year=None, end_year=None, consider_mea
 def print_CB_summary_table(tot_CB_df, metric='aai', value_unit='USD', group= np.nan):
 
     df_filtered = tot_CB_df[tot_CB_df['metric'] == metric]
-
-    # Filter the DataFrame based on the group
-    # cast the 'group' to string type
-    group = str(group)
+    group = str(group)  # Cast the 'group' to string type
     df_filtered = df_filtered[df_filtered['group'] == group]
 
-    # Total Climate risk is the 'no_measure' risk for the given metric
     total_climate_risk = df_filtered[df_filtered['measure'] == 'no_measure']['total risk'].sum()
-
-    # Annual risk is the Total risk divided by the number of years (assuming 30 years for this example)
     annual_risk = df_filtered['total risk'].sum() / 30
-
-    # Smallest possible residual risk across the measures
     residual_risk = df_filtered[df_filtered['measure'] != 'no_measure']['residual risk'].min()
 
-    # Determine the appropriate unit based on the magnitude
-    if total_climate_risk >= 1e12:
+    # Extend unit handling
+    if total_climate_risk >= 1e15:
+        unit = 'Tn'
+        divisor = 1e12
+    elif total_climate_risk >= 1e12:
         unit = 'Bn'
         divisor = 1e9
     elif total_climate_risk >= 1e9:
         unit = 'Mn'
         divisor = 1e6
+    elif total_climate_risk >= 1e6:
+        unit = 'K'
+        divisor = 1e3
     else:
         unit = ''
         divisor = 1
 
-    # Prepare data for the measures table
     measure_data = df_filtered[df_filtered['measure'] != 'no_measure']
     measure_summary = []
     for measure in measure_data['measure'].unique():
@@ -908,22 +920,29 @@ def print_CB_summary_table(tot_CB_df, metric='aai', value_unit='USD', group= np.
         bc_ratio = total_benefit / total_cost if total_cost != 0 else np.nan
         measure_summary.append([measure, total_cost / divisor, total_benefit / divisor, bc_ratio])
 
-    measure_summary_df = pd.DataFrame(measure_summary, columns=['Measure', f'Cost ({value_unit} {unit})', f'Benefit ({value_unit} {unit})', 'Benefit/Cost'])
+    # Update DataFrame column names to include unit dynamically
+    measure_summary_df = pd.DataFrame(measure_summary, columns=['Measure', f'Cost ({value_unit} {unit})', f'Benefit ({value_unit} {unit})', 'Benefit/Cost Ratio'])
+
+    # Format the DataFrame for better readability
+    measure_summary_df = measure_summary_df.round(2)  # Round to 2 decimals
 
     # Print the measure summary table
-    print(tabulate(measure_summary_df, headers='keys', tablefmt='pretty'))
+    print(tabulate(measure_summary_df, headers='keys', tablefmt='pretty', floatfmt=".2f"))
 
-    # Print the total summary
+    # Prepare and print the total summary with formatted output
     total_summary = [
         ['Total climate risk:', total_climate_risk / divisor],
         ['Average annual risk:', annual_risk / divisor],
         ['Residual risk:', residual_risk / divisor]
     ]
 
+    # Print the total summary
     print("\n--------------------  ---------")
     for item in total_summary:
-        print(f"{item[0]:<22} {item[1]:>11.3f}  ({value_unit} {unit})")
+        print(f"{item[0]:<22} {item[1]:>11.2f}  ({value_unit} {unit})")
     print("--------------------  ---------")
+
+    return
 
 
 
@@ -946,21 +965,23 @@ def plot_yearly_averted_cost(ann_CB_df, measure, metric='aai', group=None, avert
     # Plotting
     fig, ax = plt.subplots(figsize=(15, 8))
     
+    # Construct y-axis label and title based on parameters
+    label_prefix = ('Discounted ' if discounted else '') + ('Averted ' if averted else '')
+    value_label = f'{label_prefix} Amount ({value_unit})'
+    title_label = f'Yearly {label_prefix} Risk ({metric}) vs Net Cost for measure: {measure}'
+
+    # Plot the averted risk and net cost
     years = df_filtered['year'].unique()
     
     # Plot positive values
-    ax.bar(years, positive_averted_risks, color='green', label='Averted Risk')
-    ax.bar(years, positive_net_costs, bottom=positive_averted_risks, color='red', label='Net Cost')
+    ax.bar(years, positive_averted_risks, color='green', label= label_prefix + 'Risk')
+    ax.bar(years, positive_net_costs, bottom=positive_averted_risks, color='red', label= label_prefix + 'Net Cost')
     
     # Plot negative values
     ax.bar(years, negative_averted_risks, color='green')
     ax.bar(years, negative_net_costs, bottom=negative_averted_risks, color='red')
-    
-    # Construct y-axis label and title based on parameters
-    label_prefix = ('Discounted ' if discounted else '') + ('Averted ' if averted else '')
-    value_label = f'{label_prefix}Amount ({value_unit})'
-    title_label = f'Yearly {label_prefix}Risk vs Net Cost for {measure} ({metric})'
-    
+
+    # Add labels and title 
     ax.set_ylabel(value_label)
     ax.set_title(title_label)
     ax.legend(loc='upper center', bbox_to_anchor=(0.5, 1.1), ncol=2)  # Move legend to top
@@ -979,9 +1000,6 @@ def plot_yearly_averted_cost(ann_CB_df, measure, metric='aai', group=None, avert
 
 
 
-
-
-
 class ImpactMetrics:
 
     def __init__(self, 
@@ -993,20 +1011,20 @@ class ImpactMetrics:
         self.arm_df = arm_df.copy()
         self.all_arms_df = all_arms_df.copy()
         self.measure_set = copy.deepcopy(measure_set)
-        self.value_unit = value_unit
+        self.value_unit = value_unit 
 
 
     ## Waterfall plot functions
     # Plot the waterfall plot
-    def waterfall_plot(self, yearly=False, measure=None, metric='aai', ref_year=None, fut_year=None, group=np.nan):
+    def waterfall_plot(self, yearly=False, measure=None, metric='aai', group=np.nan):
 
         # Check if yearly or classic waterfall plot
         if yearly:
-            waterfall_df = _calc_waterfall_plot_df(self.arm_df, self.all_arms_df, measure=measure, metric=metric, ref_year=ref_year, fut_year=fut_year, group=group, subtract=True)
+            waterfall_df = _calc_waterfall_plot_df(self.arm_df, self.all_arms_df, measure=measure, metric=metric, ref_year=None, fut_year=None, group=group, subtract=True)
             _plot_yearly_waterfall(waterfall_df, self.value_unit)
         else:
-            waterfall_df = _calc_waterfall_plot_df(self.arm_df, self.all_arms_df, measure=measure, metric=metric, ref_year=ref_year, fut_year=fut_year, group=group)
-            _plot_correct_waterfall(waterfall_df, self.value_unit)
+            waterfall_df = _calc_waterfall_plot_df(self.arm_df, self.all_arms_df, measure=measure, metric=metric, ref_year=None, fut_year=None, group=group)
+            _plot_two_years_waterfall(waterfall_df, self.value_unit)
 
         return
     
@@ -1024,14 +1042,14 @@ class ImpactMetrics:
         return
     
     # Plot the yearly averted cost for a specific measure
-    def plot_yearly_cost_vs_benefit(self, measure, metric='aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
+    def plot_benefit_vs_cost(self, measure, metric='aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
         ann_CB_df, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
         plot_yearly_averted_cost(ann_CB_df, measure, metric, group=None)
         return
     
     ## Risk analysis
     # Plot the risk metrics for each measure
-    def plot_yearly_risk_metrics(self, metric='aai', averted= True, consider_measure_times=True, risk_disc=None, plot_type='bar', measures=None):
+    def plot_yearly_risk_metrics(self, metric='aai', averted= False, consider_measure_times=False, risk_disc=None, plot_type='line', measures=None, group=np.nan):
         # Copy the DataFrame
         plot_df = self.arm_df.copy()
 
@@ -1053,6 +1071,66 @@ class ImpactMetrics:
             discounted = False
 
         # Plot the risk metrics
-        plot_risk_metrics(plot_df, metric=metric, group=np.nan, averted=averted, discounted=discounted, plot_type=plot_type, measures=measures, value_unit=self.value_unit)
-       
+        plot_risk_metrics(plot_df, metric=metric, group=group, averted=averted, discounted=discounted, plot_type=plot_type, measures=measures, value_unit=self.value_unit)
+
         return
+
+    # Generate the MCDM dataframe
+    def generate_MCDM_dataframe(self, consider_measure_times=True, risk_disc=None, cost_disc=None, levels=['tot', 'avrt'], risk_metrics=None):
+
+        # Calculate the cost-benefit analysis
+        _, tot_CB_df = self.calc_CB(consider_measure_times=consider_measure_times, risk_disc=risk_disc, cost_disc=cost_disc)
+
+        # Get he risk metrics
+        if risk_metrics is None:
+            risk_metrics = self.get_risk_metrics()
+
+        # Create the DecisionMatrix object
+        mcdm_df = tot_CB_df.copy()
+
+        # Filter out the risk metrics
+        mcdm_df = mcdm_df[mcdm_df['metric'].isin(risk_metrics)]
+
+        # Change the column names
+        dict_col_names = {
+            'total risk': 'tot',
+            'averted risk': 'avrt',
+            'cost (net)': 'cost'
+        }
+        mcdm_df.rename(columns=dict_col_names, inplace=True)
+
+        # Store only the risk metrics
+        mcdm_risk_df = mcdm_df[['measure', 'group'] + levels]
+        # Remove space and _ in the metric column
+        mcdm_risk_df['metric'] = mcdm_df['metric'].str.replace(' ', '')
+        mcdm_risk_df['metric'] = mcdm_df['metric'].str.replace('_', '')
+        # Pivot the table to have the risk_cols + metric + unit as columns
+        mcdm_df_piv = mcdm_risk_df.pivot(index=['measure', 'group'], columns='metric', values=levels) 
+        # # Add the unit to the column names
+        mcdm_df_piv.columns = mcdm_df_piv.columns.map('{0[0]}_{0[1]}'.format)
+        # # Reset the index
+        mcdm_df_piv.reset_index(inplace=True)
+
+        # Add the cost by merging the dataframes
+        mcmdm_cost_df = mcdm_df[['measure', 'group', 'cost']].drop_duplicates()
+        mcdm_df_piv = mcdm_df_piv.merge(mcmdm_cost_df, on=['measure', 'group'])
+
+        # Add the value unit to all columns except the measure and group
+        mcdm_df_piv.columns = [f"{col}_{self.value_unit}" if col not in ['measure', 'group'] else col for col in mcdm_df_piv.columns]
+
+        return mcdm_df_piv
+    
+
+    
+    # Properties
+    def get_annual_risk_df(self):
+        # Update to modify be used for the plot funcions
+        return self.arm_df.copy()
+
+
+    def get_risk_metrics(self):
+        return list(self.arm_df['metric'].unique())
+
+    def get_measures(self):
+        return list(self.measure_set.measures().keys())
+  
