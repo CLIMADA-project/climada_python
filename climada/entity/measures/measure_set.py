@@ -126,12 +126,13 @@ class MeasureSet():
         """
         return len(self._data)
 
-    def combine(self, names=None, start_year=None, end_year=None, combo_name=None):
+    #def combine(self, names=None, start_year=None, end_year=None, combo_name=None):
+    def combine(self, names=None, combo_name=None):
         names = self.names if names is None else names
-        if start_year is None:
-            start_year = np.min([meas.start_year for meas in self.measures(names).values()])
-        if end_year is None:
-            end_year = np.max([meas.end_year for meas in self.measures(names).values()])
+        # if start_year is None:
+        #     start_year = np.min([meas.start_year for meas in self.measures(names).values()])
+        # if end_year is None:
+        #     end_year = np.max([meas.end_year for meas in self.measures(names).values()])
         meas_list = list(self.measures(names).values())
 
         def comb_haz_map(hazard, year=None):
@@ -173,8 +174,8 @@ class MeasureSet():
         return Measure(
             name=  '_'.join(names) if combo_name is None else combo_name,
             haz_type=self.haz_type,
-            start_year=start_year,
-            end_year=end_year,
+            #start_year=start_year,
+            #end_year=end_year,
             exposures_change=comb_exp_map,
             impfset_change=comb_impfset_map,
             hazard_change=comb_haz_map, 

@@ -248,6 +248,7 @@ def _calc_waterfall_plot_df(arm_df, all_arms_df, measure=None, metric='aai', ref
         
     return waterfall_df
 
+# Plot the yearly waterfall plot
 def _plot_yearly_waterfall(waterfall_df, metric='aai', value_unit='USD'):
     fig, ax = plt.subplots(figsize=(15, 10))
 
@@ -315,7 +316,7 @@ def _plot_yearly_waterfall(waterfall_df, metric='aai', value_unit='USD'):
     plt.show()
 
 
-
+# Plot the waterfall plot for two years
 def _plot_two_years_waterfall(waterfall_df, metric='aai', value_unit='USD'):
     # Get the reference and future years
     ref_year = waterfall_df['year'].min()
@@ -389,19 +390,14 @@ def _plot_two_years_waterfall(waterfall_df, metric='aai', value_unit='USD'):
 
     plt.show()
 
-## Yearly risk and cost functions
-# Get the active measures for a specific year
-def get_active_measures_for_year(measure_set, year, incl_combo=False):
+# 
+def get_active_measures_for_year(meas_times_df, year):
     
-    # Get the DataFrame of the individul measure times
-    meas_times_df = get_meas_times_df(measure_set, incl_combo)
-
     # Filter the DataFrame for the specified year
     active_measures = meas_times_df[(meas_times_df['start_year'] <= year) & (meas_times_df['end_year'] >= year)]['measure'].tolist()
     if not active_measures:
         active_measures = ['no_measure']
     return active_measures
-
 
 # Get the name of the active combo measure
 def get_name_of_active_combo(measure_set, active_measures):
@@ -416,6 +412,7 @@ def get_name_of_active_combo(measure_set, active_measures):
         if meas.combo and set(meas.combo) == set(active_measures):
                 return meas.name
 
+# Calculate the averted risk metrics
 def calc_averted_risk_metrics(arm_df):
     # Copy the DataFrame to avoid modifying the original
     averted_arm_df = pd.DataFrame(columns=arm_df.columns)
@@ -462,6 +459,7 @@ def calc_averted_risk_metrics(arm_df):
 
     return averted_arm_df
 
+# Plot the risk metrics
 def plot_risk_metrics(arm_df, metric='aai', group=np.nan, averted=False, discounted=False, plot_type='line', measures=None, value_unit='USD'):
     # Filter the DataFrame
     if pd.isna(group):
@@ -580,7 +578,10 @@ def calc_npv_arm_df(df, disc=None):
     
     return disc_df, npv_df
 
-def create_indv_meas_mod_arm_df(arm_df, measure_set, consider_measure_times=True):
+#%% Functions for the modified arm_df
+
+# Create the modified arm_df for the individual measures
+def create_indv_meas_mod_arm_df(arm_df, measure_set, measure_times_df, consider_measure_times=True):
 
     # Use start_year and end_year if they are provided and filter the arm_df
     start_year = arm_df['year'].min()
@@ -603,9 +604,10 @@ def create_indv_meas_mod_arm_df(arm_df, measure_set, consider_measure_times=True
         if meas.combo:
             continue
 
+        # Get the measure name and the start and end years from the measure_times_df
         measure_name = meas.name
-        meas_start_year = meas.start_year
-        meas_end_year = meas.end_year
+        meas_start_year = measure_times_df[measure_times_df['measure'] == measure_name]['start_year'].values[0]
+        meas_end_year = measure_times_df[measure_times_df['measure'] == measure_name]['end_year'].values[0]
 
         # Iterate over the years
         for year in range(start_year, end_year + 1):
@@ -642,7 +644,8 @@ def create_indv_meas_mod_arm_df(arm_df, measure_set, consider_measure_times=True
 
     return time_arm_df
 
-def create_meas_combo_time_mod_arm_df(arm_df, measure_set, consider_measure_times=True):
+# Create the modified arm_df for the combo measures
+def create_meas_combo_time_mod_arm_df(arm_df, measure_set, measure_times_df, consider_measure_times=True):
 
     # Calculate the risk for the combo measures
     # Use start_year and end_year if they are provided and filter the arm_df
@@ -668,7 +671,8 @@ def create_meas_combo_time_mod_arm_df(arm_df, measure_set, consider_measure_time
             combo_measures = meas.combo
             measure_name = meas.name
             # Get the active measures for the year
-            active_measures = get_active_measures_for_year(measure_set, year)
+            active_measures = get_active_measures_for_year(measure_times_df, year)
+            #print(f'For {measure_name} active measures are {active_measures}')
             if len(active_measures) == 1:
                 measure_to_use = active_measures[0]
             else:
@@ -693,13 +697,14 @@ def create_meas_combo_time_mod_arm_df(arm_df, measure_set, consider_measure_time
 
     return time_arm_df
 
-def create_meas_mod_arm_df(arm_df, measure_set, consider_measure_times=True):
+# Create the modified arm_df
+def create_meas_mod_arm_df(arm_df, measure_set, measure_times_df, consider_measure_times=True):
 
     # Calculate the risk for the individual measures
-    mod_arm_indv_meas_df = create_indv_meas_mod_arm_df(arm_df, measure_set, consider_measure_times)
+    mod_arm_indv_meas_df = create_indv_meas_mod_arm_df(arm_df, measure_set, measure_times_df, consider_measure_times)
 
     # Calculate the risk for the combo measures
-    mod_arm_combo_meas_df = create_meas_combo_time_mod_arm_df(arm_df, measure_set, consider_measure_times)
+    mod_arm_combo_meas_df = create_meas_combo_time_mod_arm_df(arm_df, measure_set, measure_times_df, consider_measure_times)
 
     # Concatenate the DataFrames
     mod_arm_df = pd.concat([mod_arm_indv_meas_df, mod_arm_combo_meas_df], ignore_index=True)
@@ -709,7 +714,10 @@ def create_meas_mod_arm_df(arm_df, measure_set, consider_measure_times=True):
 
     return mod_arm_df
 
-def calc_indv_measure_cash_flows_df(measure_set, start_year, end_year, consider_measure_times=True, disc=None):
+#%% Cash flow functions
+
+# Calculate the cash flows for the individual measures
+def calc_indv_measure_cash_flows_df(measure_set, measure_times_df, start_year, end_year, consider_measure_times=True, disc=None):
     """
     This function calculates the cash flows for a set of measures over a specified time period.
 
@@ -735,8 +743,9 @@ def calc_indv_measure_cash_flows_df(measure_set, start_year, end_year, consider_
         else:
             # If we should consider the start and end years of the measure, update the start and end years
             if consider_measure_times:
-                meas_start_year = meas.start_year
-                meas_end_year = meas.end_year
+                measure_name = meas.name
+                meas_start_year = measure_times_df[measure_times_df['measure'] == measure_name]['start_year'].values[0]
+                meas_end_year = measure_times_df[measure_times_df['measure'] == measure_name]['end_year'].values[0]
             else:
                 meas_start_year = start_year
                 meas_end_year = end_year
@@ -762,6 +771,7 @@ def calc_indv_measure_cash_flows_df(measure_set, start_year, end_year, consider_
     # Return the DataFrame with the calculated cash flows
     return costincome_df
 
+# Calculate the cash flows for the combined measures
 def calc_combo_measure_cash_flows_df(costincome_df, measure_set):
 
      # Calculate the cash flows for the combined measures dont reorder the columns
@@ -797,19 +807,20 @@ def calc_combo_measure_cash_flows_df(costincome_df, measure_set):
 
      return costincome_df
 
-def calc_measure_cash_flows_df(measure_set, start_year, end_year, consider_measure_times=True, disc=None):
+# Calculate the cash flows for a set of measures
+def calc_measure_cash_flows_df(measure_set, measure_times_df, start_year, end_year, consider_measure_times=True, disc=None):
 
     # Calculate the individual measure cash flows
-    costincome_df = calc_indv_measure_cash_flows_df(measure_set, start_year, end_year, consider_measure_times, disc)
+    costincome_df = calc_indv_measure_cash_flows_df(measure_set, measure_times_df, start_year, end_year, consider_measure_times, disc)
 
     # Calculate the combo measure cash flows
     costincome_df = calc_combo_measure_cash_flows_df(costincome_df, measure_set)
 
     return costincome_df
 
+#%% Cost benefit analysis functions
 
-## Cost benefit analysis functions
-def calc_CB_df(arm_df, measure_set, start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
+def calc_CB_df(arm_df, measure_set, measure_times_df, start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
     """
     This function calculates the cost-benefit analysis (CB) for a set of measures.
 
@@ -836,7 +847,7 @@ def calc_CB_df(arm_df, measure_set, start_year=None, end_year=None, consider_mea
     filt_arm_df = arm_df[(arm_df['year'] >= start_year) & (arm_df['year'] <= end_year)]
 
     # Step 2 - Create the modified arm_df based on the measure times
-    filt_arm_df = create_meas_mod_arm_df(filt_arm_df, measure_set, consider_measure_times)
+    filt_arm_df = create_meas_mod_arm_df(filt_arm_df, measure_set, measure_times_df, consider_measure_times)
 
     # Step 3 - Calculate the NPV of the arm_df to get total risk
     disc_filt_arm_df, _ = calc_npv_arm_df(filt_arm_df, disc=risk_disc)
@@ -857,7 +868,7 @@ def calc_CB_df(arm_df, measure_set, start_year=None, end_year=None, consider_mea
     ann_CB_df['residual risk'] = ann_CB_df['total risk'] - ann_CB_df['averted risk']
 
     # Calculate the measure cash flows
-    costincome_df = calc_measure_cash_flows_df(measure_set, start_year, end_year, consider_measure_times, disc=cost_disc)
+    costincome_df = calc_measure_cash_flows_df(measure_set, measure_times_df, start_year, end_year, consider_measure_times, disc=cost_disc)
 
     # Merge the costincome_df with the ann_CB_df but only keep the 'net' column and rename it to 'cost (net)'
     ann_CB_df = ann_CB_df.merge(costincome_df[['measure', 'year', 'net']], on=['measure', 'year'], how='left')
@@ -884,32 +895,20 @@ def calc_CB_df(arm_df, measure_set, start_year=None, end_year=None, consider_mea
 
     return ann_CB_df, tot_CB_df
 
-def print_CB_summary_table(tot_CB_df, metric='aai', value_unit='USD', group= np.nan):
-
+def print_CB_summary_table(tot_CB_df, metric='aai', value_unit='USD', group=np.nan):
     df_filtered = tot_CB_df[tot_CB_df['metric'] == metric]
     group = str(group)  # Cast the 'group' to string type
     df_filtered = df_filtered[df_filtered['group'] == group]
 
-    total_climate_risk = df_filtered[df_filtered['measure'] == 'no_measure']['total risk'].sum()
-    annual_risk = df_filtered['total risk'].sum() / 30
+    total_climate_risk = df_filtered[df_filtered['measure'] == 'no_measure']['total risk']
+    annual_risk = total_climate_risk / (df_filtered['year'].max() - df_filtered['year'].min() + 1)
     residual_risk = df_filtered[df_filtered['measure'] != 'no_measure']['residual risk'].min()
 
-    # Extend unit handling
-    if total_climate_risk >= 1e15:
-        unit = 'Tn'
-        divisor = 1e12
-    elif total_climate_risk >= 1e12:
-        unit = 'Bn'
-        divisor = 1e9
-    elif total_climate_risk >= 1e9:
-        unit = 'Mn'
-        divisor = 1e6
-    elif total_climate_risk >= 1e6:
-        unit = 'K'
-        divisor = 1e3
-    else:
-        unit = ''
-        divisor = 1
+
+    # Set unit to billions ('Bn') regardless of the magnitude
+    unit = 'Bn'
+    divisor = 1e9
+
 
     measure_data = df_filtered[df_filtered['measure'] != 'no_measure']
     measure_summary = []
@@ -1006,11 +1005,13 @@ class ImpactMetrics:
                  arm_df: pd.DataFrame,
                  all_arms_df: pd.DataFrame,
                  measure_set: Optional[MeasureSet] = None,
+                 measure_times_df: Optional[pd.DataFrame] = None,
                  value_unit: str = 'USD'
                  ):
         self.arm_df = arm_df.copy()
         self.all_arms_df = all_arms_df.copy()
         self.measure_set = copy.deepcopy(measure_set)
+        self.measure_times_df = copy.deepcopy(measure_times_df)
         self.value_unit = value_unit 
 
 
@@ -1031,7 +1032,7 @@ class ImpactMetrics:
     ## CB analysis
     # Calculate the cost-benefit analysis
     def calc_CB(self, start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
-        return calc_CB_df(self.arm_df, self.measure_set, start_year, end_year, consider_measure_times, risk_disc, cost_disc)
+        return calc_CB_df(self.arm_df, self.measure_set, self.measure_times_df, start_year, end_year, consider_measure_times, risk_disc, cost_disc)
     
     # Print the CB summary table
     def print_CB_summary_table(self, start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
@@ -1055,7 +1056,7 @@ class ImpactMetrics:
 
         # Check if the time should be considered
         if consider_measure_times:
-            plot_df = create_meas_mod_arm_df(plot_df, self.measure_set, consider_measure_times=True)
+            plot_df = create_meas_mod_arm_df(plot_df, self.measure_set, self.measure_times_df, consider_measure_times=True)
 
         # Check if the risk metrics should be avereted
         if averted:

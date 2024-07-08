@@ -62,12 +62,12 @@ class Measure():
     def __init__(
             self,
             name: str,
-            start_year: int,
-            end_year: int,
+            #start_year: int,
+            #end_year: int,
             haz_type: str,
-            exposures_change: Callable[[Exposures, int], Exposures] = lambda x: x,
-            impfset_change: Callable[[ImpactFuncSet, int], ImpactFuncSet] = lambda x: x,
-            hazard_change: Callable[[Hazard, int], Hazard] = lambda x: x,
+            exposures_change: Callable[[Exposures, int], Exposures] = lambda x, y: x,
+            impfset_change: Callable[[ImpactFuncSet, int], ImpactFuncSet] = lambda x, y: x,
+            hazard_change: Callable[[Hazard, int], Hazard] = lambda x, y: x,
             combo: list[str] = None, # list of measure names that this measure is a combination of
             **kwargs
         ):
@@ -98,19 +98,19 @@ class Measure():
         self.exp_map = exposures_change
         self.impfset_map = impfset_change
         self.haz_map= hazard_change
-        self.years = (start_year, end_year)
+        #self.years = (start_year, end_year)
         self.haz_type = haz_type
         self.combo = combo
         # Genereate cost income object from kwargs
         self.cost_income = CostIncome(**kwargs)
 
-    @property
-    def start_year(self):
-        return self.years[0]
+    # @property
+    # def start_year(self):
+    #     return self.years[0]
 
-    @property
-    def end_year(self):
-        return self.years[1]
+    # @property
+    # def end_year(self):
+    #     return self.years[1]
 
     def apply_to_exposures(self, exposures, year=None):
         """

@@ -41,37 +41,27 @@ def create_group_map_exp_dict(snapshots, group_col_str= None):
 
     return group_map_exp_dict
 
-
-def get_meas_times_df(measure_set, incl_combo=False):
-    """
-    Get a DataFrame with the start and end years of the measures in a MeasureSet
-
-    Parameters
-    ----------
-    MeasureSet : MeasureSet
-        The measure set
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame with the start and end years of the measures
-    """
-
+def generate_meas_times_df(measure_set, snapshots, planner=None):
+    # Create the df
     cols = ['measure', 'start_year', 'end_year']
     meas_times_df = pd.DataFrame(columns=cols)
 
     # Populate the df
     for _,meas in measure_set.measures().items():
 
-        # Skip combo measures if not included
-        if not incl_combo and meas.combo:
-            continue
+        # Check if the measure is in the planner
+        if not planner or meas.name not in planner.keys():
+            star_year = min(snapshots.snapshots_years)
+            end_year = max(snapshots.snapshots_years)
+        else:
+            star_year = planner[meas.name][0]
+            end_year = planner[meas.name][1]
 
         # Create a new DataFrame for the current measure
         temp_df = pd.DataFrame({
             'measure': [meas.name],
-            'start_year': [meas.start_year],
-            'end_year': [meas.end_year]
+            'start_year': [star_year],
+            'end_year': [end_year]
         })
 
         # Append to the df
@@ -148,16 +138,16 @@ def include_combos_in_measure_set(measure_set, *other_combos, all_measures=True 
 
 
 # make a function that generates the updated combo measure set
-def generate_necessary_combo_measure_set(measure_set, combo_consider_measure_times=True):
+def generate_necessary_combo_measure_set(measure_set, meas_times_df=None):
     """
     Update a measure set with the unique combinations of active measures
-
+    
     Parameters
     ----------
     measure_set : MeasureSet
         The measure set to be updated
-    combo_consider_measure_times : bool
-        If True, the measure times are considered when generating the unique combinations
+    meas_times_df : pd.DataFrame
+        A DataFrame with the measures and the start and end years
 
     Returns
     -------
@@ -165,16 +155,10 @@ def generate_necessary_combo_measure_set(measure_set, combo_consider_measure_tim
         The updated measure set
     """
 
-    if combo_consider_measure_times:
-        # Get the DataFrame of the individul measure times
-        meas_times_df = get_meas_times_df(measure_set, incl_combo=False)
-        # Get the unique combinations of active measures
-        unique_combinations = get_active_measure_combinations(meas_times_df)
-        # Generate the updated measure set
-        new_measure_set = include_combos_in_measure_set(measure_set, *unique_combinations, all_measures=True)
-    else:
-        new_measure_set = include_combos_in_measure_set(measure_set, all_measures=True)
-
+    # Get the unique combinations of active measures
+    unique_combinations = get_active_measure_combinations(meas_times_df)
+    # Generate the updated measure set
+    new_measure_set = include_combos_in_measure_set(measure_set, *unique_combinations, all_measures=True)
 
     return new_measure_set
 
@@ -341,10 +325,12 @@ def calc_annual_risk_metrics_measure_set(snapshots, measure_set, group_map_exp_d
 
 class CalcImpactMetrics:
 
-    def __init__(self, snapshots, measure_set=None, combo_consider_measure_times=True, group_col_str=None):
+    def __init__(self, snapshots, measure_set=None, planner = None, combine_all = None,  group_col_str=None):
         self.snapshots = snapshots
+        # Generate the measure times DataFrame
+        self.measure_times_df = generate_meas_times_df(measure_set, snapshots, planner) if measure_set else None
         # Generate the updated measure set in a more convoluted way
-        self.measure_set = generate_necessary_combo_measure_set(measure_set, combo_consider_measure_times) if measure_set else None
+        self.measure_set = generate_necessary_combo_measure_set(measure_set, self.measure_times_df) if measure_set else None
         # Get groups
         self.group_map_exp_dict = create_group_map_exp_dict(snapshots, group_col_str) if group_col_str else None
 
@@ -374,4 +360,4 @@ class CalcImpactMetrics:
         # Get the exposure value units
         exp_value_unit = self.snapshots.data[0].exposure.value_unit
 
-        return ImpactMetrics(_df, _all_df, self.measure_set, exp_value_unit)
+        return ImpactMetrics(_df, _all_df, self.measure_set, self.measure_times_df, exp_value_unit)
