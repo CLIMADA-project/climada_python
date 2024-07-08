@@ -41,25 +41,25 @@ class DummyClass(object):
 class TestChecks(unittest.TestCase):
     """Test loading funcions from the Hazard class"""
 
-    def test_check_oligatories_pass(self):
+    def test_check_obligatories_pass(self):
         """Correct DummyClass definition"""
         dummy = DummyClass()
-        u_check.check_oligatories(dummy.__dict__, dummy.vars_oblig, "DummyClass.",
+        u_check.check_obligatories(dummy.__dict__, dummy.vars_oblig, "DummyClass.",
                                   dummy.id.size, dummy.id.size, 2)
 
-    def test_check_oligatories_fail(self):
+    def test_check_obligatories_fail(self):
         """Wrong DummyClass definition"""
         dummy = DummyClass()
         dummy.array = np.arange(3)
         with self.assertRaises(ValueError) as cm:
-            u_check.check_oligatories(dummy.__dict__, dummy.vars_oblig, "DummyClass.",
+            u_check.check_obligatories(dummy.__dict__, dummy.vars_oblig, "DummyClass.",
                                       dummy.id.size, dummy.id.size, 2)
         self.assertIn('Invalid DummyClass.array size: 25 != 3.', str(cm.exception))
 
         dummy = DummyClass()
         dummy.sparse_arr = sparse.csr_matrix(np.zeros((25, 1)))
         with self.assertRaises(ValueError) as cm:
-            u_check.check_oligatories(dummy.__dict__, dummy.vars_oblig, "DummyClass.",
+            u_check.check_obligatories(dummy.__dict__, dummy.vars_oblig, "DummyClass.",
                                       dummy.id.size, dummy.id.size, 2)
         self.assertIn('Invalid DummyClass.sparse_arr column size: 2 != 1.', str(cm.exception))
 
