@@ -779,7 +779,8 @@ class TestSelect(unittest.TestCase):
         ent.exposures.assign_centroids(hazard)
 
         # Compute the impact over the whole exposures
-        imp = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True, assign_centroids=False)
+        imp = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(
+            save_mat=True, assign_centroids=False)
 
         sel_imp = imp.select(event_ids=imp.event_id,
                              event_names=imp.event_name,
