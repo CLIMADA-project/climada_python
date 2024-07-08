@@ -59,7 +59,7 @@ class Input:
     impact_to_dataframe : Callable
         Function that takes an impact object as input and transforms its data into a
         pandas.DataFrame that is compatible with the format of :py:attr:`data`.
-        The return value of this function will be passed to the :py:attr`cost_func`
+        The return value of this function will be passed to the :py:attr:`cost_func`
         as first argument.
     cost_func : Callable
         Function that takes two ``pandas.Dataframe`` objects and returns the scalar
