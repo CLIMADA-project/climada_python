@@ -2654,16 +2654,11 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     LOGGER.info('Setting geometry points.')
 
     # keep the original crs if any
-    if crs is None:
-        try:
-            crs = df_val.geometry.crs
-        except AttributeError:
-            pass
+    crs = df_val.crs if crs is None else crs  # crs might now still be None
     
     if scheduler is not None:
         LOGGER.warn("The scheduler argument is obsolete, dask support has been removed from the"
                     " `set_df_geometry_points` function.")
-        raise Exception("lkjlkak")
     df_val.set_geometry(gpd.points_from_xy(df_val.longitude, df_val.latitude),
                         inplace=True, crs=crs)
 
