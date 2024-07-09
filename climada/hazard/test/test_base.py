@@ -836,7 +836,8 @@ class TestAppend(unittest.TestCase):
 
         haz_1 = Hazard("TC",
                        centroids=Centroids(
-                           lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6])),
+                           lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6]),
+                           crs="epsg:4326"),
                        event_id=np.array([1]),
                        event_name=['ev1'],
                        date=np.array([1]),
@@ -848,7 +849,9 @@ class TestAppend(unittest.TestCase):
                        units='m/s')
 
         haz_2 = Hazard("TC",
-                       centroids=Centroids(lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6])),
+                       centroids=Centroids(
+                           lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6]),
+                           crs="epsg:4326"),
                        event_id=np.array([1]),
                        event_name=['ev2'],
                        date=np.array([2]),
@@ -880,6 +883,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz.event_name, ['ev1', 'ev2'])
         self.assertTrue(np.array_equal(haz.centroids.coord, haz_1.centroids.coord))
         self.assertTrue(np.array_equal(haz.centroids.coord, haz_2.centroids.coord))
+        self.assertEqual(haz.centroids.crs, haz_1.centroids.crs)
 
     def test_append_new_var_pass(self):
         """New variable appears if hazard to append is empty."""
@@ -900,15 +904,23 @@ class TestAppend(unittest.TestCase):
             haz1.append(haz2)
 
     def test_concat_raise_value_error(self):
-        """Raise error if hazards with different units of type"""
-        haz1 = Hazard('TC', units='m/s')
+        """Raise error if hazards with different units, type or crs"""
+        haz1 = Hazard('TC', units='m/s',
+                      centroids=Centroids(lat=[],lon=[], crs="epsg:4326"))
         haz3 = Hazard('EQ')
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError,
+                                    "different types"):
             Hazard.concat([haz1, haz3])
 
         haz4 = Hazard('TC', units='cm')
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError,
+                                    "different units"):
             Hazard.concat([haz1, haz4])
+            
+        haz5 = Hazard('TC', centroids=Centroids(lat=[],lon=[], crs="epsg:7777"))
+        with self.assertRaisesRegex(ValueError,
+                                    "different CRS"):
+            Hazard.concat([haz1, haz5])
 
     def test_change_centroids(self):
         """Set new centroids for hazard"""

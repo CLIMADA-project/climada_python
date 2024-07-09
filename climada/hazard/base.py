@@ -628,7 +628,7 @@ class Hazard(HazardIO, HazardPlot):
         if np.unique(self.event_id).size != num_ev:
             raise ValueError("There are events with the same identifier.")
 
-        u_check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
+        u_check.check_obligatories(self.__dict__, self.vars_oblig, 'Hazard.',
                                   num_ev, num_ev, num_cen)
         u_check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
         self.event_name = u_check.array_default(num_ev, self.event_name,
@@ -816,8 +816,8 @@ class Hazard(HazardIO, HazardPlot):
         """
         if len(haz_list) == 0:
             return cls()
-        haz_concat = haz_list[0].__class__()
-        haz_concat.haz_type = haz_list[0].haz_type
+        haz_concat = haz_list[0].__class__(centroids=Centroids(lat=[], lon=[],
+                                                               crs=haz_list[0].centroids.crs))
         for attr_name, attr_val in vars(haz_list[0]).items():
             # to save memory, only copy simple attributes like
             # "units" that are not explicitly handled by Hazard.append

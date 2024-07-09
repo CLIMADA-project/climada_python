@@ -991,6 +991,25 @@ class TestCentroidsMethods(unittest.TestCase):
             self.assertTrue(centr1 == centr1)
             self.assertTrue(centr2 == centr2)
 
+    def test_plot(self):
+            "Test Centroids.plot()"
+            centr = Centroids(
+            lat=np.array([-5, -3, 0, 3, 5]),
+            lon=np.array([-180, -175, -170, 170, 175]),
+            region_id=np.zeros(5),
+            crs=DEF_CRS
+        )
+            centr.plot()
+
+    def test_plot_non_def_crs(self):
+            "Test Centroids.plot() with non-default CRS"
+            centr = Centroids(
+            lat = np.array([10.0, 20.0, 30.0]),
+            lon = np.array([-10.0, -20.0, -30.0]),
+            region_id=np.zeros(3),
+            crs='epsg:32632'
+        )
+            centr.plot()
 
 # Execute Tests
 if __name__ == "__main__":
