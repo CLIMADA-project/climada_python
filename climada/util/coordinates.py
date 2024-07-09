@@ -2654,11 +2654,7 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     LOGGER.info('Setting geometry points.')
 
     # keep the original crs if any
-    if crs is None:
-        try:
-            crs = df_val.geometry.crs
-        except AttributeError:
-            pass
+    crs = df_val.crs if crs is None else crs  # crs might now still be None
 
     # work in parallel
     if scheduler:
