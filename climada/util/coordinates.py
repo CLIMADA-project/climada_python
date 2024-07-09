@@ -2646,8 +2646,8 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     ----------
     df_val : GeoDataFrame
         contains latitude and longitude columns
-    scheduler : str, optional
-        used for dask map_partitions. “threads”, “synchronous” or “processes”
+    scheduler : str
+        deprecated, obsolete
     crs : object (anything readable by pyproj4.CRS.from_user_input), optional
         Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """
@@ -2659,27 +2659,13 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
             crs = df_val.geometry.crs
         except AttributeError:
             pass
-
-    # work in parallel
-    if scheduler:
-        def apply_point(df_exp):
-            return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
-
-        ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['_-geometry-prov'] = ddata.map_partitions(
-                                 apply_point,
-                                 meta=('geometry', gpd.array.GeometryDtype)
-                             ).compute(scheduler=scheduler)
-
-    # single process
-    else:
-        df_val['_-geometry-prov'] = gpd.GeoSeries(
-            gpd.points_from_xy(df_val.longitude, df_val.latitude),
-            index=df_val.index)
-
-    # A 'geometry' column must not be created in a GeoDataFrame except through the constructor
-    # or with set_geometry. That's why we first made a temporary columns with a weird name
-    df_val.set_geometry('_-geometry-prov', inplace=True, drop=True, crs=crs)
+    
+    if scheduler is not None:
+        LOGGER.warn("The scheduler argument is obsolete, dask support has been removed from the"
+                    " `set_df_geometry_points` function.")
+        raise Exception("lkjlkak")
+    df_val.set_geometry(gpd.points_from_xy(df_val.longitude, df_val.latitude),
+                        inplace=True, crs=crs)
 
 
 def fao_code_def():
