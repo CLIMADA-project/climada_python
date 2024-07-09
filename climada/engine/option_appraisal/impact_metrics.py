@@ -853,7 +853,7 @@ def calc_CB_df(arm_df, measure_set, measure_times_df, start_year=None, end_year=
     disc_filt_arm_df, _ = calc_npv_arm_df(filt_arm_df, disc=risk_disc)
 
     # Get the base CB dataframe
-    ann_CB_df = filt_arm_df[['measure', 'year', 'group', 'metric', 'result']].copy()
+    ann_CB_df = disc_filt_arm_df[['measure', 'year', 'group', 'metric', 'result']].copy()
     ann_CB_df.columns = ['measure', 'year', 'group', 'metric', 'total risk']
 
     # Step 4 - Calculate the averted risk metrics
@@ -865,7 +865,7 @@ def calc_CB_df(arm_df, measure_set, measure_times_df, start_year=None, end_year=
     ann_CB_df = ann_CB_df.merge(averted_arm_df, on=['measure', 'year', 'group', 'metric'], how='left')
 
     # Calculate the residual risk
-    ann_CB_df['residual risk'] = ann_CB_df['total risk'] - ann_CB_df['averted risk']
+    #ann_CB_df['residual risk'] = ann_CB_df['total risk'] - ann_CB_df['averted risk']
 
     # Calculate the measure cash flows
     costincome_df = calc_measure_cash_flows_df(measure_set, measure_times_df, start_year, end_year, consider_measure_times, disc=cost_disc)
@@ -889,44 +889,53 @@ def calc_CB_df(arm_df, measure_set, measure_times_df, start_year=None, end_year=
     # Drop the 'year' column
     tot_CB_df = tot_CB_df.drop(columns=['year'])
 
+    # Add the average annual risk
+    tot_CB_df['average annual risk'] = tot_CB_df['total risk'] / (end_year - start_year + 1)
+
     # Step 7 - Calculate the CB ratio
     # Calculate the CB ratio
-    tot_CB_df['B/C ratio'] = tot_CB_df['averted risk'] / -tot_CB_df['cost (net)']
+    tot_CB_df['B/C ratio'] = tot_CB_df['averted risk'] / tot_CB_df['cost (net)']
 
     return ann_CB_df, tot_CB_df
 
-def print_CB_summary_table(tot_CB_df, metric='aai', value_unit='USD', group=np.nan):
+def print_CB_summary_table(tot_CB_df, measure_set, metric='aai', value_unit='USD', group=np.nan):
     df_filtered = tot_CB_df[tot_CB_df['metric'] == metric]
     group = str(group)  # Cast the 'group' to string type
     df_filtered = df_filtered[df_filtered['group'] == group]
 
-    total_climate_risk = df_filtered[df_filtered['measure'] == 'no_measure']['total risk']
-    annual_risk = total_climate_risk / (df_filtered['year'].max() - df_filtered['year'].min() + 1)
-    residual_risk = df_filtered[df_filtered['measure'] != 'no_measure']['residual risk'].min()
+    # Get the total climate risk, annual risk, and residual risk
+    total_climate_risk = df_filtered[df_filtered['measure'] == 'no_measure']['total risk'].values[0]
+    annual_risk = df_filtered[df_filtered['measure'] == 'no_measure']['average annual risk'].values[0]
+    residual_risk = df_filtered[df_filtered['measure'] != 'no_measure']['total risk'].min()
 
 
     # Set unit to billions ('Bn') regardless of the magnitude
     unit = 'Bn'
     divisor = 1e9
 
-
+    # Prepare the measure data
     measure_data = df_filtered[df_filtered['measure'] != 'no_measure']
     measure_summary = []
-    for measure in measure_data['measure'].unique():
+    for measure in measure_set.measures():
         measure_df = measure_data[measure_data['measure'] == measure]
         total_cost = measure_df['cost (net)'].sum()
         total_benefit = measure_df['averted risk'].sum()
         bc_ratio = total_benefit / total_cost if total_cost != 0 else np.nan
         measure_summary.append([measure, total_cost / divisor, total_benefit / divisor, bc_ratio])
 
-    # Update DataFrame column names to include unit dynamically
-    measure_summary_df = pd.DataFrame(measure_summary, columns=['Measure', f'Cost ({value_unit} {unit})', f'Benefit ({value_unit} {unit})', 'Benefit/Cost Ratio'])
+    # Create the measure summary DataFrame
+    measure_summary_df = pd.DataFrame(measure_summary, columns=[
+        'Measure', 
+        f'Cost ({value_unit} {unit})', 
+        f'Benefit ({value_unit} {unit})', 
+        'Benefit/Cost Ratio'
+    ])
 
-    # Format the DataFrame for better readability
-    measure_summary_df = measure_summary_df.round(2)  # Round to 2 decimals
+    # Round the values in the measure summary DataFrame
+    measure_summary_df = measure_summary_df.round(2)
 
-    # Print the measure summary table
-    print(tabulate(measure_summary_df, headers='keys', tablefmt='pretty', floatfmt=".2f"))
+    # Print the measure summary in tabulate format
+    print(tabulate(measure_summary_df, headers='keys', tablefmt='fancy_grid'))
 
     # Prepare and print the total summary with formatted output
     total_summary = [
@@ -940,6 +949,7 @@ def print_CB_summary_table(tot_CB_df, metric='aai', value_unit='USD', group=np.n
     for item in total_summary:
         print(f"{item[0]:<22} {item[1]:>11.2f}  ({value_unit} {unit})")
     print("--------------------  ---------")
+
 
     return
 
@@ -966,7 +976,7 @@ def plot_yearly_averted_cost(ann_CB_df, measure, metric='aai', group=None, avert
     
     # Construct y-axis label and title based on parameters
     label_prefix = ('Discounted ' if discounted else '') + ('Averted ' if averted else '')
-    value_label = f'{label_prefix} Amount ({value_unit})'
+    value_label = f'{label_prefix} {metric} ({value_unit})'
     title_label = f'Yearly {label_prefix} Risk ({metric}) vs Net Cost for measure: {measure}'
 
     # Plot the averted risk and net cost
@@ -1035,11 +1045,10 @@ class ImpactMetrics:
         return calc_CB_df(self.arm_df, self.measure_set, self.measure_times_df, start_year, end_year, consider_measure_times, risk_disc, cost_disc)
     
     # Print the CB summary table
-    def print_CB_summary_table(self, start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
+    def print_CB_summary_table(self, metric = 'aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
         # Get the CB analysis
-        ann_CB_df, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
-        print_CB_summary_table(ann_CB_df)
-
+        _, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
+        print_CB_summary_table(tot_CB_df, self.measure_set, metric=metric, value_unit= self.value_unit)
         return
     
     # Plot the yearly averted cost for a specific measure
