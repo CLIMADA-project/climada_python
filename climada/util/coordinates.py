@@ -2652,13 +2652,13 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
         Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """
     LOGGER.info('Setting geometry points.')
-
-    # keep the original crs if any
-    crs = df_val.crs if crs is None else crs  # crs might now still be None
-    
     if scheduler is not None:
         LOGGER.warn("The scheduler argument is obsolete, dask support has been removed from the"
                     " `set_df_geometry_points` function.")
+
+    # keep the original crs if any
+    crs = df_val.crs if crs is None else crs  # crs might now still be None
+
     df_val.set_geometry(gpd.points_from_xy(df_val.longitude, df_val.latitude),
                         inplace=True, crs=crs)
 
