@@ -305,7 +305,6 @@ class TestIO(unittest.TestCase):
 
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
-        self.assertDictEqual(exp_df.meta, exp_read.meta)
         self.assertEqual(exp_df.description, exp_read.description)
         np.testing.assert_array_equal(exp_df.latitude, exp_read.latitude)
         np.testing.assert_array_equal(exp_df.longitude, exp_read.longitude)

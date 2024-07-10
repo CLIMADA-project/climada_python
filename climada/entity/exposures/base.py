@@ -122,7 +122,7 @@ class Exposures():
         TC. There might be different hazards defined: centr_TC, centr_FL, ...
         Computed in method assign_centroids().
     """
-    _metadata = ['description', 'ref_year', 'value_unit', 'meta']
+    _metadata = ['description', 'ref_year', 'value_unit']
 
     vars_oblig = ['value', 'geometry']
     """Name of the variables needed to compute the impact."""
@@ -297,9 +297,6 @@ class Exposures():
         # add a 'value' column in case it is not already part of data
         if value is not None and self.data.get("value") is None:
             self.data["value"] = value
-
-        # TODO: remove meta!
-        self.meta = meta
 
     def __str__(self):
         return '\n'.join(
@@ -749,17 +746,10 @@ class Exposures():
         -------
         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if self.meta and self.meta.get('height', 0) * self.meta.get('height', 0) == len(self.gdf):
-            raster = self.gdf.value.values.reshape((self.meta['height'],
-                                                    self.meta['width']))
-            # check raster starts by upper left corner
-            if self.latitude[0] < self.latitude[-1]:
-                raster = np.flip(raster, axis=0)
-            if self.longitude[0] > self.longitude[-1]:
-                raise ValueError('Points are not ordered according to meta raster.')
-        else:
-            raster, meta = u_coord.points_to_raster(self.gdf, ['value'], res, raster_res, scheduler)
-            raster = raster.reshape((meta['height'], meta['width']))
+
+        raster, meta = u_coord.points_to_raster(self.gdf, ['value'], res, raster_res, scheduler)
+        raster = raster.reshape((meta['height'], meta['width']))
+
         # save tiff
         if save_tiff is not None:
             with rasterio.open(save_tiff, 'w', driver='GTiff',
@@ -1040,18 +1030,8 @@ class Exposures():
         file_name : str
             name output file in tif format
         """
-        if self.meta and self.meta['height'] * self.meta['width'] == len(self.gdf):
-            raster = self.gdf[value_name].values.reshape((self.meta['height'],
-                                                          self.meta['width']))
-            # check raster starts by upper left corner
-            if self.latitude[0] < self.latitude[-1]:
-                raster = np.flip(raster, axis=0)
-            if self.longitude[0] > self.longitude[-1]:
-                raise ValueError('Points are not ordered according to meta raster.')
-            u_coord.write_raster(file_name, raster, self.meta)
-        else:
-            raster, meta = u_coord.points_to_raster(self.gdf, [value_name], scheduler=scheduler)
-            u_coord.write_raster(file_name, raster, meta)
+        raster, meta = u_coord.points_to_raster(self.gdf, [value_name], scheduler=scheduler)
+        u_coord.write_raster(file_name, raster, meta)
 
     @staticmethod
     def concat(exposures_list):
@@ -1232,7 +1212,6 @@ def add_sea(exposures, sea_res, scheduler=None):
         crs=exposures.crs,
         ref_year=exposures.ref_year,
         value_unit=exposures.value_unit,
-        meta=exposures.meta,
         description=exposures.description,
     )
 
