@@ -2648,8 +2648,7 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
         contains latitude and longitude columns
     scheduler : str, optional
         Scheduler type for dask map_partitions.
-
-        .. deprecated:: 4.1
+        .. deprecated:: 5.0
            This function does not use dask features anymore. The parameter has no effect
            and will be removed in a future version.
     crs : object (anything readable by pyproj4.CRS.from_user_input), optional
@@ -2657,8 +2656,8 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     """
     LOGGER.info('Setting geometry points.')
     if scheduler is not None:
-        LOGGER.warning("The scheduler argument is obsolete, dask support has been removed from the"
-                       " `set_df_geometry_points` function.")
+        warnings.warn("This function does not use dask features anymore. The parameter has no effect"
+                      " and will be removed in a future version.", DeprecationWarning)
 
     # keep the original crs if any
     crs = df_val.crs if crs is None else crs  # crs might now still be None
