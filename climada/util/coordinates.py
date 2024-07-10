@@ -2654,7 +2654,7 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     LOGGER.info('Setting geometry points.')
     if scheduler is not None:
         LOGGER.warning("The scheduler argument is obsolete, dask support has been removed from the"
-                    " `set_df_geometry_points` function.")
+                       " `set_df_geometry_points` function.")
 
     # keep the original crs if any
     crs = df_val.crs if crs is None else crs  # crs might now still be None
