@@ -2374,8 +2374,9 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
 
     Parameters
     ----------
-    points_df : GeoDataFrame
-        contains columns latitude, longitude and those listed in the parameter `val_names`.
+    points_df : GeoDataFrame | DataFrame
+        contains columns listed in the parameter `val_names` and 'geometry' if it is a GeoDataFrame
+        or 'latitude' and 'longitude' if it is a DataFrame.
     val_names : list of str, optional
         The names of columns in `points_df` containing values. The raster will contain one band per
         column. Default: ['value']
@@ -2404,7 +2405,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
 
     if 'geometry' in points_df:
         latval = points_df.geometry.y
-        lonval = points_df.geometry.y
+        lonval = points_df.geometry.x
     else:
         latval = points_df.latitude.values
         lonval = points_df.longitude.values
