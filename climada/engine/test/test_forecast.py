@@ -24,7 +24,6 @@ import datetime as dt
 import numpy as np
 import geopandas as gpd
 import matplotlib.pyplot as plt
-import fiona
 from cartopy.io import shapereader
 from pathlib import Path
 
@@ -140,14 +139,7 @@ class TestPlot(unittest.TestCase):
         adm1_shape_file = shapereader.natural_earth(resolution='10m',
                                                     category='cultural',
                                                     name='admin_1_states_provinces')
-        if not cantons_file.exists():
-            with fiona.open(adm1_shape_file, 'r') as source:
-                with fiona.open(
-                        cantons_file, 'w',
-                        **source.meta) as sink:
-                    for f in source:
-                        if f['properties']['adm0_a3'] == 'CHE':
-                            sink.write(f)
+
         ## test plotting functions
         # should save plot without failing
         forecast.plot_imp_map(run_datetime=dt.datetime(2017,12,31),

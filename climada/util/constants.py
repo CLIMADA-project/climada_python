@@ -43,8 +43,6 @@ __all__ = ['SYSTEM_DIR',
 
 # pylint: disable=unused-import
 # without importing numpy ahead of fiona the debugger may run into an error
-import numpy
-from fiona.crs import from_epsg
 import matplotlib as mpl
 from .config import CONFIG
 
@@ -201,9 +199,6 @@ DEF_EPSG = 4326
 
 DEF_CRS = f'EPSG:{DEF_EPSG}'
 """Default coordinate reference system WGS 84, str, for pyproj and rasterio CRS.from_string()"""
-
-DEF_CRS_FIONA = from_epsg(DEF_EPSG)
-"""Default coordinate reference system WGS 84, dict, for fiona interface"""
 
 cm_data1 = [[0.00000000, 0.00000000, 0.00000000],
            [0.00032031, 0.00020876, 0.00015576],
