@@ -726,7 +726,7 @@ class Hazard(HazardIO, HazardPlot):
         if np.unique(self.event_id).size != num_ev:
             raise ValueError("There are events with the same identifier.")
 
-        u_check.check_oligatories(self.__dict__, self.vars_oblig, 'Hazard.',
+        u_check.check_obligatories(self.__dict__, self.vars_oblig, 'Hazard.',
                                   num_ev, num_ev, num_cen)
         u_check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
         self.event_name = u_check.array_default(num_ev, self.event_name,

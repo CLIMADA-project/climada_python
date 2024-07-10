@@ -16,17 +16,23 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Use Geopandas GeoDataFrame.plot() for centroids plotting function [896](https://github.com/CLIMADA-project/climada_python/pull/896)
 - Update SALib sensitivity and sampling methods from newest version (SALib 1.4.7) [#828](https://github.com/CLIMADA-project/climada_python/issues/828)
 - Allow for computation of relative and absolute delta impacts in `CalcDeltaClimate`
 - Remove content tables and make minor improvements (fix typos and readability) in
 CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull/872)
 - Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
 - Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
+- Update the Holland et al. 2010 TC windfield model and introduce `model_kwargs` parameter to adjust model parameters [#846](https://github.com/CLIMADA-project/climada_python/pull/846)
 - Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
+- `Impact.from_hdf5` now calls `str` on `event_name` data that is not strings, and issue a warning then [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
+- `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 
 ### Fixed
 
 - Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
+- Allow downgrading the Python bugfix version to improve environment compatibility [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
+- Fix broken links in `CONTRIBUTING.md` [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
 
 ### Added
 
