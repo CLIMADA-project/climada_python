@@ -839,7 +839,7 @@ def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     """
     return 2 * V_ANG_EARTH * np.sin(np.radians(np.abs(lat)))
 
-def _compute_windfields_sparse(
+def compute_windfields_sparse(
     track: xr.Dataset,
     centroids: Centroids,
     idx_centr_filter: np.ndarray,
@@ -997,7 +997,7 @@ def _compute_windfields_sparse_chunked(
     max_memory_gb: float = DEF_MAX_MEMORY_GB,
     **kwargs,
 ) -> Tuple[sparse.csr_matrix, Optional[sparse.csr_matrix]]:
-    """Call ``_compute_windfields_sparse`` for chunks of the track and re-assemble the results
+    """Call ``compute_windfields_sparse`` for chunks of the track and re-assemble the results
 
     Parameters
     ----------
@@ -1009,12 +1009,12 @@ def _compute_windfields_sparse_chunked(
         Maximum memory requirements (in GB) for the computation of a single chunk of the track.
         Default: 8
     args, kwargs :
-        The remaining arguments are passed on to ``_compute_windfields_sparse``.
+        The remaining arguments are passed on to ``compute_windfields_sparse``.
 
     Returns
     -------
     intensity, windfields :
-        See ``_compute_windfields_sparse`` for a description of the return values.
+        See ``compute_windfields_sparse`` for a description of the return values.
     """
     npositions = track.sizes["time"]
     # The memory requirements for each track position are estimated for the case of 10 arrays
@@ -1038,7 +1038,7 @@ def _compute_windfields_sparse_chunked(
     windfields = []
     for prev_chunk_end, chunk_end in zip(split_pos[:-1], split_pos[1:]):
         chunk_start = max(0, prev_chunk_end - 1)
-        inten, win = _compute_windfields_sparse(
+        inten, win = compute_windfields_sparse(
             track.isel(time=slice(chunk_start, chunk_end)), *args,
             max_memory_gb=max_memory_gb, **kwargs,
         )

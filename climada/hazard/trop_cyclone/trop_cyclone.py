@@ -40,7 +40,7 @@ from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.trop_cyclone.trop_cyclone_windfields import DEF_MAX_DIST_EYE_KM, DEF_INTENSITY_THRES, \
-    DEF_MAX_MEMORY_GB, _compute_windfields_sparse
+    DEF_MAX_MEMORY_GB, compute_windfields_sparse
 from climada.util import ureg
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
@@ -588,7 +588,7 @@ class TropCyclone(Hazard):
         -------
         haz : TropCyclone
         """
-        intensity_sparse, windfields_sparse = _compute_windfields_sparse(
+        intensity_sparse, windfields_sparse = compute_windfields_sparse(
             track=track,
             centroids=centroids,
             idx_centr_filter=idx_centr_filter,
