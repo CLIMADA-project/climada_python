@@ -237,6 +237,16 @@ The CLIMADA Python package defines the following `extras <https://peps.python.or
    * - ``dev``
      - combination of ``doc`` and ``test``, and additional tools for development
 
+The developer dependencies also include `pre-commit <https://pre-commit.com/#intro>`_, which is used to install and run automated, so-called pre-commit hooks before a new commit.
+In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install the hooks first.
+With the ``climada_env`` activated, execute
+
+.. code-block:: shell
+
+   pre-commit install
+
+Please refer to the :ref:`guide on pre-commit hooks <guide-pre-commit-hooks>` for information on how to use this tool.
+
 For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
 On macOS and on Linux it is pre-installed. On Windows, it can easily be installed with Conda:
 
@@ -245,14 +255,6 @@ On macOS and on Linux it is pre-installed. On Windows, it can easily be installe
    mamba install -n climada_env make
 
 Instructions for running the test scripts can be found in the :doc:`Testing Guide <Guide_Testing>`.
-
-The developer dependencies also include `pre-commit <https://pre-commit.com/#intro>`_, which is used to run pre-commit hooks, such as code linting and formatting, when creating a new commit. In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install the hooks by running (you can also install [this extension](https://marketplace.visualstudio.com/items?itemName=elagil.pre-commit-helper) if you use Visual Studio Code):
-
-.. code-block:: shell
-
-   pre-commit install
-
-We strongly recommend you read :ref:`What happens with pre-commit hooks? <pre-commit_hooks>` if you do so.
 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
