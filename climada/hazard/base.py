@@ -40,6 +40,7 @@ import climada.util.checker as u_check
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
+from climada.util.plot import GdfMeta
 
 
 LOGGER = logging.getLogger(__name__)
@@ -487,18 +488,23 @@ class Hazard(HazardIO, HazardPlot):
             end_col = min(start_col + block_size, num_cen)
             return_periods[:, start_col:end_col] = self._loc_return_period(
                 threshold_intensities,
-                self.intensity[:, start_col:end_col].toarray())
+                self.intensity[:, start_col:end_col].toarray()
+                )
         
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
         col_names = [f'{tresh_inten}' for tresh_inten in threshold_intensities]
-        gdf.columns.name = (('name', 'Return Period'),
-                    ('unit', 'Years'),
-                    ('col_name', 'Threshold Intensity'),
-                    ('col_unit', self.units))
         gdf[col_names] = return_periods.T
 
-        return gdf
+        #create gdf meta data
+        gdf_meta = GdfMeta(
+            name = 'Return Period',
+            unit = 'Years',
+            col_name = 'Threshold Intensity',
+            col_unit = self.units
+        )
+
+        return gdf, gdf_meta
     
     def get_event_id(self, event_name):
         """Get an event id from its name. Several events might have the same
@@ -682,7 +688,7 @@ class Hazard(HazardIO, HazardPlot):
         sort_pos = np.argsort(inten, axis=0)[::-1, :]
         inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
         freq_sort = self.frequency[sort_pos]
-        np.cumsum(freq_sort, axis=0, out=freq_sort)
+        freq_sort = np.cumsum(freq_sort, axis=0)
         return_periods = np.zeros((len(threshold_intensities), inten.shape[1]))
     
         for cen_idx in range(inten.shape[1]):

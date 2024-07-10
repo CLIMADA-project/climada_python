@@ -1034,7 +1034,7 @@ class TestStats(unittest.TestCase):
             ])
         haz.frequency = np.full(4, 1.)
         threshold_intensities = np.array([1., 2., 4.])
-        return_stats = haz.local_return_period(threshold_intensities)
+        return_stats, _ = haz.local_return_period(threshold_intensities)
         np.testing.assert_allclose(
             return_stats[return_stats.columns[1:]].values.T,
             np.array([

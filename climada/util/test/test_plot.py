@@ -158,11 +158,13 @@ class TestPlots(unittest.TestCase):
             columns = ('10.0', '20.0')
         )
         return_periods['geometry'] = (Point(45., 26.), Point(46., 26.), Point(45., 27.), Point(46., 27.))
-        return_periods.columns.name = (('name', 'Return Period'),
-                        ('unit', 'Years'),
-                        ('col_name', 'Threshold Intensity'),
-                        ('col_unit', 'm/s'))
-        (axis1, axis2) = u_plot.subplots_from_gdf(return_periods)
+        gdf_meta = u_plot.GdfMeta(
+            name = 'Return Period',
+            unit = 'Years',
+            col_name = 'Threshold Intensity',
+            col_unit = 'm/s'
+        )
+        (axis1, axis2) = u_plot.subplots_from_gdf(return_periods, gdf_meta)
         self.assertEqual('Threshold Intensity: 10.0 m/s', axis1.get_title())
         self.assertEqual('Threshold Intensity: 20.0 m/s', axis2.get_title())
         plt.close()
