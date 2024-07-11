@@ -65,8 +65,8 @@ class TestLitPopExposure(unittest.TestCase):
                                            reference_year=2016)
 
         self.assertIn('LitPop: Init Exposure for country: CHE', cm.output[0])
-        self.assertEqual(ent.gdf.region_id.min(), 756)
-        self.assertEqual(ent.gdf.region_id.max(), 756)
+        self.assertEqual(ent.region_id.min(), 756)
+        self.assertEqual(ent.region_id.max(), 756)
         # confirm that the total value is equal to GDP * (income_group+1):
         self.assertAlmostEqual(ent.gdf.value.sum()/gdp('CHE', 2016)[1],
                                (income_group('CHE', 2016)[1] + 1))
@@ -95,8 +95,8 @@ class TestLitPopExposure(unittest.TestCase):
                                            fin_mode=fin_mode, reference_year=2015)
         # print(cm)
         self.assertIn('LitPop: Init Exposure for country: CHE', cm.output[0])
-        self.assertEqual(ent.gdf.region_id.min(), 756)
-        self.assertEqual(ent.gdf.region_id.max(), 756)
+        self.assertEqual(ent.region_id.min(), 756)
+        self.assertEqual(ent.region_id.max(), 756)
         self.assertEqual(ent.gdf.value.sum(), 1.0)
         self.assertEqual(ent.ref_year, 2015)
 
@@ -106,8 +106,8 @@ class TestLitPopExposure(unittest.TestCase):
         fin_mode = 'nfw'
         ent = lp.LitPop.from_countries(country_name, reference_year=2016, fin_mode=fin_mode)
 
-        self.assertEqual(ent.gdf.region_id.min(), 740)
-        self.assertEqual(ent.gdf.region_id.max(), 740)
+        self.assertEqual(ent.region_id.min(), 740)
+        self.assertEqual(ent.region_id.max(), 740)
         self.assertEqual(ent.ref_year, 2016)
 
     def test_switzerland300_admin1_pc2016_pass(self):
@@ -133,8 +133,8 @@ class TestLitPopExposure(unittest.TestCase):
         ent = lp.LitPop.from_shape(shape, total_value, res_arcsec=30, reference_year=2016)
         self.assertEqual(ent.gdf.value.sum(), 1000.0)
         self.assertEqual(ent.gdf.value.min(), 0.0)
-        self.assertEqual(ent.gdf.region_id.min(), 756)
-        self.assertEqual(ent.gdf.region_id.max(), 756)
+        self.assertEqual(ent.region_id.min(), 756)
+        self.assertEqual(ent.region_id.max(), 756)
         self.assertAlmostEqual(ent.latitude.min(), 47.20416666666661)
         # index and coord. of largest value:
         self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 482)
@@ -148,8 +148,8 @@ class TestLitPopExposure(unittest.TestCase):
         ent = lp.LitPop.from_shape_and_countries(
             shape, 'Switzerland', res_arcsec=30, reference_year=2016)
         self.assertEqual(ent.gdf.value.min(), 0.0)
-        self.assertEqual(ent.gdf.region_id.min(), 756)
-        self.assertEqual(ent.gdf.region_id.max(), 756)
+        self.assertEqual(ent.region_id.min(), 756)
+        self.assertEqual(ent.region_id.max(), 756)
         self.assertAlmostEqual(ent.latitude.min(), 47.20416666666661)
         # coord of largest value:
         self.assertEqual(ent.gdf.loc[ent.gdf.value == ent.gdf.value.max()].index[0], 434)
@@ -163,7 +163,7 @@ class TestLitPopExposure(unittest.TestCase):
         ent = lp.LitPop.from_nightlight_intensity(country_name, reference_year=ref_year)
 
         self.assertEqual(ent.gdf.value.sum(), 36469.0)
-        self.assertEqual(ent.gdf.region_id[1], 438)
+        self.assertEqual(ent.region_id[1], 438)
         self.assertEqual(ent.value_unit, '')
         self.assertAlmostEqual(ent.latitude.max(), 47.260416666666664)
         self.assertAlmostEqual(ent.meta['transform'][4], -15/3600)
@@ -175,7 +175,7 @@ class TestLitPopExposure(unittest.TestCase):
         ent = lp.LitPop.from_population(country_name, reference_year=ref_year)
 
         self.assertEqual(ent.gdf.value.sum(), 30068.970703125)
-        self.assertEqual(ent.gdf.region_id[1], 438)
+        self.assertEqual(ent.region_id[1], 438)
         self.assertEqual(ent.value_unit, 'people')
         self.assertAlmostEqual(ent.latitude.max(), 47.2541666666666)
         self.assertAlmostEqual(ent.meta['transform'][0], 30/3600)
@@ -247,7 +247,7 @@ class TestAdmin1(unittest.TestCase):
                  2016, lp.GPW_VERSION, SYSTEM_DIR)
 
         self.assertEqual(ent.gdf.shape[0], 699)
-        self.assertEqual(ent.gdf.region_id[88], 756)
+        self.assertEqual(ent.region_id[88], 756)
         self.assertAlmostEqual(ent.latitude.max(), 47.708333333333336)
         # shape must be same as with admin1_calc = False, otherwise there
         # is a problem with handling of the admin1 shapes:

@@ -560,7 +560,7 @@ class TestImpactFunctions(unittest.TestCase):
         self.assertRaises(ValueError, expo.get_impf_column, 'HAZ')
 
         # add anonymous impf column
-        expo.gdf['impf_'] = expo.gdf['region_id']
+        expo.gdf['impf_'] = expo.region_id
         self.assertEqual('if_NA', expo.get_impf_column('NA'))
         self.assertEqual('impf_', expo.get_impf_column())
         self.assertEqual('impf_', expo.get_impf_column('HAZ'))

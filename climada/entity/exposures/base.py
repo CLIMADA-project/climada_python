@@ -104,11 +104,6 @@ class Exposures():
     geometry : pd.Series, optional
         geometry of type Point of each instance.
         Computed in method set_geometry_points().
-    meta : dict
-        dictionary containing corresponding raster properties (if any):
-        width, height, crs and transform must be present at least (transform needs
-        to contain upper left corner!). Exposures might not contain all the points
-        of the corresponding raster. Not used in internal computations.
     deductible : pd.Series, optional
         deductible value for each exposure
     cover : pd.Series, optional
@@ -163,6 +158,88 @@ class Exposures():
     def value(self):
         """Geometry array of exposures"""
         return self.data["value"].values
+
+    @property
+    def region_id(self):
+        """Region id for each exposure
+
+        Returns
+        -------
+        np.array of int
+        """
+        if "region_id" in self.data.columns:
+            return self.data["region_id"].values
+
+    @property
+    def category_id(self):
+        """Category id for each exposure
+
+        Returns
+        -------
+        np.array of int
+        """
+        if "category_id" in self.data.columns:
+            return self.data["category_id"].values
+
+    @property
+    def cover(self):
+        """Cover value for each exposures
+
+        Returns
+        -------
+        np.array of float
+        """
+        if "cover" in self.data.columns:
+            return self.data["cover"].values
+
+    @property
+    def deductible(self):
+        """Deductible value for each exposures
+
+        Returns
+        -------
+        np.array of float
+        """
+        if "deductible" in self.data.columns:
+            return self.data["deductible"].values
+
+    def impf_haz_type(self, haz_type=""):
+        """Get impact functions for a given hazard type
+
+        Parameters
+        ----------
+        haz_type : str
+            hazard type, as in the hazard's.haz_type
+            which is the HAZ_TYPE constant of the hazard's module
+
+        Returns
+        -------
+        np.array of int
+            impact functions for the given hazard type
+        """
+        if INDICATOR_IMPF + haz_type in self.data.columns:
+            return self.data[INDICATOR_IMPF + haz_type].values
+        if INDICATOR_IMPF_OLD + haz_type in self.data.columns:
+            return self.data[INDICATOR_IMPF_OLD + haz_type].values
+        raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF + haz_type}.")    
+
+    def centroid_haz_type(self, haz_type=""):
+        """Get centroids for a given hazard type
+
+        Parameters
+        ----------
+        haz_type : str
+            hazard type, as in the hazard's.haz_type
+            which is the HAZ_TYPE constant of the hazard's module
+
+        Returns
+        -------
+        np.array of int
+            centroids index for the given hazard type
+        """
+        if INDICATOR_CENTR + haz_type in self.data.columns:
+            return self.data[INDICATOR_CENTR + haz_type].values
+        raise ValueError(f"Missing exposures centroids {INDICATOR_CENTR + haz_type}.")
 
     @staticmethod
     def _consolidate(alternative_data, name, value, default=None, equals=lambda x, y: x == y):

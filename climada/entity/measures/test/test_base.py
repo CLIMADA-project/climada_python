@@ -276,9 +276,9 @@ class TestApply(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(res_exp.crs, exp.crs))
 
         # regions (that is just input data, no need for testing, but it makes the changed and unchanged parts obious)
-        self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[0], 4))
-        self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[1:25], np.ones(24) * 3))
-        self.assertTrue(np.array_equal(res_exp.gdf.region_id.values[25:], np.ones(25)))
+        self.assertTrue(np.array_equal(res_exp.region_id[0], 4))
+        self.assertTrue(np.array_equal(res_exp.region_id[1:25], np.ones(24) * 3))
+        self.assertTrue(np.array_equal(res_exp.region_id[25:], np.ones(25)))
 
         # changed exposures
         self.assertTrue(np.array_equal(res_exp.gdf.value.values[:25], new_exp.gdf.value.values[:25]))
