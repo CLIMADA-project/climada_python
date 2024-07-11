@@ -39,7 +39,7 @@ from climada.hazard.base import Hazard
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
-from climada.hazard.trop_cyclone.trop_cyclone_windfields import DEF_MAX_DIST_EYE_KM, DEF_INTENSITY_THRES, \
+from .trop_cyclone_windfields import DEF_MAX_DIST_EYE_KM, DEF_INTENSITY_THRES, \
     DEF_MAX_MEMORY_GB, compute_windfields_sparse
 from climada.util import ureg
 import climada.util.constants as u_const
