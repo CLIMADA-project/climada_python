@@ -25,7 +25,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colormaps as cm
 import cartopy.crs as ccrs
-from geopandas import GeoDataFrame
+import geopandas as gpd
 from shapely import Point
 
 import climada.util.plot as u_plot
@@ -153,7 +153,7 @@ class TestPlots(unittest.TestCase):
         plt.close()
 
     def test_subplots_from_gdf(self):
-        return_periods = GeoDataFrame(
+        return_periods = gpd.GeoDataFrame(
             data = ((2., 5.), (3., 6.), (None, 2.), (1., 7.)),
             columns = ('10.0', '20.0')
         )

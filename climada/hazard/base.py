@@ -458,19 +458,29 @@ class Hazard(HazardIO, HazardPlot):
         Parameters
         ----------
         threshold_intensities : np.array
-            Hazard intensities to consider.
+            User-specified hazard intensities for which the return period should be calculated 
+            locally (at each centroid)
     
         Returns
         -------
         gdf : gpd.GeoDataFrame
-            GeoDataFrame containing return periods for given threshold intensity
-            description of units of values and threshold intensities in gdf.columns.name
+            GeoDataFrame containing return periods for given threshold intensities. Each column 
+            corresponds to a threshold_intensity value, each row corresponds to a centroid. Values
+            in the gdf correspond to the return period for the given centroid and threshold_intensity value
+        gdf_meta : climada.util.plot.GdfMeta
+            named tuple providing meta data of which quantities (and their units) are written the gdf
         """
         #check frequency unit
-        if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
-            LOGGER.warning("The Hazard's frequency unit is %s and not %s which "
-                "most likely leads to incorrect results",
-                self.frequency_unit, u_const.DEF_FREQ_UNIT)
+        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
+            rp_unit = 'Years'
+        elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
+            rp_unit = 'Months'
+        elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
+            rp_unit = 'Weeks'
+        else:
+            LOGGER.warning(f"Hazard's frequency unit {self.frequency_unit} is not known, "
+                           "years will be used as return period unit.")
+            rp_unit = 'Years'
 
         # Ensure threshold_intensities is a numpy array
         threshold_intensities = np.array(threshold_intensities)
@@ -499,7 +509,7 @@ class Hazard(HazardIO, HazardPlot):
         #create gdf meta data
         gdf_meta = GdfMeta(
             name = 'Return Period',
-            unit = 'Years',
+            unit = rp_unit,
             col_name = 'Threshold Intensity',
             col_unit = self.units
         )
@@ -676,9 +686,10 @@ class Hazard(HazardIO, HazardPlot):
         Parameters
         ----------
         threshold_intensities: np.array
-            Given hazard intensities for which to calculate return periods.
+            Test hazard intensities for which to calculate return periods at each centroid.
         inten: np.array
-            The intensity array for a specific chunk of data.
+            subarray of full hazard intensities corresponding to a subset of the centroids (rows corresponds to
+            events, columns correspond to centroids)
 
         Returns
         -------

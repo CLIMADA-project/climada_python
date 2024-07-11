@@ -887,8 +887,7 @@ def subplots_from_gdf(gdf: GeoDataFrame, gdf_meta: GdfMeta = None, smooth=True, 
         ----------
         gdf: gpd.GeoDataFrame
             return periods per threshold intensity
-        gdf_meta: 
-            climada.util.plot.GdfMeta
+        gdf_meta: climada.util.plot.GdfMeta
             gdf meta data in named tuple with attributes 'name' (quantity in gdf), 'unit', (unit thereof)
             'col_name' (quantity in column labels), 'col_unit' (unit thereof)
         smooth: bool, optional

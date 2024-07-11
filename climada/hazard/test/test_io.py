@@ -21,10 +21,8 @@ Test Hazard base class.
 import unittest
 from unittest.mock import patch
 import datetime as dt
-import os
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import rasterio
 
 from pyproj import CRS
 import numpy as np
