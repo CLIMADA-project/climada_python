@@ -252,8 +252,8 @@ class Exposures():
         raise ValueError(f"Missing hazard centroids.")
 
     @property
-    def pmeta(self):
-        """Metadata dictionary"""
+    def _meta(self):
+        """Metadata dictionary, containing raster information derived from geometry"""
         _r, meta = u_coord.points_to_raster(self.data)
         return meta
 
