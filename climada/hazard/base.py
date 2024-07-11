@@ -453,7 +453,8 @@ class Hazard(HazardIO, HazardPlot):
             self.event_id = np.arange(1, self.event_id.size + 1)
 
     def local_return_period(self, threshold_intensities):
-        """Compute local return periods for given hazard intensities.
+        """Compute local return periods for given hazard intensities. The used method is fitting the 
+        ordered intensitites per centroid to the corresponding cummulated frequency with a step function
     
         Parameters
         ----------

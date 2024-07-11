@@ -67,37 +67,6 @@ class HazardPlot():
                                         colbar_name, title, smooth=smooth, axes=axis,
                                         figsize=figsize, adapt_fontsize=adapt_fontsize, **kwargs)
         return axis, inten_stats
-    
-    def plot_local_rp(self, threshold_intensities, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, cmap = 'viridis_r', **kwargs):
-        """Plot hazard local return periods for given hazard intensities.
-    
-        Parameters
-        ----------
-        threshold_intensities: np.array
-            Hazard intensities to consider for calculating return periods.
-        smooth: bool, optional
-            Smooth plot to plot.RESOLUTION x plot.RESOLUTION.
-        axis: matplotlib.axes._subplots.AxesSubplot, optional
-            Axis to use.
-        figsize: tuple, optional
-            Figure size for plt.subplots.
-        kwargs: optional
-            Arguments for pcolormesh matplotlib function used in event plots.
-    
-        Returns
-        -------
-        axis: matplotlib.axes._subplots.AxesSubplot
-            Matplotlib axis with the plot.
-        """
-        return_periods = self.local_return_period(threshold_intensities)
-        colbar_name = 'Return Period (years)'
-        title = list()
-        for haz_int in threshold_intensities:
-            title.append('Intensity: ' + f'{haz_int} {self.units}')
-        axis = u_plot.geo_im_from_array(return_periods, self.centroids.coord,
-                                        colbar_name, title, smooth=smooth, axes=axis,
-                                        figsize=figsize, adapt_fontsize=adapt_fontsize, cmap=cmap, **kwargs)
-        return axis, return_periods
 
     def plot_intensity(self, event=None, centr=None, smooth=True, axis=None, adapt_fontsize=True,
                        **kwargs):
