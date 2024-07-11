@@ -30,6 +30,7 @@ import warnings
 import numpy as np
 from pathos.pools import ProcessPool as Pool
 from scipy import sparse
+import geopandas as gpd
 
 from climada import CONFIG
 from climada.hazard.plot import HazardPlot
@@ -39,6 +40,7 @@ import climada.util.checker as u_check
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
+import climada.util.fit_methods as u_fit
 
 
 LOGGER = logging.getLogger(__name__)
@@ -442,6 +444,48 @@ class Hazard(HazardIO, HazardPlot):
             LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
                    Reason: no negative intensity values were found in hazard.')
             inten_stats[inten_stats < 0] = 0
+        return inten_stats
+    
+    def local_exceedance_inten_new(self, return_periods=(25, 50, 100, 250)):
+        """Compute exceedance intensity map for given return periods.
+
+        Parameters
+        ----------
+        return_periods : np.array
+            return periods to consider
+
+        Returns
+        -------
+        inten_stats: np.array
+        """
+        num_cen = self.intensity.shape[1]
+        inten_stats = np.zeros((len(return_periods), num_cen))
+        
+        sort_pos = np.argsort(self.intensity.toarray(), axis=0)[::-1, :]
+        columns = np.ones(sort_pos.shape, int)
+        columns *= np.arange(num_cen)
+        inten_sort = self.intensity.toarray()[sort_pos, columns]
+        freq_sort = self.frequency[sort_pos]
+        freq_sort = np.cumsum(freq_sort, axis=0)
+
+        # inten_sort = self.intensity.toarray()[sort_pos, np.arange(num_cen)]
+        # freq_sort = self.frequency[sort_pos]
+        # freq_sort = np.cumsum(freq_sort, axis=0)
+        
+        inten_stats = np.zeros((len(return_periods), num_cen))
+
+        
+
+        for i in range(num_cen):
+            inten_stats[:,i] = u_fit.calc_fit_interp(
+                1/np.array(return_periods),
+                freq_sort[:,i],
+                inten_sort[:,i],
+                method='fit',
+                x_scale='log',
+                y_thres=self.intensity_thres
+            )
+
         return inten_stats
 
     def sanitize_event_ids(self):
