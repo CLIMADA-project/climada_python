@@ -27,7 +27,7 @@ import numpy as np
 from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.entity.entity_def import Entity
-from climada.entity.exposures.base import Exposures, INDICATOR_IMPF
+from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.measures.measure_set import MeasureSet
@@ -173,8 +173,8 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(new_exp.gdf.value.values, exp.gdf.value.values))
         self.assertTrue(np.array_equal(new_exp.latitude, exp.latitude))
         self.assertTrue(np.array_equal(new_exp.longitude, exp.longitude))
-        self.assertTrue(np.array_equal(exp.gdf[INDICATOR_IMPF + 'TC'].values, np.ones(new_exp.gdf.shape[0])))
-        self.assertTrue(np.array_equal(new_exp.gdf[INDICATOR_IMPF + 'TC'].values, np.ones(new_exp.gdf.shape[0]) * 3))
+        self.assertTrue(np.array_equal(exp.hazard_impf('TC'), np.ones(new_exp.gdf.shape[0])))
+        self.assertTrue(np.array_equal(new_exp.hazard_impf('TC'), np.ones(new_exp.gdf.shape[0]) * 3))
 
     def test_change_all_hazard_pass(self):
         """Test _change_all_hazard method"""

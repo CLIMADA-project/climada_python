@@ -176,7 +176,7 @@ class Exposures():
 
         Returns
         -------
-        np.array of int
+        np.array
         """
         if "category_id" in self.data.columns:
             return self.data["category_id"].values
@@ -203,8 +203,8 @@ class Exposures():
         if "deductible" in self.data.columns:
             return self.data["deductible"].values
 
-    def impf_haz_type(self, haz_type=""):
-        """Get impact functions for a given hazard type
+    def hazard_impf(self, haz_type=""):
+        """Get impact functions for a given hazard
 
         Parameters
         ----------
@@ -215,16 +215,20 @@ class Exposures():
         Returns
         -------
         np.array of int
-            impact functions for the given hazard type
+            impact functions for the given hazard
         """
-        if INDICATOR_IMPF + haz_type in self.data.columns:
+        if haz_type and INDICATOR_IMPF + haz_type in self.data.columns:
             return self.data[INDICATOR_IMPF + haz_type].values
-        if INDICATOR_IMPF_OLD + haz_type in self.data.columns:
+        if haz_type and INDICATOR_IMPF_OLD + haz_type in self.data.columns:
             return self.data[INDICATOR_IMPF_OLD + haz_type].values
-        raise ValueError(f"Missing exposures impact functions {INDICATOR_IMPF + haz_type}.")    
+        if INDICATOR_IMPF in self.data.columns:
+            return self.data[INDICATOR_IMPF].values
+        if INDICATOR_IMPF_OLD in self.data.columns:
+            return self.data[INDICATOR_IMPF_OLD].values
+        raise ValueError(f"Missing impact functions.")    
 
-    def centroid_haz_type(self, haz_type=""):
-        """Get centroids for a given hazard type
+    def hazard_centroids(self, haz_type=""):
+        """Get centroids for a given hazard
 
         Parameters
         ----------
@@ -235,11 +239,19 @@ class Exposures():
         Returns
         -------
         np.array of int
-            centroids index for the given hazard type
+            centroids index for the given hazard
         """
-        if INDICATOR_CENTR + haz_type in self.data.columns:
+        if haz_type and INDICATOR_CENTR + haz_type in self.data.columns:
             return self.data[INDICATOR_CENTR + haz_type].values
-        raise ValueError(f"Missing exposures centroids {INDICATOR_CENTR + haz_type}.")
+        if INDICATOR_CENTR in self.data.columns:
+            return self.data[INDICATOR_CENTR].values
+        raise ValueError(f"Missing hazard centroids.")
+
+    @property
+    def pmeta(self):
+        """Metadata dictionary"""
+        _r, meta = u_coord.points_to_raster(self.data)
+        return meta
 
     @staticmethod
     def _consolidate(alternative_data, name, value, default=None, equals=lambda x, y: x == y):
