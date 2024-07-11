@@ -30,8 +30,221 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
+
+
+class ImpactMetrics:
+
+    def __init__(self, 
+                 arm_df: pd.DataFrame,
+                 all_arms_df: Optional[pd.DataFrame] = None,
+                 measure_set: Optional[MeasureSet] = None,
+                 measure_times_df: Optional[pd.DataFrame] = None,
+                 value_unit: str = 'USD'
+                 ):
+        self.arm_df = arm_df.copy()
+        self.all_arms_df = copy.deepcopy(all_arms_df)
+        self.measure_set = copy.deepcopy(measure_set)
+        self.measure_times_df = copy.deepcopy(measure_times_df)
+        self.value_unit = value_unit 
+
+
+    ## Waterfall plot functions
+    # Plot the waterfall plot
+    def waterfall_plot(self, yearly=False, measure=None, metric='aai', group=np.nan):
+
+        # Check if the all_arms_df is provided
+        if self.all_arms_df is None:
+            raise ValueError("The all_arms_df is required for the waterfall plot. Please reggerate the all_arms_df using CalcImpactMetrics.")
+
+        # Check if yearly or classic waterfall plot
+        if yearly:
+            # Calculate the averted risk metrics for yearly waterfall plot
+            waterfall_df = _calc_waterfall_plot_df(self.arm_df, self.all_arms_df, measure=measure, metric=metric, ref_year=None, fut_year=None, group=group, subtract=True)
+            _plot_yearly_waterfall(waterfall_df, self.value_unit)
+        else:
+            # Calculate the averted risk metrics for the two points waterfall plot
+            waterfall_df = _calc_waterfall_plot_df(self.arm_df, self.all_arms_df, measure=measure, metric=metric, ref_year=None, fut_year=None, group=group)
+            _plot_two_years_waterfall(waterfall_df, self.value_unit)
+
+        return
+    
+    ## CB analysis
+    # Calculate the cost-benefit analysis
+    def calc_CB(self, start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
+        return calc_CB_df(self.arm_df, self.measure_set, self.measure_times_df, start_year, end_year, consider_measure_times, risk_disc, cost_disc)
+    
+    # Print the CB summary table
+    def print_CB_summary_table(self, metric = 'aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
+        # Get the CB analysis
+        _, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
+        print_CB_summary_table(tot_CB_df, self.measure_set, metric=metric, value_unit= self.value_unit)
+        return
+    
+    # Plot the yearly averted cost for a specific measure
+    def plot_benefit_vs_cost(self, measure, metric='aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
+        ann_CB_df, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
+        plot_yearly_averted_cost(ann_CB_df, measure, metric, group=None)
+        return
+    
+    ## Risk analysis
+    # Plot the risk metrics for each measure
+    def plot_yearly_risk_metrics(self, metric='aai', averted= False, consider_measure_times=False, risk_disc=None, plot_type='line', measures=None, group=np.nan):
+        # Copy the DataFrame
+        plot_df = self.arm_df.copy()
+
+        # Check if the time should be considered
+        if consider_measure_times:
+            plot_df = create_meas_mod_arm_df(plot_df, self.measure_set, self.measure_times_df, consider_measure_times=True)
+
+        # Check if the risk metrics should be avereted
+        if averted:
+            # Get the avereted risk metrics
+            plot_df = calc_averted_risk_metrics(plot_df)
+        
+        # check if the risk metrics should be discounted
+        if risk_disc is not None:
+            # Calculate the discounted cash flows
+            plot_df, _ = calc_npv_arm_df(plot_df, disc=risk_disc)
+            discounted = True
+        else:
+            discounted = False
+
+        # Plot the risk metrics
+        plot_risk_metrics(plot_df, metric=metric, group=group, averted=averted, discounted=discounted, plot_type=plot_type, measures=measures, value_unit=self.value_unit)
+
+        return
+
+    # Generate the MCDM dataframe
+    def generate_MCDM_dataframe(self, consider_measure_times=True, risk_disc=None, cost_disc=None, levels=['tot', 'avrt'], risk_metrics=None):
+
+        # Calculate the cost-benefit analysis
+        _, tot_CB_df = self.calc_CB(consider_measure_times=consider_measure_times, risk_disc=risk_disc, cost_disc=cost_disc)
+
+        # Get he risk metrics
+        if risk_metrics is None:
+            risk_metrics = self.get_risk_metrics()
+
+        # Create the DecisionMatrix object
+        mcdm_df = tot_CB_df.copy()
+
+        # Filter out the risk metrics
+        mcdm_df = mcdm_df[mcdm_df['metric'].isin(risk_metrics)]
+
+        # Change the column names
+        dict_col_names = {
+            'total risk': 'tot',
+            'averted risk': 'avrt',
+            'cost (net)': 'cost'
+        }
+        mcdm_df.rename(columns=dict_col_names, inplace=True)
+
+        # Store only the risk metrics
+        mcdm_risk_df = mcdm_df[['measure', 'group'] + levels]
+        # Remove space and _ in the metric column
+        mcdm_risk_df['metric'] = mcdm_df['metric'].str.replace(' ', '')
+        mcdm_risk_df['metric'] = mcdm_df['metric'].str.replace('_', '')
+        # Pivot the table to have the risk_cols + metric + unit as columns
+        mcdm_df_piv = mcdm_risk_df.pivot(index=['measure', 'group'], columns='metric', values=levels) 
+        # # Add the unit to the column names
+        mcdm_df_piv.columns = mcdm_df_piv.columns.map('{0[0]}_{0[1]}'.format)
+        # # Reset the index
+        mcdm_df_piv.reset_index(inplace=True)
+
+        # Add the cost by merging the dataframes
+        mcmdm_cost_df = mcdm_df[['measure', 'group', 'cost']].drop_duplicates()
+        mcdm_df_piv = mcdm_df_piv.merge(mcmdm_cost_df, on=['measure', 'group'])
+
+        # Add the value unit to all columns except the measure and group
+        mcdm_df_piv.columns = [f"{col}_{self.value_unit}" if col not in ['measure', 'group'] else col for col in mcdm_df_piv.columns]
+
+        return mcdm_df_piv
+
+    # Update the planner
+    def update_planner(self, planner):
+
+        # Step 1 - Create the new potential measure_times_df
+        new_measure_times_df = update_measure_times_df(self.measure_times_df, planner)
+
+        # Step 2 - Check if the 'All' measure combo is in the measure set
+        for meas_name, meas in self.measure_set.measures().items():
+            if meas_name == 'All' and meas.combo:
+                all_combos_exist = True
+
+        # Step 3 - If the 'All' measure combo is in the measure set, check if all the necessary subcombos exist
+        if all_combos_exist:
+            actual_missing_combos = check_if_necessary_subcombos_exist(new_measure_times_df, self.measure_set)
+
+            # if actual_missing_combos rasing an error
+            if actual_missing_combos:
+                raise ValueError(f'The following combos are missing from the measure set: {actual_missing_combos}. Re run the planner to get the missing combos')
+
+        # Update the measure_times_df
+        self.measure_times_df = new_measure_times_df
+
+        return 
+    
+
+    
+    # Properties
+    def get_annual_risk_df(self):
+        # Update to modify be used for the plot funcions
+        return self.arm_df.copy()
+
+
+    def get_risk_metrics(self):
+        return list(self.arm_df['metric'].unique())
+
+    def get_measures(self):
+        return list(self.measure_set.measures().keys())
+
+
 #%% Utility functions
 
+
+#%% Update the planner
+
+# Update the measure times DataFrame based on the planner
+def update_measure_times_df(measure_times_df, planner):
+    new_measure_times_df = measure_times_df.copy()
+
+    for meas_name, dates in planner.items():
+        # Directly update the start and end year for rows where measure equals meas_name
+        new_measure_times_df.loc[new_measure_times_df.measure == meas_name, 'start_year'] = dates[0]
+        new_measure_times_df.loc[new_measure_times_df.measure == meas_name, 'end_year'] = dates[1]
+
+    return new_measure_times_df
+
+
+# Check if the necessary subcombos exist in the measure set for the 'All' combo
+def check_if_necessary_subcombos_exist(measure_times_df, measure_set):
+
+    # Get the needed combos
+    needed_combos = get_active_measure_combinations(measure_times_df)
+
+    # Convert needed_combos to a set of frozensets for efficient comparison
+    needed_combos_set = {frozenset(combo) for combo in needed_combos}
+    found_combos = set()
+    missing_combos = set()
+
+    # Check if combo exists in the measure set
+    for meas_name, meas in measure_set.measures().items():
+        # Check if the measure has a combo
+        if meas.combo:
+            # Convert the combo to a frozenset
+            combo_fset = frozenset(meas.combo)
+            # Check if the combo is in the needed_combos_set
+            if combo_fset in needed_combos_set:
+                found_combos.add(combo_fset)
+            else:
+                missing_combos.add(combo_fset)
+
+    # Identify missing combos by comparing needed_combos_set with found_combos
+    actual_missing_combos = needed_combos_set - found_combos
+
+    return actual_missing_combos
+
+
+#%%
 
 ## Generate active measures for a specific year
 def get_meas_times_df(measure_set, incl_combo=False):
@@ -123,7 +336,8 @@ def include_combos_in_measure_set(measure_set, *other_combos, all_measures=True 
 
     # Combine all measures
     if all_measures:
-        meas_all = new_measure_set.combine(combo_name='all')
+        meas_all = new_measure_set.combine()
+        #meas_all = new_measure_set.combine(combo_name='all')
         #new_measure_set.append(meas_combo)
 
     # Combine other measures
@@ -137,7 +351,42 @@ def include_combos_in_measure_set(measure_set, *other_combos, all_measures=True 
     
     return new_measure_set
 
+# make a function that filters out redundant combos
+def filter_redundant_combos(measure_set):
+    # Initialize a list to hold the names of initial measures
+    init_meas = list(measure_set.measures().keys())
+    indvidual_measures = []
 
+    # Initialize a dictionary to track unique combos
+    unique_combos = {}
+
+    for meas_name, meas in measure_set.measures().items():
+        # Check if the measure is a combo
+        if meas.combo:
+            # Convert the combo to a tuple (or another immutable and hashable structure) for comparison
+            combo_tuple = tuple(sorted(meas.combo))
+            # If the combo is not already in unique_combos, add it with the current measure name
+            if combo_tuple not in unique_combos:
+                unique_combos[combo_tuple] = meas_name
+            else:
+                # If the combo is already tracked, remove the current measure name from init_meas
+                if meas_name in init_meas:
+                    init_meas.remove(meas_name)
+        else:
+            indvidual_measures.append(meas_name)
+
+    # Collect measures from the filtered list of measure names
+    meas_list = [measure_set.measures()[meas_name] for meas_name in init_meas if meas_name in measure_set.measures()]
+
+    # Create a new MeasureSet with the unique measures
+    unique_measure_set = MeasureSet(measures=meas_list)
+
+    # Rename the combo conatining all individual measures as 'All'
+    for _,meas in unique_measure_set.measures().items():
+        if meas.combo and set(meas.combo) == set(indvidual_measures):
+            meas.name = 'All'
+
+    return unique_measure_set
 
 # make a function that generates the updated combo measure set
 def generate_necessary_combo_measure_set(measure_set, combo_consider_measure_times=True):
@@ -167,6 +416,8 @@ def generate_necessary_combo_measure_set(measure_set, combo_consider_measure_tim
     else:
         new_measure_set = include_combos_in_measure_set(measure_set, all_measures=True)
     
+    # Filter out redundant combos
+    new_measure_set = filter_redundant_combos(new_measure_set)
 
     return new_measure_set
 
@@ -1008,139 +1259,4 @@ def plot_yearly_averted_cost(ann_CB_df, measure, metric='aai', group=None, avert
 
 
 
-
-class ImpactMetrics:
-
-    def __init__(self, 
-                 arm_df: pd.DataFrame,
-                 all_arms_df: pd.DataFrame,
-                 measure_set: Optional[MeasureSet] = None,
-                 measure_times_df: Optional[pd.DataFrame] = None,
-                 value_unit: str = 'USD'
-                 ):
-        self.arm_df = arm_df.copy()
-        self.all_arms_df = all_arms_df.copy()
-        self.measure_set = copy.deepcopy(measure_set)
-        self.measure_times_df = copy.deepcopy(measure_times_df)
-        self.value_unit = value_unit 
-
-
-    ## Waterfall plot functions
-    # Plot the waterfall plot
-    def waterfall_plot(self, yearly=False, measure=None, metric='aai', group=np.nan):
-
-        # Check if yearly or classic waterfall plot
-        if yearly:
-            waterfall_df = _calc_waterfall_plot_df(self.arm_df, self.all_arms_df, measure=measure, metric=metric, ref_year=None, fut_year=None, group=group, subtract=True)
-            _plot_yearly_waterfall(waterfall_df, self.value_unit)
-        else:
-            waterfall_df = _calc_waterfall_plot_df(self.arm_df, self.all_arms_df, measure=measure, metric=metric, ref_year=None, fut_year=None, group=group)
-            _plot_two_years_waterfall(waterfall_df, self.value_unit)
-
-        return
-    
-    ## CB analysis
-    # Calculate the cost-benefit analysis
-    def calc_CB(self, start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
-        return calc_CB_df(self.arm_df, self.measure_set, self.measure_times_df, start_year, end_year, consider_measure_times, risk_disc, cost_disc)
-    
-    # Print the CB summary table
-    def print_CB_summary_table(self, metric = 'aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
-        # Get the CB analysis
-        _, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
-        print_CB_summary_table(tot_CB_df, self.measure_set, metric=metric, value_unit= self.value_unit)
-        return
-    
-    # Plot the yearly averted cost for a specific measure
-    def plot_benefit_vs_cost(self, measure, metric='aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
-        ann_CB_df, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
-        plot_yearly_averted_cost(ann_CB_df, measure, metric, group=None)
-        return
-    
-    ## Risk analysis
-    # Plot the risk metrics for each measure
-    def plot_yearly_risk_metrics(self, metric='aai', averted= False, consider_measure_times=False, risk_disc=None, plot_type='line', measures=None, group=np.nan):
-        # Copy the DataFrame
-        plot_df = self.arm_df.copy()
-
-        # Check if the time should be considered
-        if consider_measure_times:
-            plot_df = create_meas_mod_arm_df(plot_df, self.measure_set, self.measure_times_df, consider_measure_times=True)
-
-        # Check if the risk metrics should be avereted
-        if averted:
-            # Get the avereted risk metrics
-            plot_df = calc_averted_risk_metrics(plot_df)
-        
-        # check if the risk metrics should be discounted
-        if risk_disc is not None:
-            # Calculate the discounted cash flows
-            plot_df, _ = calc_npv_arm_df(plot_df, disc=risk_disc)
-            discounted = True
-        else:
-            discounted = False
-
-        # Plot the risk metrics
-        plot_risk_metrics(plot_df, metric=metric, group=group, averted=averted, discounted=discounted, plot_type=plot_type, measures=measures, value_unit=self.value_unit)
-
-        return
-
-    # Generate the MCDM dataframe
-    def generate_MCDM_dataframe(self, consider_measure_times=True, risk_disc=None, cost_disc=None, levels=['tot', 'avrt'], risk_metrics=None):
-
-        # Calculate the cost-benefit analysis
-        _, tot_CB_df = self.calc_CB(consider_measure_times=consider_measure_times, risk_disc=risk_disc, cost_disc=cost_disc)
-
-        # Get he risk metrics
-        if risk_metrics is None:
-            risk_metrics = self.get_risk_metrics()
-
-        # Create the DecisionMatrix object
-        mcdm_df = tot_CB_df.copy()
-
-        # Filter out the risk metrics
-        mcdm_df = mcdm_df[mcdm_df['metric'].isin(risk_metrics)]
-
-        # Change the column names
-        dict_col_names = {
-            'total risk': 'tot',
-            'averted risk': 'avrt',
-            'cost (net)': 'cost'
-        }
-        mcdm_df.rename(columns=dict_col_names, inplace=True)
-
-        # Store only the risk metrics
-        mcdm_risk_df = mcdm_df[['measure', 'group'] + levels]
-        # Remove space and _ in the metric column
-        mcdm_risk_df['metric'] = mcdm_df['metric'].str.replace(' ', '')
-        mcdm_risk_df['metric'] = mcdm_df['metric'].str.replace('_', '')
-        # Pivot the table to have the risk_cols + metric + unit as columns
-        mcdm_df_piv = mcdm_risk_df.pivot(index=['measure', 'group'], columns='metric', values=levels) 
-        # # Add the unit to the column names
-        mcdm_df_piv.columns = mcdm_df_piv.columns.map('{0[0]}_{0[1]}'.format)
-        # # Reset the index
-        mcdm_df_piv.reset_index(inplace=True)
-
-        # Add the cost by merging the dataframes
-        mcmdm_cost_df = mcdm_df[['measure', 'group', 'cost']].drop_duplicates()
-        mcdm_df_piv = mcdm_df_piv.merge(mcmdm_cost_df, on=['measure', 'group'])
-
-        # Add the value unit to all columns except the measure and group
-        mcdm_df_piv.columns = [f"{col}_{self.value_unit}" if col not in ['measure', 'group'] else col for col in mcdm_df_piv.columns]
-
-        return mcdm_df_piv
-    
-
-    
-    # Properties
-    def get_annual_risk_df(self):
-        # Update to modify be used for the plot funcions
-        return self.arm_df.copy()
-
-
-    def get_risk_metrics(self):
-        return list(self.arm_df['metric'].unique())
-
-    def get_measures(self):
-        return list(self.measure_set.measures().keys())
   
