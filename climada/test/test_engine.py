@@ -153,7 +153,7 @@ class TestEmdatProcessing(unittest.TestCase):
 
         self.assertEqual(36, df.size)
         self.assertAlmostEqual(df.impact.max(), 15150000000.0)
-        self.assertEqual(df.impact_scaled.min(), 10943000.0)
+        self.assertAlmostEqual(df.impact_scaled.min(), 10939000.0)
         self.assertEqual(df["year"][5], 2017)
         self.assertEqual(df["reference_year"].max(), 2000)
         self.assertIn("USA", list(df["ISO"]))
@@ -173,7 +173,7 @@ class TestGDPScaling(unittest.TestCase):
         )
         # scaled impact value might change if worldbank input data changes,
         # check magnitude and adjust if test fails in the following line:
-        self.assertListEqual(impact_scaled, [28, 137, 999, 163, 304])
+        self.assertListEqual(impact_scaled, [28, 137, 1000, 163, 304])
 
 
 class TestEmdatToImpact(unittest.TestCase):
