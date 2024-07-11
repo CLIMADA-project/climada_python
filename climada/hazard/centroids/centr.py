@@ -465,7 +465,7 @@ class Centroids():
               (self.lat >= lat_min) & (self.lat <= lat_max)
             )
         return sel_cen
-    
+
     def plot(self, *, axis=None, figsize=(9, 13), **kwargs):
         """Plot centroids geodataframe using geopandas and cartopy plotting functions.
 
@@ -480,7 +480,7 @@ class Centroids():
             positional arguments for geopandas.GeoDataFrame.plot
         kwargs : optional
             keyword arguments for geopandas.GeoDataFrame.plot
-            
+
         Returns
         -------
         ax : cartopy.mpl.geoaxes.GeoAxes instance

@@ -564,7 +564,7 @@ class LitPop(Exposures):
             description=description
         )
 
-        if (exp.gdf.shape[0] > 1 
+        if (exp.gdf.shape[0] > 1
             and exp.longitude.max() > exp.longitude.min()
             and exp.latitude.max() > exp.latitude.min()):
         #if exp.gdf.shape[0] > 1 and len(exp.latitude.unique()) > 1:

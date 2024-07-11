@@ -169,6 +169,7 @@ class Exposures():
         """
         if "region_id" in self.data.columns:
             return self.data["region_id"].values
+        return None
 
     @property
     def category_id(self):
@@ -180,6 +181,7 @@ class Exposures():
         """
         if "category_id" in self.data.columns:
             return self.data["category_id"].values
+        return None
 
     @property
     def cover(self):
@@ -191,6 +193,7 @@ class Exposures():
         """
         if "cover" in self.data.columns:
             return self.data["cover"].values
+        return None
 
     @property
     def deductible(self):
@@ -202,6 +205,7 @@ class Exposures():
         """
         if "deductible" in self.data.columns:
             return self.data["deductible"].values
+        return None
 
     def hazard_impf(self, haz_type=""):
         """Get impact functions for a given hazard
@@ -225,7 +229,7 @@ class Exposures():
             return self.data[INDICATOR_IMPF].values
         if INDICATOR_IMPF_OLD in self.data.columns:
             return self.data[INDICATOR_IMPF_OLD].values
-        raise ValueError(f"Missing impact functions.")    
+        raise ValueError(f"Missing impact functions.")
 
     def hazard_centroids(self, haz_type=""):
         """Get centroids for a given hazard
@@ -255,7 +259,7 @@ class Exposures():
 
     @staticmethod
     def _consolidate(alternative_data, name, value, default=None, equals=lambda x, y: x == y):
-        altvalue = alternative_data.get(name)    
+        altvalue = alternative_data.get(name)
         if value is None and altvalue is None:
             return default
         if value is None:

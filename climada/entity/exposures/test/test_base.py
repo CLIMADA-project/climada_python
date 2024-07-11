@@ -256,7 +256,7 @@ class TestChecker(unittest.TestCase):
         # all good
         _expo = Exposures(expo.gdf, meta={'crs':4326}, crs=DEF_CRS)
         self.assertEqual(expo.crs, _expo.crs)
-        
+
         # still good: crs in argument and meta override crs from data frame
         _expo = Exposures(expo.gdf, meta={'crs':4230})
         self.assertNotEqual(expo.crs, _expo.crs)
@@ -328,7 +328,7 @@ class TestAddSea(unittest.TestCase):
         """Test add_sea function with fake data."""
         min_lat, max_lat = 27.5, 30
         min_lon, max_lon = -18, -12
-        
+
         exp = Exposures(
             data = dict(
                 value = np.arange(0, 1.0e6, 1.0e5),
