@@ -27,7 +27,7 @@ import unittest
 import numpy as np
 from scipy import sparse
 
-from climada.hazard import test as hazard_test
+import climada.hazard.test as hazard_test
 from climada.util import ureg
 from climada.test import get_test_file
 from climada.hazard.tc_tracks import TCTracks

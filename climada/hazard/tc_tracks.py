@@ -1383,7 +1383,10 @@ class TCTracks():
         df_attrs = pd.DataFrame([t.attrs for t in data], index=ds_combined["storm"].to_series())
         ds_combined = xr.merge([ds_combined, df_attrs.to_xarray()])
 
-        encoding = {v: dict(zlib=_zlib_from_DataArray(ds_combined[v]), complevel=complevel) for v in ds_combined.data_vars}
+        encoding = {
+            v: dict(zlib=_zlib_from_dataarray(ds_combined[v]), complevel=complevel)
+            for v in ds_combined.data_vars
+        }
         LOGGER.info('Writing %d tracks to %s', self.size, file_name)
         ds_combined.to_netcdf(file_name, encoding=encoding)
 
@@ -2436,7 +2439,7 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
     except IndexError:
         return -1
 
-def _zlib_from_DataArray(data_var: xr.DataArray) -> bool:
+def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
     """Return true if data_var is of numerical type, return False otherwise
 
     Parameters
