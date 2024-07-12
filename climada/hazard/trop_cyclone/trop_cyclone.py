@@ -39,11 +39,12 @@ from climada.hazard.base import Hazard
 from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
 from climada.hazard.centroids.centr import Centroids
-from .trop_cyclone_windfields import DEF_MAX_DIST_EYE_KM, DEF_INTENSITY_THRES, \
-    DEF_MAX_MEMORY_GB, compute_windfields_sparse
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
+
+from .trop_cyclone_windfields import DEF_MAX_DIST_EYE_KM, DEF_INTENSITY_THRES, \
+    DEF_MAX_MEMORY_GB, compute_windfields_sparse
 
 LOGGER = logging.getLogger(__name__)
 
