@@ -1280,7 +1280,7 @@ class TestRasterMeta(unittest.TestCase):
             df_val['longitude'] = x.flatten()
             df_val['value'] = np.ones(len(df_val)) * 10
             crs = 'epsg:2202'
-            _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs
+            _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs,
                                                      scheduler=scheduler)
             self.assertFalse(hasattr(df_val, "crs"))  # points_to_raster must not modify df_val
             self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
