@@ -13,6 +13,7 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - GitHub actions workflow for CLIMADA Petals compatibility tests [#855](https://github.com/CLIMADA-project/climada_python/pull/855)
+- `climada.util.calibrate` module for calibrating impact functions [#692](https://github.com/CLIMADA-project/climada_python/pull/692)
 
 ### Changed
 
