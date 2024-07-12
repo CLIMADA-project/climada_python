@@ -40,8 +40,6 @@ import climada.util.checker as u_check
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
-from climada.util.plot import GdfMeta
-
 
 LOGGER = logging.getLogger(__name__)
 
@@ -468,8 +466,10 @@ class Hazard(HazardIO, HazardPlot):
             GeoDataFrame containing return periods for given threshold intensities. Each column 
             corresponds to a threshold_intensity value, each row corresponds to a centroid. Values
             in the gdf correspond to the return period for the given centroid and threshold_intensity value
-        gdf_meta : climada.util.plot.GdfMeta
-            named tuple providing meta data of which quantities (and their units) are written the gdf
+        label : str
+            GeoDataFrame label, for reporting and plotting
+        column_label : function
+            Column-label-generating function, for reporting and plotting
         """
         #check frequency unit
         if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
@@ -507,15 +507,11 @@ class Hazard(HazardIO, HazardPlot):
         col_names = [f'{tresh_inten}' for tresh_inten in threshold_intensities]
         gdf[col_names] = return_periods.T
 
-        #create gdf meta data
-        gdf_meta = GdfMeta(
-            name = 'Return Period',
-            unit = rp_unit,
-            col_name = 'Threshold Intensity',
-            col_unit = self.units
-        )
+        # create label and column_label
+        label = f'Return Periods ({rp_unit})'
+        column_label = lambda column_names: [f'Threshold Intensity: {col} {self.units}' for col in column_names]
 
-        return gdf, gdf_meta
+        return gdf, label, column_label
     
     def get_event_id(self, event_name):
         """Get an event id from its name. Several events might have the same

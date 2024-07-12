@@ -44,8 +44,7 @@ from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from rasterio.crs import CRS
 import requests
-from geopandas import GeoDataFrame
-from collections import namedtuple
+import geopandas as gpd
 
 from climada.util.constants import CMAP_EXPOSURES, CMAP_CAT, CMAP_RASTER
 from climada.util.files_handler import to_list
@@ -877,19 +876,26 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
     if legend:
         ax.legend(bars, data.keys())
 
-# Create GdfMeta class (as a named tuple) for GeoDataFrame meta data
-GdfMeta = namedtuple('GdfMeta', ['name', 'unit', 'col_name', 'col_unit'])
-
-def subplots_from_gdf(gdf: GeoDataFrame, gdf_meta: GdfMeta = None, smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True, **kwargs):
+def subplots_from_gdf(
+        gdf: gpd.GeoDataFrame, 
+        colorbar_name: str = None,
+        title_subplots: callable = None,
+        smooth=True, 
+        axis=None, 
+        figsize=(9, 13), 
+        adapt_fontsize=True, 
+        **kwargs   
+):
         """Plot hazard local return periods for given hazard intensities.
     
         Parameters
         ----------
         gdf: gpd.GeoDataFrame
             return periods per threshold intensity
-        gdf_meta: climada.util.plot.GdfMeta
-            gdf meta data in named tuple with attributes 'name' (quantity in gdf), 'unit', (unit thereof)
-            'col_name' (quantity in column labels), 'col_unit' (unit thereof)
+        colorbar_name: str
+            title of the subplots' colorbars
+        title_subplots: function
+            function that generates the titles of the different subplots using the columns' names
         smooth: bool, optional
             Smooth plot to plot.RESOLUTION x plot.RESOLUTION. Default is True
         axis: matplotlib.axes._subplots.AxesSubplot, optional
@@ -908,35 +914,33 @@ def subplots_from_gdf(gdf: GeoDataFrame, gdf_meta: GdfMeta = None, smooth=True, 
             Matplotlib axis with the plot.
         """
         # check if inputs are correct types
-        if not isinstance(gdf, GeoDataFrame):
+        if not isinstance(gdf, gpd.GeoDataFrame):
             raise ValueError("gdf is not a GeoDataFrame")
         gdf = gdf[['geometry', *[col for col in gdf.columns if col != 'geometry']]]
 
         # read meta data for fig and axis labels
-        if not isinstance(gdf_meta, GdfMeta):
-            #warnings.warn("gdf_meta variable is not of type climada.util.plot.GdfMeta. Figure and axis labels will be missing.")
-            print("gdf_meta variable is not of type climada.util.plot.GdfMeta. Figure and axis labels will be missing.")
-            colbar_name, title_subplots = None, [f"{col}" for col in gdf.columns[1:]] 
-        else:
-            colbar_name = f"{gdf_meta.name} ({gdf_meta.unit})"
-            title_subplots = [f"{gdf_meta.col_name}: {thres_inten} {gdf_meta.col_unit}" 
-                              for thres_inten in gdf.columns[1:]]
+        if not isinstance(colorbar_name, str):
+            print("Unknown colorbar name. Colorbar label will be missing.")
+            colorbar_name = ''
+        if not callable(title_subplots):
+            print("Unknown subplot-title-generation function. Subplot titles will be column names.")
+            title_subplots = lambda cols: [f"{col}" for col in cols] 
         
-            # change default plot kwargs if plotting return periods
-            if gdf_meta.name == 'Return Period':
-                if 'cmap' not in kwargs.keys():
-                    kwargs.update({'cmap': 'viridis_r'})
-                if 'norm' not in kwargs.keys():
-                    kwargs.update(
-                        {'norm': mpl.colors.LogNorm(vmin=gdf.values[:,1:].min(), vmax=gdf.values[:,1:].max()),
-                        'vmin': None, 'vmax': None}
-                    )
+        # change default plot kwargs if plotting return periods
+        if colorbar_name.strip().startswith('Return Period'):
+            if 'cmap' not in kwargs.keys():
+                kwargs.update({'cmap': 'viridis_r'})
+            if 'norm' not in kwargs.keys():
+                kwargs.update(
+                    {'norm': mpl.colors.LogNorm(vmin=gdf.values[:,1:].min(), vmax=gdf.values[:,1:].max()),
+                    'vmin': None, 'vmax': None}
+                )
 
         axis = geo_im_from_array(
             gdf.values[:,1:].T, 
             gdf.geometry.get_coordinates().values[:,::-1],
-            colbar_name, 
-            title_subplots,
+            colorbar_name, 
+            title_subplots(gdf.columns[1:]),
             smooth=smooth, 
             axes=axis,
             figsize=figsize, 
