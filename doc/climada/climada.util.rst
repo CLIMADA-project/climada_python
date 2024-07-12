@@ -9,6 +9,14 @@ climada\.util\.api\_client module
     :undoc-members:
     :show-inheritance:
 
+climada\.util\.calibrate module
+-------------------------------
+
+.. toctree::
+   :maxdepth: 1
+
+   climada.util.calibrate
+
 climada\.util\.checker module
 -----------------------------
 
