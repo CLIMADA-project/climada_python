@@ -64,8 +64,14 @@ climada\.hazard\.tc\_tracks\_synth module
 climada\.hazard\.trop\_cyclone module
 -------------------------------------
 
-.. automodule:: climada.hazard.trop_cyclone
+Module for representing the hazard of a tropical cyclone (wind field).
+
+.. automodule:: climada.hazard.trop_cyclone.trop_cyclone
     :members:
     :undoc-members:
     :show-inheritance:
 
+.. automodule:: climada.hazard.trop_cyclone.trop_cyclone_windfields
+    :members:
+    :undoc-members:
+    :show-inheritance:
