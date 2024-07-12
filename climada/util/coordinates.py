@@ -46,6 +46,7 @@ import scipy.interpolate
 from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
+import shapely.wkt
 from sklearn.neighbors import BallTree
 
 from climada.util.config import CONFIG
@@ -2416,8 +2417,11 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     else:
         ddata = dd.from_pandas(points_df[['latitude', 'longitude']],
                                npartitions=cpu_count())
-        df_poly['_-geometry-prov'] = ddata.map_partitions(apply_box, meta=Polygon) \
-                                   .compute(scheduler=scheduler)
+        df_poly['_-geometry-prov'] = ddata.map_partitions(
+            apply_box).compute(scheduler=scheduler)
+        if isinstance(df_poly.loc[0, '_-geometry-prov'], str):
+            df_poly['_-geometry-prov'] = shapely.wkt.loads(df_poly['_-geometry-prov'])
+
     df_poly.set_geometry('_-geometry-prov',
                          crs=crs if crs else points_df.crs if points_df.crs else DEF_CRS,
                          inplace=True,
