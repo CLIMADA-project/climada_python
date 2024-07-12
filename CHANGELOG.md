@@ -33,6 +33,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
 - Allow downgrading the Python bugfix version to improve environment compatibility [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
 - Fix broken links in `CONTRIBUTING.md` [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
+- When writing `TCTracks` to NetCDF, only apply compression to `float` or `int` data types. This fixes a downstream issue, see [climada_petals#135](https://github.com/CLIMADA-project/climada_petals/issues/135) [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
 
 ### Added
 
