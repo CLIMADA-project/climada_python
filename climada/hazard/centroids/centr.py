@@ -27,7 +27,9 @@ from typing import Any, Literal, Union
 import warnings
 
 import h5py
+import cartopy
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -38,7 +40,6 @@ from shapely.geometry.point import Point
 
 from climada.util.constants import DEF_CRS
 import climada.util.coordinates as u_coord
-import climada.util.plot as u_plot
 
 __all__ = ['Centroids']
 
@@ -478,44 +479,43 @@ class Centroids():
               (self.lat >= lat_min) & (self.lat <= lat_max)
             )
         return sel_cen
-
-    #TODO replace with nice GeoDataFrame util plot method.
-    def plot(self, axis=None, figsize=(9, 13), **kwargs):
-        """Plot centroids scatter points over earth
+    
+    def plot(self, *, axis=None, figsize=(9, 13), **kwargs):
+        """Plot centroids geodataframe using geopandas and cartopy plotting functions.
 
         Parameters
         ----------
-        axis : matplotlib.axes._subplots.AxesSubplot, optional
-            axis to use
+        axis: optional
+            user-defined cartopy.mpl.geoaxes.GeoAxes instance
         figsize: (float, float), optional
             figure size for plt.subplots
             The default is (9, 13)
+        args : optional
+            positional arguments for geopandas.GeoDataFrame.plot
         kwargs : optional
-            arguments for scatter matplotlib function
-
+            keyword arguments for geopandas.GeoDataFrame.plot
+            
         Returns
         -------
-        axis : matplotlib.axes._subplots.AxesSubplot
+        ax : cartopy.mpl.geoaxes.GeoAxes instance
         """
-        pad = np.abs(u_coord.get_resolution(self.lat, self.lon)).min()
+        if axis == None:
+            fig, axis = plt.subplots(figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()})
+        if type(axis) != cartopy.mpl.geoaxes.GeoAxes:
+            raise AttributeError(
+                f"The axis provided is of type: {type(axis)} "
+                "The function requires a cartopy.mpl.geoaxes.GeoAxes."
+            )
 
-        proj_data, _ = u_plot.get_transformation(self.crs)
-        proj_plot = proj_data
-        if isinstance(proj_data, ccrs.PlateCarree):
-            # use different projections for plot and data to shift the central lon in the plot
-            xmin, ymin, xmax, ymax = u_coord.latlon_bounds(self.lat, self.lon, buffer=pad)
-            proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
+        axis.add_feature(cfeature.BORDERS)
+        axis.add_feature(cfeature.COASTLINE)
+        axis.gridlines(draw_labels=True, dms=True, x_inline=False, y_inline=False)
+
+        if self.gdf.crs != DEF_CRS:
+            centroids_plot = self.to_default_crs(inplace=False)
+            centroids_plot.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), **kwargs)
         else:
-            xmin, ymin, xmax, ymax = (self.lon.min() - pad, self.lat.min() - pad,
-                                      self.lon.max() + pad, self.lat.max() + pad)
-
-        if not axis:
-            _fig, axis, _fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize)
-
-        axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
-        u_plot.add_shapes(axis)
-        axis.scatter(self.lon, self.lat, transform=proj_data, **kwargs)
-        plt.tight_layout()
+            self.gdf.plot(ax=axis, transform=ccrs.PlateCarree(), **kwargs)
         return axis
 
     def set_region_id(self, level='country', overwrite=False):
