@@ -32,9 +32,6 @@ import xarray as xr
 from climada.hazard.base import Hazard
 from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL, DEF_CRS
 from climada.hazard.test.test_base import DATA_DIR, dummy_hazard
-from climada.test import get_test_file
-
-HAZ_TEST_TC :Path = get_test_file('test_tc_florida')
 
 class TestReadDefaultNetCDF(unittest.TestCase):
     """Test reading a NetCDF file where the coordinates to read match the dimensions"""

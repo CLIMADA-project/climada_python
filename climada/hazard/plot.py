@@ -19,11 +19,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Hazard Plotting Methods.
 """
 
-import geopandas as gpd
 import numpy as np
 import matplotlib.pyplot as plt
 
-import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
 
 
