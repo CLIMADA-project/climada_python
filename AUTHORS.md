@@ -34,3 +34,4 @@
 * Timo Schmid
 * Luca Severino
 * Samuel Juhel
+* Valentin Gebhart
