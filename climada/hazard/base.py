@@ -450,7 +450,7 @@ class Hazard(HazardIO, HazardPlot):
             LOGGER.debug('Resetting event_id.')
             self.event_id = np.arange(1, self.event_id.size + 1)
 
-    def local_return_period(self, threshold_intensities):
+    def local_return_period(self, threshold_intensities=(5., 10., 20.)):
         """Compute local return periods for given hazard intensities. The used method is fitting the 
         ordered intensitites per centroid to the corresponding cummulated frequency with a step function
     
@@ -458,7 +458,7 @@ class Hazard(HazardIO, HazardPlot):
         ----------
         threshold_intensities : np.array
             User-specified hazard intensities for which the return period should be calculated 
-            locally (at each centroid)
+            locally (at each centroid). Defaults to (5, 10, 20)
     
         Returns
         -------
@@ -489,14 +489,15 @@ class Hazard(HazardIO, HazardPlot):
         num_cen = self.intensity.shape[1]
         return_periods = np.zeros((len(threshold_intensities), num_cen))
         
-        # Process each centroid in chunks as in local_exceedance_inten
-        block_size = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-        if not block_size:
+        # batch_centroids = number of centroids that are handled in parallel: maximal matrix size // number of events
+        batch_centroids = CONFIG.max_matrix_size.int() // self.intensity.shape[0] 
+        if batch_centroids < 1:
             raise ValueError('Increase max_matrix_size configuration parameter to >'
                              f'{self.intensity.shape[0]}')
         
-        for start_col in range(0, num_cen, block_size):
-            end_col = min(start_col + block_size, num_cen)
+        # Process the intensities in chunks of centroids
+        for start_col in range(0, num_cen, batch_centroids):
+            end_col = min(start_col + batch_centroids, num_cen)
             return_periods[:, start_col:end_col] = self._loc_return_period(
                 threshold_intensities,
                 self.intensity[:, start_col:end_col].toarray()
@@ -683,7 +684,8 @@ class Hazard(HazardIO, HazardPlot):
         Parameters
         ----------
         threshold_intensities: np.array
-            Test hazard intensities for which to calculate return periods at each centroid.
+            User-specified hazard intensities for which the return period should be calculated 
+            locally (at each centroid).
         inten: np.array
             subarray of full hazard intensities corresponding to a subset of the centroids (rows corresponds to
             events, columns correspond to centroids)
@@ -691,6 +693,7 @@ class Hazard(HazardIO, HazardPlot):
         Returns
         -------
             np.array
+            (rows corresponds to threshold_intensities, columns correspond to centroids)
         """
         # Assuming inten is sorted and calculating cumulative frequency
         sort_pos = np.argsort(inten, axis=0)[::-1, :]

@@ -1028,18 +1028,16 @@ class TestStats(unittest.TestCase):
         haz = dummy_hazard()
         haz.intensity = sparse.csr_matrix([
             [1., 5., 1.],
-            [2., 2., 0.],
-            [3., 2., 1.],
-            [3., 2., 1.]
+            [2., 2., 0.]
             ])
         haz.frequency = np.full(4, 1.)
-        threshold_intensities = np.array([1., 2., 4.])
+        threshold_intensities = np.array([1., 2., 3.])
         return_stats, _, _ = haz.local_return_period(threshold_intensities)
         np.testing.assert_allclose(
             return_stats[return_stats.columns[1:]].values.T,
             np.array([
-                [0.25, 0.25, 0.33333333],
-                [0.33333333, 0.25, np.nan],
+                [0.5, 0.5, 1.],
+                [1., 0.5, np.nan],
                 [np.nan, 1., np.nan]
             ])
         )
