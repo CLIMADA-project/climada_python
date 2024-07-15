@@ -51,6 +51,7 @@ import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 import climada.util.plot as u_plot
 from climada.util.select import get_attributes_with_matching_dimension
+import climada.util.fit_methods as u_fit
 
 LOGGER = logging.getLogger(__name__)
 
@@ -467,8 +468,49 @@ class Impact():
                        "Use Impact.impact_per_year instead.")
         return self.impact_per_year(all_years=all_years, year_range=year_range)
 
-#TODO: rewrite and deprecate method
-    def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
+# #TODO: rewrite and deprecate method
+#     def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
+#         """Compute exceedance impact map for given return periods.
+#         Requires attribute imp_mat.
+
+#         Parameters
+#         ----------
+#         return_periods : Any, optional
+#             return periods to consider
+#             Dafault is (25, 50, 100, 250)
+
+#         Returns
+#         -------
+#         np.array
+#         """
+#         LOGGER.info('Computing exceedance impact map for return periods: %s',
+#                     return_periods)
+#         if self.imp_mat.size == 0:
+#             raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
+#                              'instance with parameter save_mat=True')
+#         num_cen = self.imp_mat.shape[1]
+#         imp_stats = np.zeros((len(return_periods), num_cen))
+#         cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
+#         if not cen_step:
+#             raise ValueError('Increase max_matrix_size configuration parameter to > '
+#                              f'{self.imp_mat.shape[0]}')
+#         # separte in chunks
+#         chk = -1
+#         for chk in range(int(num_cen / cen_step)):
+#             self._loc_return_imp(np.array(return_periods),
+#                                  self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
+#                                  imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
+#         self._loc_return_imp(np.array(return_periods),
+#                              self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
+#                              imp_stats[:, (chk + 1) * cen_step:])
+
+#         return imp_stats
+    
+    def local_exceedance_imp(
+            self, 
+            return_periods=(25, 50, 100, 250),
+            method = 'fit'
+        ):
         """Compute exceedance impact map for given return periods.
         Requires attribute imp_mat.
 
@@ -489,21 +531,26 @@ class Impact():
                              'instance with parameter save_mat=True')
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
-        if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > '
-                             f'{self.imp_mat.shape[0]}')
-        # separte in chunks
-        chk = -1
-        for chk in range(int(num_cen / cen_step)):
-            self._loc_return_imp(np.array(return_periods),
-                                 self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-                                 imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
-        self._loc_return_imp(np.array(return_periods),
-                             self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
-                             imp_stats[:, (chk + 1) * cen_step:])
+
+        for i in range(num_cen):
+            # sort intensties and frequencies at given centroid
+            sorted_idxs = np.argsort(np.squeeze(self.imp_mat[:,i].toarray()))[::-1]
+            impact_sorted = np.squeeze(self.imp_mat[:,i].toarray()[sorted_idxs])
+            frequency_sorted = self.frequency[sorted_idxs]
+            frequency_sorted = np.cumsum(frequency_sorted)
+
+            # fit intensities to cummulative frequencies
+            imp_stats[:,i] = u_fit.calc_fit_interp(
+                1/np.array(return_periods),
+                frequency_sorted,
+                impact_sorted,
+                method=method,
+                x_scale='log',
+                y_thres = 0
+            )
 
         return imp_stats
+
 
     def calc_freq_curve(self, return_per=None):
         """Compute impact exceedance frequency curve.

@@ -26,28 +26,30 @@ def calc_fit_interp(
         x_test, 
         x_train: np.array, 
         y_train: np.array, 
-        method=None, 
-        x_scale=None, 
-        y_scale=None, 
+        method: str=None, 
+        x_scale: str=None, 
+        y_scale: str=None, 
         x_thres = None, 
-        y_thres = None
+        y_thres = None,
+        **kwargs
     ):
-    """Save variable with provided file name. Uses configuration save_dir folder
-    if no absolute path provided.
+    """_summary_
 
-    Parameters
-    ----------
-    x : np.array
-        x values (1-D array of x values to fit)
-    y : np.array
-        y values (1-D array of y values to fir)
-    method : object
-        variable to save in pickle format
+    Args:
+        x_test (_type_): x values (1-D array of x values to fit)
+        x_train (np.array): x values (1-D array of x values to fit)
+        y_train (np.array): y values (1-D array of x values to fit)
+        method (str, optional): _description_. Defaults to None.
+        x_scale (str, optional): _description_. Defaults to None.
+        y_scale (str, optional): _description_. Defaults to None.
+        x_thres (optional): _description_. Defaults to None.
+        y_thres (optional): _description_. Defaults to None.
 
     Returns
     -------
     np.array
     """
+    
     # check if inputs are valid
     if not method:
         method = 'interp'
@@ -57,16 +59,15 @@ def calc_fit_interp(
         raise ValueError(f'Incompatible shapes of input data, x_train {x_train.shape} and y_train {y_train.shape}. Should be the same')
     
     # cut x and y above threshold
-    if x_thres:
+    if isinstance(x_thres, (int, float)):
         x_th = np.asarray(x_train > x_thres).squeeze()
         x_train = x_train[x_th]
         y_train = y_train[x_th]
     
-    if y_thres:
+    if isinstance(y_thres, (int, float)):
         y_th = np.asarray(y_train > y_thres).squeeze()
         x_train = x_train[y_th]
         y_train = y_train[y_th]
-
 
     # adapt x and y scale
     if x_scale == 'log':
@@ -79,7 +80,7 @@ def calc_fit_interp(
     if method == 'interp':
         if not np.all(x_train[:-1] <= x_train[1:]):
             raise ValueError(f'Input array x_train must be sorted.')
-        y_test = np.interp(x_test, x_train, y_train)
+        y_test = np.interp(x_test, x_train, y_train, **kwargs)
 
     # calculate linear fit
     elif method == 'fit':
@@ -87,14 +88,14 @@ def calc_fit_interp(
             pol_coef = np.polyfit(x_train, y_train, deg=1)
         except ValueError:
             pol_coef = np.polyfit(x_train, y_train, deg=0)
-        y_test = np.polyval(pol_coef, x_test)
+        y_test = np.polyval(pol_coef, x_test, **kwargs)
     
     # calculate stepfunction fit
     elif method == 'stepfunction':
         # find indeces of x_test if sorted into x_train
         if not np.all(x_train[:-1] <= x_train[1:]):
             raise ValueError(f'Input array x_train must be sorted.')
-        indx = np.searchsorted(x_train, x_test)
+        indx = np.searchsorted(x_train, x_test, **kwargs)
         y_test = y_train[indx.clip(max = len(x_train) - 1)]
         y_test[indx == len(x_train)] = np.nan
 

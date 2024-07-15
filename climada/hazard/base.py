@@ -404,52 +404,52 @@ class Hazard(HazardIO, HazardPlot):
             u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
         ))
 
-    def local_exceedance_inten(
-            self, 
-            return_periods=(25, 50, 100, 250),
-            ):
-        """Compute exceedance intensity map for given return periods.
+    # def local_exceedance_inten(
+    #         self, 
+    #         return_periods=(25, 50, 100, 250),
+    #         ):
+    #     """Compute exceedance intensity map for given return periods.
 
-        Parameters
-        ----------
-        return_periods : np.array
-            return periods to consider
+    #     Parameters
+    #     ----------
+    #     return_periods : np.array
+    #         return periods to consider
 
-        Returns
-        -------
-        inten_stats: np.array
-        """
-        # warn if return period is above return period of rarest event:
-        for period in return_periods:
-            if period > 1 / self.frequency.min():
-                LOGGER.warning('Return period %1.1f exceeds max. event return period.', period)
-        LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
-                    return_periods)
-        num_cen = self.intensity.shape[1]
-        inten_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-        if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to >'
-                             f' {self.intensity.shape[0]}')
-        # separte in chunks
-        chk = -1
-        for chk in range(int(num_cen / cen_step)):
-            self._loc_return_inten(
-                np.array(return_periods),
-                self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-                inten_stats[:, chk * cen_step:(chk + 1) * cen_step])
-        self._loc_return_inten(
-            np.array(return_periods),
-            self.intensity[:, (chk + 1) * cen_step:].toarray(),
-            inten_stats[:, (chk + 1) * cen_step:])
-        # set values below 0 to zero if minimum of hazard.intensity >= 0:
-        if np.min(inten_stats) < 0 <= self.intensity.min():
-            LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
-                   Reason: no negative intensity values were found in hazard.')
-            inten_stats[inten_stats < 0] = 0
-        return inten_stats
+    #     Returns
+    #     -------
+    #     inten_stats: np.array
+    #     """
+    #     # warn if return period is above return period of rarest event:
+    #     for period in return_periods:
+    #         if period > 1 / self.frequency.min():
+    #             LOGGER.warning('Return period %1.1f exceeds max. event return period.', period)
+    #     LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
+    #                 return_periods)
+    #     num_cen = self.intensity.shape[1]
+    #     inten_stats = np.zeros((len(return_periods), num_cen))
+    #     cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
+    #     if not cen_step:
+    #         raise ValueError('Increase max_matrix_size configuration parameter to >'
+    #                          f' {self.intensity.shape[0]}')
+    #     # separte in chunks
+    #     chk = -1
+    #     for chk in range(int(num_cen / cen_step)):
+    #         self._loc_return_inten(
+    #             np.array(return_periods),
+    #             self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
+    #             inten_stats[:, chk * cen_step:(chk + 1) * cen_step])
+    #     self._loc_return_inten(
+    #         np.array(return_periods),
+    #         self.intensity[:, (chk + 1) * cen_step:].toarray(),
+    #         inten_stats[:, (chk + 1) * cen_step:])
+    #     # set values below 0 to zero if minimum of hazard.intensity >= 0:
+    #     if np.min(inten_stats) < 0 <= self.intensity.min():
+    #         LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
+    #                Reason: no negative intensity values were found in hazard.')
+    #         inten_stats[inten_stats < 0] = 0
+    #     return inten_stats
     
-    def local_exceedance_inten_new(self, return_periods=(25, 50, 100, 250)):
+    def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance intensity map for given return periods.
 
         Parameters
@@ -481,6 +481,12 @@ class Hazard(HazardIO, HazardPlot):
                 y_thres=self.intensity_thres
             )
 
+        # # create the output GeoDataFrame
+        # gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
+        # col_names = [f'{ret_per}' for ret_per in return_periods]
+        # gdf[col_names] = inten_stats.T
+
+        # return gdf
         return inten_stats
 
     # def local_return_period(self, threshold_intensities):
@@ -584,7 +590,7 @@ class Hazard(HazardIO, HazardPlot):
     #     return return_periods
     
 
-    def local_return_period_new(self, threshold_intensities):
+    def local_return_period(self, threshold_intensities):
         """Compute local return periods for given hazard intensities. The used method is fitting the 
         ordered intensitites per centroid to the corresponding cummulated frequency with a step function
 
