@@ -47,6 +47,8 @@ class ImpactCalc():
         The dimension of the imp_mat variable must be compatible with the
         exposures and hazard objects.
 
+        This will call :py:meth:`climada.hazard.base.Hazard.check_matrices`.
+
         Parameters
         ----------
         exposures : climada.entity.Exposures

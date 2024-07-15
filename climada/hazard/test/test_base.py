@@ -125,7 +125,7 @@ class TestLoader(unittest.TestCase):
         """Wrong hazard definition"""
         self.hazard.intensity = sparse.csr_matrix([[1, 2], [1, 2]])
         with self.assertRaisesRegex(
-            ValueError, "Invalid Hazard._intensity row size: 3 != 2."
+            ValueError, "Invalid Hazard.intensity row size: 3 != 2."
         ):
             self.hazard.check()
 
@@ -133,7 +133,7 @@ class TestLoader(unittest.TestCase):
         """Wrong hazard definition"""
         self.hazard.fraction = sparse.csr_matrix([[1], [1], [1]])
         with self.assertRaisesRegex(
-            ValueError, "Invalid Hazard._fraction column size: 2 != 1."
+            ValueError, "Invalid Hazard.fraction column size: 2 != 1."
         ):
             self.hazard.check()
 
@@ -212,55 +212,8 @@ class TestLoader(unittest.TestCase):
         self.assertEqual(haz.get_event_date()[560],
                          u_dt.date_to_str(haz.date[560]))
 
-    def test_matrix_update(self):
-        """Check that the csr_matrix can be updated with element access"""
-        self.hazard.intensity[[0, 2], 1] = 10
-        np.testing.assert_array_equal(
-            self.hazard.intensity.toarray(), [[1, 10], [1, 2], [1, 10]]
-        )
-        self.hazard.fraction[:, 1] = 0
-        np.testing.assert_array_equal(
-            self.hazard.fraction.toarray(), [[1, 0], [1, 0], [1, 0]]
-        )
-
-    def test_matrix_consistency(self):
-        """Check that the csr_matrix is brought into canonical format"""
-        # Non-canonical: First three data points will be summed onto the first matrix
-        # entry, forth will be an explicit zero entry
-        data = [0, 1, 2, 0]
-        indices = [0, 0, 0, 1]
-        indptr = [0, 4, 4, 4]
-        matrix = sparse.csr_matrix((data, indices, indptr), shape=(3, 2))
-
-        def check_canonical_matrix(mat):
-            self.assertTrue(mat.has_canonical_format)
-            self.assertEqual(mat.nnz, 1)
-
-        # Check canonical format when initializing
-        hazard_new = Hazard("TC", intensity=matrix.copy(), fraction=matrix.copy())
-        matrix_attrs = ("intensity", "fraction")
-        for attr in matrix_attrs:
-            with self.subTest(matrix=attr):
-                check_canonical_matrix(getattr(hazard_new, attr))
-
-        # Check conversion to canonical format when assigning
-        for attr in matrix_attrs:
-            with self.subTest(matrix=attr):
-                setattr(self.hazard, attr, matrix.copy())
-                check_canonical_matrix(getattr(self.hazard, attr))
-
     def test_check_matrices(self):
         """Test the check_matrices method"""
-        # Check shapes
-        with self.assertRaisesRegex(
-            ValueError, "Intensity and fraction matrices must have the same shape"
-        ):
-            Hazard(
-                "TC",
-                intensity=sparse.csr_matrix(np.ones((2, 2))),
-                fraction=sparse.csr_matrix(np.ones((2, 3))),
-            )
-
         hazard = Hazard("TC")
         hazard.fraction = sparse.csr_matrix(np.zeros((2, 2)))
         hazard.check_matrices()  # No error, fraction.nnz = 0

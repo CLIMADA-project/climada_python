@@ -61,10 +61,8 @@ class Hazard(HazardIO, HazardPlot):
     In particular, a "non-canonical" matrix may store "duplicates", i.e. multiple values
     that map to the same matrix position. This is supported, and the default behavior is
     to sum up these values. To avoid any inconsistencies, call :py:meth:`check_matrices`
-    once you inserted all data. This will explicitly sum all values at the same matrix
-    position and eliminate explicit zeros. This class will call
-    :py:func:`climada.util.checker.prune_csr_matrix` whenever a csr_matrix is assigned
-    to one of the aforementioned attributes.
+    before accessing the ``data`` attribute of either matrix. This will explicitly sum
+    all values at the same matrix position and eliminate explicit zeros.
 
     Attributes
     ----------
@@ -107,8 +105,8 @@ class Hazard(HazardIO, HazardPlot):
                   'centroids',
                   'event_id',
                   'frequency',
-                  '_intensity',
-                  '_fraction'
+                  'intensity',
+                  'fraction'
                   }
     """Name of the variables needed to compute the impact. Types: scalar, str,
     list, 1dim np.array of size num_events, scipy.sparse matrix of shape
@@ -203,36 +201,16 @@ class Hazard(HazardIO, HazardPlot):
             np.empty((0, 0)))  # events x centroids
         self.fraction = fraction if fraction is not None else sparse.csr_matrix(
             self.intensity.shape)  # events x centroids
-        self.check_matrices()
 
         self.pool = pool
         if self.pool:
             LOGGER.info('Using %s CPUs.', self.pool.ncpus)
 
-    @property
-    def intensity(self) -> sparse.csr_matrix:
-        """Hazard intensity matrix"""
-        return self._intensity
-
-    @intensity.setter
-    def intensity(self, value: sparse.csr_matrix):
-        """Set intensity matrix to new value"""
-        self._intensity = value
-        u_check.prune_csr_matrix(self._intensity)
-
-    @property
-    def fraction(self) -> sparse.csr_matrix:
-        """Hazard fraction matrix"""
-        return self._fraction
-
-    @fraction.setter
-    def fraction(self, value: sparse.csr_matrix):
-        """Set fraction matrix to new value"""
-        self._fraction = value
-        u_check.prune_csr_matrix(self._fraction)
-
     def check_matrices(self):
         """Ensure that matrices are consistently shaped and stored
+
+        It is good practice to call this method before accessing the ``data`` attribute
+        of either :py:attr:`intensity` or :py:attr:`fraction`.
 
         See Also
         --------
