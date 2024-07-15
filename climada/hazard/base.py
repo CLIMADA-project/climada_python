@@ -404,51 +404,6 @@ class Hazard(HazardIO, HazardPlot):
             u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
         ))
 
-    # def local_exceedance_inten(
-    #         self, 
-    #         return_periods=(25, 50, 100, 250),
-    #         ):
-    #     """Compute exceedance intensity map for given return periods.
-
-    #     Parameters
-    #     ----------
-    #     return_periods : np.array
-    #         return periods to consider
-
-    #     Returns
-    #     -------
-    #     inten_stats: np.array
-    #     """
-    #     # warn if return period is above return period of rarest event:
-    #     for period in return_periods:
-    #         if period > 1 / self.frequency.min():
-    #             LOGGER.warning('Return period %1.1f exceeds max. event return period.', period)
-    #     LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
-    #                 return_periods)
-    #     num_cen = self.intensity.shape[1]
-    #     inten_stats = np.zeros((len(return_periods), num_cen))
-    #     cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-    #     if not cen_step:
-    #         raise ValueError('Increase max_matrix_size configuration parameter to >'
-    #                          f' {self.intensity.shape[0]}')
-    #     # separte in chunks
-    #     chk = -1
-    #     for chk in range(int(num_cen / cen_step)):
-    #         self._loc_return_inten(
-    #             np.array(return_periods),
-    #             self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-    #             inten_stats[:, chk * cen_step:(chk + 1) * cen_step])
-    #     self._loc_return_inten(
-    #         np.array(return_periods),
-    #         self.intensity[:, (chk + 1) * cen_step:].toarray(),
-    #         inten_stats[:, (chk + 1) * cen_step:])
-    #     # set values below 0 to zero if minimum of hazard.intensity >= 0:
-    #     if np.min(inten_stats) < 0 <= self.intensity.min():
-    #         LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
-    #                Reason: no negative intensity values were found in hazard.')
-    #         inten_stats[inten_stats < 0] = 0
-    #     return inten_stats
-    
     def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance intensity map for given return periods.
 
@@ -461,13 +416,26 @@ class Hazard(HazardIO, HazardPlot):
         -------
         inten_stats: np.array
         """
+        #check frequency unit
+        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
+            rp_unit = 'years'
+        elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
+            rp_unit = 'months'
+        elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
+            rp_unit = 'weeks'
+        else:
+            LOGGER.warning(f"Hazard's frequency unit {self.frequency_unit} is not known, "
+                            "years will be used as return period unit.")
+            rp_unit = 'years'
+        
         num_cen = self.intensity.shape[1]
         inten_stats = np.zeros((len(return_periods), num_cen))
 
         for i in range(num_cen):
             # sort intensties and frequencies at given centroid
-            sorted_idxs = np.argsort(np.squeeze(self.intensity[:,i].toarray()))[::-1]
-            intensity_sorted = np.squeeze(self.intensity[:,i].toarray()[sorted_idxs])
+            intensity_sorted = np.squeeze(self.intensity[:,i].toarray())
+            sorted_idxs = np.argsort(intensity_sorted)[::-1]
+            intensity_sorted = np.squeeze(intensity_sorted[sorted_idxs])
             frequency_sorted = self.frequency[sorted_idxs]
             frequency_sorted = np.cumsum(frequency_sorted)
 
@@ -481,114 +449,17 @@ class Hazard(HazardIO, HazardPlot):
                 y_thres=self.intensity_thres
             )
 
-        # # create the output GeoDataFrame
-        # gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
-        # col_names = [f'{ret_per}' for ret_per in return_periods]
-        # gdf[col_names] = inten_stats.T
+        # create the output GeoDataFrame
+        gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
+        col_names = [f'{ret_per}' for ret_per in return_periods]
+        gdf[col_names] = inten_stats.T
 
-        # return gdf
-        return inten_stats
+        # create label and column_label
+        label = f'Intensity ({self.units})'
+        column_label = lambda column_names: [f'Return Period: {col} {rp_unit}'
+                                             for col in column_names]
 
-    # def local_return_period(self, threshold_intensities):
-    #     """Compute local return periods for given hazard intensities. The used method is fitting the 
-    #     ordered intensitites per centroid to the corresponding cummulated frequency with a step function
-
-    #     Parameters
-    #     ----------
-    #     threshold_intensities : np.array
-    #         User-specified hazard intensities for which the return period should be calculated 
-    #         locally (at each centroid)
-
-    #     Returns
-    #     -------
-    #     gdf : gpd.GeoDataFrame
-    #         GeoDataFrame containing return periods for given threshold intensities. Each column 
-    #         corresponds to a threshold_intensity value, each row corresponds to a centroid. Values
-    #         in the gdf correspond to the return period for the given centroid and threshold_intensity value
-    #     gdf_meta : climada.util.plot.GdfMeta
-    #         named tuple providing meta data of which quantities (and their units) are written the gdf
-    #     """
-    #     #check frequency unit
-    #     if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
-    #         rp_unit = 'Years'
-    #     elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
-    #         rp_unit = 'Months'
-    #     elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
-    #         rp_unit = 'Weeks'
-    #     else:
-    #         LOGGER.warning(f"Hazard's frequency unit {self.frequency_unit} is not known, "
-    #                         "years will be used as return period unit.")
-    #         rp_unit = 'Years'
-
-    #     # Ensure threshold_intensities is a numpy array
-    #     threshold_intensities = np.array(threshold_intensities)
-        
-    #     num_cen = self.intensity.shape[1]
-    #     return_periods = np.zeros((len(threshold_intensities), num_cen))
-        
-    #     # Process each centroid in chunks as in local_exceedance_inten
-    #     block_size = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-    #     if not block_size:
-    #         raise ValueError('Increase max_matrix_size configuration parameter to >'
-    #                             f'{self.intensity.shape[0]}')
-        
-    #     for start_col in range(0, num_cen, block_size):
-    #         end_col = min(start_col + block_size, num_cen)
-    #         return_periods[:, start_col:end_col] = self._loc_return_period(
-    #             threshold_intensities,
-    #             self.intensity[:, start_col:end_col].toarray()
-    #             )
-        
-    #     # create the output GeoDataFrame
-    #     gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
-    #     col_names = [f'{tresh_inten}' for tresh_inten in threshold_intensities]
-    #     gdf[col_names] = return_periods.T
-
-    #     return gdf
-
-    # def _loc_return_period(self, threshold_intensities, inten):
-    #     """Compute local return periods for given hazard intensities for a specific chunk of data.
-    
-    #     Parameters
-    #     ----------
-    #     threshold_intensities: np.array
-    #         Test hazard intensities for which to calculate return periods at each centroid.
-    #     inten: np.array
-    #         subarray of full hazard intensities corresponding to a subset of the centroids (rows corresponds to
-    #         events, columns correspond to centroids)
-
-    #     Returns
-    #     -------
-    #         np.array
-    #     """
-    #     # Assuming inten is sorted and calculating cumulative frequency
-    #     sort_pos = np.argsort(inten, axis=0)[::-1, :]
-    #     inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
-    #     freq_sort = self.frequency[sort_pos]
-    #     freq_sort = np.cumsum(freq_sort, axis=0)
-    #     return_periods = np.zeros((len(threshold_intensities), inten.shape[1]))
-    
-    #     for cen_idx in range(inten.shape[1]):
-    #         sorted_inten_cen = inten_sort[:, cen_idx]
-    #         cum_freq_cen = freq_sort[:, cen_idx]
-    
-    #         for i, intensity in enumerate(threshold_intensities):
-    #             # Find the first occurrence where the intensity is less than the sorted intensities
-    #             exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='left')
-    
-    #             # Calculate exceedance probability
-    #             if exceedance_index < len(cum_freq_cen):
-    #                 exceedance_probability = cum_freq_cen[-exceedance_index - 1]
-    #             else:
-    #                 exceedance_probability = 0  # Or set a default minimal probability
-    
-    #             # Calculate and store return period
-    #             if exceedance_probability > 0:
-    #                 return_periods[i, cen_idx] = 1 / exceedance_probability
-    #             else:
-    #                 return_periods[i, cen_idx] = np.nan
-    #     return return_periods
-    
+        return gdf, label, column_label
 
     def local_return_period(self, threshold_intensities):
         """Compute local return periods for given hazard intensities. The used method is fitting the 
@@ -629,8 +500,9 @@ class Hazard(HazardIO, HazardPlot):
         
         for i in range(num_cen):
             # sort intensties and frequencies at given centroid
-            sorted_idxs = np.argsort(np.squeeze(self.intensity[:,i].toarray()))[::-1]
-            intensity_sorted = np.squeeze(self.intensity[:,i].toarray()[sorted_idxs])
+            intensity_sorted = np.squeeze(self.intensity[:,i].toarray())
+            sorted_idxs = np.argsort(intensity_sorted)[::-1]
+            intensity_sorted = np.squeeze(intensity_sorted[sorted_idxs])
             frequency_sorted = self.frequency[sorted_idxs]
             frequency_sorted = np.cumsum(frequency_sorted)
 
@@ -647,8 +519,13 @@ class Hazard(HazardIO, HazardPlot):
         gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
         col_names = [f'{tresh_inten}' for tresh_inten in threshold_intensities]
         gdf[col_names] = return_periods.T
-        
-        return gdf
+
+        # create label and column_label
+        label = f'Return Periods ({rp_unit})'
+        column_label = lambda column_names: [f'Threshold Intensity: {col} {self.units}'
+                                             for col in column_names]
+
+        return gdf, label, column_label
 
     def sanitize_event_ids(self):
         """Make sure that event ids are unique"""

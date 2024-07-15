@@ -69,6 +69,10 @@ def calc_fit_interp(
         x_train = x_train[y_th]
         y_train = y_train[y_th]
 
+    # return zeros if x_train and y_train empty
+    if x_train.size == 0:
+        return np.zeros(len(x_test))
+
     # adapt x and y scale
     if x_scale == 'log':
         x_train, x_test = np.log10(x_train), np.log10(x_test)

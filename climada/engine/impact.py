@@ -43,6 +43,8 @@ from tqdm import tqdm
 import h5py
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
+import geopandas as gpd
+from shapely import Point
 
 from climada.entity import Exposures
 from climada import CONFIG
@@ -468,44 +470,6 @@ class Impact():
                        "Use Impact.impact_per_year instead.")
         return self.impact_per_year(all_years=all_years, year_range=year_range)
 
-# #TODO: rewrite and deprecate method
-#     def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
-#         """Compute exceedance impact map for given return periods.
-#         Requires attribute imp_mat.
-
-#         Parameters
-#         ----------
-#         return_periods : Any, optional
-#             return periods to consider
-#             Dafault is (25, 50, 100, 250)
-
-#         Returns
-#         -------
-#         np.array
-#         """
-#         LOGGER.info('Computing exceedance impact map for return periods: %s',
-#                     return_periods)
-#         if self.imp_mat.size == 0:
-#             raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
-#                              'instance with parameter save_mat=True')
-#         num_cen = self.imp_mat.shape[1]
-#         imp_stats = np.zeros((len(return_periods), num_cen))
-#         cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
-#         if not cen_step:
-#             raise ValueError('Increase max_matrix_size configuration parameter to > '
-#                              f'{self.imp_mat.shape[0]}')
-#         # separte in chunks
-#         chk = -1
-#         for chk in range(int(num_cen / cen_step)):
-#             self._loc_return_imp(np.array(return_periods),
-#                                  self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-#                                  imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
-#         self._loc_return_imp(np.array(return_periods),
-#                              self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
-#                              imp_stats[:, (chk + 1) * cen_step:])
-
-#         return imp_stats
-    
     def local_exceedance_imp(
             self, 
             return_periods=(25, 50, 100, 250),
@@ -529,13 +493,26 @@ class Impact():
         if self.imp_mat.size == 0:
             raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
+        #check frequency unit
+        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
+            rp_unit = 'years'
+        elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
+            rp_unit = 'months'
+        elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
+            rp_unit = 'weeks'
+        else:
+            LOGGER.warning(f"Hazard's frequency unit {self.frequency_unit} is not known, "
+                            "years will be used as return period unit.")
+            rp_unit = 'years'
+
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
 
         for i in range(num_cen):
             # sort intensties and frequencies at given centroid
-            sorted_idxs = np.argsort(np.squeeze(self.imp_mat[:,i].toarray()))[::-1]
-            impact_sorted = np.squeeze(self.imp_mat[:,i].toarray()[sorted_idxs])
+            impact_sorted = np.squeeze(self.imp_mat[:,i].toarray())
+            sorted_idxs = np.argsort(impact_sorted)[::-1]
+            impact_sorted = np.squeeze(impact_sorted[sorted_idxs])
             frequency_sorted = self.frequency[sorted_idxs]
             frequency_sorted = np.cumsum(frequency_sorted)
 
@@ -549,7 +526,17 @@ class Impact():
                 y_thres = 0
             )
 
-        return imp_stats
+        # create the output GeoDataFrame
+        gdf = gpd.GeoDataFrame(geometry = [Point(x, y) for x, y in self.coord_exp], crs = self.crs)
+        col_names = [f'{ret_per}' for ret_per in return_periods]
+        gdf[col_names] = imp_stats.T
+
+        # create label and column_label
+        label = f'Impact ({self.unit})'
+        column_label = lambda column_names: [f'Return Period: {col} {rp_unit}'
+                                             for col in column_names]
+
+        return gdf, label, column_label
 
 
     def calc_freq_curve(self, return_per=None):
