@@ -510,7 +510,7 @@ class TestRPmatrix(unittest.TestCase):
         # Compute the impact over the whole exposures
         impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
         # Compute the impact per return period over the whole exposures
-        impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
+        impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))[0].values[:,1:].T
 
         self.assertIsInstance(impact_rp, np.ndarray)
         self.assertEqual(impact_rp.size, 2 * ent.exposures.gdf.value.size)

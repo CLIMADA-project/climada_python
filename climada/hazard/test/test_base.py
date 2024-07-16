@@ -1005,14 +1005,14 @@ class TestStats(unittest.TestCase):
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
         return_period = np.array([25, 50, 100, 250])
         haz.intensity = sparse.csr_matrix(np.zeros(haz.intensity.shape))
-        inten_stats = haz.local_exceedance_inten(return_period)
+        inten_stats = haz.local_exceedance_inten(return_period)[0].values[:, 1:].T
         self.assertTrue(np.array_equal(inten_stats, np.zeros((4, 100))))
 
     def test_ref_all_pass(self):
         """Compare against reference."""
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
         return_period = np.array([25, 50, 100, 250])
-        inten_stats = haz.local_exceedance_inten(return_period)
+        inten_stats = haz.local_exceedance_inten(return_period)[0].values[:, 1:].T
 
         self.assertAlmostEqual(inten_stats[0][0], 55.424015590131290)
         self.assertAlmostEqual(inten_stats[1][0], 67.221687644669998)
