@@ -674,81 +674,6 @@ class Hazard(HazardIO, HazardPlot):
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _loc_return_inten(self, return_periods, inten, exc_inten):
-        """Compute local exceedence intensity for given return period.
-
-        Parameters
-        ----------
-        return_periods: np.array
-            return periods to consider
-        cen_pos: int
-            centroid position
-
-        Returns
-        -------
-            np.array
-        """
-        # sorted intensity
-        sort_pos = np.argsort(inten, axis=0)[::-1, :]
-        columns = np.ones(inten.shape, int)
-        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
-        columns *= np.arange(columns.shape[1])
-        inten_sort = inten[sort_pos, columns]
-        # cummulative frequency at sorted intensity
-        freq_sort = self.frequency[sort_pos]
-        np.cumsum(freq_sort, axis=0, out=freq_sort)
-
-        for cen_idx in range(inten.shape[1]):
-            exc_inten[:, cen_idx] = self._cen_return_inten(
-                inten_sort[:, cen_idx], freq_sort[:, cen_idx],
-                self.intensity_thres, return_periods)
-
-    def _loc_return_period(self, threshold_intensities, inten):
-        """Compute local return periods for user-specified threshold intensities
-         for a subset of hazard centroids
-
-        Parameters
-        ----------
-        threshold_intensities: np.array
-            User-specified hazard intensities for which the return period should be calculated
-            locally (at each centroid).
-        inten: np.array
-            subarray of full hazard intensities corresponding to a subset of the centroids
-            (rows corresponds to events, columns correspond to centroids)
-
-        Returns
-        -------
-            np.array
-            (rows corresponds to threshold_intensities, columns correspond to centroids)
-        """
-        # Assuming inten is sorted and calculating cumulative frequency
-        sort_pos = np.argsort(inten, axis=0)[::-1, :]
-        inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
-        freq_sort = self.frequency[sort_pos]
-        freq_sort = np.cumsum(freq_sort, axis=0)
-        return_periods = np.zeros((len(threshold_intensities), inten.shape[1]))
-
-        for cen_idx in range(inten.shape[1]):
-            sorted_inten_cen = inten_sort[:, cen_idx]
-            cum_freq_cen = freq_sort[:, cen_idx]
-
-            for i, intensity in enumerate(threshold_intensities):
-                # Find the first occurrence where the intensity is less than the sorted intensities
-                exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='left')
-
-                # Calculate exceedance probability
-                if exceedance_index < len(cum_freq_cen):
-                    exceedance_probability = cum_freq_cen[-exceedance_index - 1]
-                else:
-                    exceedance_probability = 0  # Or set a default minimal probability
-
-                # Calculate and store return period
-                if exceedance_probability > 0:
-                    return_periods[i, cen_idx] = 1 / exceedance_probability
-                else:
-                    return_periods[i, cen_idx] = np.nan
-        return return_periods
-
     def _check_events(self):
         """Check that all attributes but centroids contain consistent data.
         Put default date, event_name and orig if not provided. Check not
@@ -774,43 +699,6 @@ class Hazard(HazardIO, HazardPlot):
                                           np.zeros(self.event_id.shape, dtype=bool))
         if len(self._events_set()) != num_ev:
             raise ValueError("There are events with same date and name.")
-
-    @staticmethod
-    def _cen_return_inten(inten, freq, inten_th, return_periods):
-        """From ordered intensity and cummulative frequency at centroid, get
-        exceedance intensity at input return periods.
-
-        Parameters
-        ----------
-        inten: np.array
-            sorted intensity at centroid
-        freq: np.array
-            cummulative frequency at centroid
-        inten_th: float
-            intensity threshold
-        return_periods: np.array
-            return periods
-
-        Returns
-        -------
-            np.array
-        """
-        inten_th = np.asarray(inten > inten_th).squeeze()
-        inten_cen = inten[inten_th]
-        freq_cen = freq[inten_th]
-        if not inten_cen.size:
-            return np.zeros((return_periods.size,))
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=1)
-        except ValueError:
-            pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=0)
-        inten_fit = np.polyval(pol_coef, np.log(1 / return_periods))
-        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(inten_fit)
-        inten_fit[wrong_inten] = 0.
-
-        return inten_fit
 
     def append(self, *others):
         """Append the events and centroids to this hazard object.

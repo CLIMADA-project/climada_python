@@ -927,10 +927,12 @@ def subplots_from_gdf(
         print("Unknown subplot-title-generation function. Subplot titles will be column names.")
         title_subplots = lambda cols: [f"{col}" for col in cols]
 
-    # change default plot kwargs if plotting return periods
-    if colorbar_name.strip().startswith('Return Period'):
-        if 'cmap' not in kwargs.keys():
-            kwargs.update({'cmap': 'viridis_r'})
+    # remove zeros in gdf
+    if colorbar_name.strip().startswith(('Return Period', 'Impact')):
+        gdf.replace(0, np.nan, inplace=True)
+
+    # use log colorbar for return periods and impact
+    if colorbar_name.strip().startswith(('Return Period', 'Impact')):
         if 'norm' not in kwargs.keys():
             kwargs.update(
                 {'norm': mpl.colors.LogNorm(
@@ -938,6 +940,11 @@ def subplots_from_gdf(
                     ),
                 'vmin': None, 'vmax': None}
             )
+
+    # use inverted color bar for return periods
+    if colorbar_name.strip().startswith('Return Period'):
+        if 'cmap' not in kwargs.keys():
+            kwargs.update({'cmap': 'viridis_r'})
 
     axis = geo_im_from_array(
         gdf.values[:,1:].T,

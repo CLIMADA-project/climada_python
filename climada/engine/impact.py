@@ -527,7 +527,7 @@ class Impact():
             )
 
         # create the output GeoDataFrame
-        gdf = gpd.GeoDataFrame(geometry = [Point(x, y) for x, y in self.coord_exp], crs = self.crs)
+        gdf = gpd.GeoDataFrame(geometry = [Point(x, y) for y, x in self.coord_exp], crs = self.crs)
         col_names = [f'{ret_per}' for ret_per in return_periods]
         gdf[col_names] = imp_stats.T
 
@@ -847,7 +847,8 @@ class Impact():
                                                  buffer, extend, zoom, url, axis=axis, **kwargs)
 
         return axis
-
+    
+    # TODO: replace with subplots_from_gdf()
     def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
                     log10_scale=True, smooth=True, axis=None, **kwargs):
         """Compute and plot exceedance impact maps for different return periods.
@@ -871,7 +872,7 @@ class Impact():
         imp_stats : np.array
             return_periods.size x num_centroids
         """
-        imp_stats = self.local_exceedance_imp(np.array(return_periods))
+        imp_stats = self.local_exceedance_imp(np.array(return_periods))[0].values[:,1:].T.astype(float)
         if imp_stats.size == 0:
             raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
