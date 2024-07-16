@@ -505,25 +505,27 @@ class Hazard(HazardIO, HazardPlot):
 
         # Ensure threshold_intensities is a numpy array
         threshold_intensities = np.array(threshold_intensities)
-
+        
         num_cen = self.intensity.shape[1]
         return_periods = np.zeros((len(threshold_intensities), num_cen))
+        
+        for i in range(num_cen):
+            # sort intensties and frequencies at given centroid
+            intensity_sorted = np.squeeze(self.intensity[:,i].toarray())
+            sorted_idxs = np.argsort(intensity_sorted)[::-1]
+            intensity_sorted = np.squeeze(intensity_sorted[sorted_idxs])
+            frequency_sorted = self.frequency[sorted_idxs]
+            frequency_sorted = np.cumsum(frequency_sorted)
 
-        # batch_centroids = number of centroids that are handled in parallel: 
-        # batch_centroids = maximal matrix size // number of events
-        batch_centroids = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-        if batch_centroids < 1:
-            raise ValueError('Increase max_matrix_size configuration parameter to >'
-                             f'{self.intensity.shape[0]}')
-
-        # Process the intensities in chunks of centroids
-        for start_col in range(0, num_cen, batch_centroids):
-            end_col = min(start_col + batch_centroids, num_cen)
-            return_periods[:, start_col:end_col] = self._loc_return_period(
+            # fit intensities to cummulative frequencies
+            return_periods[:,i] = np.divide(1., u_fit.calc_fit_interp(
                 threshold_intensities,
-                self.intensity[:, start_col:end_col].toarray()
-                )
-
+                intensity_sorted[::-1],
+                frequency_sorted[::-1],
+                method='stepfunction',
+                x_scale='log'
+            ))
+        
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'],
                                crs = self.centroids.gdf.crs)
