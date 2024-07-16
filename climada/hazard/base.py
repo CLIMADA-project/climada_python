@@ -27,6 +27,7 @@ import logging
 from typing import Optional,List
 import warnings
 
+import geopandas as gpd
 import numpy as np
 from pathos.pools import ProcessPool as Pool
 from scipy import sparse
@@ -467,6 +468,75 @@ class Hazard(HazardIO, HazardPlot):
             LOGGER.debug('Resetting event_id.')
             self.event_id = np.arange(1, self.event_id.size + 1)
 
+    def local_return_period(self, threshold_intensities=(5., 10., 20.)):
+        """Compute local return periods for given hazard intensities. The used method
+        is fitting the ordered intensitites per centroid to the corresponding cummulated
+        frequency with a step function.
+
+        Parameters
+        ----------
+        threshold_intensities : np.array
+            User-specified hazard intensities for which the return period should be calculated
+            locally (at each centroid). Defaults to (5, 10, 20)
+
+        Returns
+        -------
+        gdf : gpd.GeoDataFrame
+            GeoDataFrame containing return periods for given threshold intensities. Each column
+            corresponds to a threshold_intensity value, each row corresponds to a centroid. Values
+            in the gdf correspond to the return period for the given centroid and
+            threshold_intensity value
+        label : str
+            GeoDataFrame label, for reporting and plotting
+        column_label : function
+            Column-label-generating function, for reporting and plotting
+        """
+        #check frequency unit
+        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
+            rp_unit = 'Years'
+        elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
+            rp_unit = 'Months'
+        elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
+            rp_unit = 'Weeks'
+        else:
+            LOGGER.warning("Hazard's frequency unit %s is not known, "
+                           "years will be used as return period unit.", self.frequency_unit)
+            rp_unit = 'Years'
+
+        # Ensure threshold_intensities is a numpy array
+        threshold_intensities = np.array(threshold_intensities)
+
+        num_cen = self.intensity.shape[1]
+        return_periods = np.zeros((len(threshold_intensities), num_cen))
+
+        # batch_centroids = number of centroids that are handled in parallel: 
+        # batch_centroids = maximal matrix size // number of events
+        batch_centroids = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
+        if batch_centroids < 1:
+            raise ValueError('Increase max_matrix_size configuration parameter to >'
+                             f'{self.intensity.shape[0]}')
+
+        # Process the intensities in chunks of centroids
+        for start_col in range(0, num_cen, batch_centroids):
+            end_col = min(start_col + batch_centroids, num_cen)
+            return_periods[:, start_col:end_col] = self._loc_return_period(
+                threshold_intensities,
+                self.intensity[:, start_col:end_col].toarray()
+                )
+
+        # create the output GeoDataFrame
+        gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'],
+                               crs = self.centroids.gdf.crs)
+        col_names = [f'{tresh_inten}' for tresh_inten in threshold_intensities]
+        gdf[col_names] = return_periods.T
+
+        # create label and column_label
+        label = f'Return Periods ({rp_unit})'
+        column_label = lambda column_names: [f'Threshold Intensity: {col} {self.units}'
+                                             for col in column_names]
+
+        return gdf, label, column_label
+
     def get_event_id(self, event_name):
         """Get an event id from its name. Several events might have the same
         name.
@@ -630,6 +700,52 @@ class Hazard(HazardIO, HazardPlot):
             exc_inten[:, cen_idx] = self._cen_return_inten(
                 inten_sort[:, cen_idx], freq_sort[:, cen_idx],
                 self.intensity_thres, return_periods)
+
+    def _loc_return_period(self, threshold_intensities, inten):
+        """Compute local return periods for user-specified threshold intensities
+         for a subset of hazard centroids
+
+        Parameters
+        ----------
+        threshold_intensities: np.array
+            User-specified hazard intensities for which the return period should be calculated
+            locally (at each centroid).
+        inten: np.array
+            subarray of full hazard intensities corresponding to a subset of the centroids
+            (rows corresponds to events, columns correspond to centroids)
+
+        Returns
+        -------
+            np.array
+            (rows corresponds to threshold_intensities, columns correspond to centroids)
+        """
+        # Assuming inten is sorted and calculating cumulative frequency
+        sort_pos = np.argsort(inten, axis=0)[::-1, :]
+        inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
+        freq_sort = self.frequency[sort_pos]
+        freq_sort = np.cumsum(freq_sort, axis=0)
+        return_periods = np.zeros((len(threshold_intensities), inten.shape[1]))
+
+        for cen_idx in range(inten.shape[1]):
+            sorted_inten_cen = inten_sort[:, cen_idx]
+            cum_freq_cen = freq_sort[:, cen_idx]
+
+            for i, intensity in enumerate(threshold_intensities):
+                # Find the first occurrence where the intensity is less than the sorted intensities
+                exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='left')
+
+                # Calculate exceedance probability
+                if exceedance_index < len(cum_freq_cen):
+                    exceedance_probability = cum_freq_cen[-exceedance_index - 1]
+                else:
+                    exceedance_probability = 0  # Or set a default minimal probability
+
+                # Calculate and store return period
+                if exceedance_probability > 0:
+                    return_periods[i, cen_idx] = 1 / exceedance_probability
+                else:
+                    return_periods[i, cen_idx] = np.nan
+        return return_periods
 
     def _check_events(self):
         """Check that all attributes but centroids contain consistent data.
