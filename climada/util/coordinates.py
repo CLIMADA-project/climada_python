@@ -2419,7 +2419,9 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
                                npartitions=cpu_count())
         df_poly['_-geometry-prov'] = ddata.map_partitions(
             apply_box).compute(scheduler=scheduler)
-        if isinstance(df_poly.loc[0, '_-geometry-prov'], str):
+        # depending on the dask/pandas version setting `meta=Polygon` in map_partitions
+        # would just raise a warning and returns a string, so we have to convert explicitly
+        if isinstance(df_poly.loc[0, '_-geometry-prov'], str):  # fails for empty `points_df`
             df_poly['_-geometry-prov'] = shapely.wkt.loads(df_poly['_-geometry-prov'])
 
     df_poly.set_geometry('_-geometry-prov',
