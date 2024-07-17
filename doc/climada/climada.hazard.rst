@@ -13,6 +13,22 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
+climada\.hazard\.io module
+----------------------------
+
+.. automodule:: climada.hazard.io
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.plot module
+----------------------------
+
+.. automodule:: climada.hazard.plot
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.hazard\.isimip\_data module
 ------------------------------------
 
@@ -25,14 +41,6 @@ climada\.hazard\.storm\_europe module
 -------------------------------------
 
 .. automodule:: climada.hazard.storm_europe
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.hazard\.tag module
----------------------------
-
-.. automodule:: climada.hazard.tag
     :members:
     :undoc-members:
     :show-inheritance:
