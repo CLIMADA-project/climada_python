@@ -342,6 +342,9 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                 extent[2]: extent[3]: complex(0, RESOLUTION)]
             grid_im = griddata((coord[:, 1], coord[:, 0]), array_im,
                                (grid_x, grid_y))
+            # Create mask for original NaN values in the data
+            nan_mask = griddata((coord[:, 1], coord[:, 0]), np.isnan(array_im.astype(float)), 
+                                (grid_x, grid_y), fill_value=0).astype(bool)
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()
             grid_y = coord[:, 0].reshape((width, height)).transpose()
@@ -350,6 +353,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                 grid_y = np.flip(grid_y)
                 grid_im = np.flip(grid_im, 1)
             grid_im = np.resize(grid_im, (height, width, 1))
+            nan_mask = np.isnan(grid_im)
         axis.set_extent((extent[0] - mid_lon, extent[1] - mid_lon,
                          extent[2], extent[3]), crs=proj)
 
@@ -361,6 +365,9 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                                                      pad=0.1, axes_class=plt.Axes)
         img = axis.pcolormesh(grid_x - mid_lon, grid_y, np.squeeze(grid_im),
                               transform=proj, **kwargs)
+        # Add gray color for NaN values
+        axis.pcolormesh(grid_x - mid_lon, grid_y, np.squeeze(nan_mask),
+                              transform=proj, cmap=mpl.colors.ListedColormap(['none', 'gainsboro']))
         cbar = plt.colorbar(img, cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title("\n".join(wrap(tit)))
@@ -918,6 +925,7 @@ def subplots_from_gdf(
     if not isinstance(gdf, gpd.GeoDataFrame):
         raise ValueError("gdf is not a GeoDataFrame")
     gdf = gdf[['geometry', *[col for col in gdf.columns if col != 'geometry']]]
+    gdf_values = gdf.values[:,1:].T
 
     # read meta data for fig and axis labels
     if not isinstance(colorbar_name, str):
@@ -929,10 +937,14 @@ def subplots_from_gdf(
 
     # remove zeros in gdf
     if colorbar_name.strip().startswith(('Return Period', 'Impact')):
-        gdf.replace(0, np.nan, inplace=True)
+        gdf_values[gdf_values == 0] = np.nan
 
     # use log colorbar for return periods and impact
-    if colorbar_name.strip().startswith(('Return Period', 'Impact')):
+    if (
+        colorbar_name.strip().startswith(('Return Period', 'Impact')) and
+        # check if value range too small for logarithmic colorscale
+        (np.log10(np.nanmax(gdf_values)) - np.log10(np.nanmin(gdf_values))) > 1
+    ):
         if 'norm' not in kwargs.keys():
             kwargs.update(
                 {'norm': mpl.colors.LogNorm(
@@ -945,9 +957,10 @@ def subplots_from_gdf(
     if colorbar_name.strip().startswith('Return Period'):
         if 'cmap' not in kwargs.keys():
             kwargs.update({'cmap': 'viridis_r'})
+            print('updated')
 
     axis = geo_im_from_array(
-        gdf.values[:,1:].T,
+        gdf_values,
         gdf.geometry.get_coordinates().values[:,::-1],
         colorbar_name,
         title_subplots(gdf.columns[1:]),
