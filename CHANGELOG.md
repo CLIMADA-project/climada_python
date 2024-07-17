@@ -61,6 +61,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - climada.hazard.centroids.centr.Centroids.empty_geometry_points
 - climada.hazard.centroids.centr.Centroids.set_meta_to_lat_lon
 - climada.hazard.centroids.centr.Centroids.set_lat_lon_to_meta
+- `scheduler` parameter in `climada.util.coordinates.set_df_geometry_points`, as dask is not used anymore, leaving all calculation to shapely [#912](https://github.com/CLIMADA-project/climada_python/pull/912)
 
 ### Removed
 
