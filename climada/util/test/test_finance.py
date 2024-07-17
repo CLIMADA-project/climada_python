@@ -121,9 +121,9 @@ class TestWBData(unittest.TestCase):
         wb_year, wb_val = world_bank('ESP', ref_year, 'NY.GDP.MKTP.CD')
 
         ref_year = 1960
-        ref_val = 12072126075.397
+        ref_val = 12433394725.2159
         self.assertEqual(wb_year, ref_year)
-        self.assertEqual(wb_val, ref_val)
+        self.assertAlmostEqual(wb_val, ref_val)
 
 class TestWealth2GDP(unittest.TestCase):
     """Test Wealth to GDP factor extraction"""

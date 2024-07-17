@@ -29,6 +29,8 @@ If you use specific tools and modules of CLIMADA, please cite the appropriate pu
      - Mühlhofer, E., et al. (2023): OpenStreetMap for Multi-Faceted Climate Risk Assessments https://eartharxiv.org/repository/view/5615/
    * - :doc:`LitPop exposures </tutorial/climada_entity_LitPop>`
      - Eberenz, S., et al. (2020): Asset exposure data for global physical risk assessment. Earth System Science Data 12, 817–833, https://doi.org/10.3929/ethz-b-000409595
+   * - :doc:`Impact function calibration </tutorial/climada_util_calibrate>`
+     - Riedel, L., et al. (2024): A Module for Calibrating Impact Functions in the Climate Risk Modeling Platform CLIMADA, Journal of Open Source Software [`under review <https://joss.theoj.org/papers/50845e31c6cb6894baae492bfd853671>`_]
 
 Please find the code to reprocduce selected CLIMADA-related scientific publications in our `repository of scientific publications <https://github.com/CLIMADA-project/climada_papers>`_.
 
