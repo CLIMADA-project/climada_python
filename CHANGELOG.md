@@ -26,6 +26,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
 - Update the Holland et al. 2010 TC windfield model and introduce `model_kwargs` parameter to adjust model parameters [#846](https://github.com/CLIMADA-project/climada_python/pull/846)
 - Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
+- Ensure `csr_matrix` stored in `climada.hazard.Hazard` have consistent data format and store no explicit zeros when initializing `ImpactCalc` [#893](https://github.com/CLIMADA-project/climada_python/pull/893)
 - `Impact.from_hdf5` now calls `str` on `event_name` data that is not strings, and issue a warning then [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - Split `climada.hazard.trop_cyclone` module into smaller submodules without affecting module usage [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
@@ -39,6 +40,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 
 ### Added
 
+- Method `Hazard.check_matrices` for bringing the stored CSR matrices into "canonical format" [#893](https://github.com/CLIMADA-project/climada_python/pull/893)
 - Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
 - climada.hazard.centroids.centr.Centroids.get_area_pixel
 - climada.hazard.centroids.centr.Centroids.get_dist_coast
