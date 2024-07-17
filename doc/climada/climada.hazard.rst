@@ -45,14 +45,6 @@ climada\.hazard\.storm\_europe module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.tag module
----------------------------
-
-.. automodule:: climada.hazard.tag
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.hazard\.tc\_clim\_change module
 ----------------------------------------
 
