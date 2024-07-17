@@ -13,6 +13,22 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
+climada\.hazard\.io module
+----------------------------
+
+.. automodule:: climada.hazard.io
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.plot module
+----------------------------
+
+.. automodule:: climada.hazard.plot
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.hazard\.isimip\_data module
 ------------------------------------
 
