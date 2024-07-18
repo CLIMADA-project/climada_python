@@ -56,6 +56,8 @@ def calc_fit_interp(
         method = 'interp'
     if not method in ['interp', 'fit', 'stepfunction']:
         raise ValueError(f'Unknown method: {method}. Use "interp", "fit", or "stepfunction" instead')
+    if method == 'stepfunction': # x_scale and y_scale unnecessary if fitting stepfunction
+        x_scale, y_scale = None, None
     if x_train.shape != y_train.shape:
         raise ValueError(f'Incompatible shapes of input data, x_train {x_train.shape} and y_train {y_train.shape}. Should be the same')
     
@@ -107,7 +109,7 @@ def calc_fit_interp(
 
     # adapt output scale
     if y_scale == 'log':
-        y_test = np.exp(y_test)
+        y_test = np.power(10., y_test)
     
     return y_test
     
