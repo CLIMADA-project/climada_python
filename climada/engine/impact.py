@@ -44,7 +44,6 @@ import h5py
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 import geopandas as gpd
-from shapely import Point
 
 from climada.entity import Exposures
 from climada import CONFIG
@@ -473,7 +472,9 @@ class Impact():
     def local_exceedance_imp(
             self, 
             return_periods=(25, 50, 100, 250),
-            method = 'fit'
+            method = 'fit',
+            freq_scale='log',
+            intensity_cutoff=0
         ):
         """Compute exceedance impact map for given return periods.
         Requires attribute imp_mat.
@@ -522,12 +523,12 @@ class Impact():
                 frequency_sorted,
                 impact_sorted,
                 method=method,
-                x_scale='log',
-                y_thres = 0
+                x_scale=freq_scale,
+                y_thres=intensity_cutoff
             )
 
         # create the output GeoDataFrame
-        gdf = gpd.GeoDataFrame(geometry = [Point(x, y) for y, x in self.coord_exp], crs = self.crs)
+        gdf = gpd.GeoDataFrame(geometry = gpd.points_from_xy(self.coord_exp[:,1], self.coord_exp[:,0]), crs = self.crs)
         col_names = [f'{ret_per}' for ret_per in return_periods]
         gdf[col_names] = imp_stats.T
 
@@ -848,7 +849,7 @@ class Impact():
 
         return axis
     
-    # TODO: replace with subplots_from_gdf()
+    # TODO: replace with plot_from_gdf()
     def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
                     log10_scale=True, smooth=True, axis=None, **kwargs):
         """Compute and plot exceedance impact maps for different return periods.

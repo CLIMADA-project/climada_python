@@ -29,8 +29,8 @@ def calc_fit_interp(
         method: str=None, 
         x_scale: str=None, 
         y_scale: str=None, 
-        x_thres = None, 
-        y_thres = None,
+        x_thres: float = None, 
+        y_thres: float = None,
         **kwargs
     ):
     """_summary_
@@ -42,8 +42,9 @@ def calc_fit_interp(
         method (str, optional): _description_. Defaults to None.
         x_scale (str, optional): _description_. Defaults to None.
         y_scale (str, optional): _description_. Defaults to None.
-        x_thres (optional): _description_. Defaults to None.
-        y_thres (optional): _description_. Defaults to None.
+        x_thres (float, optional): _description_. Defaults to None.
+        y_thres (float, optional): _description_. Defaults to None.
+        **kwargs: further optional parameters for the fit methods
 
     Returns
     -------
@@ -59,12 +60,12 @@ def calc_fit_interp(
         raise ValueError(f'Incompatible shapes of input data, x_train {x_train.shape} and y_train {y_train.shape}. Should be the same')
     
     # cut x and y above threshold
-    if isinstance(x_thres, (int, float)):
+    if x_thres or x_thres==0:
         x_th = np.asarray(x_train > x_thres).squeeze()
         x_train = x_train[x_th]
         y_train = y_train[x_th]
     
-    if isinstance(y_thres, (int, float)):
+    if y_thres or y_thres==0:
         y_th = np.asarray(y_train > y_thres).squeeze()
         x_train = x_train[y_th]
         y_train = y_train[y_th]
@@ -89,9 +90,10 @@ def calc_fit_interp(
     # calculate linear fit
     elif method == 'fit':
         try: 
-            pol_coef = np.polyfit(x_train, y_train, deg=1)
-        except ValueError:
-            pol_coef = np.polyfit(x_train, y_train, deg=0)
+            #pol_coef = np.polyfit(x_train, y_train, deg=1) # old fit method (numpy recommends to replace it)
+            pol_coef = np.polynomial.polynomial.Polynomial.fit(x_train, y_train, deg=1).convert().coef[::-1]
+        except:
+            raise ValueError(f"No linear fiz possible.")
         y_test = np.polyval(pol_coef, x_test, **kwargs)
     
     # calculate stepfunction fit

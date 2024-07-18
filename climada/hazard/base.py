@@ -405,7 +405,8 @@ class Hazard(HazardIO, HazardPlot):
             u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
         ))
 
-    def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
+    def local_exceedance_inten(self, return_periods=(25, 50, 100, 250), 
+                               method='fit', freq_scale='log', intensity_cutoff=None):
         """Compute exceedance intensity map for given return periods.
 
         Parameters
@@ -417,6 +418,8 @@ class Hazard(HazardIO, HazardPlot):
         -------
         inten_stats: np.array
         """
+        if not intensity_cutoff and intensity_cutoff != 0:
+            intensity_cutoff = self.intensity_thres
         #check frequency unit
         if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
             rp_unit = 'years'
@@ -445,9 +448,9 @@ class Hazard(HazardIO, HazardPlot):
                 1/np.array(return_periods),
                 frequency_sorted,
                 intensity_sorted,
-                method='fit',
-                x_scale='log',
-                y_thres=self.intensity_thres
+                method=method,
+                x_scale=freq_scale,
+                y_thres=intensity_cutoff
             )
 
         # create the output GeoDataFrame
@@ -468,7 +471,8 @@ class Hazard(HazardIO, HazardPlot):
             LOGGER.debug('Resetting event_id.')
             self.event_id = np.arange(1, self.event_id.size + 1)
 
-    def local_return_period(self, threshold_intensities=(5., 10., 20.)):
+    def local_return_period(self, threshold_intensities=(5., 10., 20.),
+                            method='stepfunction', freq_scale='log'):
         """Compute local return periods for given hazard intensities. The used method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
         frequency with a step function.
@@ -522,8 +526,8 @@ class Hazard(HazardIO, HazardPlot):
                 threshold_intensities,
                 intensity_sorted[::-1],
                 frequency_sorted[::-1],
-                method='stepfunction',
-                x_scale='log'
+                method=method,
+                y_scale=freq_scale
             ))
         
         # create the output GeoDataFrame

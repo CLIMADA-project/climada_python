@@ -883,7 +883,7 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
     if legend:
         ax.legend(bars, data.keys())
 
-def subplots_from_gdf(
+def plot_from_gdf(
         gdf: gpd.GeoDataFrame,
         colorbar_name: str = None,
         title_subplots: callable = None,
@@ -943,7 +943,7 @@ def subplots_from_gdf(
     if (
         colorbar_name.strip().startswith(('Return Period', 'Impact')) and
         # check if value range too small for logarithmic colorscale
-        (np.log10(np.nanmax(gdf_values)) - np.log10(np.nanmin(gdf_values))) > 1
+        (np.log10(np.nanmax(gdf_values)) - np.log10(np.nanmin(gdf_values))) > 2
     ):
         if 'norm' not in kwargs.keys():
             kwargs.update(
@@ -957,7 +957,6 @@ def subplots_from_gdf(
     if colorbar_name.strip().startswith('Return Period'):
         if 'cmap' not in kwargs.keys():
             kwargs.update({'cmap': 'viridis_r'})
-            print('updated')
 
     axis = geo_im_from_array(
         gdf_values,
