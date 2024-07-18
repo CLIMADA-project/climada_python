@@ -23,7 +23,10 @@ import unittest
 import cartopy
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import colormaps as cm
 import cartopy.crs as ccrs
+import geopandas as gpd
+from shapely import Point
 
 import climada.util.plot as u_plot
 
@@ -67,7 +70,7 @@ class TestPlots(unittest.TestCase):
                                   1: 'int',
                                   2.0: 'float',
                                   'a': 'string'},
-                        pop_name=False, cmap=plt.get_cmap('Set1'))
+                        pop_name=False, cmap=cm.get_cmap('Set1'))
         plt.close()
 
         #test colormap warning
@@ -99,8 +102,9 @@ class TestPlots(unittest.TestCase):
                                shapes=True, axes=None, proj=projection,
                                figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
-        self.assertAlmostEqual(np.max(values), ax.collections[0].colorbar.vmax)
-        self.assertAlmostEqual(np.min(values), ax.collections[0].colorbar.vmin)
+        colorbar = next(x.colorbar for x in ax.collections if x.colorbar)
+        self.assertAlmostEqual(np.max(values), colorbar.vmax)
+        self.assertAlmostEqual(np.min(values), colorbar.vmin)
         self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
@@ -116,8 +120,9 @@ class TestPlots(unittest.TestCase):
                                            shapes=True, axes=None, proj=projection,
                                            figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
-        self.assertAlmostEqual(np.max(values), ax.collections[0].colorbar.vmax)
-        self.assertAlmostEqual(np.min(values), ax.collections[0].colorbar.vmin)
+        colorbar = next(x.colorbar for x in ax.collections if x.colorbar)
+        self.assertAlmostEqual(np.max(values), colorbar.vmax)
+        self.assertAlmostEqual(np.min(values), colorbar.vmin)
         self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
@@ -131,8 +136,9 @@ class TestPlots(unittest.TestCase):
         ax = u_plot.geo_im_from_array(values, coord, var_name, title,
                       proj=projection, smooth=True, axes=None, figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
-        self.assertAlmostEqual(np.max(values), ax.collections[0].colorbar.vmax)
-        self.assertAlmostEqual(np.min(values), ax.collections[0].colorbar.vmin)
+        colorbar = next(x.colorbar for x in ax.collections if x.colorbar)
+        self.assertAlmostEqual(np.max(values), colorbar.vmax)
+        self.assertAlmostEqual(np.min(values), colorbar.vmin)
         self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
@@ -140,11 +146,27 @@ class TestPlots(unittest.TestCase):
         ax = u_plot.geo_im_from_array(values, coord, var_name, title,
                       proj=projection, smooth=True, axes=None, figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
-        self.assertAlmostEqual(np.max(values), ax.collections[0].colorbar.vmax)
-        self.assertAlmostEqual(np.min(values), ax.collections[0].colorbar.vmin)
+        colorbar = next(x.colorbar for x in ax.collections if x.colorbar)
+        self.assertAlmostEqual(np.max(values), colorbar.vmax)
+        self.assertAlmostEqual(np.min(values), colorbar.vmin)
         self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
+    def test_subplots_from_gdf(self):
+        return_periods = gpd.GeoDataFrame(
+            data = ((2., 5.), (3., 6.), (None, 2.), (1., 7.)),
+            columns = ('10.0', '20.0')
+        )
+        return_periods['geometry'] = (Point(45., 26.), Point(46., 26.), Point(45., 27.), Point(46., 27.))
+        colorbar_name = 'Return Periods (Years)'
+        title_subplots = lambda cols: [f'Threshold Intensity: {col} m/s' for col in cols]
+        (axis1, axis2) = u_plot.subplots_from_gdf(
+            return_periods, 
+            colorbar_name=colorbar_name, 
+            title_subplots=title_subplots)
+        self.assertEqual('Threshold Intensity: 10.0 m/s', axis1.get_title())
+        self.assertEqual('Threshold Intensity: 20.0 m/s', axis2.get_title())
+        plt.close()
 
 # Execute Tests
 if __name__ == "__main__":

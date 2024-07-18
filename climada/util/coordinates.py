@@ -46,6 +46,7 @@ import scipy.interpolate
 from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
+import shapely.wkt
 from sklearn.neighbors import BallTree
 
 from climada.util.config import CONFIG
@@ -67,9 +68,6 @@ NE_EPSG = 4326
 
 NE_CRS = f"epsg:{NE_EPSG}"
 """Natural Earth CRS"""
-
-TMP_ELEVATION_FILE = SYSTEM_DIR.joinpath('tmp_elevation.tif')
-"""Path of elevation file written in set_elevation"""
 
 DEM_NODATA = -9999
 """Value to use for no data values in DEM, i.e see points"""
@@ -200,6 +198,7 @@ def lon_bounds(lon, buffer=0.0):
     if lon_diff_max < 2:
         # since the largest gap is comparably small, enforce the [-180, 180] value range
         gap_max = lon_diff.size - 1
+        lon_diff_max = lon_diff[gap_max]
     if lon_diff_max <= 2 * buffer:
         # avoid (-1, 359) and similar equivalent outputs for bounds covering the full circle
         lon_min, lon_max = (-180, 180)
@@ -459,36 +458,6 @@ def grid_is_regular(coord):
         regular = True
     return regular, count_lat[0], count_lon[0]
 
-def get_coastlines(bounds=None, resolution=110):
-    """Get Polygones of coast intersecting given bounds
-
-    Parameters
-    ----------
-    bounds : tuple
-        min_lon, min_lat, max_lon, max_lat in EPSG:4326
-    resolution : float, optional
-        10, 50 or 110. Resolution in m. Default: 110m, i.e. 1:110.000.000
-
-    Returns
-    -------
-    coastlines : GeoDataFrame
-        Polygons of coast intersecting given bounds.
-    """
-    resolution = nat_earth_resolution(resolution)
-    shp_file = shapereader.natural_earth(resolution=resolution,
-                                         category='physical',
-                                         name='coastline')
-    coast_df = gpd.read_file(shp_file)
-    coast_df.crs = NE_CRS
-    if bounds is None:
-        return coast_df[['geometry']]
-    tot_coast = np.zeros(1)
-    while not np.any(tot_coast):
-        tot_coast = coast_df.envelope.intersects(box(*bounds))
-        bounds = (bounds[0] - 20, bounds[1] - 20,
-                  bounds[2] + 20, bounds[3] + 20)
-    return coast_df[tot_coast][['geometry']]
-
 def convert_wgs_to_utm(lon, lat):
     """Get EPSG code of UTM projection for input point in EPSG 4326
 
@@ -507,49 +476,30 @@ def convert_wgs_to_utm(lon, lat):
     epsg_utm_base = 32601 + (0 if lat >= 0 else 100)
     return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
 
-def utm_zones(wgs_bounds):
-    """Get EPSG code and bounds of UTM zones covering specified region
+def dist_to_coast(coord_lat, lon=None, highres=False, signed=False):
+    """Read interpolated (signed) distance to coast (in m) from NASA data
+
+    Note: The NASA raster file is 300 MB and will be downloaded on first run!
 
     Parameters
     ----------
-    wgs_bounds : tuple
-        lon_min, lat_min, lon_max, lat_max
-
-    Returns
-    -------
-    zones : list of pairs (zone_epsg, zone_wgs_bounds)
-        EPSG code and bounding box in WGS coordinates.
-    """
-    lon_min, lat_min, lon_max, lat_max = wgs_bounds
-    lon_min, lon_max = max(-179.99, lon_min), min(179.99, lon_max)
-    utm_min, utm_max = [math.floor((l + 180) / 6) for l in [lon_min, lon_max]]
-    zones = []
-    for utm in range(utm_min, utm_max + 1):
-        epsg = 32601 + utm
-        bounds = (-180 + 6 * utm, 0, -180 + 6 * (utm + 1), 90)
-        if lat_max >= 0:
-            zones.append((epsg, bounds))
-        if lat_min < 0:
-            bounds = (bounds[0], -90, bounds[2], 0)
-            zones.append((epsg + 100, bounds))
-    return zones
-
-def dist_to_coast(coord_lat, lon=None, signed=False):
-    """Compute (signed) distance to coast from input points in meters.
-
-    Parameters
-    ----------
-    coord_lat : GeoDataFrame or np.array or float
+    coord_lat : GeoDataFrame or np.ndarray or float
         One of the following:
-            * GeoDataFrame with geometry column in epsg:4326
-            * np.array with two columns, first for latitude of each point
-              and second with longitude in epsg:4326
-            * np.array with one dimension containing latitudes in epsg:4326
-            * float with a latitude value in epsg:4326
-    lon : np.array or float, optional
-        One of the following:
-            * np.array with one dimension containing longitudes in epsg:4326
-            * float with a longitude value in epsg:4326
+
+        * GeoDataFrame with geometry column in epsg:4326
+        * np.array with two columns, first for latitude of each point
+          and second with longitude in epsg:4326
+        * np.array with one dimension containing latitudes in epsg:4326
+        * float with a latitude value in epsg:4326
+
+    lon : np.ndarray or float, optional
+        If given, one of the following:
+
+        * np.array with one dimension containing longitudes in epsg:4326
+        * float with a longitude value in epsg:4326
+
+    highres : bool, optional
+        Use full resolution of NASA data (much slower). Default: False.
     signed : bool
         If True, distance is signed with positive values off shore and negative values on land.
         Default: False
@@ -559,53 +509,21 @@ def dist_to_coast(coord_lat, lon=None, signed=False):
     dist : np.array
         (Signed) distance to coast in meters.
     """
-    if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
-        if not equal_crs(coord_lat.crs, NE_CRS):
-            raise ValueError('Input CRS is not %s' % str(NE_CRS))
-        geom = coord_lat
-    else:
-        if lon is None:
-            if isinstance(coord_lat, np.ndarray) and coord_lat.shape[1] == 2:
-                lat, lon = coord_lat[:, 0], coord_lat[:, 1]
-            else:
-                raise ValueError('Missing longitude values.')
+    if lon is None:
+        if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
+            if not equal_crs(coord_lat.crs, DEF_CRS):
+                raise ValueError('Input CRS is not %s' % str(DEF_CRS))
+            geom = coord_lat if isinstance(coord_lat, gpd.GeoSeries) else coord_lat["geometry"]
+            lon, lat = geom.x.values, geom.y.values
+        elif isinstance(coord_lat, np.ndarray) and coord_lat.shape[1] == 2:
+            lat, lon = coord_lat[:, 0], coord_lat[:, 1]
         else:
-            lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
-            if lat.size != lon.size:
-                raise ValueError('Mismatching input coordinates size: %s != %s'
-                                 % (lat.size, lon.size))
-        geom = gpd.GeoDataFrame(geometry=gpd.points_from_xy(lon, lat), crs=NE_CRS)
-
-    pad = 20
-    bounds = (geom.total_bounds[0] - pad, geom.total_bounds[1] - pad,
-              geom.total_bounds[2] + pad, geom.total_bounds[3] + pad)
-    coast = get_coastlines(bounds, 10).geometry
-    coast = gpd.GeoDataFrame(geometry=coast, crs=NE_CRS)
-    dist = np.empty(geom.shape[0])
-    zones = utm_zones(geom.geometry.total_bounds)
-    for izone, (epsg, bounds) in enumerate(zones):
-        to_crs = f"epsg:{epsg}"
-        zone_mask = (
-            (bounds[1] <= geom.geometry.y)
-            & (geom.geometry.y <= bounds[3])
-            & (bounds[0] <= geom.geometry.x)
-            & (geom.geometry.x <= bounds[2])
-        )
-        if np.count_nonzero(zone_mask) == 0:
-            continue
-        LOGGER.info("dist_to_coast: UTM %d (%d/%d)",
-                    epsg, izone + 1, len(zones))
-        bounds = geom[zone_mask].total_bounds
-        bounds = (bounds[0] - pad, bounds[1] - pad,
-                  bounds[2] + pad, bounds[3] + pad)
-        coast_mask = coast.envelope.intersects(box(*bounds))
-        utm_coast = coast[coast_mask].geometry.unary_union
-        utm_coast = gpd.GeoDataFrame(geometry=[utm_coast], crs=NE_CRS)
-        utm_coast = utm_coast.to_crs(to_crs).geometry[0]
-        dist[zone_mask] = geom[zone_mask].to_crs(to_crs).distance(utm_coast)
-    if signed:
-        dist[coord_on_land(geom.geometry.y, geom.geometry.x)] *= -1
-    return dist
+            raise ValueError('Missing longitude values.')
+    else:
+        lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
+        if lat.size != lon.size:
+            raise ValueError(f'Mismatching input coordinates size: {lat.size} != {lon.size}')
+    return dist_to_coast_nasa(lat, lon, highres=highres, signed=signed)
 
 def _get_dist_to_coast_nasa_tif():
     """Get the path to the NASA raster file for distance to coast.
@@ -755,7 +673,7 @@ def nat_earth_resolution(resolution):
         raise ValueError('Natural Earth does not accept resolution %s m.' % resolution)
     return str(resolution) + 'm'
 
-def get_country_geometries(country_names=None, extent=None, resolution=10):
+def get_country_geometries(country_names=None, extent=None, resolution=10, center_crs=True):
     """Natural Earth country boundaries within given extent
 
     If no arguments are given, simply returns the whole natural earth dataset.
@@ -764,8 +682,9 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
     starts including the projection information. (They are saving a whopping 147 bytes by omitting
     it.) Same goes for UTF.
 
-    If extent is provided, longitude values in 'geom' will all lie within 'extent' longitude
-    range. Therefore setting extent to e.g. [160, 200, -20, 20] will provide longitude values
+    If extent is provided and center_crs is True, longitude values in 'geom' will all lie
+    within 'extent' longitude range.
+    Therefore setting extent to e.g. [160, 200, -20, 20] will provide longitude values
     between 160 and 200 degrees.
 
     Parameters
@@ -777,6 +696,10 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         Extent, assumed to be in the same CRS as the natural earth data.
     resolution : float, optional
         10, 50 or 110. Resolution in m. Default: 10m
+    center_crs : bool
+        if True, the crs of the countries is centered such that
+        longitude values in 'geom' will all lie within 'extent' longitude range.
+        Default is True.
 
     Returns
     -------
@@ -838,7 +761,7 @@ def get_country_geometries(country_names=None, extent=None, resolution=10):
         bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
         bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=DEF_CRS)
         out = gpd.overlay(out, bbox, how="intersection")
-        if ~lon_normalized:
+        if ~lon_normalized and center_crs:
             lon_mid = 0.5 * (extent[0] + extent[1])
             # reset the CRS attribute after rewrapping (we don't really change the CRS)
             out = (
@@ -983,7 +906,7 @@ def assign_coordinates(*args, **kwargs):
     return match_coordinates(*args, **kwargs)
 
 def match_coordinates(coords, coords_to_assign, distance="euclidean",
-                       threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
+                      threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
     If there is no exact match for some entry, an attempt is made to assign the geographically
@@ -1081,7 +1004,7 @@ def match_coordinates(coords, coords_to_assign, distance="euclidean",
 def match_centroids(coord_gdf, centroids, distance='euclidean',
                     threshold=NEAREST_NEIGHBOR_THRESHOLD):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
-    If disatances > threshold in points' distances, -1 is returned.
+    If distances > threshold in points' distances, -1 is returned.
     If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
 
     Parameters
@@ -1132,15 +1055,10 @@ def match_centroids(coord_gdf, centroids, distance='euclidean',
         # no error is raised and it is assumed that the user set the crs correctly
         pass
 
-    if centroids.meta:
-        assigned = match_grid_points(
-            coord_gdf.longitude.values, coord_gdf.latitude.values,
-            centroids.meta['width'], centroids.meta['height'],
-            centroids.meta['transform'])
-    else:
-        assigned = match_coordinates(
-            np.stack([coord_gdf.latitude.values, coord_gdf.longitude.values], axis=1),
-            centroids.coord, distance=distance, threshold=threshold)
+    assigned = match_coordinates(
+        np.stack([coord_gdf['latitude'].values, coord_gdf['longitude'].values], axis=1),
+        centroids.coord, distance=distance, threshold=threshold,
+    )
     return assigned
 
 @numba.njit
@@ -1548,7 +1466,8 @@ def get_country_code(lat, lon, gridded=False):
         region_id = region_id.astype(int)
     else:
         (lon_min, lat_min, lon_max, lat_max) = latlon_bounds(lat, lon, 0.001)
-        countries = get_country_geometries(extent=(lon_min, lon_max, lat_min, lat_max))
+        countries = get_country_geometries(
+            extent=(lon_min, lon_max, lat_min, lat_max), center_crs=False)
         with warnings.catch_warnings():
             # in order to suppress the following
             # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely
@@ -2494,13 +2413,21 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
     df_poly = gpd.GeoDataFrame(points_df[val_names])
     if not scheduler:
-        df_poly['geometry'] = apply_box(points_df)
+        df_poly['_-geometry-prov'] = apply_box(points_df)
     else:
         ddata = dd.from_pandas(points_df[['latitude', 'longitude']],
                                npartitions=cpu_count())
-        df_poly['geometry'] = ddata.map_partitions(apply_box, meta=Polygon) \
-                                   .compute(scheduler=scheduler)
-    df_poly.set_crs(crs if crs else points_df.crs if points_df.crs else DEF_CRS, inplace=True)
+        df_poly['_-geometry-prov'] = ddata.map_partitions(
+            apply_box).compute(scheduler=scheduler)
+        # depending on the dask/pandas version setting `meta=Polygon` in map_partitions
+        # would just raise a warning and returns a string, so we have to convert explicitly
+        if isinstance(df_poly.loc[0, '_-geometry-prov'], str):  # fails for empty `points_df`
+            df_poly['_-geometry-prov'] = shapely.wkt.loads(df_poly['_-geometry-prov'])
+
+    df_poly.set_geometry('_-geometry-prov',
+                         crs=crs if crs else points_df.crs if points_df.crs else DEF_CRS,
+                         inplace=True,
+                         drop=True)
 
     # renormalize longitude if necessary
     if equal_crs(df_poly.crs, DEF_CRS):
@@ -2726,37 +2653,23 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     df_val : GeoDataFrame
         contains latitude and longitude columns
     scheduler : str, optional
-        used for dask map_partitions. “threads”, “synchronous” or “processes”
+        Scheduler type for dask map_partitions.
+        .. deprecated:: 5.0
+           This function does not use dask features anymore. The parameter has no effect
+           and will be removed in a future version.
     crs : object (anything readable by pyproj4.CRS.from_user_input), optional
         Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """
     LOGGER.info('Setting geometry points.')
+    if scheduler is not None:
+        warnings.warn("This function does not use dask features anymore. The parameter has no"
+                      " effect and will be removed in a future version.", DeprecationWarning)
 
     # keep the original crs if any
-    if crs is None:
-        try:
-            crs = df_val.geometry.crs
-        except AttributeError:
-            crs = None
+    crs = df_val.crs if crs is None else crs  # crs might now still be None
 
-    # work in parallel
-    if scheduler:
-        def apply_point(df_exp):
-            return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
-
-        ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['geometry'] = ddata.map_partitions(
-                                 apply_point,
-                                 meta=('geometry', gpd.array.GeometryDtype)
-                             ).compute(scheduler=scheduler)
-    # single process
-    else:
-        df_val['geometry'] = gpd.GeoSeries(
-            gpd.points_from_xy(df_val.longitude, df_val.latitude), index=df_val.index, crs=crs)
-
-    # set crs
-    if crs:
-        df_val.set_crs(crs, inplace=True)
+    df_val.set_geometry(gpd.points_from_xy(df_val.longitude, df_val.latitude),
+                        inplace=True, crs=crs)
 
 
 def fao_code_def():

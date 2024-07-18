@@ -70,6 +70,16 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(HAZ.event_id, icalc.hazard.event_id)
         np.testing.assert_array_equal(HAZ.event_name, icalc.hazard.event_name)
 
+        # Test check matrices
+        hazard = deepcopy(HAZ)
+        hazard.intensity[0, hazard.intensity.indices[0]] = 0
+        hazard.fraction = sparse.csr_matrix(np.ones((1, 1)))
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            ImpactCalc(ENT.exposures, ENT.impact_funcs, hazard)
+            self.assertEqual(hazard.intensity.nnz, HAZ.intensity.nnz - 1)  # was pruned
+
     def test_metrics(self):
         """Test methods to get impact metrics"""
         mat = sparse.csr_matrix(np.array(
@@ -135,6 +145,26 @@ class TestImpactCalc(unittest.TestCase):
         except Exception as e:
             self.assertEqual(str(e), "Impact calculation not possible. No impact "
                              "functions found for hazard type TC in impf_set.")
+    def test_error_handling_mismatch_impf_ids(self):
+        """Test error handling in case impf ids in exposures
+        does not appear in impf_set"""
+        haz = Hazard('TC')
+        exp = Exposures()
+        exp.gdf.loc[0,'impf_TC'] = 1
+        exp.gdf.loc[1,'impf_TC'] = 2
+        impf_exp = ImpactFunc(haz_type='TC', id=1)
+        impf_noexp = deepcopy(impf_exp)
+        impf_noexp.id = 3
+        impfset = ImpactFuncSet([impf_exp, impf_noexp])
+
+        with self.assertRaises(ValueError) as cm:
+            ImpactCalc(exp, impfset, haz).impact()
+        the_exception = cm.exception
+        self.assertEqual(the_exception.args[0],
+                         "The associated impact function(s) with id(s) 2 have no match in "
+                         "impact function set for hazard type \'TC\'.\nPlease make sure "
+                         "that all exposure points are associated with an impact "
+                         "function that is included in the impact function set.")
 
     def test_calc_impact_TC_pass(self):
         """Test compute impact"""

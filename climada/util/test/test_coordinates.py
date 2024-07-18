@@ -265,6 +265,12 @@ class TestFunc(unittest.TestCase):
         bounds = u_coord.latlon_bounds(lat, lon, buffer=1)
         self.assertEqual(bounds, (-180, -90, 180, 90))
 
+        # edge with values closer to the antimeridian than buffers and global coverage
+        lon = np.concatenate([[-179.99], np.arange(-179.7, 179.9, 0.2), [179.99]])
+        lat = np.zeros_like(lon)
+        bounds = u_coord.latlon_bounds(lat, lon, buffer=0.1)
+        self.assertEqual(bounds, (-180, -0.1, 180, 0.1))
+
     def test_toggle_extent_bounds(self):
         """Test the conversion between 'extent' and 'bounds'"""
         self.assertEqual(u_coord.toggle_extent_bounds((0, -1, 1, 3)), (0, 1, -1, 3))
@@ -544,30 +550,33 @@ class TestAssign(unittest.TestCase):
             'width': 20, 'height': 10,
             'transform': rasterio.Affine(1.5, 0.0, -20, 0.0, -1.4, 8)
         }
-        centroids = Centroids(meta=meta)
+        centroids = Centroids.from_meta(meta=meta)
         df = pd.DataFrame({
             'longitude': np.array([
                 -20.1, -20.0, -19.8, -19.0, -18.6, -18.4,
                 -19.0, -19.0, -19.0, -19.0,
                 -20.1, 0.0, 10.1, 10.1, 10.1, 0.0, -20.2, -20.3,
                 -6.4, 9.8, 0.0,
-                ]),
+            ]),
             'latitude': np.array([
                 7.3, 7.3, 7.3, 7.3, 7.3, 7.3,
                 8.1, 7.9, 6.7, 6.5,
                 8.1, 8.2, 8.3, 0.0, -6.1, -6.2, -6.3, 0.0,
                 -1.9, -1.7, 0.0,
-                ])
+            ]),
         })
-        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
-                               crs=DEF_CRS)
-        assigned = u_coord.match_centroids(gdf,centroids)
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df.longitude, df.latitude),
+            crs=DEF_CRS,
+        )
+        assigned = u_coord.match_centroids(gdf, centroids)
 
         expected_result = [
             # constant y-value, varying x-value
-            -1, 0, 0, 0, 0, 1,
+            0, 0, 0, 0, 0, 1,
             # constant x-value, varying y-value
-            -1, 0, 0, 20,
+            0, 0, 0, 20,
             # out of bounds: topleft, top, topright, right, bottomright, bottom, bottomleft, left
             -1, -1, -1, -1, -1, -1, -1, -1,
             # some explicit points within the raster
@@ -589,9 +598,9 @@ class TestAssign(unittest.TestCase):
         centroids = Centroids(
             lat=coords_to_assign[:, 0],
             lon=coords_to_assign[:, 1],
-            geometry = gpd.GeoSeries(crs=DEF_CRS)
+            crs=DEF_CRS
         )
-        centroids_empty = Centroids()
+        centroids_empty = Centroids(lat=np.array([]), lon=np.array([]))
 
         expected_results = [
             # test with different thresholds (in km)
@@ -624,7 +633,7 @@ class TestAssign(unittest.TestCase):
         centroids = Centroids(
             lat=[1100000,1200000],
             lon=[2500000,2600000],
-            geometry = gpd.GeoSeries(crs='EPSG:2056')
+            crs='EPSG:2056'
         )
 
         with self.assertRaises(ValueError) as cm:
@@ -960,27 +969,6 @@ class TestGetGeodata(unittest.TestCase):
         with self.assertRaises(ValueError):
             u_coord.nat_earth_resolution(111)
 
-    def test_get_coastlines_all_pass(self):
-        """Check get_coastlines function over whole earth"""
-        coast = u_coord.get_coastlines(resolution=110)
-        tot_bounds = coast.total_bounds
-        self.assertEqual((134, 1), coast.shape)
-        self.assertAlmostEqual(tot_bounds[0], -180)
-        self.assertAlmostEqual(tot_bounds[1], -85.60903777)
-        self.assertAlmostEqual(tot_bounds[2], 180.00000044)
-        self.assertAlmostEqual(tot_bounds[3], 83.64513)
-
-    def test_get_coastlines_pass(self):
-        """Check get_coastlines function in defined extent"""
-        bounds = (-100, -55, -20, 35)
-        coast = u_coord.get_coastlines(bounds, resolution=110)
-        ex_box = box(bounds[0], bounds[1], bounds[2], bounds[3])
-        self.assertEqual(coast.shape[0], 14)
-        self.assertTrue(coast.total_bounds[2] < 0)
-        for _row, line in coast.iterrows():
-            if not ex_box.intersects(line.geometry):
-                self.assertEqual(1, 0)
-
     def test_get_land_geometry_country_pass(self):
         """get_land_geometry with selected countries."""
         iso_countries = ['DEU', 'VNM']
@@ -1031,26 +1019,6 @@ class TestGetGeodata(unittest.TestCase):
         res = u_coord.coord_on_land(lat, lon)
         self.assertEqual(res.size, lat.size)
         np.testing.assert_array_equal(res[:3], [True, False, True])
-
-    def test_dist_to_coast(self):
-        """Test point in coast and point not in coast"""
-        points = np.array([
-            # Caribbean Sea:
-            [13.208333333333329, -59.625000000000014],
-            # South America:
-            [-12.497529, -58.849505],
-            # Very close to coast of Somalia:
-            [1.96768, 45.23219],
-        ])
-        dists = [2594.2071059573445, 1382985.2459744606, 0.088222234]
-        for d, p in zip(dists, points):
-            res = u_coord.dist_to_coast(*p)
-            self.assertAlmostEqual(d, res[0])
-
-        # All at once requires more than one UTM
-        res = u_coord.dist_to_coast(points)
-        for d, r in zip(dists, res):
-            self.assertAlmostEqual(d, r)
 
     def test_dist_to_coast_nasa(self):
         """Test point in coast and point not in coast"""
@@ -1304,41 +1272,44 @@ class TestRasterMeta(unittest.TestCase):
 
     def test_points_to_raster_pass(self):
         """Test points_to_raster"""
-        df_val = gpd.GeoDataFrame()
-        x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
-        df_val['latitude'] = y.flatten()
-        df_val['longitude'] = x.flatten()
-        df_val['value'] = np.ones(len(df_val)) * 10
-        crs = 'epsg:2202'
-        _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs)
-        self.assertFalse(hasattr(df_val, "crs"))  # points_to_raster must not modify df_val
-        self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
-        self.assertAlmostEqual(meta['transform'][0], 0.5)
-        self.assertAlmostEqual(meta['transform'][1], 0)
-        self.assertAlmostEqual(meta['transform'][2], -0.25)
-        self.assertAlmostEqual(meta['transform'][3], 0)
-        self.assertAlmostEqual(meta['transform'][4], -0.5)
-        self.assertAlmostEqual(meta['transform'][5], 50.25)
-        self.assertEqual(meta['height'], 21)
-        self.assertEqual(meta['width'], 5)
+        for scheduler in [None, "threads", "synchronous", "processes"]:
+        
+            df_val = gpd.GeoDataFrame()
+            x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
+            df_val['latitude'] = y.flatten()
+            df_val['longitude'] = x.flatten()
+            df_val['value'] = np.ones(len(df_val)) * 10
+            crs = 'epsg:2202'
+            _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs,
+                                                     scheduler=scheduler)
+            self.assertFalse(hasattr(df_val, "crs"))  # points_to_raster must not modify df_val
+            self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
+            self.assertAlmostEqual(meta['transform'][0], 0.5)
+            self.assertAlmostEqual(meta['transform'][1], 0)
+            self.assertAlmostEqual(meta['transform'][2], -0.25)
+            self.assertAlmostEqual(meta['transform'][3], 0)
+            self.assertAlmostEqual(meta['transform'][4], -0.5)
+            self.assertAlmostEqual(meta['transform'][5], 50.25)
+            self.assertEqual(meta['height'], 21)
+            self.assertEqual(meta['width'], 5)
 
-        # test for values crossing antimeridian
-        df_val = gpd.GeoDataFrame()
-        df_val['latitude'] = [1, 0, 1, 0]
-        df_val['longitude'] = [178, -179.0, 181, -180]
-        df_val['value'] = np.arange(4)
-        r_data, meta = u_coord.points_to_raster(
-            df_val, val_names=['value'], res=0.5, raster_res=1.0)
-        self.assertTrue(u_coord.equal_crs(meta['crs'], DEF_CRS))
-        self.assertAlmostEqual(meta['transform'][0], 1.0)
-        self.assertAlmostEqual(meta['transform'][1], 0)
-        self.assertAlmostEqual(meta['transform'][2], 177.5)
-        self.assertAlmostEqual(meta['transform'][3], 0)
-        self.assertAlmostEqual(meta['transform'][4], -1.0)
-        self.assertAlmostEqual(meta['transform'][5], 1.5)
-        self.assertEqual(meta['height'], 2)
-        self.assertEqual(meta['width'], 4)
-        np.testing.assert_array_equal(r_data[0], [[0, 0, 0, 2], [0, 0, 3, 1]])
+            # test for values crossing antimeridian
+            df_val = gpd.GeoDataFrame()
+            df_val['latitude'] = [1, 0, 1, 0]
+            df_val['longitude'] = [178, -179.0, 181, -180]
+            df_val['value'] = np.arange(4)
+            r_data, meta = u_coord.points_to_raster(
+                df_val, val_names=['value'], res=0.5, raster_res=1.0, scheduler=scheduler)
+            self.assertTrue(u_coord.equal_crs(meta['crs'], DEF_CRS))
+            self.assertAlmostEqual(meta['transform'][0], 1.0)
+            self.assertAlmostEqual(meta['transform'][1], 0)
+            self.assertAlmostEqual(meta['transform'][2], 177.5)
+            self.assertAlmostEqual(meta['transform'][3], 0)
+            self.assertAlmostEqual(meta['transform'][4], -1.0)
+            self.assertAlmostEqual(meta['transform'][5], 1.5)
+            self.assertEqual(meta['height'], 2)
+            self.assertEqual(meta['width'], 4)
+            np.testing.assert_array_equal(r_data[0], [[0, 0, 0, 2], [0, 0, 3, 1]])
 
 class TestRasterIO(unittest.TestCase):
     def test_write_raster_pass(self):

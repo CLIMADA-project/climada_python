@@ -23,7 +23,8 @@ __all__ = [
     'size',
     'shape',
     'array_optional',
-    'array_default'
+    'array_default',
+    'prune_csr_matrix',
 ]
 
 import logging
@@ -32,16 +33,24 @@ import scipy.sparse as sparse
 
 LOGGER = logging.getLogger(__name__)
 
-def check_oligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
+
+def check_obligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
     """Check size of obligatory variables.
 
-    Paraemters:
-        var_dict (dict): __dict__ class attribute
-        var_obl (set): name of the obligatory variables
-        name_prefix (str): name to add in the error log, e.g. the class name
-        n_size (int): size expected from arrays and lists
-        n_row (int): number of rows expected in 2D arrays
-        n_col (int): number of columns expected in 2D arrays
+    Parameters
+    ----------
+    var_dict : dict
+        __dict__ class attribute
+    var_obl : set
+        name of the obligatory variables
+    name_prefix : str
+        name to add in the error log, e.g. the class name
+    n_size : int
+        size expected from arrays and lists
+    n_row : int
+        number of rows expected in 2D arrays
+    n_col : int
+        number of columns expected in 2D arrays
 
     Raises
     ------
@@ -57,14 +66,20 @@ def check_oligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
             elif isinstance(var_val, (np.ndarray, sparse.csr_matrix)) and var_val.ndim == 2:
                 shape(n_row, n_col, var_val, name_prefix + var_name)
 
+
 def check_optionals(var_dict, var_opt, name_prefix, n_size):
     """Check size of obligatory variables.
 
-    Paraemters:
-        var_dict (dict): __dict__ class attribute
-        var_opt (set): name of the ooptional variables
-        name_prefix (str): name to add in the error log, e.g. the class name
-        n_size (int): size expected from arrays and lists
+    Parameters
+    ----------
+    var_dict : dict
+        __dict__ class attribute
+    var_opt : set
+        name of the ooptional variables
+    name_prefix : str
+        name to add in the error log, e.g. the class name
+    n_size : int
+        size expected from arrays and lists
 
     Raises
     ------
@@ -75,17 +90,19 @@ def check_optionals(var_dict, var_opt, name_prefix, n_size):
             if isinstance(var_val, (np.ndarray, list)):
                 array_optional(n_size, var_val, name_prefix + var_name)
 
+
 def empty_optional(var, var_name):
     """Check if a data structure is empty."""
     if not var:
         LOGGER.debug("%s not set. ", var_name)
 
+
 def size(exp_len, var, var_name):
     """Check if the length of a variable is the expected one.
 
-        Raises
-        ------
-        ValueError
+    Raises
+    ------
+    ValueError
     """
     try:
         if isinstance(exp_len, int):
@@ -96,12 +113,13 @@ def size(exp_len, var, var_name):
     except TypeError as err:
         raise ValueError(f"{var_name} has wrong size.") from err
 
+
 def shape(exp_row, exp_col, var, var_name):
     """Check if the length of a variable is the expected one.
 
-        Raises
-        ------
-        ValueError
+    Raises
+    ------
+    ValueError
     """
     try:
         if exp_row != var.shape[0]:
@@ -115,45 +133,46 @@ def shape(exp_row, exp_col, var, var_name):
 def array_optional(exp_len, var, var_name):
     """Check if array has right size. Warn if array empty. Call check_size.
 
-        Parameters
-        ----------
-        exp_len : str
-            expected array size
-        var : np.array
-            numpy array to check
-        var_name : str
-            name of the variable. Used in error/warning msg
+    Parameters
+    ----------
+    exp_len : str
+        expected array size
+    var : np.array
+        numpy array to check
+    var_name : str
+        name of the variable. Used in error/warning msg
 
-        Raises
-        ------
-        ValueError
+    Raises
+    ------
+    ValueError
     """
     if len(var) == 0 and exp_len > 0:
         LOGGER.debug("%s not set. ", var_name)
     else:
         size(exp_len, var, var_name)
 
+
 def array_default(exp_len, var, var_name, def_val):
     """Check array has right size. Set default value if empty. Call check_size.
 
-        Parameters
-        ----------
-        exp_len : str
-            expected array size
-        var : np.array
-            numpy array to check
-        var_name : str
-            name of the variable. Used in error/warning msg
-        def_val : np.array
-            nump array used as default value
+    Parameters
+    ----------
+    exp_len : str
+        expected array size
+    var : np.array
+        numpy array to check
+    var_name : str
+        name of the variable. Used in error/warning msg
+    def_val : np.array
+        nump array used as default value
 
-        Raises
-        ------
-        ValueError
+    Raises
+    ------
+    ValueError
 
-        Returns
-        -------
-        Filled array
+    Returns
+    -------
+    Filled array
     """
     res = var
     if len(var) == 0 and exp_len > 0:
@@ -162,3 +181,36 @@ def array_default(exp_len, var, var_name, def_val):
     else:
         size(exp_len, var, var_name)
     return res
+
+def prune_csr_matrix(matrix: sparse.csr_matrix):
+    """Ensure that the matrix is in the "canonical format".
+
+    Depending on how the matrix was instantiated or modified, it might be in a
+    "non-canonical" state. This only relates to its internal storage. In this state,
+    multiple values might be stored for a single "apparent" value in the matrix.
+    Also, the matrix might store zeros explicitly, which could be removed.
+    Calling this function makes sure that the matrix is in the "canonical state", and
+    brings it into this state, if possible.
+
+    See Also
+    --------
+    `csr_matrix.has_canonical_format
+    <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.has_canonical_format.html#scipy.sparse.csr_matrix.has_canonical_format>`_
+
+    Parameters
+    ----------
+    matrix : csr_matrix
+        The matrix to check. It will be modified *inplace*. Its ``.data`` attribute
+        might change, but apparent matrix values will stay the same.
+
+    Raises
+    ------
+    ValueError
+        If
+        `csr_matrix.check_format
+        <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.check_format.html#scipy.sparse.csr_matrix.check_format>`_
+        fails
+    """
+    matrix.check_format()
+    matrix.eliminate_zeros()
+    matrix.sum_duplicates()
