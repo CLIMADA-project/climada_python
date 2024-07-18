@@ -4,6 +4,7 @@ climada\.hazard package
 .. toctree::
 
     climada.hazard.centroids
+    climada.hazard.trop_cyclone
 
 climada\.hazard\.base module
 ----------------------------
@@ -14,17 +15,9 @@ climada\.hazard\.base module
     :show-inheritance:
 
 climada\.hazard\.io module
-----------------------------
+--------------------------
 
 .. automodule:: climada.hazard.io
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-climada\.hazard\.plot module
-----------------------------
-
-.. automodule:: climada.hazard.plot
     :members:
     :undoc-members:
     :show-inheritance:
@@ -33,6 +26,14 @@ climada\.hazard\.isimip\_data module
 ------------------------------------
 
 .. automodule:: climada.hazard.isimip_data
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.hazard\.plot module
+----------------------------
+
+.. automodule:: climada.hazard.plot
     :members:
     :undoc-members:
     :show-inheritance:
@@ -69,17 +70,3 @@ climada\.hazard\.tc\_tracks\_synth module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.trop\_cyclone module
--------------------------------------
-
-Module for representing the hazard of a tropical cyclone (wind field).
-
-.. automodule:: climada.hazard.trop_cyclone.trop_cyclone
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
-.. automodule:: climada.hazard.trop_cyclone.trop_cyclone_windfields
-    :members:
-    :undoc-members:
-    :show-inheritance:
