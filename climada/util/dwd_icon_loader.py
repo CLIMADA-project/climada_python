@@ -189,7 +189,7 @@ def _create_icon_grib_name(run_datetime,
         in hours, which are available for download
     """
     # define defaults of the url for each model and parameter combination
-    if (model_name == 'icon-eu-eps') & (parameter_name == 'vmax_10m'):
+    if (model_name == 'icon-eu-eps'):
         file_extension = '_europe_icosahedral_single-level_'
         #this string completes the filename on the server
         file_extension_2 = '' #this string completes the filename on the server
@@ -198,7 +198,7 @@ def _create_icon_grib_name(run_datetime,
                                      np.arange(51, 73, 3),
                                      np.arange(78, 121, 6)
                                      ))
-    elif (model_name == 'icon-d2-eps') & (parameter_name == 'vmax_10m'):
+    elif (model_name == 'icon-d2-eps'):
         file_extension = '_germany_icosahedral_single-level_'
         #this string completes the filename on the server
         file_extension_2 = '_2d' #this string completes the filename on the server
