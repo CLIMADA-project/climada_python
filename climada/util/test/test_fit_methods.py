@@ -1,0 +1,107 @@
+"""
+This file is part of CLIMADA.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Test of fit_methods module
+"""
+
+import unittest
+import numpy as np
+
+from climada.util.fit_methods import calc_fit_interp
+
+
+class TestFitMethods(unittest.TestCase):
+    """Test different fit configurations"""
+
+    def test_linear_fit(self):
+        """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
+        from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
+        x_train = np.array([1., 3., 5.])
+        y_train = np.array([2., 4., 6.])
+        x_test = np.array([0., 3., 4.])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='fit'),
+            np.array([1., 4., 5.])
+        )
+
+    def test_linear_interp(self):
+        x_train = np.array([1., 3., 5.])
+        y_train = np.array([2., 4., 8.])
+        x_test = np.array([0., 3., 4.])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='interp'),
+            np.array([2., 4., 6.])
+        )
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='interp', left = -1.),
+            np.array([-1., 4., 6.])
+        )
+
+    def test_threshold_parameters(self):
+        x_train = np.array([0., 3., 6.])
+        y_train = np.array([4., 1., 4.])
+        x_test = np.array([-1., 3., 4.])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='fit'),
+            np.array([3., 3., 3.])
+        )
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='fit', x_thres=1.),
+            np.array([-3., 1., 2.])
+        )
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='fit', y_thres=2.),
+            np.array([4., 4., 4.])
+        )
+    
+    def test_scale_parameters(self):
+        x_train = np.array([1e1, 1e3])
+        y_train = np.array([1., 3.])
+        x_test = np.array([1e0, 1e2])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='fit', x_scale='log'),
+            np.array([0., 2.])
+        )
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='interp', x_scale='log'),
+            np.array([1., 2.])
+        )
+        x_train = np.array([1., 3.])
+        y_train = np.array([1e1, 1e3])
+        x_test = np.array([0., 2.])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='fit', y_scale='log'),
+            np.array([1e0, 1e2])
+        )
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='interp', y_scale='log'),
+            np.array([1e1, 1e2])
+        )
+        x_train = np.array([1e1, 1e3])
+        y_train = np.array([1e1, 1e5])
+        x_test = np.array([1e0, 1e2])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='fit', x_scale='log', y_scale='log'),
+            np.array([1e-1, 1e3])
+        )
+
+
+# Execute Tests
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFitMethods)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

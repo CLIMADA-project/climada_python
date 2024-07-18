@@ -82,7 +82,6 @@ def calc_fit_interp(
     if y_scale == 'log':
         y_train = np.log10(y_train)
 
-
     # calculate interpolation
     if method == 'interp':
         if not np.all(x_train[:-1] <= x_train[1:]):
