@@ -10,6 +10,28 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+Added:
+
+- `bayesian-optimization`
+- `seaborn` >=0.13
+
+Updated:
+
+- `bottleneck` >=1.3 &rarr; >=1.4
+- `cartopy` >=0.22 &rarr; >=0.23
+- `contextily` >=1.5 &rarr; >=1.6
+- `dask` >=2024.1,<2024.3 &rarr; >=2024.2,<2024.3
+- `matplotlib-base` >=3.8 &rarr; >=3.9
+- `numba` >=0.59 &rarr; >=0.60
+- `numexpr` >=2.9 &rarr; >=2.10
+- `pint` >=0.23 &rarr; >=0.24
+- `pycountry` >=22.3 &rarr; >=24.6
+- `requests` >=2.31 &rarr; >=2.32
+- `salib` >=1.4 &rarr; >=1.5
+- `scikit-learn` >=1.4 &rarr; >=1.5
+- `scipy` >=1.12 &rarr; >=1.13
+- `xarray` >=2024.2 &rarr; >=2024.6
+
 ### Added
 
 - GitHub actions workflow for CLIMADA Petals compatibility tests [#855](https://github.com/CLIMADA-project/climada_python/pull/855)
