@@ -500,22 +500,19 @@ class TestRPmatrix(unittest.TestCase):
     """Test computation of impact per return period for whole exposure"""
     def test_local_exceedance_imp_pass(self):
         """Test calc local impacts per return period"""
-        # Read default entity values
-        ent = Entity.from_excel(ENT_DEMO_TODAY)
-        ent.check()
-
-        # Read default hazard file
-        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
-
-        # Compute the impact over the whole exposures
-        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
-        # Compute the impact per return period over the whole exposures
-        impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))[0].values[:,1:].T
-
-        self.assertIsInstance(impact_rp, np.ndarray)
-        self.assertEqual(impact_rp.size, 2 * ent.exposures.gdf.value.size)
-        self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
-        self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
+        impact = dummy_impact()
+        impact.imp_mat =sparse.csr_matrix(
+                    np.array([[2, 1], [1, 1], [0, 1], [3, 1], [4, 5], [5, 5]])
+                )
+        # first centroid has intensities 0,1,2,3,4,5 with cum frequencies 6,5,4,3,2,1
+        # second centroid has intensities 1, 5 with cum frequencies 6, 2
+        # testing at frequencies 5, 2, 1
+        impact.frequency = np.ones(6)
+        np.testing.assert_allclose(
+            impact.local_exceedance_imp(
+                return_periods=(.2, .5, 1), method='interp', freq_scale='lin')[0].values[:,1:].T.astype(float),
+            np.array([[1., 2.], [4., 5.], [5., 5.]])
+        )
 
 
 class TestImpactReg(unittest.TestCase):

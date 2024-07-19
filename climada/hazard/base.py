@@ -441,7 +441,6 @@ class Hazard(HazardIO, HazardPlot):
             sorted_idxs = np.argsort(intensity_sorted)[::-1]
             intensity_sorted = np.squeeze(intensity_sorted[sorted_idxs])
             frequency_sorted = self.frequency[sorted_idxs]
-            frequency_sorted = np.cumsum(frequency_sorted)
 
             # group values with same intensity
             if len(intensity_sorted) != len(np.unique(intensity_sorted)):
@@ -455,6 +454,7 @@ class Hazard(HazardIO, HazardPlot):
                 frequency_sorted = frequency_sorted[::-1]
 
             # fit intensities to cummulative frequencies
+            frequency_sorted = np.cumsum(frequency_sorted)
             inten_stats[:,i] = u_fit.calc_fit_interp(
                 1/np.array(return_periods),
                 frequency_sorted,
@@ -530,7 +530,6 @@ class Hazard(HazardIO, HazardPlot):
             sorted_idxs = np.argsort(intensity_sorted)[::-1]
             intensity_sorted = np.squeeze(intensity_sorted[sorted_idxs])
             frequency_sorted = self.frequency[sorted_idxs]
-            frequency_sorted = np.cumsum(frequency_sorted)
 
             # group values with same intensity
             if len(intensity_sorted) != len(np.unique(intensity_sorted)):
@@ -544,6 +543,7 @@ class Hazard(HazardIO, HazardPlot):
                 frequency_sorted = frequency_sorted[::-1]
 
             # fit intensities to cummulative frequencies
+            frequency_sorted = np.cumsum(frequency_sorted)
             return_periods[:,i] = np.divide(1., u_fit.calc_fit_interp(
                 threshold_intensities,
                 intensity_sorted[::-1],

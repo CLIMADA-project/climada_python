@@ -474,7 +474,7 @@ class Impact():
             return_periods=(25, 50, 100, 250),
             method = 'fit',
             freq_scale='log',
-            intensity_cutoff=0
+            impact_cutoff=0
         ):
         """Compute exceedance impact map for given return periods.
         Requires attribute imp_mat.
@@ -515,7 +515,6 @@ class Impact():
             sorted_idxs = np.argsort(impact_sorted)[::-1]
             impact_sorted = np.squeeze(impact_sorted[sorted_idxs])
             frequency_sorted = self.frequency[sorted_idxs]
-            frequency_sorted = np.cumsum(frequency_sorted)
 
             # group values with same impact
             if len(impact_sorted) != len(np.unique(impact_sorted)):
@@ -529,13 +528,14 @@ class Impact():
                 frequency_sorted = frequency_sorted[::-1]
 
             # fit intensities to cummulative frequencies
+            frequency_sorted = np.cumsum(frequency_sorted)
             imp_stats[:,i] = u_fit.calc_fit_interp(
                 1/np.array(return_periods),
                 frequency_sorted,
                 impact_sorted,
                 method=method,
                 x_scale=freq_scale,
-                y_thres=intensity_cutoff
+                y_thres=impact_cutoff
             )
 
         # create the output GeoDataFrame

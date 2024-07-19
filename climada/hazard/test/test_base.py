@@ -1008,29 +1008,38 @@ class TestStats(unittest.TestCase):
         inten_stats = haz.local_exceedance_inten(return_period)[0].values[:, 1:].T
         self.assertTrue(np.array_equal(inten_stats, np.zeros((4, 100))))
 
-    def test_ref_all_pass(self):
-        """Compare against reference."""
-        haz = Hazard.from_hdf5(HAZ_TEST_TC)
-        return_period = np.array([25, 50, 100, 250])
-        inten_stats = haz.local_exceedance_inten(return_period)[0].values[:, 1:].T
-
-        self.assertAlmostEqual(inten_stats[0][0], 55.424015590131290)
-        self.assertAlmostEqual(inten_stats[1][0], 67.221687644669998)
-        self.assertAlmostEqual(inten_stats[2][0], 79.019359699208721)
-        self.assertAlmostEqual(inten_stats[3][0], 94.615033842370963)
-
-        self.assertAlmostEqual(inten_stats[1][66], 70.608592953031405)
-        self.assertAlmostEqual(inten_stats[3][33], 88.510983305123631)
-        self.assertAlmostEqual(inten_stats[2][99], 79.717518054203623)
+    def test_local_exceedance_inten(self):
+        """Test local exceedance frequencies"""
+        haz = dummy_hazard()
+        haz.intensity = sparse.csr_matrix([
+            [1., 3., 1.],
+            [2., 3., 0.]
+            ])
+        haz.intensity_thres = .5
+        haz.frequency = np.full(2, 1.)
+        return_period = np.array([.5, 2./3., 1.])
+        # first centroid has intensities 1,2 with cum frequencies 2,1
+        # first centroid has intensities 3 with cum frequencies 2 (due to grouping of values)
+        # third centroid has intensities 1 with cum frequencies 1
+        # testing at frequencies 2, 1.5, 1
+        inten_stats, _, _ = haz.local_exceedance_inten(return_period, method='interp', freq_scale='lin')
+        np.testing.assert_allclose(
+            inten_stats[inten_stats.columns[1:]].values,
+            np.array([
+                [1., 1.5, 2.],
+                [3., 3., 3.],
+                [1., 1., 1.]
+            ])
+        )
         
     def test_local_return_period(self):
-        """Compare local return periods against reference."""
+        """Test local return periods"""
         haz = dummy_hazard()
         haz.intensity = sparse.csr_matrix([
             [1., 5., 1.],
             [2., 2., 0.]
             ])
-        haz.frequency = np.full(4, 1.)
+        haz.frequency = np.full(2, 1.)
         threshold_intensities = np.array([1., 2., 3.])
         return_stats, _, _ = haz.local_return_period(threshold_intensities)
         np.testing.assert_allclose(
