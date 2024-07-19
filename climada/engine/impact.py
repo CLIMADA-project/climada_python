@@ -517,6 +517,17 @@ class Impact():
             frequency_sorted = self.frequency[sorted_idxs]
             frequency_sorted = np.cumsum(frequency_sorted)
 
+            # group values with same impact
+            if len(impact_sorted) != len(np.unique(impact_sorted)):
+                impact_sorted, start_indices = np.unique(impact_sorted, return_index=True)
+                start_indices = np.insert(start_indices, 0, len(frequency_sorted))
+                frequency_sorted = np.array([
+                    sum(frequency_sorted[start_indices[i+1]:start_indices[i]])
+                    for i in range(len(impact_sorted))
+                ])
+                impact_sorted = impact_sorted[::-1]
+                frequency_sorted = frequency_sorted[::-1]
+
             # fit intensities to cummulative frequencies
             imp_stats[:,i] = u_fit.calc_fit_interp(
                 1/np.array(return_periods),

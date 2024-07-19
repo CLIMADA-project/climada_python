@@ -28,9 +28,8 @@ from climada.util.fit_methods import calc_fit_interp
 class TestFitMethods(unittest.TestCase):
     """Test different fit configurations"""
 
-    def test_linear_fit(self):
-        """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
-        from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
+    def test_calc_fit_interp_linear_fit(self):
+        """Test linear fit"""
         x_train = np.array([1., 3., 5.])
         y_train = np.array([2., 4., 6.])
         x_test = np.array([0., 3., 4.])
@@ -39,7 +38,8 @@ class TestFitMethods(unittest.TestCase):
             np.array([1., 4., 5.])
         )
 
-    def test_linear_interp(self):
+    def test_calc_fit_interp_linear_interp(self):
+        """Test linear interpolation"""
         x_train = np.array([1., 3., 5.])
         y_train = np.array([2., 4., 8.])
         x_test = np.array([0., 3., 4.])
@@ -52,7 +52,8 @@ class TestFitMethods(unittest.TestCase):
             np.array([-1., 4., 6.])
         )
 
-    def test_threshold_parameters(self):
+    def test_calc_fit_interp_threshold_parameters(self):
+        """Test input threshold parameters"""
         x_train = np.array([0., 3., 6.])
         y_train = np.array([4., 1., 4.])
         x_test = np.array([-1., 3., 4.])
@@ -69,7 +70,8 @@ class TestFitMethods(unittest.TestCase):
             np.array([4., 4., 4.])
         )
     
-    def test_scale_parameters(self):
+    def test_calc_fit_interp_scale_parameters(self):
+        """Test log scale parameters"""
         x_train = np.array([1e1, 1e3])
         y_train = np.array([1., 3.])
         x_test = np.array([1e0, 1e2])
@@ -100,6 +102,41 @@ class TestFitMethods(unittest.TestCase):
             np.array([1e-1, 1e3])
         )
 
+    def test_calc_fit_interp_stepfunction(self):
+        """Test stepfunction method"""
+        x_train = np.array([1., 3., 5.])
+        y_train = np.array([2., 4., 8.])
+        x_test = np.array([0., 3., 4., 6.])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='stepfunction'),
+            np.array([2., 4., 8., np.nan])
+        )
+
+    def test_calc_fit_interp_degenerate_input(self):
+        """Test """
+        x_train = np.array([1., 3., 5.])
+        x_test = np.array([0., 2., 4.])
+        y_train = np.zeros(3)
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='interp'),
+            np.zeros(3)
+        )
+
+    def test_calc_fit_empty_input(self):
+        x_train = np.array([1.])
+        y_train = np.array([2.])
+        x_test = np.array([0., 1.])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='interp'),
+            np.array([2., 2.])
+        )
+        x_train = np.array([])
+        y_train = np.array([])
+        x_test = np.array([0., 1.])
+        np.testing.assert_allclose(
+            calc_fit_interp(x_test, x_train, y_train, method='fit'),
+            np.array([0., 0.])
+        )
 
 # Execute Tests
 if __name__ == "__main__":

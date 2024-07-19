@@ -74,7 +74,10 @@ def calc_fit_interp(
 
     # return zeros if x_train and y_train empty
     if x_train.size == 0:
-        return np.zeros(len(x_test))
+        return np.zeros_like(x_test)
+    # return y_train if only one (x_train, y_train) to fit
+    if x_train.size == 1:
+        return np.full_like(x_test, y_train[0])
 
     # adapt x and y scale
     if x_scale == 'log':
@@ -94,7 +97,7 @@ def calc_fit_interp(
             #pol_coef = np.polyfit(x_train, y_train, deg=1) # old fit method (numpy recommends to replace it)
             pol_coef = np.polynomial.polynomial.Polynomial.fit(x_train, y_train, deg=1).convert().coef[::-1]
         except:
-            raise ValueError(f"No linear fiz possible.")
+            raise ValueError(f"No linear fit possible.")
         y_test = np.polyval(pol_coef, x_test, **kwargs)
     
     # calculate stepfunction fit
