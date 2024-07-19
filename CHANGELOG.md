@@ -1,12 +1,8 @@
 # Changelog
 
-## Unreleased
+## 5.0.0
 
-Release date: YYYY-MM-DD
-
-Code freeze date: YYYY-MM-DD
-
-### Description
+Release date: 2024-07-19
 
 ### Dependency Changes
 
