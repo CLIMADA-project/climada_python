@@ -176,7 +176,7 @@ class ImpactMetrics:
 
             # if actual_missing_combos rasing an error
             if actual_missing_combos:
-                raise ValueError(f'The following combos are missing from the measure set: {actual_missing_combos}. Re run the planner to get the missing combos')
+                raise ValueError(f'The following combos are missing from the measure set: {actual_missing_combos}. \n Re-run the planner to get the missing combos')
 
         # Update the measure_times_df
         self.measure_times_df = new_measure_times_df
@@ -287,7 +287,7 @@ def get_meas_times_df(measure_set, incl_combo=False):
 
     return meas_times_df
 
-
+# Get the unique combinations of measures that are mutually active for different time periods
 def get_active_measure_combinations(meas_times_df):
 
     # Get the range of years
@@ -958,7 +958,10 @@ def create_meas_mod_arm_df(arm_df, measure_set, measure_times_df, consider_measu
     mod_arm_combo_meas_df = create_meas_combo_time_mod_arm_df(arm_df, measure_set, measure_times_df, consider_measure_times)
 
     # Concatenate the DataFrames
-    mod_arm_df = pd.concat([mod_arm_indv_meas_df, mod_arm_combo_meas_df], ignore_index=True)
+    if mod_arm_combo_meas_df.empty:
+        mod_arm_df = mod_arm_indv_meas_df
+    else:
+        mod_arm_df = pd.concat([mod_arm_indv_meas_df, mod_arm_combo_meas_df], ignore_index=True)
 
     # Remove duplicates and reset the index
     mod_arm_df = mod_arm_df.drop_duplicates().reset_index(drop=True)
@@ -1054,7 +1057,10 @@ def calc_combo_measure_cash_flows_df(costincome_df, measure_set):
      costincome_combo_df.reset_index(drop=True, inplace=True)
 
      # Concatenate the costincome_df and costincome_combo_df
-     costincome_df = pd.concat([costincome_df, costincome_combo_df], ignore_index=True)
+     if costincome_combo_df.empty:
+         return costincome_df
+     else:
+         costincome_df = pd.concat([costincome_df, costincome_combo_df], ignore_index=True)
 
      return costincome_df
 
@@ -1171,7 +1177,7 @@ def print_CB_summary_table(tot_CB_df, measure_set, metric='aai', value_unit='USD
         measure_df = measure_data[measure_data['measure'] == measure]
         total_cost = measure_df['cost (net)'].sum()
         total_benefit = measure_df['averted risk'].sum()
-        bc_ratio = total_benefit / total_cost if total_cost != 0 else np.nan
+        bc_ratio = -1*total_benefit / total_cost if total_cost != 0 else np.nan
         measure_summary.append([measure, total_cost / divisor, total_benefit / divisor, bc_ratio])
 
     # Create the measure summary DataFrame
@@ -1251,8 +1257,9 @@ def plot_yearly_averted_cost(ann_CB_df, measure, metric='aai', group=None, avert
     # Add grid line at y=0
     ax.axhline(0, color='black', linewidth=0.5)
 
-    # set the y-axis limit to the maximum value and minimum value multiplied by 1.1
-    ax.set_ylim(df_filtered[['averted risk', 'cost (net)']].values.min() * 1.5, df_filtered[['averted risk', 'cost (net)']].values.max() * 1.1)
+    # Set the y-axis limit as the maximum of the absolute values of the averted risk and net cost
+    y_lim = max(abs(df_filtered['averted risk']).max(), abs(df_filtered['cost (net)']).max()) * 1.1
+    ax.set_ylim(-y_lim, y_lim)
 
     plt.tight_layout()
     plt.show()

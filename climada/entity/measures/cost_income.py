@@ -152,12 +152,14 @@ class CostIncome:
         costs = np.array(costs)
         incomes = np.array(incomes)
 
+        # Discount the cash flows if discount rates are provided
         if disc:
+            # Get the discount factors for the years in the period
             years = np.array(list(range(start_year, end_year + 1)))
-            disc_years = np.intersect1d(years, disc.years)
-            disc_rates = disc.rates[np.isin(disc.years, disc_years)]
+            disc_years = np.intersect1d(years, disc.years) 
+            disc_rates = disc.rates[np.isin(disc.years, disc_years)] 
             years = np.array([year for year in years if year in disc_years])
-            discount_factors = np.array([1 / (1 + disc_rates[disc_years == year][0])**(year - impl_year) for year in years])
+            discount_factors = np.array([1 / (1 + disc_rates[disc_years == year][0])**(year - start_year) for year in years]) 
             return net_cash_flows[:len(years)] * discount_factors, costs[:len(years)] * discount_factors, incomes[:len(years)] * discount_factors
 
         return net_cash_flows, costs, incomes

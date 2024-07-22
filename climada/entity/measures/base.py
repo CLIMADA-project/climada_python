@@ -23,7 +23,7 @@ __all__ = ['Measure']
 
 import copy
 import logging
-from typing import Callable
+from typing import Callable, Optional
 
 import numpy as np
 
@@ -68,8 +68,9 @@ class Measure():
             exposures_change: Callable[[Exposures, int], Exposures] = lambda x, y: x,
             impfset_change: Callable[[ImpactFuncSet, int], ImpactFuncSet] = lambda x, y: x,
             hazard_change: Callable[[Hazard, int], Hazard] = lambda x, y: x,
-            combo: list[str] = None, # list of measure names that this measure is a combination of
-            **kwargs
+            combo: list[str] = None, # list of measure names that this measure is a combination of (Probably better to stire the other measures in the measure object)
+            cost_income: Optional[CostIncome] = None,
+            implenmentation_duration: int = 0, # duration of implementation in years before the measure is fully implemented (or should this be made later ... )
         ):
         """
         Initialize a new Measure object with specified data.
@@ -78,9 +79,6 @@ class Measure():
         ----------
         name : str
             Name of the measure
-        start_year : int
-            Start year of the measure
-        end_year : int
             End year of the measure
         haz_type : str
             Type of hazard
@@ -90,19 +88,20 @@ class Measure():
             Function to change impact function set
         hazard_change : callable
             Function to change hazard
-        kwargs : dict
-            Parameters for cost and income
+        CostIncome : climada.entity.measures.cost_income.CostIncome
+            Cost and income object
+        implenmentation_duration : int
+            Duration of implementation in years before the measure is fully implemented
 
         """ 
         self.name = name
         self.exp_map = exposures_change
         self.impfset_map = impfset_change
         self.haz_map= hazard_change
-        #self.years = (start_year, end_year)
         self.haz_type = haz_type
         self.combo = combo
-        # Genereate cost income object from kwargs
-        self.cost_income = CostIncome(**kwargs)
+        self.cost_income = cost_income if cost_income is not None else CostIncome()
+        self.implenmentation_duration = implenmentation_duration
 
     # @property
     # def start_year(self):

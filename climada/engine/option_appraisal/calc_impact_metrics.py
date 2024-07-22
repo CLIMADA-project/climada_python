@@ -66,7 +66,12 @@ class CalcImpactMetrics:
         return _df, _all_df
 
     # Generate an impact metrics object
-    def generate_impact_metrics(self, measure_set=None, calc_static_scenario_metrics = True, previous_impact_metrics = None, planner = None, combine_all = True):
+    def generate_impact_metrics(self, measure_set=None, calc_static_scenario_metrics = False, previous_impact_metrics = None, planner = None, combine_all_measures = False):
+
+
+        # Check if the measure set is given
+        if not measure_set and previous_impact_metrics.measure_set:
+            measure_set = previous_impact_metrics.measure_set
 
         # Generate the measure times DataFrame
         # Check if measure_times_df is given
@@ -79,7 +84,7 @@ class CalcImpactMetrics:
             measure_times_df = generate_meas_times_df(measure_set, self.snapshots, planner) if measure_set else None
         
         # Generate the necessary measure set including the sub_combos
-        if measure_set and combine_all:
+        if measure_set and combine_all_measures:
             measure_set = generate_necessary_combo_measure_set(measure_set, measure_times_df)
         else:
             measure_set = measure_set if measure_set else None
@@ -409,9 +414,6 @@ def make_measure_snapshot(snapshots, measure):
     return meas_snapshots
 
 def calc_annual_risk_metrics(snapshots, measure = None, group_map_exp_dict= None, risk_metrics = ['aai', 'rp', 'eai']):
-
-    # Store the annual risk results in the dataframe where 'year' nan is for path-dependent results and group 'nan' is for aggregated results
-    # arm_df = pd.DataFrame(columns=BASE_arm_df_COLUMNS)
 
     # Check if measure is applied
     if measure:
