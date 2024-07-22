@@ -22,7 +22,7 @@ Test of fit_methods module
 import unittest
 import numpy as np
 
-from climada.util.fit_methods import calc_fit_interp
+from climada.util.fit_methods import calc_fit_interp, group_frequency
 
 
 class TestFitMethods(unittest.TestCase):
@@ -113,7 +113,7 @@ class TestFitMethods(unittest.TestCase):
         )
 
     def test_calc_fit_interp_degenerate_input(self):
-        """Test """
+        """Test interp to constant zeros"""
         x_train = np.array([1., 3., 5.])
         x_test = np.array([0., 2., 4.])
         y_train = np.zeros(3)
@@ -123,6 +123,7 @@ class TestFitMethods(unittest.TestCase):
         )
 
     def test_calc_fit_empty_input(self):
+        """Test small input"""
         x_train = np.array([1.])
         y_train = np.array([2.])
         x_test = np.array([0., 1.])
@@ -137,6 +138,21 @@ class TestFitMethods(unittest.TestCase):
             calc_fit_interp(x_test, x_train, y_train, method='fit'),
             np.array([0., 0.])
         )
+    
+    def test_frequency_group(self):
+        """Test frequency grouping method"""
+        frequency = np.ones(6)
+        intensity = [3., 3., 2., 1., 1., 1]
+        np.testing.assert_allclose(
+            group_frequency(frequency, intensity), 
+            ([2, 1, 3], [3, 2, 1])
+        )
+        np.testing.assert_allclose(
+            group_frequency([], []), 
+            ([], [])
+        )
+        with self.assertRaises(ValueError):
+            group_frequency(frequency, intensity[::-1])
 
 # Execute Tests
 if __name__ == "__main__":

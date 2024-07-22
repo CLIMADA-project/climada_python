@@ -87,8 +87,8 @@ def calc_fit_interp(
 
     # calculate interpolation
     if method == 'interp':
-        if not np.all(x_train[:-1] <= x_train[1:]):
-            raise ValueError(f'Input array x_train must be sorted.')
+        if not all(sorted(x_train) == x_train):
+            raise ValueError(f'Input array x_train must be sorted in ascending order.')
         y_test = np.interp(x_test, x_train, y_train, **kwargs)
 
     # calculate linear fit
@@ -103,8 +103,8 @@ def calc_fit_interp(
     # calculate stepfunction fit
     elif method == 'stepfunction':
         # find indeces of x_test if sorted into x_train
-        if not np.all(x_train[:-1] <= x_train[1:]):
-            raise ValueError(f'Input array x_train must be sorted.')
+        if not all(sorted(x_train) == x_train):
+            raise ValueError(f'Input array x_train must be sorted in ascending order.')
         indx = np.searchsorted(x_train, x_test, **kwargs)
         y_test = y_train[indx.clip(max = len(x_train) - 1)]
         y_test[indx == len(x_train)] = np.nan
@@ -116,3 +116,27 @@ def calc_fit_interp(
     return y_test
     
 
+def group_frequency(freq, values):
+    """util function to add frequencies for equal values
+
+    Args:
+        freq (np.array): frequencies corresponding to the values 
+        values (np.array): values sorted in decreasing order
+
+    Returns:
+        tuple: (frequencies after aggregation, 
+                unique values in cedreasing order)
+    """
+    if len(values) != len(np.unique(values)):
+        #check ordering of values
+        if not sorted(values, reverse=True) == values:
+            raise ValueError(f'Value array must be sorted in decreasing order.')
+        # add frequency for equal values
+        values, start_indices = np.unique(values, return_index=True)
+        start_indices = np.insert(start_indices, 0, len(freq))
+        freq = np.array([
+            sum(freq[start_indices[i+1]:start_indices[i]])
+            for i in range(len(values))
+        ])
+        return freq[::-1], values[::-1]
+    return freq, values

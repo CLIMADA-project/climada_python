@@ -443,15 +443,7 @@ class Hazard(HazardIO, HazardPlot):
             frequency_sorted = self.frequency[sorted_idxs]
 
             # group values with same intensity
-            if len(intensity_sorted) != len(np.unique(intensity_sorted)):
-                intensity_sorted, start_indices = np.unique(intensity_sorted, return_index=True)
-                start_indices = np.insert(start_indices, 0, len(frequency_sorted))
-                frequency_sorted = np.array([
-                    sum(frequency_sorted[start_indices[i+1]:start_indices[i]])
-                    for i in range(len(intensity_sorted))
-                ])
-                intensity_sorted = intensity_sorted[::-1]
-                frequency_sorted = frequency_sorted[::-1]
+            frequency_sorted, intensity_sorted = u_fit.group_frequency(frequency_sorted, intensity_sorted)
 
             # fit intensities to cummulative frequencies
             frequency_sorted = np.cumsum(frequency_sorted)
@@ -532,15 +524,7 @@ class Hazard(HazardIO, HazardPlot):
             frequency_sorted = self.frequency[sorted_idxs]
 
             # group values with same intensity
-            if len(intensity_sorted) != len(np.unique(intensity_sorted)):
-                intensity_sorted, start_indices = np.unique(intensity_sorted, return_index=True)
-                start_indices = np.insert(start_indices, 0, len(frequency_sorted))
-                frequency_sorted = np.array([
-                    sum(frequency_sorted[start_indices[i+1]:start_indices[i]])
-                    for i in range(len(intensity_sorted))
-                ])
-                intensity_sorted = intensity_sorted[::-1]
-                frequency_sorted = frequency_sorted[::-1]
+            frequency_sorted, intensity_sorted = u_fit.group_frequency(frequency_sorted, intensity_sorted)
 
             # fit intensities to cummulative frequencies
             frequency_sorted = np.cumsum(frequency_sorted)
