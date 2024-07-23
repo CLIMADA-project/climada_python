@@ -1037,18 +1037,22 @@ class TestStats(unittest.TestCase):
         """Test local return periods"""
         haz = dummy_hazard()
         haz.intensity = sparse.csr_matrix([
-            [1., 5., 1.],
+            [1., 4., 1.],
             [2., 2., 0.]
             ])
         haz.frequency = np.full(2, 1.)
         threshold_intensities = np.array([1., 2., 3.])
-        return_stats, _, _ = haz.local_return_period(threshold_intensities)
+        # first centroid has intensities 1,2 with cum frequencies 2,1
+        # first centroid has intensities 2, 4 with cum frequencies 2, 1
+        # third centroid has intensities 1 with cum frequencies 1 (0 intensity is neglected)
+        # testing at intensities 1, 2, 3
+        return_stats, _, _ = haz.local_return_period(threshold_intensities, frequency_scale='lin', intensity_scale='lin')
         np.testing.assert_allclose(
             return_stats[return_stats.columns[1:]].values.T,
             np.array([
-                [0.5, 0.5, 1.],
-                [1., 0.5, np.nan],
-                [np.nan, 1., np.nan]
+                [0.5, np.nan, 1.],
+                [1., 0.5, 1.],
+                [np.nan, 2./3, 1.]
             ])
         )
 

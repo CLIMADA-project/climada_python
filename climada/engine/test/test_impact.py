@@ -512,7 +512,7 @@ class TestRPmatrix(unittest.TestCase):
                 return_periods=(.2, .5, 1), frequency_scale='lin', impact_scale='lin')
         np.testing.assert_allclose(
             impact_stats.values[:,1:].T.astype(float),
-            np.array([[1., 2.], [4., 5.], [5., 5.]])
+            np.array([[1., 2.], [4., 5.], [5., 6.]])
         )
 
 

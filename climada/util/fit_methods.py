@@ -115,27 +115,31 @@ def interpolate_ev(
     return y_test
     
 
-def group_frequency(freq, values):
+def group_frequency(frequency, value):
     """util function to add frequencies for equal values
 
     Args:
-        freq (np.array): frequencies corresponding to the values 
-        values (np.array): values sorted in decreasing order
+        frequency (np.array): frequency corresponding to the values 
+        value (np.array): value sorted in decreasing order
 
     Returns:
-        tuple: (frequencies after aggregation, 
-                unique values in cedreasing order)
+        tuple: (frequency after aggregation, 
+                unique value in cedreasing order)
     """
-    if len(values) != len(np.unique(values)):
-        #check ordering of values
-        if not all(sorted(values, reverse=True) == values):
+    frequency, value = np.array(frequency), np.array(value)
+    if frequency.size == 0 and value.size == 0:
+        return ([], [])
+    
+    if len(value) != len(np.unique(sig_dig_list(value, n_sig_dig=2))):
+        #check ordering of value
+        if not all(sorted(value, reverse=True) == value):
             raise ValueError(f'Value array must be sorted in decreasing order.')
-        # add frequency for equal values
-        values, start_indices = np.unique(sig_dig_list(values, n_sig_dig=2), return_index=True)
-        start_indices = np.insert(start_indices, 0, len(freq))
-        freq = np.array([
-            sum(freq[start_indices[i+1]:start_indices[i]])
-            for i in range(len(values))
+        # add frequency for equal value
+        value, start_indices = np.unique(sig_dig_list(value, n_sig_dig=2), return_index=True)
+        start_indices = np.insert(start_indices, 0, len(frequency))
+        frequency = np.array([
+            sum(frequency[start_indices[i+1]:start_indices[i]])
+            for i in range(len(value))
         ])
-        return freq[::-1], values[::-1]
-    return freq, values
+        return frequency[::-1], value[::-1]
+    return frequency, value
