@@ -469,12 +469,14 @@ class Impact():
                        "Use Impact.impact_per_year instead.")
         return self.impact_per_year(all_years=all_years, year_range=year_range)
 
-    def local_exceedance_imp(
+    def local_exceedance_impact(
             self, 
             return_periods=(25, 50, 100, 250),
-            method = 'fit',
-            freq_scale='log',
-            impact_cutoff=0
+            method = 'interpolate',
+            frequency_scale='log',
+            impact_scale='log',
+            impact_cutoff=0,
+            fill_value='extrapolate'
         ):
         """Compute exceedance impact map for given return periods.
         Requires attribute imp_mat.
@@ -496,51 +498,74 @@ class Impact():
                              'instance with parameter save_mat=True')
         #check frequency unit
         if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
-            rp_unit = 'years'
+            return_period_unit = 'years'
         elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
-            rp_unit = 'months'
+            return_period_unit = 'months'
         elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
-            rp_unit = 'weeks'
+            return_period_unit = 'weeks'
         else:
             LOGGER.warning(f"Hazard's frequency unit {self.frequency_unit} is not known, "
                             "years will be used as return period unit.")
-            rp_unit = 'years'
+            return_period_unit = 'years'
 
-        num_cen = self.imp_mat.shape[1]
-        imp_stats = np.zeros((len(return_periods), num_cen))
+        num_centroids = self.imp_mat.shape[1]
+        imp_stats = np.zeros((len(return_periods), num_centroids))
 
-        for i in range(num_cen):
+        for i in range(num_centroids):
             # sort intensties and frequencies at given centroid
-            impact_sorted = np.squeeze(self.imp_mat[:,i].toarray())
-            sorted_idxs = np.argsort(impact_sorted)[::-1]
-            impact_sorted = np.squeeze(impact_sorted[sorted_idxs])
-            frequency_sorted = self.frequency[sorted_idxs]
+            impact = np.squeeze(self.imp_mat[:,i].toarray())
+            sorted_idxs = np.argsort(impact)[::-1]
+            impact = np.squeeze(impact[sorted_idxs])
+            frequency = self.frequency[sorted_idxs]
 
             # group values with same impact
-            frequency_sorted, impact_sorted = u_fit.group_frequency(frequency_sorted, impact_sorted)
+            frequency, impact = u_fit.group_frequency(frequency, impact)
 
             # fit intensities to cummulative frequencies
-            frequency_sorted = np.cumsum(frequency_sorted)
-            imp_stats[:,i] = u_fit.calc_fit_interp(
+            frequency = np.cumsum(frequency)
+            imp_stats[:,i] = u_fit.interpolate_ev(
                 1/np.array(return_periods),
-                frequency_sorted,
-                impact_sorted,
+                frequency[::-1],
+                impact[::-1],
                 method=method,
-                x_scale=freq_scale,
-                y_thres=impact_cutoff
+                x_scale=frequency_scale,
+                y_scale=impact_scale,
+                y_threshold=impact_cutoff,
+                fill_value=fill_value,
+                bounds_error=False
             )
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry = gpd.points_from_xy(self.coord_exp[:,1], self.coord_exp[:,0]), crs = self.crs)
         col_names = [f'{ret_per}' for ret_per in return_periods]
         gdf[col_names] = imp_stats.T
-
         # create label and column_label
         label = f'Impact ({self.unit})'
-        column_label = lambda column_names: [f'Return Period: {col} {rp_unit}'
+        column_label = lambda column_names: [f'Return Period: {col} {return_period_unit}'
                                              for col in column_names]
 
         return gdf, label, column_label
+
+    #TODO: depreceation warning, note different calculation in changelog
+    def local_exceedance_imp(
+            self, 
+            return_periods=(25, 50, 100, 250)
+        ):
+        """Compute exceedance impact map for given return periods.
+        Requires attribute imp_mat.
+
+        Parameters
+        ----------
+        return_periods : Any, optional
+            return periods to consider
+            Dafault is (25, 50, 100, 250)
+
+        Returns
+        -------
+        np.array
+        """
+
+        return self.local_exceedance_impact(return_periods)[0].values[:,1:].T.astype(float)
 
 
     def calc_freq_curve(self, return_per=None):
@@ -852,7 +877,7 @@ class Impact():
 
         return axis
     
-    # TODO: replace with plot_from_gdf()
+    # TODO: depreceation warning, replace with plot_from_gdf()
     def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
                     log10_scale=True, smooth=True, axis=None, **kwargs):
         """Compute and plot exceedance impact maps for different return periods.
@@ -876,7 +901,7 @@ class Impact():
         imp_stats : np.array
             return_periods.size x num_centroids
         """
-        imp_stats = self.local_exceedance_imp(np.array(return_periods))[0].values[:,1:].T.astype(float)
+        imp_stats = self.local_exceedance_imp(np.array(return_periods))
         if imp_stats.size == 0:
             raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')

@@ -21,16 +21,22 @@ define fit functionalities for (local) exceedance frequencies and return periods
 
 
 import numpy as np
+from scipy import interpolate
+import logging
 
-def calc_fit_interp(
+from climada.util.value_representation import sig_dig_list
+
+LOGGER = logging.getLogger(__name__)
+
+def interpolate_ev(
         x_test, 
         x_train: np.array, 
         y_train: np.array, 
         method: str=None, 
         x_scale: str=None, 
         y_scale: str=None, 
-        x_thres: float = None, 
-        y_thres: float = None,
+        x_threshold: float = None, 
+        y_threshold: float = None,
         **kwargs
     ):
     """_summary_
@@ -42,8 +48,8 @@ def calc_fit_interp(
         method (str, optional): _description_. Defaults to None.
         x_scale (str, optional): _description_. Defaults to None.
         y_scale (str, optional): _description_. Defaults to None.
-        x_thres (float, optional): _description_. Defaults to None.
-        y_thres (float, optional): _description_. Defaults to None.
+        x_threshold (float, optional): _description_. Defaults to None.
+        y_threshold (float, optional): _description_. Defaults to None.
         **kwargs: further optional parameters for the fit methods
 
     Returns
@@ -53,22 +59,22 @@ def calc_fit_interp(
     
     # check if inputs are valid
     if not method:
-        method = 'interp'
-    if not method in ['interp', 'fit', 'stepfunction']:
-        raise ValueError(f'Unknown method: {method}. Use "interp", "fit", or "stepfunction" instead')
+        method = 'interpolate'
+    if not method in ['interpolate', 'stepfunction']:
+        raise ValueError(f'Unknown method: {method}. Use "interpolate" or "stepfunction" instead')
     if method == 'stepfunction': # x_scale and y_scale unnecessary if fitting stepfunction
         x_scale, y_scale = None, None
     if x_train.shape != y_train.shape:
         raise ValueError(f'Incompatible shapes of input data, x_train {x_train.shape} and y_train {y_train.shape}. Should be the same')
     
     # cut x and y above threshold
-    if x_thres or x_thres==0:
-        x_th = np.asarray(x_train > x_thres).squeeze()
+    if x_threshold or x_threshold==0:
+        x_th = np.asarray(x_train > x_threshold).squeeze()
         x_train = x_train[x_th]
         y_train = y_train[x_th]
     
-    if y_thres or y_thres==0:
-        y_th = np.asarray(y_train > y_thres).squeeze()
+    if y_threshold or y_threshold==0:
+        y_th = np.asarray(y_train > y_threshold).squeeze()
         x_train = x_train[y_th]
         y_train = y_train[y_th]
 
@@ -86,19 +92,13 @@ def calc_fit_interp(
         y_train = np.log10(y_train)
 
     # calculate interpolation
-    if method == 'interp':
-        if not all(sorted(x_train) == x_train):
-            raise ValueError(f'Input array x_train must be sorted in ascending order.')
-        y_test = np.interp(x_test, x_train, y_train, **kwargs)
-
-    # calculate linear fit
-    elif method == 'fit':
-        try: 
-            #pol_coef = np.polyfit(x_train, y_train, deg=1) # old fit method (numpy recommends to replace it)
-            pol_coef = np.polynomial.polynomial.Polynomial.fit(x_train, y_train, deg=1).convert().coef[::-1]
-        except:
-            raise ValueError(f"No linear fit possible.")
-        y_test = np.polyval(pol_coef, x_test, **kwargs)
+    if method == 'interpolate':
+        if (
+            (('fill_value', 'extrapolate') in kwargs.items()) and 
+            ((np.min(x_test) < np.min(x_train)) or (np.max(x_test) > np.max(x_train)))):
+            LOGGER.warning('Data is being extrapolated.')
+        interpolation = interpolate.interp1d(x_train, y_train, **kwargs)
+        y_test = interpolation(x_test)
     
     # calculate stepfunction fit
     elif method == 'stepfunction':
@@ -112,7 +112,6 @@ def calc_fit_interp(
     # adapt output scale
     if y_scale == 'log':
         y_test = np.power(10., y_test)
-    
     return y_test
     
 
@@ -129,10 +128,10 @@ def group_frequency(freq, values):
     """
     if len(values) != len(np.unique(values)):
         #check ordering of values
-        if not sorted(values, reverse=True) == values:
+        if not all(sorted(values, reverse=True) == values):
             raise ValueError(f'Value array must be sorted in decreasing order.')
         # add frequency for equal values
-        values, start_indices = np.unique(values, return_index=True)
+        values, start_indices = np.unique(sig_dig_list(values, n_sig_dig=2), return_index=True)
         start_indices = np.insert(start_indices, 0, len(freq))
         freq = np.array([
             sum(freq[start_indices[i+1]:start_indices[i]])

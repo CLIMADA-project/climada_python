@@ -498,7 +498,7 @@ class TestIO(unittest.TestCase):
 
 class TestRPmatrix(unittest.TestCase):
     """Test computation of impact per return period for whole exposure"""
-    def test_local_exceedance_imp_pass(self):
+    def test_local_exceedance_impact_pass(self):
         """Test calc local impacts per return period"""
         impact = dummy_impact()
         impact.imp_mat =sparse.csr_matrix(
@@ -508,9 +508,10 @@ class TestRPmatrix(unittest.TestCase):
         # second centroid has intensities 1, 5 with cum frequencies 6, 2
         # testing at frequencies 5, 2, 1
         impact.frequency = np.ones(6)
+        impact_stats, _, _ = impact.local_exceedance_impact(
+                return_periods=(.2, .5, 1), frequency_scale='lin', impact_scale='lin')
         np.testing.assert_allclose(
-            impact.local_exceedance_imp(
-                return_periods=(.2, .5, 1), method='interp', freq_scale='lin')[0].values[:,1:].T.astype(float),
+            impact_stats.values[:,1:].T.astype(float),
             np.array([[1., 2.], [4., 5.], [5., 5.]])
         )
 

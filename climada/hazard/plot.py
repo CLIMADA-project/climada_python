@@ -32,7 +32,7 @@ class HazardPlot():
     Contains all plotting methods of the Hazard class
     """
 
-    #TODO to be deleted or added depreciating warning
+    #TODO depreciating warning, to be replaced with plot_from_gdf
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
                           smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True,
                           **kwargs):
@@ -57,7 +57,7 @@ class HazardPlot():
         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
             intenstats is return_periods.size x num_centroids
         """
-        inten_stats, _, _ = self.local_exceedance_inten(np.array(return_periods))[0].values[:,1:].T
+        inten_stats, _, _ = self.local_exceedance_inten(np.array(return_periods))
         colbar_name = 'Intensity (' + self.units + ')'
         title = list()
         for ret in return_periods:

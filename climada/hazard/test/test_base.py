@@ -1005,10 +1005,10 @@ class TestStats(unittest.TestCase):
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
         return_period = np.array([25, 50, 100, 250])
         haz.intensity = sparse.csr_matrix(np.zeros(haz.intensity.shape))
-        inten_stats = haz.local_exceedance_inten(return_period)[0].values[:, 1:].T
+        inten_stats = haz.local_exceedance_intensity(return_period)[0].values[:, 1:].T.astype(float)
         self.assertTrue(np.array_equal(inten_stats, np.zeros((4, 100))))
 
-    def test_local_exceedance_inten(self):
+    def test_local_exceedance_intensity(self):
         """Test local exceedance frequencies"""
         haz = dummy_hazard()
         haz.intensity = sparse.csr_matrix([
@@ -1022,7 +1022,8 @@ class TestStats(unittest.TestCase):
         # first centroid has intensities 3 with cum frequencies 2 (due to grouping of values)
         # third centroid has intensities 1 with cum frequencies 1
         # testing at frequencies 2, 1.5, 1
-        inten_stats, _, _ = haz.local_exceedance_inten(return_period, method='interp', freq_scale='lin')
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+            return_period, frequency_scale='lin', intensity_scale='lin')
         np.testing.assert_allclose(
             inten_stats[inten_stats.columns[1:]].values,
             np.array([
