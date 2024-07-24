@@ -935,28 +935,26 @@ def plot_from_gdf(
         print("Unknown subplot-title-generation function. Subplot titles will be column names.")
         title_subplots = lambda cols: [f"{col}" for col in cols]
 
-    # remove zeros in gdf
-    if colorbar_name.strip().startswith(('Return Period', 'Impact')):
-        gdf_values[gdf_values == 0] = np.nan
-
     # use log colorbar for return periods and impact
     if (
         colorbar_name.strip().startswith(('Return Period', 'Impact')) and
+        'norm' not in kwargs.keys() and
+        # check if there are no zeros values in gdf
+        np.sum(gdf_values == 0) == 0 and
         # check if value range too small for logarithmic colorscale
         (np.log10(np.nanmax(gdf_values)) - np.log10(np.nanmin(gdf_values))) > 2
     ):
-        if 'norm' not in kwargs.keys():
-            kwargs.update(
-                {'norm': mpl.colors.LogNorm(
-                    vmin=gdf.values[:,1:].min(), vmax=gdf.values[:,1:].max()
-                    ),
-                'vmin': None, 'vmax': None}
-            )
+        kwargs.update(
+            {'norm': mpl.colors.LogNorm(
+                vmin=gdf.values[:,1:].min(), vmax=gdf.values[:,1:].max()
+                ),
+            'vmin': None, 'vmax': None}
+        )
 
     # use inverted color bar for return periods
-    if colorbar_name.strip().startswith('Return Period'):
-        if 'cmap' not in kwargs.keys():
-            kwargs.update({'cmap': 'viridis_r'})
+    if (colorbar_name.strip().startswith('Return Period') and
+        'cmap' not in kwargs.keys()):
+        kwargs.update({'cmap': 'viridis_r'})
 
     axis = geo_im_from_array(
         gdf_values,

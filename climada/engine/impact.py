@@ -531,6 +531,7 @@ class Impact():
                 x_scale=frequency_scale,
                 y_scale=impact_scale,
                 y_threshold=impact_cutoff,
+                y_asymptotic=0.,
                 fill_value=fill_value,
                 bounds_error=False
             )

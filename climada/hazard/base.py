@@ -457,6 +457,7 @@ class Hazard(HazardIO, HazardPlot):
                 x_scale=frequency_scale,
                 y_scale=intensity_scale,
                 y_threshold=intensity_cutoff,
+                y_asymptotic=0.,
                 fill_value=fill_value,
                 bounds_error=False
             )
@@ -488,7 +489,7 @@ class Hazard(HazardIO, HazardPlot):
 
     def local_return_period(self, threshold_intensities=(5., 10., 20.),
                             method='interpolate', frequency_scale='log',
-                            intensity_scale='log', fill_value=np.nan):
+                            intensity_scale='log', fill_value=('maximum', np.nan)):
         """Compute local return periods for given hazard intensities. The used method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
         frequency with a step function.

@@ -1029,7 +1029,7 @@ class TestStats(unittest.TestCase):
             np.array([
                 [1., 1.5, 2.],
                 [3., 3., 3.],
-                [1., 1., 1.]
+                [0., 0., 1.]
             ])
         )
         
@@ -1048,11 +1048,11 @@ class TestStats(unittest.TestCase):
         # testing at intensities 1, 2, 3
         return_stats, _, _ = haz.local_return_period(threshold_intensities, frequency_scale='lin', intensity_scale='lin')
         np.testing.assert_allclose(
-            return_stats[return_stats.columns[1:]].values.T,
+            return_stats[return_stats.columns[1:]].values,
             np.array([
-                [0.5, np.nan, 1.],
-                [1., 0.5, 1.],
-                [np.nan, 2./3, 1.]
+                [.5, 1., np.nan],
+                [.5, .5, 2./3],
+                [1., np.nan, np.nan]
             ])
         )
 
