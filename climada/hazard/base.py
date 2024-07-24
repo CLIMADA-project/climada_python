@@ -440,7 +440,7 @@ class Hazard(HazardIO, HazardPlot):
         for i in range(num_centroids):
             # sort intensties and frequencies at given centroid
             intensity = np.squeeze(self.intensity[:,i].toarray())
-            sorted_idxs = np.argsort(intensity)[::-1]
+            sorted_idxs = np.argsort(intensity)
             intensity = np.squeeze(intensity[sorted_idxs])
             frequency = self.frequency[sorted_idxs]
 
@@ -448,11 +448,11 @@ class Hazard(HazardIO, HazardPlot):
             frequency, intensity = u_fit.group_frequency(frequency, intensity)
 
             # fit intensities to cummulative frequencies
-            frequency = np.cumsum(frequency)
+            frequency = np.cumsum(frequency[::-1])[::-1]
             inten_stats[:,i] = u_fit.interpolate_ev(
                 1/np.array(return_period),
-                frequency[::-1],
-                intensity[::-1],
+                frequency,
+                intensity,
                 method=method,
                 x_scale=frequency_scale,
                 y_scale=intensity_scale,
@@ -473,19 +473,11 @@ class Hazard(HazardIO, HazardPlot):
 
         return gdf, label, column_label
 
-#TODO: depreceation warning, note different calculation in changelog 
+#TODO: note different calculation in changelog 
     def local_exceedance_inten(self, return_period=(25, 50, 100, 250)):
-        """Compute exceedance intensity map for given return periods.
-
-        Parameters
-        ----------
-        return_periods : np.array
-            return periods to consider
-
-        Returns
-        -------
-        inten_stats: np.array
-        """
+        """This function is deprecated, use Hazard.local_exceedance_intensity instead."""
+        LOGGER.warning("The use of Hazard.local_exceedance_inten is deprecated."
+                       "Use Hazard.local_exceedance_intensity instead.")
         return self.local_exceedance_intensity(return_period)[0].values[:,1:].T.astype(float)
 
     def sanitize_event_ids(self):
@@ -540,7 +532,7 @@ class Hazard(HazardIO, HazardPlot):
         for i in range(num_centroids):
             # sort intensties and frequencies at given centroid
             intensity = np.squeeze(self.intensity[:,i].toarray())
-            sorted_idxs = np.argsort(intensity)[::-1]
+            sorted_idxs = np.argsort(intensity)
             intensity = np.squeeze(intensity[sorted_idxs])
             frequency = self.frequency[sorted_idxs]
 
@@ -548,11 +540,11 @@ class Hazard(HazardIO, HazardPlot):
             frequency, intensity = u_fit.group_frequency(frequency, intensity)
 
             # fit intensities to cummulative frequencies
-            frequency = np.cumsum(frequency)
+            frequency = np.cumsum(frequency[::-1])[::-1]
             return_periods[:,i] = safe_divide(1., u_fit.interpolate_ev(
                 threshold_intensities,
-                intensity[::-1],
-                frequency[::-1],
+                intensity,
+                frequency,
                 method=method,
                 x_scale=intensity_scale,
                 y_scale=frequency_scale,

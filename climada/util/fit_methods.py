@@ -115,12 +115,13 @@ def interpolate_ev(
     return y_test
     
 
-def group_frequency(frequency, value):
+def group_frequency(frequency, value, n_sig_dig=2):
     """util function to add frequencies for equal values
 
     Args:
         frequency (np.array): frequency corresponding to the values 
         value (np.array): value sorted in decreasing order
+        n_sig_dig (int): number of significant digits for value when grouping frequency
 
     Returns:
         tuple: (frequency after aggregation, 
@@ -130,16 +131,16 @@ def group_frequency(frequency, value):
     if frequency.size == 0 and value.size == 0:
         return ([], [])
     
-    if len(value) != len(np.unique(sig_dig_list(value, n_sig_dig=2))):
+    if len(value) != len(np.unique(sig_dig_list(value, n_sig_dig=n_sig_dig))):
         #check ordering of value
-        if not all(sorted(value, reverse=True) == value):
-            raise ValueError(f'Value array must be sorted in decreasing order.')
+        if not all(sorted(value) == value):
+            raise ValueError(f'Value array must be sorted in ascending order.')
         # add frequency for equal value
-        value, start_indices = np.unique(sig_dig_list(value, n_sig_dig=2), return_index=True)
-        start_indices = np.insert(start_indices, 0, len(frequency))
+        value, start_indices = np.unique(sig_dig_list(value, n_sig_dig=n_sig_dig), return_index=True)
+        start_indices = np.insert(start_indices, len(value), len(frequency))
         frequency = np.array([
-            sum(frequency[start_indices[i+1]:start_indices[i]])
+            sum(frequency[start_indices[i]:start_indices[i+1]])
             for i in range(len(value))
         ])
-        return frequency[::-1], value[::-1]
+        return frequency, value
     return frequency, value

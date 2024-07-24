@@ -125,10 +125,10 @@ class TestFitMethods(unittest.TestCase):
     def test_frequency_group(self):
         """Test frequency grouping method"""
         frequency = np.ones(6)
-        intensity = np.array([3., 3., 2., 1., 1., 1])
+        intensity = np.array([1., 1., 1., 2., 3., 3])
         np.testing.assert_allclose(
             group_frequency(frequency, intensity), 
-            ([2, 1, 3], [3, 2, 1])
+            ([3, 1, 2], [1, 2, 3])
         )
         np.testing.assert_allclose(
             group_frequency([], []), 

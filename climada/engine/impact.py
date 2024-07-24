@@ -514,7 +514,7 @@ class Impact():
         for i in range(num_centroids):
             # sort intensties and frequencies at given centroid
             impact = np.squeeze(self.imp_mat[:,i].toarray())
-            sorted_idxs = np.argsort(impact)[::-1]
+            sorted_idxs = np.argsort(impact)
             impact = np.squeeze(impact[sorted_idxs])
             frequency = self.frequency[sorted_idxs]
 
@@ -522,11 +522,11 @@ class Impact():
             frequency, impact = u_fit.group_frequency(frequency, impact)
 
             # fit intensities to cummulative frequencies
-            frequency = np.cumsum(frequency)
+            frequency = np.cumsum(frequency[::-1])[::-1]
             imp_stats[:,i] = u_fit.interpolate_ev(
                 1/np.array(return_periods),
-                frequency[::-1],
-                impact[::-1],
+                frequency,
+                impact,
                 method=method,
                 x_scale=frequency_scale,
                 y_scale=impact_scale,
@@ -546,24 +546,14 @@ class Impact():
 
         return gdf, label, column_label
 
-    #TODO: depreceation warning, note different calculation in changelog
+    #TODO: note different calculation in changelog
     def local_exceedance_imp(
             self, 
             return_periods=(25, 50, 100, 250)
         ):
-        """Compute exceedance impact map for given return periods.
-        Requires attribute imp_mat.
-
-        Parameters
-        ----------
-        return_periods : Any, optional
-            return periods to consider
-            Dafault is (25, 50, 100, 250)
-
-        Returns
-        -------
-        np.array
-        """
+        """This function is deprecated, use Impact.local_exceedance_impact instead."""
+        LOGGER.warning("The use of Impact.local_exceedance_imp is deprecated."
+                       "Use Impact.local_exceedance_impact instead.")
 
         return self.local_exceedance_impact(return_periods)[0].values[:,1:].T.astype(float)
 
@@ -877,9 +867,13 @@ class Impact():
 
         return axis
     
-    # TODO: depreceation warning, replace with plot_from_gdf()
+    # TODO: replace with plot_from_gdf()
     def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
                     log10_scale=True, smooth=True, axis=None, **kwargs):
+        """This function is deprecated, use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead."""
+        LOGGER.warning("The use of Impact.plot_rp_imp is deprecated."
+                       "Use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead.")
+        
         """Compute and plot exceedance impact maps for different return periods.
         Calls local_exceedance_imp.
 
@@ -901,7 +895,7 @@ class Impact():
         imp_stats : np.array
             return_periods.size x num_centroids
         """
-        imp_stats = self.local_exceedance_imp(np.array(return_periods))
+        imp_stats = self.local_exceedance_impact(np.array(return_periods))[0].values[:,1:].T.astype(float)
         if imp_stats.size == 0:
             raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
