@@ -18,6 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
 from climada.entity.measures import MeasureSet
+from climada.util.value_representation import value_to_monetary_unit, ABBREV
 
 import pandas as pd
 from typing import Optional
@@ -28,8 +29,6 @@ from tabulate import tabulate
 
 import matplotlib.pyplot as plt
 import seaborn as sns
-
-
 
 
 class ImpactMetrics:
@@ -77,7 +76,33 @@ class ImpactMetrics:
     def print_CB_summary_table(self, metric = 'aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
         # Get the CB analysis
         _, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
-        print_CB_summary_table(tot_CB_df, self.measure_set, metric=metric, value_unit= self.value_unit)
+        # Get the measure_summary_df and total_summary
+        measure_summary_df, total_summary_dict, unit = generate_CB_plot_print_data(tot_CB_df, self.measure_set, metric, group=np.nan)
+        # Print the measure summary in tabulate format
+        # rename the  the Cost and Benefit headers by adding add ({value_unit} {unit})  to the headers
+        measure_summary_df.columns = ['Measure', f'Cost ({self.value_unit} {unit})', f'Benefit ({self.value_unit} {unit})', 'Benefit/Cost Ratio']
+        print(tabulate(measure_summary_df, headers='keys', tablefmt='fancy_grid'))
+        # Print the total summary
+        print("\n--------------------  ---------")
+        for key, value in total_summary_dict.items():
+            print(f"{key:<22} {value:>11.2f}  ({self.value_unit} {unit})")
+        print("--------------------  ---------")
+        # Create a new line for explanatory text
+        label_Benefit = f"{'Discounted ' if risk_disc else ''} Total averted annual risk metric: {metric}"
+        label_Cost = f"{'Discounted ' if cost_disc else ''} Total annual cost"
+        # Print explanatory text
+        print("Explanatory Notes:")
+        print(f"Benefit: {label_Benefit} – This represents the total benefits in terms of risk reduction.")
+        print(f"Cost: {label_Cost} – This represents the total costs associated with implementing the measures.")
+        return
+    
+    def plot_CB_summary_table(self, metric = 'aai', start_year=None, end_year=None, consider_measure_times=True, risk_disc=None, cost_disc=None):
+        # Get the CB analysis
+        _, tot_CB_df = self.calc_CB(start_year, end_year, consider_measure_times, risk_disc, cost_disc)
+        # Get the measure_summary_df and total_summary
+        measure_summary_df, total_summary_dict, unit = generate_CB_plot_print_data(tot_CB_df, self.measure_set, metric, group=np.nan)
+        # Plot the measure summary
+        plot_CB_summary(measure_summary_df, total_summary_dict, measure_colors=None, y_label=f'Averted Risk {unit}', title=f'Benefit (NPV of total annual {metric}) and Benefit/Cost Ratio by Measure')
         return
     
     # Plot the yearly averted cost for a specific measure
@@ -200,6 +225,85 @@ class ImpactMetrics:
 
 #%% Utility functions
 
+def plot_CB_summary(measure_summary_df, total_summary_dict, measure_colors=None, y_label='Risk (Bn)', title='Benefit and Benefit/Cost Ratio by Measure'):
+    # Calculate the Benefit/Cost Ratio
+    measure_summary_df['Benefit/Cost Ratio'] = measure_summary_df['Benefit'] / abs(measure_summary_df['Cost'])
+
+    # Sort the DataFrame by 'Benefit' column
+    measure_summary_df = measure_summary_df.sort_values(by='Benefit', ascending=True)
+
+    # Retrieve total_climate_risk and residual_risk from the total_summary_dict
+    total_climate_risk = total_summary_dict['Total climate risk:']
+    residual_risk = total_summary_dict['Residual risk:']
+
+    # Calculate the highest benefit
+    highest_benefit = measure_summary_df['Benefit'].max()
+
+    # Generate a color palette dynamically if not provided
+    if measure_colors is None:
+        colors = sns.color_palette("hsv", len(measure_summary_df))
+        measure_colors = {measure: color for measure, color in zip(measure_summary_df['Measure'], colors)}
+    
+    # Plotting
+    fig, ax1 = plt.subplots(figsize=(12, 8))
+
+    # Plotting the Benefit as bars with specific colors
+    bars = sns.barplot(x='Measure', y='Benefit', hue='Measure', data=measure_summary_df, ax=ax1, palette=measure_colors, dodge=False, legend=False)
+    ax1.set_ylabel(y_label, fontsize=18, fontweight='bold', color='black')
+    ax1.set_xlabel('Measure', fontsize=14)
+
+    # Adding color to the bars
+    for bar, measure in zip(bars.patches, measure_summary_df['Measure']):
+        bar.set_color(measure_colors[measure])
+
+    # Placing the benefit values on top of the bars
+    for bar in bars.patches:
+        ax1.text(bar.get_x() + bar.get_width() / 2, bar.get_height() + 0.3, f'{bar.get_height():.2f}', ha='center', color='black', fontsize=12, fontweight='bold')
+
+    # Creating a second y-axis for Benefit/Cost Ratio
+    ax2 = ax1.twinx()
+    line = sns.lineplot(x='Measure', y='Benefit/Cost Ratio', data=measure_summary_df, ax=ax2, marker='o', color='red', linewidth=1)
+    ax2.set_ylabel('Benefit/Cost Ratio', color='red', fontsize=10)
+
+    # Setting higher y-limit for the benefit/cost ratio axis
+    ax2.set_ylim(0, max(measure_summary_df['Benefit/Cost Ratio']) * 1.5)
+
+    # Change the color of the right y-axis line, ticks, and labels
+    ax2.spines['right'].set_color('red')
+    ax2.tick_params(axis='y', labelcolor='red')
+
+    # Change the color of the left y-axis ticks and labels, and make them bigger and bold
+    ax1.tick_params(axis='y', labelcolor='black', labelsize=14, width=2)
+    ax1.spines['left'].set_linewidth(2)
+
+    # Adding a red horizontal line at Benefit/Cost Ratio = 1 without a label
+    ax2.axhline(1, color='red', linestyle='--', linewidth=2)
+
+    # Adding a black horizontal line at Total Climate Risk value
+    ax1.axhline(total_climate_risk, color='black', linestyle='--', linewidth=2)
+    ax1.text(-0.52, total_climate_risk * 1.02, f'Total climate risk: {total_climate_risk:.2f}', color='black', va='center', ha='left', fontsize=12, fontweight='bold', bbox=dict(facecolor='white', alpha=0.5))
+
+    # Adding a grey arrow to indicate the residual risk, pointing upwards and moved to the right
+    arrow_x = len(measure_summary_df) - 0.6  # Adjust x position for arrow
+    arrow_y_end = total_climate_risk
+    arrow_y_start = highest_benefit
+    
+    ax1.annotate(
+        '', xy=(arrow_x, arrow_y_start), xycoords='data',
+        xytext=(arrow_x, arrow_y_end), textcoords='data',
+        arrowprops=dict(arrowstyle='<-', color='grey', lw=2),
+    )
+    
+    # Positioning the residual risk text box so it touches the arrow on the left side
+    bbox_props = dict(boxstyle="round,pad=0.3", edgecolor='grey', facecolor='white', alpha=0.5)
+    ax1.text(arrow_x - 0.1, (arrow_y_end + arrow_y_start) / 2, f'Residual risk: {residual_risk:.2f}', color='grey', va='center', ha='right', fontsize=12, fontweight='bold', bbox=bbox_props)
+
+    # Adding title
+    plt.title(title, fontsize=16)
+
+    # Show plot
+    plt.tight_layout()
+    plt.show()
 
 #%% Update the planner
 
@@ -1155,7 +1259,7 @@ def calc_CB_df(arm_df, measure_set, measure_times_df, start_year=None, end_year=
 
     return ann_CB_df, tot_CB_df
 
-def print_CB_summary_table(tot_CB_df, measure_set, metric='aai', value_unit='USD', group=np.nan):
+def generate_CB_plot_print_data(tot_CB_df, measure_set, metric='aai', group=np.nan):
     df_filtered = tot_CB_df[tot_CB_df['metric'] == metric]
     group = str(group)  # Cast the 'group' to string type
     df_filtered = df_filtered[df_filtered['group'] == group]
@@ -1166,9 +1270,9 @@ def print_CB_summary_table(tot_CB_df, measure_set, metric='aai', value_unit='USD
     residual_risk = df_filtered[df_filtered['measure'] != 'no_measure']['total risk'].min()
 
 
-    # Set unit to billions ('Bn') regardless of the magnitude
-    unit = 'Bn'
-    divisor = 1e9
+    # Derive the unit for the values
+    unit = value_to_monetary_unit(total_climate_risk)[1]
+    divisor =  {unit: divisor for divisor, unit in ABBREV.items()}[unit]
 
     # Prepare the measure data
     measure_data = df_filtered[df_filtered['measure'] != 'no_measure']
@@ -1183,32 +1287,20 @@ def print_CB_summary_table(tot_CB_df, measure_set, metric='aai', value_unit='USD
     # Create the measure summary DataFrame
     measure_summary_df = pd.DataFrame(measure_summary, columns=[
         'Measure', 
-        f'Cost ({value_unit} {unit})', 
-        f'Benefit ({value_unit} {unit})', 
+        f'Cost', 
+        f'Benefit', 
         'Benefit/Cost Ratio'
     ])
 
     # Round the values in the measure summary DataFrame
     measure_summary_df = measure_summary_df.round(2)
 
-    # Print the measure summary in tabulate format
-    print(tabulate(measure_summary_df, headers='keys', tablefmt='fancy_grid'))
-
     # Prepare and print the total summary with formatted output
-    total_summary = [
-        ['Total climate risk:', total_climate_risk / divisor],
-        ['Average annual risk:', annual_risk / divisor],
-        ['Residual risk:', residual_risk / divisor]
-    ]
+    total_summary_dict = { 'Total climate risk:': total_climate_risk / divisor,
+                        'Average annual risk:': annual_risk / divisor,
+                        'Residual risk:': residual_risk / divisor}
 
-    # Print the total summary
-    print("\n--------------------  ---------")
-    for item in total_summary:
-        print(f"{item[0]:<22} {item[1]:>11.2f}  ({value_unit} {unit})")
-    print("--------------------  ---------")
-
-
-    return
+    return measure_summary_df, total_summary_dict, unit
 
 
 

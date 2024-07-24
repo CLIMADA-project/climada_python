@@ -76,6 +76,65 @@ def interpolate_sm(mat_start, mat_end, year, year_start, year_end):
     return mat_interpolated
 
 
+# Risk transfer functions
+def calc_residual_or_risk_transf_imp_mat(imp_mat, attachment=None, cover=None, calc_residual=True):
+    """
+    Calculate the residual or risk transfer impact matrix.
+    The impact matrix is rescaled by the total impact at event.
+    The residual impact is calculated as the total impact minus the risk layer.
+    The risk layer is calculated as the minimum between the cover and the maximum between the total impact and the attachment.
+    The residual impact is calculated as the maximum between the total impact and the attachment minus the risk layer.
+    The impact matrix is rescaled by the total impact at event.
+
+    Parameters:
+    -----------
+    imp_mat: scipy.sparse.csr_matrix
+        The impact matrix to be rescaled.
+    attachment: float
+        The attachment point of the risk layer.
+    cover: float
+        The cover of the risk layer.
+    calc_residual: bool
+        If True, the residual impact is calculated, otherwise the risk layer is calculated.
+
+    Returns:
+    --------
+    result_matrix: scipy.sparse.csr_matrix
+        The rescaled impact matrix.
+    """
+
+    if attachment and cover:
+        # Make a copy of the impact matrix
+        imp_mat = copy.deepcopy(imp_mat)
+        # Calculate the total impact per event
+        total_at_event = imp_mat.sum(axis=1).A1
+        # Risk layer at event  
+        transfer_at_event = np.minimum(np.maximum(total_at_event - attachment, 0), cover)
+        # Resiudal impact
+        residual_at_event = np.maximum(total_at_event - transfer_at_event, 0)
+
+        # Calculate either the residual or transfer impact matrix
+        # Choose the denominator to rescale the impact values
+        if calc_residual:
+            # Rescale the impact values
+            numerator = residual_at_event
+        else:
+            # Rescale the impact values
+            numerator = transfer_at_event
+
+        # Rescale the impact values
+        rescale_impact_values = np.divide(numerator, total_at_event, out=np.zeros_like(numerator, dtype=float), where=total_at_event != 0)
+
+        # The multiplication is broadcasted across the columns for each row
+        result_matrix = imp_mat.multiply(rescale_impact_values[:, np.newaxis])
+
+        return result_matrix
+    
+    else:
+
+        return imp_mat
+
+
 # Derive the intermediate probability distributions
 def interpolate_years(year_start, year_end):
     # Generate an array of interpolated values between 0 and 1
@@ -185,7 +244,8 @@ def get_eai_exp(eai_exp, group_map):
         eai_region_id[group_name] = (np.sum(eai_exp[:,exp_indices],axis=1))
     return eai_region_id
 
-def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups=None, all_groups_name=pd.NA):
+def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups=None, all_groups_name=pd.NA, 
+                   risk_transf_cover=None, risk_transf_attach=None, calc_residual=True):
     # 1. Interpolate in between years
     prop_H0, prop_H1 = bayesian_viktypliers(start_snapshot.year, end_snapshot.year)
     imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = snapshot_combinaisons(
@@ -193,6 +253,12 @@ def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups
     )
     frequency_0 = start_snapshot.hazard.frequency
     frequency_1 = end_snapshot.hazard.frequency
+
+    # Modeify the impact matrices if risk transfer is provided
+    imp_E0H0.imp_mat = calc_residual_or_risk_transf_imp_mat(imp_E0H0.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual)
+    imp_E1H0.imp_mat = calc_residual_or_risk_transf_imp_mat(imp_E1H0.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual)
+    imp_E0H1.imp_mat = calc_residual_or_risk_transf_imp_mat(imp_E0H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual)
+    imp_E1H1.imp_mat = calc_residual_or_risk_transf_imp_mat(imp_E1H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual)
 
     imp_mats_0 = interpolate_imp_mat(imp_E0H0, imp_E1H0, start_snapshot.year, end_snapshot.year)
     imp_mats_1 = interpolate_imp_mat(imp_E0H1, imp_E1H1, start_snapshot.year, end_snapshot.year)
@@ -302,14 +368,18 @@ class CalcImpactsSnapshots:
             ).impact()
         return impacts_list
 
-    def calc_all_years(self, metrics=["eai", "aai", "rp"], return_periods=[100, 500, 1000], compute_groups=False):
+    def calc_all_years(self, metrics=["eai", "aai", "rp"], return_periods=[100, 500, 1000], compute_groups=False, 
+                                            risk_transf_cover=None, risk_transf_attach=None, calc_residual=True):
         results_df = []
         if compute_groups:
             groups = self.group_map_exp_dict
         else:
             groups = None
         for start_snapshot, end_snapshot in pairwise(self.snapshots.data):
-            results_df.append(bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups))
+            results_df.append(bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups,
+                                            risk_transf_cover=risk_transf_cover, 
+                                            risk_transf_attach=risk_transf_attach, 
+                                            calc_residual=calc_residual))
         results_df = pd.concat(results_df,axis=0)
 
         # duplicate rows arise from overlapping end and start if there's more than two snapshots
