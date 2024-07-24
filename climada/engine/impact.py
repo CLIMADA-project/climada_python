@@ -478,18 +478,42 @@ class Impact():
             impact_cutoff=0,
             fill_value='extrapolate'
         ):
-        """Compute exceedance impact map for given return periods.
-        Requires attribute imp_mat.
+        """Compute local exceedance impact for given return periods. The default method
+        is fitting the ordered impacts per centroid to the corresponding cummulated
+        frequency with by linear interpolation on log-log scale.
 
         Parameters
         ----------
-        return_periods : Any, optional
-            return periods to consider
-            Dafault is (25, 50, 100, 250)
+        return_periods : array_like
+            User-specified return periods for which the exceedance intensity should be calculated
+            locally (at each centroid). Defaults to (25, 50, 100, 250).
+        method : str
+            Method to interpolate to new return periods. Defauls to "interpolate".
+        frequency_scale : str
+            If set to "log", frequency will be converted to log scale in interpolation. Defaults to "log".
+        impact_scale : str
+            If set to "log", intensity will be converted to log scale in interpolation. Defaults to "log".
+        impact_cutoff : float, None
+            Minimal threshold to filter the impact. Defaults to 0.
+        fill_value : tuple, float, str
+            fill values to use when return_periods outside of seen return period range.
+            If set to "extrapolate", values will be extrapolated. If set to a float, value will 
+            be used on both sides. If set to tuple, left value will be used for left side and 
+            right value will be used for right side. If tuple and left value is "maximum", the maximum 
+            of the cummulative frequencies will be used to compute exceedance impacts on the left.
+            Defaults to "extrapolate"
 
         Returns
         -------
-        np.array
+        gdf : gpd.GeoDataFrame
+            GeoDataFrame containing exeedance impacts for given return periods. Each column
+            corresponds to a return period, each row corresponds to a centroid. Values
+            in the gdf correspond to the exceedance impact for the given centroid and
+            return period
+        label : str
+            GeoDataFrame label, for reporting and plotting
+        column_label : function
+            Column-label-generating function, for reporting and plotting
         """
         LOGGER.info('Computing exceedance impact map for return periods: %s',
                     return_periods)

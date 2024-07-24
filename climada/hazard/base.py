@@ -406,19 +406,52 @@ class Hazard(HazardIO, HazardPlot):
             u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
         ))
 
-    def local_exceedance_intensity(self, return_period=(25, 50, 100, 250), 
-                               method='interpolate', frequency_scale='log',
-                               intensity_scale='log', intensity_cutoff=None, fill_value='extrapolate'):
-        """Compute exceedance intensity map for given return periods.
+    def local_exceedance_intensity(
+            self,
+            return_periods=(25, 50, 100, 250),
+            method='interpolate',
+            frequency_scale='log',
+            intensity_scale='log',
+            intensity_cutoff=None,
+            fill_value='extrapolate'
+    ):
+        """Compute local exceedance intensity for given return periods. The default method
+        is fitting the ordered intensitites per centroid to the corresponding cummulated
+        frequency with by linear interpolation on log-log scale.
 
         Parameters
         ----------
-        return_periods : np.array
-            return periods to consider
+        return_periods : array_like
+            User-specified return periods for which the exceedance intensity should be calculated
+            locally (at each centroid). Defaults to (25, 50, 100, 250).
+        method : str
+            Method to interpolate to new return periods. Defauls to "interpolate".
+        frequency_scale : str
+            If set to "log", frequency will be converted to log scale in interpolation. Defaults to "log".
+        intensity_scale : str
+            If set to "log", intensity will be converted to log scale in interpolation. Defaults to "log".
+        intensity_cutoff : float, None
+            Minimal threshold to filter the hazard intensity. If set to None, self.intensity_thres will be
+            used. Defaults to None.
+        fill_value : tuple, float, str
+            fill values to use when return_periods outside of seen return period range.
+            If set to "extrapolate", values will be extrapolated. If set to a float, value will 
+            be used on both sides. If set to tuple, left value will be used for left side and 
+            right value will be used for right side. If tuple and left value is "maximum", the maximum 
+            of the cummulative frequencies will be used to compute exceedance intensities on the left.
+            Defaults to "extrapolate"
 
         Returns
         -------
-        inten_stats: np.array
+        gdf : gpd.GeoDataFrame
+            GeoDataFrame containing exeedance intensities for given return periods. Each column
+            corresponds to a return period, each row corresponds to a centroid. Values
+            in the gdf correspond to the exceedance intensity for the given centroid and
+            return period
+        label : str
+            GeoDataFrame label, for reporting and plotting
+        column_label : function
+            Column-label-generating function, for reporting and plotting
         """
         if not intensity_cutoff and intensity_cutoff != 0:
             intensity_cutoff = self.intensity_thres
@@ -435,7 +468,7 @@ class Hazard(HazardIO, HazardPlot):
             return_period_unit = 'years'
         
         num_centroids = self.intensity.shape[1]
-        inten_stats = np.zeros((len(return_period), num_centroids))
+        inten_stats = np.zeros((len(return_periods), num_centroids))
 
         for i in range(num_centroids):
             # sort intensties and frequencies at given centroid
@@ -450,7 +483,7 @@ class Hazard(HazardIO, HazardPlot):
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
             inten_stats[:,i] = u_fit.interpolate_ev(
-                1/np.array(return_period),
+                1/np.array(return_periods),
                 frequency,
                 intensity,
                 method=method,
@@ -464,7 +497,7 @@ class Hazard(HazardIO, HazardPlot):
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
-        column_names = [f'{rp}' for rp in return_period]
+        column_names = [f'{rp}' for rp in return_periods]
         gdf[column_names] = inten_stats.T
 
         # create label and column_label
@@ -487,18 +520,36 @@ class Hazard(HazardIO, HazardPlot):
             LOGGER.debug('Resetting event_id.')
             self.event_id = np.arange(1, self.event_id.size + 1)
 
-    def local_return_period(self, threshold_intensities=(5., 10., 20.),
-                            method='interpolate', frequency_scale='log',
-                            intensity_scale='log', fill_value=('maximum', np.nan)):
-        """Compute local return periods for given hazard intensities. The used method
+    def local_return_period(
+            self,
+            threshold_intensities=(10., 20.),
+            method='interpolate',
+            frequency_scale='log',
+            intensity_scale='log',
+            fill_value=('maximum', np.nan)
+        ):
+        """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with a step function.
+        frequency with by linear interpolation on log-log scale.
 
         Parameters
         ----------
-        threshold_intensities : np.array
+        threshold_intensities : array_like
             User-specified hazard intensities for which the return period should be calculated
-            locally (at each centroid). Defaults to (5, 10, 20)
+            locally (at each centroid). Defaults to (10, 20)
+        method : str
+            Method to interpolate to new intensity values. Defauls to "interpolate".
+        frequency_scale : str
+            If set to "log", frequency will be converted to log scale in interpolation. Defaults to "log".
+        intensity_scale : str
+            If set to "log", intensity will be converted to log scale in interpolation. Defaults to "log".
+        fill_value : tuple, float, str
+            fill values to use when threshold_intensity outside of seen intensity range.
+            If set to "extrapolate", values will be extrapolated. If set to a float, value will 
+            be used on both sides. If set to tuple, left value will be used for left side and 
+            right value will be used for right side. If tuple and left value is "maximum", the maximum 
+            of the cummulative frequencies will be used to compute return periods on the left.
+            Defaults to ('maximum', np.nan)
 
         Returns
         -------

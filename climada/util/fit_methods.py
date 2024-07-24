@@ -30,39 +30,53 @@ LOGGER = logging.getLogger(__name__)
 
 def interpolate_ev(
         x_test, 
-        x_train: np.array, 
-        y_train: np.array, 
-        method: str=None, 
-        x_scale: str=None, 
-        y_scale: str=None, 
-        x_threshold: float = None, 
-        y_threshold: float = None,
+        x_train, 
+        y_train, 
+        method = 'interpolate', 
+        x_scale = None, 
+        y_scale = None, 
+        x_threshold = None, 
+        y_threshold = None,
         y_asymptotic = np.nan,
         **kwargs
     ):
-    """_summary_
+    """
+    Util function to interpolate (and extrapolate) training data (x_train, y_train)
+    to new points x_test with several options (log scale, thresholds)
 
-    Args:
-        x_test (_type_): x values (1-D array of x values to fit)
-        x_train (np.array): x values (1-D array of x values to fit)
-        y_train (np.array): y values (1-D array of x values to fit)
-        method (str, optional): _description_. Defaults to None.
-        x_scale (str, optional): _description_. Defaults to None.
-        y_scale (str, optional): _description_. Defaults to None.
-        x_threshold (float, optional): _description_. Defaults to None.
-        y_threshold (float, optional): _description_. Defaults to None.
-        y_asymptotic (float, optional): return value if x_test > x_train if 
-            method is stepfunction or x_train.size < 2. Defaults to np.nan.
-        **kwargs: further optional parameters for the fit methods
+    Parameters:
+    -------
+        x_test : array_like
+            1-D array of x-values for which training data should be interpolated
+        x_train : array_like
+            1-D array of x-values of training data
+        y_train : array_like
+            1-D array of y-values of training data
+        method : str, optional
+            Method to use for interpolation. Currently available are "interpolate" 
+            or "stepfunction". Defaults to "interpolate".
+        x_scale : str, optional
+            If set to 'log', x_values are convert to log scale. Defaults to None.
+        y_scale : str, optional
+            If set to 'log', x_values are convert to log scale. Defaults to None.
+        x_threshold : float, optional
+            Lower threshold to filter x_train. Defaults to None.
+        y_threshold : float, optional
+            Lower threshold to filter y_train. Defaults to None.
+        y_asymptotic : float, optional
+            Return value if x_test > x_train and if method is stepfunction or 
+            x_train.size < 2. Defaults to np.nan.
+        kwargs : keyword arguments
+            additional keyword arguments to pass to `scipy.interpolate.interp1d`.
 
     Returns
     -------
     np.array
+        interpolated values y_test for the test points x_test
+
     """
     
     # check if inputs are valid
-    if not method:
-        method = 'interpolate'
     if not method in ['interpolate', 'stepfunction']:
         raise ValueError(f'Unknown method: {method}. Use "interpolate" or "stepfunction" instead')
     if method == 'stepfunction': # x_scale and y_scale unnecessary if fitting stepfunction
@@ -108,10 +122,9 @@ def interpolate_ev(
             ((np.min(x_test) < np.min(x_train)) or (np.max(x_test) > np.max(x_train)))):
             LOGGER.warning('Data is being extrapolated.')
         # calculate fill values 
-        elif 'fill_value' in kwargs.keys():
-            if len(kwargs['fill_value']) == 2:
-                if kwargs['fill_value'][0] == 'maximum':
-                    kwargs['fill_value'] = (np.max(y_train), kwargs['fill_value'][1])
+        if isinstance(kwargs.get('fill_value'), tuple):
+            if kwargs['fill_value'][0] == 'maximum':
+                kwargs['fill_value'] = (np.max(y_train), kwargs['fill_value'][1])
         interpolation = interpolate.interp1d(x_train, y_train, **kwargs)
         y_test = interpolation(x_test)
     
@@ -131,16 +144,24 @@ def interpolate_ev(
     
 
 def group_frequency(frequency, value, n_sig_dig=2):
-    """util function to add frequencies for equal values
+    """
+    Util function to aggregate (add) frequencies for equal values
 
-    Args:
-        frequency (np.array): frequency corresponding to the values 
-        value (np.array): value sorted in decreasing order
-        n_sig_dig (int): number of significant digits for value when grouping frequency
+    Parameters:
+    ------
+        frequency : array_like
+            Frequency array 
+        value : array_like
+            Value array in ascending order
+        n_sig_dig : int
+            number of significant digits for value when grouping frequency.
+            Defaults to 2.
 
     Returns:
-        tuple: (frequency after aggregation, 
-                unique value in cedreasing order)
+    ------
+        tuple
+            (frequency array after aggregation, 
+            unique value array in ascending order)
     """
     frequency, value = np.array(frequency), np.array(value)
     if frequency.size == 0 and value.size == 0:
@@ -157,5 +178,4 @@ def group_frequency(frequency, value, n_sig_dig=2):
             sum(frequency[start_indices[i]:start_indices[i+1]])
             for i in range(len(value))
         ])
-        return frequency, value
     return frequency, value
