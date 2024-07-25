@@ -26,7 +26,7 @@ If you use specific tools and modules of CLIMADA, please cite the appropriate pu
    * - :doc:`Uncertainty and sensitivity analysis </tutorial/climada_engine_unsequa>`
      - Kropf, C. M. et al. (2022): Uncertainty and sensitivity analysis for probabilistic weather and climate-risk modelling: an implementation in CLIMADA v.3.1.0. Geosci. Model Dev. 15, 7177–7201, https://doi.org/10.5194/gmd-15-7177-2022
    * - :doc:`Lines and polygons exposures </tutorial/climada_entity_Exposures_polygons_lines>` *or* `Open Street Map exposures <https://climada-petals.readthedocs.io/en/latest/tutorial/climada_exposures_openstreetmap.html>`_
-     - Mühlhofer, E., et al. (2023): OpenStreetMap for Multi-Faceted Climate Risk Assessments https://eartharxiv.org/repository/view/5615/
+     - Mühlhofer, E., et al. (2024): OpenStreetMap for Multi-Faceted Climate Risk Assessments : Environ. Res. Commun. 6 015005, https://doi.org/10.1088/2515-7620/ad15ab
    * - :doc:`LitPop exposures </tutorial/climada_entity_LitPop>`
      - Eberenz, S., et al. (2020): Asset exposure data for global physical risk assessment. Earth System Science Data 12, 817–833, https://doi.org/10.3929/ethz-b-000409595
    * - :doc:`Impact function calibration </tutorial/climada_util_calibrate>`
