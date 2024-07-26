@@ -276,7 +276,7 @@ def download_icon_centroids_file(model_name='icon-eu-eps',
     # define url and filename
     url = 'https://opendata.dwd.de/weather/lib/cdo/'
     if model_name == 'icon-eu-eps':
-        file_name = 'icon_grid_0028_R02B07_N02.nc.bz2'
+        file_name = 'icon_grid_0037_R03B07_N02.nc.bz2' #'icon_grid_0028_R02B07_N02.nc.bz2'
     elif model_name == 'icon-eu':
         file_name = 'icon_grid_0024_R02B06_G.nc.bz2'
     elif model_name in ('icon-d2-eps', 'icon-d2'):
