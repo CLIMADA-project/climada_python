@@ -484,8 +484,8 @@ class Hazard(HazardIO, HazardPlot):
             frequency = np.cumsum(frequency[::-1])[::-1]
             inten_stats[:,i] = u_fit.interpolate_ev(
                 1/np.array(return_periods),
-                frequency,
-                intensity,
+                frequency[::-1],
+                intensity[::-1],
                 method=method,
                 x_scale=frequency_scale,
                 y_scale=intensity_scale,

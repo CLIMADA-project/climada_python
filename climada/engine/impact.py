@@ -549,8 +549,8 @@ class Impact():
             frequency = np.cumsum(frequency[::-1])[::-1]
             imp_stats[:,i] = u_fit.interpolate_ev(
                 1/np.array(return_periods),
-                frequency,
-                impact,
+                frequency[::-1],
+                impact[::-1],
                 method=method,
                 x_scale=frequency_scale,
                 y_scale=impact_scale,

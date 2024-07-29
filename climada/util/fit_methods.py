@@ -124,7 +124,11 @@ def interpolate_ev(
         # calculate fill values 
         if isinstance(kwargs.get('fill_value'), tuple):
             if kwargs['fill_value'][0] == 'maximum':
-                kwargs['fill_value'] = (np.max(y_train), kwargs['fill_value'][1])
+                kwargs['fill_value'] = (np.max(y_train),
+                                        np.log10(kwargs['fill_value'][1]) if y_scale == 'log' else kwargs['fill_value'][1])
+            elif y_scale == 'log':
+                kwargs['fill_value'] = tuple(np.log10(kwargs['fill_value']))
+
         interpolation = interpolate.interp1d(x_train, y_train, **kwargs)
         y_test = interpolation(x_test)
     
