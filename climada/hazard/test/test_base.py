@@ -124,18 +124,18 @@ class TestLoader(unittest.TestCase):
     def test_check_wrongInten_fail(self):
         """Wrong hazard definition"""
         self.hazard.intensity = sparse.csr_matrix([[1, 2], [1, 2]])
-
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegex(
+            ValueError, "Invalid Hazard.intensity row size: 3 != 2."
+        ):
             self.hazard.check()
-        self.assertIn('Invalid Hazard.intensity row size: 3 != 2.', str(cm.exception))
 
     def test_check_wrongFrac_fail(self):
         """Wrong hazard definition"""
         self.hazard.fraction = sparse.csr_matrix([[1], [1], [1]])
-
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegex(
+            ValueError, "Invalid Hazard.fraction column size: 2 != 1."
+        ):
             self.hazard.check()
-        self.assertIn('Invalid Hazard.fraction column size: 2 != 1.', str(cm.exception))
 
     def test_check_wrongEvName_fail(self):
         """Wrong hazard definition"""
@@ -211,6 +211,32 @@ class TestLoader(unittest.TestCase):
         self.assertEqual(len(haz.get_event_date()), haz.date.size)
         self.assertEqual(haz.get_event_date()[560],
                          u_dt.date_to_str(haz.date[560]))
+
+    def test_check_matrices(self):
+        """Test the check_matrices method"""
+        hazard = Hazard("TC")
+        hazard.fraction = sparse.csr_matrix(np.zeros((2, 2)))
+        hazard.check_matrices()  # No error, fraction.nnz = 0
+        hazard.fraction = sparse.csr_matrix(np.ones((2, 2)))
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            hazard.check_matrices()
+        hazard.intensity = sparse.csr_matrix(np.ones((2, 3)))
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            hazard.check_matrices()
+
+        # Check that matrices are pruned
+        hazard.intensity[:] = 0
+        hazard.fraction = sparse.csr_matrix(([0], [0], [0, 1, 1]), shape=(2, 3))
+        hazard.check_matrices()
+        for attr in ("intensity", "fraction"):
+            with self.subTest(matrix=attr):
+                matrix = getattr(hazard, attr)
+                self.assertEqual(matrix.nnz, 0)
+                self.assertTrue(matrix.has_canonical_format)
 
 class TestRemoveDupl(unittest.TestCase):
     """Test remove_duplicates method."""
