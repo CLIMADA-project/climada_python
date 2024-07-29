@@ -343,7 +343,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
             grid_im = griddata((coord[:, 1], coord[:, 0]), array_im,
                                (grid_x, grid_y))
             # Create mask for original NaN values in the data
-            nan_mask = griddata((coord[:, 1], coord[:, 0]), np.isnan(array_im.astype(float)), 
+            nan_mask = griddata((coord[:, 1], coord[:, 0]), np.isnan(array_im.astype(float)),
                                 (grid_x, grid_y), fill_value=0).astype(bool)
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()

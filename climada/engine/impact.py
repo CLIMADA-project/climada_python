@@ -470,7 +470,7 @@ class Impact():
         return self.impact_per_year(all_years=all_years, year_range=year_range)
 
     def local_exceedance_impact(
-            self, 
+            self,
             return_periods=(25, 50, 100, 250),
             method = 'interpolate',
             frequency_scale='log',
@@ -490,18 +490,20 @@ class Impact():
         method : str
             Method to interpolate to new return periods. Defauls to "interpolate".
         frequency_scale : str
-            If set to "log", frequency will be converted to log scale in interpolation. Defaults to "log".
+            If set to "log", frequency will be converted to log scale in interpolation.
+            Defaults to "log".
         impact_scale : str
-            If set to "log", intensity will be converted to log scale in interpolation. Defaults to "log".
+            If set to "log", intensity will be converted to log scale in interpolation.
+            Defaults to "log".
         impact_cutoff : float, None
             Minimal threshold to filter the impact. Defaults to 0.
         fill_value : tuple, float, str
             fill values to use when return_periods outside of seen return period range.
-            If set to "extrapolate", values will be extrapolated. If set to a float, value will 
-            be used on both sides. If set to tuple, left value will be used for left side and 
-            right value will be used for right side. If tuple and left value is "maximum", the maximum 
-            of the cummulative frequencies will be used to compute exceedance impacts on the left.
-            Defaults to "extrapolate"
+            If set to "extrapolate", values will be extrapolated. If set to a float, value will
+            be used on both sides. If set to tuple, left value will be used for left side and
+            right value will be used for right side. If tuple and left value is "maximum",
+            the maximum of the cummulative frequencies will be used to compute exceedance
+            impacts on the left. Defaults to "extrapolate"
 
         Returns
         -------
@@ -528,8 +530,9 @@ class Impact():
         elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
             return_period_unit = 'weeks'
         else:
-            LOGGER.warning(f"Hazard's frequency unit {self.frequency_unit} is not known, "
-                            "years will be used as return period unit.")
+            LOGGER.warning("Hazard's frequency unit %s is not known, "
+                            "years will be used as return period unit.",
+                            self.frequency_unit)
             return_period_unit = 'years'
 
         num_centroids = self.imp_mat.shape[1]
@@ -561,7 +564,9 @@ class Impact():
             )
 
         # create the output GeoDataFrame
-        gdf = gpd.GeoDataFrame(geometry = gpd.points_from_xy(self.coord_exp[:,1], self.coord_exp[:,0]), crs = self.crs)
+        gdf = gpd.GeoDataFrame(
+            geometry = gpd.points_from_xy(self.coord_exp[:,1], self.coord_exp[:,0]),
+            crs = self.crs)
         col_names = [f'{ret_per}' for ret_per in return_periods]
         gdf[col_names] = imp_stats.T
         # create label and column_label
@@ -573,7 +578,7 @@ class Impact():
 
     #TODO: note different calculation in changelog
     def local_exceedance_imp(
-            self, 
+            self,
             return_periods=(25, 50, 100, 250)
         ):
         """This function is deprecated, use Impact.local_exceedance_impact instead."""
@@ -891,14 +896,17 @@ class Impact():
                                                  buffer, extend, zoom, url, axis=axis, **kwargs)
 
         return axis
-    
+
     # TODO: replace with plot_from_gdf()
     def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
                     log10_scale=True, smooth=True, axis=None, **kwargs):
-        """This function is deprecated, use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead."""
+        """
+        This function is deprecated, use Impact.local_exceedance_impact and 
+        util.plot.plot_from_gdf instead.
+        """
         LOGGER.warning("The use of Impact.plot_rp_imp is deprecated."
                        "Use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead.")
-        
+
         """Compute and plot exceedance impact maps for different return periods.
         Calls local_exceedance_imp.
 
@@ -920,7 +928,8 @@ class Impact():
         imp_stats : np.array
             return_periods.size x num_centroids
         """
-        imp_stats = self.local_exceedance_impact(np.array(return_periods))[0].values[:,1:].T.astype(float)
+        imp_stats = self.local_exceedance_impact(np.array(return_periods))[0].values[:,1:].T
+        imp_stats = imp_stats.astype(float)
         if imp_stats.size == 0:
             raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')

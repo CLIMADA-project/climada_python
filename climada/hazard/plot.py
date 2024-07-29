@@ -38,7 +38,10 @@ class HazardPlot():
     def plot_rp_intensity(self, return_periods=(25, 50, 100, 250),
                           smooth=True, axis=None, figsize=(9, 13), adapt_fontsize=True,
                           **kwargs):
-        """This function is deprecated, use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead."""
+        """
+        This function is deprecated,
+        use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead.
+        """
         LOGGER.warning("The use of Hazard.plot_rp_intensity is deprecated."
                        "Use Hazard.local_exceedance_intensity and util.plot.plot_from_gdf instead.")
 
@@ -63,7 +66,8 @@ class HazardPlot():
         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
             intenstats is return_periods.size x num_centroids
         """
-        inten_stats = self.local_exceedance_intensity(return_periods)[0].values[:,1:].T.astype(float)
+        inten_stats = self.local_exceedance_intensity(return_periods)[0].values[:,1:].T
+        inten_stats = inten_stats.astype(float)
         colbar_name = 'Intensity (' + self.units + ')'
         title = list()
         for ret in return_periods:
