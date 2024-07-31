@@ -77,12 +77,6 @@ def interpolate_ev(
         interpolated values y_test for the test points x_test
     """
 
-    # # check if inputs are valid
-    # if method not in ['interpolate', 'stepfunction']:
-    #     raise ValueError(f'Unknown method: {method}. Use "interpolate" or "stepfunction" instead')
-    # if method == 'stepfunction': # x_scale and y_scale unnecessary if fitting stepfunction
-    #     x_scale, y_scale = None, None
-
     # preprocess interpolation data
     x_test, x_train, y_train = _preprocess_interpolation_data(
         x_test, x_train, y_train, x_scale, y_scale, x_threshold, y_threshold
