@@ -488,7 +488,8 @@ class Impact():
             User-specified return periods for which the exceedance intensity should be calculated
             locally (at each centroid). Defaults to (25, 50, 100, 250).
         method : str
-            Method to interpolate to new return periods. Defauls to "interpolate".
+            Method to interpolate to new return periods. Currently available are "interpolate" and 
+            "stepfunction". Defauls to "interpolate".
         frequency_scale : str
             If set to "log", frequency will be converted to log scale in interpolation.
             Defaults to "log".
@@ -550,18 +551,18 @@ class Impact():
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
-            imp_stats[:,i] = u_fit.interpolate_ev(
-                1/np.array(return_periods),
-                frequency[::-1],
-                impact[::-1],
-                method=method,
-                x_scale=frequency_scale,
-                y_scale=impact_scale,
-                y_threshold=impact_cutoff,
-                y_asymptotic=0.,
-                fill_value=fill_value,
-                bounds_error=False
-            )
+            if method == 'interpolate':
+                imp_stats[:,i] = u_fit.interpolate_ev(
+                    1/np.array(return_periods), frequency[::-1], impact[::-1], x_scale=frequency_scale,
+                    y_scale=impact_scale, y_threshold=impact_cutoff, y_asymptotic=0., fill_value=fill_value
+                )
+            elif method == 'stepfunction':
+                imp_stats[:,i] = u_fit.stepfunction_ev(
+                    1/np.array(return_periods), frequency[::-1], impact[::-1], y_threshold=impact_cutoff,
+                    y_asymptotic=0.
+                )
+            else:
+                raise ValueError(f"Unknown method: {method}")
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(

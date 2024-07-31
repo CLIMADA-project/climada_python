@@ -33,13 +33,12 @@ def interpolate_ev(
         x_test,
         x_train,
         y_train,
-        method = 'interpolate',
         x_scale = None,
         y_scale = None,
         x_threshold = None,
         y_threshold = None,
         y_asymptotic = np.nan,
-        **kwargs
+        fill_value = np.nan
     ):
     """
     Util function to interpolate (and extrapolate) training data (x_train, y_train)
@@ -53,9 +52,6 @@ def interpolate_ev(
             1-D array of x-values of training data
         y_train : array_like
             1-D array of y-values of training data
-        method : str, optional
-            Method to use for interpolation. Currently available are "interpolate"
-            or "stepfunction". Defaults to "interpolate".
         x_scale : str, optional
             If set to 'log', x_values are convert to log scale. Defaults to None.
         y_scale : str, optional
@@ -65,23 +61,131 @@ def interpolate_ev(
         y_threshold : float, optional
             Lower threshold to filter y_train. Defaults to None.
         y_asymptotic : float, optional
-            Return value if x_test > x_train and if method is stepfunction or
+            Return value if x_test > x_train and if
             x_train.size < 2. Defaults to np.nan.
-        kwargs : keyword arguments
-            additional keyword arguments to pass to `scipy.interpolate.interp1d`.
+        fill_value : tuple, float, str
+            fill values to use when x_test outside of range of x_train.
+            If set to "extrapolate", values will be extrapolated. If set to a float, value will 
+            be used on both sides. If set to tuple, left value will be used for left side and 
+            right value will be used for right side. If tuple and left value is "maximum", the maximum 
+            of the cummulative frequencies will be used to compute exceedance intensities on the left.
+            Defaults to np.nan
 
     Returns
     -------
     np.array
         interpolated values y_test for the test points x_test
-
     """
 
-    # check if inputs are valid
-    if method not in ['interpolate', 'stepfunction']:
-        raise ValueError(f'Unknown method: {method}. Use "interpolate" or "stepfunction" instead')
-    if method == 'stepfunction': # x_scale and y_scale unnecessary if fitting stepfunction
-        x_scale, y_scale = None, None
+    # # check if inputs are valid
+    # if method not in ['interpolate', 'stepfunction']:
+    #     raise ValueError(f'Unknown method: {method}. Use "interpolate" or "stepfunction" instead')
+    # if method == 'stepfunction': # x_scale and y_scale unnecessary if fitting stepfunction
+    #     x_scale, y_scale = None, None
+
+    # preprocess interpolation data
+    x_test, x_train, y_train = _preprocess_interpolation_data(
+        x_test, x_train, y_train, x_scale, y_scale, x_threshold, y_threshold
+    )
+
+      # handle case of small training data sizes
+    if x_train.size < 2:
+        LOGGER.warning('Data is being extrapolated.')
+        return _interpolate_small_input(x_test, x_train, y_train, y_scale, y_asymptotic)
+
+    # calculate fill values
+    if isinstance(fill_value, tuple):
+        if fill_value[0] == 'maximum':
+            fill_value = (
+                np.max(y_train),
+                np.log10(fill_value[1]) if y_scale == 'log' else fill_value[1]
+                )
+        elif y_scale == 'log':
+            fill_value = tuple(np.log10(fill_value))
+    elif isinstance(fill_value, (float, int)) and y_scale == 'log':
+        fill_value = np.log10(fill_value)
+    
+  
+    # warn if data is being extrapolated
+    if (
+        fill_value == 'extrapolate' and
+        ((np.min(x_test) < np.min(x_train)) or (np.max(x_test) > np.max(x_train)))
+    ):
+        LOGGER.warning('Data is being extrapolated.')
+
+    interpolation = interpolate.interp1d(x_train, y_train, fill_value=fill_value, bounds_error=False)
+    y_test = interpolation(x_test)
+
+    # adapt output scale
+    if y_scale == 'log':
+        y_test = np.power(10., y_test)
+    return y_test
+
+def stepfunction_ev(
+        x_test,
+        x_train,
+        y_train,
+        x_threshold = None,
+        y_threshold = None,
+        y_asymptotic = np.nan
+    ):
+    """
+    Util function to interpolate and extrapolate training data (x_train, y_train)
+    to new points x_test using a step function
+
+    Parameters:
+    -------
+        x_test : array_like
+            1-D array of x-values for which training data should be interpolated
+        x_train : array_like
+            1-D array of x-values of training data
+        y_train : array_like
+            1-D array of y-values of training data
+        x_threshold : float, optional
+            Lower threshold to filter x_train. Defaults to None.
+        y_threshold : float, optional
+            Lower threshold to filter y_train. Defaults to None.
+        y_asymptotic : float, optional
+            Return value if x_test > x_train. Defaults to np.nan.
+
+    Returns
+    -------
+    np.array
+        interpolated values y_test for the test points x_test
+    """
+
+    # preprocess interpolation data
+    x_test, x_train, y_train = _preprocess_interpolation_data(
+        x_test, x_train, y_train, None, None, x_threshold, y_threshold
+    )
+
+    # handle case of small training data sizes
+    if x_train.size < 2:
+        return _interpolate_small_input(x_test, x_train, y_train, None, y_asymptotic)
+    
+    # find indeces of x_test if sorted into x_train
+    if not all(sorted(x_train) == x_train):
+        raise ValueError('Input array x_train must be sorted in ascending order.')
+    indx = np.searchsorted(x_train, x_test)
+    y_test = y_train[indx.clip(max = len(x_train) - 1)]
+    y_test[indx == len(x_train)] = y_asymptotic
+
+    return y_test
+
+def _preprocess_interpolation_data(
+        x_test,
+        x_train,
+        y_train,
+        x_scale,
+        y_scale,
+        x_threshold,
+        y_threshold
+    ):
+    """
+    helper function to preprocess interpolation training and test data by filtering data below
+    thresholds and converting to log scale if required
+    """
+
     if x_train.shape != y_train.shape:
         raise ValueError(f'Incompatible shapes of input data, x_train {x_train.shape} '
                          f'and y_train {y_train.shape}. Should be the same')
@@ -102,57 +206,31 @@ def interpolate_ev(
         x_train = x_train[y_th]
         y_train = y_train[y_th]
 
-    # return y_asymptotic if x_train and y_train empty
-    if x_train.size == 0:
-        return np.full_like(x_test, y_asymptotic)
-    # if only one (x_train, y_train), return stepfunction with
-    # y_train if x_test < x_train and y_asymtotic if x_test > x_train
-    if x_train.size == 1:
-        y_test = np.full_like(x_test, y_train[0])
-        y_test[np.squeeze(x_test) > np.squeeze(x_train)] = y_asymptotic
-        return y_test
-
-    # adapt x and y scale
+    # convert to log scale
     if x_scale == 'log':
         x_train, x_test = np.log10(x_train), np.log10(x_test)
     if y_scale == 'log':
         y_train = np.log10(y_train)
 
-    # calculate interpolation
-    if method == 'interpolate':
-        # warn if data is being extrapolated
-        if (
-            (('fill_value', 'extrapolate') in kwargs.items()) and
-            ((np.min(x_test) < np.min(x_train)) or (np.max(x_test) > np.max(x_train)))):
-            LOGGER.warning('Data is being extrapolated.')
-        # calculate fill values
-        if isinstance(kwargs.get('fill_value'), tuple):
-            if kwargs['fill_value'][0] == 'maximum':
-                kwargs['fill_value'] = (
-                    np.max(y_train),
-                    np.log10(kwargs['fill_value'][1])
-                    if y_scale == 'log' else kwargs['fill_value'][1]
-                    )
-            elif y_scale == 'log':
-                kwargs['fill_value'] = tuple(np.log10(kwargs['fill_value']))
+    return (x_test, x_train, y_train)
 
-        interpolation = interpolate.interp1d(x_train, y_train, **kwargs)
-        y_test = interpolation(x_test)
+def _interpolate_small_input(x_test, x_train, y_train, y_scale, y_asymptotic):
+    """
+    helper function to handle if interpolation data is small (empty or one point)
+    """
+    # return y_asymptotic if x_train and y_train empty
+    if x_train.size == 0:
+        return np.full_like(x_test, y_asymptotic)
 
-    # calculate stepfunction fit
-    elif method == 'stepfunction':
-        # find indeces of x_test if sorted into x_train
-        if not all(sorted(x_train) == x_train):
-            raise ValueError('Input array x_train must be sorted in ascending order.')
-        indx = np.searchsorted(x_train, x_test)
-        y_test = y_train[indx.clip(max = len(x_train) - 1)]
-        y_test[indx == len(x_train)] = y_asymptotic
-
-    # adapt output scale
+    # reconvert logarithmic y_scale to normal y_train
     if y_scale == 'log':
-        y_test = np.power(10., y_test)
-    return y_test
+        y_train = np.power(10., y_train)
 
+    # if only one (x_train, y_train), return stepfunction with
+    # y_train if x_test < x_train and y_asymtotic if x_test > x_train
+    y_test = np.full_like(x_test, y_train[0])
+    y_test[np.squeeze(x_test) > np.squeeze(x_train)] = y_asymptotic
+    return y_test
 
 def group_frequency(frequency, value, n_sig_dig=2):
     """

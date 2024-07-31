@@ -467,7 +467,8 @@ class Hazard(HazardIO, HazardPlot):
             User-specified return periods for which the exceedance intensity should be calculated
             locally (at each centroid). Defaults to (25, 50, 100, 250).
         method : str
-            Method to interpolate to new return periods. Defauls to "interpolate".
+            Method to interpolate to new return periods. Currently available are "interpolate" and 
+            "stepfunction". Defauls to "interpolate".
         frequency_scale : str
             If set to "log", frequency will be converted to log scale in interpolation. Defaults to "log".
         intensity_scale : str
@@ -524,18 +525,18 @@ class Hazard(HazardIO, HazardPlot):
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
-            inten_stats[:,i] = u_fit.interpolate_ev(
-                1/np.array(return_periods),
-                frequency[::-1],
-                intensity[::-1],
-                method=method,
-                x_scale=frequency_scale,
-                y_scale=intensity_scale,
-                y_threshold=intensity_cutoff,
-                y_asymptotic=0.,
-                fill_value=fill_value,
-                bounds_error=False
-            )
+            if method == 'interpolate':
+                inten_stats[:,i] = u_fit.interpolate_ev(
+                    1/np.array(return_periods), frequency[::-1], intensity[::-1], x_scale=frequency_scale,
+                    y_scale=intensity_scale, y_threshold=intensity_cutoff, y_asymptotic=0., fill_value=fill_value
+                )
+            elif method == 'stepfunction':
+                inten_stats[:,i] = u_fit.stepfunction_ev(
+                    1/np.array(return_periods), frequency[::-1], intensity[::-1], y_threshold=intensity_cutoff,
+                    y_asymptotic=0.
+                )
+            else:
+                raise ValueError(f"Unknown method: {method}")
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
@@ -580,7 +581,8 @@ class Hazard(HazardIO, HazardPlot):
             User-specified hazard intensities for which the return period should be calculated
             locally (at each centroid). Defaults to (10, 20)
         method : str
-            Method to interpolate to new intensity values. Defauls to "interpolate".
+            Method to interpolate to new intensity values. Currently available are "interpolate" and 
+            "stepfunction". Defauls to "interpolate".
         frequency_scale : str
             If set to "log", frequency will be converted to log scale in interpolation. Defaults to "log".
         intensity_scale : str
@@ -635,17 +637,18 @@ class Hazard(HazardIO, HazardPlot):
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
-            return_periods[:,i] = safe_divide(1., u_fit.interpolate_ev(
-                threshold_intensities,
-                intensity,
-                frequency,
-                method=method,
-                x_scale=intensity_scale,
-                y_scale=frequency_scale,
-                x_threshold=0,
-                fill_value=fill_value,
-                bounds_error=False
-            ))
+            if method == 'interpolate':
+                return_periods[:,i] = u_fit.interpolate_ev(
+                    threshold_intensities, intensity, frequency, x_scale=intensity_scale,
+                    y_scale=frequency_scale, x_threshold=0, fill_value=fill_value
+                )
+            elif method == 'stepfunction':
+                return_periods[:,i] = u_fit.stepfunction_ev(
+                    threshold_intensities, intensity, frequency, x_threshold=0
+                )
+            else:
+                raise ValueError(f"Unknown method: {method}")
+        return_periods = safe_divide(1., return_periods)
         
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'],

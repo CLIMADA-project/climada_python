@@ -1069,7 +1069,7 @@ class TestStats(unittest.TestCase):
         haz.frequency = np.full(2, 1.)
         threshold_intensities = np.array([1., 2., 3.])
         # first centroid has intensities 1,2 with cum frequencies 2,1
-        # first centroid has intensities 2, 4 with cum frequencies 2, 1
+        # second centroid has intensities 2, 4 with cum frequencies 2, 1
         # third centroid has intensities 1 with cum frequencies 1 (0 intensity is neglected)
         # testing at intensities 1, 2, 3
         return_stats, _, _ = haz.local_return_period(threshold_intensities, frequency_scale='lin', intensity_scale='lin')
