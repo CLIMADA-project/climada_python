@@ -65,11 +65,11 @@ def interpolate_ev(
             x_train.size < 2. Defaults to np.nan.
         fill_value : tuple, float, str
             fill values to use when x_test outside of range of x_train.
-            If set to "extrapolate", values will be extrapolated. If set to a float, value will 
-            be used on both sides. If set to tuple, left value will be used for left side and 
-            right value will be used for right side. If tuple and left value is "maximum", the maximum 
-            of the cummulative frequencies will be used to compute exceedance intensities on the left.
-            Defaults to np.nan
+            If set to "extrapolate", values will be extrapolated. If set to a float, value will
+            be used on both sides. If set to tuple, left value will be used for left side and
+            right value will be used for right side. If tuple and left value is "maximum",
+            the maximum of the cummulative frequencies will be used to compute exceedance
+            intensities on the left. Defaults to np.nan
 
     Returns
     -------
@@ -104,8 +104,7 @@ def interpolate_ev(
             fill_value = tuple(np.log10(fill_value))
     elif isinstance(fill_value, (float, int)) and y_scale == 'log':
         fill_value = np.log10(fill_value)
-    
-  
+
     # warn if data is being extrapolated
     if (
         fill_value == 'extrapolate' and
@@ -113,7 +112,8 @@ def interpolate_ev(
     ):
         LOGGER.warning('Data is being extrapolated.')
 
-    interpolation = interpolate.interp1d(x_train, y_train, fill_value=fill_value, bounds_error=False)
+    interpolation = interpolate.interp1d(
+        x_train, y_train, fill_value=fill_value, bounds_error=False)
     y_test = interpolation(x_test)
 
     # adapt output scale
@@ -162,7 +162,7 @@ def stepfunction_ev(
     # handle case of small training data sizes
     if x_train.size < 2:
         return _interpolate_small_input(x_test, x_train, y_train, None, y_asymptotic)
-    
+
     # find indeces of x_test if sorted into x_train
     if not all(sorted(x_train) == x_train):
         raise ValueError('Input array x_train must be sorted in ascending order.')
@@ -261,7 +261,8 @@ def group_frequency(frequency, value, n_sig_dig=2):
         if not all(sorted(value) == value):
             raise ValueError('Value array must be sorted in ascending order.')
         # add frequency for equal value
-        value, start_indices = np.unique(sig_dig_list(value, n_sig_dig=n_sig_dig), return_index=True)
+        value, start_indices = np.unique(
+            sig_dig_list(value, n_sig_dig=n_sig_dig), return_index=True)
         start_indices = np.insert(start_indices, len(value), len(frequency))
         frequency = np.array([
             sum(frequency[start_indices[i]:start_indices[i+1]])
