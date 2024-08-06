@@ -21,10 +21,13 @@ Test tc_clim_change module
 
 import unittest
 
+import unittest
+import pandas as pd
+import numpy as np
 import climada.hazard.tc_clim_change as tc_cc
+from climada.hazard.tc_clim_change import MAP_BASINS_NAMES, MAP_VARS_NAMES, MAP_PERC_NAMES, YEAR_WINDOWS_PROPS
 
 class TestKnutson(unittest.TestCase):
-    """Test loading funcions from the TropCyclone class"""
 
     def test_get_knutson_scaling_pass(self):
         """Test get_knutson_criterion function."""
@@ -71,6 +74,75 @@ class TestKnutson(unittest.TestCase):
         self.assertAlmostEqual(data_knutson[-1,0,0], 5.848)
         self.assertAlmostEqual(data_knutson[-1,0,-1], 22.803)
         self.assertAlmostEqual(data_knutson[2,3,2], 4.324)
+
+    def test_valid_inputs(self):
+        df = tc_cc.get_knutson_scaling_factor()
+        self.assertIsInstance(df, pd.DataFrame)
+        self.assertEqual(df.shape, (21, 4))  # Default yearly steps produce 21 steps, 4 RCPs
+
+    def test_invalid_baseline_start_year(self):
+        with self.assertRaises(ValueError):
+            tc_cc.get_knutson_scaling_factor(baseline=(1870, 2022))
+
+    def test_invalid_baseline_end_year(self):
+        with self.assertRaises(ValueError):
+            tc_cc.get_knutson_scaling_factor(baseline=(1982, 2110))
+
+    def test_no_scaling_factors(self):
+        df = tc_cc.get_knutson_scaling_factor(basin='ZZZZZ')
+        self.assertIsInstance(df, pd.DataFrame)
+        self.assertTrue((df.values == 1).all())  # Default value when no scaling factors found
+
+    def test_variable_mapping_cat05(self):
+        self.assertEqual(MAP_VARS_NAMES['cat05'], 0)
+
+    def test_variable_mapping_cat45(self):
+        self.assertEqual(MAP_VARS_NAMES['cat45'], 1)
+
+    def test_variable_mapping_intensity(self):
+        self.assertEqual(MAP_VARS_NAMES['intensity'], 2)
+
+    def test_percentile_mapping_5_10(self):
+        self.assertEqual(MAP_PERC_NAMES['5/10'], 0)
+
+    def test_percentile_mapping_25(self):
+        self.assertEqual(MAP_PERC_NAMES['25'], 1)
+
+    def test_percentile_mapping_50(self):
+        self.assertEqual(MAP_PERC_NAMES['50'], 2)
+
+    def test_percentile_mapping_75(self):
+        self.assertEqual(MAP_PERC_NAMES['75'], 3)
+
+    def test_percentile_mapping_90_95(self):
+        self.assertEqual(MAP_PERC_NAMES['90/95'], 4)
+
+    def test_basin_mapping_NA(self):
+        self.assertEqual(MAP_BASINS_NAMES['NA'], 0)
+
+    def test_basin_mapping_WP(self):
+        self.assertEqual(MAP_BASINS_NAMES['WP'], 1)
+
+    def test_basin_mapping_EP(self):
+        self.assertEqual(MAP_BASINS_NAMES['EP'], 2)
+
+    def test_basin_mapping_NI(self):
+        self.assertEqual(MAP_BASINS_NAMES['NI'], 3)
+
+    def test_basin_mapping_SI(self):
+        self.assertEqual(MAP_BASINS_NAMES['SI'], 4)
+
+    def test_basin_mapping_SP(self):
+        self.assertEqual(MAP_BASINS_NAMES['SP'], 5)
+    
+    def test_year_windows_props_start(self):
+        self.assertEqual(YEAR_WINDOWS_PROPS['start'], 2000)
+        
+    def test_year_windows_props_end(self):
+        self.assertEqual(YEAR_WINDOWS_PROPS['end'], 2100)
+        
+    def test_year_windows_props_smoothing(self):
+        self.assertEqual(YEAR_WINDOWS_PROPS['smoothing'], 5)
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestKnutson)
