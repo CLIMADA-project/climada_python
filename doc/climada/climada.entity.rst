@@ -15,12 +15,3 @@ climada\.entity\.entity\_def module
     :members:
     :undoc-members:
     :show-inheritance:
-
-climada\.entity\.tag module
----------------------------
-
-.. automodule:: climada.entity.tag
-    :members:
-    :undoc-members:
-    :show-inheritance:
-

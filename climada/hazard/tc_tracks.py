@@ -331,11 +331,11 @@ class TCTracks():
 
         When using data from IBTrACS, make sure to be familiar with the scope and limitations of
         IBTrACS, e.g. by reading the official documentation
-        (https://www.ncdc.noaa.gov/ibtracs/pdf/IBTrACS_version4_Technical_Details.pdf). Reading the
-        CLIMADA documentation can't replace a thorough understanding of the underlying data. This
-        function only provides a (hopefully useful) interface for the data input, but cannot
-        provide any guidance or make recommendations about if and how to use IBTrACS data for your
-        particular project.
+        (https://www.ncei.noaa.gov/sites/default/files/2021-07/IBTrACS_version4_Technical_Details.pdf).
+        Reading the CLIMADA documentation can't replace a thorough understanding of the underlying
+        data. This function only provides a (hopefully useful) interface for the data input, but
+        cannot provide any guidance or make recommendations about if and how to use IBTrACS data
+        for your particular project.
 
         Resulting tracks are required to have both pressure and wind speed information at all time
         steps. Therefore, all track positions where one of wind speed or pressure are missing are
@@ -374,8 +374,8 @@ class TCTracks():
         rescale_windspeeds : bool, optional
             If True, all wind speeds are linearly rescaled to 1-minute sustained winds.
             Note however that the IBTrACS documentation (Section 5.2,
-            https://www.ncdc.noaa.gov/ibtracs/pdf/IBTrACS_version4_Technical_Details.pdf) includes
-            a warning about this kind of conversion: "While a multiplicative factor can describe
+            https://www.ncei.noaa.gov/sites/default/files/2021-07/IBTrACS_version4_Technical_Details.pdf)
+            includes a warning about this kind of conversion: "While a multiplicative factor can
             the numerical differences, there are procedural and observational differences between
             agencies that can change through time, which confounds the simple multiplicative
             factor." Default: True
@@ -1383,7 +1383,10 @@ class TCTracks():
         df_attrs = pd.DataFrame([t.attrs for t in data], index=ds_combined["storm"].to_series())
         ds_combined = xr.merge([ds_combined, df_attrs.to_xarray()])
 
-        encoding = {v: dict(zlib=True, complevel=complevel) for v in ds_combined.data_vars}
+        encoding = {
+            v: dict(zlib=_zlib_from_dataarray(ds_combined[v]), complevel=complevel)
+            for v in ds_combined.data_vars
+        }
         LOGGER.info('Writing %d tracks to %s', self.size, file_name)
         ds_combined.to_netcdf(file_name, encoding=encoding)
 
@@ -2435,3 +2438,18 @@ def set_category(max_sus_wind, wind_unit='kn', saffir_scale=None):
         return (np.argwhere(max_wind < saffir_scale) - 1)[0][0]
     except IndexError:
         return -1
+
+def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
+    """Return true if data_var is of numerical type, return False otherwise
+
+    Parameters
+    ----------
+    data_var : xr.DataArray
+
+    Returns
+    -------
+    bool
+    """
+    if np.issubdtype(data_var.dtype, float) or np.issubdtype(data_var.dtype, int):
+        return True
+    return False

@@ -161,7 +161,12 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
 
    .. code-block:: shell
 
-      mamba create -n climada_env python=3.9
+      mamba create -n climada_env "python=3.9.*"
+
+   .. hint::
+
+      Use the wildcard ``.*`` at the end to allow a downgrade of the bugfix version of Python.
+      This increases compatibility when installing the requirements in the next step.
 
    .. note::
 
