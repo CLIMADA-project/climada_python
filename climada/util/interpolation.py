@@ -33,8 +33,8 @@ def interpolate_ev(
         x_test,
         x_train,
         y_train,
-        x_scale = None,
-        y_scale = None,
+        logx = False,
+        logy = False,
         x_threshold = None,
         y_threshold = None,
         y_asymptotic = np.nan,
@@ -52,10 +52,10 @@ def interpolate_ev(
             1-D array of x-values of training data
         y_train : array_like
             1-D array of y-values of training data
-        x_scale : str, optional
-            If set to 'log', x_values are convert to log scale. Defaults to None.
-        y_scale : str, optional
-            If set to 'log', x_values are convert to log scale. Defaults to None.
+        logx : bool, optional
+            If set to True, x_values are convert to log scale. Defaults to False.
+        logy : bool, optional
+            If set to True, x_values are convert to log scale. Defaults to False.
         x_threshold : float, optional
             Lower threshold to filter x_train. Defaults to None.
         y_threshold : float, optional
@@ -79,24 +79,24 @@ def interpolate_ev(
 
     # preprocess interpolation data
     x_test, x_train, y_train = _preprocess_interpolation_data(
-        x_test, x_train, y_train, x_scale, y_scale, x_threshold, y_threshold
+        x_test, x_train, y_train, logx, logy, x_threshold, y_threshold
     )
 
       # handle case of small training data sizes
     if x_train.size < 2:
         LOGGER.warning('Data is being extrapolated.')
-        return _interpolate_small_input(x_test, x_train, y_train, y_scale, y_asymptotic)
+        return _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic)
 
     # calculate fill values
     if isinstance(fill_value, tuple):
         if fill_value[0] == 'maximum':
             fill_value = (
                 np.max(y_train),
-                np.log10(fill_value[1]) if y_scale == 'log' else fill_value[1]
+                np.log10(fill_value[1]) if logy else fill_value[1]
                 )
-        elif y_scale == 'log':
+        elif logy:
             fill_value = tuple(np.log10(fill_value))
-    elif isinstance(fill_value, (float, int)) and y_scale == 'log':
+    elif isinstance(fill_value, (float, int)) and logy:
         fill_value = np.log10(fill_value)
 
     # warn if data is being extrapolated
@@ -111,7 +111,7 @@ def interpolate_ev(
     y_test = interpolation(x_test)
 
     # adapt output scale
-    if y_scale == 'log':
+    if logy:
         y_test = np.power(10., y_test)
     return y_test
 
@@ -170,8 +170,8 @@ def _preprocess_interpolation_data(
         x_test,
         x_train,
         y_train,
-        x_scale,
-        y_scale,
+        logx,
+        logy,
         x_threshold,
         y_threshold
     ):
@@ -201,14 +201,14 @@ def _preprocess_interpolation_data(
         y_train = y_train[y_th]
 
     # convert to log scale
-    if x_scale == 'log':
+    if logx:
         x_train, x_test = np.log10(x_train), np.log10(x_test)
-    if y_scale == 'log':
+    if logy:
         y_train = np.log10(y_train)
 
     return (x_test, x_train, y_train)
 
-def _interpolate_small_input(x_test, x_train, y_train, y_scale, y_asymptotic):
+def _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic):
     """
     helper function to handle if interpolation data is small (empty or one point)
     """
@@ -216,8 +216,8 @@ def _interpolate_small_input(x_test, x_train, y_train, y_scale, y_asymptotic):
     if x_train.size == 0:
         return np.full_like(x_test, y_asymptotic)
 
-    # reconvert logarithmic y_scale to normal y_train
-    if y_scale == 'log':
+    # reconvert logarithmic y_train to original y_train
+    if logy:
         y_train = np.power(10., y_train)
 
     # if only one (x_train, y_train), return stepfunction with
