@@ -155,19 +155,15 @@ def get_knutson_scaling_factor(
                             index=mid_years,
                             columns=gmst_info['rcps'])
 
-    base_start_in_gmst_ind = base_start_year - gmst_info['gmst_start_year']
-    base_end_in_gmst_ind = base_end_year - gmst_info['gmst_start_year']
+    base_start_pos = base_start_year - gmst_info['gmst_start_year']
+    base_end_pos = base_end_year - gmst_info['gmst_start_year']
 
     # Step 1.
     beta = 0.5 * log(0.01 * knutson_value + 1) # equation 6 in Jewson (2021)
     tc_properties = np.exp(beta * gmst_info['gmst_data']) # equation 3 in Jewson (2021)
 
     # Step 2.
-    baseline = np.array([
-        np.mean(tc_properties[rcp_num,
-                              base_start_in_gmst_ind:base_end_in_gmst_ind + 1])
-        for rcp_num in range(num_of_rcps)
-    ])
+    baseline = np.mean(tc_properties[:, base_start_pos:base_end_pos + 1], 1)
 
     # Step 3.
     for i, mid_year in enumerate(mid_years):
@@ -177,10 +173,10 @@ def get_knutson_scaling_factor(
             gmst_years - mid_year_in_gmst_ind - 1,
             mid_year_in_gmst_ind
         )
-        ind1 = mid_year_in_gmst_ind - actual_smoothing
-        ind2 = mid_year_in_gmst_ind + actual_smoothing + 1
+        fut_start_pos = mid_year_in_gmst_ind - actual_smoothing
+        fut_end_pos = mid_year_in_gmst_ind + actual_smoothing + 1
 
-        prediction = np.mean(tc_properties[:, ind1:ind2], 1)
+        prediction = np.mean(tc_properties[:, fut_start_pos:fut_end_pos], 1)
 
         # assess fractional changes
         predicted_change[i] = ((prediction - baseline) /
