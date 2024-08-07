@@ -22,31 +22,99 @@ Test tc_clim_change module
 import unittest
 
 import unittest
+from math import log
 import pandas as pd
 import numpy as np
 import climada.hazard.tc_clim_change as tc_cc
-from climada.hazard.tc_clim_change import MAP_BASINS_NAMES, MAP_VARS_NAMES, MAP_PERC_NAMES, YEAR_WINDOWS_PROPS
 
 class TestKnutson(unittest.TestCase):
 
-    def test_get_knutson_scaling_pass(self):
+    def test_get_knutson_scaling_calculations(self):
+
+        basin = 'NA'
+        variable = 'cat05'
+        percentile = '5/10'
+        base_start, base_end = 1950, 2018
+        yearly_steps = 5
+
+        predicted_changes = tc_cc.get_knutson_scaling_factor(
+                    percentile=percentile,
+                    variable=variable,
+                    basin=basin,
+                    baseline=(base_start, base_end),
+                    yearly_steps=yearly_steps
+        )
+
+        ## Test computations of future changes
+        # Load data
+        gmst_info = tc_cc.get_gmst_info()
+
+        var_id, basin_id, perc_id = (tc_cc.MAP_VARS_NAMES[variable],
+                                    tc_cc.MAP_BASINS_NAMES[basin],
+                                    tc_cc.MAP_PERC_NAMES[percentile])
+
+        knutson_data = tc_cc.get_knutson_data()
+        knutson_value = knutson_data[var_id, basin_id, perc_id]
+    
+        start_ind = base_start - gmst_info['gmst_start_year']
+        end_ind = base_end - gmst_info['gmst_start_year']
+
+        # Apply model
+        beta = 0.5 * log(0.01 * knutson_value + 1)
+        tc_properties = np.exp(beta * gmst_info['gmst_data'])
+
+        # Assess baseline value
+        baseline = np.mean(tc_properties[:, start_ind:end_ind + 1], 1)
+
+        # Assess future value and test predicted change from baseline is
+        # the same as given by function
+        smoothing = 5
+
+        for target_year in [2030, 2050, 2070, 2090]:
+            target_year_ind = target_year - gmst_info['gmst_start_year']
+            ind1 = target_year_ind - smoothing
+            ind2 = target_year_ind + smoothing + 1
+
+            prediction = np.mean(tc_properties[:, ind1:ind2], 1)
+            predicted_change = ((prediction - baseline) / baseline) * 100
+
+            np.testing.assert_array_almost_equal(predicted_changes.loc[target_year, '2.6'], predicted_change[0])
+            np.testing.assert_array_almost_equal(predicted_changes.loc[target_year, '4.5'], predicted_change[1])
+            np.testing.assert_array_almost_equal(predicted_changes.loc[target_year, '6.0'], predicted_change[2])
+            np.testing.assert_array_almost_equal(predicted_changes.loc[target_year, '8.5'], predicted_change[3])
+
+    def test_get_knutson_scaling_structure(self):
         """Test get_knutson_criterion function."""
-        criterion = tc_cc.get_knutson_scaling_factor(
-                    percentile='5/10',
-                    baseline=(1950, 2018))
-        self.assertEqual(criterion.shape, (21, 4))
+        
+        yearly_steps = 8
+        predicted_changes = tc_cc.get_knutson_scaling_factor(yearly_steps=yearly_steps)
 
-        self.assertEqual(criterion.columns[0], '2.6')
-        self.assertEqual(criterion.columns[1], '4.5')
-        self.assertEqual(criterion.columns[2], '6.0')
-        self.assertEqual(criterion.columns[3], '8.5')
+        np.testing.assert_equal(predicted_changes.columns, np.array(['2.6', '4.5', '6.0', '8.5']))
 
-        self.assertAlmostEqual(criterion.loc[2030, '2.6'], -16.13547, 4)
-        self.assertAlmostEqual(criterion.loc[2050, '4.5'], -25.19448, 4)
-        self.assertAlmostEqual(criterion.loc[2070, '6.0'], -31.06633, 4)
-        self.assertAlmostEqual(criterion.loc[2100, '8.5'], -58.98637, 4)
+        simulated_years = np.arange(tc_cc.YEAR_WINDOWS_PROPS['start'],
+                                    tc_cc.YEAR_WINDOWS_PROPS['end']+1,
+                                    yearly_steps)
+        np.testing.assert_equal(predicted_changes.index, simulated_years)
 
-    def test_get_gmst_pass(self):
+    def test_get_knutson_scaling_valid_inputs(self):
+        df = tc_cc.get_knutson_scaling_factor()
+        self.assertIsInstance(df, pd.DataFrame)
+        np.testing.assert_equal(df.shape, (21, 4))
+
+    def test_get_knutson_scaling_invalid_baseline_start_year(self):
+        with self.assertRaises(ValueError):
+            tc_cc.get_knutson_scaling_factor(baseline=(1870, 2022))
+
+    def test_get_knutson_scaling_invalid_baseline_end_year(self):
+        with self.assertRaises(ValueError):
+            tc_cc.get_knutson_scaling_factor(baseline=(1982, 2110))
+
+    def test_get_knutson_scaling_no_scaling_factors_for_unknonw_basin(self):
+        df = tc_cc.get_knutson_scaling_factor(basin='ZZZZZ')
+        self.assertIsInstance(df, pd.DataFrame)
+        np.testing.assert_equal(df.values, np.ones_like(df.values))
+
+    def test_get_gmst(self):
         """Test get_gmst_info function."""
         gmst_info = tc_cc.get_gmst_info()
 
@@ -74,75 +142,6 @@ class TestKnutson(unittest.TestCase):
         self.assertAlmostEqual(data_knutson[-1,0,0], 5.848)
         self.assertAlmostEqual(data_knutson[-1,0,-1], 22.803)
         self.assertAlmostEqual(data_knutson[2,3,2], 4.324)
-
-    def test_valid_inputs(self):
-        df = tc_cc.get_knutson_scaling_factor()
-        self.assertIsInstance(df, pd.DataFrame)
-        self.assertEqual(df.shape, (21, 4))  # Default yearly steps produce 21 steps, 4 RCPs
-
-    def test_invalid_baseline_start_year(self):
-        with self.assertRaises(ValueError):
-            tc_cc.get_knutson_scaling_factor(baseline=(1870, 2022))
-
-    def test_invalid_baseline_end_year(self):
-        with self.assertRaises(ValueError):
-            tc_cc.get_knutson_scaling_factor(baseline=(1982, 2110))
-
-    def test_no_scaling_factors(self):
-        df = tc_cc.get_knutson_scaling_factor(basin='ZZZZZ')
-        self.assertIsInstance(df, pd.DataFrame)
-        self.assertTrue((df.values == 1).all())  # Default value when no scaling factors found
-
-    def test_variable_mapping_cat05(self):
-        self.assertEqual(MAP_VARS_NAMES['cat05'], 0)
-
-    def test_variable_mapping_cat45(self):
-        self.assertEqual(MAP_VARS_NAMES['cat45'], 1)
-
-    def test_variable_mapping_intensity(self):
-        self.assertEqual(MAP_VARS_NAMES['intensity'], 2)
-
-    def test_percentile_mapping_5_10(self):
-        self.assertEqual(MAP_PERC_NAMES['5/10'], 0)
-
-    def test_percentile_mapping_25(self):
-        self.assertEqual(MAP_PERC_NAMES['25'], 1)
-
-    def test_percentile_mapping_50(self):
-        self.assertEqual(MAP_PERC_NAMES['50'], 2)
-
-    def test_percentile_mapping_75(self):
-        self.assertEqual(MAP_PERC_NAMES['75'], 3)
-
-    def test_percentile_mapping_90_95(self):
-        self.assertEqual(MAP_PERC_NAMES['90/95'], 4)
-
-    def test_basin_mapping_NA(self):
-        self.assertEqual(MAP_BASINS_NAMES['NA'], 0)
-
-    def test_basin_mapping_WP(self):
-        self.assertEqual(MAP_BASINS_NAMES['WP'], 1)
-
-    def test_basin_mapping_EP(self):
-        self.assertEqual(MAP_BASINS_NAMES['EP'], 2)
-
-    def test_basin_mapping_NI(self):
-        self.assertEqual(MAP_BASINS_NAMES['NI'], 3)
-
-    def test_basin_mapping_SI(self):
-        self.assertEqual(MAP_BASINS_NAMES['SI'], 4)
-
-    def test_basin_mapping_SP(self):
-        self.assertEqual(MAP_BASINS_NAMES['SP'], 5)
-    
-    def test_year_windows_props_start(self):
-        self.assertEqual(YEAR_WINDOWS_PROPS['start'], 2000)
-        
-    def test_year_windows_props_end(self):
-        self.assertEqual(YEAR_WINDOWS_PROPS['end'], 2100)
-        
-    def test_year_windows_props_smoothing(self):
-        self.assertEqual(YEAR_WINDOWS_PROPS['smoothing'], 5)
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestKnutson)
