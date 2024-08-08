@@ -328,9 +328,21 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
 
-    if 'cmap' not in kwargs:
-        kwargs['cmap'] = CMAP_RASTER
+    # prepare colormap
+    cmap = plt.get_cmap(kwargs.pop("cmap", CMAP_RASTER))
+    cmap.set_bad("gainsboro")  # For NaNs and infs
+    cmap.set_under("white", alpha=0)  # For values below vmin
 
+    # prepare boundary values
+    if "norm" in kwargs:
+        min_value = kwargs["norm"].vmin
+        vmin = None  # We will pass norm
+        del kwargs["vmin"], kwargs["vmax"]
+    else:
+        min_value = np.nanmin(array_sub)
+        vmin = kwargs.pop("vmin", min_value)
+    below_value = min_value/2 if min_value > 0 else min_value-1
+    
     # Generate each subplot
     for array_im, axis, tit, name in zip(list_arr, axes_iter.flatten(), list_tit, list_name):
         if coord.shape[0] != array_im.size:
@@ -340,11 +352,11 @@ def geo_im_from_array(array_sub, coord, var_name, title,
             grid_x, grid_y = np.mgrid[
                 extent[0]: extent[1]: complex(0, RESOLUTION),
                 extent[2]: extent[3]: complex(0, RESOLUTION)]
-            grid_im = griddata((coord[:, 1], coord[:, 0]), array_im,
-                               (grid_x, grid_y))
-            # Create mask for original NaN values in the data
-            nan_mask = griddata((coord[:, 1], coord[:, 0]), np.isnan(array_im.astype(float)),
-                                (grid_x, grid_y), fill_value=0).astype(bool)
+            grid_im = griddata(
+                (coord[:, 1], coord[:, 0]),
+                array_im,
+                (grid_x, grid_y),
+                fill_value=below_value)
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()
             grid_y = coord[:, 0].reshape((width, height)).transpose()
@@ -353,7 +365,6 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                 grid_y = np.flip(grid_y)
                 grid_im = np.flip(grid_im, 1)
             grid_im = np.resize(grid_im, (height, width, 1))
-            nan_mask = np.isnan(grid_im)
         axis.set_extent((extent[0] - mid_lon, extent[1] - mid_lon,
                          extent[2], extent[3]), crs=proj)
 
@@ -363,11 +374,15 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         # Create colormesh, colorbar and labels in axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                      pad=0.1, axes_class=plt.Axes)
-        img = axis.pcolormesh(grid_x - mid_lon, grid_y, np.squeeze(grid_im),
-                              transform=proj, **kwargs)
-        # Add gray color for NaN values
-        axis.pcolormesh(grid_x - mid_lon, grid_y, np.squeeze(nan_mask),
-                              transform=proj, cmap=mpl.colors.ListedColormap(['none', 'gainsboro']))
+        img = axis.pcolormesh(
+            grid_x - mid_lon,
+            grid_y,
+            np.squeeze(grid_im),
+            transform=proj,
+            cmap=cmap,
+            vmin=vmin,
+            **kwargs
+        )
         cbar = plt.colorbar(img, cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title("\n".join(wrap(tit)))
@@ -924,8 +939,7 @@ def plot_from_gdf(
     # check if inputs are correct types
     if not isinstance(gdf, gpd.GeoDataFrame):
         raise ValueError("gdf is not a GeoDataFrame")
-    gdf = gdf[['geometry', *[col for col in gdf.columns if col != 'geometry']]]
-    gdf_values = gdf.values[:,1:].T
+    gdf_values = gdf.drop(columns='geometry').values.T
 
     # read meta data for fig and axis labels
     if not isinstance(colorbar_name, str):
@@ -946,7 +960,7 @@ def plot_from_gdf(
     ):
         kwargs.update(
             {'norm': mpl.colors.LogNorm(
-                vmin=gdf.values[:,1:].min(), vmax=gdf.values[:,1:].max()
+                vmin=np.nanmin(gdf_values), vmax=np.nanmax(gdf_values)
                 ),
             'vmin': None, 'vmax': None}
         )
