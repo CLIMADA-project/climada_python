@@ -34,6 +34,7 @@ from climada.util.constants import (HAZ_DEMO_FL, WS_DEMO_NC, DEF_CRS)
 from climada.util.api_client import Client
 from climada.util import coordinates as u_coord
 from climada.test import get_test_file
+from climada.hazard.test.test_base import dummy_hazard
 
 DATA_DIR = CONFIG.test_data.dir()
 
@@ -388,6 +389,148 @@ class TestBase(unittest.TestCase):
         self.assertTrue(np.allclose(haz_fl.intensity.data, inten_orig.data))
         self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
 
+class TestRPCal(unittest.TestCase):
+    """Test local return period and exceedance frequency functionalities"""
+
+    def test_local_exceedance_intensity_options(self):
+        """Test local exceedance frequencies with different options"""
+        haz = dummy_hazard()
+        haz.intensity = sparse.csr_matrix([
+                [0, 0, 1e1],
+                [0.2, 1e1, 1e2],
+                [1e3, 1e3, 1e3]
+            ])
+        haz.intensity_thres = .5
+        haz.frequency = np.array([1., .1, .01])
+        return_period = (1000, 30, .1)
+        # first centroid has intensities 1e3 with frequencies .01, cum freq .01
+        # second centroid has intensities 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # third centroid has intensities 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at frequencies .001, .033, 10.
+
+        # test stepfunction
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1), method='stepfunction')
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e3, 1e1, 0],
+                [1e3, 1e2, 0]
+                ])
+        )
+
+        # test log log extrapolation
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1))
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e5, 1e2, 1e-3],
+                [1e4, 300, 1]
+                ]),
+            rtol=0.8)
+
+        # test log log interpolation and border values
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1), fill_value = (1e5, 1.))
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e5, 1e2, 1],
+                [1e5, 300, 1]
+                ]),
+            rtol=0.8)
+
+        # test log log interpolation with maximum border values
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1), fill_value = ('maximum', 1.))
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e3, 1e2, 1],
+                [1e3, 300, 1]
+                ]),
+            rtol=0.8)
+
+        # test lin lin interpolation with maximum border values
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1), fill_value = ('maximum', 1.),
+                frequency_scale='lin', intensity_scale='lin')
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e3, 750, 1],
+                [1e3, 750, 1]
+                ]),
+            rtol=0.8)
+
+    def test_local_return_period_options(self):
+        """Test local return periods different options"""
+        haz = dummy_hazard()
+        haz.intensity = sparse.csr_matrix([
+                [0, 0, 1e1],
+                [0.0, 1e1, 1e2],
+                [1e3, 1e3, 1e3]
+            ])
+        haz.intensity_thres = .5
+        haz.frequency = np.array([1., .1, .01])
+        # first centroid has intensities 1e3 with frequencies .01, cum freq .01
+        # second centroid has intensities 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # third centroid has intensities 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at intensities .1, 300, 1e4
+
+        # test stepfunction
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5), method='stepfunction')
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [100, 100, np.nan],
+                [1/.11, 100, np.nan],
+                [1/1.11, 100, np.nan]
+                ])
+        )
+
+        # test log log extrapolation
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5), fill_value = 'extrapolate')
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [100, 100, np.nan],
+                [1., 30, 1e3],
+                [.01, 30, 1e4]
+                ]),
+            rtol=0.8)
+
+        # test log log interpolation and border values
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5), fill_value = (.001, 10.))
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [100, 100, np.nan],
+                [1e3, 30, 0.1],
+                [1e3, 30, 0.1]
+                ]),
+        rtol=0.8)
+
+        # test log log interpolation with maximum border values
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5))
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [100, 100, np.nan],
+                [1/.11, 30, np.nan],
+                [1/1.11, 30, np.nan]
+                ]),
+        rtol=0.8)
 
 # Execute Tests
 if __name__ == "__main__":
@@ -395,4 +538,5 @@ if __name__ == "__main__":
     TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestStormEurope))
     TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestTcTracks))
     TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestBase))
+    TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestRPCal))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -29,6 +29,7 @@ from climada.engine import impact_data as im_d
 from climada.engine.unsequa import InputVar, CalcCostBenefit
 from climada.entity.entity_def import Entity
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
+from climada.engine.test.test_impact import dummy_impact
 from climada.hazard import Hazard
 from climada import CONFIG
 from climada.util.constants import (
@@ -287,6 +288,92 @@ class TestCalcCostBenefit(unittest.TestCase):
                         len(attr), len(unc_data.param_labels) * (4 + 4 + 4)
                     )
 
+class TestImpactRPCals(unittest.TestCase):
+    """Test the return periods and exceedance impact calculation of Impact objects"""
+
+    def test_local_exceedance_impact_options(self):
+        """Test local exceedance impacts per return period with different options"""
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sp.sparse.csr_matrix(
+                    np.array([
+                        [0, 0, 0, 1e1],
+                        [0, 0, 1e1, 1e2],
+                        [0, 1e3, 1e3, 1e3]
+                        ])
+                )
+        impact.frequency = np.array([1., .1, .01])
+        # first centroid has impacts None with cum frequencies None
+        # second centroid has impacts 1e3 with frequencies .01, cum freq .01
+        # third centroid has impacts 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # fourth centroid has impacts 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at frequencies .001, .033, 10.
+
+        # test stepfunction
+        impact_stats, _, _ = impact.local_exceedance_impact(
+                return_periods=(1000, 30, .1), method='stepfunction')
+        np.testing.assert_allclose(
+            impact_stats.values[:,1:].astype(float),
+            np.array([
+                [0, 0, 0],
+                [1e3, 0, 0],
+                [1e3, 1e1, 0],
+                [1e3, 1e2, 0]
+                ])
+        )
+
+        # test log log extrapolation
+        impact_stats, _, _ = impact.local_exceedance_impact(
+                return_periods=(1000, 30, .1))
+        np.testing.assert_allclose(
+            impact_stats.values[:,1:].astype(float),
+            np.array([
+                [0, 0, 0],
+                [1e3, 0, 0],
+                [1e5, 1e2, 1e-3],
+                [1e4, 300, 1]
+                ]),
+            rtol=0.8)
+
+        # test log log interpolation and border values
+        impact_stats, _, _ = impact.local_exceedance_impact(
+                return_periods=(1000, 30, .1), fill_value = (1e5, 1.))
+        np.testing.assert_allclose(
+            impact_stats.values[:,1:].astype(float),
+            np.array([
+                [0, 0, 0],
+                [1e3, 0, 0],
+                [1e5, 1e2, 1],
+                [1e5, 300, 1]
+                ]),
+            rtol=0.8)
+
+        # test log log interpolation with maximum border values
+        impact_stats, _, _ = impact.local_exceedance_impact(
+                return_periods=(1000, 30, .1), fill_value = ('maximum', 1.))
+        np.testing.assert_allclose(
+            impact_stats.values[:,1:].astype(float),
+            np.array([
+                [0, 0, 0],
+                [1e3, 0, 0],
+                [1e3, 1e2, 1],
+                [1e3, 300, 1]
+                ]),
+            rtol=0.8)
+
+        # test lin lin interpolation with maximum border values
+        impact_stats, _, _ = impact.local_exceedance_impact(
+                return_periods=(1000, 30, .1), fill_value = ('maximum', 1.),
+                frequency_scale='lin', impact_scale='lin')
+        np.testing.assert_allclose(
+            impact_stats.values[:,1:].astype(float),
+            np.array([
+                [0, 0, 0],
+                [1e3, 0, 0],
+                [1e3, 750, 1],
+                [1e3, 750, 1]
+                ]),
+            rtol=0.8)
 
 # Execute Tests
 if __name__ == "__main__":
@@ -294,4 +381,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGDPScaling))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEmdatToImpact))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcCostBenefit))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactRPCals))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
