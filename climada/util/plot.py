@@ -974,7 +974,7 @@ def plot_from_gdf(
         gdf_values,
         gdf.geometry.get_coordinates().values[:,::-1],
         colorbar_name,
-        title_subplots(gdf.columns[1:]),
+        title_subplots(gdf.drop(columns="geometry").columns),
         smooth=smooth,
         axes=axis,
         figsize=figsize,
