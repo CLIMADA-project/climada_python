@@ -19,26 +19,26 @@ Test engine.
 
 """
 
-import unittest
-import numpy as np
 import copy
 import time
-import scipy as sp
+import unittest
 
-from climada.engine import impact_data as im_d
-from climada.engine.unsequa import InputVar, CalcCostBenefit
-from climada.entity.entity_def import Entity
-from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
-from climada.hazard import Hazard
+import numpy as np
+import scipy as sp
+from tables.exceptions import HDF5ExtError
+
 from climada import CONFIG
+from climada.engine import impact_data as im_d
+from climada.engine.unsequa import CalcCostBenefit, InputVar
+from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
+from climada.entity.entity_def import Entity
+from climada.hazard import Hazard
 from climada.util.constants import (
+    ENT_DEMO_FUTURE,
+    ENT_DEMO_TODAY,
     EXP_DEMO_H5,
     HAZ_DEMO_H5,
-    ENT_DEMO_TODAY,
-    ENT_DEMO_FUTURE,
 )
-
-from tables.exceptions import HDF5ExtError
 
 DATA_DIR = CONFIG.engine.test_data.dir()
 EMDAT_TEST_CSV = DATA_DIR.joinpath("emdat_testdata_BGD_USA_1970-2017.csv")

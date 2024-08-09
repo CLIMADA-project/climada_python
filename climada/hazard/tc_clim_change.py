@@ -24,9 +24,10 @@ import pandas as pd
 
 from climada.util.constants import SYSTEM_DIR
 
-TOT_RADIATIVE_FORCE = SYSTEM_DIR.joinpath('rcp_db.xls')
+TOT_RADIATIVE_FORCE = SYSTEM_DIR.joinpath("rcp_db.xls")
 """© RCP Database (Version 2.0.5) http://www.iiasa.ac.at/web-apps/tnt/RcpDb.
 generated: 2018-07-04 10:47:59."""
+
 
 def get_knutson_criterion():
     """
@@ -44,87 +45,237 @@ def get_knutson_criterion():
     """
     # NA
     na = [
-        {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'NA', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'NA', 'category': [4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.045, 'variable': 'intensity'}
-        ]
+        {
+            "basin": "NA",
+            "category": [0, 1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "NA",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "NA",
+            "category": [3, 4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "NA",
+            "category": [4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "NA",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1.045,
+            "variable": "intensity",
+        },
+    ]
 
     # EP
     ep = [
-        {'basin': 'EP', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.163, 'variable': 'frequency'},
-        {'basin': 'EP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.193, 'variable': 'frequency'},
-        {'basin': 'EP', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1.837, 'variable': 'frequency'},
-        {'basin': 'EP', 'category': [4, 5],
-         'year': 2100, 'change': 3.375, 'variable': 'frequency'},
-        {'basin': 'EP', 'category': [0],
-         'year': 2100, 'change': 1.082, 'variable': 'intensity'},
-        {'basin': 'EP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.078, 'variable': 'intensity'}
-        ]
+        {
+            "basin": "EP",
+            "category": [0, 1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1.163,
+            "variable": "frequency",
+        },
+        {
+            "basin": "EP",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1.193,
+            "variable": "frequency",
+        },
+        {
+            "basin": "EP",
+            "category": [3, 4, 5],
+            "year": 2100,
+            "change": 1.837,
+            "variable": "frequency",
+        },
+        {
+            "basin": "EP",
+            "category": [4, 5],
+            "year": 2100,
+            "change": 3.375,
+            "variable": "frequency",
+        },
+        {
+            "basin": "EP",
+            "category": [0],
+            "year": 2100,
+            "change": 1.082,
+            "variable": "intensity",
+        },
+        {
+            "basin": "EP",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1.078,
+            "variable": "intensity",
+        },
+    ]
 
     # WP
     wp = [
-        {'basin': 'WP', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.345, 'variable': 'frequency'},
-        {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.316, 'variable': 'frequency'},
-        {'basin': 'WP', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1 - 0.169, 'variable': 'frequency'},
-        {'basin': 'WP', 'category': [4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'WP', 'category': [0],
-         'year': 2100, 'change': 1.074, 'variable': 'intensity'},
-        {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.055, 'variable': 'intensity'},
-        ]
+        {
+            "basin": "WP",
+            "category": [0, 1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1 - 0.345,
+            "variable": "frequency",
+        },
+        {
+            "basin": "WP",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1 - 0.316,
+            "variable": "frequency",
+        },
+        {
+            "basin": "WP",
+            "category": [3, 4, 5],
+            "year": 2100,
+            "change": 1 - 0.169,
+            "variable": "frequency",
+        },
+        {
+            "basin": "WP",
+            "category": [4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "WP",
+            "category": [0],
+            "year": 2100,
+            "change": 1.074,
+            "variable": "intensity",
+        },
+        {
+            "basin": "WP",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1.055,
+            "variable": "intensity",
+        },
+    ]
 
     # SP
     sp = [
-        {'basin': 'SP', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.366, 'variable': 'frequency'},
-        {'basin': 'SP', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.406, 'variable': 'frequency'},
-        {'basin': 'SP', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1 - 0.506, 'variable': 'frequency'},
-        {'basin': 'SP', 'category': [4, 5],
-         'year': 2100, 'change': 1 - 0.583, 'variable': 'frequency'}
-        ]
+        {
+            "basin": "SP",
+            "category": [0, 1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1 - 0.366,
+            "variable": "frequency",
+        },
+        {
+            "basin": "SP",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1 - 0.406,
+            "variable": "frequency",
+        },
+        {
+            "basin": "SP",
+            "category": [3, 4, 5],
+            "year": 2100,
+            "change": 1 - 0.506,
+            "variable": "frequency",
+        },
+        {
+            "basin": "SP",
+            "category": [4, 5],
+            "year": 2100,
+            "change": 1 - 0.583,
+            "variable": "frequency",
+        },
+    ]
 
     # NI
     ni = [
-        {'basin': 'NI', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'NI', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.256, 'variable': 'frequency'},
-        {'basin': 'NI', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'NI', 'category': [4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'}
-        ]
+        {
+            "basin": "NI",
+            "category": [0, 1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "NI",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1.256,
+            "variable": "frequency",
+        },
+        {
+            "basin": "NI",
+            "category": [3, 4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "NI",
+            "category": [4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+    ]
 
     # SI
     si = [
-        {'basin': 'SI', 'category': [0, 1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.261, 'variable': 'frequency'},
-        {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1 - 0.284, 'variable': 'frequency'},
-        {'basin': 'SI', 'category': [3, 4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'SI', 'category': [4, 5],
-         'year': 2100, 'change': 1, 'variable': 'frequency'},
-        {'basin': 'SI', 'category': [1, 2, 3, 4, 5],
-         'year': 2100, 'change': 1.033, 'variable': 'intensity'}
-        ]
+        {
+            "basin": "SI",
+            "category": [0, 1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1 - 0.261,
+            "variable": "frequency",
+        },
+        {
+            "basin": "SI",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1 - 0.284,
+            "variable": "frequency",
+        },
+        {
+            "basin": "SI",
+            "category": [3, 4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "SI",
+            "category": [4, 5],
+            "year": 2100,
+            "change": 1,
+            "variable": "frequency",
+        },
+        {
+            "basin": "SI",
+            "category": [1, 2, 3, 4, 5],
+            "year": 2100,
+            "change": 1.033,
+            "variable": "intensity",
+        },
+    ]
 
     return na + ep + wp + sp + ni + si
 
@@ -158,8 +309,13 @@ def calc_scale_knutson(ref_year=2050, rcp_scenario=45):
     # radiative forcings for each RCP scenario
     rad_force = pd.read_excel(TOT_RADIATIVE_FORCE)
     years = np.array([year for year in rad_force.columns if isinstance(year, int)])
-    rad_rcp = np.array([int(float(sce[sce.index('.') - 1:sce.index('.') + 2]) * 10)
-                        for sce in rad_force.Scenario if isinstance(sce, str)])
+    rad_rcp = np.array(
+        [
+            int(float(sce[sce.index(".") - 1 : sce.index(".") + 2]) * 10)
+            for sce in rad_force.Scenario
+            if isinstance(sce, str)
+        ]
+    )
 
     # mean values for Knutson values
     rf_vals = np.argwhere(rad_rcp == rcp_knu).reshape(-1)[0]

@@ -465,4 +465,3 @@ updated:
 
 - `climada.enginge.impact.Impact.calc()` and `climada.enginge.impact.Impact.calc_impact_yearset()`
 [#436](https://github.com/CLIMADA-project/climada_python/pull/436).
-
