@@ -14,7 +14,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
-- In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted, and renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+- In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+ - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 
 ### Fixed
 
