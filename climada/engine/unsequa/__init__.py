@@ -17,9 +17,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 ---
 """
 
+# isort: off
+from .unc_output import *
+from .input_var import *
+
+# isort: on
 from .calc_base import *
 from .calc_cost_benefit import *
 from .calc_delta_climate import *
 from .calc_impact import *
-from .input_var import *
-from .unc_output import *
