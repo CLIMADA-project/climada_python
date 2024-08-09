@@ -309,10 +309,15 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if not proj:
         mid_lon = 0.5 * sum(extent[:2])
         proj = ccrs.PlateCarree(central_longitude=mid_lon)
-    if 'vmin' not in kwargs:
-        kwargs['vmin'] = np.nanmin(array_sub)
-    if 'vmax' not in kwargs:
-        kwargs['vmax'] = np.nanmax(array_sub)
+
+    if "norm" in kwargs:
+        min_value = kwargs["norm"].vmin
+    else:
+        kwargs['vmin'] = kwargs.get("vmin", np.nanmin(array_sub))
+        min_value = kwargs['vmin']
+        kwargs['vmax'] = kwargs.get("vmax", np.nanmax(array_sub))
+    min_value = min_value/2 if min_value > 0 else min_value-1
+
     if axes is None:
         proj_plot = proj
         if isinstance(proj, ccrs.PlateCarree):
@@ -333,16 +338,6 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     cmap.set_bad("gainsboro")  # For NaNs and infs
     cmap.set_under("white", alpha=0)  # For values below vmin
 
-    # prepare boundary values
-    if "norm" in kwargs:
-        min_value = kwargs["norm"].vmin
-        vmin = None  # We will pass norm
-        del kwargs["vmin"], kwargs["vmax"]
-    else:
-        min_value = np.nanmin(array_sub)
-        vmin = kwargs.pop("vmin", min_value)
-    below_value = min_value/2 if min_value > 0 else min_value-1
-    
     # Generate each subplot
     for array_im, axis, tit, name in zip(list_arr, axes_iter.flatten(), list_tit, list_name):
         if coord.shape[0] != array_im.size:
@@ -356,7 +351,7 @@ def geo_im_from_array(array_sub, coord, var_name, title,
                 (coord[:, 1], coord[:, 0]),
                 array_im,
                 (grid_x, grid_y),
-                fill_value=below_value)
+                fill_value=min_value)
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()
             grid_y = coord[:, 0].reshape((width, height)).transpose()
@@ -380,7 +375,6 @@ def geo_im_from_array(array_sub, coord, var_name, title,
             np.squeeze(grid_im),
             transform=proj,
             cmap=cmap,
-            vmin=vmin,
             **kwargs
         )
         cbar = plt.colorbar(img, cax=cbax, orientation='vertical')
@@ -954,7 +948,7 @@ def plot_from_gdf(
         colorbar_name.strip().startswith(('Return Period', 'Impact')) and
         'norm' not in kwargs.keys() and
         # check if there are no zeros values in gdf
-        np.sum(gdf_values == 0) == 0 and
+        not np.any(gdf_values == 0) and
         # check if value range too small for logarithmic colorscale
         (np.log10(np.nanmax(gdf_values)) - np.log10(np.nanmin(gdf_values))) > 2
     ):
@@ -974,7 +968,7 @@ def plot_from_gdf(
         gdf_values,
         gdf.geometry.get_coordinates().values[:,::-1],
         colorbar_name,
-        title_subplots(gdf.drop(columns="geometry").columns),
+        title_subplots(np.delete(gdf.columns, np.where(gdf.columns == 'geometry'))),
         smooth=smooth,
         axes=axis,
         figsize=figsize,
