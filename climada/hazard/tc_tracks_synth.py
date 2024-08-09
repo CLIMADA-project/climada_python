@@ -138,7 +138,7 @@ FIT_TIME_ADJUST_HOUR = 6
 track parameters"""
 
 NEGLECT_LANDFALL_DURATION_HOUR = 4.5
-"""Minimum landfall duration in hours from which to correct intensity. Perturbed systems 
+"""Minimum landfall duration in hours from which to correct intensity. Perturbed systems
 spending less time than this over land will not be adjusted for landfall effects"""
 
 TRACK_EXTENSION_PARS = {
@@ -320,9 +320,9 @@ def calc_perturbed_trajectories(
         max_sustained_wind) should be modelled. One of 'explicit',
         'legacy_decay', or 'none'.
         For 'explicit', intensity as well as radius_oci (outermost closed isobar)
-        and radius_max_wind are statistically modelled depending on landfalls in 
-        historical and synthetic tracks (track intensification, peak intensity 
-        duration as well as intensity decay over the ocean and over land are 
+        and radius_max_wind are statistically modelled depending on landfalls in
+        historical and synthetic tracks (track intensification, peak intensity
+        duration as well as intensity decay over the ocean and over land are
         explicitly modelled).
         For 'legacy_decay', a landfall decay is applied when a synthetic track
         reached land; however when a synthetic track is over the ocean while its
@@ -366,12 +366,12 @@ def calc_perturbed_trajectories(
             adjust_intensity = 'legacy_decay'
         else:
             LOGGER.warning('decay is set to False - this sets adjust_intensity to "none" (as a string)')
-            adjust_intensity = 'none'            
+            adjust_intensity = 'none'
     if adjust_intensity is None:
         adjust_intensity = 'explicit'
     if adjust_intensity not in ['explicit', 'legacy_decay', 'none']:
         raise ValueError("adjust_intensity should be one of 'explicit', 'legacy_decay', 'none', or None")
-    
+
     LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
 
     pool = tracks.pool if pool is None else pool
@@ -554,7 +554,7 @@ def calc_perturbed_trajectories(
         (
             ocean_modelled_tracks,
             sid_extended_tracks_intensity,
-            sid_outside_lat_range, 
+            sid_outside_lat_range,
             sid_outside_intensity_range
         ) = _model_synth_tc_intensity(
             tracks_list=tracks_list,
@@ -744,7 +744,7 @@ def _get_random_trajectories_perts(tracks,
                                     autocorr_dspeed,
                                     decay_ddirection_hourly):
     """Generate random numbers for random walk
-    
+
     Parameters
     ----------
     tracks : List
@@ -873,7 +873,7 @@ def _apply_random_walk_pert(track: xr.Dataset,
     # apply initial location shift
     new_lon[0] = track.lon.values[0] + xy_ini[0]
     new_lat[0] = track.lat.values[0] + xy_ini[1]
-    
+
     # apply perturbations along the track segments
     for i in range(n_seg):
         new_lon[i + 1], new_lat[i + 1] = \
@@ -1147,9 +1147,9 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
         first_sea_hist = np.where(~on_land_hist)[0][0]
         first_sea_synth = np.where(~on_land_synth)[0][0]
         if on_land_synth[0] and on_land_hist[0]:
-            
+
             # 0) Both tracks start over land: shift values such as to match first point over the ocean.
-            
+
             shift_first_sea = first_sea_synth - first_sea_hist
             # no modelling needed before first synth landfall or first hist landfall.
             idx_start_model_hist = idx_lf_hist[0]
@@ -1257,7 +1257,7 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
         # else:
         #     idx_start_model = ftr_hist -
         #     np.floor(TIME_MODEL_BEFORE_HIST_LF_H/time_step_h)
-    
+
     # account for shift and buffer for historical landfall
     if idx_start_model_hist < nts:
         idx_start_model_hist = max(0, min(
@@ -1320,7 +1320,7 @@ def _create_raw_track_extension(track,
                                 time_step_h,
                                 values_df: pd.DataFrame=None):
     """Append new time steps to a track.
-    
+
     For a TC track, create a new track starting at the end of the original
     track, with a given number of time steps and optionally some variables
     values set. Longitude/Latitude are all constant and set to the last values
@@ -1732,7 +1732,7 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
     attributes to track.
 
     The input 'track' is modified in-place!
-    
+
     The following variables are fitted: Maximum sustained wind, radius of
     maximum winds and radius of outmost closed isobar.
 
@@ -1745,11 +1745,11 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
         A single TC track.
     central_pressure_pert : float
         Maximum perturbations in central pressure. Used to determine the range
-        of pressure values over which to fit data.    
+        of pressure values over which to fit data.
 
     Returns
     -------
-    track : xr.Dataset 
+    track : xr.Dataset
         Same as input parameter track but with additional attributes 'fit_intens' and
         'fit_decay' (see _get_fit_single_phase). If intensification and/or decay
         consist of less than 3 data points, the corresponding attribute is not set.
@@ -1765,7 +1765,7 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
         track.attrs['fit_intens'] = fit_attrs_intens
         if warning_slope_intens is not None:
             warning_slope += ["%s intensification %s" % (track.sid, warning_slope_intens)]
-    if where_max_intensity[-1] < len(pcen) - 4:    
+    if where_max_intensity[-1] < len(pcen) - 4:
         track_decay = track[dict(time=slice(where_max_intensity[-1],None))]
         fit_attrs_decay, warning_slope_decay = _get_fit_single_phase(track_decay, central_pressure_pert)
         track.attrs['fit_decay'] = fit_attrs_decay
@@ -1780,7 +1780,7 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
 def _get_fit_single_phase(track_sub, central_pressure_pert):
     """Calculate order and fit of variables to be modelled for a temporal subset
     of a track.
-    
+
     The following variables are fitted: Maximum sustained wind, radius of
     maximum winds and radius of outmost closed isobar.
 
@@ -1793,7 +1793,7 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
         A temporal subset of a single TC track.
     central_pressure_pert : float
         Maximum perturbations in central pressure. Used to determine the range
-        of pressure values over which to fit data.    
+        of pressure values over which to fit data.
 
     Returns
     -------
@@ -2334,7 +2334,7 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
 
     Returns
     -------
-    track : xr.Dataset 
+    track : xr.Dataset
         as input parameter track but with additional variable 'id_chunk'
         (ID of chunks value per track point) and, if shift_values_init is True,
         with variables shifted in time if the first track point over the ocean
@@ -2432,7 +2432,7 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
     Sequentially moves over each unique track["id_chunk"] and applies the following:
     * If id_chunk is negative, i.e. over land, applies landfall decay logic
     * if id_chunk is positive, i.e. over sea, applies intensification/peak duration/decay logic
-    
+
     # TODO update docstring
 
     Parameters
@@ -2463,7 +2463,7 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
     check_id_chunk(track['id_chunk'].values, track.sid, allow_missing=False)
     if np.all(track['id_chunk'] == 0):
         return track, values_ext_df
-    
+
     # organise chunks to be processed in temporal sequence
     chunk_index = np.unique(track.id_chunk.values, return_index=True)[1]
     id_chunk_sorted = [track.id_chunk.values[index] for index in sorted(chunk_index)]
@@ -2471,7 +2471,7 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
 
     last_pcen = track.central_pressure.values[-1]
     track_orig = track.copy(deep=True)
-    
+
     for id_chunk in id_chunk_sorted:
         if id_chunk == 0:
             continue
@@ -2539,7 +2539,7 @@ def _model_synth_tc_intensity(tracks_list,
             for (track,_) in tracks_intensified
         ]
         return (
-            new_tracks_list, 
+            new_tracks_list,
             sid_extended_tracks,
             sid_outside_lat_range,
             sid_outside_intensity_range
@@ -2581,7 +2581,7 @@ def _model_synth_tc_intensity(tracks_list,
         if track.orig_event_flag:
             tracks_intensified_new2.append(track)
             continue
-        
+
         if np.sum(np.isnan(track['id_chunk'].values)) == 0:
             # no track extension
             _estimate_params_track(track)
@@ -2637,7 +2637,7 @@ def _model_synth_tc_intensity(tracks_list,
                     f'Central pressure: {pcen_extend[-1]}.'
                 )
             _estimate_params_track(track)
-        
+
         # cutoff track end?
         extended_cat = np.array([
             climada.hazard.tc_tracks.set_category(
@@ -2647,7 +2647,7 @@ def _model_synth_tc_intensity(tracks_list,
             for idx in range(track.time.size)
         ])
 
-        if np.any(extended_cat >= 0):  
+        if np.any(extended_cat >= 0):
             # Kill the extended track 12 hours after dropping below Cat 1
             buffer_frames = int(np.ceil(12/time_step_h))
             cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + buffer_frames, extended_cat.size-1)
@@ -2662,7 +2662,7 @@ def _model_synth_tc_intensity(tracks_list,
                     track = track.isel(time=slice(None, advisory_range_et_idx))
                     sid_outside_intensity_range.append(track.sid)
                     sid_outside_intensity_range = list(set(sid_outside_intensity_range))
-        
+
         # If the child storm weakens below the parent's final strength, kill it
         intensityrange_out_idx = _get_finalintensity_idx(track, original_track=tracks_list[i])
         intensityrange_out_idx = max(original_size, intensityrange_out_idx)
@@ -2671,13 +2671,13 @@ def _model_synth_tc_intensity(tracks_list,
                 track = track.isel(time=slice(None, intensityrange_out_idx))
                 sid_outside_intensity_range.append(track.sid)
                 sid_outside_intensity_range = list(set(sid_outside_intensity_range))
-        
+
         tracks_intensified_new2.append(track)
         tracks_intensified_new2[i].attrs['category'] = climada.hazard.tc_tracks.set_category(
             tracks_intensified_new2[i].max_sustained_wind.values,
             tracks_intensified_new2[i].max_sustained_wind_unit
         )
-        
+
     LOGGER.debug('dropping temporary variables')
     new_tracks_list = [
         drop_temporary_variables(track, track_vars_attrs)
@@ -2760,11 +2760,11 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
             track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
         return pcen_extend
     track_stage_end = 'intens'
-    
+
     # taking last value before the chunk as a starting point from where to model intensity
     if in_chunk[0] > 0:
         in_chunk = np.append(in_chunk[0]-1, in_chunk)
-    
+
     track_chunk = track.isel(time = in_chunk)
     pcen = track_chunk.central_pressure.values
     time_days = np.append(0, np.cumsum(track_chunk.time_step.values[1:] / 24))
@@ -2773,7 +2773,7 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
     # perturb target central pressure: truncated normal distribution
     target_peak_pert = central_pressure_pert / 2 * scipy.stats.truncnorm.ppf(rnd_pars_i[0], -2, 2)
     target_peak = track_chunk.target_central_pressure.values[0] + target_peak_pert
-    
+
     if os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE'):
         target_pressure_bias = float(os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE'))
         if target_pressure_bias > 0:
@@ -3083,7 +3083,7 @@ def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
                 pcen_extend = p_landfall * p_decay_extend
 
     # correct limits
-    np.warnings.filterwarnings('ignore')
+    warnings.filterwarnings('ignore')
     cor_p = track_chunk.central_pressure.values > track_chunk.environmental_pressure.values
     track_chunk.central_pressure[cor_p] = track_chunk.environmental_pressure[cor_p]
     track_chunk.max_sustained_wind[track_chunk.max_sustained_wind < 0] = 0
@@ -3179,7 +3179,7 @@ def _estimate_params_track(track):
 
 def _get_outside_lat_idx(track):
     """Get the index of the first track point located too poleward or equatorward
-    
+
     A track point with unrealistically high wind speed for its latitude is
     considered to be too poleward or too equatorward.
 
@@ -3219,9 +3219,9 @@ def _get_outside_lat_idx(track):
     return latrange_out_idx
 
 def _get_finalintensity_idx(track, original_track):
-    '''Get the index of the frame where the synthetic track's central 
-    pressure first goes above source track's final central pressure (or 
-    the source track's maximum pressure reacheed after its minimum pressure, 
+    '''Get the index of the frame where the synthetic track's central
+    pressure first goes above source track's final central pressure (or
+    the source track's maximum pressure reacheed after its minimum pressure,
     whichever is higher). This is usually the last frame.'''
     original_pres = original_track.central_pressure.values
     min_idx = np.where(original_pres == np.min(original_pres))[0][-1]
