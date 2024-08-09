@@ -152,4 +152,3 @@ climada\.util\.yearsets module
     :members:
     :undoc-members:
     :show-inheritance:
-

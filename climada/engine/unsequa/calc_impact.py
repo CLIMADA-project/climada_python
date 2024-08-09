@@ -19,31 +19,34 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty Impact class
 """
 
-__all__ = ['CalcImpact']
+__all__ = ["CalcImpact"]
 
+import itertools
 import logging
 import time
 from typing import Union
-import itertools
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pathos.multiprocessing as mp
-# use pathos.multiprocess fork of multiprocessing for compatibility
-# wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
 from climada.engine.unsequa.calc_base import (
-    _sample_parallel_iterator,
     _multiprocess_chunksize,
+    _sample_parallel_iterator,
     _transpose_chunked_data,
 )
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
 
+# use pathos.multiprocess fork of multiprocessing for compatibility
+# wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
+
+
 LOGGER = logging.getLogger(__name__)
+
 
 class CalcImpact(Calc):
     """
@@ -77,18 +80,13 @@ class CalcImpact(Calc):
     """
 
     _input_var_names = (
-        'exp_input_var',
-        'impf_input_var',
-        'haz_input_var',
+        "exp_input_var",
+        "impf_input_var",
+        "haz_input_var",
     )
     """Names of the required uncertainty variables"""
 
-    _metric_names = (
-        'aai_agg',
-        'freq_curve',
-        'at_event',
-        'eai_exp'
-    )
+    _metric_names = ("aai_agg", "freq_curve", "at_event", "eai_exp")
     """Names of the cost benefit output metrics"""
 
     def __init__(
@@ -114,22 +112,22 @@ class CalcImpact(Calc):
         """
 
         Calc.__init__(self)
-        self.exp_input_var =  InputVar.var_to_inputvar(exp_input_var)
-        self.impf_input_var =  InputVar.var_to_inputvar(impf_input_var)
-        self.haz_input_var =  InputVar.var_to_inputvar(haz_input_var)
+        self.exp_input_var = InputVar.var_to_inputvar(exp_input_var)
+        self.impf_input_var = InputVar.var_to_inputvar(impf_input_var)
+        self.haz_input_var = InputVar.var_to_inputvar(haz_input_var)
 
         self.value_unit = self.exp_input_var.evaluate().value_unit
         self.check_distr()
 
-
-    def uncertainty(self,
-                    unc_sample,
-                    rp=None,
-                    calc_eai_exp=False,
-                    calc_at_event=False,
-                    processes=1,
-                    chunksize=None
-                    ):
+    def uncertainty(
+        self,
+        unc_sample,
+        rp=None,
+        calc_eai_exp=False,
+        calc_at_event=False,
+        processes=1,
+        chunksize=None,
+    ):
         """
         Computes the impact for each sample in unc_data.sample_df.
 
@@ -196,9 +194,10 @@ class CalcImpact(Calc):
         """
 
         if unc_sample.samples_df.empty:
-            raise ValueError("No sample was found. Please create one first"
-                             "using UncImpact.make_sample(N)")
-
+            raise ValueError(
+                "No sample was found. Please create one first"
+                "using UncImpact.make_sample(N)"
+            )
 
         # copy may not be needed, but is kept to prevent potential
         # data corruption issues. The computational cost should be
@@ -210,7 +209,7 @@ class CalcImpact(Calc):
         unit = self.value_unit
 
         if rp is None:
-            rp=[5, 10, 20, 50, 100, 250]
+            rp = [5, 10, 20, 50, 100, 250]
 
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
@@ -218,44 +217,40 @@ class CalcImpact(Calc):
 
         one_sample = samples_df.iloc[0:1]
         start = time.time()
-        self._compute_imp_metrics(
-            one_sample, chunksize=1, processes=1
-            )
-        elapsed_time = (time.time() - start)
+        self._compute_imp_metrics(one_sample, chunksize=1, processes=1)
+        elapsed_time = time.time() - start
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
-        [
-            aai_agg_list,
-            freq_curve_list,
-            eai_exp_list,
-            at_event_list
-        ] =  self._compute_imp_metrics(
-            samples_df, chunksize=chunksize, processes=processes
+        [aai_agg_list, freq_curve_list, eai_exp_list, at_event_list] = (
+            self._compute_imp_metrics(
+                samples_df, chunksize=chunksize, processes=processes
             )
+        )
 
         # Assign computed impact distribution data to self
-        aai_agg_unc_df  = pd.DataFrame(aai_agg_list,
-                                                columns = ['aai_agg'])
-        freq_curve_unc_df = pd.DataFrame(freq_curve_list,
-                                    columns=['rp' + str(n) for n in rp])
-        eai_exp_unc_df =  pd.DataFrame(eai_exp_list)
+        aai_agg_unc_df = pd.DataFrame(aai_agg_list, columns=["aai_agg"])
+        freq_curve_unc_df = pd.DataFrame(
+            freq_curve_list, columns=["rp" + str(n) for n in rp]
+        )
+        eai_exp_unc_df = pd.DataFrame(eai_exp_list)
         # Note: sparse dataframes are not used as they are not nativel y compatible with .to_hdf5
         at_event_unc_df = pd.DataFrame(at_event_list)
 
         if calc_eai_exp:
             exp = self.exp_input_var.evaluate()
-            coord_df = exp.gdf[['latitude', 'longitude']]
+            coord_df = exp.gdf[["latitude", "longitude"]]
         else:
             coord_df = pd.DataFrame([])
 
-        return UncImpactOutput(samples_df=samples_df,
-                               unit=unit,
-                               aai_agg_unc_df=aai_agg_unc_df,
-                               freq_curve_unc_df=freq_curve_unc_df,
-                               eai_exp_unc_df=eai_exp_unc_df,
-                               at_event_unc_df=at_event_unc_df,
-                               coord_df=coord_df
-                               )
+        return UncImpactOutput(
+            samples_df=samples_df,
+            unit=unit,
+            aai_agg_unc_df=aai_agg_unc_df,
+            freq_curve_unc_df=freq_curve_unc_df,
+            eai_exp_unc_df=eai_exp_unc_df,
+            at_event_unc_df=at_event_unc_df,
+            coord_df=coord_df,
+        )
 
     def _compute_imp_metrics(self, samples_df, chunksize, processes):
         """Compute the uncertainty metrics
@@ -274,8 +269,8 @@ class CalcImpact(Calc):
         list
             values of impact metrics per sample
         """
-        #Compute impact distributions
-        with log_level(level='ERROR', name_prefix='climada'):
+        # Compute impact distributions
+        with log_level(level="ERROR", name_prefix="climada"):
             p_iterator = _sample_parallel_iterator(
                 samples=samples_df,
                 chunksize=chunksize,
@@ -288,24 +283,25 @@ class CalcImpact(Calc):
             )
             if processes > 1:
                 with mp.Pool(processes=processes) as pool:
-                    LOGGER.info('Using %s CPUs.', processes)
-                    imp_metrics = pool.starmap(
-                        _map_impact_calc, p_iterator
-                        )
+                    LOGGER.info("Using %s CPUs.", processes)
+                    imp_metrics = pool.starmap(_map_impact_calc, p_iterator)
             else:
-                imp_metrics = itertools.starmap(
-                    _map_impact_calc, p_iterator
-                    )
+                imp_metrics = itertools.starmap(_map_impact_calc, p_iterator)
 
-        #Perform the actual computation
-        with log_level(level='ERROR', name_prefix='climada'):
+        # Perform the actual computation
+        with log_level(level="ERROR", name_prefix="climada"):
             return _transpose_chunked_data(imp_metrics)
 
 
 def _map_impact_calc(
-    sample_chunks, exp_input_var, impf_input_var, haz_input_var,
-    rp, calc_eai_exp, calc_at_event
-    ):
+    sample_chunks,
+    exp_input_var,
+    impf_input_var,
+    haz_input_var,
+    rp,
+    calc_eai_exp,
+    calc_at_event,
+):
     """
     Map to compute impact for all parameter samples in parallel
 
@@ -345,8 +341,9 @@ def _map_impact_calc(
         haz = haz_input_var.evaluate(**haz_samples)
 
         exp.assign_centroids(haz, overwrite=False)
-        imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz)\
-                .impact(assign_centroids=False, save_mat=False)
+        imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz).impact(
+            assign_centroids=False, save_mat=False
+        )
 
         # Extract from climada.impact the chosen metrics
         freq_curve = imp.calc_freq_curve(rp).impact
@@ -357,7 +354,7 @@ def _map_impact_calc(
             eai_exp = np.array([])
 
         if calc_at_event:
-            at_event= imp.at_event
+            at_event = imp.at_event
         else:
             at_event = np.array([])
 

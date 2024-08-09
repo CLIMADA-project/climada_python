@@ -19,18 +19,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Entity Class.
 """
 
-__all__ = ['Entity']
+__all__ = ["Entity"]
 
 import logging
 from typing import Optional
+
 import pandas as pd
 
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.measures.measure_set import MeasureSet
 from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+from climada.entity.measures.measure_set import MeasureSet
 
 LOGGER = logging.getLogger(__name__)
+
 
 class Entity:
     """Collects exposures, impact functions, measures and discount rates.
@@ -55,7 +57,7 @@ class Entity:
         exposures: Optional[Exposures] = None,
         disc_rates: Optional[DiscRates] = None,
         impact_func_set: Optional[ImpactFuncSet] = None,
-        measure_set: Optional[MeasureSet] = None
+        measure_set: Optional[MeasureSet] = None,
     ):
         """
         Initialize entity
@@ -73,7 +75,9 @@ class Entity:
         """
         self.exposures = Exposures() if exposures is None else exposures
         self.disc_rates = DiscRates() if disc_rates is None else disc_rates
-        self.impact_funcs = ImpactFuncSet() if impact_func_set is None else impact_func_set
+        self.impact_funcs = (
+            ImpactFuncSet() if impact_func_set is None else impact_func_set
+        )
         self.measures = MeasureSet() if measure_set is None else measure_set
 
     @classmethod
@@ -100,8 +104,9 @@ class Entity:
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Entity.from_mat instead."""
-        LOGGER.warning("The use of Entity.read_mat is deprecated."
-                        "Use Entity.from_mat instead.")
+        LOGGER.warning(
+            "The use of Entity.read_mat is deprecated." "Use Entity.from_mat instead."
+        )
         self.__dict__ = Entity.from_mat(*args, **kwargs).__dict__
 
     @classmethod
@@ -138,8 +143,10 @@ class Entity:
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Entity.from_excel instead."""
-        LOGGER.warning("The use of Entity.read_excel is deprecated."
-                       " Use Entity.from_excel instead.")
+        LOGGER.warning(
+            "The use of Entity.read_excel is deprecated."
+            " Use Entity.from_excel instead."
+        )
         self.__dict__ = Entity.from_excel(*args, **kwargs).__dict__
 
     def write_excel(self, file_name):

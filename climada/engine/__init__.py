@@ -18,6 +18,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 init engine
 """
+
+# isort: skip_file
 from .impact import *
 from .cost_benefit import *
 from .impact_calc import *

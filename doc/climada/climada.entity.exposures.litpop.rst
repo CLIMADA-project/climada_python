@@ -24,4 +24,3 @@ climada\.entity\.exposures\.litpop\.nightlight module
     :members:
     :undoc-members:
     :show-inheritance:
-

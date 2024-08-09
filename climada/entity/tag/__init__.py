@@ -30,9 +30,11 @@ from .tag import Tag as _Tag
 #
 # @deprecated(details="This class is not supported anymore.")
 class Tag(_Tag):
-    """kept for backwards compatibility with climada <= 3.3
-    """
-    @deprecated(details="This class is not supported anymore and will be removed in the next"
-                " version of climada.")
+    """kept for backwards compatibility with climada <= 3.3"""
+
+    @deprecated(
+        details="This class is not supported anymore and will be removed in the next"
+        " version of climada."
+    )
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)

@@ -19,8 +19,8 @@ Tests for calibration module
 """
 
 import unittest
-from unittest.mock import patch, MagicMock, call
-from typing import Optional, List
+from typing import List, Optional
+from unittest.mock import MagicMock, call, patch
 
 import numpy as np
 import numpy.testing as npt
@@ -29,7 +29,7 @@ from scipy.optimize import OptimizeResult
 
 from climada.util.calibrate import Input, ScipyMinimizeOptimizer
 
-from .test_base import hazard, exposure
+from .test_base import exposure, hazard
 
 
 class TestScipyMinimizeOptimizer(unittest.TestCase):

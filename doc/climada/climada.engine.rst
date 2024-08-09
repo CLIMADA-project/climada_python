@@ -52,4 +52,3 @@ climada\.engine\.impact\_data module
     :members:
     :undoc-members:
     :show-inheritance:
-

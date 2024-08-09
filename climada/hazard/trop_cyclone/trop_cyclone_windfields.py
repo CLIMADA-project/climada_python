@@ -20,7 +20,7 @@ Compute Tropical Cyclone windfields (see compute_windfields_sparse function).
 """
 
 import logging
-from typing import Optional, Union, Tuple
+from typing import Optional, Tuple, Union
 
 import numpy as np
 import xarray as xr
@@ -28,7 +28,9 @@ from scipy import sparse
 
 from climada.hazard import Centroids
 from climada.hazard.tc_tracks import estimate_rmw
-from climada.util import ureg, coordinates as u_coord, constants as u_const
+from climada.util import constants as u_const
+from climada.util import coordinates as u_coord
+from climada.util import ureg
 
 LOGGER = logging.getLogger(__name__)
 
@@ -49,7 +51,7 @@ DEF_INTENSITY_THRES = 17.5
 DEF_MAX_MEMORY_GB = 8
 """Default value of the memory limit (in GB) for windfield computations (in each thread)."""
 
-MODEL_VANG = {'H08': 0, 'H1980': 1, 'H10': 2, 'ER11': 3}
+MODEL_VANG = {"H08": 0, "H1980": 1, "H10": 2, "ER11": 3}
 """Enumerate different symmetric wind field models."""
 
 DEF_RHO_AIR = 1.15
@@ -72,6 +74,7 @@ T_ICE_K = 273.16
 V_ANG_EARTH = 7.29e-5
 """Earth angular velocity (in radians per second)"""
 
+
 def _vgrad(si_track, gradient_to_surface_winds):
     """Gradient wind speeds (in m/s) without translational influence at each track node
 
@@ -86,7 +89,8 @@ def _vgrad(si_track, gradient_to_surface_winds):
         The gradient-to-surface wind reduction factor to use.
     """
     si_track["vgrad"] = (
-        np.fmax(0, si_track["vmax"] - si_track["vtrans_norm"]) / gradient_to_surface_winds
+        np.fmax(0, si_track["vmax"] - si_track["vtrans_norm"])
+        / gradient_to_surface_winds
     )
 
 
@@ -124,10 +128,10 @@ def compute_angular_windspeeds(
     """
     model_kwargs = {} if model_kwargs is None else model_kwargs
     compute_funs = {
-        MODEL_VANG['H1980']: _compute_angular_windspeeds_h1980,
-        MODEL_VANG['H08']: _compute_angular_windspeeds_h08,
-        MODEL_VANG['H10']: _compute_angular_windspeeds_h10,
-        MODEL_VANG['ER11']: _stat_er_2011,
+        MODEL_VANG["H1980"]: _compute_angular_windspeeds_h1980,
+        MODEL_VANG["H08"]: _compute_angular_windspeeds_h08,
+        MODEL_VANG["H10"]: _compute_angular_windspeeds_h10,
+        MODEL_VANG["ER11"]: _stat_er_2011,
     }
     if model not in compute_funs:
         raise NotImplementedError(f"The specified wind model is not supported: {model}")
@@ -182,7 +186,9 @@ def _compute_angular_windspeeds_h1980(
     _vgrad(si_track, gradient_to_surface_winds)
     _rho_air(si_track, rho_air_const)
     _B_holland_1980(si_track)
-    result = _stat_holland_1980(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
+    result = _stat_holland_1980(
+        si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic
+    )
     result *= gradient_to_surface_winds
     return result
 
@@ -226,7 +232,9 @@ def _compute_angular_windspeeds_h08(
     """
     _rho_air(si_track, rho_air_const)
     _bs_holland_2008(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
-    return _stat_holland_1980(si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic)
+    return _stat_holland_1980(
+        si_track, d_centr, close_centr_msk, cyclostrophic=cyclostrophic
+    )
 
 
 def _compute_angular_windspeeds_h10(
@@ -279,18 +287,25 @@ def _compute_angular_windspeeds_h10(
     """
     if not cyclostrophic:
         LOGGER.debug(
-            'The function _compute_angular_windspeeds_h10 was called with parameter '
+            "The function _compute_angular_windspeeds_h10 was called with parameter "
             '"cyclostrophic" equal to false. Please be aware that this setting is ignored as the'
-            ' Holland et al. 2010 model is always cyclostrophic.')
+            " Holland et al. 2010 model is always cyclostrophic."
+        )
     _rho_air(si_track, rho_air_const)
     if vmax_from_cen:
         _bs_holland_2008(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
         _v_max_s_holland_2008(si_track)
     else:
         _B_holland_1980(si_track, gradient_to_surface_winds=gradient_to_surface_winds)
-    hol_x = _x_holland_2010(si_track, d_centr, close_centr_msk, vmax_in_brackets=vmax_in_brackets)
+    hol_x = _x_holland_2010(
+        si_track, d_centr, close_centr_msk, vmax_in_brackets=vmax_in_brackets
+    )
     return _stat_holland_2010(
-        si_track, d_centr, close_centr_msk, hol_x, vmax_in_brackets=vmax_in_brackets,
+        si_track,
+        d_centr,
+        close_centr_msk,
+        hol_x,
+        vmax_in_brackets=vmax_in_brackets,
     )
 
 
@@ -334,7 +349,7 @@ def _rho_air(si_track: xr.Dataset, const: Optional[float]):
     r_dry_air = 286.9
 
     # density of air (in kg/m³); when checking the units, note that J/Pa = m³
-    si_track["rho_air"] =  pres_eyewall / (r_dry_air * temp_vs)
+    si_track["rho_air"] = pres_eyewall / (r_dry_air * temp_vs)
 
 
 def _bs_holland_2008(
@@ -394,12 +409,17 @@ def _bs_holland_2008(
     # and time steps are in hours instead of seconds, but translational wind speed is still
     # expected to be in m/s.
     pdelta = si_track["pdelta"] / MBAR_TO_PA
-    hol_xx = 0.6 * (1. - pdelta / 215)
+    hol_xx = 0.6 * (1.0 - pdelta / 215)
     si_track["hol_b"] = (
-        -4.4e-5 * pdelta**2 + 0.01 * pdelta
-        + 0.03 * (si_track["cen"] - prev_cen) / si_track["tstep"] * (H_TO_S / MBAR_TO_PA)
+        -4.4e-5 * pdelta**2
+        + 0.01 * pdelta
+        + 0.03
+        * (si_track["cen"] - prev_cen)
+        / si_track["tstep"]
+        * (H_TO_S / MBAR_TO_PA)
         - 0.014 * abs(si_track["lat"])
-        + 0.15 * si_track["vtrans_norm"]**hol_xx + 1.0
+        + 0.15 * si_track["vtrans_norm"] ** hol_xx
+        + 1.0
     )
     clip_interval = _b_holland_clip_interval(gradient_to_surface_winds)
     si_track["hol_b"] = np.clip(si_track["hol_b"], *clip_interval)
@@ -472,7 +492,7 @@ def _B_holland_1980(  # pylint: disable=invalid-name
     windvar = "vgrad" if gradient_to_surface_winds is None else "vmax"
 
     si_track["hol_b"] = (
-        si_track[windvar]**2 * np.exp(1) * si_track["rho_air"] / si_track["pdelta"]
+        si_track[windvar] ** 2 * np.exp(1) * si_track["rho_air"] / si_track["pdelta"]
     )
 
     clip_interval = _b_holland_clip_interval(gradient_to_surface_winds)
@@ -572,7 +592,7 @@ def _x_holland_2010(
 
     # compute peripheral exponent from second measurement
     # (equation (6) from Holland et al. 2010 solved for x)
-    r_max_norm = (r_max / r_n)**hol_b
+    r_max_norm = (r_max / r_n) ** hol_b
     if vmax_in_brackets:
         x_n = np.log(v_n) / np.log(v_max_s**2 * r_max_norm * np.exp(1 - r_max_norm))
 
@@ -586,7 +606,9 @@ def _x_holland_2010(
 
     # linearly interpolate between max exponent and peripheral exponent
     x_max = 0.5
-    hol_x[mask_centr_close] = x_max + np.fmax(0, d_centr - r_max) * (x_n - x_max) / (r_n - r_max)
+    hol_x[mask_centr_close] = x_max + np.fmax(0, d_centr - r_max) * (x_n - x_max) / (
+        r_n - r_max
+    )
 
     # Truncate to prevent wind speed from increasing again towards the peripheral radius (which is
     # unphysical). A value of 0.4 has been found to be reasonable by manual testing of thresholds.
@@ -656,11 +678,15 @@ def _stat_holland_2010(
         ]
     ]
 
-    r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
+    r_max_norm = (r_max / np.fmax(1, d_centr)) ** hol_b
     if vmax_in_brackets:
-        v_ang[mask_centr_close] = (v_max_s**2 * r_max_norm * np.exp(1 - r_max_norm))**hol_x
+        v_ang[mask_centr_close] = (
+            v_max_s**2 * r_max_norm * np.exp(1 - r_max_norm)
+        ) ** hol_x
     else:
-        v_ang[mask_centr_close] = v_max_s * (r_max_norm * np.exp(1 - r_max_norm))**hol_x
+        v_ang[mask_centr_close] = (
+            v_max_s * (r_max_norm * np.exp(1 - r_max_norm)) ** hol_x
+        )
     return v_ang
 
 
@@ -668,7 +694,7 @@ def _stat_holland_1980(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
     mask_centr_close: np.ndarray,
-    cyclostrophic: bool = False
+    cyclostrophic: bool = False,
 ) -> np.ndarray:
     """Symmetric and static wind fields (in m/s) according to Holland 1980.
 
@@ -725,8 +751,10 @@ def _stat_holland_1980(
     if not cyclostrophic:
         r_coriolis = 0.5 * d_centr * coriolis_p
 
-    r_max_norm = (r_max / np.fmax(1, d_centr))**hol_b
-    sqrt_term = hol_b / rho_air * r_max_norm * pdelta * np.exp(-r_max_norm) + r_coriolis**2
+    r_max_norm = (r_max / np.fmax(1, d_centr)) ** hol_b
+    sqrt_term = (
+        hol_b / rho_air * r_max_norm * pdelta * np.exp(-r_max_norm) + r_coriolis**2
+    )
     v_ang[mask_centr_close] = np.sqrt(np.fmax(0, sqrt_term)) - r_coriolis
     return v_ang
 
@@ -793,7 +821,7 @@ def _stat_er_2011(
         momentum_max += 0.5 * coriolis_p * r_max**2
 
     # rescale the momentum using formula (36) in Emanuel and Rotunno 2011 with Ck == Cd
-    r_max_norm = (d_centr / r_max)**2
+    r_max_norm = (d_centr / r_max) ** 2
     momentum = momentum_max * 2 * r_max_norm / (1 + r_max_norm)
 
     # extract the velocity from the rescaled momentum through division by r
@@ -832,9 +860,16 @@ def _vtrans(si_track: xr.Dataset, metric: str = "equirect"):
     si_track["component"] = ("component", ["v", "u"])
 
     t_lat, t_lon = si_track["lat"].values, si_track["lon"].values
-    norm, vec = u_coord.dist_approx(t_lat[:-1, None], t_lon[:-1, None],
-                                    t_lat[1:, None], t_lon[1:, None],
-                                    log=True, normalize=False, method=metric, units="m")
+    norm, vec = u_coord.dist_approx(
+        t_lat[:-1, None],
+        t_lon[:-1, None],
+        t_lat[1:, None],
+        t_lon[1:, None],
+        log=True,
+        normalize=False,
+        method=metric,
+        units="m",
+    )
     si_track["vtrans"].values[1:, :] = vec[:, 0, 0] / si_track["tstep"].values[1:, None]
     si_track["vtrans_norm"].values[1:] = norm[:, 0, 0] / si_track["tstep"].values[1:]
 
@@ -860,11 +895,12 @@ def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     """
     return 2 * V_ANG_EARTH * np.sin(np.radians(np.abs(lat)))
 
+
 def compute_windfields_sparse(
     track: xr.Dataset,
     centroids: Centroids,
     idx_centr_filter: np.ndarray,
-    model: str = 'H08',
+    model: str = "H08",
     model_kwargs: Optional[dict] = None,
     store_windfields: bool = False,
     metric: str = "equirect",
@@ -921,7 +957,7 @@ def compute_windfields_sparse(
     try:
         mod_id = MODEL_VANG[model]
     except KeyError as err:
-        raise ValueError(f'Model not implemented: {model}.') from err
+        raise ValueError(f"Model not implemented: {model}.") from err
 
     ncentroids = centroids.coord.shape[0]
     npositions = track.sizes["time"]
@@ -931,7 +967,8 @@ def compute_windfields_sparse(
     # initialise arrays for the assumption that no centroids are within reach
     windfields_sparse = (
         sparse.csr_matrix(([], ([], [])), shape=windfields_shape)
-        if store_windfields else None
+        if store_windfields
+        else None
     )
     intensity_sparse = sparse.csr_matrix(([], ([], [])), shape=intensity_shape)
 
@@ -948,7 +985,10 @@ def compute_windfields_sparse(
     # returned by `get_close_centroids` are normalized to be consistent with the coordinates in
     # `si_track`.
     centroids_close, mask_centr, mask_centr_alongtrack = get_close_centroids(
-        si_track, centroids.coord[idx_centr_filter], max_dist_eye_km, metric=metric,
+        si_track,
+        centroids.coord[idx_centr_filter],
+        max_dist_eye_km,
+        metric=metric,
     )
     idx_centr_filter = idx_centr_filter[mask_centr]
     n_centr_close = centroids_close.shape[0]
@@ -992,8 +1032,8 @@ def compute_windfields_sparse(
     intensity = np.linalg.norm(windfields, axis=-1).max(axis=0)
     intensity[intensity < intensity_thres] = 0
     intensity_sparse = sparse.csr_matrix(
-        (intensity, idx_centr_filter, [0, intensity.size]),
-        shape=intensity_shape)
+        (intensity, idx_centr_filter, [0, intensity.size]), shape=intensity_shape
+    )
     intensity_sparse.eliminate_zeros()
 
     windfields_sparse = None
@@ -1004,8 +1044,9 @@ def compute_windfields_sparse(
         indices[:, :, 1] = 2 * idx_centr_filter[None] + 1
         indices = indices.ravel()
         indptr = np.arange(npositions + 1) * n_centr_filter * 2
-        windfields_sparse = sparse.csr_matrix((windfields.ravel(), indices, indptr),
-                                              shape=windfields_shape)
+        windfields_sparse = sparse.csr_matrix(
+            (windfields.ravel(), indices, indptr), shape=windfields_shape
+        )
         windfields_sparse.eliminate_zeros()
 
     return intensity_sparse, windfields_sparse
@@ -1060,8 +1101,10 @@ def _compute_windfields_sparse_chunked(
     for prev_chunk_end, chunk_end in zip(split_pos[:-1], split_pos[1:]):
         chunk_start = max(0, prev_chunk_end - 1)
         inten, win = compute_windfields_sparse(
-            track.isel(time=slice(chunk_start, chunk_end)), *args,
-            max_memory_gb=max_memory_gb, **kwargs,
+            track.isel(time=slice(chunk_start, chunk_end)),
+            *args,
+            max_memory_gb=max_memory_gb,
+            **kwargs,
         )
         intensity.append(inten)
         windfields.append(win)
@@ -1128,9 +1171,15 @@ def _compute_windfields(
 
     # compute distances (in m) and vectors to all centroids
     [d_centr], [v_centr_normed] = u_coord.dist_approx(
-        si_track["lat"].values[None], si_track["lon"].values[None],
-        centroids[None, :, 0], centroids[None, :, 1],
-        log=True, normalize=False, method=metric, units="m")
+        si_track["lat"].values[None],
+        si_track["lon"].values[None],
+        centroids[None, :, 0],
+        centroids[None, :, 1],
+        log=True,
+        normalize=False,
+        method=metric,
+        units="m",
+    )
 
     # exclude centroids that are too far from or too close to the eye
     mask_centr_close = (d_centr <= max_dist_eye_km * KM_TO_M) & (d_centr > 1)
@@ -1149,7 +1198,12 @@ def _compute_windfields(
 
     # derive (absolute) angular velocity from parametric wind profile
     v_ang_norm = compute_angular_windspeeds(
-        si_track, d_centr, mask_centr_close, model, model_kwargs=model_kwargs, cyclostrophic=False,
+        si_track,
+        d_centr,
+        mask_centr_close,
+        model,
+        model_kwargs=model_kwargs,
+        cyclostrophic=False,
     )
 
     # Influence of translational speed decreases with distance from eye.
@@ -1163,20 +1217,25 @@ def _compute_windfields(
     t_rad_bc = np.broadcast_to(si_track["rad"].values[:, None], d_centr.shape)
     v_trans_corr = np.zeros_like(d_centr)
     v_trans_corr[mask_centr_close] = np.fmin(
-        1, t_rad_bc[mask_centr_close] / d_centr[mask_centr_close])
+        1, t_rad_bc[mask_centr_close] / d_centr[mask_centr_close]
+    )
 
-    if model in [MODEL_VANG['H08'], MODEL_VANG['H10']]:
+    if model in [MODEL_VANG["H08"], MODEL_VANG["H10"]]:
         # In these models, v_ang_norm already contains vtrans_norm, so subtract it first, before
         # converting to vectors and then adding (vectorial) vtrans again. Make sure to apply the
         # "absorbing factor" in both steps:
-        vtrans_norm_bc = np.broadcast_to(si_track["vtrans_norm"].values[:, None], d_centr.shape)
+        vtrans_norm_bc = np.broadcast_to(
+            si_track["vtrans_norm"].values[:, None], d_centr.shape
+        )
         v_ang_norm[mask_centr_close] -= (
-                vtrans_norm_bc[mask_centr_close] * v_trans_corr[mask_centr_close]
+            vtrans_norm_bc[mask_centr_close] * v_trans_corr[mask_centr_close]
         )
 
     # vectorial angular velocity
     windfields = (
-            si_track.attrs["latsign"] * np.array([1.0, -1.0])[..., :] * v_centr_normed[:, :, ::-1]
+        si_track.attrs["latsign"]
+        * np.array([1.0, -1.0])[..., :]
+        * v_centr_normed[:, :, ::-1]
     )
     windfields[mask_centr_close] *= v_ang_norm[mask_centr_close, None]
 
@@ -1243,7 +1302,7 @@ def tctrack_to_si(
         except Exception as ex:
             raise ValueError(
                 f"The {long_name}_unit '{unit}' in the provided track is not supported."
-             ) from ex
+            ) from ex
         si_track[var_name] = track[long_name] * conv_factor
 
     # normalize longitudinal coordinates
@@ -1257,14 +1316,15 @@ def tctrack_to_si(
     # extrapolate radius of max wind from pressure if not given
     si_track["rad"] = track["radius_max_wind"].copy()
     si_track["rad"].values[:] = estimate_rmw(
-        si_track["rad"].values, si_track["cen"].values / MBAR_TO_PA,
+        si_track["rad"].values,
+        si_track["cen"].values / MBAR_TO_PA,
     )
     si_track["rad"] *= NM_TO_KM * KM_TO_M
 
-    hemisphere = 'N'
+    hemisphere = "N"
     if np.count_nonzero(si_track["lat"] < 0) > np.count_nonzero(si_track["lat"] > 0):
-        hemisphere = 'S'
-    si_track.attrs["latsign"] = 1.0 if hemisphere == 'N' else -1.0
+        hemisphere = "S"
+    si_track.attrs["latsign"] = 1.0 if hemisphere == "N" else -1.0
 
     # add translational speed of track at every node (in m/s)
     _vtrans(si_track, metric=metric)
@@ -1333,9 +1393,8 @@ def get_close_centroids(
     # centroids that are considered by a factor larger than 30).
     buffer_lat = buffer_km / u_const.ONE_LAT_KM
     buffer_lon = buffer_km / (
-        u_const.ONE_LAT_KM * np.cos(np.radians(
-            np.fmin(89.999, np.abs(centr_lat) + buffer_lat)
-        ))
+        u_const.ONE_LAT_KM
+        * np.cos(np.radians(np.fmin(89.999, np.abs(centr_lat) + buffer_lat)))
     )
     [idx_close] = (
         (t_lat.min() - centr_lat <= buffer_lat)
@@ -1348,15 +1407,20 @@ def get_close_centroids(
 
     # Restrict to bounding boxes of each track position.
     buffer_lat = buffer_km / u_const.ONE_LAT_KM
-    buffer_lon = buffer_km / (u_const.ONE_LAT_KM * np.cos(np.radians(
-        np.fmin(89.999, np.abs(t_lat[:, None]) + buffer_lat)
-    )))
+    buffer_lon = buffer_km / (
+        u_const.ONE_LAT_KM
+        * np.cos(np.radians(np.fmin(89.999, np.abs(t_lat[:, None]) + buffer_lat)))
+    )
     [idx_close_sub] = (
-        (t_lat[:, None] - buffer_lat <= centr_lat[None])
-        & (t_lat[:, None] + buffer_lat >= centr_lat[None])
-        & (t_lon[:, None] - buffer_lon <= centr_lon[None])
-        & (t_lon[:, None] + buffer_lon >= centr_lon[None])
-    ).any(axis=0).nonzero()
+        (
+            (t_lat[:, None] - buffer_lat <= centr_lat[None])
+            & (t_lat[:, None] + buffer_lat >= centr_lat[None])
+            & (t_lon[:, None] - buffer_lon <= centr_lon[None])
+            & (t_lon[:, None] + buffer_lon >= centr_lon[None])
+        )
+        .any(axis=0)
+        .nonzero()
+    )
     idx_close = idx_close[idx_close_sub]
     centr_lat = centr_lat[idx_close_sub]
     centr_lon = centr_lon[idx_close_sub]
@@ -1369,16 +1433,27 @@ def get_close_centroids(
     # FAITH. With a chunk size of 10, this figure is down to 240 MB. The final along-track mask
     # will require 1.0 GB of memory.
     chunk_size = 10
-    chunks = np.split(np.arange(npositions), np.arange(chunk_size, npositions, chunk_size))
-    mask_centr_alongtrack = np.concatenate([
-        (
-            u_coord.dist_approx(
-                t_lat[None, chunk], t_lon[None, chunk],
-                centr_lat[None], centr_lon[None],
-                normalize=False, method=metric, units="km",
-            )[0] <= buffer_km
-        ) for chunk in chunks
-    ], axis=0)
+    chunks = np.split(
+        np.arange(npositions), np.arange(chunk_size, npositions, chunk_size)
+    )
+    mask_centr_alongtrack = np.concatenate(
+        [
+            (
+                u_coord.dist_approx(
+                    t_lat[None, chunk],
+                    t_lon[None, chunk],
+                    centr_lat[None],
+                    centr_lon[None],
+                    normalize=False,
+                    method=metric,
+                    units="km",
+                )[0]
+                <= buffer_km
+            )
+            for chunk in chunks
+        ],
+        axis=0,
+    )
     [idx_close_sub] = mask_centr_alongtrack.any(axis=0).nonzero()
     idx_close = idx_close[idx_close_sub]
     centr_lat = centr_lat[idx_close_sub]

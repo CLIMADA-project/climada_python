@@ -32,4 +32,3 @@ climada\.entity\.impact\_funcs\.trop\_cyclone module
     :members:
     :undoc-members:
     :show-inheritance:
-

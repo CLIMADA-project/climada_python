@@ -18,17 +18,17 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 climada init
 """
-from shutil import copyfile
+
 from pathlib import Path
+from shutil import copyfile
 
 from .util.config import CONFIG
 from .util.constants import *
 
-
-GSDP_DIR = SYSTEM_DIR.joinpath('GSDP')
+GSDP_DIR = SYSTEM_DIR.joinpath("GSDP")
 
 REPO_DATA = {
-    'climada/data/system': [
+    "climada/data/system": [
         ISIMIP_GPWV3_NATID_150AS,
         GLB_CENTROIDS_MAT,
         ENT_TEMPLATE_XLS,
@@ -36,20 +36,34 @@ REPO_DATA = {
         RIVER_FLOOD_REGIONS_CSV,
         NATEARTH_CENTROIDS[150],
         NATEARTH_CENTROIDS[360],
-        SYSTEM_DIR.joinpath('WEALTH2GDP_factors_CRI_2016.csv'),
-        SYSTEM_DIR.joinpath('GDP_TWN_IMF_WEO_data.csv'),
-        SYSTEM_DIR.joinpath('FAOSTAT_data_country_codes.csv'),
-        SYSTEM_DIR.joinpath('rcp_db.xls'),
-        SYSTEM_DIR.joinpath('tc_impf_cal_v01_TDR1.0.csv'),
-        SYSTEM_DIR.joinpath('tc_impf_cal_v01_EDR.csv'),
-        SYSTEM_DIR.joinpath('tc_impf_cal_v01_RMSF.csv'),
+        SYSTEM_DIR.joinpath("WEALTH2GDP_factors_CRI_2016.csv"),
+        SYSTEM_DIR.joinpath("GDP_TWN_IMF_WEO_data.csv"),
+        SYSTEM_DIR.joinpath("FAOSTAT_data_country_codes.csv"),
+        SYSTEM_DIR.joinpath("rcp_db.xls"),
+        SYSTEM_DIR.joinpath("tc_impf_cal_v01_TDR1.0.csv"),
+        SYSTEM_DIR.joinpath("tc_impf_cal_v01_EDR.csv"),
+        SYSTEM_DIR.joinpath("tc_impf_cal_v01_RMSF.csv"),
     ],
-    'climada/data/system/GSDP': [
-        GSDP_DIR.joinpath(f'{cc}_GSDP.xls')
-        for cc in ['AUS', 'BRA', 'CAN', 'CHE', 'CHN', 'DEU', 'FRA', 'IDN', 'IND', 'JPN', 'MEX',
-                   'TUR', 'USA', 'ZAF']
+    "climada/data/system/GSDP": [
+        GSDP_DIR.joinpath(f"{cc}_GSDP.xls")
+        for cc in [
+            "AUS",
+            "BRA",
+            "CAN",
+            "CHE",
+            "CHN",
+            "DEU",
+            "FRA",
+            "IDN",
+            "IND",
+            "JPN",
+            "MEX",
+            "TUR",
+            "USA",
+            "ZAF",
+        ]
     ],
-    'climada/data/demo': [
+    "climada/data/demo": [
         ENT_DEMO_TODAY,
         ENT_DEMO_FUTURE,
         EXP_DEMO_H5,
@@ -57,9 +71,10 @@ REPO_DATA = {
         HAZ_DEMO_MAT,
         HAZ_DEMO_H5,
         TC_ANDREW_FL,
-        DEMO_DIR.joinpath('demo_emdat_impact_data_2020.csv'),
-        DEMO_DIR.joinpath('nl_rails.gpkg'),
-    ] + WS_DEMO_NC
+        DEMO_DIR.joinpath("demo_emdat_impact_data_2020.csv"),
+        DEMO_DIR.joinpath("nl_rails.gpkg"),
+    ]
+    + WS_DEMO_NC,
 }
 
 
@@ -68,10 +83,13 @@ def test_installation():
     If the invoked tests pass and an OK is printed out, the installation was successfull.
     """
     from unittest import TestLoader, TextTestRunner
-    suite = TestLoader().discover(start_dir='climada.engine.test',
-                                  pattern='test_cost_benefit.py')
-    suite.addTest(TestLoader().discover(start_dir='climada.engine.test',
-                                        pattern='test_impact.py'))
+
+    suite = TestLoader().discover(
+        start_dir="climada.engine.test", pattern="test_cost_benefit.py"
+    )
+    suite.addTest(
+        TestLoader().discover(start_dir="climada.engine.test", pattern="test_impact.py")
+    )
     TextTestRunner(verbosity=2).run(suite)
 
 
@@ -97,5 +115,6 @@ def setup_climada_data(reload=False):
             if not path.exists() or reload:
                 src = Path(__file__).parent.parent.joinpath(src_dir, path.name)
                 copyfile(src, path)
+
 
 setup_climada_data()

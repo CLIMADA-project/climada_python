@@ -8,4 +8,3 @@ Software documentation per package
     climada.entity
     climada.hazard
     climada.util
-

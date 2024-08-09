@@ -20,11 +20,13 @@ Test hdf5_handler module.
 """
 
 import unittest
-import numpy as np
-import h5py
 
-from climada.util.constants import HAZ_DEMO_MAT
+import h5py
+import numpy as np
+
 import climada.util.hdf5_handler as u_hdf5
+from climada.util.constants import HAZ_DEMO_MAT
+
 
 class TestFunc(unittest.TestCase):
     """Test the auxiliary functions used to retrieve variables from HDF5"""
@@ -36,21 +38,23 @@ class TestFunc(unittest.TestCase):
         contents = u_hdf5.read(HAZ_DEMO_MAT)
 
         # Convert several strings
-        str_date = u_hdf5.get_string(contents['hazard']['date'])
-        str_comment = u_hdf5.get_string(contents['hazard']['comment'])
-        str_wf = u_hdf5.get_string(contents['hazard']['windfield_comment'])
-        str_fn = u_hdf5.get_string(contents['hazard']['filename'])
+        str_date = u_hdf5.get_string(contents["hazard"]["date"])
+        str_comment = u_hdf5.get_string(contents["hazard"]["comment"])
+        str_wf = u_hdf5.get_string(contents["hazard"]["windfield_comment"])
+        str_fn = u_hdf5.get_string(contents["hazard"]["filename"])
 
         # Check results
-        self.assertEqual('14-Nov-2017 10:09:05', str_date)
+        self.assertEqual("14-Nov-2017 10:09:05", str_date)
         self.assertEqual(
-            'TC hazard event set, generated 14-Nov-2017 10:09:05',
-            str_comment)
+            "TC hazard event set, generated 14-Nov-2017 10:09:05", str_comment
+        )
         self.assertEqual(
-            'generating 14450 windfields took 0.25 min ' +
-            '(0.0010 sec/event)', str_wf)
-        self.assertEqual('/Users/aznarsig/Documents/MATLAB/climada_data/' +
-                         'hazards/atl_prob.mat', str_fn)
+            "generating 14450 windfields took 0.25 min " + "(0.0010 sec/event)", str_wf
+        )
+        self.assertEqual(
+            "/Users/aznarsig/Documents/MATLAB/climada_data/" + "hazards/atl_prob.mat",
+            str_fn,
+        )
 
     def test_get_sparse_mat_pass(self):
         """Check contents of imported sparse matrix, using the function \
@@ -60,10 +64,11 @@ class TestFunc(unittest.TestCase):
         contents = u_hdf5.read(HAZ_DEMO_MAT)
 
         # get matrix size
-        mat_shape = (len(contents['hazard']['event_ID']),
-                     len(contents['hazard']['centroid_ID']))
-        spr_mat = u_hdf5.get_sparse_csr_mat(
-            contents['hazard']['intensity'], mat_shape)
+        mat_shape = (
+            len(contents["hazard"]["event_ID"]),
+            len(contents["hazard"]["centroid_ID"]),
+        )
+        spr_mat = u_hdf5.get_sparse_csr_mat(contents["hazard"]["intensity"], mat_shape)
 
         self.assertEqual(mat_shape[0], spr_mat.shape[0])
         self.assertEqual(mat_shape[1], spr_mat.shape[1])
@@ -79,19 +84,20 @@ class TestFunc(unittest.TestCase):
 
     def test_get_str_from_ref(self):
         """Check import string from a HDF5 object reference"""
-        with h5py.File(HAZ_DEMO_MAT, 'r') as file:
-            var = file['hazard']['name'][0][0]
+        with h5py.File(HAZ_DEMO_MAT, "r") as file:
+            var = file["hazard"]["name"][0][0]
             res = u_hdf5.get_str_from_ref(HAZ_DEMO_MAT, var)
-            self.assertEqual('NNN_1185101', res)
+            self.assertEqual("NNN_1185101", res)
 
     def test_get_list_str_from_ref(self):
         """Check import string from a HDF5 object reference"""
-        with h5py.File(HAZ_DEMO_MAT, 'r') as file:
-            var = file['hazard']['name']
+        with h5py.File(HAZ_DEMO_MAT, "r") as file:
+            var = file["hazard"]["name"]
             var_list = u_hdf5.get_list_str_from_ref(HAZ_DEMO_MAT, var)
-            self.assertEqual('NNN_1185101', var_list[0])
-            self.assertEqual('NNN_1185101_gen1', var_list[1])
-            self.assertEqual('NNN_1185101_gen2', var_list[2])
+            self.assertEqual("NNN_1185101", var_list[0])
+            self.assertEqual("NNN_1185101_gen1", var_list[1])
+            self.assertEqual("NNN_1185101_gen2", var_list[2])
+
 
 class TestReader(unittest.TestCase):
     """Test HDF5 reader"""
@@ -104,50 +110,51 @@ class TestReader(unittest.TestCase):
 
         # Check read contents
         self.assertEqual(1, len(contents))
-        self.assertTrue('hazard' in contents.keys())
-        self.assertEqual(False, '#refs#' in contents.keys())
+        self.assertTrue("hazard" in contents.keys())
+        self.assertEqual(False, "#refs#" in contents.keys())
 
-        hazard = contents['hazard']
-        self.assertTrue('reference_year' in hazard.keys())
-        self.assertTrue('lon' in hazard.keys())
-        self.assertTrue('lat' in hazard.keys())
-        self.assertTrue('centroid_ID' in hazard.keys())
-        self.assertTrue('orig_years' in hazard.keys())
-        self.assertTrue('orig_event_count' in hazard.keys())
-        self.assertTrue('event_count' in hazard.keys())
-        self.assertTrue('event_ID' in hazard.keys())
-        self.assertTrue('category' in hazard.keys())
-        self.assertTrue('orig_event_flag' in hazard.keys())
-        self.assertTrue('yyyy' in hazard.keys())
-        self.assertTrue('mm' in hazard.keys())
-        self.assertTrue('dd' in hazard.keys())
-        self.assertTrue('datenum' in hazard.keys())
-        self.assertTrue('scenario' in hazard.keys())
-        self.assertTrue('intensity' in hazard.keys())
-        self.assertTrue('name' in hazard.keys())
-        self.assertTrue('frequency' in hazard.keys())
-        self.assertTrue('matrix_density' in hazard.keys())
-        self.assertTrue('windfield_comment' in hazard.keys())
-        self.assertTrue('peril_ID' in hazard.keys())
-        self.assertTrue('filename' in hazard.keys())
-        self.assertTrue('comment' in hazard.keys())
-        self.assertTrue('date' in hazard.keys())
-        self.assertTrue('units' in hazard.keys())
-        self.assertTrue('orig_yearset' in hazard.keys())
-        self.assertTrue('fraction' in hazard.keys())
+        hazard = contents["hazard"]
+        self.assertTrue("reference_year" in hazard.keys())
+        self.assertTrue("lon" in hazard.keys())
+        self.assertTrue("lat" in hazard.keys())
+        self.assertTrue("centroid_ID" in hazard.keys())
+        self.assertTrue("orig_years" in hazard.keys())
+        self.assertTrue("orig_event_count" in hazard.keys())
+        self.assertTrue("event_count" in hazard.keys())
+        self.assertTrue("event_ID" in hazard.keys())
+        self.assertTrue("category" in hazard.keys())
+        self.assertTrue("orig_event_flag" in hazard.keys())
+        self.assertTrue("yyyy" in hazard.keys())
+        self.assertTrue("mm" in hazard.keys())
+        self.assertTrue("dd" in hazard.keys())
+        self.assertTrue("datenum" in hazard.keys())
+        self.assertTrue("scenario" in hazard.keys())
+        self.assertTrue("intensity" in hazard.keys())
+        self.assertTrue("name" in hazard.keys())
+        self.assertTrue("frequency" in hazard.keys())
+        self.assertTrue("matrix_density" in hazard.keys())
+        self.assertTrue("windfield_comment" in hazard.keys())
+        self.assertTrue("peril_ID" in hazard.keys())
+        self.assertTrue("filename" in hazard.keys())
+        self.assertTrue("comment" in hazard.keys())
+        self.assertTrue("date" in hazard.keys())
+        self.assertTrue("units" in hazard.keys())
+        self.assertTrue("orig_yearset" in hazard.keys())
+        self.assertTrue("fraction" in hazard.keys())
         self.assertEqual(27, len(hazard.keys()))
 
         # Check some random values
-        mat_shape = (len(contents['hazard']['event_ID']),
-                     len(contents['hazard']['centroid_ID']))
-        sp_mat = u_hdf5.get_sparse_csr_mat(hazard['intensity'], mat_shape)
+        mat_shape = (
+            len(contents["hazard"]["event_ID"]),
+            len(contents["hazard"]["centroid_ID"]),
+        )
+        sp_mat = u_hdf5.get_sparse_csr_mat(hazard["intensity"], mat_shape)
 
-        self.assertTrue(np.array_equal(np.array([[84], [67]]),
-                                       hazard['peril_ID']))
+        self.assertTrue(np.array_equal(np.array([[84], [67]]), hazard["peril_ID"]))
         self.assertEqual(34.537289477809473, sp_mat[2862, 97])
-        self.assertEqual(-80, hazard['lon'][46])
-        self.assertEqual(28, hazard['lat'][87])
-        self.assertEqual(2016, hazard['reference_year'])
+        self.assertEqual(-80, hazard["lon"][46])
+        self.assertEqual(28, hazard["lat"][87])
+        self.assertEqual(2016, hazard["reference_year"])
 
     def test_with_refs_pass(self):
         """Allow to load references of the matlab file"""
@@ -158,8 +165,9 @@ class TestReader(unittest.TestCase):
 
         # Check read contents
         self.assertEqual(2, len(contents))
-        self.assertTrue('hazard' in contents.keys())
-        self.assertTrue('#refs#' in contents.keys())
+        self.assertTrue("hazard" in contents.keys())
+        self.assertTrue("#refs#" in contents.keys())
+
 
 # Execute Tests
 if __name__ == "__main__":

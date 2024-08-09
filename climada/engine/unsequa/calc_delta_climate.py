@@ -21,29 +21,29 @@ Define Uncertainty class for Impact differences between two climates.
 
 __all__ = ["CalcDeltaImpact"]
 
+import itertools
 import logging
 import time
 from typing import Union
-import itertools
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pathos.multiprocessing as mp
-
-# use pathos.multiprocess fork of multiprocessing for compatibility
-# wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
 from climada.engine import ImpactCalc
 from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
 from climada.engine.unsequa.calc_base import (
-    _sample_parallel_iterator,
     _multiprocess_chunksize,
+    _sample_parallel_iterator,
     _transpose_chunked_data,
 )
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
 from climada.util.value_representation import safe_divide
+
+# use pathos.multiprocess fork of multiprocessing for compatibility
+# wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
 
 LOGGER = logging.getLogger(__name__)
@@ -430,18 +430,12 @@ def _map_impact_calc(
         else:
             delta_func = lambda x, y: x - y
 
-        delta_aai_agg = delta_func(
-            imp_final.aai_agg, imp_initial.aai_agg
-        )
+        delta_aai_agg = delta_func(imp_final.aai_agg, imp_initial.aai_agg)
 
-        delta_freq_curve = delta_func(
-            freq_curve_final, freq_curve_initial
-        )
+        delta_freq_curve = delta_func(freq_curve_final, freq_curve_initial)
 
         delta_eai_exp = (
-            delta_func(eai_exp_final, eai_exp_initial)
-            if calc_eai_exp
-            else np.array([])
+            delta_func(eai_exp_final, eai_exp_initial) if calc_eai_exp else np.array([])
         )
 
         delta_at_event = (

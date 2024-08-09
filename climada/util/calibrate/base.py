@@ -19,20 +19,20 @@ Calibration Base Classes and Interfaces
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, InitVar
-from typing import Callable, Mapping, Optional, Tuple, Union, Any, Dict
+from dataclasses import InitVar, dataclass, field
 from numbers import Number
 from pathlib import Path
+from typing import Any, Callable, Dict, Mapping, Optional, Tuple, Union
 
-import pandas as pd
-import numpy as np
-from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint
-import seaborn as sns
 import h5py
+import numpy as np
+import pandas as pd
+import seaborn as sns
+from scipy.optimize import Bounds, LinearConstraint, NonlinearConstraint
 
-from climada.hazard import Hazard
-from climada.entity import Exposures, ImpactFuncSet
 from climada.engine import Impact, ImpactCalc
+from climada.entity import Exposures, ImpactFuncSet
+from climada.hazard import Hazard
 
 ConstraintType = Union[LinearConstraint, NonlinearConstraint, Mapping]
 
@@ -187,7 +187,7 @@ class Output:
     params: Mapping[str, Number]
     target: Number
 
-    def to_hdf5(self, filepath: Union[Path, str], mode:str = "x"):
+    def to_hdf5(self, filepath: Union[Path, str], mode: str = "x"):
         """Write the output into an H5 file
 
         This stores the data as attributes because we only store single numbers, not
@@ -218,6 +218,7 @@ class Output:
             target = file["base"].attrs["target"]
             params = dict(file["base"]["params"].attrs.items())
             return cls(params=params, target=target)
+
 
 @dataclass
 class OutputEvaluator:
