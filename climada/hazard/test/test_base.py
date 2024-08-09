@@ -124,18 +124,18 @@ class TestLoader(unittest.TestCase):
     def test_check_wrongInten_fail(self):
         """Wrong hazard definition"""
         self.hazard.intensity = sparse.csr_matrix([[1, 2], [1, 2]])
-
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegex(
+            ValueError, "Invalid Hazard.intensity row size: 3 != 2."
+        ):
             self.hazard.check()
-        self.assertIn('Invalid Hazard.intensity row size: 3 != 2.', str(cm.exception))
 
     def test_check_wrongFrac_fail(self):
         """Wrong hazard definition"""
         self.hazard.fraction = sparse.csr_matrix([[1], [1], [1]])
-
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaisesRegex(
+            ValueError, "Invalid Hazard.fraction column size: 2 != 1."
+        ):
             self.hazard.check()
-        self.assertIn('Invalid Hazard.fraction column size: 2 != 1.', str(cm.exception))
 
     def test_check_wrongEvName_fail(self):
         """Wrong hazard definition"""
@@ -211,6 +211,32 @@ class TestLoader(unittest.TestCase):
         self.assertEqual(len(haz.get_event_date()), haz.date.size)
         self.assertEqual(haz.get_event_date()[560],
                          u_dt.date_to_str(haz.date[560]))
+
+    def test_check_matrices(self):
+        """Test the check_matrices method"""
+        hazard = Hazard("TC")
+        hazard.fraction = sparse.csr_matrix(np.zeros((2, 2)))
+        hazard.check_matrices()  # No error, fraction.nnz = 0
+        hazard.fraction = sparse.csr_matrix(np.ones((2, 2)))
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            hazard.check_matrices()
+        hazard.intensity = sparse.csr_matrix(np.ones((2, 3)))
+        with self.assertRaisesRegex(
+            ValueError, "Intensity and fraction matrices must have the same shape"
+        ):
+            hazard.check_matrices()
+
+        # Check that matrices are pruned
+        hazard.intensity[:] = 0
+        hazard.fraction = sparse.csr_matrix(([0], [0], [0, 1, 1]), shape=(2, 3))
+        hazard.check_matrices()
+        for attr in ("intensity", "fraction"):
+            with self.subTest(matrix=attr):
+                matrix = getattr(hazard, attr)
+                self.assertEqual(matrix.nnz, 0)
+                self.assertTrue(matrix.has_canonical_format)
 
 class TestRemoveDupl(unittest.TestCase):
     """Test remove_duplicates method."""
@@ -836,7 +862,8 @@ class TestAppend(unittest.TestCase):
 
         haz_1 = Hazard("TC",
                        centroids=Centroids(
-                           lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6])),
+                           lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6]),
+                           crs="epsg:4326"),
                        event_id=np.array([1]),
                        event_name=['ev1'],
                        date=np.array([1]),
@@ -848,7 +875,9 @@ class TestAppend(unittest.TestCase):
                        units='m/s')
 
         haz_2 = Hazard("TC",
-                       centroids=Centroids(lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6])),
+                       centroids=Centroids(
+                           lat=np.array([1, 3, 5]), lon=np.array([2, 4, 6]),
+                           crs="epsg:4326"),
                        event_id=np.array([1]),
                        event_name=['ev2'],
                        date=np.array([2]),
@@ -880,6 +909,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(haz.event_name, ['ev1', 'ev2'])
         self.assertTrue(np.array_equal(haz.centroids.coord, haz_1.centroids.coord))
         self.assertTrue(np.array_equal(haz.centroids.coord, haz_2.centroids.coord))
+        self.assertEqual(haz.centroids.crs, haz_1.centroids.crs)
 
     def test_append_new_var_pass(self):
         """New variable appears if hazard to append is empty."""
@@ -900,15 +930,23 @@ class TestAppend(unittest.TestCase):
             haz1.append(haz2)
 
     def test_concat_raise_value_error(self):
-        """Raise error if hazards with different units of type"""
-        haz1 = Hazard('TC', units='m/s')
+        """Raise error if hazards with different units, type or crs"""
+        haz1 = Hazard('TC', units='m/s',
+                      centroids=Centroids(lat=[],lon=[], crs="epsg:4326"))
         haz3 = Hazard('EQ')
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError,
+                                    "different types"):
             Hazard.concat([haz1, haz3])
 
         haz4 = Hazard('TC', units='cm')
-        with self.assertRaises(ValueError):
+        with self.assertRaisesRegex(ValueError,
+                                    "different units"):
             Hazard.concat([haz1, haz4])
+            
+        haz5 = Hazard('TC', centroids=Centroids(lat=[],lon=[], crs="epsg:7777"))
+        with self.assertRaisesRegex(ValueError,
+                                    "different CRS"):
+            Hazard.concat([haz1, haz5])
 
     def test_change_centroids(self):
         """Set new centroids for hazard"""
@@ -1010,6 +1048,25 @@ class TestStats(unittest.TestCase):
         self.assertAlmostEqual(inten_stats[1][66], 70.608592953031405)
         self.assertAlmostEqual(inten_stats[3][33], 88.510983305123631)
         self.assertAlmostEqual(inten_stats[2][99], 79.717518054203623)
+        
+    def test_local_return_period(self):
+        """Compare local return periods against reference."""
+        haz = dummy_hazard()
+        haz.intensity = sparse.csr_matrix([
+            [1., 5., 1.],
+            [2., 2., 0.]
+            ])
+        haz.frequency = np.full(4, 1.)
+        threshold_intensities = np.array([1., 2., 3.])
+        return_stats, _, _ = haz.local_return_period(threshold_intensities)
+        np.testing.assert_allclose(
+            return_stats[return_stats.columns[1:]].values.T,
+            np.array([
+                [0.5, 0.5, 1.],
+                [1., 0.5, np.nan],
+                [np.nan, 1., np.nan]
+            ])
+        )
 
 
 class TestYearset(unittest.TestCase):
