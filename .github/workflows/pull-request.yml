@@ -44,7 +44,7 @@ jobs:
         name: Install pre-commit and hooks
         run: |
           pip install pre-commit
-          pre-commit install
+          pre-commit install --install-hooks
       -
         name: Run pre-commit checks
         run: pre-commit run --show-diff-on-failure --from-ref ${{ github.event.pull_request.base.sha }} --to-ref ${{ github.event.pull_request.head.sha }}
