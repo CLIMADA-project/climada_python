@@ -37,8 +37,8 @@ def interpolate_ev(
         logy = False,
         x_threshold = None,
         y_threshold = None,
-        y_asymptotic = np.nan,
-        fill_value = np.nan
+        extrapolation = False,
+        y_asymptotic = np.nan
     ):
     """
     Util function to interpolate (and extrapolate) training data (x_train, y_train)
@@ -60,16 +60,14 @@ def interpolate_ev(
             Lower threshold to filter x_train. Defaults to None.
         y_threshold : float, optional
             Lower threshold to filter y_train. Defaults to None.
+        extrapolation : bool, optional
+            If set to True, values will be extrapolated. If set to False, x_test values
+            smaller than x_train will be assigned y_train[0] (x_train must be sorted in
+            ascending order), and x_test values larger than x_train will be assigned
+            y_asymptotic. Defaults to False
         y_asymptotic : float, optional
-            Return value if x_test > x_train and if
-            x_train.size < 2. Defaults to np.nan.
-        fill_value : tuple, float, str
-            fill values to use when x_test outside of range of x_train.
-            If set to "extrapolate", values will be extrapolated. If set to a float, value will
-            be used on both sides. If set to tuple, left value will be used for left side and
-            right value will be used for right side. If tuple and left value is "maximum",
-            the maximum of the cummulative frequencies will be used to compute exceedance
-            intensities on the left. Defaults to np.nan
+            Return value and if extrapolation is True or x_train.size < 2, for x_test
+            values larger than x_train. Defaults to np.nan.
 
     Returns
     -------
@@ -88,23 +86,14 @@ def interpolate_ev(
         return _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic)
 
     # calculate fill values
-    if isinstance(fill_value, tuple):
-        if fill_value[0] == 'maximum':
-            fill_value = (
-                np.max(y_train),
-                np.log10(fill_value[1]) if logy else fill_value[1]
-                )
-        elif logy:
-            fill_value = tuple(np.log10(fill_value))
-    elif isinstance(fill_value, (float, int)) and logy:
-        fill_value = np.log10(fill_value)
-
-    # warn if data is being extrapolated
-    if (
-        fill_value == 'extrapolate' and
-        ((np.min(x_test) < np.min(x_train)) or (np.max(x_test) > np.max(x_train)))
-    ):
-        LOGGER.warning('Data is being extrapolated.')
+    if extrapolation:
+        fill_value = 'extrapolate'
+        if np.min(x_test) < np.min(x_train) or np.max(x_test) > np.max(x_train):
+            LOGGER.warning('Data is being extrapolated.')
+    else:
+        if not all(sorted(x_train) == x_train):
+            raise ValueError('x_train array must be sorted in ascending order.')
+        fill_value = (y_train[0], np.log10(y_asymptotic) if logy else y_asymptotic) 
 
     interpolation = interpolate.interp1d(
         x_train, y_train, fill_value=fill_value, bounds_error=False)
