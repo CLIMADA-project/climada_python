@@ -238,19 +238,19 @@ class StormEurope(Hazard):
 
         # xarray does not penalise repeated assignments, see
         # http://xarray.pydata.org/en/stable/data-structures.html
-        stacked = ncdf.max_wind_gust.stack(
+        stacked = ncdf['max_wind_gust'].stack(
             intensity=('latitude', 'longitude', 'time')
         )
         stacked = stacked.where(stacked > intensity_thres)
         stacked = stacked.fillna(0)
 
         # fill in values from netCDF
-        ssi_wisc = np.array([float(ncdf.ssi)])
+        ssi_wisc = np.array([float(ncdf.attrs['ssi'])])
         intensity = sparse.csr_matrix(stacked)
         new_haz = cls(ssi_wisc=ssi_wisc,
                       intensity=intensity,
-                      event_name=[ncdf.storm_name],
-                      date=np.array([datetime64_to_ordinal(ncdf.time.data[0])]),
+                      event_name=[ncdf.attrs['storm_name']],
+                      date=np.array([datetime64_to_ordinal(ncdf['time'].data[0])]),
                       # fill in default values
                       centroids=centroids,
                       event_id=np.array([1]),

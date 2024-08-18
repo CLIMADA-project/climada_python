@@ -647,7 +647,7 @@ class TCTracks():
 
             # A track that crosses the antimeridian in IBTrACS might be truncated by `t_msk` in
             # such a way that the remaining part is not crossing the antimeridian:
-            if (track_ds['lon'].lon.values > 180).all():
+            if (track_ds['lon'].values > 180).all():
                 track_ds['lon'] -= 360
 
             # set time_step in hours
