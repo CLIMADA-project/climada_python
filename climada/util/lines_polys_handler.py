@@ -445,7 +445,7 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
 
     if disagg_val is not None:
         exp = exp.copy()
-        exp.gdf.value = disagg_val
+        exp.gdf['value'] = disagg_val
 
     if ((disagg_val is None) and ('value' not in exp.gdf.columns)):
         raise ValueError('There is no value column in the exposure gdf to'+
@@ -615,7 +615,7 @@ def _disagg_values_div(gdf_pnts):
     gdf_disagg = gdf_pnts.copy(deep=False)
 
     group = gdf_pnts.groupby(axis=0, level=0)
-    vals = group.value.mean() / group.value.count()
+    vals = group['value'].mean() / group['value'].count()
 
     vals = vals.reindex(gdf_pnts.index, level=0)
     gdf_disagg['value'] = vals
