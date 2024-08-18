@@ -253,7 +253,7 @@ class ImpactCalc():
                              " Run 'exposures.assign_centroids()' beforehand or set"
                              " 'assign_centroids' to 'True'")
         mask = (
-            (self.exposures.gdf['value'].values == self.exposures.gdf['value'].values)  # value != NaN
+            (self.exposures.gdf['value'].values == self.exposures.gdf['value'].values)# value != NaN
             & (self.exposures.gdf['value'].values != 0)                              # value != 0
             & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)    # centroid assigned
         )

@@ -677,7 +677,8 @@ class TCTracks():
 
             if estimate_missing:
                 track_ds['rmw'][:] = estimate_rmw(track_ds['rmw'].values, track_ds['pres'].values)
-                track_ds['roci'][:] = estimate_roci(track_ds['roci'].values, track_ds['pres'].values)
+                track_ds['roci'][:] = estimate_roci(track_ds['roci'].values,
+                                                    track_ds['pres'].values)
                 track_ds['roci'][:] = np.fmax(track_ds['rmw'].values, track_ds['roci'].values)
 
             # ensure environmental pressure >= central pressure
@@ -1558,7 +1559,8 @@ class TCTracks():
                 track_int.max_sustained_wind_unit)
             # restrict to time steps within original bounds
             track_int = track_int.sel(
-                time=(track['time'][0] <= track_int['time']) & (track_int['time'] <= track['time'][-1]))
+                time=(track['time'][0] <= track_int['time']) &
+                (track_int['time'] <= track['time'][-1]))
 
         if land_geom:
             track_land_params(track_int, land_geom)

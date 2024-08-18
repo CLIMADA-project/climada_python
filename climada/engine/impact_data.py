@@ -402,7 +402,8 @@ def emdat_possible_hit(lookup, hit_countries, delta_t):
         country_tracks = hit_countries[
             hit_countries['hit_country'] == lookup['hit_country'].values[i]]
         for j in range(0, len(country_tracks['Date_start'].values)):
-            if (lookup['Date_start_EM_ordinal'].values[i] - country_tracks['Date_start'].values[j]) < \
+            if (lookup['Date_start_EM_ordinal'].values[i] -
+                country_tracks['Date_start'].values[j]) < \
                 delta_t and (lookup['Date_start_EM_ordinal'].values[i] -
                              country_tracks['Date_start'].values[j]) >= 0:
                 possible_hit.append(country_tracks['ibtracsID'].values[j])
@@ -479,7 +480,8 @@ def assign_track_to_em(lookup, possible_tracks_1, possible_tracks_2, level):
                     if all(possible_tracks_1[i][0] == possible_tracks_1[i][k]
                            for k in range(0, len(possible_tracks_1[i]))):
                         # check that track ID has not been assigned to that country already
-                        ctry_lookup = lookup[lookup['hit_country'] == lookup['hit_country'].values[i]]
+                        ctry_lookup = lookup[lookup['hit_country']
+                                             == lookup['hit_country'].values[i]]
                         if possible_tracks_1[i][0][0] not in ctry_lookup['ibtracsID'].values:
                             lookup['ibtracsID'].values[i] = possible_tracks_1[i][0][0]
                             lookup['allocation_level'].values[i] = level
@@ -800,7 +802,8 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
                              year_range=year_range, target_version=version)
 
     df_data[imp_str + " scaled"] = scale_impact2refyear(df_data[imp_str].values,
-                                                        df_data['Year'].values, df_data['ISO'].values,
+                                                        df_data['Year'].values,
+                                                        df_data['ISO'].values,
                                                         reference_year=reference_year)
 
     def country_df(df_data):
