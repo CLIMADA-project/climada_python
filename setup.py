@@ -33,7 +33,7 @@ DEPS_TEST = [
 setup(
     name='climada',
 
-    version='4.1.2-dev',
+    version='5.0.0',
 
     description='CLIMADA in Python',
 
@@ -60,6 +60,7 @@ setup(
     python_requires=">=3.9,<3.12",
 
     install_requires=[
+        'bayesian-optimization',
         'bottleneck',
         'cartopy',
         'cfgrib',
@@ -85,6 +86,7 @@ setup(
         'rasterio',
         'salib',
         'scikit-learn',
+        'seaborn',
         'statsmodels',
         'sparse',
         'tables',

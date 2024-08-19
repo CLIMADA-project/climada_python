@@ -779,7 +779,8 @@ class TestSelect(unittest.TestCase):
         ent.exposures.assign_centroids(hazard)
 
         # Compute the impact over the whole exposures
-        imp = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True, assign_centroids=False)
+        imp = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(
+            save_mat=True, assign_centroids=False)
 
         sel_imp = imp.select(event_ids=imp.event_id,
                              event_names=imp.event_name,
@@ -1019,10 +1020,11 @@ class TestImpactH5IO(unittest.TestCase):
 
     def test_write_hdf5_type_fail(self):
         """Test that writing attributes with varying types results in an error"""
-        self.impact.event_name = [1, "a", 1.0, "b", "c", "d"]
-        with self.assertRaises(TypeError) as cm:
+        self.impact.event_name = ["a", 1, 1.0, "b", "c", "d"]
+        with self.assertRaisesRegex(
+            TypeError, "'event_name' must be a list of strings"
+        ):
             self.impact.write_hdf5(self.filepath)
-        self.assertIn("No conversion path for dtype", str(cm.exception))
 
     def test_cycle_hdf5(self):
         """Test writing and reading the same object"""
@@ -1120,6 +1122,15 @@ class TestImpactH5IO(unittest.TestCase):
         impact = Impact.from_hdf5(self.filepath)
         npt.assert_array_equal(impact.imp_mat.toarray(), [[0, 1, 2], [3, 0, 0]])
 
+        # Check with non-string event_name
+        event_name = [1.2, 2]
+        with h5py.File(self.filepath, "r+") as file:
+            del file["event_name"]
+            file.create_dataset("event_name", data=event_name)
+        with self.assertLogs("climada.engine.impact", "WARNING") as cm:
+            impact = Impact.from_hdf5(self.filepath)
+        self.assertIn("'event_name' is not stored as strings", cm.output[0])
+        self.assertListEqual(impact.event_name, ["1.2", "2.0"])
 
 # Execute Tests
 if __name__ == "__main__":
