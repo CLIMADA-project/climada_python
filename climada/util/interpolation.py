@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-define fit functionalities for (local) exceedance frequencies and return periods
+Define interpolation and extrapolation functions for calculating (local) exceedance frequencies and return periods
 """
 
 
@@ -53,9 +53,9 @@ def interpolate_ev(
         y_train : array_like
             1-D array of y-values of training data
         logx : bool, optional
-            If set to True, x_values are convert to log scale. Defaults to False.
+            If set to True, x_values are converted to log scale. Defaults to False.
         logy : bool, optional
-            If set to True, x_values are convert to log scale. Defaults to False.
+            If set to True, y_values are converted to log scale. Defaults to False.
         x_threshold : float, optional
             Lower threshold to filter x_train. Defaults to None.
         y_threshold : float, optional
@@ -146,7 +146,7 @@ def stepfunction_ev(
     if x_train.size < 2:
         return _interpolate_small_input(x_test, x_train, y_train, None, y_asymptotic)
 
-    # find indeces of x_test if sorted into x_train
+    # find indices of x_test if sorted into x_train
     if not all(sorted(x_train) == x_train):
         raise ValueError('Input array x_train must be sorted in ascending order.')
     indx = np.searchsorted(x_train, x_test)
