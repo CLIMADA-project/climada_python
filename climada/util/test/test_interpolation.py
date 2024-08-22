@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Test of fit_methods module
+Test of interpolation module
 """
 
 import unittest

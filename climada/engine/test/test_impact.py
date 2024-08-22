@@ -517,7 +517,7 @@ class TestRPmatrix(unittest.TestCase):
         # fourth centroid has intensities 1,2,3,4 with cum frequencies 4,3,2,1
         # testing at frequencies 5, 2, 1, 0.5
         impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(.2, .5, 1, 2), frequency_scale='lin', impact_scale='lin')
+                return_periods=(.2, .5, 1, 2), log_frequency=False, log_impact=False)
         np.testing.assert_allclose(
             impact_stats.values[:,1:].astype(float),
             np.array([

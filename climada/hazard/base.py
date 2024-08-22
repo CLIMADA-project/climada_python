@@ -41,7 +41,7 @@ import climada.util.checker as u_check
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
-import climada.util.fit_methods as u_fit
+import climada.util.interpolation as u_interp
 from climada.util.value_representation import safe_divide
 
 
@@ -452,10 +452,10 @@ class Hazard(HazardIO, HazardPlot):
             self,
             return_periods=(25, 50, 100, 250),
             method='interpolate',
-            frequency_scale='log',
-            intensity_scale='log',
+            log_frequeny=True,
+            log_intensity=True,
             intensity_cutoff=None,
-            fill_value='extrapolate'
+            extrapolation=True
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -521,17 +521,17 @@ class Hazard(HazardIO, HazardPlot):
             frequency = self.frequency[sorted_idxs]
 
             # group values with same intensity
-            frequency, intensity = u_fit.group_frequency(frequency, intensity)
+            frequency, intensity = u_interp.group_frequency(frequency, intensity)
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
             if method == 'interpolate':
-                inten_stats[:,i] = u_fit.interpolate_ev(
-                    1/np.array(return_periods), frequency[::-1], intensity[::-1], x_scale=frequency_scale,
-                    y_scale=intensity_scale, y_threshold=intensity_cutoff, y_asymptotic=0., fill_value=fill_value
+                inten_stats[:,i] = u_interp.interpolate_ev(
+                    1/np.array(return_periods), frequency[::-1], intensity[::-1], logx=log_frequeny,
+                    logy=log_intensity, y_threshold=intensity_cutoff, y_asymptotic=0., extrapolation=extrapolation
                 )
             elif method == 'stepfunction':
-                inten_stats[:,i] = u_fit.stepfunction_ev(
+                inten_stats[:,i] = u_interp.stepfunction_ev(
                     1/np.array(return_periods), frequency[::-1], intensity[::-1], y_threshold=intensity_cutoff,
                     y_asymptotic=0.
                 )
@@ -567,9 +567,9 @@ class Hazard(HazardIO, HazardPlot):
             self,
             threshold_intensities=(10., 20.),
             method='interpolate',
-            frequency_scale='log',
-            intensity_scale='log',
-            fill_value=('maximum', np.nan)
+            log_frequency=True,
+            log_intensity=True,
+            extrapolation=False
         ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -633,17 +633,17 @@ class Hazard(HazardIO, HazardPlot):
             frequency = self.frequency[sorted_idxs]
 
             # group values with same intensity
-            frequency, intensity = u_fit.group_frequency(frequency, intensity)
+            frequency, intensity = u_interp.group_frequency(frequency, intensity)
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
             if method == 'interpolate':
-                return_periods[:,i] = u_fit.interpolate_ev(
-                    threshold_intensities, intensity, frequency, x_scale=intensity_scale,
-                    y_scale=frequency_scale, x_threshold=0, fill_value=fill_value
+                return_periods[:,i] = u_interp.interpolate_ev(
+                    threshold_intensities, intensity, frequency, logx=log_intensity,
+                    logy=log_frequency, x_threshold=0, extrapolation=extrapolation, y_asymptotic=np.nan
                 )
             elif method == 'stepfunction':
-                return_periods[:,i] = u_fit.stepfunction_ev(
+                return_periods[:,i] = u_interp.stepfunction_ev(
                     threshold_intensities, intensity, frequency, x_threshold=0
                 )
             else:

@@ -335,43 +335,30 @@ class TestImpactRPCals(unittest.TestCase):
                 ]),
             rtol=0.8)
 
-        # test log log interpolation and border values
+        # test log log interpolation and no extrapolation
         impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1), fill_value = (1e5, 1.))
+                return_periods=(1000, 30, .1), extrapolation=False)
         np.testing.assert_allclose(
             impact_stats.values[:,1:].astype(float),
             np.array([
                 [0, 0, 0],
                 [1e3, 0, 0],
-                [1e5, 1e2, 1],
-                [1e5, 300, 1]
+                [1e3, 1e2, 0],
+                [1e3, 300, 0]
                 ]),
             rtol=0.8)
 
-        # test log log interpolation with maximum border values
+        # test lin lin interpolation with no extrapolation
         impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1), fill_value = ('maximum', 1.))
+                return_periods=(1000, 30, .1),
+                log_frequency=False, log_impact=False, extrapolation=False)
         np.testing.assert_allclose(
             impact_stats.values[:,1:].astype(float),
             np.array([
                 [0, 0, 0],
                 [1e3, 0, 0],
-                [1e3, 1e2, 1],
-                [1e3, 300, 1]
-                ]),
-            rtol=0.8)
-
-        # test lin lin interpolation with maximum border values
-        impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1), fill_value = ('maximum', 1.),
-                frequency_scale='lin', impact_scale='lin')
-        np.testing.assert_allclose(
-            impact_stats.values[:,1:].astype(float),
-            np.array([
-                [0, 0, 0],
-                [1e3, 0, 0],
-                [1e3, 750, 1],
-                [1e3, 750, 1]
+                [1e3, 750, 0],
+                [1e3, 750, 0]
                 ]),
             rtol=0.8)
 

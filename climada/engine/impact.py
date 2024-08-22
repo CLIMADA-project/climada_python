@@ -52,7 +52,7 @@ import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 import climada.util.plot as u_plot
 from climada.util.select import get_attributes_with_matching_dimension
-import climada.util.fit_methods as u_fit
+import climada.util.interpolation as u_interp
 
 LOGGER = logging.getLogger(__name__)
 
@@ -473,10 +473,10 @@ class Impact():
             self,
             return_periods=(25, 50, 100, 250),
             method = 'interpolate',
-            frequency_scale='log',
-            impact_scale='log',
+            log_frequency=True,
+            log_impact=True,
             impact_cutoff=0,
-            fill_value='extrapolate'
+            extrapolation = True
         ):
         """Compute local exceedance impact for given return periods. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
@@ -547,17 +547,17 @@ class Impact():
             frequency = self.frequency[sorted_idxs]
 
             # group values with same impact
-            frequency, impact = u_fit.group_frequency(frequency, impact)
+            frequency, impact = u_interp.group_frequency(frequency, impact)
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
             if method == 'interpolate':
-                imp_stats[:,i] = u_fit.interpolate_ev(
-                    1/np.array(return_periods), frequency[::-1], impact[::-1], x_scale=frequency_scale,
-                    y_scale=impact_scale, y_threshold=impact_cutoff, y_asymptotic=0., fill_value=fill_value
+                imp_stats[:,i] = u_interp.interpolate_ev(
+                    1/np.array(return_periods), frequency[::-1], impact[::-1], logx=log_frequency,
+                    logy=log_impact, y_threshold=impact_cutoff, extrapolation=extrapolation, y_asymptotic=0.
                 )
             elif method == 'stepfunction':
-                imp_stats[:,i] = u_fit.stepfunction_ev(
+                imp_stats[:,i] = u_interp.stepfunction_ev(
                     1/np.array(return_periods), frequency[::-1], impact[::-1], y_threshold=impact_cutoff,
                     y_asymptotic=0.
                 )

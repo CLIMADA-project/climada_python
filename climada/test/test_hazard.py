@@ -432,40 +432,28 @@ class TestRPCal(unittest.TestCase):
                 ]),
             rtol=0.8)
 
-        # test log log interpolation and border values
+        # test log log interpolation and no extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1), fill_value = (1e5, 1.))
+                return_periods=(1000, 30, .1), extrapolation=False)
         np.testing.assert_allclose(
             inten_stats.values[:,1:].astype(float),
             np.array([
                 [1e3, 0, 0],
-                [1e5, 1e2, 1],
-                [1e5, 300, 1]
+                [1e3, 1e2, 0],
+                [1e3, 300, 0]
                 ]),
             rtol=0.8)
 
-        # test log log interpolation with maximum border values
+        # test lin lin interpolation without extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1), fill_value = ('maximum', 1.))
+                return_periods=(1000, 30, .1), log_frequeny=False, log_intensity=False,
+                extrapolation=False)
         np.testing.assert_allclose(
             inten_stats.values[:,1:].astype(float),
             np.array([
                 [1e3, 0, 0],
-                [1e3, 1e2, 1],
-                [1e3, 300, 1]
-                ]),
-            rtol=0.8)
-
-        # test lin lin interpolation with maximum border values
-        inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1), fill_value = ('maximum', 1.),
-                frequency_scale='lin', intensity_scale='lin')
-        np.testing.assert_allclose(
-            inten_stats.values[:,1:].astype(float),
-            np.array([
-                [1e3, 0, 0],
-                [1e3, 750, 1],
-                [1e3, 750, 1]
+                [1e3, 750, 0],
+                [1e3, 750, 0]
                 ]),
             rtol=0.8)
 
@@ -498,7 +486,7 @@ class TestRPCal(unittest.TestCase):
 
         # test log log extrapolation
         return_stats, _, _ = haz.local_return_period(
-                threshold_intensities=(.1, 300, 1e5), fill_value = 'extrapolate')
+                threshold_intensities=(.1, 300, 1e5), extrapolation=True)
         np.testing.assert_allclose(
             return_stats.values[:,1:].astype(float),
             np.array([
@@ -508,19 +496,7 @@ class TestRPCal(unittest.TestCase):
                 ]),
             rtol=0.8)
 
-        # test log log interpolation and border values
-        return_stats, _, _ = haz.local_return_period(
-                threshold_intensities=(.1, 300, 1e5), fill_value = (.001, 10.))
-        np.testing.assert_allclose(
-            return_stats.values[:,1:].astype(float),
-            np.array([
-                [100, 100, np.nan],
-                [1e3, 30, 0.1],
-                [1e3, 30, 0.1]
-                ]),
-        rtol=0.8)
-
-        # test log log interpolation with maximum border values
+        # test log log interpolation and no extrapolation
         return_stats, _, _ = haz.local_return_period(
                 threshold_intensities=(.1, 300, 1e5))
         np.testing.assert_allclose(
