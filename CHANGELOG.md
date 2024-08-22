@@ -14,6 +14,9 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+- Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+
 ### Fixed
 
 ### Deprecated
@@ -89,6 +92,8 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - climada.hazard.centroids.centr.Centroids.to_default_crs
 - climada.hazard.centroids.centr.Centroids.write_csv
 - climada.hazard.centroids.centr.Centroids.write_excel
+- climada.hazard.local_return_period [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
+- climada.util.plot.subplots_from_gdf [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
 
 ### Deprecated
 
