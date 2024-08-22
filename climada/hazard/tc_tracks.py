@@ -1509,7 +1509,6 @@ class TCTracks():
         return gdf
 
     @staticmethod
-    @numba.jit(forceobj=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
         """Interpolate values of one track.
 
