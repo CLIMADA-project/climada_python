@@ -6,6 +6,22 @@ Release date: 2024-07-19
 
 ### Dependency Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 5.0.0
+
+Release date: 2024-07-19
+
+### Dependency Changes
+
 Added:
 
 - `bayesian-optimization`
