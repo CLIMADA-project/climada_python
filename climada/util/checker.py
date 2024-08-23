@@ -23,7 +23,8 @@ __all__ = [
     'size',
     'shape',
     'array_optional',
-    'array_default'
+    'array_default',
+    'prune_csr_matrix',
 ]
 
 import logging
@@ -180,3 +181,36 @@ def array_default(exp_len, var, var_name, def_val):
     else:
         size(exp_len, var, var_name)
     return res
+
+def prune_csr_matrix(matrix: sparse.csr_matrix):
+    """Ensure that the matrix is in the "canonical format".
+
+    Depending on how the matrix was instantiated or modified, it might be in a
+    "non-canonical" state. This only relates to its internal storage. In this state,
+    multiple values might be stored for a single "apparent" value in the matrix.
+    Also, the matrix might store zeros explicitly, which could be removed.
+    Calling this function makes sure that the matrix is in the "canonical state", and
+    brings it into this state, if possible.
+
+    See Also
+    --------
+    `csr_matrix.has_canonical_format
+    <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.has_canonical_format.html#scipy.sparse.csr_matrix.has_canonical_format>`_
+
+    Parameters
+    ----------
+    matrix : csr_matrix
+        The matrix to check. It will be modified *inplace*. Its ``.data`` attribute
+        might change, but apparent matrix values will stay the same.
+
+    Raises
+    ------
+    ValueError
+        If
+        `csr_matrix.check_format
+        <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.check_format.html#scipy.sparse.csr_matrix.check_format>`_
+        fails
+    """
+    matrix.check_format()
+    matrix.eliminate_zeros()
+    matrix.sum_duplicates()
