@@ -13,24 +13,16 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
-- Method `Hazard.check_matrices` for bringing the stored CSR matrices into "canonical format" [#893](https://github.com/CLIMADA-project/climada_python/pull/893)
-- Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
-- climada.hazard.centroids.centr.Centroids.get_area_pixel
-- climada.hazard.centroids.centr.Centroids.get_dist_coast
-- climada.hazard.centroids.centr.Centroids.get_elevation
-- climada.hazard.centroids.centr.Centroids.get_meta
-- climada.hazard.centroids.centr.Centroids.get_pixel_shapes
-- climada.hazard.centroids.centr.Centroids.to_crs
-- climada.hazard.centroids.centr.Centroids.to_default_crs
-- climada.hazard.centroids.centr.Centroids.write_csv
-- climada.hazard.centroids.centr.Centroids.write_excel
-- climada.hazard.local_return_period [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
-- climada.util.plot.subplots_from_gdf [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
+- climada.exposures.exposures.Exposures.geometry
+- climada.exposures.exposures.Exposures.latitude
+- climada.exposures.exposures.Exposures.longitude
+- climada.exposures.exposures.Exposures.value
   
 ### Changed
 
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+- Exposures complete overhaul. Notably the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization, while latitude and longitude column are no longer persent there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
 
 ### Fixed
 
@@ -72,20 +64,6 @@ Updated:
 ### Added
 
 - GitHub actions workflow for CLIMADA Petals compatibility tests [#855](https://github.com/CLIMADA-project/climada_python/pull/855)
-- Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
-- climada.hazard.centroids.centr.Centroids.get_area_pixel
-- climada.hazard.centroids.centr.Centroids.get_dist_coast
-- climada.hazard.centroids.centr.Centroids.get_elevation
-- climada.hazard.centroids.centr.Centroids.get_meta
-- climada.hazard.centroids.centr.Centroids.get_pixel_shapes
-- climada.hazard.centroids.centr.Centroids.to_crs
-- climada.hazard.centroids.centr.Centroids.to_default_crs
-- climada.hazard.centroids.centr.Centroids.write_csv
-- climada.hazard.centroids.centr.Centroids.write_excel
-- climada.exposures.exposures.Exposures.geometry
-- climada.exposures.exposures.Exposures.latitude
-- climada.exposures.exposures.Exposures.longitude
-- climada.exposures.exposures.Exposures.value
 - `climada.util.calibrate` module for calibrating impact functions [#692](https://github.com/CLIMADA-project/climada_python/pull/692)
 
 ### Changed
@@ -96,8 +74,6 @@ Updated:
 - Remove content tables and make minor improvements (fix typos and readability) in
 CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull/872)
 - Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
-- Exposures complete overhaul. Notably the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization, while
-latitude and longitude column are no longer persent there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
 - Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
 - Update the Holland et al. 2010 TC windfield model and introduce `model_kwargs` parameter to adjust model parameters [#846](https://github.com/CLIMADA-project/climada_python/pull/846)
 - Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
@@ -112,6 +88,22 @@ latitude and longitude column are no longer persent there (the according arrays 
 - Allow downgrading the Python bugfix version to improve environment compatibility [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
 - Fix broken links in `CONTRIBUTING.md` [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
 - When writing `TCTracks` to NetCDF, only apply compression to `float` or `int` data types. This fixes a downstream issue, see [climada_petals#135](https://github.com/CLIMADA-project/climada_petals/issues/135) [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
+
+### Added
+
+- Method `Hazard.check_matrices` for bringing the stored CSR matrices into "canonical format" [#893](https://github.com/CLIMADA-project/climada_python/pull/893)
+- Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
+- climada.hazard.centroids.centr.Centroids.get_area_pixel
+- climada.hazard.centroids.centr.Centroids.get_dist_coast
+- climada.hazard.centroids.centr.Centroids.get_elevation
+- climada.hazard.centroids.centr.Centroids.get_meta
+- climada.hazard.centroids.centr.Centroids.get_pixel_shapes
+- climada.hazard.centroids.centr.Centroids.to_crs
+- climada.hazard.centroids.centr.Centroids.to_default_crs
+- climada.hazard.centroids.centr.Centroids.write_csv
+- climada.hazard.centroids.centr.Centroids.write_excel
+- climada.hazard.local_return_period [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
+- climada.util.plot.subplots_from_gdf [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
 
 ### Deprecated
 
