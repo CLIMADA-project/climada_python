@@ -452,9 +452,9 @@ class Hazard(HazardIO, HazardPlot):
             self,
             return_periods=(25, 50, 100, 250),
             method='interpolate',
+            intensity_cutoff=None,
             log_frequeny=True,
             log_intensity=True,
-            intensity_cutoff=None,
             extrapolation=True
     ):
         """Compute local exceedance intensity for given return periods. The default method
@@ -469,20 +469,23 @@ class Hazard(HazardIO, HazardPlot):
         method : str
             Method to interpolate to new return periods. Currently available are "interpolate" and 
             "stepfunction". Defauls to "interpolate".
-        frequency_scale : str
-            If set to "log", frequency will be converted to log scale in interpolation. Defaults to "log".
-        intensity_scale : str
-            If set to "log", intensity will be converted to log scale in interpolation. Defaults to "log".
-        intensity_cutoff : float, None
-            Minimal threshold to filter the hazard intensity. If set to None, self.intensity_thres will be
-            used. Defaults to None.
-        fill_value : tuple, float, str
-            fill values to use when return_periods outside of seen return period range.
-            If set to "extrapolate", values will be extrapolated. If set to a float, value will 
-            be used on both sides. If set to tuple, left value will be used for left side and 
-            right value will be used for right side. If tuple and left value is "maximum", the maximum 
-            of the cummulative frequencies will be used to compute exceedance intensities on the left.
-            Defaults to "extrapolate"
+        intensity_cutoff : float, optional
+            Minimal threshold to filter the hazard intensity. If set to None, self.intensity_thres
+            will be used. Defaults to None.
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_intensity : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            intensity values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
+        extrapolation : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True, local
+            exceedance intensities will be extrapolated. If set to False, return periods larger than
+            the Hazard object's observed local return periods will be assigned the largest
+            local intensity, and return periods smaller than the Impact object's observed local
+            return periods will be assigned 0. Defaults to True.
 
         Returns
         -------
@@ -567,9 +570,10 @@ class Hazard(HazardIO, HazardPlot):
             self,
             threshold_intensities=(10., 20.),
             method='interpolate',
+            intensity_cutoff = None,
+            extrapolation=False,
             log_frequency=True,
-            log_intensity=True,
-            extrapolation=False
+            log_intensity=True
         ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -583,17 +587,23 @@ class Hazard(HazardIO, HazardPlot):
         method : str
             Method to interpolate to new intensity values. Currently available are "interpolate" and 
             "stepfunction". Defauls to "interpolate".
-        frequency_scale : str
-            If set to "log", frequency will be converted to log scale in interpolation. Defaults to "log".
-        intensity_scale : str
-            If set to "log", intensity will be converted to log scale in interpolation. Defaults to "log".
-        fill_value : tuple, float, str
-            fill values to use when threshold_intensity outside of seen intensity range.
-            If set to "extrapolate", values will be extrapolated. If set to a float, value will 
-            be used on both sides. If set to tuple, left value will be used for left side and 
-            right value will be used for right side. If tuple and left value is "maximum", the maximum 
-            of the cummulative frequencies will be used to compute return periods on the left.
-            Defaults to ('maximum', np.nan)
+        intensity_cutoff : float, optional
+            Minimal threshold to filter the hazard intensity. If set to None, self.intensity_thres
+            will be used. Defaults to None.
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_intensity : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            intensity values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
+        extrapolation : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True, local
+            return periods will be extrapolated. If set to False, threshold intensities larger than
+            the Hazard object's local intensities will be assigned NaN, and threshold intensities
+            smaller than the Hazard object's local intensities will be assigned the smallest
+            observed local return period. Defaults to False.
 
         Returns
         -------
@@ -607,6 +617,8 @@ class Hazard(HazardIO, HazardPlot):
         column_label : function
             Column-label-generating function, for reporting and plotting
         """
+        if not intensity_cutoff and intensity_cutoff != 0:
+            intensity_cutoff = self.intensity_thres
         #check frequency unit
         if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
             return_period_unit = 'Years'
@@ -640,11 +652,11 @@ class Hazard(HazardIO, HazardPlot):
             if method == 'interpolate':
                 return_periods[:,i] = u_interp.interpolate_ev(
                     threshold_intensities, intensity, frequency, logx=log_intensity,
-                    logy=log_frequency, x_threshold=0, extrapolation=extrapolation, y_asymptotic=np.nan
+                    logy=log_frequency, x_threshold=intensity_cutoff, extrapolation=extrapolation, y_asymptotic=np.nan
                 )
             elif method == 'stepfunction':
                 return_periods[:,i] = u_interp.stepfunction_ev(
-                    threshold_intensities, intensity, frequency, x_threshold=0
+                    threshold_intensities, intensity, frequency, x_threshold=intensity_cutoff
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")

@@ -473,9 +473,9 @@ class Impact():
             self,
             return_periods=(25, 50, 100, 250),
             method = 'interpolate',
+            impact_cutoff=0,
             log_frequency=True,
             log_impact=True,
-            impact_cutoff=0,
             extrapolation = True
         ):
         """Compute local exceedance impact for given return periods. The default method
@@ -490,21 +490,22 @@ class Impact():
         method : str
             Method to interpolate to new return periods. Currently available are "interpolate" and 
             "stepfunction". Defauls to "interpolate".
-        frequency_scale : str
-            If set to "log", frequency will be converted to log scale in interpolation.
-            Defaults to "log".
-        impact_scale : str
-            If set to "log", intensity will be converted to log scale in interpolation.
-            Defaults to "log".
-        impact_cutoff : float, None
+        impact_cutoff : float, optional
             Minimal threshold to filter the impact. Defaults to 0.
-        fill_value : tuple, float, str
-            fill values to use when return_periods outside of seen return period range.
-            If set to "extrapolate", values will be extrapolated. If set to a float, value will
-            be used on both sides. If set to tuple, left value will be used for left side and
-            right value will be used for right side. If tuple and left value is "maximum",
-            the maximum of the cummulative frequencies will be used to compute exceedance
-            impacts on the left. Defaults to "extrapolate"
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_impact : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            impact values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
+        extrapolation : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True, local
+            exceedance impacts will be extrapolated. If set to False, return periods larger than
+            the Impact object's observed local return periods will be assigned the largest
+            local impact, and return periods smaller than the Impact object's observed local
+            return periods will be assigned 0. Defaults to True.
 
         Returns
         -------
