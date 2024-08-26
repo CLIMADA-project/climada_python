@@ -231,7 +231,7 @@ class Exposures():
             return self.data[INDICATOR_IMPF].values
         if INDICATOR_IMPF_OLD in self.data.columns:
             return self.data[INDICATOR_IMPF_OLD].values
-        raise ValueError(f"Missing impact functions.")
+        raise ValueError("Missing impact functions.")
 
     def hazard_centroids(self, haz_type=""):
         """Get centroids for a given hazard
@@ -251,12 +251,12 @@ class Exposures():
             return self.data[INDICATOR_CENTR + haz_type].values
         if INDICATOR_CENTR in self.data.columns:
             return self.data[INDICATOR_CENTR].values
-        raise ValueError(f"Missing hazard centroids.")
+        raise ValueError("Missing hazard centroids.")
 
     @property
     def _meta(self):
         """Metadata dictionary, containing raster information derived from geometry"""
-        if not self.data.size > 0:
+        if not self.data.size:
             return None
         _r, meta = u_coord.points_to_raster(self.data)
         return meta
