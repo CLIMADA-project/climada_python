@@ -1478,36 +1478,6 @@ class Impact():
 
         return imp_list
 
-#TODO: rewrite and deprecate method
-    def _loc_return_imp(self, return_periods, imp, exc_imp):
-        """Compute local exceedence impact for given return period.
-
-        Parameters
-        ----------
-        return_periods : np.array
-            return periods to consider
-        cen_pos :int
-            centroid position
-
-        Returns
-        -------
-        np.array
-        """
-        # sorted impacts
-        sort_pos = np.argsort(imp, axis=0)[::-1, :]
-        columns = np.ones(imp.shape, int)
-        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
-        columns *= np.arange(columns.shape[1])
-        imp_sort = imp[sort_pos, columns]
-        # cummulative frequency at sorted intensity
-        freq_sort = self.frequency[sort_pos]
-        np.cumsum(freq_sort, axis=0, out=freq_sort)
-
-        for cen_idx in range(imp.shape[1]):
-            exc_imp[:, cen_idx] = self._cen_return_imp(
-                imp_sort[:, cen_idx], freq_sort[:, cen_idx],
-                0, return_periods)
-
     def _build_exp(self):
         return Exposures(
             data={
@@ -1541,43 +1511,6 @@ class Impact():
             ref_year=0,
             meta=None
         )
-
-    @staticmethod
-    def _cen_return_imp(imp, freq, imp_th, return_periods):
-        """From ordered impact and cummulative frequency at centroid, get
-        exceedance impact at input return periods.
-
-        Parameters
-        ----------
-        imp : np.array
-            sorted impact at centroid
-        freq : np.array
-            cummulative frequency at centroid
-        imp_th : float
-            impact threshold
-        return_periods : np.array
-            return periods
-
-        Returns
-        -------
-        np.array
-        """
-        imp_th = np.asarray(imp > imp_th).squeeze()
-        imp_cen = imp[imp_th]
-        freq_cen = freq[imp_th]
-        if not imp_cen.size:
-            return np.zeros((return_periods.size,))
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=1)
-        except ValueError:
-            pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
-        imp_fit = np.polyval(pol_coef, np.log(1 / return_periods))
-        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(imp_fit)
-        imp_fit[wrong_inten] = 0.
-
-        return imp_fit
 
     def select(
         self,
