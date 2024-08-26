@@ -300,13 +300,13 @@ class Exposures():
         Parameters
         ----------
         data : dict, iterable, DataFrame, ndarray
-            data of the initial DataFrame, see ``pandasDataFrame()``
+            data of the initial DataFrame, see ``pandas.DataFrame()``
         index : Index, array
-            index of the initial DataFrame, see ``pandasDataFrame()``
+            index of the initial DataFrame, see ``pandas.DataFrame()``
         columns : Index, array
-            columns of the initial DataFrame, see ``pandasDataFrame()``
+            columns of the initial DataFrame, see ``pandas.DataFrame()``
         dtype : dtype
-            data type of the initial DataFrame, see ``pandasDataFrame()``
+            data type of the initial DataFrame, see ``pandas.DataFrame()``
         copy : bool
             Whether to make a copy of the input data, see ``pandas.DataFrame()``
         geometry : array
