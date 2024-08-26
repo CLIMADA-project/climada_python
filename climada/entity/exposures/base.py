@@ -157,7 +157,9 @@ class Exposures():
     @property
     def value(self):
         """Geometry array of exposures"""
-        return self.data["value"].values
+        if "value" in self.data.columns:
+            return self.data["value"].values
+        return None
 
     @property
     def region_id(self):
@@ -254,6 +256,8 @@ class Exposures():
     @property
     def _meta(self):
         """Metadata dictionary, containing raster information derived from geometry"""
+        if not self.data.size > 0:
+            return None
         _r, meta = u_coord.points_to_raster(self.data)
         return meta
 
