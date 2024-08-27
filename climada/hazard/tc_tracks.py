@@ -1512,7 +1512,6 @@ class TCTracks():
         return gdf
 
     @staticmethod
-    @numba.jit(forceobj=True)
     def _one_interp_data(track, time_step_h, land_geom=None):
         """Interpolate values of one track.
 
@@ -1546,6 +1545,18 @@ class TCTracks():
                 lon[lon < 0] += 360
 
             time_step = pd.tseries.frequencies.to_offset(pd.Timedelta(hours=time_step_h)).freqstr
+
+            # temp fix for annoying warning
+            unit_mapping = {
+                'H': 'h',
+                'T': 'min',
+                'S': 's',
+                'L': 'ms',
+                'U': 'us',
+                'N': 'ns'
+            }
+            time_step = time_step[:-1] + unit_mapping[time_step[-1]]
+
             track_int = track.resample(time=time_step, skipna=True)\
                              .interpolate('linear')
             for var in track.data_vars:
