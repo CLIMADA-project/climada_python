@@ -89,9 +89,9 @@ def calc_geom_impact(
     disagg_val: float, optional
         Specifies what number should be taken as the value, which
         is to be disaggregated according to the method provided in disagg_met.
-        None: The shape's value is taken from the exp.gdf.value column.
+        None: The shape's value is taken from the exp.gdf['value'] column.
         float: This given number will be disaggregated according to the method.
-        In case exp.gdf.value column exists, original values in there will be
+        In case exp.gdf['value'] column exists, original values in there will be
         ignored.
         The default is None.
     agg_met : AggMethod
@@ -261,9 +261,9 @@ def calc_grid_impact(
     disagg_val: float, optional
         Specifies what number should be taken as the value, which
         is to be disaggregated according to the method provided in disagg_met.
-        None: The shape's value is taken from the exp.gdf.value column.
+        None: The shape's value is taken from the exp.gdf['value'] column.
         float: This given number will be disaggregated according to the method.
-        In case exp.gdf.value column exists, original values in there will be
+        In case exp.gdf['value'] column exists, original values in there will be
         ignored
         The default is None.
     agg_met : AggMethod
@@ -368,9 +368,9 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
     disagg_val: float, optional
         Specifies what number should be taken as the value, which
         is to be disaggregated according to the method provided in disagg_met.
-        None: The shape's value is taken from the exp.gdf.value column.
+        None: The shape's value is taken from the exp.gdf['value'] column.
         float: This given number will be disaggregated according to the method.
-        In case exp.gdf.value column exists, original values in there will be
+        In case exp.gdf['value'] column exists, original values in there will be
         ignored
         The default is None.
 
@@ -425,9 +425,9 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
     disagg_val: float, optional
         Specifies what number should be taken as the value, which
         is to be disaggregated according to the method provided in disagg_met.
-        None: The shape's value is taken from the exp.gdf.value column.
+        None: The shape's value is taken from the exp.gdf['value'] column.
         float: This given number will be disaggregated according to the method.
-        In case exp.gdf.value column exists, original values in there will be
+        In case exp.gdf['value'] column exists, original values in there will be
         ignored
         The default is None.
 

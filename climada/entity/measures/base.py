@@ -489,7 +489,7 @@ class Measure():
             new_impfs.get_func()[self.haz_type].update(imp_set.get_func()[self.haz_type])
 
         # get the indices for changing and inert regions
-        chg_reg = exposures.gdf.region_id.isin(self.exp_region_id)
+        chg_reg = exposures.gdf['region_id'].isin(self.exp_region_id)
         no_chg_reg = ~chg_reg
 
         LOGGER.debug('Number of changed exposures: %s', chg_reg.sum())
