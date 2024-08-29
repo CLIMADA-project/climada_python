@@ -1060,7 +1060,7 @@ class TestStats(unittest.TestCase):
         )
   
     def test_local_return_period(self):
-        """Test local return periods easy lin lin interpolation"""
+        """Test local return periods with lin lin interpolation"""
         haz = dummy_hazard()
         haz.intensity = sparse.csr_matrix([
             [1., 4., 1.],
@@ -1072,7 +1072,8 @@ class TestStats(unittest.TestCase):
         # second centroid has intensities 2, 4 with cum frequencies 2, 1
         # third centroid has intensities 1 with cum frequencies 1 (0 intensity is neglected)
         # testing at intensities 1, 2, 3
-        return_stats, _, _ = haz.local_return_period(threshold_intensities, log_frequency=False, log_intensity=False, intensity_cutoff=0)
+        return_stats, _, _ = haz.local_return_period(
+            threshold_intensities, log_frequency=False, log_intensity=False, min_intensity=0)
         np.testing.assert_allclose(
             return_stats[return_stats.columns[1:]].values,
             np.array([

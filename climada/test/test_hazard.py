@@ -392,8 +392,8 @@ class TestBase(unittest.TestCase):
 class TestRPCal(unittest.TestCase):
     """Test local return period and exceedance frequency functionalities"""
 
-    def test_local_exceedance_intensity_options(self):
-        """Test local exceedance frequencies with different options"""
+    def test_local_exceedance_intensity_methods(self):
+        """Test local exceedance frequencies with different methods"""
         haz = dummy_hazard()
         haz.intensity = sparse.csr_matrix([
                 [0, 0, 1e1],
@@ -422,7 +422,7 @@ class TestRPCal(unittest.TestCase):
 
         # test log log extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1))
+                return_periods=(1000, 30, .1), method = "extrapolate")
         np.testing.assert_allclose(
             inten_stats.values[:,1:].astype(float),
             np.array([
@@ -434,7 +434,7 @@ class TestRPCal(unittest.TestCase):
 
         # test log log interpolation and no extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1), extrapolation=False)
+                return_periods=(1000, 30, .1))
         np.testing.assert_allclose(
             inten_stats.values[:,1:].astype(float),
             np.array([
@@ -446,8 +446,7 @@ class TestRPCal(unittest.TestCase):
 
         # test lin lin interpolation without extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1), log_frequeny=False, log_intensity=False,
-                extrapolation=False)
+                return_periods=(1000, 30, .1), log_frequeny=False, log_intensity=False)
         np.testing.assert_allclose(
             inten_stats.values[:,1:].astype(float),
             np.array([
@@ -457,8 +456,8 @@ class TestRPCal(unittest.TestCase):
                 ]),
             rtol=0.8)
 
-    def test_local_return_period_options(self):
-        """Test local return periods different options"""
+    def test_local_return_period_methods(self):
+        """Test local return periods different methods"""
         haz = dummy_hazard()
         haz.intensity = sparse.csr_matrix([
                 [0, 0, 1e1],
@@ -486,7 +485,7 @@ class TestRPCal(unittest.TestCase):
 
         # test log log extrapolation
         return_stats, _, _ = haz.local_return_period(
-                threshold_intensities=(.1, 300, 1e5), extrapolation=True)
+                threshold_intensities=(.1, 300, 1e5), method="extrapolate")
         np.testing.assert_allclose(
             return_stats.values[:,1:].astype(float),
             np.array([

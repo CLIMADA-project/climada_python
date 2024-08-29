@@ -473,10 +473,9 @@ class Impact():
             self,
             return_periods=(25, 50, 100, 250),
             method = 'interpolate',
-            impact_cutoff=0,
+            min_impact=0,
             log_frequency=True,
-            log_impact=True,
-            extrapolation = True
+            log_impact=True
         ):
         """Compute local exceedance impact for given return periods. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
@@ -488,24 +487,22 @@ class Impact():
             User-specified return periods for which the exceedance intensity should be calculated
             locally (at each centroid). Defaults to (25, 50, 100, 250).
         method : str
-            Method to interpolate to new return periods. Currently available are "interpolate" and 
-            "stepfunction". Defauls to "interpolate".
-        impact_cutoff : float, optional
-            Minimal threshold to filter the impact. Defaults to 0.
+            Method to interpolate to new return periods. Currently available are "interpolate",
+            "extrapolate" and "stepfunction". If set to "interpolate" or "stepfunction",
+            return periods larger than the Impact object's observed local return periods will be
+            assigned the largest local impact, and return periods smaller than the Impact object's
+            observed local return periods will be assigned 0. If set to "extrapolate", local
+            exceedance impacts will be extrapolated (and interpolated). Defauls to "interpolate".
+        min_impact : float, optional
+            Minimum threshold to filter the impact. Defaults to 0.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            (cummulative) frequency values are converted to log scale before inter- and
+            This parameter is only used if method is set to "extrapolate" or "interpolate". If set
+            to True, (cummulative) frequency values are converted to log scale before inter- and
             extrapolation. Defaults to True.
         log_impact : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            impact values are converted to log scale before inter- and extrapolation.
+            This parameter is only used if method is set to "extrapolate" or "interpolate". If set
+            to True, impact values are converted to log scale before inter- and extrapolation.
             Defaults to True.
-        extrapolation : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True, local
-            exceedance impacts will be extrapolated. If set to False, return periods larger than
-            the Impact object's observed local return periods will be assigned the largest
-            local impact, and return periods smaller than the Impact object's observed local
-            return periods will be assigned 0. Defaults to True.
 
         Returns
         -------
@@ -552,15 +549,16 @@ class Impact():
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
-            if method == 'interpolate':
+            if method == 'stepfunction':
+                imp_stats[:,i] = u_interp.stepfunction_ev(
+                    1/np.array(return_periods), frequency[::-1], impact[::-1], y_threshold=min_impact,
+                    y_asymptotic=0.
+                )
+            elif method == 'extrapolate' or method == 'interpolate':
+                extrapolation = (method == 'extrapolate')
                 imp_stats[:,i] = u_interp.interpolate_ev(
                     1/np.array(return_periods), frequency[::-1], impact[::-1], logx=log_frequency,
-                    logy=log_impact, y_threshold=impact_cutoff, extrapolation=extrapolation, y_asymptotic=0.
-                )
-            elif method == 'stepfunction':
-                imp_stats[:,i] = u_interp.stepfunction_ev(
-                    1/np.array(return_periods), frequency[::-1], impact[::-1], y_threshold=impact_cutoff,
-                    y_asymptotic=0.
+                    logy=log_impact, y_threshold=min_impact, extrapolation=extrapolation, y_asymptotic=0.
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")
@@ -584,8 +582,11 @@ class Impact():
             return_periods=(25, 50, 100, 250)
         ):
         """This function is deprecated, use Impact.local_exceedance_impact instead."""
-        LOGGER.warning("The use of Impact.local_exceedance_imp is deprecated."
-                       "Use Impact.local_exceedance_impact instead.")
+        LOGGER.warning(
+            "The use of Impact.local_exceedance_imp is deprecated. Use "
+            "Impact.local_exceedance_impact instead. Some errors in the previous calculation "
+            "in Impact.local_exceedance_imp have been corrected. To reproduce data with the "
+            "previous calculation, use CLIMADA v5.0.0 or less.")
 
         return self.local_exceedance_impact(return_periods)[0].values[:,1:].T.astype(float)
 

@@ -291,8 +291,8 @@ class TestCalcCostBenefit(unittest.TestCase):
 class TestImpactRPCals(unittest.TestCase):
     """Test the return periods and exceedance impact calculation of Impact objects"""
 
-    def test_local_exceedance_impact_options(self):
-        """Test local exceedance impacts per return period with different options"""
+    def test_local_exceedance_impact_methods(self):
+        """Test local exceedance impacts per return period with different methods"""
         impact = dummy_impact()
         impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
         impact.imp_mat = sp.sparse.csr_matrix(
@@ -324,7 +324,7 @@ class TestImpactRPCals(unittest.TestCase):
 
         # test log log extrapolation
         impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1))
+                return_periods=(1000, 30, .1), method = "extrapolate")
         np.testing.assert_allclose(
             impact_stats.values[:,1:].astype(float),
             np.array([
@@ -337,7 +337,7 @@ class TestImpactRPCals(unittest.TestCase):
 
         # test log log interpolation and no extrapolation
         impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1), extrapolation=False)
+                return_periods=(1000, 30, .1))
         np.testing.assert_allclose(
             impact_stats.values[:,1:].astype(float),
             np.array([
@@ -351,7 +351,7 @@ class TestImpactRPCals(unittest.TestCase):
         # test lin lin interpolation with no extrapolation
         impact_stats, _, _ = impact.local_exceedance_impact(
                 return_periods=(1000, 30, .1),
-                log_frequency=False, log_impact=False, extrapolation=False)
+                log_frequency=False, log_impact=False)
         np.testing.assert_allclose(
             impact_stats.values[:,1:].astype(float),
             np.array([

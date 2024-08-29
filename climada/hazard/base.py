@@ -452,10 +452,9 @@ class Hazard(HazardIO, HazardPlot):
             self,
             return_periods=(25, 50, 100, 250),
             method='interpolate',
-            intensity_cutoff=None,
+            min_intensity=None,
             log_frequeny=True,
-            log_intensity=True,
-            extrapolation=True
+            log_intensity=True
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -467,10 +466,15 @@ class Hazard(HazardIO, HazardPlot):
             User-specified return periods for which the exceedance intensity should be calculated
             locally (at each centroid). Defaults to (25, 50, 100, 250).
         method : str
-            Method to interpolate to new return periods. Currently available are "interpolate" and 
-            "stepfunction". Defauls to "interpolate".
-        intensity_cutoff : float, optional
-            Minimal threshold to filter the hazard intensity. If set to None, self.intensity_thres
+            Method to interpolate to new return periods. Currently available are "interpolate",
+            "extrapolate" and "stepfunction". If set to "interpolate" or "stepfunction", return
+            periods larger than the Hazard object's observed local return periods will be assigned
+            the largest local intensity, and return periods smaller than the Hazard object's
+            observed local return periods will be assigned 0. If set to "extrapolate", local
+            exceedance intensities will be extrapolated (and interpolated).
+            Defauls to "interpolate".
+        min_intensity : float, optional
+            Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
             will be used. Defaults to None.
         log_frequency : bool, optional
             This parameter is only used if method is set to "interpolate". If set to True,
@@ -480,12 +484,6 @@ class Hazard(HazardIO, HazardPlot):
             This parameter is only used if method is set to "interpolate". If set to True,
             intensity values are converted to log scale before inter- and extrapolation.
             Defaults to True.
-        extrapolation : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True, local
-            exceedance intensities will be extrapolated. If set to False, return periods larger than
-            the Hazard object's observed local return periods will be assigned the largest
-            local intensity, and return periods smaller than the Impact object's observed local
-            return periods will be assigned 0. Defaults to True.
 
         Returns
         -------
@@ -499,8 +497,8 @@ class Hazard(HazardIO, HazardPlot):
         column_label : function
             Column-label-generating function, for reporting and plotting
         """
-        if not intensity_cutoff and intensity_cutoff != 0:
-            intensity_cutoff = self.intensity_thres
+        if not min_intensity and min_intensity != 0:
+            min_intensity = self.intensity_thres
         #check frequency unit
         if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
             return_period_unit = 'years'
@@ -528,15 +526,16 @@ class Hazard(HazardIO, HazardPlot):
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
-            if method == 'interpolate':
+            if method == 'stepfunction':
+                inten_stats[:,i] = u_interp.stepfunction_ev(
+                    1/np.array(return_periods), frequency[::-1], intensity[::-1], y_threshold=min_intensity,
+                    y_asymptotic=0.
+                )
+            elif method == 'interpolate' or method == 'extrapolate':
+                extrapolation = (method == 'extrapolate')
                 inten_stats[:,i] = u_interp.interpolate_ev(
                     1/np.array(return_periods), frequency[::-1], intensity[::-1], logx=log_frequeny,
-                    logy=log_intensity, y_threshold=intensity_cutoff, y_asymptotic=0., extrapolation=extrapolation
-                )
-            elif method == 'stepfunction':
-                inten_stats[:,i] = u_interp.stepfunction_ev(
-                    1/np.array(return_periods), frequency[::-1], intensity[::-1], y_threshold=intensity_cutoff,
-                    y_asymptotic=0.
+                    logy=log_intensity, y_threshold=min_intensity, y_asymptotic=0., extrapolation=extrapolation
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")
@@ -556,8 +555,11 @@ class Hazard(HazardIO, HazardPlot):
 #TODO: note different calculation in changelog 
     def local_exceedance_inten(self, return_period=(25, 50, 100, 250)):
         """This function is deprecated, use Hazard.local_exceedance_intensity instead."""
-        LOGGER.warning("The use of Hazard.local_exceedance_inten is deprecated."
-                       "Use Hazard.local_exceedance_intensity instead.")
+        LOGGER.warning(
+            "The use of Hazard.local_exceedance_inten is deprecated. Use "
+            "Hazard.local_exceedance_intensity instead. Some errors in the previous calculation "
+            "in Hazard.local_exceedance_inten have been corrected. To reproduce data with the "
+            "previous calculation, use CLIMADA v5.0.0 or less.")
         return self.local_exceedance_intensity(return_period)[0].values[:,1:].T.astype(float)
 
     def sanitize_event_ids(self):
@@ -570,8 +572,7 @@ class Hazard(HazardIO, HazardPlot):
             self,
             threshold_intensities=(10., 20.),
             method='interpolate',
-            intensity_cutoff = None,
-            extrapolation=False,
+            min_intensity = None,
             log_frequency=True,
             log_intensity=True
         ):
@@ -585,10 +586,15 @@ class Hazard(HazardIO, HazardPlot):
             User-specified hazard intensities for which the return period should be calculated
             locally (at each centroid). Defaults to (10, 20)
         method : str
-            Method to interpolate to new intensity values. Currently available are "interpolate" and 
-            "stepfunction". Defauls to "interpolate".
-        intensity_cutoff : float, optional
-            Minimal threshold to filter the hazard intensity. If set to None, self.intensity_thres
+            Method to interpolate to new threshold intensities. Currently available are
+            "interpolate", "extrapolate" and "stepfunction". If set to "interpolate" or
+            "stepfunction", threshold intensities larger than the Hazard object's local
+            intensities will be assigned NaN, and threshold intensities smaller than the Hazard
+            object's local intensities will be assigned the smallest observed local return period.
+            If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            Defaults to "interpolate".
+        min_intensity : float, optional
+            Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
             will be used. Defaults to None.
         log_frequency : bool, optional
             This parameter is only used if method is set to "interpolate". If set to True,
@@ -598,12 +604,6 @@ class Hazard(HazardIO, HazardPlot):
             This parameter is only used if method is set to "interpolate". If set to True,
             intensity values are converted to log scale before inter- and extrapolation.
             Defaults to True.
-        extrapolation : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True, local
-            return periods will be extrapolated. If set to False, threshold intensities larger than
-            the Hazard object's local intensities will be assigned NaN, and threshold intensities
-            smaller than the Hazard object's local intensities will be assigned the smallest
-            observed local return period. Defaults to False.
 
         Returns
         -------
@@ -617,8 +617,8 @@ class Hazard(HazardIO, HazardPlot):
         column_label : function
             Column-label-generating function, for reporting and plotting
         """
-        if not intensity_cutoff and intensity_cutoff != 0:
-            intensity_cutoff = self.intensity_thres
+        if not min_intensity and min_intensity != 0:
+            min_intensity = self.intensity_thres
         #check frequency unit
         if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
             return_period_unit = 'Years'
@@ -649,14 +649,15 @@ class Hazard(HazardIO, HazardPlot):
 
             # fit intensities to cummulative frequencies
             frequency = np.cumsum(frequency[::-1])[::-1]
-            if method == 'interpolate':
+            if method == 'stepfunction':
+                return_periods[:,i] = u_interp.stepfunction_ev(
+                    threshold_intensities, intensity, frequency, x_threshold=min_intensity
+                )
+            elif method == 'interpolate' or method == "extrapolate":
+                extrapolation = (method == "extrapolate")
                 return_periods[:,i] = u_interp.interpolate_ev(
                     threshold_intensities, intensity, frequency, logx=log_intensity,
-                    logy=log_frequency, x_threshold=intensity_cutoff, extrapolation=extrapolation, y_asymptotic=np.nan
-                )
-            elif method == 'stepfunction':
-                return_periods[:,i] = u_interp.stepfunction_ev(
-                    threshold_intensities, intensity, frequency, x_threshold=intensity_cutoff
+                    logy=log_frequency, x_threshold=min_intensity, extrapolation=extrapolation, y_asymptotic=np.nan
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")
