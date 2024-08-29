@@ -242,7 +242,7 @@ class TCTracks():
             return self.data
 
         for track in self.data:
-            if track.name == track_name:
+            if track.attrs['name'] == track_name:
                 return track
             if hasattr(track, 'sid') and track.sid == track_name:
                 return track
@@ -932,7 +932,7 @@ class TCTracks():
                     'orig_event_flag': True,
                     'data_provider': "CHAZ",
                     'id_no': track_ds['id_no'].item(),
-                    'category': track_ds.category.item(),
+                    'category': track_ds['category'].item(),
                 }))
             if last_perc != 100:
                 LOGGER.info("Progress: 100%")
@@ -1556,7 +1556,7 @@ class TCTracks():
                                                .interpolate(method)
             track_int.attrs['category'] = set_category(
                 track_int['max_sustained_wind'].values,
-                track_int.max_sustained_wind_unit)
+                track_int.attrs['max_sustained_wind_unit'])
             # restrict to time steps within original bounds
             track_int = track_int.sel(
                 time=(track['time'][0] <= track_int['time']) &

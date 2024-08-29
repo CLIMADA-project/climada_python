@@ -483,9 +483,9 @@ class TropCyclone(Hazard):
 
             tc_tmp = cls.from_tracks(tr_sel, centroids=centroids)
             tc_tmp.event_name = [
-                track.name + ' ' + time.strftime(
+                track['name'] + ' ' + time.strftime(
                     "%d %h %Y %H:%M",
-                    time.gmtime(tr_sel.data[0].time[1].values.astype(int)
+                    time.gmtime(tr_sel.data[0]['time'][1].values.astype(int)
                                 / 1000000000)
                 )
             ]
@@ -610,7 +610,7 @@ class TropCyclone(Hazard):
         new_haz.centroids = centroids
         new_haz.event_id = np.array([1])
         new_haz.frequency = np.array([1])
-        new_haz.event_name = [track.sid]
+        new_haz.event_name = [track.attrs['sid']]
         new_haz.fraction = sparse.csr_matrix(new_haz.intensity.shape)
         # store first day of track as date
         new_haz.date = np.array([
@@ -618,8 +618,8 @@ class TropCyclone(Hazard):
                         track['time'].dt.month.values[0],
                         track['time'].dt.day.values[0]).toordinal()
         ])
-        new_haz.orig = np.array([track.orig_event_flag])
-        new_haz.category = np.array([track.category])
+        new_haz.orig = np.array([track.attrs['orig_event_flag']])
+        new_haz.category = np.array([track.attrs['category']])
         # users that pickle TCTracks objects might still have data with the legacy basin attribute,
         # so we have to deal with it here
         new_haz.basin = [track['basin'] if isinstance(track['basin'], str)

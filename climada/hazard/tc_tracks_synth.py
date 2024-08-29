@@ -332,7 +332,7 @@ def _one_rnd_walk(track, nb_synth_tracks, max_shift_ini, max_dspeed_rel, max_ddi
                 # end the track here
                 max_wind_end = i_track['max_sustained_wind'].values[last_idx]
                 ss_scale_end = climada.hazard.tc_tracks.set_category(max_wind_end,
-                        i_track.max_sustained_wind_unit)
+                        i_track.attrs['max_sustained_wind_unit'])
                 # TC category at ending point should not be higher than 1
                 cutoff_txt = (f"{i_track.attrs['name']}_gen{i_ens + 1}"
                               f" ({climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]})")
@@ -698,7 +698,7 @@ def _decay_values(track, land_geom, s_rel):
         for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
             v_landfall = track['max_sustained_wind'][sea_land - 1].values
             ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
-                                                             track.max_sustained_wind_unit)
+                                                             track.attrs['max_sustained_wind_unit'])
 
             v_land = track['max_sustained_wind'][sea_land - 1:land_sea].values
             if v_land[0] > 0:
@@ -873,7 +873,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         v_landfall = track['max_sustained_wind'][sea_land - 1].values
         p_landfall = float(track['central_pressure'][sea_land - 1].values)
         ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
-                                                         track.max_sustained_wind_unit)
+                                                         track.attrs['max_sustained_wind_unit'])
         if land_sea - sea_land == 1:
             continue
         S = _calc_decay_ps_value(track, p_landfall, land_sea - 1, s_rel)
@@ -909,7 +909,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
                         track['sid'])
             v_decay[v_decay > 1] = (track['max_sustained_wind'][sea_land:land_sea][v_decay > 1]
                                     / v_landfall)
-        track.max_sustained_wind[sea_land:land_sea] = v_landfall * v_decay
+        track['max_sustained_wind'][sea_land:land_sea] = v_landfall * v_decay
 
         # correct values of sea after a landfall (until next landfall, if any)
         if land_sea < track['time'].size:
@@ -920,7 +920,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             else:
                 # if there is no further landfall, correct until the end of
                 # the track
-                end_cor = track.time.size
+                end_cor = track['time'].size
             rndn = 0.1 * float(np.abs(np.random.normal(size=1) * 5) + 6)
             r_diff = track['central_pressure'][land_sea].values - \
                      track['central_pressure'][land_sea - 1].values + rndn
@@ -938,7 +938,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
         track['max_sustained_wind'][track['max_sustained_wind'] < 0] = 0
 
     track.attrs['category'] = climada.hazard.tc_tracks.set_category(
-        track['max_sustained_wind'].values, track.max_sustained_wind_unit)
+        track['max_sustained_wind'].values, track.attrs['max_sustained_wind_unit'])
     return track
 
 
