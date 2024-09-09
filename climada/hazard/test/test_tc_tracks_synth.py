@@ -52,13 +52,13 @@ class TestDecay(unittest.TestCase):
         tc_ref = tc_track.data[0].copy()
         tc_synth._apply_land_decay(tc_track.data, dict(), dict(), land_geom)
 
-        self.assertTrue(np.allclose(tc_track.data[0].max_sustained_wind.values,
-                                    tc_ref.max_sustained_wind.values))
-        self.assertTrue(np.allclose(tc_track.data[0].central_pressure.values,
-                                    tc_ref.central_pressure.values))
-        self.assertTrue(np.allclose(tc_track.data[0].environmental_pressure.values,
-                                    tc_ref.environmental_pressure.values))
-        self.assertTrue(np.all(np.isnan(tc_track.data[0].dist_since_lf.values)))
+        self.assertTrue(np.allclose(tc_track.data[0]['max_sustained_wind'].values,
+                                    tc_ref['max_sustained_wind'].values))
+        self.assertTrue(np.allclose(tc_track.data[0]['central_pressure'].values,
+                                    tc_ref['central_pressure'].values))
+        self.assertTrue(np.allclose(tc_track.data[0]['environmental_pressure'].values,
+                                    tc_ref['environmental_pressure'].values))
+        self.assertTrue(np.all(np.isnan(tc_track.data[0]['dist_since_lf'].values)))
 
     def test_apply_decay_pass(self):
         """Test _apply_land_decay against MATLAB reference."""
@@ -110,7 +110,7 @@ class TestDecay(unittest.TestCase):
             1.00818354609, 1.00941850023, 1.00986192053, 1.00998400565
         ]) * 1e3
 
-        self.assertTrue(np.allclose(p_ref, tc_track.data[0].central_pressure.values))
+        self.assertTrue(np.allclose(p_ref, tc_track.data[0]['central_pressure'].values))
 
         v_ref = np.array([
             0.250000000000000, 0.300000000000000, 0.300000000000000,
@@ -130,11 +130,11 @@ class TestDecay(unittest.TestCase):
             0.1302099557, 0.0645385918, 0.0225325851
         ]) * 1e2
 
-        self.assertTrue(np.allclose(v_ref, tc_track.data[0].max_sustained_wind.values))
+        self.assertTrue(np.allclose(v_ref, tc_track.data[0]['max_sustained_wind'].values))
 
-        cat_ref = tc.set_category(tc_track.data[0].max_sustained_wind.values,
-                                  tc_track.data[0].max_sustained_wind_unit)
-        self.assertEqual(cat_ref, tc_track.data[0].category)
+        cat_ref = tc.set_category(tc_track.data[0]['max_sustained_wind'].values,
+                                  tc_track.data[0].attrs['max_sustained_wind_unit'])
+        self.assertEqual(cat_ref, tc_track.data[0].attrs['category'])
 
     def test_func_decay_p_pass(self):
         """Test decay function for pressure with its inverse."""
@@ -169,9 +169,9 @@ class TestDecay(unittest.TestCase):
         p_landfall = 100
 
         res = tc_synth._calc_decay_ps_value(tr_ds, p_landfall, on_land_idx, s_rel=True)
-        self.assertEqual(res, float(tr_ds.environmental_pressure[on_land_idx] / p_landfall))
+        self.assertEqual(res, float(tr_ds['environmental_pressure'][on_land_idx] / p_landfall))
         res = tc_synth._calc_decay_ps_value(tr_ds, p_landfall, on_land_idx, s_rel=False)
-        self.assertEqual(res, float(tr_ds.central_pressure[on_land_idx] / p_landfall))
+        self.assertEqual(res, float(tr_ds['central_pressure'][on_land_idx] / p_landfall))
 
     def test_calc_decay_no_landfall_pass(self):
         """Test _calc_land_decay with no historical tracks with landfall"""
@@ -353,7 +353,7 @@ class TestDecay(unittest.TestCase):
             extent=extent, resolution=10
         )
         track_res = tc_synth._apply_decay_coeffs(track_gen, v_rel, p_rel, land_geom, True)
-        self.assertTrue(np.array_equal(cp_ref, track_res.central_pressure[9:11]))
+        self.assertTrue(np.array_equal(cp_ref, track_res['central_pressure'][9:11]))
 
     def test_decay_end_ocean(self):
         """Test decay is applied after landfall if the track ends over the ocean"""
@@ -382,28 +382,28 @@ class TestDecay(unittest.TestCase):
         lf_idx = tc._get_landfall_idx(track)
         last_lf_idx = lf_idx[-1][1]
         # only suitable if track ends over the ocean
-        self.assertTrue(last_lf_idx < track.time.size-2,
+        self.assertTrue(last_lf_idx < track['time'].size-2,
                          'This test should be re-written, data not suitable')
         # check pressure and wind values
-        p_hist_end = track_hist.central_pressure.values[last_lf_idx:]
-        p_synth_end = track.central_pressure.values[last_lf_idx:]
+        p_hist_end = track_hist['central_pressure'].values[last_lf_idx:]
+        p_synth_end = track['central_pressure'].values[last_lf_idx:]
         self.assertTrue(np.all(p_synth_end > p_hist_end))
-        v_hist_end = track_hist.max_sustained_wind.values[last_lf_idx:]
-        v_synth_end = track.max_sustained_wind.values[last_lf_idx:]
+        v_hist_end = track_hist['max_sustained_wind'].values[last_lf_idx:]
+        v_synth_end = track['max_sustained_wind'].values[last_lf_idx:]
         self.assertTrue(np.all(v_synth_end < v_hist_end))
 
         # Part 2: is landfall applied in all landfalls?
-        p_hist_lf = np.concatenate([track_hist.central_pressure.values[lfs:lfe]
+        p_hist_lf = np.concatenate([track_hist['central_pressure'].values[lfs:lfe]
                                     for lfs,lfe in zip(*lf_idx)])
-        p_synth_lf = np.concatenate([track.central_pressure.values[lfs:lfe]
+        p_synth_lf = np.concatenate([track['central_pressure'].values[lfs:lfe]
                                      for lfs,lfe in zip(*lf_idx)])
-        v_hist_lf = np.concatenate([track_hist.max_sustained_wind.values[lfs:lfe]
+        v_hist_lf = np.concatenate([track_hist['max_sustained_wind'].values[lfs:lfe]
                                     for lfs,lfe in zip(*lf_idx)])
-        v_synth_lf = np.concatenate([track.max_sustained_wind.values[lfs:lfe]
+        v_synth_lf = np.concatenate([track['max_sustained_wind'].values[lfs:lfe]
                                      for lfs,lfe in zip(*lf_idx)])
         self.assertTrue(np.all(p_synth_lf > p_hist_lf))
         self.assertTrue(np.all(v_synth_lf < v_hist_lf))
-        self.assertTrue(np.all(track.central_pressure.values <= track.environmental_pressure.values))
+        self.assertTrue(np.all(track['central_pressure'].values <= track['environmental_pressure'].values))
 
     def test_decay_penv_gt_pcen(self):
         """Test decay is applied if penv at end of landfall < pcen just before landfall"""
@@ -433,39 +433,39 @@ class TestDecay(unittest.TestCase):
         start_lf_idx, end_lf_idx = lf_idx[0][0], lf_idx[1][0]
 
         # check pressure and wind values
-        p_hist_end = track_hist.central_pressure.values[end_lf_idx:]
-        p_synth_end = track.central_pressure.values[end_lf_idx:]
+        p_hist_end = track_hist['central_pressure'].values[end_lf_idx:]
+        p_synth_end = track['central_pressure'].values[end_lf_idx:]
         self.assertTrue(np.all(p_synth_end > p_hist_end))
-        v_hist_end = track_hist.max_sustained_wind.values[end_lf_idx:]
-        v_synth_end = track.max_sustained_wind.values[end_lf_idx:]
+        v_hist_end = track_hist['max_sustained_wind'].values[end_lf_idx:]
+        v_synth_end = track['max_sustained_wind'].values[end_lf_idx:]
         self.assertTrue(np.all(v_synth_end < v_hist_end))
 
         # Part 2: is landfall applied in all landfalls?
 
         # central pressure
-        p_hist_lf = track_hist.central_pressure.values[start_lf_idx:end_lf_idx]
-        p_synth_lf = track.central_pressure.values[start_lf_idx:end_lf_idx]
+        p_hist_lf = track_hist['central_pressure'].values[start_lf_idx:end_lf_idx]
+        p_synth_lf = track['central_pressure'].values[start_lf_idx:end_lf_idx]
         # central pressure should be higher in synth than hist; unless it was set to p_env
         self.assertTrue(np.all(
             np.logical_or(p_synth_lf > p_hist_lf,
-                          p_synth_lf == track.environmental_pressure.values[start_lf_idx:end_lf_idx])
+                          p_synth_lf == track['environmental_pressure'].values[start_lf_idx:end_lf_idx])
             ))
         # but for this track is should be higher towards the end
         self.assertTrue(np.any(p_synth_lf > p_hist_lf))
         self.assertTrue(np.all(p_synth_lf >= p_hist_lf))
 
         # wind speed
-        v_hist_lf = track_hist.max_sustained_wind.values[start_lf_idx:end_lf_idx]
-        v_synth_lf = track.max_sustained_wind.values[start_lf_idx:end_lf_idx]
+        v_hist_lf = track_hist['max_sustained_wind'].values[start_lf_idx:end_lf_idx]
+        v_synth_lf = track['max_sustained_wind'].values[start_lf_idx:end_lf_idx]
         # wind should decrease over time for that landfall
-        v_before_lf = track_hist.max_sustained_wind.values[start_lf_idx-1]
+        v_before_lf = track_hist['max_sustained_wind'].values[start_lf_idx-1]
         self.assertTrue(np.all(v_synth_lf[1:] < v_before_lf))
         # and wind speed should be lower in synth than hist at the end of and after this landfall
         self.assertTrue(np.all(
-            track.max_sustained_wind.values[end_lf_idx:] < track_hist.max_sustained_wind.values[end_lf_idx:]
+            track['max_sustained_wind'].values[end_lf_idx:] < track_hist['max_sustained_wind'].values[end_lf_idx:]
             ))
         # finally, central minus env pressure cannot increase during this landfall
-        p_env_lf = track.central_pressure.values[start_lf_idx:end_lf_idx]
+        p_env_lf = track['central_pressure'].values[start_lf_idx:end_lf_idx]
         self.assertTrue(np.all(np.diff(p_env_lf - p_synth_lf) <= 0))
 
 class TestSynth(unittest.TestCase):
@@ -505,35 +505,35 @@ class TestSynth(unittest.TestCase):
 
         self.assertEqual(len(tc_track.data), nb_synth_tracks + 1)
 
-        self.assertFalse(tc_track.data[1].orig_event_flag)
-        self.assertEqual(tc_track.data[1].name, '1951239N12334_gen1')
-        self.assertEqual(tc_track.data[1].id_no, 1.951239012334010e+12)
-        self.assertAlmostEqual(tc_track.data[1].lon[0].values, -25.0448138)
-        self.assertAlmostEqual(tc_track.data[1].lon[1].values, -25.74439739)
-        self.assertAlmostEqual(tc_track.data[1].lon[2].values, -26.54491644)
-        self.assertAlmostEqual(tc_track.data[1].lon[3].values, -27.73156829)
-        self.assertAlmostEqual(tc_track.data[1].lon[4].values, -28.63175987)
-        self.assertAlmostEqual(tc_track.data[1].lon[8].values, -34.05293373)
+        self.assertFalse(tc_track.data[1].attrs['orig_event_flag'])
+        self.assertEqual(tc_track.data[1].attrs['name'], '1951239N12334_gen1')
+        self.assertEqual(tc_track.data[1].attrs['id_no'], 1.951239012334010e+12)
+        self.assertAlmostEqual(tc_track.data[1]['lon'][0].values, -25.0448138)
+        self.assertAlmostEqual(tc_track.data[1]['lon'][1].values, -25.74439739)
+        self.assertAlmostEqual(tc_track.data[1]['lon'][2].values, -26.54491644)
+        self.assertAlmostEqual(tc_track.data[1]['lon'][3].values, -27.73156829)
+        self.assertAlmostEqual(tc_track.data[1]['lon'][4].values, -28.63175987)
+        self.assertAlmostEqual(tc_track.data[1]['lon'][8].values, -34.05293373)
 
-        self.assertAlmostEqual(tc_track.data[1].lat[0].values, 11.96825841)
-        self.assertAlmostEqual(tc_track.data[1].lat[4].values, 11.86769405)
-        self.assertAlmostEqual(tc_track.data[1].lat[5].values, 11.84378139)
-        self.assertAlmostEqual(tc_track.data[1].lat[6].values, 11.85957282)
-        self.assertAlmostEqual(tc_track.data[1].lat[7].values, 11.84555291)
-        self.assertAlmostEqual(tc_track.data[1].lat[8].values, 11.8065998)
+        self.assertAlmostEqual(tc_track.data[1]['lat'][0].values, 11.96825841)
+        self.assertAlmostEqual(tc_track.data[1]['lat'][4].values, 11.86769405)
+        self.assertAlmostEqual(tc_track.data[1]['lat'][5].values, 11.84378139)
+        self.assertAlmostEqual(tc_track.data[1]['lat'][6].values, 11.85957282)
+        self.assertAlmostEqual(tc_track.data[1]['lat'][7].values, 11.84555291)
+        self.assertAlmostEqual(tc_track.data[1]['lat'][8].values, 11.8065998)
 
-        self.assertFalse(tc_track.data[2].orig_event_flag)
-        self.assertEqual(tc_track.data[2].name, '1951239N12334_gen2')
-        self.assertAlmostEqual(tc_track.data[2].id_no, 1.951239012334020e+12)
-        self.assertAlmostEqual(tc_track.data[2].lon[0].values, -25.47658461)
-        self.assertAlmostEqual(tc_track.data[2].lon[3].values, -28.08465841)
-        self.assertAlmostEqual(tc_track.data[2].lon[4].values, -28.85901852)
-        self.assertAlmostEqual(tc_track.data[2].lon[8].values, -33.62144837)
+        self.assertFalse(tc_track.data[2].attrs['orig_event_flag'])
+        self.assertEqual(tc_track.data[2].attrs['name'], '1951239N12334_gen2')
+        self.assertAlmostEqual(tc_track.data[2].attrs['id_no'], 1.951239012334020e+12)
+        self.assertAlmostEqual(tc_track.data[2]['lon'][0].values, -25.47658461)
+        self.assertAlmostEqual(tc_track.data[2]['lon'][3].values, -28.08465841)
+        self.assertAlmostEqual(tc_track.data[2]['lon'][4].values, -28.85901852)
+        self.assertAlmostEqual(tc_track.data[2]['lon'][8].values, -33.62144837)
 
-        self.assertAlmostEqual(tc_track.data[2].lat[0].values, 11.82886685)
-        self.assertAlmostEqual(tc_track.data[2].lat[6].values, 11.71068012)
-        self.assertAlmostEqual(tc_track.data[2].lat[7].values, 11.69832976)
-        self.assertAlmostEqual(tc_track.data[2].lat[8].values, 11.64145734)
+        self.assertAlmostEqual(tc_track.data[2]['lat'][0].values, 11.82886685)
+        self.assertAlmostEqual(tc_track.data[2]['lat'][6].values, 11.71068012)
+        self.assertAlmostEqual(tc_track.data[2]['lat'][7].values, 11.69832976)
+        self.assertAlmostEqual(tc_track.data[2]['lat'][8].values, 11.64145734)
 
     def test_random_walk_decay_pass(self):
         """Test land decay is called from calc_perturbed_trajectories."""
@@ -573,8 +573,8 @@ class TestSynth(unittest.TestCase):
                                   max_shift_ini=0, max_dspeed_rel=0, max_ddirection=0, decay=False)
         orig_track = tc_track.data[0]
         for syn_track in tc_track.data[1:]:
-            np.testing.assert_allclose(orig_track.lon.values, syn_track.lon.values, atol=1e-4)
-            np.testing.assert_allclose(orig_track.lat.values, syn_track.lat.values, atol=1e-4)
+            np.testing.assert_allclose(orig_track['lon'].values, syn_track['lon'].values, atol=1e-4)
+            np.testing.assert_allclose(orig_track['lat'].values, syn_track['lat'].values, atol=1e-4)
             for varname in ["time", "time_step", "radius_max_wind", "max_sustained_wind",
                             "central_pressure", "environmental_pressure"]:
                 np.testing.assert_array_equal(orig_track[varname].values,
@@ -586,7 +586,7 @@ class TestSynth(unittest.TestCase):
             tc_track = tc.TCTracks.from_ibtracs_netcdf(provider='usa',
                                          year_range=(year,year),
                                          discard_single_points=False)
-            singlept = np.where([x.time.size == 1 for x in tc_track.data])[0]
+            singlept = np.where([x['time'].size == 1 for x in tc_track.data])[0]
             found = len(singlept) > 0
             if found:
                 # found a case with a single-point track, keep max three tracks for efficiency

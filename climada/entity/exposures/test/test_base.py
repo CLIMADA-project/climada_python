@@ -120,7 +120,7 @@ class TestFuncs(unittest.TestCase):
                                -69.2471495969998 + 0.009000000000000341
                                / 2 + 49 * 0.009000000000000341)
         self.assertEqual(len(exp.gdf), 60 * 50)
-        self.assertAlmostEqual(exp.gdf.value.values.reshape((60, 50))[25, 12], 0.056825936)
+        self.assertAlmostEqual(exp.gdf['value'].values.reshape((60, 50))[25, 12], 0.056825936)
 
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""
@@ -176,14 +176,14 @@ class TestFuncs(unittest.TestCase):
     def test_assign_large_hazard_subset_pass(self):
         """Test assign_centroids with raster hazard"""
         exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
-        exp.gdf.latitude[[0, 1]] = exp.gdf.latitude[[1, 0]]
-        exp.gdf.longitude[[0, 1]] = exp.gdf.longitude[[1, 0]]
+        exp.gdf['latitude'][[0, 1]] = exp.gdf['latitude'][[1, 0]]
+        exp.gdf['longitude'][[0, 1]] = exp.gdf['longitude'][[1, 0]]
         exp.check()
         haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type='FL')
         exp.assign_centroids(haz)
         assigned_centroids = haz.centroids.select(sel_cen=exp.gdf[INDICATOR_CENTR + 'FL'].values)
-        np.testing.assert_array_equal(np.unique(assigned_centroids.lat), np.unique(exp.gdf.latitude))
-        np.testing.assert_array_equal(np.unique(assigned_centroids.lon), np.unique(exp.gdf.longitude))
+        np.testing.assert_array_equal(np.unique(assigned_centroids.lat), np.unique(exp.gdf['latitude']))
+        np.testing.assert_array_equal(np.unique(assigned_centroids.lon), np.unique(exp.gdf['longitude']))
 
     def test_affected_total_value(self):
         haz_type = "RF"
@@ -206,15 +206,15 @@ class TestFuncs(unittest.TestCase):
         tot_val = exp.affected_total_value(
             haz, threshold_affected=0, overwrite_assigned_centroids=False
         )
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[1, 2, 3, 5]]))
+        self.assertEqual(tot_val, np.sum(exp.gdf['value'][[1, 2, 3, 5]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=3, overwrite_assigned_centroids=False
         )
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[3]]))
+        self.assertEqual(tot_val, np.sum(exp.gdf['value'][[3]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=-2, overwrite_assigned_centroids=False
         )
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[0, 1, 2, 3, 5]]))
+        self.assertEqual(tot_val, np.sum(exp.gdf['value'][[0, 1, 2, 3, 5]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=11, overwrite_assigned_centroids=False
         )
@@ -280,7 +280,7 @@ class TestChecker(unittest.TestCase):
         """Wrong exposures definition"""
         expo = good_exposures()
         expo.set_geometry_points()
-        expo.gdf.latitude.values[0] = 5
+        expo.gdf['latitude'].values[0] = 5
 
         with self.assertRaises(ValueError):
             expo.check()
@@ -323,17 +323,17 @@ class TestIO(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(exp_df.crs, exp_read.crs))
         self.assertTrue(u_coord.equal_crs(exp_df.gdf.crs, exp_read.gdf.crs))
         self.assertEqual(exp_df.description, exp_read.description)
-        np.testing.assert_array_equal(exp_df.gdf.latitude.values, exp_read.gdf.latitude.values)
-        np.testing.assert_array_equal(exp_df.gdf.longitude.values, exp_read.gdf.longitude.values)
-        np.testing.assert_array_equal(exp_df.gdf.value.values, exp_read.gdf.value.values)
-        np.testing.assert_array_equal(exp_df.gdf.deductible.values, exp_read.gdf.deductible.values)
-        np.testing.assert_array_equal(exp_df.gdf.cover.values, exp_read.gdf.cover.values)
-        np.testing.assert_array_equal(exp_df.gdf.region_id.values, exp_read.gdf.region_id.values)
-        np.testing.assert_array_equal(exp_df.gdf.category_id.values, exp_read.gdf.category_id.values)
-        np.testing.assert_array_equal(exp_df.gdf.impf_TC.values, exp_read.gdf.impf_TC.values)
-        np.testing.assert_array_equal(exp_df.gdf.centr_TC.values, exp_read.gdf.centr_TC.values)
-        np.testing.assert_array_equal(exp_df.gdf.impf_FL.values, exp_read.gdf.impf_FL.values)
-        np.testing.assert_array_equal(exp_df.gdf.centr_FL.values, exp_read.gdf.centr_FL.values)
+        np.testing.assert_array_equal(exp_df.gdf['latitude'].values, exp_read.gdf['latitude'].values)
+        np.testing.assert_array_equal(exp_df.gdf['longitude'].values, exp_read.gdf['longitude'].values)
+        np.testing.assert_array_equal(exp_df.gdf['value'].values, exp_read.gdf['value'].values)
+        np.testing.assert_array_equal(exp_df.gdf['deductible'].values, exp_read.gdf['deductible'].values)
+        np.testing.assert_array_equal(exp_df.gdf['cover'].values, exp_read.gdf['cover'].values)
+        np.testing.assert_array_equal(exp_df.gdf['region_id'].values, exp_read.gdf['region_id'].values)
+        np.testing.assert_array_equal(exp_df.gdf['category_id'].values, exp_read.gdf['category_id'].values)
+        np.testing.assert_array_equal(exp_df.gdf['impf_TC'].values, exp_read.gdf['impf_TC'].values)
+        np.testing.assert_array_equal(exp_df.gdf['centr_TC'].values, exp_read.gdf['centr_TC'].values)
+        np.testing.assert_array_equal(exp_df.gdf['impf_FL'].values, exp_read.gdf['impf_FL'].values)
+        np.testing.assert_array_equal(exp_df.gdf['centr_FL'].values, exp_read.gdf['centr_FL'].values)
 
         for point_df, point_read in zip(exp_df.gdf.geometry.values, exp_read.gdf.geometry.values):
             self.assertEqual(point_df.x, point_read.x)
@@ -368,22 +368,22 @@ class TestAddSea(unittest.TestCase):
         max_lat = max_lat + sea_coast
         min_lon = min_lon - sea_coast
         max_lon = max_lon + sea_coast
-        self.assertEqual(np.min(exp_sea.gdf.latitude), min_lat)
-        self.assertEqual(np.min(exp_sea.gdf.longitude), min_lon)
+        self.assertEqual(np.min(exp_sea.gdf['latitude']), min_lat)
+        self.assertEqual(np.min(exp_sea.gdf['longitude']), min_lon)
         np.testing.assert_array_equal(exp_sea.gdf.value.values[:10], np.arange(0, 1.0e6, 1.0e5))
         self.assertEqual(exp_sea.ref_year, exp.ref_year)
         self.assertEqual(exp_sea.value_unit, exp.value_unit)
 
-        on_sea_lat = exp_sea.gdf.latitude.values[11:]
-        on_sea_lon = exp_sea.gdf.longitude.values[11:]
+        on_sea_lat = exp_sea.gdf['latitude'].values[11:]
+        on_sea_lon = exp_sea.gdf['longitude'].values[11:]
         res_on_sea = u_coord.coord_on_land(on_sea_lat, on_sea_lon)
         res_on_sea = ~res_on_sea
         self.assertTrue(np.all(res_on_sea))
 
         dist = DistanceMetric.get_metric('haversine')
         self.assertAlmostEqual(dist.pairwise([
-            [exp_sea.gdf.longitude.values[-1], exp_sea.gdf.latitude.values[-1]],
-            [exp_sea.gdf.longitude.values[-2], exp_sea.gdf.latitude.values[-2]],
+            [exp_sea.gdf['longitude'].values[-1], exp_sea.gdf['latitude'].values[-1]],
+            [exp_sea.gdf['longitude'].values[-2], exp_sea.gdf['latitude'].values[-2]],
         ])[0][1], sea_res_km)
 
 
@@ -431,8 +431,8 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_copy.ref_year, exp.ref_year)
         self.assertEqual(exp_copy.value_unit, exp.value_unit)
         self.assertEqual(exp_copy.description, exp.description)
-        np.testing.assert_array_equal(exp_copy.gdf.latitude.values, exp.gdf.latitude.values)
-        np.testing.assert_array_equal(exp_copy.gdf.longitude.values, exp.gdf.longitude.values)
+        np.testing.assert_array_equal(exp_copy.gdf['latitude'].values, exp.gdf['latitude'].values)
+        np.testing.assert_array_equal(exp_copy.gdf['longitude'].values, exp.gdf['longitude'].values)
 
     def test_to_crs_inplace_pass(self):
         """Test to_crs function inplace."""
@@ -466,7 +466,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         in_gpd.ref_year = 2015
         in_exp = Exposures(in_gpd, ref_year=2015)
         self.assertEqual(in_exp.ref_year, 2015)
-        np.testing.assert_array_equal(in_exp.gdf.value, np.zeros(10))
+        np.testing.assert_array_equal(in_exp.gdf['value'], np.zeros(10))
 
     def test_error_on_access_item(self):
         """Test error output when trying to access items as in CLIMADA 1.x"""

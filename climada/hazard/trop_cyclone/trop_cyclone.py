@@ -290,7 +290,7 @@ class TropCyclone(Hazard):
             if 'dist_coast' not in centroids.gdf.columns:
                 dist_coast = centroids.get_dist_coast()
             else:
-                dist_coast = centroids.gdf.dist_coast.values
+                dist_coast = centroids.gdf['dist_coast'].values
             [idx_centr_filter] = (
                 (dist_coast <= max_dist_inland_km * 1000)
                 & (np.abs(centroids.lat) <= max_latitude)
@@ -463,29 +463,29 @@ class TropCyclone(Hazard):
         if not track:
             raise ValueError(f'{track_name} not found in track data.')
         idx_plt = np.argwhere(
-            (track.lon.values < centroids.total_bounds[2] + 1)
-            & (centroids.total_bounds[0] - 1 < track.lon.values)
-            & (track.lat.values < centroids.total_bounds[3] + 1)
-            & (centroids.total_bounds[1] - 1 < track.lat.values)
+            (track['lon'].values < centroids.total_bounds[2] + 1)
+            & (centroids.total_bounds[0] - 1 < track['lon'].values)
+            & (track['lat'].values < centroids.total_bounds[3] + 1)
+            & (centroids.total_bounds[1] - 1 < track['lat'].values)
         ).reshape(-1)
 
         tc_list = []
         tr_coord = {'lat': [], 'lon': []}
         for node in range(idx_plt.size - 2):
             tr_piece = track.sel(
-                time=slice(track.time.values[idx_plt[node]],
-                           track.time.values[idx_plt[node + 2]]))
+                time=slice(track['time'].values[idx_plt[node]],
+                           track['time'].values[idx_plt[node + 2]]))
             tr_piece.attrs['n_nodes'] = 2  # plot only one node
             tr_sel = TCTracks()
             tr_sel.append(tr_piece)
-            tr_coord['lat'].append(tr_sel.data[0].lat.values[:-1])
-            tr_coord['lon'].append(tr_sel.data[0].lon.values[:-1])
+            tr_coord['lat'].append(tr_sel.data[0]['lat'].values[:-1])
+            tr_coord['lon'].append(tr_sel.data[0]['lon'].values[:-1])
 
             tc_tmp = cls.from_tracks(tr_sel, centroids=centroids)
             tc_tmp.event_name = [
-                track.name + ' ' + time.strftime(
+                track['name'] + ' ' + time.strftime(
                     "%d %h %Y %H:%M",
-                    time.gmtime(tr_sel.data[0].time[1].values.astype(int)
+                    time.gmtime(tr_sel.data[0]['time'][1].values.astype(int)
                                 / 1000000000)
                 )
             ]
@@ -525,8 +525,8 @@ class TropCyclone(Hazard):
         """
         if not tracks:
             return
-        year_max = np.amax([t.time.dt.year.values.max() for t in tracks])
-        year_min = np.amin([t.time.dt.year.values.min() for t in tracks])
+        year_max = np.amax([t['time'].dt.year.values.max() for t in tracks])
+        year_min = np.amin([t['time'].dt.year.values.min() for t in tracks])
         year_delta = year_max - year_min + 1
         num_orig = np.count_nonzero(self.orig)
         ens_size = (self.event_id.size / num_orig) if num_orig > 0 else 1
@@ -610,20 +610,20 @@ class TropCyclone(Hazard):
         new_haz.centroids = centroids
         new_haz.event_id = np.array([1])
         new_haz.frequency = np.array([1])
-        new_haz.event_name = [track.sid]
+        new_haz.event_name = [track.attrs['sid']]
         new_haz.fraction = sparse.csr_matrix(new_haz.intensity.shape)
         # store first day of track as date
         new_haz.date = np.array([
-            dt.datetime(track.time.dt.year.values[0],
-                        track.time.dt.month.values[0],
-                        track.time.dt.day.values[0]).toordinal()
+            dt.datetime(track['time'].dt.year.values[0],
+                        track['time'].dt.month.values[0],
+                        track['time'].dt.day.values[0]).toordinal()
         ])
-        new_haz.orig = np.array([track.orig_event_flag])
-        new_haz.category = np.array([track.category])
+        new_haz.orig = np.array([track.attrs['orig_event_flag']])
+        new_haz.category = np.array([track.attrs['category']])
         # users that pickle TCTracks objects might still have data with the legacy basin attribute,
         # so we have to deal with it here
-        new_haz.basin = [track.basin if isinstance(track.basin, str)
-                         else str(track.basin.values[0])]
+        new_haz.basin = [track['basin'] if isinstance(track['basin'], str)
+                         else str(track['basin'].values[0])]
         return new_haz
 
     def _apply_knutson_criterion(

@@ -243,8 +243,8 @@ class Impact():
             date = hazard.date,
             frequency = hazard.frequency,
             frequency_unit = hazard.frequency_unit,
-            coord_exp = np.stack([exposures.gdf.latitude.values,
-                                  exposures.gdf.longitude.values],
+            coord_exp = np.stack([exposures.gdf['latitude'].values,
+                                  exposures.gdf['longitude'].values],
                                  axis=1),
             crs = exposures.crs,
             unit = exposures.value_unit,
@@ -1081,25 +1081,25 @@ class Impact():
         # pylint: disable=no-member
         LOGGER.info('Reading %s', file_name)
         imp_df = pd.read_csv(file_name)
-        imp = cls(haz_type=imp_df.haz_type[0])
-        imp.unit = imp_df.unit[0]
-        imp.tot_value = imp_df.tot_value[0]
-        imp.aai_agg = imp_df.aai_agg[0]
-        imp.event_id = imp_df.event_id[~np.isnan(imp_df.event_id)].values
+        imp = cls(haz_type=imp_df['haz_type'][0])
+        imp.unit = imp_df['unit'][0]
+        imp.tot_value = imp_df['tot_value'][0]
+        imp.aai_agg = imp_df['aai_agg'][0]
+        imp.event_id = imp_df['event_id'][~np.isnan(imp_df['event_id'])].values
         num_ev = imp.event_id.size
-        imp.event_name = imp_df.event_name[:num_ev].values.tolist()
-        imp.date = imp_df.event_date[:num_ev].values
-        imp.at_event = imp_df.at_event[:num_ev].values
-        imp.frequency = imp_df.event_frequency[:num_ev].values
-        imp.frequency_unit = imp_df.frequency_unit[0] if 'frequency_unit' in imp_df \
+        imp.event_name = imp_df['event_name'][:num_ev].values.tolist()
+        imp.date = imp_df['event_date'][:num_ev].values
+        imp.at_event = imp_df['at_event'][:num_ev].values
+        imp.frequency = imp_df['event_frequency'][:num_ev].values
+        imp.frequency_unit = imp_df['frequency_unit'][0] if 'frequency_unit' in imp_df \
                              else DEF_FREQ_UNIT
-        imp.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)].values
+        imp.eai_exp = imp_df['eai_exp'][~np.isnan(imp_df['eai_exp'])].values
         num_exp = imp.eai_exp.size
         imp.coord_exp = np.zeros((num_exp, 2))
-        imp.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
-        imp.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
+        imp.coord_exp[:, 0] = imp_df['exp_lat'][:num_exp]
+        imp.coord_exp[:, 1] = imp_df['exp_lon'][:num_exp]
         try:
-            imp.crs = u_coord.to_crs_user_input(imp_df.exp_crs.values[0])
+            imp.crs = u_coord.to_crs_user_input(imp_df['exp_crs'].values[0])
         except AttributeError:
             imp.crs = DEF_CRS
 
@@ -1129,23 +1129,23 @@ class Impact():
         dfr = pd.read_excel(file_name)
         imp = cls(haz_type=str(dfr['haz_type'][0]))
 
-        imp.unit = dfr.unit[0]
-        imp.tot_value = dfr.tot_value[0]
-        imp.aai_agg = dfr.aai_agg[0]
+        imp.unit = dfr['unit'][0]
+        imp.tot_value = dfr['tot_value'][0]
+        imp.aai_agg = dfr['aai_agg'][0]
 
-        imp.event_id = dfr.event_id[~np.isnan(dfr.event_id.values)].values
-        imp.event_name = dfr.event_name[:imp.event_id.size].values
-        imp.date = dfr.event_date[:imp.event_id.size].values
-        imp.frequency = dfr.event_frequency[:imp.event_id.size].values
-        imp.frequency_unit = dfr.frequency_unit[0] if 'frequency_unit' in dfr else DEF_FREQ_UNIT
-        imp.at_event = dfr.at_event[:imp.event_id.size].values
+        imp.event_id = dfr['event_id'][~np.isnan(dfr['event_id'].values)].values
+        imp.event_name = dfr['event_name'][:imp.event_id.size].values
+        imp.date = dfr['event_date'][:imp.event_id.size].values
+        imp.frequency = dfr['event_frequency'][:imp.event_id.size].values
+        imp.frequency_unit = dfr['frequency_unit'][0] if 'frequency_unit' in dfr else DEF_FREQ_UNIT
+        imp.at_event = dfr['at_event'][:imp.event_id.size].values
 
-        imp.eai_exp = dfr.eai_exp[~np.isnan(dfr.eai_exp.values)].values
+        imp.eai_exp = dfr['eai_exp'][~np.isnan(dfr['eai_exp'].values)].values
         imp.coord_exp = np.zeros((imp.eai_exp.size, 2))
-        imp.coord_exp[:, 0] = dfr.exp_lat.values[:imp.eai_exp.size]
-        imp.coord_exp[:, 1] = dfr.exp_lon.values[:imp.eai_exp.size]
+        imp.coord_exp[:, 0] = dfr['exp_lat'].values[:imp.eai_exp.size]
+        imp.coord_exp[:, 1] = dfr['exp_lon'].values[:imp.eai_exp.size]
         try:
-            imp.crs = u_coord.to_csr_user_input(dfr.exp_crs.values[0])
+            imp.crs = u_coord.to_csr_user_input(dfr['exp_crs'].values[0])
         except AttributeError:
             imp.crs = DEF_CRS
 
@@ -1324,14 +1324,14 @@ class Impact():
                  np.array([haz.intensity.max() for haz in haz_list]).max()]
 
         if 'vmin' not in args_exp:
-            args_exp['vmin'] = exp.gdf.value.values.min()
+            args_exp['vmin'] = exp.gdf['value'].values.min()
 
         if 'vmin' not in args_imp:
             args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
                                          if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
-            args_exp['vmax'] = exp.gdf.value.values.max()
+            args_exp['vmax'] = exp.gdf['value'].values.max()
 
         if 'vmax' not in args_imp:
             args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list
