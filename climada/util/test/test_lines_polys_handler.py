@@ -100,7 +100,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             EXP_POLY, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.FIX, disagg_val=None
             )
-        np.testing.assert_array_equal(exp_pnt.gdf.value, EXP_POLY.gdf.value)
+        np.testing.assert_array_equal(exp_pnt.gdf['value'], EXP_POLY.gdf['value'])
         self.check_unchanged_exp(EXP_POLY, exp_pnt)
 
         #to_meters=False, DIV
@@ -161,7 +161,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             )
         self.check_unchanged_exp(EXP_POLY_PROJ, exp_pnt)
         val = res**2
-        self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
+        self.assertEqual(np.unique(exp_pnt.gdf['value'])[0], val)
         self.assertEqual(exp_pnt.gdf.crs, EXP_POLY_PROJ.gdf.crs)
 
     @patch.multiple(
@@ -255,7 +255,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             EXP_LINE, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.FIX, disagg_val=None
             )
-        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value)
+        np.testing.assert_array_equal(exp_pnt.gdf['value'][:,0], EXP_LINE.gdf['value'])
         self.check_unchanged_exp(EXP_LINE, exp_pnt)
 
         #to_meters=False, DIV
@@ -263,7 +263,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             EXP_LINE, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None
             )
-        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value)
+        np.testing.assert_array_equal(exp_pnt.gdf['value'][:,0], EXP_LINE.gdf['value'])
         self.check_unchanged_exp(EXP_LINE, exp_pnt)
 
         #to_meters=TRUE, FIX, dissag_val
@@ -274,7 +274,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             )
         self.check_unchanged_exp(EXP_LINE, exp_pnt)
         val = res**2
-        self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
+        self.assertEqual(np.unique(exp_pnt.gdf['value'])[0], val)
         lat = np.array([
             50.83944191, 50.94706532, 51.85008694, 51.7524172 , 52.07732906,
             50.889641  , 51.90287148, 51.53858598, 52.30223675, 53.15931081,
@@ -513,13 +513,13 @@ class TestGdfGeomToPnt(unittest.TestCase):
         gdf_pnt = u_lp._line_to_pnts(GDF_LINE, 1, False)
         check_unchanged_geom_gdf(self, GDF_LINE, gdf_pnt)
         np.testing.assert_array_equal(
-            np.unique(GDF_LINE.value), np.unique(gdf_pnt.value)
+            np.unique(GDF_LINE['value']), np.unique(gdf_pnt['value'])
             )
 
         gdf_pnt = u_lp._line_to_pnts(GDF_LINE, 1000, True)
         check_unchanged_geom_gdf(self, GDF_LINE, gdf_pnt)
         np.testing.assert_array_equal(
-            np.unique(GDF_LINE.value), np.unique(gdf_pnt.value)
+            np.unique(GDF_LINE['value']), np.unique(gdf_pnt['value'])
             )
 
         gdf_pnt_d = u_lp._line_to_pnts(GDF_LINE.iloc[0:1], 0.01, False)
@@ -552,13 +552,13 @@ class TestGdfGeomToPnt(unittest.TestCase):
         gdf_pnt = u_lp._poly_to_pnts(GDF_POLY, 1, False)
         check_unchanged_geom_gdf(self, GDF_POLY, gdf_pnt)
         np.testing.assert_array_equal(
-            np.unique(GDF_POLY.value), np.unique(gdf_pnt.value)
+            np.unique(GDF_POLY['value']), np.unique(gdf_pnt['value'])
             )
 
         gdf_pnt = u_lp._poly_to_pnts(GDF_POLY, 5000, True)
         check_unchanged_geom_gdf(self, GDF_POLY, gdf_pnt)
         np.testing.assert_array_equal(
-            np.unique(GDF_POLY.value), np.unique(gdf_pnt.value)
+            np.unique(GDF_POLY['value']), np.unique(gdf_pnt['value'])
             )
 
         gdf_pnt_d = u_lp._poly_to_pnts(GDF_POLY.iloc[0:1], 0.2, False)

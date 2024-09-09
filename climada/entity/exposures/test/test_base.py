@@ -121,7 +121,7 @@ class TestFuncs(unittest.TestCase):
                                -69.2471495969998 + 0.009000000000000341
                                / 2 + 49 * 0.009000000000000341)
         self.assertEqual(len(exp.gdf), 60 * 50)
-        self.assertAlmostEqual(exp.gdf.value.values.reshape((60, 50))[25, 12], 0.056825936)
+        self.assertAlmostEqual(exp.gdf['value'].values.reshape((60, 50))[25, 12], 0.056825936)
 
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""
@@ -208,15 +208,15 @@ class TestFuncs(unittest.TestCase):
         tot_val = exp.affected_total_value(
             haz, threshold_affected=0, overwrite_assigned_centroids=False
         )
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[1, 2, 3, 5]]))
+        self.assertEqual(tot_val, np.sum(exp.gdf['value'][[1, 2, 3, 5]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=3, overwrite_assigned_centroids=False
         )
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[3]]))
+        self.assertEqual(tot_val, np.sum(exp.gdf['value'][[3]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=-2, overwrite_assigned_centroids=False
         )
-        self.assertEqual(tot_val, np.sum(exp.gdf.value[[0, 1, 2, 3, 5]]))
+        self.assertEqual(tot_val, np.sum(exp.gdf['value'][[0, 1, 2, 3, 5]]))
         tot_val = exp.affected_total_value(
             haz, threshold_affected=11, overwrite_assigned_centroids=False
         )
@@ -460,7 +460,7 @@ class TestGeoDFFuncs(unittest.TestCase):
         ))
         in_exp = Exposures(in_gpd, ref_year=2015)
         self.assertEqual(in_exp.ref_year, 2015)
-        np.testing.assert_array_equal(in_exp.gdf.value, np.zeros(10))
+        np.testing.assert_array_equal(in_exp.value, np.zeros(10))
         self.assertEqual(in_exp.gdf.geometry[0], Point(0, 0))
 
     def test_error_on_access_item(self):

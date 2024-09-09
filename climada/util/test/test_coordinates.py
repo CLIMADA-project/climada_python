@@ -567,7 +567,7 @@ class TestAssign(unittest.TestCase):
         })
         gdf = gpd.GeoDataFrame(
             df,
-            geometry=gpd.points_from_xy(df.longitude, df.latitude),
+            geometry=gpd.points_from_xy(df['longitude'], df['latitude']),
             crs=DEF_CRS,
         )
         assigned = u_coord.match_centroids(gdf, centroids)
@@ -591,7 +591,7 @@ class TestAssign(unittest.TestCase):
             'longitude': gdf_coords[:, 1],
             'latitude': gdf_coords[:, 0]
         })
-        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df['longitude'], df['latitude']),
                                crs=DEF_CRS)
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
@@ -626,7 +626,7 @@ class TestAssign(unittest.TestCase):
             'longitude': [10, 20, 30],
             'latitude': [50, 60, 70]
         })
-        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df['longitude'], df['latitude']),
                                crs = 'EPSG:4326')
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
@@ -1152,11 +1152,11 @@ class TestGetGeodata(unittest.TestCase):
         self.assertEqual(len(gdf.iso_3a.unique()), 4) # 4 countries
         self.assertEqual(gdf.loc[gdf.iso_3a=='CHE'].shape[0], 26) # 26 cantons in CHE
         self.assertEqual(gdf.shape[0], 121) # 121 admin 1 regions in the 4 countries
-        self.assertIn('ARM', gdf.iso_3a.values) # Armenia (region_id 051)
-        self.assertIn('756', gdf.iso_3n.values) # Switzerland (region_id 756)
-        self.assertIn('CH-AI', gdf.iso_3166_2.values) # canton in CHE
-        self.assertIn('Sulawesi Tengah', gdf.admin1_name.values) # region in Indonesia
-        self.assertIsInstance(gdf.loc[gdf.iso_3166_2 == 'CH-AI'].geometry.values[0],
+        self.assertIn('ARM', gdf['iso_3a'].values) # Armenia (region_id 051)
+        self.assertIn('756', gdf['iso_3n'].values) # Switzerland (region_id 756)
+        self.assertIn('CH-AI', gdf['iso_3166_2'].values) # canton in CHE
+        self.assertIn('Sulawesi Tengah', gdf['admin1_name'].values) # region in Indonesia
+        self.assertIsInstance(gdf.loc[gdf['iso_3166_2'] == 'CH-AI'].geometry.values[0],
                               shapely.geometry.MultiPolygon)
         self.assertIsInstance(gdf.loc[gdf.admin1_name == 'Sulawesi Tengah'].geometry.values[0],
                               shapely.geometry.MultiPolygon)
@@ -1273,7 +1273,7 @@ class TestRasterMeta(unittest.TestCase):
     def test_points_to_raster_pass(self):
         """Test points_to_raster"""
         for scheduler in [None, "threads", "synchronous", "processes"]:
-        
+
             df_val = gpd.GeoDataFrame()
             x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
             df_val['latitude'] = y.flatten()

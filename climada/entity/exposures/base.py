@@ -712,9 +712,9 @@ class Exposures():
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
-            pos_vals = self.gdf.value[mask].values > 0
+            pos_vals = self.gdf['value'][mask].values > 0
         else:
-            pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
+            pos_vals = np.ones((self.gdf['value'][mask].values.size,), dtype=bool)
         value = self.gdf.value[mask][pos_vals].values
         coord = np.stack([self.gdf.geometry[mask][pos_vals].y.values,
                           self.gdf.geometry[mask][pos_vals].x.values], axis=1)
@@ -781,10 +781,10 @@ class Exposures():
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
-            pos_vals = self.gdf.value[mask].values > 0
+            pos_vals = self.gdf['value'][mask].values > 0
         else:
-            pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
-        value = self.gdf.value[mask][pos_vals].values
+            pos_vals = np.ones((self.gdf["value"][mask].values.size,), dtype=bool)
+        value = self.gdf["value"][mask][pos_vals].values
         coord = np.stack([self.gdf.geometry[mask][pos_vals].y.values,
                           self.gdf.geometry[mask][pos_vals].x.values], axis=1)
         return u_plot.geo_bin_from_array(array_sub=value,
@@ -1195,10 +1195,10 @@ class Exposures():
 
         """
         nz_mask = (
-            (self.gdf.value.values > 0)
+            (self.gdf['value'].values > 0)
             & (self.gdf[hazard.centr_exp_col].values >= 0)
         )
-        return np.sum(self.gdf.value.values[nz_mask])
+        return np.sum(self.gdf['value'].values[nz_mask])
 
     def affected_total_value(
         self,
@@ -1243,7 +1243,7 @@ class Exposures():
         """
         self.assign_centroids(hazard=hazard, overwrite=overwrite_assigned_centroids)
         assigned_centroids = self.gdf[hazard.centr_exp_col]
-        nz_mask = (self.gdf.value.values > 0) & (assigned_centroids.values >= 0)
+        nz_mask = (self.gdf['value'].values > 0) & (assigned_centroids.values >= 0)
         cents = np.unique(assigned_centroids[nz_mask])
         cent_with_inten_above_thres = (
             hazard.intensity[:, cents].max(axis=0) > threshold_affected
@@ -1251,7 +1251,7 @@ class Exposures():
         above_thres_mask = np.isin(
             self.gdf[hazard.centr_exp_col].values, cents[cent_with_inten_above_thres]
         )
-        return np.sum(self.gdf.value.values[above_thres_mask])
+        return np.sum(self.gdf['value'].values[above_thres_mask])
 
 
 def add_sea(exposures, sea_res, scheduler=None):
@@ -1294,14 +1294,14 @@ def add_sea(exposures, sea_res, scheduler=None):
     sea_exp_gdf = GeoDataFrame()
     sea_exp_gdf['latitude'] = lat_mgrid[on_land]
     sea_exp_gdf['longitude'] = lon_mgrid[on_land]
-    sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf.latitude.size, int) - 1
+    sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf['latitude'].size, int) - 1
 
     if 'geometry' in exposures.gdf.columns:
         u_coord.set_df_geometry_points(sea_exp_gdf, crs=exposures.crs, scheduler=scheduler)
 
     for var_name in exposures.gdf.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):
-            sea_exp_gdf[var_name] = np.zeros(sea_exp_gdf.latitude.size,
+            sea_exp_gdf[var_name] = np.zeros(sea_exp_gdf['latitude'].size,
                                              exposures.gdf[var_name].dtype)
 
     return Exposures(

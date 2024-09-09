@@ -140,7 +140,7 @@ class Centroids():
         """ Get the on_land property """
         if 'on_land' not in self.gdf:
             return None
-        if self.gdf.on_land.isna().all():
+        if self.gdf['on_land'].on_land.isna().all():
             return None
         return self.gdf['on_land'].values
 
@@ -149,7 +149,7 @@ class Centroids():
         """ Get the assigned region_id """
         if 'region_id' not in self.gdf:
             return None
-        if self.gdf.region_id.isna().all():
+        if self.gdf['region_id'].region_id.isna().all():
             return None
         return self.gdf['region_id'].values
 

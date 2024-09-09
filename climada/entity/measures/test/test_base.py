@@ -119,7 +119,7 @@ class TestApply(unittest.TestCase):
         haz = Hazard.from_hdf5(HAZ_TEST_TC)
         exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf['region_id'] = np.zeros(exp.gdf.shape[0])
-        exp.gdf.region_id.values[10:] = 1
+        exp.gdf['region_id'].values[10:] = 1
         exp.check()
         exp.assign_centroids(haz)
 
@@ -141,7 +141,7 @@ class TestApply(unittest.TestCase):
         all_haz = np.arange(haz.intensity.shape[0])
         all_haz[pos_no_null] = -1
         pos_null = np.argwhere(all_haz > 0).reshape(-1)
-        centr_null = np.unique(exp.gdf.centr_[exp.gdf.region_id == 0])
+        centr_null = np.unique(exp.gdf['centr_'][exp.gdf['region_id'] == 0])
         for i_ev in pos_null:
             self.assertEqual(new_haz.intensity[i_ev, centr_null].max(), 0)
 
@@ -170,7 +170,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(new_exp.ref_year, exp.ref_year)
         self.assertEqual(new_exp.value_unit, exp.value_unit)
         self.assertEqual(new_exp.description, exp.description)
-        self.assertTrue(np.array_equal(new_exp.gdf.value.values, exp.gdf.value.values))
+        self.assertTrue(np.array_equal(new_exp.value, exp.value))
         self.assertTrue(np.array_equal(new_exp.latitude, exp.latitude))
         self.assertTrue(np.array_equal(new_exp.longitude, exp.longitude))
         self.assertTrue(np.array_equal(exp.hazard_impf('TC'), np.ones(new_exp.gdf.shape[0])))
@@ -207,7 +207,7 @@ class TestApply(unittest.TestCase):
         self.assertEqual(new_exp.ref_year, ref_exp.ref_year)
         self.assertEqual(new_exp.value_unit, ref_exp.value_unit)
         self.assertEqual(new_exp.description, ref_exp.description)
-        self.assertTrue(np.array_equal(new_exp.gdf.value.values, ref_exp.gdf.value.values))
+        self.assertTrue(np.array_equal(new_exp.value, ref_exp.value))
         self.assertTrue(np.array_equal(new_exp.latitude, ref_exp.latitude))
         self.assertTrue(np.array_equal(new_exp.longitude, ref_exp.longitude))
 
@@ -244,8 +244,8 @@ class TestApply(unittest.TestCase):
         exp = Exposures.from_mat(ENT_TEST_MAT)
         exp.gdf.rename(columns={'impf_': 'impf_TC', 'centr_': 'centr_TC'}, inplace=True)
         exp.gdf['region_id'] = np.ones(exp.gdf.shape[0])
-        exp.gdf.region_id.values[:exp.gdf.shape[0] // 2] = 3
-        exp.gdf.region_id[0] = 4
+        exp.gdf['region_id'].values[:exp.gdf.shape[0] // 2] = 3
+        exp.gdf['region_id'][0] = 4
         exp.check()
 
         imp_set = ImpactFuncSet.from_mat(ENT_TEST_MAT)
@@ -281,16 +281,16 @@ class TestApply(unittest.TestCase):
         self.assertTrue(np.array_equal(res_exp.region_id[25:], np.ones(25)))
 
         # changed exposures
-        self.assertTrue(np.array_equal(res_exp.gdf.value.values[:25], new_exp.gdf.value.values[:25]))
-        self.assertTrue(np.all(np.not_equal(res_exp.gdf.value.values[:25], exp.gdf.value.values[:25])))
-        self.assertTrue(np.all(np.not_equal(res_exp.gdf.impf_TC.values[:25], new_exp.gdf.impf_TC.values[:25])))
+        self.assertTrue(np.array_equal(res_exp.gdf["value"].values[:25], new_exp.gdf["value"].values[:25]))
+        self.assertTrue(np.all(np.not_equal(res_exp.gdf["value"].values[:25], exp.gdf["value"].values[:25])))
+        self.assertTrue(np.all(np.not_equal(res_exp.gdf["impf_TC"].values[:25], new_exp.gdf["impf_TC"].values[:25])))
         self.assertTrue(np.array_equal(res_exp.latitude[:25], new_exp.latitude[:25]))
         self.assertTrue(np.array_equal(res_exp.longitude[:25], new_exp.longitude[:25]))
 
         # unchanged exposures
-        self.assertTrue(np.array_equal(res_exp.gdf.value.values[25:], exp.gdf.value.values[25:]))
-        self.assertTrue(np.all(np.not_equal(res_exp.gdf.value.values[25:], new_exp.gdf.value.values[25:])))
-        self.assertTrue(np.array_equal(res_exp.gdf.impf_TC.values[25:], exp.gdf.impf_TC.values[25:]))
+        self.assertTrue(np.array_equal(res_exp.gdf["value"].values[25:], exp.gdf["value"].values[25:]))
+        self.assertTrue(np.all(np.not_equal(res_exp.gdf["value"].values[25:], new_exp.gdf["value"].values[25:])))
+        self.assertTrue(np.array_equal(res_exp.gdf["impf_TC"].values[25:], exp.gdf["impf_TC"].values[25:]))
         self.assertTrue(np.array_equal(res_exp.latitude[25:], exp.latitude[25:]))
         self.assertTrue(np.array_equal(res_exp.longitude[25:], exp.longitude[25:]))
 

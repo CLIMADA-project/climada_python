@@ -1582,16 +1582,16 @@ def get_admin1_geometries(countries):
     for country in admin1_info:
         # fill admin 1 region names and codes to GDF for single country:
         gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
-        gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
-        gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
+        gdf_tmp['admin1_name'] = [record['name'] for record in admin1_info[country]]
+        gdf_tmp['iso_3166_2'] = [record['iso_3166_2'] for record in admin1_info[country]]
         # With this initiation of GeoSeries in a list comprehension,
         # the ability of geopandas to convert shapereader.Shape to (Multi)Polygon is exploited:
         geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0]
                                    for shape in admin1_shapes[country]])
         gdf_tmp.geometry = list(geoseries)
         # fill columns with country identifiers (admin 0):
-        gdf_tmp.iso_3n = pycountry.countries.lookup(country).numeric
-        gdf_tmp.iso_3a = country
+        gdf_tmp['iso_3n'] = pycountry.countries.lookup(country).numeric
+        gdf_tmp['iso_3a'] = country
         gdf = pd.concat([gdf, gdf_tmp], ignore_index=True)
     return gdf
 
@@ -2408,8 +2408,8 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
         latval = points_df.geometry.y
         lonval = points_df.geometry.x
     else:
-        latval = points_df.latitude.values
-        lonval = points_df.longitude.values
+        latval = points_df["latitude"].values
+        lonval = points_df["longitude"].values
 
     if not res:
         res = np.abs(get_resolution(latval, lonval)).min()
@@ -2419,7 +2419,7 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     if 'geometry' in points_df:
         fun = lambda r: r.geometry.buffer(res / 2).envelope
     else:
-        fun = lambda r: Point(r.longitude, r.latitude).buffer(res / 2).envelope
+        fun = lambda r: Point(r["longitude"], r["latitude"]).buffer(res / 2).envelope
 
     def apply_box(df_exp):
         return df_exp.apply(fun, axis=1)
@@ -2679,9 +2679,9 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
                       " effect and will be removed in a future version.", DeprecationWarning)
 
     # keep the original crs if any
-    crs = df_val.crs if crs is None else crs  # crs might now still be None
+    crs = df_val['crs'] if crs is None else crs  # crs might now still be None
 
-    df_val.set_geometry(gpd.points_from_xy(df_val.longitude, df_val.latitude),
+    df_val.set_geometry(gpd.points_from_xy(df_val['longitude'], df_val['latitude']),
                         inplace=True, crs=crs)
 
 
