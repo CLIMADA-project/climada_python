@@ -21,6 +21,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- Broken ECMWF links in pydoc of `climada.hazard.storm_europe` relocated.
+
 ### Deprecated
 
 ### Removed
