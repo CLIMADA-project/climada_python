@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 from mpl_toolkits.axes_grid1 import make_axes_locatable
-from geopandas import GeoDataFrame, GeoSeries
+from geopandas import GeoDataFrame, GeoSeries, points_from_xy
 import rasterio
 from rasterio.warp import Resampling
 import contextily as ctx
@@ -80,7 +80,7 @@ DEF_VAR_MAT = {'sup_field_name': 'entity',
 """MATLAB variable names"""
 
 class Exposures():
-    """geopandas GeoDataFrame with metada and columns (pd.Series) defined in
+    """geopandas GeoDataFrame with metadata and columns (pd.Series) defined in
     Attributes.
 
     Attributes
@@ -269,7 +269,6 @@ class Exposures():
             value=None,
             lat=None,
             lon=None,
-            scheduler=None,
         ):
         """
         Parameters
@@ -302,12 +301,6 @@ class Exposures():
             Latitude column
         lon : array, optional
             Longitude column
-        scheduler : str, optional
-            If set, used for `dask.dataframe.map_partitions`
-            “threads”, “synchronous” or “processes”.
-            Default is `None`, i.e., the calculation of geometry points from latitude, longitude
-            is done as single process.
-            Ignored if geometry argument is set or if data has a gemoetry columnn.
         """
         geodata = GeoDataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=False)
 
@@ -343,13 +336,7 @@ class Exposures():
 
         # finalize geometry, set crs
         if geometry is None:  # -> calculate from lat/lon
-            # create temporary dataframe for calculating the geometry column
-            calcdf = GeoDataFrame(dict(latitude=lat, longitude=lon), copy=False)
-            u_coord.set_df_geometry_points(
-                df_val=calcdf,
-                scheduler=scheduler,
-                crs=crs or DEF_CRS)
-            geometry = calcdf.loc[:,"geometry"]
+            geometry = points_from_xy(x=lon, y=lat, crs=crs or DEF_CRS)
         elif isinstance(geometry, str):  # -> raise exception
             raise TypeError("Exposures is not able to handle customized 'geometry' column names.")
         elif isinstance(geometry, GeoSeries):  # -> set crs if necessary
