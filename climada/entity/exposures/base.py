@@ -199,15 +199,8 @@ class Exposures():
         np.array of int
             impact functions for the given hazard
         """
-        if haz_type and INDICATOR_IMPF + haz_type in self.data.columns:
-            return self.data[INDICATOR_IMPF + haz_type].values
-        if haz_type and INDICATOR_IMPF_OLD + haz_type in self.data.columns:
-            return self.data[INDICATOR_IMPF_OLD + haz_type].values
-        if INDICATOR_IMPF in self.data.columns:
-            return self.data[INDICATOR_IMPF].values
-        if INDICATOR_IMPF_OLD in self.data.columns:
-            return self.data[INDICATOR_IMPF_OLD].values
-        raise ValueError("Missing impact functions.")
+        col_name = self.get_impf_column(haz_type)
+        return self.data[col_name].values
 
     def hazard_centroids(self, haz_type=""):
         """Get centroids for a given hazard
