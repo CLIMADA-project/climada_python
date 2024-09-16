@@ -22,7 +22,7 @@ Code freeze date: YYYY-MM-DD
 
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
-- Exposures complete overhaul. Notably the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization, while latitude and longitude column are no longer persent there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
+- Exposures complete overhaul. Notably the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization, while latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
 
 ### Fixed
 
