@@ -14,6 +14,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Improved scaling factors implemented in `climada.hazard.trop_cyclone.apply_climate_scenario_knu` to model the impact of climate changes to tropical cyclones [#734](https://github.com/CLIMADA-project/climada_python/pull/734)
+
 ### Fixed
 
 ### Deprecated
