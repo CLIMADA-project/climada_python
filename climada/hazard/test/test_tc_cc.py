@@ -37,7 +37,7 @@ class TestKnutson(unittest.TestCase):
         base_start, base_end = 1950, 2018
         yearly_steps = 5
 
-        predicted_changes = tc_cc.get_knutson_scaling_factor(
+        target_predicted_changes = tc_cc.get_knutson_scaling_factor(
                     percentile=percentile,
                     variable=variable,
                     basin=basin,
@@ -76,25 +76,29 @@ class TestKnutson(unittest.TestCase):
             ind2 = target_year_ind + smoothing + 1
 
             prediction = np.mean(tc_properties[:, ind1:ind2], 1)
-            predicted_change = ((prediction - baseline) / baseline) * 100
+            calculated_predicted_change = ((prediction - baseline) / baseline) * 100
 
-            np.testing.assert_array_almost_equal(predicted_changes.loc[target_year, '2.6'], predicted_change[0])
-            np.testing.assert_array_almost_equal(predicted_changes.loc[target_year, '4.5'], predicted_change[1])
-            np.testing.assert_array_almost_equal(predicted_changes.loc[target_year, '6.0'], predicted_change[2])
-            np.testing.assert_array_almost_equal(predicted_changes.loc[target_year, '8.5'], predicted_change[3])
+            np.testing.assert_array_almost_equal(target_predicted_changes.loc[target_year, '2.6'],
+                                                calculated_predicted_change[0])
+            np.testing.assert_array_almost_equal(target_predicted_changes.loc[target_year, '4.5'],
+                                                calculated_predicted_change[1])
+            np.testing.assert_array_almost_equal(target_predicted_changes.loc[target_year, '6.0'],
+                                                calculated_predicted_change[2])
+            np.testing.assert_array_almost_equal(target_predicted_changes.loc[target_year, '8.5'],
+                                                calculated_predicted_change[3])
 
     def test_get_knutson_scaling_structure(self):
         """Test get_knutson_criterion function."""
         
         yearly_steps = 8
-        predicted_changes = tc_cc.get_knutson_scaling_factor(yearly_steps=yearly_steps)
+        target_predicted_changes = tc_cc.get_knutson_scaling_factor(yearly_steps=yearly_steps)
 
-        np.testing.assert_equal(predicted_changes.columns, np.array(['2.6', '4.5', '6.0', '8.5']))
+        np.testing.assert_equal(target_predicted_changes.columns, np.array(['2.6', '4.5', '6.0', '8.5']))
 
         simulated_years = np.arange(tc_cc.YEAR_WINDOWS_PROPS['start'],
                                     tc_cc.YEAR_WINDOWS_PROPS['end']+1,
                                     yearly_steps)
-        np.testing.assert_equal(predicted_changes.index, simulated_years)
+        np.testing.assert_equal(target_predicted_changes.index, simulated_years)
 
     def test_get_knutson_scaling_valid_inputs(self):
         df = tc_cc.get_knutson_scaling_factor()
