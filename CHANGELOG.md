@@ -13,11 +13,17 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
-- climada.exposures.exposures.Exposures.geometry
-- climada.exposures.exposures.Exposures.latitude
-- climada.exposures.exposures.Exposures.longitude
-- climada.exposures.exposures.Exposures.value
-  
+- `climada.exposures.exposures.Exposures.geometry` property
+- `climada.exposures.exposures.Exposures.latitude` property
+- `climada.exposures.exposures.Exposures.longitude` property
+- `climada.exposures.exposures.Exposures.value` property
+- `climada.exposures.exposures.Exposures.region_id` property
+- `climada.exposures.exposures.Exposures.category_id` property
+- `climada.exposures.exposures.Exposures.cover` property
+- `climada.exposures.exposures.Exposures.hazard_impf` method
+- `climada.exposures.exposures.Exposures.hazard_centroids` method
+
+
 ### Changed
 
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
@@ -28,8 +34,9 @@ Code freeze date: YYYY-MM-DD
 
 ### Deprecated
 
-- climada.entity.exposures.Exposures.set_lat_lon
-- climada.entity.exposures.Exposures.set_geometry_points
+- `climada.entity.exposures.Exposures.meta` attribute
+- `climada.entity.exposures.Exposures.set_lat_lon` method
+- `climada.entity.exposures.Exposures.set_geometry_points` method
 
 ### Removed
 
