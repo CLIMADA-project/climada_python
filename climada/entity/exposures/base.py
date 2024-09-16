@@ -91,30 +91,6 @@ class Exposures():
         metada - reference year
     value_unit : str
         metada - unit of the exposures values
-    latitude : pd.Series
-        latitude
-    longitude : pd.Series
-        longitude
-    value : pd.Series
-        a value for each exposure
-    impf_SUFFIX : pd.Series, optional
-        e.g. impf_TC. impact functions id for hazard TC.
-        There might be different hazards defined: impf_TC, impf_FL, ...
-        If not provided, set to default ``impf_`` with ids 1 in check().
-    geometry : pd.Series, optional
-        geometry of type Point of each instance.
-    deductible : pd.Series, optional
-        deductible value for each exposure
-    cover : pd.Series, optional
-        cover value for each exposure
-    category_id : pd.Series, optional
-        category id for each exposure
-    region_id : pd.Series, optional
-        region id for each exposure
-    centr_SUFFIX : pd.Series, optional
-        e.g. centr_TC. centroids index for hazard
-        TC. There might be different hazards defined: centr_TC, centr_FL, ...
-        Computed in method assign_centroids().
     """
     _metadata = ['description', 'ref_year', 'value_unit']
 
@@ -300,15 +276,15 @@ class Exposures():
         ----------
         data : dict, iterable, DataFrame, ndarray
             data of the initial DataFrame, see ``pandas.DataFrame()``
-        index : Index, array
+        index : Index or array, optional
             index of the initial DataFrame, see ``pandas.DataFrame()``
-        columns : Index, array
+        columns : Index or array, optional
             columns of the initial DataFrame, see ``pandas.DataFrame()``
-        dtype : dtype
+        dtype : dtype, optional
             data type of the initial DataFrame, see ``pandas.DataFrame()``
-        copy : bool
+        copy : bool, optional
             Whether to make a copy of the input data, see ``pandas.DataFrame()``
-        geometry : array
+        geometry : array, optional
             Geometry column, see ``geopandas.GeoDataFrame()``
         crs : value, optional
             Coordinate Reference System, see ``geopandas.GeoDataFrame()``
