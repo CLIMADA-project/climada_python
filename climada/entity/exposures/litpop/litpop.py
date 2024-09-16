@@ -41,7 +41,7 @@ GPW_VERSION = CONFIG.exposures.litpop.gpw_population.gpw_version.int()
 
 class LitPop(Exposures):
     """
-    Holds geopandas GeoDataFrame with metada and columns (pd.Series) defined in
+    Holds geopandas GeoDataFrame with metadata and columns (pd.Series) defined in
     Attributes of Exposures class.
     LitPop exposure values are disaggregated proportional to a combination of
     nightlight intensity (NASA) and Gridded Population data (SEDAC).

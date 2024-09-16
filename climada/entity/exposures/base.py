@@ -88,9 +88,9 @@ class Exposures():
     description : str
         metadata - description of content and origin of the data
     ref_year : int
-        metada - reference year
+        metadata - reference year
     value_unit : str
-        metada - unit of the exposures values
+        metadata - unit of the exposures values
     """
     _metadata = ['description', 'ref_year', 'value_unit']
 
