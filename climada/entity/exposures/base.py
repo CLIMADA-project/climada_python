@@ -928,8 +928,6 @@ class Exposures():
         -------
         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'geometry' not in self.gdf:
-            self.set_geometry_points()
         crs_ori = self.crs
         self.to_crs(epsg=3857, inplace=True)
         axis = self.plot_scatter(mask, ignore_zero, pop_name, buffer,

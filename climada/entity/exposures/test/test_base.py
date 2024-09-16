@@ -286,7 +286,6 @@ class TestIO(unittest.TestCase):
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
         exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632")
-        exp_df.set_geometry_points()
         exp_df.check()
         # set metadata
         exp_df.ref_year = 2020
@@ -429,7 +428,6 @@ class TestGeoDFFuncs(unittest.TestCase):
     def test_to_crs_inplace_pass(self):
         """Test to_crs function inplace."""
         exp = good_exposures()
-        exp.set_geometry_points()
         exp.check()
         exp.to_crs('epsg:3395', inplace=True)
         self.assertIsInstance(exp, Exposures)
@@ -441,7 +439,6 @@ class TestGeoDFFuncs(unittest.TestCase):
     def test_to_crs_pass(self):
         """Test to_crs function copy."""
         exp = good_exposures()
-        exp.set_geometry_points()
         exp.check()
         exp_tr = exp.to_crs('epsg:3395')
         self.assertIsInstance(exp, Exposures)
@@ -477,7 +474,6 @@ class TestGeoDFFuncs(unittest.TestCase):
         gdf_without_geometry = good_exposures().gdf
         good_exp = good_exposures()
         good_exp.set_crs(crs='epsg:3395')
-        good_exp.set_geometry_points()
         gdf_with_geometry = good_exp.gdf
 
         probe = Exposures()
@@ -504,7 +500,6 @@ class TestGeoDFFuncs(unittest.TestCase):
         empty_gdf = gpd.GeoDataFrame()
         gdf_without_geometry = good_exposures().gdf
         good_exp = good_exposures()
-        good_exp.set_geometry_points()
         gdf_with_geometry = good_exp.gdf
 
         probe = Exposures(gdf_without_geometry)
