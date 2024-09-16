@@ -420,6 +420,12 @@ class TropCyclone(Hazard):
             modified.
         """
 
+        if self.category.size == 0:
+            LOGGER.warning("Tropical cyclone categories are missing and"
+                           "no effect of climate change can be modelled."
+                           "The original event set is returned")
+            return self
+
         tc_cc = copy.deepcopy(self)
 
         sel_cat05 = np.isin(tc_cc.category, [0, 1, 2, 3, 4, 5])
