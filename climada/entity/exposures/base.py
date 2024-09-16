@@ -93,6 +93,7 @@ class Exposures():
         metadata - unit of the exposures values
     """
     _metadata = ['description', 'ref_year', 'value_unit']
+    """List of attributes, which are by default read, e.g., from hdf5"""
 
     vars_oblig = ['value', 'geometry']
     """Name of the variables needed to compute the impact."""
@@ -238,6 +239,25 @@ class Exposures():
 
     @staticmethod
     def _consolidate(alternative_data, name, value, default=None, equals=lambda x, y: x == y):
+        """helper function for __init__ for consolidation of arguments. 
+        Most arguments of the __init__ function can be provided either explicitly, by themselves
+        or as part of the input data.
+        This method finds the specific argument from these alternative sources. In case of ambiguity
+        it checks for any discrepancy. In case of missing souorces it returns the default.
+        
+        Parameters
+        ----------
+        alternative_data:
+            container of general data with named items
+        name:
+            name of the item in the alternative_data
+        value:
+            specific data, could be None
+        default:
+            default value in case of both specific and general data don't yield a result
+        equals:
+            the equality function to check for discrepancies
+        """
         altvalue = alternative_data.get(name)
         if value is None and altvalue is None:
             return default
@@ -943,8 +963,9 @@ class Exposures():
         file_name : str
             (path and) file name to read from.
         additional_vars : list
-            list of additional variable names to read that
-            are not in exposures.base._metadata
+            list of additional variable names, other than the attributes of the Exposures class,
+            whose values are to be read into the Exposures object
+            class.
 
         Returns
         -------
