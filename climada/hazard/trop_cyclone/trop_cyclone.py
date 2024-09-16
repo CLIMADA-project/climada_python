@@ -383,7 +383,7 @@ class TropCyclone(Hazard):
         (https://doi.org/10.1007/s00477-021-02142-6). Applying only frequency anyway
         changes mean intensities and most importantly avoids possible inconsistencies
         (including possible double-counting) that may arise from the application of both
-        frequency and intensity changes, as the relatioship between these two is non
+        frequency and intensity changes, as the relationship between these two is non
         trivial to resolve.
 
         Parameters
