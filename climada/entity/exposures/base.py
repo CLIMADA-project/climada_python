@@ -103,7 +103,6 @@ class Exposures():
         If not provided, set to default ``impf_`` with ids 1 in check().
     geometry : pd.Series, optional
         geometry of type Point of each instance.
-        Computed in method set_geometry_points().
     deductible : pd.Series, optional
         deductible value for each exposure
     cover : pd.Series, optional
