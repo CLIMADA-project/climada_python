@@ -290,28 +290,30 @@ class Exposures():
         """
         Parameters
         ----------
-        data : dict, iterable, DataFrame, ndarray
-            data of the initial DataFrame, see ``pandas.DataFrame()``
+        data : dict, iterable, DataFrame, GeoDataFrame, ndarray
+            data of the initial DataFrame, see ``pandas.DataFrame()``.
+            Used to initialize values for "region_id", "category_id", "cover", "deductible",
+            "value", "geometry", "impf_[hazard type]".
         columns : Index or array, optional
-            columns of the initial DataFrame, see ``pandas.DataFrame()``
-            to be provided if `data` is an array
+            Columns of the initial DataFrame, see ``pandas.DataFrame()``.
+            To be provided if `data` is an array
         index : Index or array, optional
-            columns of the initial DataFrame, see ``pandas.DataFrame()``
+            Columns of the initial DataFrame, see ``pandas.DataFrame()``.
             can optionally be provided if `data` is an array or for defining a specific row index
         dtype : dtype, optional
-            data type of the initial DataFrame, see ``pandas.DataFrame()``
-            can be used to assign specific data types to the columns in `data`
+            data type of the initial DataFrame, see ``pandas.DataFrame()``.
+            Can be used to assign specific data types to the columns in `data`
         copy : bool, optional
-            Whether to make a copy of the input `data`, see ``pandas.DataFrame()``
-            default is False, i.e. by default `data` may be altered by the ``Exposures`` object.
+            Whether to make a copy of the input `data`, see ``pandas.DataFrame()``.
+            Default is False, i.e. by default `data` may be altered by the ``Exposures`` object.
         geometry : array, optional
-            Geometry column, see ``geopandas.GeoDataFrame()``
-            must be provided if `lat` and `lon` are None and `data` has no "geometry" column.
+            Geometry column, see ``geopandas.GeoDataFrame()``.
+            Must be provided if `lat` and `lon` are None and `data` has no "geometry" column.
         crs : value, optional
-            Coordinate Reference System, see ``geopandas.GeoDataFrame()``
+            Coordinate Reference System, see ``geopandas.GeoDataFrame()``.
         meta : dict, optional
-            Metadata dictionary. Default: {} (empty dictionary)
-            may be used to provide any of `description`, `ref_year`, `value_unit` and `crs`
+            Metadata dictionary. Default: {} (empty dictionary).
+            May be used to provide any of `description`, `ref_year`, `value_unit` and `crs`
         description : str, optional
             Default: None
         ref_year : int, optional
@@ -319,14 +321,14 @@ class Exposures():
         value_unit : str, optional
             Unit of the exposed value. Defaults to the entry of the same name in `meta` or 'USD'.
         value : array, optional
-            Exposed value column
-            must be provided if `data` has no "value" column
+            Exposed value column.
+            Must be provided if `data` has no "value" column
         lat : array, optional
-            Latitude column
-            can be provided together with `lon`, alternative to `geometry`
+            Latitude column.
+            Can be provided together with `lon`, alternative to `geometry`
         lon : array, optional
-            Longitude column
-            can be provided together with `lat`, alternative to `geometry`
+            Longitude column.
+            Can be provided together with `lat`, alternative to `geometry`
         """
         geodata = GeoDataFrame(data=data, index=index, columns=columns, dtype=dtype, copy=False)
 
