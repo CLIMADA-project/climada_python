@@ -28,8 +28,8 @@ from pathlib import Path
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
-from climada.entity import Exposures, ImpactFuncSet, ImpactFunc
-from climada.hazard.base import Hazard
+from climada.entity import Exposures, ImpactFuncSet, ImpactFunc, ImpfTropCyclone
+from climada.hazard.base import Hazard, Centroids
 from climada.engine import ImpactCalc, Impact
 from climada.engine.impact_calc import LOGGER as ILOG
 from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
@@ -471,6 +471,34 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(eai_exp, [2.25, 1.25, 4.5])
         self.assertEqual(aai_agg, 8.0)  # Sum of eai_exp
 
+    def test_single_exp_zero_mdr(self):
+        """Test for case where exposure has a single value and MDR or fraction contains zeros"""
+        centroids = Centroids.from_lat_lon([-26.16], [28.20])
+        haz = Hazard(
+            intensity=sparse.csr_matrix(np.array([[31.5], [19.0]])),
+            event_id=np.arange(2),
+            event_name=[0,1],
+            frequency=np.ones(2) / 2,
+            fraction=sparse.csr_matrix(np.zeros((2,1))),
+            date=np.array([0, 1]),
+            centroids=centroids,
+            haz_type='TC'
+        )
+        exp = Exposures({'value': [1.],
+                            'longitude': 28.22,
+                            'latitude': -26.17,
+                            'impf_TC': 1},
+                            crs="EPSG:4326")
+        imp_evt = 0.00250988804927603
+        aai_agg = imp_evt/2
+        eai_exp = np.array([aai_agg])
+        at_event = np.array([imp_evt, 0])
+        exp.set_geometry_points()
+        impf_tc = ImpfTropCyclone.from_emanuel_usa()
+        impf_set = ImpactFuncSet([impf_tc])
+        impf_set.check()
+        imp = ImpactCalc(exp, impf_set, haz).impact(save_mat=True)
+        check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
 
 class TestImpactMatrixCalc(unittest.TestCase):
     """Verify the computation of the impact matrix"""
