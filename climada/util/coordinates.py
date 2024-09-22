@@ -79,6 +79,24 @@ NEAREST_NEIGHBOR_THRESHOLD = 100
 """Distance threshold in km for coordinate assignment. Nearest neighbors with greater distances
 are not considered."""
 
+def check_if_geo_coords(lat, lon):
+    """
+    Check if latitude and longitude arrays are likely in geographic coordinates,
+    testing if min/max values are within -90 to 180 for latitude and -180 to 360
+    for longitude.
+    Returns True if lat/lon ranges are in the geographic coordinates range, otherwise False.
+    """
+    lat = np.array(lat)
+    lon = np.array(lon)
+
+    # Check if latitude is within -90 to 180 and longitude is within -180 to 360
+    # and extent are smaller than 180 and 360 respectively
+    if ((lat.min() >= -90 and lat.max() <= 180 and lon.min() >= -180 and lon.max() <= 360)
+        and (lat.max() - lat.min() <= 180 and lon.max() - lon.min() <= 360)):
+        return True
+    else:
+        return False
+
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     """Convert lat/lon coodinates to radial vectors (on geosphere)
 
