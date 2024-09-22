@@ -541,6 +541,8 @@ def dist_to_coast(coord_lat, lon=None, highres=False, signed=False):
         lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
         if lat.size != lon.size:
             raise ValueError(f'Mismatching input coordinates size: {lat.size} != {lon.size}')
+    if not check_if_geo_coords(lat, lon):
+        raise ValueError('Input lat and lon coordinates are not geographic.')
     return dist_to_coast_nasa(lat, lon, highres=highres, signed=signed)
 
 def _get_dist_to_coast_nasa_tif():
