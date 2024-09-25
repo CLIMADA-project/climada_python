@@ -38,6 +38,7 @@ from scipy import sparse
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 import pandas as pd
+from pandas.api.types import is_string_dtype
 import xlsxwriter
 from tqdm import tqdm
 import h5py
@@ -870,6 +871,8 @@ class Impact():
         file_name : str
             absolute path of the file
         """
+        if not all((isinstance(val, str) for val in self.event_name)):
+            raise TypeError("'event_name' must be a list of strings")
         LOGGER.info('Writing %s', file_name)
         with open(file_name, "w", encoding='utf-8') as imp_file:
             imp_wr = csv.writer(imp_file)
@@ -893,6 +896,8 @@ class Impact():
         file_name : str
             absolute path of the file
         """
+        if not all((isinstance(val, str) for val in self.event_name)):
+            raise TypeError("'event_name' must be a list of strings")
         LOGGER.info('Writing %s', file_name)
         def write_col(i_col, imp_ws, xls_data):
             """Write one measure"""
@@ -1087,7 +1092,11 @@ class Impact():
         imp.aai_agg = imp_df.aai_agg[0]
         imp.event_id = imp_df.event_id[~np.isnan(imp_df.event_id)].values
         num_ev = imp.event_id.size
-        imp.event_name = imp_df.event_name[:num_ev].values.tolist()
+        event_names = imp_df.event_name[:num_ev]
+        if not is_string_dtype(event_names):
+            warnings.warn(f"Some event names are not str will be converted to str.", UserWarning)
+            event_names = event_names.astype(str)
+        imp.event_name = event_names.values.tolist()
         imp.date = imp_df.event_date[:num_ev].values
         imp.at_event = imp_df.at_event[:num_ev].values
         imp.frequency = imp_df.event_frequency[:num_ev].values
@@ -1134,7 +1143,11 @@ class Impact():
         imp.aai_agg = dfr.aai_agg[0]
 
         imp.event_id = dfr.event_id[~np.isnan(dfr.event_id.values)].values
-        imp.event_name = dfr.event_name[:imp.event_id.size].values
+        event_names = imp_df.event_name[:num_ev]
+        if not is_string_dtype(event_names):
+            warnings.warn(f"Some event names are not str will be converted to str.", UserWarning)
+            event_names = event_names.astype(str)
+        imp.event_name = event_names.values
         imp.date = dfr.event_date[:imp.event_id.size].values
         imp.frequency = dfr.event_frequency[:imp.event_id.size].values
         imp.frequency_unit = dfr.frequency_unit[0] if 'frequency_unit' in dfr else DEF_FREQ_UNIT
