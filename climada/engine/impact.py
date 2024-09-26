@@ -1090,9 +1090,9 @@ class Impact():
         imp.unit = imp_df.unit[0]
         imp.tot_value = imp_df.tot_value[0]
         imp.aai_agg = imp_df.aai_agg[0]
-        imp.event_id = imp_df.event_id[~np.isnan(imp_df.event_id)].values
+        imp.event_id = imp_df["event_id"][~np.isnan(imp_df["event_id"])].values
         num_ev = imp.event_id.size
-        event_names = imp_df.event_name[:num_ev]
+        event_names = imp_df["event_name"][:num_ev]
         if not is_string_dtype(event_names):
             warnings.warn(f"Some event names are not str will be converted to str.", UserWarning)
             event_names = event_names.astype(str)
@@ -1142,8 +1142,8 @@ class Impact():
         imp.tot_value = imp_df.tot_value[0]
         imp.aai_agg = imp_df.aai_agg[0]
 
-        imp.event_id = imp_df.event_id[~np.isnan(imp_df.event_id.values)].values
-        event_names = imp_df.event_name[~np.isnan(imp_df.event_id.values)]
+        imp.event_id = imp_df["event_id"][~np.isnan(imp_df["event_id"].values)].values
+        event_names = imp_df["event_name"][~np.isnan(imp_df["event_id"].values)]
         if not is_string_dtype(event_names):
             warnings.warn(f"Some event names are not str will be converted to str.", UserWarning)
             event_names = event_names.astype(str)
