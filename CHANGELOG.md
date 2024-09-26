@@ -11,6 +11,7 @@ Code freeze date: YYYY-MM-DD
 ### Dependency Changes
 
 ### Added
+
 - `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
   
 ### Changed
@@ -56,6 +57,19 @@ Updated:
 
 - GitHub actions workflow for CLIMADA Petals compatibility tests [#855](https://github.com/CLIMADA-project/climada_python/pull/855)
 - `climada.util.calibrate` module for calibrating impact functions [#692](https://github.com/CLIMADA-project/climada_python/pull/692)
+- Method `Hazard.check_matrices` for bringing the stored CSR matrices into "canonical format" [#893](https://github.com/CLIMADA-project/climada_python/pull/893)
+- Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
+- climada.hazard.centroids.centr.Centroids.get_area_pixel
+- climada.hazard.centroids.centr.Centroids.get_dist_coast
+- climada.hazard.centroids.centr.Centroids.get_elevation
+- climada.hazard.centroids.centr.Centroids.get_meta
+- climada.hazard.centroids.centr.Centroids.get_pixel_shapes
+- climada.hazard.centroids.centr.Centroids.to_crs
+- climada.hazard.centroids.centr.Centroids.to_default_crs
+- climada.hazard.centroids.centr.Centroids.write_csv
+- climada.hazard.centroids.centr.Centroids.write_excel
+- climada.hazard.local_return_period [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
+- climada.util.plot.subplots_from_gdf [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
 
 ### Changed
 
@@ -79,22 +93,6 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - Allow downgrading the Python bugfix version to improve environment compatibility [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
 - Fix broken links in `CONTRIBUTING.md` [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
 - When writing `TCTracks` to NetCDF, only apply compression to `float` or `int` data types. This fixes a downstream issue, see [climada_petals#135](https://github.com/CLIMADA-project/climada_petals/issues/135) [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
-
-### Added
-
-- Method `Hazard.check_matrices` for bringing the stored CSR matrices into "canonical format" [#893](https://github.com/CLIMADA-project/climada_python/pull/893)
-- Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
-- climada.hazard.centroids.centr.Centroids.get_area_pixel
-- climada.hazard.centroids.centr.Centroids.get_dist_coast
-- climada.hazard.centroids.centr.Centroids.get_elevation
-- climada.hazard.centroids.centr.Centroids.get_meta
-- climada.hazard.centroids.centr.Centroids.get_pixel_shapes
-- climada.hazard.centroids.centr.Centroids.to_crs
-- climada.hazard.centroids.centr.Centroids.to_default_crs
-- climada.hazard.centroids.centr.Centroids.write_csv
-- climada.hazard.centroids.centr.Centroids.write_excel
-- climada.hazard.local_return_period [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
-- climada.util.plot.subplots_from_gdf [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
 
 ### Deprecated
 
