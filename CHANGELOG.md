@@ -13,11 +13,12 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
-  
+
 ### Changed
 
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+- Opening xarray dataset files is now done with a context manager (`with xr.open_dataset(path) as data:`) [#953](https://github.com/CLIMADA-project/climada_python/pull/953)
 
 ### Fixed
 
@@ -469,4 +470,3 @@ updated:
 
 - `climada.enginge.impact.Impact.calc()` and `climada.enginge.impact.Impact.calc_impact_yearset()`
 [#436](https://github.com/CLIMADA-project/climada_python/pull/436).
-
