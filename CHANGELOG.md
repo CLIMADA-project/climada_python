@@ -22,6 +22,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+-  Closed some file handles left open when reading netcdf files with `climada.hazard` modules [#953](https://github.com/CLIMADA-project/climada_python/pull/953)
 ### Deprecated
 
 ### Removed
