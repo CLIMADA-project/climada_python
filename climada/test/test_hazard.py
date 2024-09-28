@@ -300,8 +300,8 @@ class TestTcTracks(unittest.TestCase):
             year_range=(1995, 1995), basin="SP", estimate_missing=True
         )
         self.assertEqual(tc_track.size, 6)
-        self.assertEqual(tc_track.data[0].basin[0], "SP")
-        self.assertEqual(tc_track.data[5].basin[0], "SI")
+        self.assertEqual(tc_track.data[0]['basin'][0], "SP")
+        self.assertEqual(tc_track.data[5]['basin'][0], "SI")
 
         # genesis in NI
         tc_track = tc.TCTracks.from_ibtracs_netcdf(
@@ -309,7 +309,7 @@ class TestTcTracks(unittest.TestCase):
         )
         self.assertEqual(tc_track.size, 5)
         for tr in tc_track.data:
-            self.assertEqual(tr.basin[0], "NI")
+            self.assertEqual(tr['basin'][0], "NI")
 
         # genesis in EP, but crosses WP at some point
         tc_track = tc.TCTracks.from_ibtracs_netcdf(
@@ -317,8 +317,8 @@ class TestTcTracks(unittest.TestCase):
         )
         self.assertEqual(tc_track.size, 3)
         for tr in tc_track.data:
-            self.assertEqual(tr.basin[0], "EP")
-            self.assertIn("WP", tr.basin)
+            self.assertEqual(tr['basin'][0], "EP")
+            self.assertIn("WP", tr['basin'])
 
     def test_cutoff_tracks(self):
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id="1986226N30276")

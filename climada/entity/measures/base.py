@@ -315,10 +315,10 @@ class Measure():
         else:
             raise ValueError(f'{self.exposures_set} is neither a string nor an Exposures object')
 
-        if not np.array_equal(np.unique(exposures.gdf.latitude.values),
-                              np.unique(new_exp.gdf.latitude.values)) or \
-        not np.array_equal(np.unique(exposures.gdf.longitude.values),
-                           np.unique(new_exp.gdf.longitude.values)):
+        if not np.array_equal(np.unique(exposures.gdf['latitude'].values),
+                              np.unique(new_exp.gdf['latitude'].values)) or \
+        not np.array_equal(np.unique(exposures.gdf['longitude'].values),
+                           np.unique(new_exp.gdf['longitude'].values)):
             LOGGER.warning('Exposures locations have changed.')
 
         return new_exp
@@ -415,7 +415,7 @@ class Measure():
         if self.exp_region_id:
             # compute impact only in selected region
             in_reg = np.logical_or.reduce(
-                [exposures.gdf.region_id.values == reg for reg in self.exp_region_id]
+                [exposures.gdf['region_id'].values == reg for reg in self.exp_region_id]
             )
             exp_imp = Exposures(exposures.gdf[in_reg], crs=exposures.crs)
         else:
@@ -489,7 +489,7 @@ class Measure():
             new_impfs.get_func()[self.haz_type].update(imp_set.get_func()[self.haz_type])
 
         # get the indices for changing and inert regions
-        chg_reg = exposures.gdf.region_id.isin(self.exp_region_id)
+        chg_reg = exposures.gdf['region_id'].isin(self.exp_region_id)
         no_chg_reg = ~chg_reg
 
         LOGGER.debug('Number of changed exposures: %s', chg_reg.sum())

@@ -67,7 +67,7 @@ def exp_dem(x_exp=1, exp=None):
         except HDF5ExtError:
             time.sleep(0.1)
     exp_tmp = exp.copy(deep=True)
-    exp_tmp.gdf.value *= x_exp
+    exp_tmp.gdf['value'] *= x_exp
     return exp_tmp
 
 
@@ -153,8 +153,8 @@ class TestEmdatProcessing(unittest.TestCase):
         )
 
         self.assertEqual(36, df.size)
-        self.assertAlmostEqual(df.impact.max(), 15150000000.0)
-        self.assertAlmostEqual(df.impact_scaled.min(), 10939000.0)
+        self.assertAlmostEqual(df['impact'].max(), 15150000000.0)
+        self.assertAlmostEqual(df['impact_scaled'].min(), 10939000.0)
         self.assertEqual(df["year"][5], 2017)
         self.assertEqual(df["reference_year"].max(), 2000)
         self.assertIn("USA", list(df["ISO"]))

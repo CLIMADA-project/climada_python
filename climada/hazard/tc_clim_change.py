@@ -159,7 +159,7 @@ def calc_scale_knutson(ref_year=2050, rcp_scenario=45):
     rad_force = pd.read_excel(TOT_RADIATIVE_FORCE)
     years = np.array([year for year in rad_force.columns if isinstance(year, int)])
     rad_rcp = np.array([int(float(sce[sce.index('.') - 1:sce.index('.') + 2]) * 10)
-                        for sce in rad_force.Scenario if isinstance(sce, str)])
+                        for sce in rad_force['Scenario'] if isinstance(sce, str)])
 
     # mean values for Knutson values
     rf_vals = np.argwhere(rad_rcp == rcp_knu).reshape(-1)[0]

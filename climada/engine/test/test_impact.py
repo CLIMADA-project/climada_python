@@ -111,7 +111,7 @@ class TestImpact(unittest.TestCase):
         np.testing.assert_array_almost_equal(imp.at_event, fake_at_event)
         np.testing.assert_array_almost_equal(
             imp.coord_exp,
-            np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
+            np.stack([exp.gdf['latitude'].values, exp.gdf['longitude'].values], axis=1)
             )
 
     def test_pyproj_crs(self):
@@ -951,7 +951,7 @@ class TestMatchCentroids(unittest.TestCase):
         fake_aai_agg = np.sum(fake_eai_exp)
         imp = Impact.from_eih(exp, HAZ, fake_at_event, fake_eai_exp, fake_aai_agg)
         imp_centr = imp.match_centroids(HAZ)
-        np.testing.assert_array_equal(imp_centr, exp.gdf.centr_TC)
+        np.testing.assert_array_equal(imp_centr, exp.gdf['centr_TC'])
 
 
 class TestImpactH5IO(unittest.TestCase):
