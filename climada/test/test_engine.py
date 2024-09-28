@@ -335,9 +335,9 @@ class TestImpactRPCals(unittest.TestCase):
                 ]),
             rtol=0.8)
 
-        # test log log interpolation and no extrapolation
+        # test log log interpolation and extrapolation with constant
         impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1))
+                return_periods=(1000, 30, .1), method = "extrapolate_constant")
         np.testing.assert_allclose(
             impact_stats.values[:,1:].astype(float),
             np.array([
@@ -348,9 +348,22 @@ class TestImpactRPCals(unittest.TestCase):
                 ]),
             rtol=0.8)
 
+        # test log log interpolation and no extrapolation
+        impact_stats, _, _ = impact.local_exceedance_impact(
+                return_periods=(1000, 30, .1))
+        np.testing.assert_allclose(
+            impact_stats.values[:,1:].astype(float),
+            np.array([
+                [np.nan, np.nan, np.nan],
+                [np.nan, np.nan, np.nan],
+                [np.nan, 1e2, np.nan],
+                [np.nan, 300, np.nan]
+                ]),
+            rtol=0.8)
+
         # test lin lin interpolation with no extrapolation
         impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1),
+                return_periods=(1000, 30, .1), method = "extrapolate_constant",
                 log_frequency=False, log_impact=False)
         np.testing.assert_allclose(
             impact_stats.values[:,1:].astype(float),

@@ -1032,7 +1032,7 @@ class TestStats(unittest.TestCase):
         return_period = np.array([25, 50, 100, 250])
         haz.intensity = sparse.csr_matrix(np.zeros(haz.intensity.shape))
         inten_stats = haz.local_exceedance_intensity(return_period)[0].values[:, 1:].T.astype(float)
-        self.assertTrue(np.array_equal(inten_stats, np.zeros((4, 100))))
+        np.testing.assert_allclose(inten_stats, np.full((4, 100), np.nan))
 
     def test_local_exceedance_intensity(self):
         """Test local exceedance frequencies with lin lin interpolation"""
@@ -1049,7 +1049,7 @@ class TestStats(unittest.TestCase):
         # third centroid has intensities 1 with cum frequencies 1
         # testing at frequencies 2, 1.5, 1
         inten_stats, _, _ = haz.local_exceedance_intensity(
-            return_period, log_frequeny=False, log_intensity=False)
+            return_period, log_frequeny=False, log_intensity=False, method='extrapolate_constant')
         np.testing.assert_allclose(
             inten_stats[inten_stats.columns[1:]].values,
             np.array([
@@ -1073,7 +1073,8 @@ class TestStats(unittest.TestCase):
         # third centroid has intensities 1 with cum frequencies 1 (0 intensity is neglected)
         # testing at intensities 1, 2, 3
         return_stats, _, _ = haz.local_return_period(
-            threshold_intensities, log_frequency=False, log_intensity=False, min_intensity=0)
+            threshold_intensities, log_frequency=False, log_intensity=False, min_intensity=0,
+            method='extrapolate_constant')
         np.testing.assert_allclose(
             return_stats[return_stats.columns[1:]].values,
             np.array([

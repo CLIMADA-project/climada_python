@@ -467,7 +467,9 @@ class Hazard(HazardIO, HazardPlot):
             locally (at each centroid). Defaults to (25, 50, 100, 250).
         method : str
             Method to interpolate to new return periods. Currently available are "interpolate",
-            "extrapolate" and "stepfunction". If set to "interpolate" or "stepfunction", return
+            "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
+            return periods outside the range of the Hazard object's observed local return periods
+            will be assigned NaN. If set to "extrapolate_constant" or "stepfunction", return
             periods larger than the Hazard object's observed local return periods will be assigned
             the largest local intensity, and return periods smaller than the Hazard object's
             observed local return periods will be assigned 0. If set to "extrapolate", local
@@ -528,14 +530,15 @@ class Hazard(HazardIO, HazardPlot):
             frequency = np.cumsum(frequency[::-1])[::-1]
             if method == 'stepfunction':
                 inten_stats[:,i] = u_interp.stepfunction_ev(
-                    1/np.array(return_periods), frequency[::-1], intensity[::-1], y_threshold=min_intensity,
-                    y_asymptotic=0.
+                    1/np.array(return_periods), frequency[::-1], intensity[::-1],
+                    y_threshold=min_intensity, y_asymptotic=0.
                 )
-            elif method == 'interpolate' or method == 'extrapolate':
-                extrapolation = (method == 'extrapolate')
+            elif method in ['interpolate', 'extrapolate', 'extrapolate_constant']:
+                extrapolation = None if method == 'interpolate' else method
                 inten_stats[:,i] = u_interp.interpolate_ev(
-                    1/np.array(return_periods), frequency[::-1], intensity[::-1], logx=log_frequeny,
-                    logy=log_intensity, y_threshold=min_intensity, y_asymptotic=0., extrapolation=extrapolation
+                    1/np.array(return_periods), frequency[::-1], intensity[::-1],
+                    logx=log_frequeny, logy=log_intensity, y_threshold=min_intensity,
+                    extrapolation=extrapolation, y_asymptotic=0.
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")
@@ -587,7 +590,9 @@ class Hazard(HazardIO, HazardPlot):
             locally (at each centroid). Defaults to (10, 20)
         method : str
             Method to interpolate to new threshold intensities. Currently available are
-            "interpolate", "extrapolate" and "stepfunction". If set to "interpolate" or
+            "interpolate", "extrapolate", "extrapolate_constant" and "stepfunction". If set to
+            "interpolate", threshold intensities outside the range of the Hazard object's local
+            intensities will be assigned NaN. If set to "extrapolate_constant" or
             "stepfunction", threshold intensities larger than the Hazard object's local
             intensities will be assigned NaN, and threshold intensities smaller than the Hazard
             object's local intensities will be assigned the smallest observed local return period.
@@ -653,11 +658,12 @@ class Hazard(HazardIO, HazardPlot):
                 return_periods[:,i] = u_interp.stepfunction_ev(
                     threshold_intensities, intensity, frequency, x_threshold=min_intensity
                 )
-            elif method == 'interpolate' or method == "extrapolate":
-                extrapolation = (method == "extrapolate")
+            elif method in ['interpolate', 'extrapolate', 'extrapolate_constant']:
+                extrapolation = None if method == 'interpolate' else method
                 return_periods[:,i] = u_interp.interpolate_ev(
                     threshold_intensities, intensity, frequency, logx=log_intensity,
-                    logy=log_frequency, x_threshold=min_intensity, extrapolation=extrapolation, y_asymptotic=np.nan
+                    logy=log_frequency, x_threshold=min_intensity, extrapolation=extrapolation,
+                    y_asymptotic=np.nan
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")

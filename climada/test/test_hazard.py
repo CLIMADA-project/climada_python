@@ -432,9 +432,9 @@ class TestRPCal(unittest.TestCase):
                 ]),
             rtol=0.8)
 
-        # test log log interpolation and no extrapolation
+        # test log log interpolation and extrapolation with constant
         inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1))
+                return_periods=(1000, 30, .1), method='extrapolate_constant')
         np.testing.assert_allclose(
             inten_stats.values[:,1:].astype(float),
             np.array([
@@ -444,9 +444,22 @@ class TestRPCal(unittest.TestCase):
                 ]),
             rtol=0.8)
 
+        # test log log interpolation and no extrapolation
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1))
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [np.nan, np.nan, np.nan],
+                [np.nan, 1e2, np.nan],
+                [np.nan, 300, np.nan]
+                ]),
+            rtol=0.8)
+
         # test lin lin interpolation without extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1), log_frequeny=False, log_intensity=False)
+                return_periods=(1000, 30, .1), log_frequeny=False, log_intensity=False,
+                method='extrapolate_constant')
         np.testing.assert_allclose(
             inten_stats.values[:,1:].astype(float),
             np.array([
@@ -495,15 +508,27 @@ class TestRPCal(unittest.TestCase):
                 ]),
             rtol=0.8)
 
-        # test log log interpolation and no extrapolation
+        # test log log interpolation and extrapolation with constant
         return_stats, _, _ = haz.local_return_period(
-                threshold_intensities=(.1, 300, 1e5))
+                threshold_intensities=(.1, 300, 1e5), method='extrapolate_constant')
         np.testing.assert_allclose(
             return_stats.values[:,1:].astype(float),
             np.array([
                 [100, 100, np.nan],
                 [1/.11, 30, np.nan],
                 [1/1.11, 30, np.nan]
+                ]),
+        rtol=0.8)
+
+        # test log log interpolation and no extrapolation
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5))
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [np.nan, np.nan, np.nan],
+                [np.nan, 30, np.nan],
+                [np.nan, 30, np.nan]
                 ]),
         rtol=0.8)
 

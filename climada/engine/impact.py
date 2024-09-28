@@ -488,7 +488,9 @@ class Impact():
             locally (at each centroid). Defaults to (25, 50, 100, 250).
         method : str
             Method to interpolate to new return periods. Currently available are "interpolate",
-            "extrapolate" and "stepfunction". If set to "interpolate" or "stepfunction",
+            "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
+            return periods outside the range of the Impact object's observed local return periods
+            will be assigned NaN. If set to "extrapolate_constant" or "stepfunction",
             return periods larger than the Impact object's observed local return periods will be
             assigned the largest local impact, and return periods smaller than the Impact object's
             observed local return periods will be assigned 0. If set to "extrapolate", local
@@ -551,14 +553,15 @@ class Impact():
             frequency = np.cumsum(frequency[::-1])[::-1]
             if method == 'stepfunction':
                 imp_stats[:,i] = u_interp.stepfunction_ev(
-                    1/np.array(return_periods), frequency[::-1], impact[::-1], y_threshold=min_impact,
-                    y_asymptotic=0.
+                    1/np.array(return_periods), frequency[::-1], impact[::-1],
+                    y_threshold=min_impact, y_asymptotic=0.
                 )
-            elif method == 'extrapolate' or method == 'interpolate':
-                extrapolation = (method == 'extrapolate')
+            elif method in ['interpolate', 'extrapolate', 'extrapolate_constant']:
+                extrapolation = None if method == 'interpolate' else method
                 imp_stats[:,i] = u_interp.interpolate_ev(
-                    1/np.array(return_periods), frequency[::-1], impact[::-1], logx=log_frequency,
-                    logy=log_impact, y_threshold=min_impact, extrapolation=extrapolation, y_asymptotic=0.
+                    1/np.array(return_periods), frequency[::-1], impact[::-1],
+                    logx=log_frequency, logy=log_impact, y_threshold=min_impact,
+                    extrapolation=extrapolation, y_asymptotic=0.
                 )
             else:
                 raise ValueError(f"Unknown method: {method}")
