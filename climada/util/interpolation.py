@@ -86,9 +86,8 @@ def interpolate_ev(
     if x_train.size < 2:
         if not extrapolation:
             return np.full_like(x_test, np.nan)
-        else:
-            LOGGER.warning('Data is being extrapolated.')
-            return _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic)
+        LOGGER.warning('Data is being extrapolated.')
+        return _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic)
 
     # warn if values are being extrapolated
     if extrapolation and (np.min(x_test) < np.min(x_train) or np.max(x_test) > np.max(x_train)):
@@ -100,7 +99,7 @@ def interpolate_ev(
     elif extrapolation == 'extrapolate_constant':
         if not all(sorted(x_train) == x_train):
             raise ValueError('x_train array must be sorted in ascending order.')
-        fill_value = (y_train[0], np.log10(y_asymptotic) if logy else y_asymptotic) 
+        fill_value = (y_train[0], np.log10(y_asymptotic) if logy else y_asymptotic)
     else:
         fill_value = np.nan
 
@@ -151,13 +150,11 @@ def stepfunction_ev(
         x_test, x_train, y_train, None, None, x_threshold, y_threshold
     )
 
-    
-
     # handle case of small training data sizes
     if x_train.size < 2:
         LOGGER.warning('Data is being extrapolated.')
         return _interpolate_small_input(x_test, x_train, y_train, None, y_asymptotic)
-    
+
     # warn if values are being extrapolated
     if (np.min(x_test) < np.min(x_train) or np.max(x_test) > np.max(x_train)):
         LOGGER.warning('Data is being extrapolated.')

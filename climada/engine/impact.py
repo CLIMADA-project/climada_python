@@ -906,7 +906,7 @@ class Impact():
     def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
                     log10_scale=True, smooth=True, axis=None, **kwargs):
         """
-        This function is deprecated, use Impact.local_exceedance_impact and 
+        This function is deprecated, use Impact.local_exceedance_impact and
         util.plot.plot_from_gdf instead.
         """
         LOGGER.warning("The use of Impact.plot_rp_imp is deprecated."
