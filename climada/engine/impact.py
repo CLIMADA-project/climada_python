@@ -579,7 +579,6 @@ class Impact():
 
         return gdf, label, column_label
 
-    #TODO: note different calculation in changelog
     def local_exceedance_imp(
             self,
             return_periods=(25, 50, 100, 250)

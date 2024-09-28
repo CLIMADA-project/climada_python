@@ -555,7 +555,6 @@ class Hazard(HazardIO, HazardPlot):
 
         return gdf, label, column_label
 
-#TODO: note different calculation in changelog 
     def local_exceedance_inten(self, return_period=(25, 50, 100, 250)):
         """This function is deprecated, use Hazard.local_exceedance_intensity instead."""
         LOGGER.warning(
