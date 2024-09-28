@@ -35,10 +35,15 @@ class TestFitMethods(unittest.TestCase):
         x_test = np.array([0., 3., 4., 6.])
         np.testing.assert_allclose(
             interpolate_ev(x_test, x_train, y_train),
+            np.array([np.nan, 4., 3., np.nan])
+        )
+        np.testing.assert_allclose(
+            interpolate_ev(x_test, x_train, y_train, extrapolation='extrapolate_constant'),
             np.array([8., 4., 3., np.nan])
         )
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, y_asymptotic = 0),
+            interpolate_ev(x_test, x_train, y_train,
+                        extrapolation='extrapolate_constant', y_asymptotic = 0),
             np.array([8., 4., 3., 0.])
         )
 
@@ -48,15 +53,17 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([4., 1., 4.])
         x_test = np.array([-1., 3., 4.])
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train),
+            interpolate_ev(x_test, x_train, y_train, extrapolation='extrapolate_constant'),
             np.array([4., 1., 2.])
         )
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, x_threshold=1.),
+            interpolate_ev(x_test, x_train, y_train, x_threshold=1.,
+                           extrapolation='extrapolate_constant'),
             np.array([1., 1., 2.])
         )
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, y_threshold=2.),
+            interpolate_ev(x_test, x_train, y_train, y_threshold=2.,
+                           extrapolation='extrapolate_constant'),
             np.array([4., 4., 4.])
         )
     
@@ -66,25 +73,27 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([1., 3.])
         x_test = np.array([1e0, 1e2])
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, logx=True, extrapolation=True),
+            interpolate_ev(x_test, x_train, y_train, logx=True, extrapolation='extrapolate'),
             np.array([0., 2.])
         )
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, logx=True),
+            interpolate_ev(x_test, x_train, y_train, logx=True,
+                           extrapolation='extrapolate_constant'),
             np.array([1., 2.])
         )
         x_train = np.array([1., 3.])
         y_train = np.array([1e1, 1e3])
         x_test = np.array([0., 2.])
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, logy=True, extrapolation=True),
+            interpolate_ev(x_test, x_train, y_train, logy=True, extrapolation='extrapolate'),
             np.array([1e0, 1e2])
         )
         x_train = np.array([1e1, 1e3])
         y_train = np.array([1e1, 1e5])
         x_test = np.array([1e0, 1e2])
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, logx=True, logy=True, extrapolation=True),
+            interpolate_ev(x_test, x_train, y_train, logx=True, logy=True,
+                           extrapolation='extrapolate'),
             np.array([1e-1, 1e3])
         )
 
@@ -95,7 +104,7 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.zeros(3)
         np.testing.assert_allclose(
             interpolate_ev(x_test, x_train, y_train),
-            np.array([0., 0., 0.])
+            np.array([np.nan, 0., 0.])
         )
 
     def test_interpolate_ev_small_input(self):
@@ -104,13 +113,18 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([2.])
         x_test = np.array([0., 1., 2.])
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train),
+            interpolate_ev(x_test, x_train, y_train, extrapolation='extrapolate'),
             np.array([2., 2., np.nan])
         )
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, y_asymptotic=0),
+            interpolate_ev(x_test, x_train, y_train, extrapolation='extrapolate', y_asymptotic=0),
             np.array([2., 2., 0.])
         )
+        np.testing.assert_allclose(
+            interpolate_ev(x_test, x_train, y_train),
+            np.full(3, np.nan)
+        )
+
         x_train = np.array([])
         y_train = np.array([])
         x_test = np.array([0., 1., 2.])
@@ -119,7 +133,8 @@ class TestFitMethods(unittest.TestCase):
             np.full(3, np.nan)
         )
         np.testing.assert_allclose(
-            interpolate_ev(x_test, x_train, y_train, y_asymptotic=0),
+            interpolate_ev(x_test, x_train, y_train,
+                           extrapolation='extrapolate_constant', y_asymptotic=0),
             np.zeros(3)
         )
 
