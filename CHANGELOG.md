@@ -13,11 +13,13 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
+- `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, that all use the `climada.util.interpolation` module [#918](https://github.com/CLIMADA-project/climada_python/pull/918)
   
 ### Changed
 
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+- `Hazard.local_exceedance_inten`, `Hazard.local_return_period`, and `Impact.local_exceedance_imp` call the corresponding new functions and a deprecation warning is added [#918](https://github.com/CLIMADA-project/climada_python/pull/918). Some inconsistencies in the previous versions are removed and the default method is changed. To reconstruct results from the previous versions, use CLIMADA v5.0.0 or less.
 
 ### Fixed
 
