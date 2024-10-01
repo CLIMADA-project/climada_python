@@ -22,7 +22,7 @@ Test of interpolation module
 import unittest
 import numpy as np
 
-from climada.util.interpolation import interpolate_ev, stepfunction_ev, group_frequency
+from climada.util.interpolation import interpolate_ev, stepfunction_ev, group_frequency, preprocess_and_interpolate_ev
 
 
 class TestFitMethods(unittest.TestCase):
@@ -191,6 +191,41 @@ class TestFitMethods(unittest.TestCase):
         )
         with self.assertRaises(ValueError):
             group_frequency(frequency, intensity[::-1])
+
+    def test_preprocess_and_interpolate_ev(self):
+        """Test wrapper function"""
+        frequency = np.array([.1, .9])
+        values = np.array([100., 10.])
+        test_frequency = np.array([.01, .55, 10.])
+        test_values = np.array([1., 55., 1000.])
+
+        # test interpolation
+        np.testing.assert_allclose(
+            [np.nan, 55., np.nan],
+            preprocess_and_interpolate_ev(test_frequency, None, frequency, values)
+        )
+        np.testing.assert_allclose(
+            [np.nan, .55, np.nan],
+            preprocess_and_interpolate_ev(None, test_values, frequency, values)
+        )
+
+        # test extrapolation with constants
+        np.testing.assert_allclose(
+            [100. , 55., 0.],
+            preprocess_and_interpolate_ev(test_frequency, None, frequency, values,
+                                          method='extrapolate_constant', y_asymptotic=0.)
+        )
+        np.testing.assert_allclose(
+            [1., .55, np.nan],
+            preprocess_and_interpolate_ev(None, test_values, frequency, values,
+                                          method='extrapolate_constant')
+        )
+
+        # test error raising
+        with self.assertRaises(ValueError):
+            preprocess_and_interpolate_ev(test_frequency, test_values, frequency, values)
+        with self.assertRaises(ValueError):
+            preprocess_and_interpolate_ev(None, None, frequency, values)
 
 # Execute Tests
 if __name__ == "__main__":
