@@ -53,6 +53,7 @@ import climada.util.dates_times as u_dt
 import climada.util.plot as u_plot
 from climada.util.select import get_attributes_with_matching_dimension
 import climada.util.interpolation as u_interp
+import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
 
@@ -523,55 +524,32 @@ class Impact():
         if self.imp_mat.size == 0:
             raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
                              'instance with parameter save_mat=True')
+
         #check frequency unit
-        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
-            return_period_unit = 'years'
-        elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
-            return_period_unit = 'months'
-        elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
-            return_period_unit = 'weeks'
-        else:
-            LOGGER.warning("Hazard's frequency unit %s is not known, "
-                            "years will be used as return period unit.",
-                            self.frequency_unit)
-            return_period_unit = 'years'
+        return_period_unit = u_check.convert_frequency_unit_to_time_unit(self.frequency_unit)
 
-        num_centroids = self.imp_mat.shape[1]
-        imp_stats = np.zeros((len(return_periods), num_centroids))
+        # check method
+        if method not in ['interpolate', 'extrapolate', 'extrapolate_constant', 'stepfunction']:
+            raise ValueError(f"Unknown method: {method}")
 
-        for i in range(num_centroids):
-            # sort intensties and frequencies at given centroid
-            impact = np.squeeze(self.imp_mat[:,i].toarray())
-            sorted_idxs = np.argsort(impact)
-            impact = np.squeeze(impact[sorted_idxs])
-            frequency = self.frequency[sorted_idxs]
-
-            # group values with same impact
-            frequency, impact = u_interp.group_frequency(frequency, impact)
-
-            # fit intensities to cummulative frequencies
-            frequency = np.cumsum(frequency[::-1])[::-1]
-            if method == 'stepfunction':
-                imp_stats[:,i] = u_interp.stepfunction_ev(
-                    1/np.array(return_periods), frequency[::-1], impact[::-1],
-                    y_threshold=min_impact, y_asymptotic=0.
-                )
-            elif method in ['interpolate', 'extrapolate', 'extrapolate_constant']:
-                extrapolation = None if method == 'interpolate' else method
-                imp_stats[:,i] = u_interp.interpolate_ev(
-                    1/np.array(return_periods), frequency[::-1], impact[::-1],
-                    logx=log_frequency, logy=log_impact, y_threshold=min_impact,
-                    extrapolation=extrapolation, y_asymptotic=0.
-                )
-            else:
-                raise ValueError(f"Unknown method: {method}")
+        # calculate local exceedance impact
+        test_frequency = 1/np.array(return_periods)
+        exceedance_impact = np.array([
+            u_interp.preprocess_and_interpolate_ev(
+                test_frequency, None, self.frequency,
+                self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                log_frequency=log_frequency, log_values=log_impact,
+                value_threshold=min_impact, method=method, y_asymptotic=0.
+            )
+            for i_centroid in range(self.imp_mat.shape[1])
+        ])
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(
             geometry = gpd.points_from_xy(self.coord_exp[:,1], self.coord_exp[:,0]),
             crs = self.crs)
         col_names = [f'{ret_per}' for ret_per in return_periods]
-        gdf[col_names] = imp_stats.T
+        gdf[col_names] = exceedance_impact
         # create label and column_label
         label = f'Impact ({self.unit})'
         column_label = lambda column_names: [f'Return Period: {col} {return_period_unit}'

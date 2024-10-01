@@ -1049,7 +1049,7 @@ class TestStats(unittest.TestCase):
         # third centroid has intensities 1 with cum frequencies 1
         # testing at frequencies 2, 1.5, 1
         inten_stats, _, _ = haz.local_exceedance_intensity(
-            return_period, log_frequeny=False, log_intensity=False, method='extrapolate_constant')
+            return_period, log_frequency=False, log_intensity=False, method='extrapolate_constant')
         np.testing.assert_allclose(
             inten_stats[inten_stats.columns[1:]].values,
             np.array([

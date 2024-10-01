@@ -458,7 +458,7 @@ class TestRPCal(unittest.TestCase):
 
         # test lin lin interpolation without extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-                return_periods=(1000, 30, .1), log_frequeny=False, log_intensity=False,
+                return_periods=(1000, 30, .1), log_frequency=False, log_intensity=False,
                 method='extrapolate_constant')
         np.testing.assert_allclose(
             inten_stats.values[:,1:].astype(float),

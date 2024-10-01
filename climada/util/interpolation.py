@@ -29,6 +29,108 @@ from climada.util.value_representation import sig_dig_list
 
 LOGGER = logging.getLogger(__name__)
 
+def preprocess_and_interpolate_ev(
+        test_frequency,
+        test_values,
+        frequency,
+        values,
+        log_frequency = False,
+        log_values = False,
+        value_threshold = None,
+        method = 'interpolate',
+        y_asymptotic = np.nan
+    ):
+    """Wrapper function to first preprocess (frequency, values) data and and then inter- and
+    extrapolate to test frequencies or test values.
+
+    Parameters
+    ----------
+    test_frequency : array_like
+        1-D array of test frequencies for which values (e.g., intensities) should be assigned.
+    test_values : array_like
+        1-D array of test values (e.g., intensities) for which frequencies should be assigned.
+    frequency : array_like
+        1-D array of frequencies to be interpolated.
+    values : array_like
+        1-D array of values (e.g., intensities) to be interpolated.
+    log_frequency : bool, optional
+        If set to True, frequencies are interpolated on log scale. Defaults to False.
+    log_values : bool, optional
+        If set to True, values (e.g., intensities) are interpolated on log scale.
+        Defaults to False.
+    value_threshold : float, optional
+        Lower threshold to filter values (e.g., intensities). Defaults to None.
+    method : str, optional
+        Method to interpolate to test x values. Currently available are
+        "interpolate", "extrapolate", "extrapolate_constant" and "stepfunction". If set to
+        "interpolate", test x values outside the range of the given x values will be assigned NaN.
+        If set to "extrapolate_constant" or "stepfunction", test x values larger than given
+        x values will be assigned largest given y value, and test x values smaller than the given
+        x values will be assigned y_asymtotic. If set to "extrapolate", values will be extrapolated
+        (and interpolated). Defaults to "interpolate".
+    y_asymptotic : float, optional
+        Has no effect if method is "interpolate". Else, provides return value and if
+        for test x values larger than given x values, if size < 2 or if method is set
+        to "extrapolate_constant" or "stepfunction". Defaults to np.nan.
+
+    Returns
+    -------
+    np.array
+        interpolated (and extrapolated) values or frequencies for given test frequencies or test
+        values, respectively.
+
+    Raises
+    ------
+    ValueError
+        If both test frequencies and test values are given or none of them.
+    """
+
+    # check that only test frequencies or only test values are given
+    if test_frequency is not None and test_values is not None:
+        raise ValueError('Both test frequencies and test values are given.')
+    elif test_frequency is None and test_values is None:
+        raise ValueError('No test values or frequencies are given.')
+    
+    # sort values and frequencies
+    sorted_idxs = np.argsort(values)
+    values = np.squeeze(values[sorted_idxs])
+    frequency = frequency[sorted_idxs]
+
+    # group similar values together
+    frequency, values = group_frequency(frequency, values)
+
+    # transform frequencies to cummulative frequencies
+    frequency = np.cumsum(frequency[::-1])[::-1]
+
+    # if test frequencies are provided
+    if test_frequency is not None:
+        if method == 'stepfunction':
+            return stepfunction_ev(
+                test_frequency, frequency[::-1], values[::-1],
+                y_threshold=value_threshold, y_asymptotic=y_asymptotic
+            )
+        else:
+            extrapolation = None if method == 'interpolate' else method
+            return interpolate_ev(
+                test_frequency, frequency[::-1], values[::-1], logx=log_frequency,
+                logy=log_values, y_threshold=value_threshold,
+                extrapolation=extrapolation, y_asymptotic=y_asymptotic
+            )
+
+    # if test values are provided
+    else:
+        if method == 'stepfunction':
+            return stepfunction_ev(
+                test_values, values, frequency,
+                x_threshold=value_threshold, y_asymptotic=y_asymptotic
+            )
+        else:
+            extrapolation = None if method == 'interpolate' else method
+            return interpolate_ev(
+                test_values, values, frequency, logx=log_values, logy=log_frequency,
+                x_threshold=value_threshold, extrapolation=extrapolation
+            )
+
 def interpolate_ev(
         x_test,
         x_train,
@@ -86,12 +188,7 @@ def interpolate_ev(
     if x_train.size < 2:
         if not extrapolation:
             return np.full_like(x_test, np.nan)
-        LOGGER.warning('Data is being extrapolated.')
         return _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic)
-
-    # warn if values are being extrapolated
-    if extrapolation and (np.min(x_test) < np.min(x_train) or np.max(x_test) > np.max(x_train)):
-        LOGGER.warning('Data is being extrapolated.')
 
     # calculate fill values
     if extrapolation == 'extrapolate':
@@ -152,12 +249,7 @@ def stepfunction_ev(
 
     # handle case of small training data sizes
     if x_train.size < 2:
-        LOGGER.warning('Data is being extrapolated.')
         return _interpolate_small_input(x_test, x_train, y_train, None, y_asymptotic)
-
-    # warn if values are being extrapolated
-    if (np.min(x_test) < np.min(x_train) or np.max(x_test) > np.max(x_train)):
-        LOGGER.warning('Data is being extrapolated.')
 
     # find indices of x_test if sorted into x_train
     if not all(sorted(x_train) == x_train):

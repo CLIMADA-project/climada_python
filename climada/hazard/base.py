@@ -453,7 +453,7 @@ class Hazard(HazardIO, HazardPlot):
             return_periods=(25, 50, 100, 250),
             method='interpolate',
             min_intensity=None,
-            log_frequeny=True,
+            log_frequency=True,
             log_intensity=True
     ):
         """Compute local exceedance intensity for given return periods. The default method
@@ -502,51 +502,28 @@ class Hazard(HazardIO, HazardPlot):
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
         #check frequency unit
-        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
-            return_period_unit = 'years'
-        elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
-            return_period_unit = 'months'
-        elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
-            return_period_unit = 'weeks'
-        else:
-            LOGGER.warning(f"Hazard's frequency unit {self.frequency_unit} is not known, "
-                            "years will be used as return period unit.")
-            return_period_unit = 'years'
-        
-        num_centroids = self.intensity.shape[1]
-        inten_stats = np.zeros((len(return_periods), num_centroids))
+        return_period_unit = u_check.convert_frequency_unit_to_time_unit(self.frequency_unit)
 
-        for i in range(num_centroids):
-            # sort intensties and frequencies at given centroid
-            intensity = np.squeeze(self.intensity[:,i].toarray())
-            sorted_idxs = np.argsort(intensity)
-            intensity = np.squeeze(intensity[sorted_idxs])
-            frequency = self.frequency[sorted_idxs]
+        # check method
+        if method not in ['interpolate', 'extrapolate', 'extrapolate_constant', 'stepfunction']:
+            raise ValueError(f"Unknown method: {method}")
 
-            # group values with same intensity
-            frequency, intensity = u_interp.group_frequency(frequency, intensity)
-
-            # fit intensities to cummulative frequencies
-            frequency = np.cumsum(frequency[::-1])[::-1]
-            if method == 'stepfunction':
-                inten_stats[:,i] = u_interp.stepfunction_ev(
-                    1/np.array(return_periods), frequency[::-1], intensity[::-1],
-                    y_threshold=min_intensity, y_asymptotic=0.
-                )
-            elif method in ['interpolate', 'extrapolate', 'extrapolate_constant']:
-                extrapolation = None if method == 'interpolate' else method
-                inten_stats[:,i] = u_interp.interpolate_ev(
-                    1/np.array(return_periods), frequency[::-1], intensity[::-1],
-                    logx=log_frequeny, logy=log_intensity, y_threshold=min_intensity,
-                    extrapolation=extrapolation, y_asymptotic=0.
-                )
-            else:
-                raise ValueError(f"Unknown method: {method}")
+        # calculate local exceedance intensity
+        test_frequency = 1/np.array(return_periods)
+        exceedance_intensity = np.array([
+            u_interp.preprocess_and_interpolate_ev(
+                test_frequency, None, self.frequency,
+                self.intensity.getcol(i_centroid).toarray().flatten(),
+                log_frequency=log_frequency, log_values=log_intensity,
+                value_threshold=min_intensity, method=method, y_asymptotic=0.
+            )
+            for i_centroid in range(self.intensity.shape[1])
+        ])
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'], crs = self.centroids.gdf.crs)
         column_names = [f'{rp}' for rp in return_periods]
-        gdf[column_names] = inten_stats.T
+        gdf[column_names] = exceedance_intensity
 
         # create label and column_label
         label = f'Intensity ({self.units})'
@@ -624,55 +601,29 @@ class Hazard(HazardIO, HazardPlot):
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
         #check frequency unit
-        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
-            return_period_unit = 'Years'
-        elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
-            return_period_unit = 'Months'
-        elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
-            return_period_unit = 'Weeks'
-        else:
-            LOGGER.warning("Hazard's frequency unit %s is not known, "
-                           "years will be used as return period unit.", self.frequency_unit)
-            return_period_unit = 'Years'
+        return_period_unit = u_check.convert_frequency_unit_to_time_unit(self.frequency_unit)
 
-        # Ensure threshold_intensities is a numpy array
-        threshold_intensities = np.array(threshold_intensities)
-        
-        num_centroids = self.intensity.shape[1]
-        return_periods = np.zeros((len(threshold_intensities), num_centroids))
-        
-        for i in range(num_centroids):
-            # sort intensties and frequencies at given centroid
-            intensity = np.squeeze(self.intensity[:,i].toarray())
-            sorted_idxs = np.argsort(intensity)
-            intensity = np.squeeze(intensity[sorted_idxs])
-            frequency = self.frequency[sorted_idxs]
+        # check method
+        if method not in ['interpolate', 'extrapolate', 'extrapolate_constant', 'stepfunction']:
+            raise ValueError(f"Unknown method: {method}")
 
-            # group values with same intensity
-            frequency, intensity = u_interp.group_frequency(frequency, intensity)
-
-            # fit intensities to cummulative frequencies
-            frequency = np.cumsum(frequency[::-1])[::-1]
-            if method == 'stepfunction':
-                return_periods[:,i] = u_interp.stepfunction_ev(
-                    threshold_intensities, intensity, frequency, x_threshold=min_intensity
-                )
-            elif method in ['interpolate', 'extrapolate', 'extrapolate_constant']:
-                extrapolation = None if method == 'interpolate' else method
-                return_periods[:,i] = u_interp.interpolate_ev(
-                    threshold_intensities, intensity, frequency, logx=log_intensity,
-                    logy=log_frequency, x_threshold=min_intensity, extrapolation=extrapolation,
-                    y_asymptotic=np.nan
-                )
-            else:
-                raise ValueError(f"Unknown method: {method}")
+        # calculate local return periods
+        return_periods = np.array([
+            u_interp.preprocess_and_interpolate_ev(
+                None, np.array(threshold_intensities), self.frequency,
+                self.intensity.getcol(i_centroid).toarray().flatten(),
+                log_frequency=log_frequency, log_values=log_intensity,
+                value_threshold=min_intensity, method=method, y_asymptotic=np.nan
+            )
+            for i_centroid in range(self.intensity.shape[1]) 
+        ])
         return_periods = safe_divide(1., return_periods)
-        
+
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'],
                                crs = self.centroids.gdf.crs)
         col_names = [f'{tresh_inten}' for tresh_inten in threshold_intensities]
-        gdf[col_names] = return_periods.T
+        gdf[col_names] = return_periods
 
         # create label and column_label
         label = f'Return Periods ({return_period_unit})'
