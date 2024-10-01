@@ -1058,6 +1058,84 @@ class TestStats(unittest.TestCase):
                 [0., 0., 1.]
             ])
         )
+
+    def test_local_exceedance_intensity_methods(self):
+        """Test local exceedance frequencies with different methods"""
+        haz = dummy_hazard()
+        haz.intensity = sparse.csr_matrix([
+                [0, 0, 1e1],
+                [0.2, 1e1, 1e2],
+                [1e3, 1e3, 1e3]
+            ])
+        haz.intensity_thres = .5
+        haz.frequency = np.array([1., .1, .01])
+        return_period = (1000, 30, .1)
+        # first centroid has intensities 1e3 with frequencies .01, cum freq .01
+        # second centroid has intensities 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # third centroid has intensities 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at frequencies .001, .033, 10.
+
+        # test stepfunction
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1), method='stepfunction')
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e3, 1e1, 0],
+                [1e3, 1e2, 0]
+                ])
+        )
+
+        # test log log extrapolation
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1), method = "extrapolate")
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e5, 1e2, 1e-3],
+                [1e4, 300, 1]
+                ]),
+            rtol=0.8)
+
+        # test log log interpolation and extrapolation with constant
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1), method='extrapolate_constant')
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e3, 1e2, 0],
+                [1e3, 300, 0]
+                ]),
+            rtol=0.8)
+
+        # test log log interpolation and no extrapolation
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1))
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [np.nan, np.nan, np.nan],
+                [np.nan, 1e2, np.nan],
+                [np.nan, 300, np.nan]
+                ]),
+            rtol=0.8)
+
+        # test lin lin interpolation without extrapolation
+        inten_stats, _, _ = haz.local_exceedance_intensity(
+                return_periods=(1000, 30, .1), log_frequency=False, log_intensity=False,
+                method='extrapolate_constant')
+        np.testing.assert_allclose(
+            inten_stats.values[:,1:].astype(float),
+            np.array([
+                [1e3, 0, 0],
+                [1e3, 750, 0],
+                [1e3, 750, 0]
+                ]),
+            rtol=0.8)
+    
   
     def test_local_return_period(self):
         """Test local return periods with lin lin interpolation"""
@@ -1084,6 +1162,68 @@ class TestStats(unittest.TestCase):
             ])
         )
 
+    def test_local_return_period_methods(self):
+        """Test local return periods different methods"""
+        haz = dummy_hazard()
+        haz.intensity = sparse.csr_matrix([
+                [0, 0, 1e1],
+                [0.0, 1e1, 1e2],
+                [1e3, 1e3, 1e3]
+            ])
+        haz.intensity_thres = .5
+        haz.frequency = np.array([1., .1, .01])
+        # first centroid has intensities 1e3 with frequencies .01, cum freq .01
+        # second centroid has intensities 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # third centroid has intensities 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at intensities .1, 300, 1e4
+
+        # test stepfunction
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5), method='stepfunction')
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [100, 100, np.nan],
+                [1/.11, 100, np.nan],
+                [1/1.11, 100, np.nan]
+                ])
+        )
+
+        # test log log extrapolation
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5), method="extrapolate")
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [100, 100, np.nan],
+                [1., 30, 1e3],
+                [.01, 30, 1e4]
+                ]),
+            rtol=0.8)
+
+        # test log log interpolation and extrapolation with constant
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5), method='extrapolate_constant')
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [100, 100, np.nan],
+                [1/.11, 30, np.nan],
+                [1/1.11, 30, np.nan]
+                ]),
+        rtol=0.8)
+
+        # test log log interpolation and no extrapolation
+        return_stats, _, _ = haz.local_return_period(
+                threshold_intensities=(.1, 300, 1e5))
+        np.testing.assert_allclose(
+            return_stats.values[:,1:].astype(float),
+            np.array([
+                [np.nan, np.nan, np.nan],
+                [np.nan, 30, np.nan],
+                [np.nan, 30, np.nan]
+                ]),
+        rtol=0.8)
 
 class TestYearset(unittest.TestCase):
     """Test return period statistics"""

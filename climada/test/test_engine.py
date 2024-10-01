@@ -288,98 +288,10 @@ class TestCalcCostBenefit(unittest.TestCase):
                         len(attr), len(unc_data.param_labels) * (4 + 4 + 4)
                     )
 
-class TestImpactRPCals(unittest.TestCase):
-    """Test the return periods and exceedance impact calculation of Impact objects"""
-
-    def test_local_exceedance_impact_methods(self):
-        """Test local exceedance impacts per return period with different methods"""
-        impact = dummy_impact()
-        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
-        impact.imp_mat = sp.sparse.csr_matrix(
-                    np.array([
-                        [0, 0, 0, 1e1],
-                        [0, 0, 1e1, 1e2],
-                        [0, 1e3, 1e3, 1e3]
-                        ])
-                )
-        impact.frequency = np.array([1., .1, .01])
-        # first centroid has impacts None with cum frequencies None
-        # second centroid has impacts 1e3 with frequencies .01, cum freq .01
-        # third centroid has impacts 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
-        # fourth centroid has impacts 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
-        # testing at frequencies .001, .033, 10.
-
-        # test stepfunction
-        impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1), method='stepfunction')
-        np.testing.assert_allclose(
-            impact_stats.values[:,1:].astype(float),
-            np.array([
-                [0, 0, 0],
-                [1e3, 0, 0],
-                [1e3, 1e1, 0],
-                [1e3, 1e2, 0]
-                ])
-        )
-
-        # test log log extrapolation
-        impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1), method = "extrapolate")
-        np.testing.assert_allclose(
-            impact_stats.values[:,1:].astype(float),
-            np.array([
-                [0, 0, 0],
-                [1e3, 0, 0],
-                [1e5, 1e2, 1e-3],
-                [1e4, 300, 1]
-                ]),
-            rtol=0.8)
-
-        # test log log interpolation and extrapolation with constant
-        impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1), method = "extrapolate_constant")
-        np.testing.assert_allclose(
-            impact_stats.values[:,1:].astype(float),
-            np.array([
-                [0, 0, 0],
-                [1e3, 0, 0],
-                [1e3, 1e2, 0],
-                [1e3, 300, 0]
-                ]),
-            rtol=0.8)
-
-        # test log log interpolation and no extrapolation
-        impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1))
-        np.testing.assert_allclose(
-            impact_stats.values[:,1:].astype(float),
-            np.array([
-                [np.nan, np.nan, np.nan],
-                [np.nan, np.nan, np.nan],
-                [np.nan, 1e2, np.nan],
-                [np.nan, 300, np.nan]
-                ]),
-            rtol=0.8)
-
-        # test lin lin interpolation with no extrapolation
-        impact_stats, _, _ = impact.local_exceedance_impact(
-                return_periods=(1000, 30, .1), method = "extrapolate_constant",
-                log_frequency=False, log_impact=False)
-        np.testing.assert_allclose(
-            impact_stats.values[:,1:].astype(float),
-            np.array([
-                [0, 0, 0],
-                [1e3, 0, 0],
-                [1e3, 750, 0],
-                [1e3, 750, 0]
-                ]),
-            rtol=0.8)
-
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEmdatProcessing)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGDPScaling))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEmdatToImpact))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalcCostBenefit))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactRPCals))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
