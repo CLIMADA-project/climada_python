@@ -34,18 +34,24 @@ from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.trop_cyclone.trop_cyclone import (
     TropCyclone, )
 from climada.hazard.centroids.centr import Centroids
+from climada.hazard.test import download_ibtracs
+
 
 DATA_DIR = Path(hazard_test.__file__).parent.joinpath('data')
 
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
-
 CENTR_TEST_BRB = Centroids.from_hdf5(get_test_file('centr_test_brb', file_format='hdf5'))
 
 
 class TestReader(unittest.TestCase):
     """Test loading funcions from the TropCyclone class"""
+
+    @classmethod
+    def setUpClass(cls):
+        download_ibtracs()
+
     def test_memory_limit(self):
         """Test from_tracks when memory is (very) limited"""
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
