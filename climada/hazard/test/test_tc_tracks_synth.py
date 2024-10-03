@@ -30,6 +30,8 @@ import climada.hazard.tc_tracks as tc
 import climada.hazard.tc_tracks_synth as tc_synth
 import climada.util.coordinates
 from climada.util.constants import TC_ANDREW_FL
+from climada.hazard.test import download_ibtracs
+
 
 DATA_DIR = Path(__file__).parent.joinpath('data')
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
@@ -39,7 +41,13 @@ TEST_TRACK_DECAY_END_OCEAN_HIST = DATA_DIR.joinpath('1997018S11059.nc')
 TEST_TRACK_DECAY_PENV_GT_PCEN = DATA_DIR.joinpath('1988021S12080_gen2.nc')
 TEST_TRACK_DECAY_PENV_GT_PCEN_HIST = DATA_DIR.joinpath('1988021S12080.nc')
 
+
 class TestDecay(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        download_ibtracs()
+
     def test_apply_decay_no_landfall_pass(self):
         """Test _apply_land_decay with no historical tracks with landfall"""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
@@ -469,6 +477,11 @@ class TestDecay(unittest.TestCase):
         self.assertTrue(np.all(np.diff(p_env_lf - p_synth_lf) <= 0))
 
 class TestSynth(unittest.TestCase):
+
+    @classmethod
+    def setUpClass(cls):
+        download_ibtracs()
+
     def test_angle_funs_pass(self):
         """Test functions used by random walk code"""
         self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([15, 20]),
