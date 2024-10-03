@@ -32,7 +32,7 @@ def download_ibtracs():
     First, downloading from the original sources is attempted. If that fails an old version
     is downloaded from the CLIMADA Data API
     """
-    if SYSTEM_DIR.joinpath(IBTRACS_FILE).isfile():
+    if SYSTEM_DIR.joinpath(IBTRACS_FILE).is_file():
         return  # Nothing to do
 
     try:
