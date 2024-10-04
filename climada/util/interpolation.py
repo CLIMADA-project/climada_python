@@ -344,16 +344,36 @@ def group_frequency(frequency, value, n_sig_dig=2):
     if frequency.size == 0 and value.size == 0:
         return ([], [])
 
-    if len(value) != len(np.unique(sig_dig_list(value, n_sig_dig=n_sig_dig))):
-        #check ordering of value
-        if not all(sorted(value) == value):
+    # round values and group them
+    value = round_to_sig_digits(value, n_sig_dig)
+    value_unique, start_indices = np.unique(value, return_index=True)
+
+    if value_unique.size != frequency.size:
+        if not all(sorted(start_indices) == start_indices):
             raise ValueError('Value array must be sorted in ascending order.')
         # add frequency for equal value
-        value, start_indices = np.unique(
-            sig_dig_list(value, n_sig_dig=n_sig_dig), return_index=True)
-        start_indices = np.insert(start_indices, len(value), len(frequency))
-        frequency = np.array([
-            sum(frequency[start_indices[i]:start_indices[i+1]])
-            for i in range(len(value))
-        ])
+        start_indices = np.insert(start_indices, value_unique.size, frequency.size)
+        frequency = np.add.reduceat(frequency, start_indices[:-1])
+        return frequency, value_unique
+    
     return frequency, value
+
+def round_to_sig_digits(x, n_sig_dig):
+    """round each element array to a number of significant digits
+
+    Parameters
+    ----------
+    x : array-like
+        array to be rounded
+    n_sig_dig : int
+        number of significant digits.
+
+    Returns
+    -------
+    np.array
+        rounded array
+    """
+    x = np.asarray(x)
+    x_positive = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10**(n_sig_dig-1))
+    mags = 10 ** (n_sig_dig - 1 - np.floor(np.log10(x_positive)))
+    return np.round(x * mags) / mags
