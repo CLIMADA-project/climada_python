@@ -534,7 +534,7 @@ class Hazard(HazardIO, HazardPlot):
         num_cen = self.intensity.shape[1]
         return_periods = np.zeros((len(threshold_intensities), num_cen))
 
-        # batch_centroids = number of centroids that are handled in parallel: 
+        # batch_centroids = number of centroids that are handled in parallel:
         # batch_centroids = maximal matrix size // number of events
         batch_centroids = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
         if batch_centroids < 1:
