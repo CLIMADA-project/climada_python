@@ -1061,7 +1061,9 @@ class Hazard(HazardIO, HazardPlot):
             impf.id)
             mdr_array = impf.calc_mdr(mdr.toarray().ravel()).reshape(mdr.shape)
             mdr = sparse.csr_matrix(mdr_array)
-        return mdr[:, indices]
+        mdr_out = mdr[:, indices]
+        mdr_out.eliminate_zeros()
+        return mdr_out
 
     def get_paa(self, cent_idx, impf):
         """

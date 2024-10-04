@@ -1332,6 +1332,14 @@ class TestImpactFuncs(unittest.TestCase):
             true_mdr = np.digitize(haz.intensity[:, idx].toarray(), [0, 1])
             np.testing.assert_array_almost_equal(mdr.toarray(), true_mdr)
 
+        # #case with zeros everywhere
+        cent_idx = np.array([0, 0, 1])
+        impf.mdd=np.array([0,0,0,1])
+        # how many non-zeros values are expected
+        num_nz_values = 5
+        mdr = haz.get_mdr(cent_idx, impf)
+        self.assertEqual(mdr.nnz, num_nz_values)
+
     def test_get_paa(self):
         haz = dummy_hazard()
         impf = dummy_step_impf(haz)
