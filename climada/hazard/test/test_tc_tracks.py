@@ -19,7 +19,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test tc_tracks module.
 """
 
+from datetime import datetime as dt
 import unittest
+
 import xarray as xr
 import numpy as np
 import pandas as pd
@@ -32,7 +34,8 @@ from climada.util import ureg
 from climada.util.constants import TC_ANDREW_FL
 import climada.util.coordinates as u_coord
 from climada.entity import Exposures
-from datetime import datetime as dt
+from climada.hazard.test import download_ibtracs
+
 
 DATA_DIR = CONFIG.hazard.test_data.dir()
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
@@ -49,6 +52,10 @@ TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath('tctracks_hdf5_legacy.nc')
 
 class TestIbtracs(unittest.TestCase):
     """Test reading and model of TC from IBTrACS files"""
+
+    @classmethod
+    def setUpClass(cls):
+        download_ibtracs()
 
     def test_raw_ibtracs_empty_pass(self):
         """Test reading empty TC from IBTrACS files"""
@@ -290,6 +297,11 @@ class TestIbtracs(unittest.TestCase):
 
 class TestIO(unittest.TestCase):
     """Test reading of tracks from files of different formats"""
+
+    @classmethod
+    def setUpClass(cls):
+        download_ibtracs()
+
     def test_netcdf_io(self):
         """Test writting and reading netcdf4 TCTracks instances"""
         path = DATA_DIR.joinpath("tc_tracks_nc")
@@ -555,6 +567,10 @@ class TestIO(unittest.TestCase):
 
 class TestFuncs(unittest.TestCase):
     """Test functions over TC tracks"""
+
+    @classmethod
+    def setUpClass(cls):
+        download_ibtracs()
 
     def test_get_track_pass(self):
         """Test get_track."""

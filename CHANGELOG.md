@@ -23,7 +23,6 @@ Code freeze date: YYYY-MM-DD
 - `climada.exposures.exposures.Exposures.hazard_impf` method
 - `climada.exposures.exposures.Exposures.hazard_centroids` method
 
-
 ### Changed
 
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
@@ -31,6 +30,9 @@ Code freeze date: YYYY-MM-DD
 - Exposures complete overhaul. Notably the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization, while latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
 
 ### Fixed
+
+- File handles are being closed after reading netcdf files with `climada.hazard` modules [#953](https://github.com/CLIMADA-project/climada_python/pull/953)
+- Avoids a ValueError in the impact calculation for cases with a single exposure point and MDR values of 0, by explicitly removing zeros in `climada.hazard.Hazard.get_mdr` [#933](https://github.com/CLIMADA-project/climada_python/pull/948)
 
 ### Deprecated
 
@@ -484,4 +486,3 @@ updated:
 
 - `climada.enginge.impact.Impact.calc()` and `climada.enginge.impact.Impact.calc_impact_yearset()`
 [#436](https://github.com/CLIMADA-project/climada_python/pull/436).
-
