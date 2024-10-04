@@ -226,9 +226,8 @@ class Exposures():
             return self.data[INDICATOR_CENTR].values
         raise ValueError("Missing hazard centroids.")
 
-    @property
-    def _meta(self):
-        """Metadata dictionary, containing raster information derived from geometry"""
+    def derive_raster(self):
+        """Metadata dictionary, containing raster information, derived from the geometry"""
         if not self.data.size:
             return None
         _r, meta = u_coord.points_to_raster(self.data)
@@ -388,7 +387,9 @@ class Exposures():
     def __str__(self):
         return '\n'.join(
             [f"{md}: {self.__dict__[md]}" for md in type(self)._metadata] +
-            [f"crs: {self.crs}", "data:", str(self.gdf)]
+            [f"crs: {self.crs}", f"data: ({self.data.shape[0]} entries)",
+              str(self.data) if self.data.shape[0] < 10 else 
+              str(pd.concat([self.data[:4], self.data[-4:]]))]
         )
 
     def _access_item(self, *args):
@@ -403,8 +404,6 @@ class Exposures():
         """Check Exposures consistency.
 
         Reports missing columns in log messages.
-        If no ``impf_*`` column is present in the dataframe, a default column ``impf_`` is added
-        with default impact function id 1.
         """
         # mandatory columns
         for var in self.vars_oblig:
@@ -427,8 +426,7 @@ class Exposures():
                 col for col in self.gdf.columns
                 if col.startswith(INDICATOR_IMPF) or col.startswith(INDICATOR_IMPF_OLD)
             ]:
-            LOGGER.info("Setting %s to default impact functions ids 1.", INDICATOR_IMPF)
-            self.gdf[INDICATOR_IMPF] = 1
+            LOGGER.warning("There are no impact functions assigned to the exposures")
 
         # optional columns except centr_*
         for var in sorted(set(self.vars_opt).difference([INDICATOR_CENTR])):

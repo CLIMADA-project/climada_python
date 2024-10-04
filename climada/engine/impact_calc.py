@@ -116,6 +116,7 @@ class ImpactCalc():
         apply_deductible_to_mat : apply deductible to impact matrix
         apply_cover_to_mat : apply cover to impact matrix
         """
+        # TODO: consider refactoring, making use of Exposures.hazard_impf
         # check for compatibility of exposures and hazard type
         if all(name not in self.exposures.gdf.columns for
                name in ['if_', f'if_{self.hazard.haz_type}',

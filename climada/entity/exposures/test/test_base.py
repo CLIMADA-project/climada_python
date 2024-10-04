@@ -532,30 +532,28 @@ class TestImpactFunctions(unittest.TestCase):
         self.assertRaises(ValueError, expo.get_impf_column, 'HAZ')
 
         # removed impf column
-        expo.gdf.drop(columns='impf_NA', inplace=True)
+        expo.data.drop(columns='impf_NA', inplace=True)
         self.assertRaises(ValueError, expo.get_impf_column, 'NA')
         self.assertRaises(ValueError, expo.get_impf_column)
 
         # default (anonymous) impf column
-        expo.check()
+        expo.data['impf_'] = 1
         self.assertEqual('impf_', expo.get_impf_column())
         self.assertEqual('impf_', expo.get_impf_column('HAZ'))
 
         # rename impf column to old style column name
-        expo.gdf.rename(columns={'impf_': 'if_'}, inplace=True)
-        expo.check()
+        expo.data.rename(columns={'impf_': 'if_'}, inplace=True)
         self.assertEqual('if_', expo.get_impf_column())
         self.assertEqual('if_', expo.get_impf_column('HAZ'))
 
         # rename impf column to old style column name
-        expo.gdf.rename(columns={'if_': 'if_NA'}, inplace=True)
-        expo.check()
+        expo.data.rename(columns={'if_': 'if_NA'}, inplace=True)
         self.assertEqual('if_NA', expo.get_impf_column('NA'))
         self.assertRaises(ValueError, expo.get_impf_column)
         self.assertRaises(ValueError, expo.get_impf_column, 'HAZ')
 
         # add anonymous impf column
-        expo.gdf['impf_'] = expo.region_id
+        expo.data['impf_'] = expo.region_id
         self.assertEqual('if_NA', expo.get_impf_column('NA'))
         self.assertEqual('impf_', expo.get_impf_column())
         self.assertEqual('impf_', expo.get_impf_column('HAZ'))
