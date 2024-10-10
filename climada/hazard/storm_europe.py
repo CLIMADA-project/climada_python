@@ -228,37 +228,33 @@ class StormEurope(Hazard):
         new_haz : StormEurope
             Hazard instance for one single storm.
         """
-        ncdf = xr.open_dataset(file_name)
+        with xr.open_dataset(file_name) as ncdf:
+            if centroids.size != (ncdf.sizes['latitude'] * ncdf.sizes['longitude']):
+                LOGGER.warning(('Centroids size doesn\'t match NCDF dimensions. '
+                                'Omitting file %s.'), file_name)
+                return None
 
-        if centroids.size != (ncdf.sizes['latitude'] * ncdf.sizes['longitude']):
-            ncdf.close()
-            LOGGER.warning(('Centroids size doesn\'t match NCDF dimensions. '
-                            'Omitting file %s.'), file_name)
-            return None
+            # xarray does not penalise repeated assignments, see
+            # http://xarray.pydata.org/en/stable/data-structures.html
+            stacked = ncdf['max_wind_gust'].stack(
+                intensity=('latitude', 'longitude', 'time')
+            )
+            stacked = stacked.where(stacked > intensity_thres)
+            stacked = stacked.fillna(0)
 
-        # xarray does not penalise repeated assignments, see
-        # http://xarray.pydata.org/en/stable/data-structures.html
-        stacked = ncdf.max_wind_gust.stack(
-            intensity=('latitude', 'longitude', 'time')
-        )
-        stacked = stacked.where(stacked > intensity_thres)
-        stacked = stacked.fillna(0)
-
-        # fill in values from netCDF
-        ssi_wisc = np.array([float(ncdf.ssi)])
-        intensity = sparse.csr_matrix(stacked)
-        new_haz = cls(ssi_wisc=ssi_wisc,
-                      intensity=intensity,
-                      event_name=[ncdf.storm_name],
-                      date=np.array([datetime64_to_ordinal(ncdf.time.data[0])]),
-                      # fill in default values
-                      centroids=centroids,
-                      event_id=np.array([1]),
-                      frequency=np.array([1]),
-                      orig=np.array([True]),)
-
-        ncdf.close()
-        return new_haz
+            # fill in values from netCDF
+            ssi_wisc = np.array([float(ncdf.attrs['ssi'])])
+            intensity = sparse.csr_matrix(stacked)
+            new_haz = cls(ssi_wisc=ssi_wisc,
+                          intensity=intensity,
+                          event_name=[ncdf.attrs['storm_name']],
+                          date=np.array([datetime64_to_ordinal(ncdf['time'].data[0])]),
+                          # fill in default values
+                          centroids=centroids,
+                          event_id=np.array([1]),
+                          frequency=np.array([1]),
+                          orig=np.array([True]),)
+            return new_haz
 
     def read_cosmoe_file(self, *args, **kwargs):
         """This function is deprecated, use StormEurope.from_cosmoe_file instead."""
@@ -309,69 +305,66 @@ class StormEurope(Hazard):
         intensity_thres = cls.intensity_thres if intensity_thres is None else intensity_thres
 
         # read intensity from file
-        ncdf = xr.open_dataset(fp_file)
-        ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D").values))
+        with xr.open_dataset(fp_file) as ncdf:
+            ncdf = ncdf.assign_coords(date=('time',ncdf["time"].dt.floor("D").values))
+            if event_date:
+                try:
+                    stacked = ncdf.sel(
+                        time=event_date.strftime('%Y-%m-%d')
+                        ).groupby('date').max().stack(intensity=('y_1', 'x_1'))
+                except KeyError as ker:
+                    raise ValueError('Extraction of date and coordinates failed. This is most likely '
+                                     'because the selected event_date '
+                                     f'{event_date.strftime("%Y-%m-%d")} is not contained in the '
+                                     'weather forecast selected by fp_file {fp_file}. Please adjust '
+                                     f'event_date or fp_file.') from ker
+                considered_dates = np.datetime64(event_date)
+            else:
+                time_covered_step = ncdf['time'].diff('time')
+                time_covered_day = time_covered_step.groupby('date').sum()
+                # forecast run should cover at least 18 hours of a day
+                considered_dates_bool = time_covered_day >= np.timedelta64(18,'h')
+                stacked = ncdf.groupby('date').max()\
+                              .sel(date=considered_dates_bool)\
+                              .stack(intensity=('y_1', 'x_1'))
+                considered_dates = stacked['date'].values
+            stacked = stacked.stack(date_ensemble=('date', 'epsd_1'))
+            stacked = stacked.where(stacked['VMAX_10M'] > intensity_thres)
+            stacked = stacked.fillna(0)
 
-        if event_date:
-            try:
-                stacked = ncdf.sel(
-                    time=event_date.strftime('%Y-%m-%d')
-                    ).groupby('date').max().stack(intensity=('y_1', 'x_1'))
-            except KeyError as ker:
-                raise ValueError('Extraction of date and coordinates failed. This is most likely '
-                                 'because the selected event_date '
-                                 f'{event_date.strftime("%Y-%m-%d")} is not contained in the '
-                                 'weather forecast selected by fp_file {fp_file}. Please adjust '
-                                 f'event_date or fp_file.') from ker
-            considered_dates = np.datetime64(event_date)
-        else:
-            time_covered_step = ncdf['time'].diff('time')
-            time_covered_day = time_covered_step.groupby('date').sum()
-            # forecast run should cover at least 18 hours of a day
-            considered_dates_bool = time_covered_day >= np.timedelta64(18,'h')
-            stacked = ncdf.groupby('date').max()\
-                          .sel(date=considered_dates_bool)\
-                          .stack(intensity=('y_1', 'x_1'))
-            considered_dates = stacked['date'].values
-        stacked = stacked.stack(date_ensemble=('date', 'epsd_1'))
-        stacked = stacked.where(stacked.VMAX_10M > intensity_thres)
-        stacked = stacked.fillna(0)
+            # fill in values from netCDF
+            intensity = sparse.csr_matrix(stacked['VMAX_10M'].T)
+            event_id = np.arange(stacked['date_ensemble'].size) + 1
+            date = np.repeat(
+                np.array(datetime64_to_ordinal(considered_dates)),
+                np.unique(ncdf['epsd_1']).size
+            )
+            orig = np.full_like(event_id, False)
+            orig[(stacked['epsd_1'] == 0).values] = True
+            if description is None:
+                description = (model_name +
+                               ' weather forecast windfield ' +
+                               'for run startet at ' +
+                               run_datetime.strftime('%Y%m%d%H'))
 
-        # fill in values from netCDF
-        intensity = sparse.csr_matrix(stacked.VMAX_10M.T)
-        event_id = np.arange(stacked.date_ensemble.size) + 1
-        date = np.repeat(
-            np.array(datetime64_to_ordinal(considered_dates)),
-            np.unique(ncdf.epsd_1).size
-        )
-        orig = np.full_like(event_id, False)
-        orig[(stacked.epsd_1 == 0).values] = True
-        if description is None:
-            description = (model_name +
-                           ' weather forecast windfield ' +
-                           'for run startet at ' +
-                           run_datetime.strftime('%Y%m%d%H'))
+            # Create Hazard
+            haz = cls(
+                intensity=intensity,
+                event_id=event_id,
+                centroids = cls._centroids_from_nc(fp_file),
+                # fill in default values
+                orig=orig,
+                date=date,
+                event_name=[date_i + '_ens' + str(ens_i)
+                            for date_i, ens_i
+                            in zip(date_to_str(date), stacked['epsd_1'].values + 1)],
+                frequency=np.divide(
+                    np.ones_like(event_id),
+                    np.unique(ncdf['epsd_1']).size),
+            )
 
-        # Create Hazard
-        haz = cls(
-            intensity=intensity,
-            event_id=event_id,
-            centroids = cls._centroids_from_nc(fp_file),
-            # fill in default values
-            orig=orig,
-            date=date,
-            event_name=[date_i + '_ens' + str(ens_i)
-                        for date_i, ens_i
-                        in zip(date_to_str(date), stacked.epsd_1.values + 1)],
-            frequency=np.divide(
-                np.ones_like(event_id),
-                np.unique(ncdf.epsd_1).size),
-        )
-
-        # close netcdf file
-        ncdf.close()
-        haz.check()
-        return haz
+            haz.check()
+            return haz
 
     def read_icon_grib(self, *args, **kwargs):
         """This function is deprecated, use StormEurope.from_icon_grib instead."""
@@ -444,11 +437,12 @@ class StormEurope(Hazard):
             gripfile_path_i = Path(file_i[:-4])
             with open(file_i, 'rb') as source, open(gripfile_path_i, 'wb') as dest:
                 dest.write(bz2.decompress(source.read()))
-            ds_i = xr.open_dataset(gripfile_path_i, engine='cfgrib')
-            if ind_i == 0:
-                stacked = ds_i
-            else:
-                stacked = xr.concat([stacked,ds_i], 'valid_time')
+
+            with xr.open_dataset(gripfile_path_i, engine='cfgrib') as ds_i:
+                if ind_i == 0:
+                    stacked = ds_i
+                else:
+                    stacked = xr.concat([stacked,ds_i], 'valid_time')
 
         # create intensity matrix with max for each full day
         stacked = stacked.assign_coords(
@@ -477,30 +471,30 @@ class StormEurope(Hazard):
         stacked = stacked.where(stacked > intensity_thres)
         stacked = stacked.fillna(0)
 
-        event_id = np.arange(stacked.date_ensemble.size) + 1
+        event_id = np.arange(stacked['date_ensemble'].size) + 1
         date = np.repeat(
             np.array(datetime64_to_ordinal(considered_dates)),
-            np.unique(stacked.number).size
+            np.unique(stacked['number']).size
         )
         orig = np.full_like(event_id, False)
-        orig[(stacked.number == 1).values] = True
+        orig[(stacked['number'] == 1).values] = True
         if description is None:
             description = ('icon weather forecast windfield for run started at ' +
                            run_datetime.strftime('%Y%m%d%H'))
 
         # Create Hazard
         haz = cls(
-            intensity=sparse.csr_matrix(stacked.gust.T),
+            intensity=sparse.csr_matrix(stacked['gust'].T),
             centroids=cls._centroids_from_nc(nc_centroids_file),
             event_id=event_id,
             date=date,
             orig=orig,
             event_name=[date_i + '_ens' + str(ens_i)
                         for date_i, ens_i
-                        in zip(date_to_str(date), stacked.number.values)],
+                        in zip(date_to_str(date), stacked['number'].values)],
             frequency=np.divide(
                 np.ones_like(event_id),
-                np.unique(stacked.number).size),
+                np.unique(stacked['number']).size),
         )
         haz.check()
 
@@ -524,35 +518,34 @@ class StormEurope(Hazard):
         'longitude' variables in a netCDF file.
         """
         LOGGER.info('Constructing centroids from %s', file_name)
-        ncdf = xr.open_dataset(file_name)
-        create_meshgrid = True
-        if hasattr(ncdf, 'latitude'):
-            lats = ncdf.latitude.data
-            lons = ncdf.longitude.data
-        elif hasattr(ncdf, 'lat'):
-            lats = ncdf.lat.data
-            lons = ncdf.lon.data
-        elif hasattr(ncdf, 'lat_1'):
-            if len(ncdf.lon_1.shape)>1 & \
-                (ncdf.lon_1.shape == ncdf.lat_1.shape) \
-                :
-                lats = ncdf.lat_1.data.flatten()
-                lons = ncdf.lon_1.data.flatten()
+        with xr.open_dataset(file_name) as ncdf:
+            create_meshgrid = True
+            if hasattr(ncdf, 'latitude'):
+                lats = ncdf['latitude'].data
+                lons = ncdf['longitude'].data
+            elif hasattr(ncdf, 'lat'):
+                lats = ncdf['lat'].data
+                lons = ncdf['lon'].data
+            elif hasattr(ncdf, 'lat_1'):
+                if len(ncdf['lon_1'].shape)>1 & \
+                    (ncdf['lon_1'].shape == ncdf['lat_1'].shape) \
+                    :
+                    lats = ncdf['lat_1'].data.flatten()
+                    lons = ncdf['lon_1'].data.flatten()
+                    create_meshgrid = False
+                else:
+                    lats = ncdf['lat_1'].data
+                    lons = ncdf['lon_1'].data
+            elif hasattr(ncdf, 'clat'):
+                lats = ncdf['clat'].data
+                lons = ncdf['clon'].data
+                if ncdf['clat'].attrs['units']=='radian':
+                    lats = np.rad2deg(lats)
+                    lons = np.rad2deg(lons)
                 create_meshgrid = False
             else:
-                lats = ncdf.lat_1.data
-                lons = ncdf.lon_1.data
-        elif hasattr(ncdf, 'clat'):
-            lats = ncdf.clat.data
-            lons = ncdf.clon.data
-            if ncdf.clat.attrs['units']=='radian':
-                lats = np.rad2deg(lats)
-                lons = np.rad2deg(lons)
-            create_meshgrid = False
-        else:
-            raise AttributeError('netcdf file has no field named latitude or '
-                                 'other know abrivation for coordinates.')
-        ncdf.close()
+                raise AttributeError('netcdf file has no field named latitude or '
+                                     'other know abrivation for coordinates.')
 
         if create_meshgrid:
             lats, lons = np.array([np.repeat(lats, len(lons)),
@@ -713,16 +706,16 @@ class StormEurope(Hazard):
             'orig': self.orig,
         })
         ssi_freq = ssi_freq.sort_values('ssi', ascending=False)
-        ssi_freq['freq_cum'] = np.cumsum(ssi_freq.freq)
+        ssi_freq['freq_cum'] = np.cumsum(ssi_freq['freq'])
 
-        ssi_hist = ssi_freq.loc[ssi_freq.orig].copy()
-        ssi_hist.freq = ssi_hist.freq * self.orig.size / self.orig.sum()
-        ssi_hist['freq_cum'] = np.cumsum(ssi_hist.freq)
+        ssi_hist = ssi_freq.loc[ssi_freq['orig']].copy()
+        ssi_hist['freq'] = ssi_hist['freq'] * self.orig.size / self.orig.sum()
+        ssi_hist['freq_cum'] = np.cumsum(ssi_hist['freq'])
 
         # plotting
         fig, axs = plt.subplots()
-        axs.plot(ssi_freq.freq_cum, ssi_freq.ssi, label='All Events')
-        axs.scatter(ssi_hist.freq_cum, ssi_hist.ssi,
+        axs.plot(ssi_freq['freq_cum'], ssi_freq['ssi'], label='All Events')
+        axs.scatter(ssi_hist['freq_cum'], ssi_hist['ssi'],
                     color='red', label='Historic Events')
         axs.legend()
         axs.set_xlabel('Exceedance Frequency [1/a]')

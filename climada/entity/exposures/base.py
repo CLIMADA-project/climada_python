@@ -273,8 +273,8 @@ class Exposures():
 
         # check whether geometry corresponds to lat/lon
         try:
-            if (self.gdf.geometry.values[0].x != self.gdf.longitude.values[0] or
-                self.gdf.geometry.values[0].y != self.gdf.latitude.values[0]):
+            if (self.gdf.geometry.values[0].x != self.gdf['longitude'].values[0] or
+                self.gdf.geometry.values[0].y != self.gdf['latitude'].values[0]):
                 raise ValueError("Geometry values do not correspond to latitude and" +
                                  " longitude. Use set_geometry_points() or set_lat_lon().")
         except AttributeError:  # no geometry column
@@ -560,12 +560,12 @@ class Exposures():
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
-            pos_vals = self.gdf.value[mask].values > 0
+            pos_vals = self.gdf['value'][mask].values > 0
         else:
-            pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
-        value = self.gdf.value[mask][pos_vals].values
-        coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
-                          self.gdf.longitude[mask][pos_vals].values], axis=1)
+            pos_vals = np.ones((self.gdf['value'][mask].values.size,), dtype=bool)
+        value = self.gdf['value'][mask][pos_vals].values
+        coord = np.stack([self.gdf['latitude'][mask][pos_vals].values,
+                          self.gdf['longitude'][mask][pos_vals].values], axis=1)
         return u_plot.geo_scatter_from_array(array_sub=value,
                                              geo_coord=coord,
                                              var_name=f'Value ({self.value_unit})',
@@ -629,12 +629,12 @@ class Exposures():
         if mask is None:
             mask = np.ones((self.gdf.shape[0],), dtype=bool)
         if ignore_zero:
-            pos_vals = self.gdf.value[mask].values > 0
+            pos_vals = self.gdf['value'][mask].values > 0
         else:
-            pos_vals = np.ones((self.gdf.value[mask].values.size,), dtype=bool)
-        value = self.gdf.value[mask][pos_vals].values
-        coord = np.stack([self.gdf.latitude[mask][pos_vals].values,
-                          self.gdf.longitude[mask][pos_vals].values], axis=1)
+            pos_vals = np.ones((self.gdf['value'][mask].values.size,), dtype=bool)
+        value = self.gdf['value'][mask][pos_vals].values
+        coord = np.stack([self.gdf['latitude'][mask][pos_vals].values,
+                          self.gdf['longitude'][mask][pos_vals].values], axis=1)
         return u_plot.geo_bin_from_array(array_sub=value,
                                          geo_coord=coord,
                                          var_name=f'Value ({self.value_unit})',
@@ -692,12 +692,12 @@ class Exposures():
         matplotlib.figure.Figure, cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.meta and self.meta.get('height', 0) * self.meta.get('height', 0) == len(self.gdf):
-            raster = self.gdf.value.values.reshape((self.meta['height'],
+            raster = self.gdf['value'].values.reshape((self.meta['height'],
                                                     self.meta['width']))
             # check raster starts by upper left corner
-            if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
+            if self.gdf['latitude'].values[0] < self.gdf['latitude'].values[-1]:
                 raster = np.flip(raster, axis=0)
-            if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
+            if self.gdf['longitude'].values[0] > self.gdf['longitude'].values[-1]:
                 raise ValueError('Points are not ordered according to meta raster.')
         else:
             raster, meta = u_coord.points_to_raster(self.gdf, ['value'], res, raster_res, scheduler)
@@ -715,11 +715,11 @@ class Exposures():
         if isinstance(proj_data, ccrs.PlateCarree):
             # use different projections for plot and data to shift the central lon in the plot
             xmin, ymin, xmax, ymax = u_coord.latlon_bounds(
-                self.gdf.latitude.values, self.gdf.longitude.values)
+                self.gdf['latitude'].values, self.gdf['longitude'].values)
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         else:
-            xmin, ymin, xmax, ymax = (self.gdf.longitude.min(), self.gdf.latitude.min(),
-                                      self.gdf.longitude.max(), self.gdf.latitude.max())
+            xmin, ymin, xmax, ymax = (self.gdf['longitude'].min(), self.gdf['latitude'].min(),
+                                      self.gdf['longitude'].max(), self.gdf['latitude'].max())
 
         if not axis:
             _, axis, fontsize = u_plot.make_map(proj=proj_plot, figsize=figsize,
@@ -987,9 +987,9 @@ class Exposures():
             raster = self.gdf[value_name].values.reshape((self.meta['height'],
                                                           self.meta['width']))
             # check raster starts by upper left corner
-            if self.gdf.latitude.values[0] < self.gdf.latitude.values[-1]:
+            if self.gdf['latitude'].values[0] < self.gdf['latitude'].values[-1]:
                 raster = np.flip(raster, axis=0)
-            if self.gdf.longitude.values[0] > self.gdf.longitude.values[-1]:
+            if self.gdf['longitude'].values[0] > self.gdf['longitude'].values[-1]:
                 raise ValueError('Points are not ordered according to meta raster.')
             u_coord.write_raster(file_name, raster, self.meta)
         else:
@@ -1061,10 +1061,10 @@ class Exposures():
 
         """
         nz_mask = (
-            (self.gdf.value.values > 0)
+            (self.gdf['value'].values > 0)
             & (self.gdf[hazard.centr_exp_col].values >= 0)
         )
-        return np.sum(self.gdf.value.values[nz_mask])
+        return np.sum(self.gdf['value'].values[nz_mask])
 
     def affected_total_value(
         self,
@@ -1109,7 +1109,7 @@ class Exposures():
         """
         self.assign_centroids(hazard=hazard, overwrite=overwrite_assigned_centroids)
         assigned_centroids = self.gdf[hazard.centr_exp_col]
-        nz_mask = (self.gdf.value.values > 0) & (assigned_centroids.values >= 0)
+        nz_mask = (self.gdf['value'].values > 0) & (assigned_centroids.values >= 0)
         cents = np.unique(assigned_centroids[nz_mask])
         cent_with_inten_above_thres = (
             hazard.intensity[:, cents].max(axis=0) > threshold_affected
@@ -1117,7 +1117,7 @@ class Exposures():
         above_thres_mask = np.isin(
             self.gdf[hazard.centr_exp_col].values, cents[cent_with_inten_above_thres]
         )
-        return np.sum(self.gdf.value.values[above_thres_mask])
+        return np.sum(self.gdf['value'].values[above_thres_mask])
 
 
 def add_sea(exposures, sea_res, scheduler=None):
@@ -1145,10 +1145,10 @@ def add_sea(exposures, sea_res, scheduler=None):
 
     sea_res = (sea_res[0] / ONE_LAT_KM, sea_res[1] / ONE_LAT_KM)
 
-    min_lat = max(-90, float(exposures.gdf.latitude.min()) - sea_res[0])
-    max_lat = min(90, float(exposures.gdf.latitude.max()) + sea_res[0])
-    min_lon = max(-180, float(exposures.gdf.longitude.min()) - sea_res[0])
-    max_lon = min(180, float(exposures.gdf.longitude.max()) + sea_res[0])
+    min_lat = max(-90, float(exposures.gdf['latitude'].min()) - sea_res[0])
+    max_lat = min(90, float(exposures.gdf['latitude'].max()) + sea_res[0])
+    min_lon = max(-180, float(exposures.gdf['longitude'].min()) - sea_res[0])
+    max_lon = min(180, float(exposures.gdf['longitude'].max()) + sea_res[0])
 
     lat_arr = np.arange(min_lat, max_lat + sea_res[1], sea_res[1])
     lon_arr = np.arange(min_lon, max_lon + sea_res[1], sea_res[1])
@@ -1160,14 +1160,14 @@ def add_sea(exposures, sea_res, scheduler=None):
     sea_exp_gdf = GeoDataFrame()
     sea_exp_gdf['latitude'] = lat_mgrid[on_land]
     sea_exp_gdf['longitude'] = lon_mgrid[on_land]
-    sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf.latitude.size, int) - 1
+    sea_exp_gdf['region_id'] = np.zeros(sea_exp_gdf['latitude'].size, int) - 1
 
     if 'geometry' in exposures.gdf.columns:
         u_coord.set_df_geometry_points(sea_exp_gdf, crs=exposures.crs, scheduler=scheduler)
 
     for var_name in exposures.gdf.columns:
         if var_name not in ('latitude', 'longitude', 'region_id', 'geometry'):
-            sea_exp_gdf[var_name] = np.zeros(sea_exp_gdf.latitude.size,
+            sea_exp_gdf[var_name] = np.zeros(sea_exp_gdf['latitude'].size,
                                              exposures.gdf[var_name].dtype)
 
     return Exposures(

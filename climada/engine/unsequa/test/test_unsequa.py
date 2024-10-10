@@ -69,7 +69,7 @@ def exp_dem(x_exp=1, exp=None):
             # possibly raised by pd.HDFStore when the file is locked by another process due to multiprocessing
             time.sleep(0.1)
     exp_tmp = exp.copy(deep=True)
-    exp_tmp.gdf.value *= x_exp
+    exp_tmp.gdf['value'] *= x_exp
     return exp_tmp
 
 
@@ -676,11 +676,11 @@ class TestCalcImpact(unittest.TestCase):
                 sensitivity_kwargs=param_dict['sensitivity_kwargs'])
 
             self.assertEqual(param_dict['test_param_name'][0],
-                             unc_data.aai_agg_sens_df.param[param_dict['test_param_name'][1]])
+                             unc_data.aai_agg_sens_df['param'][param_dict['test_param_name'][1]])
             self.assertEqual(param_dict['test_si_name'][0],
-                             unc_data.aai_agg_sens_df.si[param_dict['test_si_name'][1]])
+                             unc_data.aai_agg_sens_df['si'][param_dict['test_si_name'][1]])
             self.assertAlmostEqual(param_dict['test_si_value'][0],
-                             unc_data.aai_agg_sens_df.aai_agg[param_dict['test_si_value'][1]],
+                             unc_data.aai_agg_sens_df['aai_agg'][param_dict['test_si_value'][1]],
                              places=5)
 
             self.assertEqual(

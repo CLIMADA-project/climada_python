@@ -138,14 +138,14 @@ class Centroids():
     @property
     def on_land(self):
         """ Get the on_land property """
-        if self.gdf.on_land.isna().all():
+        if self.gdf['on_land'].isna().all():
             return None
         return self.gdf['on_land'].values
 
     @property
     def region_id(self):
         """ Get the assigned region_id """
-        if self.gdf.region_id.isna().all():
+        if self.gdf['region_id'].isna().all():
             return None
         return self.gdf['region_id'].values
 
@@ -479,7 +479,7 @@ class Centroids():
               (self.lat >= lat_min) & (self.lat <= lat_max)
             )
         return sel_cen
-    
+
     def plot(self, *, axis=None, figsize=(9, 13), **kwargs):
         """Plot centroids geodataframe using geopandas and cartopy plotting functions.
 
@@ -494,7 +494,7 @@ class Centroids():
             positional arguments for geopandas.GeoDataFrame.plot
         kwargs : optional
             keyword arguments for geopandas.GeoDataFrame.plot
-            
+
         Returns
         -------
         ax : cartopy.mpl.geoaxes.GeoAxes instance

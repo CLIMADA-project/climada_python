@@ -154,8 +154,8 @@ class ImpactCalc():
                     exp_gdf.size, self.n_events)
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)
 
-        insured = ('cover' in exp_gdf and exp_gdf.cover.max() >= 0) \
-               or ('deductible' in exp_gdf and exp_gdf.deductible.max() > 0)
+        insured = ('cover' in exp_gdf and exp_gdf['cover'].max() >= 0) \
+               or ('deductible' in exp_gdf and exp_gdf['deductible'].max() > 0)
         if insured:
             LOGGER.info("cover and/or deductible columns detected,"
                         " going to calculate insured impact")
@@ -253,8 +253,8 @@ class ImpactCalc():
                              " Run 'exposures.assign_centroids()' beforehand or set"
                              " 'assign_centroids' to 'True'")
         mask = (
-            (self.exposures.gdf.value.values == self.exposures.gdf.value.values)  # value != NaN
-            & (self.exposures.gdf.value.values != 0)                              # value != 0
+            (self.exposures.gdf['value'].values == self.exposures.gdf['value'].values)# value != NaN
+            & (self.exposures.gdf['value'].values != 0)                              # value != 0
             & (self.exposures.gdf[self.hazard.centr_exp_col].values >= 0)    # centroid assigned
         )
 
@@ -320,7 +320,7 @@ class ImpactCalc():
                 )
             idx_exp_impf = (exp_gdf[impf_col].values == impf_id).nonzero()[0]
             for exp_idx in _chunk_exp_idx(self.hazard.size, idx_exp_impf):
-                exp_values = exp_gdf.value.values[exp_idx]
+                exp_values = exp_gdf['value'].values[exp_idx]
                 cent_idx = exp_gdf[self.hazard.centr_exp_col].values[exp_idx]
                 yield (
                     self.impact_matrix(exp_values, cent_idx, impf),
@@ -363,10 +363,10 @@ class ImpactCalc():
                 haz_type=self.hazard.haz_type,
                 fun_id=impf_id)
             if 'deductible' in exp_gdf:
-                deductible = exp_gdf.deductible.values[exp_idx]
+                deductible = exp_gdf['deductible'].values[exp_idx]
                 mat = self.apply_deductible_to_mat(mat, deductible, self.hazard, cent_idx, impf)
             if 'cover' in exp_gdf:
-                cover = exp_gdf.cover.values[exp_idx]
+                cover = exp_gdf['cover'].values[exp_idx]
                 mat = self.apply_cover_to_mat(mat, cover)
             yield (mat, exp_idx)
 
