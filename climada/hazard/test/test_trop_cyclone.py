@@ -31,6 +31,7 @@ import climada.hazard.test as hazard_test
 from climada.util import ureg
 from climada.test import get_test_file
 from climada.hazard.tc_tracks import TCTracks
+from climada.hazard.tc_clim_change import get_knutson_scaling_factor
 from climada.hazard.trop_cyclone.trop_cyclone import (
     TropCyclone, )
 from climada.hazard.centroids.centr import Centroids
@@ -298,140 +299,75 @@ class TestReader(unittest.TestCase):
 
 
 class TestClimateSce(unittest.TestCase):
-    def test_apply_criterion_track(self):
-        """Test _apply_criterion function."""
+    def create_tc(self):
+        """Create mock TropCyclone object."""
+        # Setup data directly
         intensity = np.zeros((4, 10))
         intensity[0, :] = np.arange(10)
         intensity[1, 5] = 10
         intensity[2, :] = np.arange(10, 20)
         intensity[3, 3] = 3
-        tc = TropCyclone(
+
+        self.tc = TropCyclone(
             intensity=sparse.csr_matrix(intensity),
-            basin=['NA', 'NA', 'NA', 'NO'],
-            category=np.array([2, 0, 4, 1]),
-            event_id=np.arange(4),
-            frequency=np.ones(4) * 0.5,
-        )
-
-        tc_cc = tc.apply_climate_scenario_knu(ref_year=2050, rcp_scenario=45)
-        self.assertTrue(np.allclose(tc.intensity[1, :].toarray(), tc_cc.intensity[1, :].toarray()))
-        self.assertTrue(np.allclose(tc.intensity[3, :].toarray(), tc_cc.intensity[3, :].toarray()))
-        self.assertFalse(
-            np.allclose(tc.intensity[0, :].toarray(), tc_cc.intensity[0, :].toarray()))
-        self.assertFalse(
-            np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
-        self.assertTrue(np.allclose(tc.frequency, tc_cc.frequency))
-
-    def test_apply_criterion_track2(self):
-        """Test _apply_criterion function."""
-        criterion = [{'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-                   'year': 2100, 'change': 1.045, 'variable': 'intensity'}
-                   ]
-        scale = 0.75
-
-        # artificially increase the size of the hazard by repeating (tiling) the data:
-        ntiles = 8
-
-        intensity = np.zeros((4, 10))
-        intensity[0, :] = np.arange(10)
-        intensity[1, 5] = 10
-        intensity[2, :] = np.arange(10, 20)
-        intensity[3, 3] = 3
-        intensity = np.tile(intensity, (ntiles, 1))
-        tc = TropCyclone(
-            intensity=sparse.csr_matrix(intensity),
-            basin=ntiles * ['NA', 'NA', 'NA', 'WP'],
-            category=np.array(ntiles * [2, 0, 4, 1]),
-            event_id=np.arange(intensity.shape[0]),
-        )
-
-        tc_cc = tc._apply_knutson_criterion(criterion, scale)
-        for i_tile in range(ntiles):
-            offset = i_tile * 4
-            # no factor applied because of category 0
-            np.testing.assert_array_equal(
-                tc.intensity[offset + 1, :].toarray(), tc_cc.intensity[offset + 1, :].toarray())
-            # no factor applied because of basin "WP"
-            np.testing.assert_array_equal(
-                tc.intensity[offset + 3, :].toarray(), tc_cc.intensity[offset + 3, :].toarray())
-            # factor is applied to the remaining events
-            np.testing.assert_array_almost_equal(
-                tc.intensity[offset + 0, :].toarray() * 1.03375,
-                tc_cc.intensity[offset + 0, :].toarray())
-            np.testing.assert_array_almost_equal(
-                tc.intensity[offset + 2, :].toarray() * 1.03375,
-                tc_cc.intensity[offset + 2, :].toarray())
-
-    def test_two_criterion_track(self):
-        """Test _apply_criterion function with two criteria"""
-        criterion = [
-            {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-             'year': 2100, 'change': 1.045, 'variable': 'intensity'},
-            {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
-             'year': 2100, 'change': 1.025, 'variable': 'intensity'},
-            {'basin': 'WP', 'category': [1, 2, 3, 4, 5],
-             'year': 2100, 'change': 1.025, 'variable': 'frequency'},
-            {'basin': 'NA', 'category': [0, 1, 2, 3, 4, 5],
-             'year': 2100, 'change': 0.7, 'variable': 'frequency'},
-            {'basin': 'NA', 'category': [1, 2, 3, 4, 5],
-             'year': 2100, 'change': 1, 'variable': 'frequency'},
-            {'basin': 'NA', 'category': [3, 4, 5],
-             'year': 2100, 'change': 1, 'variable': 'frequency'},
-            {'basin': 'NA', 'category': [4, 5],
-             'year': 2100, 'change': 2, 'variable': 'frequency'}
-            ]
-        scale = 0.75
-
-        intensity = np.zeros((4, 10))
-        intensity[0, :] = np.arange(10)
-        intensity[1, 5] = 10
-        intensity[2, :] = np.arange(10, 20)
-        intensity[3, 3] = 3
-        tc = TropCyclone(
-            intensity=sparse.csr_matrix(intensity),
-            frequency=np.ones(4) * 0.5,
             basin=['NA', 'NA', 'NA', 'WP'],
             category=np.array([2, 0, 4, 1]),
-            event_id=np.arange(4),
+            event_id=np.arange(intensity.shape[0]),
+            frequency=np.repeat(1./intensity.shape[0], intensity.shape[0]),
+            date=np.array([723795, 728395, 738395, 724395])
         )
 
-        tc_cc = tc._apply_knutson_criterion(criterion, scale)
-        self.assertTrue(np.allclose(tc.intensity[1, :].toarray(), tc_cc.intensity[1, :].toarray()))
-        self.assertFalse(
-            np.allclose(tc.intensity[3, :].toarray(), tc_cc.intensity[3, :].toarray()))
-        self.assertFalse(
-            np.allclose(tc.intensity[0, :].toarray(), tc_cc.intensity[0, :].toarray()))
-        self.assertFalse(
-            np.allclose(tc.intensity[2, :].toarray(), tc_cc.intensity[2, :].toarray()))
-        self.assertTrue(
-            np.allclose(tc.intensity[0, :].toarray() * 1.03375, tc_cc.intensity[0, :].toarray()))
-        self.assertTrue(
-            np.allclose(tc.intensity[2, :].toarray() * 1.03375, tc_cc.intensity[2, :].toarray()))
-        self.assertTrue(
-            np.allclose(tc.intensity[3, :].toarray() * 1.01875, tc_cc.intensity[3, :].toarray()))
+    def test_apply_climate_scenario_knu_calculations(self):
+        """Test _apply_criterion function."""
 
-        res_frequency = np.ones(4) * 0.5
-        res_frequency[1] = 0.5 * (1 + (0.7 - 1) * scale)
-        res_frequency[2] = 0.5 * (1 + (2 - 1) * scale)
-        res_frequency[3] = 0.5 * (1 + (1.025 - 1) * scale)
-        self.assertTrue(np.allclose(tc_cc.frequency, res_frequency))
+        ## Build tc object
+        self.create_tc()
 
-    def test_negative_freq_error(self):
-        """Test _apply_knutson_criterion with infeasible input."""
-        criterion = [{'basin': 'SP', 'category': [0, 1],
-                      'year': 2100, 'change': 0.5,
-                      'variable': 'frequency'}
-                     ]
+        cat05_sel = np.repeat(True, self.tc.category.shape[0])
+        cat03_sel = np.array([cat in [0,1,2,3] for cat in self.tc.category])
+        cat45_sel = np.array([cat in [4,5] for cat in self.tc.category])
 
-        tc = TropCyclone(
-            frequency=np.ones(2),
-            basin=['SP', 'SP'],
-            category=np.array([0, 1]),
-        )
+        ## Retrieve scaling factors for cat 4 to 5 and 0 to 5
+        percentile = '50'
+        target_year = 2035
+        rcp = '8.5'
 
-        with self.assertRaises(ValueError):
-            tc._apply_knutson_criterion(criterion, 3)
+        future_tc = self.tc.apply_climate_scenario_knu(percentile=percentile,
+                                                       scenario=rcp,
+                                                       target_year=target_year)
 
+        for basin in np.unique(self.tc.basin):
+            basin_sel = np.array(self.tc.basin)==basin
+
+            scaling_05, scaling_45 = [
+                get_knutson_scaling_factor(percentile=percentile,
+                                        variable=variable,
+                                        basin=basin).loc[target_year, rcp]
+                for variable in ['cat05', 'cat45']
+                ]
+
+            ## Calulate scaling factors for cat 0 to 3
+            freq_weighted_scaling_05 = scaling_05 * np.sum(self.tc.frequency[cat05_sel & basin_sel])
+            freq_weighted_scaling_45 = scaling_45 * np.sum(self.tc.frequency[cat45_sel & basin_sel])
+            freq_sum_03 = np.sum(self.tc.frequency[cat03_sel & basin_sel])
+
+            scaling_03 = (freq_weighted_scaling_05 - freq_weighted_scaling_45) / freq_sum_03
+
+            ## Check that frequencies obtained by function are the same as those obtained by scaling
+            ## historic frequencies with retrieved scaling factors
+            np.testing.assert_array_equal(
+                self.tc.frequency[cat03_sel & basin_sel] * (1 + scaling_03/100),
+                future_tc.frequency[cat03_sel & basin_sel]
+                )
+            np.testing.assert_array_equal(
+                self.tc.frequency[cat45_sel & basin_sel] * (1 + scaling_45/100),
+                future_tc.frequency[cat45_sel & basin_sel]
+                )
+
+    def test_apply_climate_scenario_knu_target_year_out_of_range(self):
+        self.create_tc()
+        with self.assertRaises(KeyError):
+            self.tc.apply_climate_scenario_knu(target_year=2200)
 
 class TestDumpReloadCycle(unittest.TestCase):
     def setUp(self):
@@ -453,7 +389,7 @@ class TestDumpReloadCycle(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReader)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestClimateSce)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestClimateSce))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDumpReloadCycle))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
