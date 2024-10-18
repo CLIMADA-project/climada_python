@@ -29,6 +29,7 @@ from climada.engine import impact_data as im_d
 from climada.engine.unsequa import InputVar, CalcCostBenefit
 from climada.entity.entity_def import Entity
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
+from climada.engine.test.test_impact import dummy_impact
 from climada.hazard import Hazard
 from climada import CONFIG
 from climada.util.constants import (
@@ -286,7 +287,6 @@ class TestCalcCostBenefit(unittest.TestCase):
                     self.assertEqual(
                         len(attr), len(unc_data.param_labels) * (4 + 4 + 4)
                     )
-
 
 # Execute Tests
 if __name__ == "__main__":

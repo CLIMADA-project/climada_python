@@ -109,6 +109,15 @@ class TestChecks(unittest.TestCase):
         np.testing.assert_array_equal(matrix.data, [3])
         self.assertEqual(matrix.nnz, 1)
 
+    def test_convert_frequency_unit_to_time_unit(self):
+        # test frequency unit to time unit conversion
+        frequency_units = ['1/year', '1/y', '1/month', '1/week', '', 'unknown']
+        time_units = ['years', 'years', 'months', 'weeks', 'years', 'years']
+        np.testing.assert_equal(
+            time_units, [u_check.convert_frequency_unit_to_time_unit(frequency_unit)
+                         for frequency_unit in frequency_units]
+        )
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestChecks)
