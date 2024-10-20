@@ -24,10 +24,15 @@ DEPS_DOC = [
 DEPS_TEST = [
     "ipython",
     "mccabe>=0.6",
-    "pylint==2.7.1",
+    "pylint>=3.0",
     "pytest",
     "pytest-cov",
     "pytest-subtests",
+]
+
+# Requirements for development
+DEPS_DEV = DEPS_DOC + DEPS_TEST + [
+    "pre-commit",
 ]
 
 setup(
@@ -101,7 +106,7 @@ setup(
     extras_require={
         "doc": DEPS_DOC,
         "test": DEPS_TEST,
-        "dev": DEPS_DOC + DEPS_TEST
+        "dev": DEPS_DEV,
     },
 
     packages=find_namespace_packages(include=['climada*']),
