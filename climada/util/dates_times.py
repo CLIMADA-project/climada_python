@@ -18,12 +18,15 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define functions to handle dates and times in climada
 """
-import logging
+
 import datetime as dt
+import logging
+
 import numpy as np
 import pandas as pd
 
 LOGGER = logging.getLogger(__name__)
+
 
 def date_to_str(date):
     """Compute date string in ISO format from input datetime ordinal int.
@@ -55,14 +58,15 @@ def str_to_date(date):
     int
     """
     if isinstance(date, str):
-        year, mounth, day = (int(val) for val in date.split('-'))
+        year, mounth, day = (int(val) for val in date.split("-"))
         return dt.date(year, mounth, day).toordinal()
 
     all_date = []
     for i_date in date:
-        year, mounth, day = (int(val) for val in i_date.split('-'))
+        year, mounth, day = (int(val) for val in i_date.split("-"))
         all_date.append(dt.date(year, mounth, day).toordinal())
     return all_date
+
 
 def datetime64_to_ordinal(datetime):
     """Converts from a numpy datetime64 object to an ordinal date.
@@ -81,6 +85,7 @@ def datetime64_to_ordinal(datetime):
 
     return [pd.to_datetime(i_dt.tolist()).toordinal() for i_dt in datetime]
 
+
 def last_year(ordinal_vector):
     """Extract first year from ordinal date
 
@@ -94,6 +99,7 @@ def last_year(ordinal_vector):
     int
     """
     return dt.date.fromordinal(np.max(ordinal_vector)).year
+
 
 def first_year(ordinal_vector):
     """Extract first year from ordinal date
