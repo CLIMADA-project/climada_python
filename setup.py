@@ -24,7 +24,7 @@ DEPS_DOC = [
 DEPS_TEST = [
     "ipython",
     "mccabe>=0.6",
-    "pylint==2.7.1",
+    "pylint>=3.0",
     "pytest",
     "pytest-cov",
     "pytest-subtests",
