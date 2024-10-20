@@ -26,17 +26,18 @@ import logging
 import time
 from typing import Optional, Union
 
-import numpy as np
 import pandas as pd
 import pathos.multiprocessing as mp
 
 from climada.engine.cost_benefit import CostBenefit
-from climada.engine.unsequa import Calc, InputVar, UncCostBenefitOutput
 from climada.engine.unsequa.calc_base import (
+    Calc,
     _multiprocess_chunksize,
     _sample_parallel_iterator,
     _transpose_chunked_data,
 )
+from climada.engine.unsequa.input_var import InputVar
+from climada.engine.unsequa.unc_output import UncCostBenefitOutput
 from climada.entity import Entity
 from climada.hazard import Hazard
 from climada.util import log_level

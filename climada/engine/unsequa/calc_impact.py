@@ -31,12 +31,14 @@ import pandas as pd
 import pathos.multiprocessing as mp
 
 from climada.engine import ImpactCalc
-from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
 from climada.engine.unsequa.calc_base import (
+    Calc,
     _multiprocess_chunksize,
     _sample_parallel_iterator,
     _transpose_chunked_data,
 )
+from climada.engine.unsequa.input_var import InputVar
+from climada.engine.unsequa.unc_output import UncImpactOutput
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
