@@ -28,7 +28,7 @@ import numpy as np
 from scipy import sparse
 
 from climada import CONFIG
-from climada.engine import Impact
+from climada.engine.impact import Impact
 
 LOGGER = logging.getLogger(__name__)
 
