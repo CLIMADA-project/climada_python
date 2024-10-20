@@ -100,7 +100,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             EXP_POLY, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.FIX, disagg_val=None
             )
-        np.testing.assert_array_equal(exp_pnt.gdf.value, EXP_POLY.gdf.value)
+        np.testing.assert_array_equal(exp_pnt.gdf['value'], EXP_POLY.gdf['value'])
         self.check_unchanged_exp(EXP_POLY, exp_pnt)
 
         #to_meters=False, DIV
@@ -115,14 +115,14 @@ class TestExposureGeomToPnt(unittest.TestCase):
             8.54188667e+10, 8.54188667e+10, 1.43895450e+11, 1.43895450e+11,
             1.16221500e+11, 3.70562500e+11, 1.35359600e+11, 3.83689000e+10
             ])
-        np.testing.assert_allclose(exp_pnt.gdf.value, val_avg)
+        np.testing.assert_allclose(exp_pnt.gdf['value'], val_avg)
         lat = np.array([
             53.15019278, 52.90814037, 52.48232657, 52.23482697, 52.23482697,
             51.26574748, 51.30438894, 51.71676713, 51.71676713, 51.71676713,
             52.13772724, 52.13772724, 52.61538869, 53.10328543, 52.54974468,
             52.11286591
             ])
-        np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
+        np.testing.assert_allclose(exp_pnt.gdf['latitude'], lat)
 
         #to_meters=TRUE, FIX, dissag_val
         res = 20000
@@ -132,7 +132,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             )
         self.check_unchanged_exp(EXP_POLY, exp_pnt)
         val = res**2
-        self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
+        self.assertEqual(np.unique(exp_pnt.gdf['value'])[0], val)
         lat = np.array([
             53.13923671, 53.13923671, 53.13923671, 53.13923671, 53.43921725,
             53.43921725, 52.90782155, 52.90782155, 52.90782155, 52.90782155,
@@ -150,7 +150,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             53.38649582, 53.38649582, 53.38649582, 52.55795685, 52.55795685,
             52.55795685, 52.55795685, 52.23308448, 52.23308448
             ])
-        np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
+        np.testing.assert_allclose(exp_pnt.gdf['latitude'], lat)
 
         #projected crs, to_meters=TRUE, FIX, dissag_val
         res = 20000
@@ -161,7 +161,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             )
         self.check_unchanged_exp(EXP_POLY_PROJ, exp_pnt)
         val = res**2
-        self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
+        self.assertEqual(np.unique(exp_pnt.gdf['value'])[0], val)
         self.assertEqual(exp_pnt.gdf.crs, EXP_POLY_PROJ.gdf.crs)
 
     @patch.multiple(
@@ -252,7 +252,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             EXP_LINE, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.FIX, disagg_val=None
             )
-        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value)
+        np.testing.assert_array_equal(exp_pnt.gdf['value'][:,0], EXP_LINE.gdf['value'])
         self.check_unchanged_exp(EXP_LINE, exp_pnt)
 
         #to_meters=False, DIV
@@ -260,7 +260,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             EXP_LINE, res=1, to_meters=False,
             disagg_met=u_lp.DisaggMethod.DIV, disagg_val=None
             )
-        np.testing.assert_array_equal(exp_pnt.gdf.value[:,0], EXP_LINE.gdf.value)
+        np.testing.assert_array_equal(exp_pnt.gdf['value'][:,0], EXP_LINE.gdf['value'])
         self.check_unchanged_exp(EXP_LINE, exp_pnt)
 
         #to_meters=TRUE, FIX, dissag_val
@@ -271,7 +271,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             )
         self.check_unchanged_exp(EXP_LINE, exp_pnt)
         val = res**2
-        self.assertEqual(np.unique(exp_pnt.gdf.value)[0], val)
+        self.assertEqual(np.unique(exp_pnt.gdf['value'])[0], val)
         lat = np.array([
             50.83944191, 50.94706532, 51.85008694, 51.7524172 , 52.07732906,
             50.889641  , 51.90287148, 51.53858598, 52.30223675, 53.15931081,
@@ -280,7 +280,7 @@ class TestExposureGeomToPnt(unittest.TestCase):
             51.93188219, 51.10694216, 52.48596301, 50.87543042, 51.0801347 ,
             50.82145186, 50.81341953, 51.07235498, 50.9105503
             ])
-        np.testing.assert_allclose(exp_pnt.gdf.latitude, lat)
+        np.testing.assert_allclose(exp_pnt.gdf['latitude'], lat)
 
 class TestGeomImpactCalcs(unittest.TestCase):
     """Test main functions on impact calculation and impact aggregation"""
@@ -510,13 +510,13 @@ class TestGdfGeomToPnt(unittest.TestCase):
         gdf_pnt = u_lp._line_to_pnts(GDF_LINE, 1, False)
         check_unchanged_geom_gdf(self, GDF_LINE, gdf_pnt)
         np.testing.assert_array_equal(
-            np.unique(GDF_LINE.value), np.unique(gdf_pnt.value)
+            np.unique(GDF_LINE['value']), np.unique(gdf_pnt['value'])
             )
 
         gdf_pnt = u_lp._line_to_pnts(GDF_LINE, 1000, True)
         check_unchanged_geom_gdf(self, GDF_LINE, gdf_pnt)
         np.testing.assert_array_equal(
-            np.unique(GDF_LINE.value), np.unique(gdf_pnt.value)
+            np.unique(GDF_LINE['value']), np.unique(gdf_pnt['value'])
             )
 
         gdf_pnt_d = u_lp._line_to_pnts(GDF_LINE.iloc[0:1], 0.01, False)
@@ -549,13 +549,13 @@ class TestGdfGeomToPnt(unittest.TestCase):
         gdf_pnt = u_lp._poly_to_pnts(GDF_POLY, 1, False)
         check_unchanged_geom_gdf(self, GDF_POLY, gdf_pnt)
         np.testing.assert_array_equal(
-            np.unique(GDF_POLY.value), np.unique(gdf_pnt.value)
+            np.unique(GDF_POLY['value']), np.unique(gdf_pnt['value'])
             )
 
         gdf_pnt = u_lp._poly_to_pnts(GDF_POLY, 5000, True)
         check_unchanged_geom_gdf(self, GDF_POLY, gdf_pnt)
         np.testing.assert_array_equal(
-            np.unique(GDF_POLY.value), np.unique(gdf_pnt.value)
+            np.unique(GDF_POLY['value']), np.unique(gdf_pnt['value'])
             )
 
         gdf_pnt_d = u_lp._poly_to_pnts(GDF_POLY.iloc[0:1], 0.2, False)

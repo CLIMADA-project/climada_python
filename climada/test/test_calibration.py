@@ -51,7 +51,7 @@ class TestCalib(unittest.TestCase):
 
         # get impact function from set
         imp_func = ent.impact_funcs.get_func(hazard.haz_type,
-                                             ent.exposures.gdf.impf_TC.median())
+                                             ent.exposures.gdf['impf_TC'].median())
 
         # Assign centroids to exposures
         ent.exposures.assign_centroids(hazard)

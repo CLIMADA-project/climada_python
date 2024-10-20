@@ -161,7 +161,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
 
    .. code-block:: shell
 
-      mamba create -n climada_env "python=3.9.*"
+      mamba create -n climada_env "python=3.11.*"
 
    .. hint::
 
@@ -177,7 +177,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
          :width: 60%
 
          * - **Supported Version**
-           - ``3.9``
+           - ``3.11``
          * - Allowed Versions
            - ``3.9``, ``3.10``, ``3.11``
 
