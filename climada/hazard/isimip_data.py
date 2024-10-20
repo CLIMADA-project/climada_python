@@ -50,12 +50,12 @@ def _read_one_nc(file_name, bbox=None, years=None):
         Contains data in the specified bounding box and for the
         specified time period
     """
-    data = xr.open_dataset(file_name, decode_times=False)
-    if not bbox:
-        bbox = bbox_world
-    if not years:
-        return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]))
+    with xr.open_dataset(file_name, decode_times=False) as data:
+        if not bbox:
+            bbox = bbox_world
+        if not years:
+            return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]))
 
-    time_id = years - int(data['time'].units[12:16])
-    return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]),
-                    time=slice(time_id[0], time_id[1]))
+        time_id = years - int(data['time'].units[12:16])
+        return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]),
+                        time=slice(time_id[0], time_id[1]))
