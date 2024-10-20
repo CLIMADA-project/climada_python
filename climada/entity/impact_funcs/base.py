@@ -19,19 +19,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define ImpactFunc class.
 """
 
-__all__ = ['ImpactFunc']
+__all__ = ["ImpactFunc"]
 
 import logging
 from typing import Optional, Union
-import numpy as np
+
 import matplotlib.pyplot as plt
+import numpy as np
 
 import climada.util.checker as u_check
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ImpactFunc():
+class ImpactFunc:
     """Contains the definition of one impact function.
 
     Attributes
@@ -109,9 +110,10 @@ class ImpactFunc():
         -------
         np.array
         """
-#        return np.interp(inten, self.intensity, self.mdd * self.paa)
-        return np.interp(inten, self.intensity, self.paa) * \
-            np.interp(inten, self.intensity, self.mdd)
+        #        return np.interp(inten, self.intensity, self.mdd * self.paa)
+        return np.interp(inten, self.intensity, self.paa) * np.interp(
+            inten, self.intensity, self.mdd
+        )
 
     def plot(self, axis=None, **kwargs):
         """Plot the impact functions MDD, MDR and PAA in one graph, where
@@ -131,15 +133,17 @@ class ImpactFunc():
         if axis is None:
             _, axis = plt.subplots(1, 1)
 
-        title = '%s %s' % (self.haz_type, str(self.id))
+        title = "%s %s" % (self.haz_type, str(self.id))
         if self.name != str(self.id):
-            title += ': %s' % self.name
-        axis.set_xlabel('Intensity (' + self.intensity_unit + ')')
-        axis.set_ylabel('Impact (%)')
+            title += ": %s" % self.name
+        axis.set_xlabel("Intensity (" + self.intensity_unit + ")")
+        axis.set_ylabel("Impact (%)")
         axis.set_title(title)
-        axis.plot(self.intensity, self.mdd * 100, 'b', label='MDD', **kwargs)
-        axis.plot(self.intensity, self.paa * 100, 'r', label='PAA', **kwargs)
-        axis.plot(self.intensity, self.mdd * self.paa * 100, 'k--', label='MDR', **kwargs)
+        axis.plot(self.intensity, self.mdd * 100, "b", label="MDD", **kwargs)
+        axis.plot(self.intensity, self.paa * 100, "r", label="PAA", **kwargs)
+        axis.plot(
+            self.intensity, self.mdd * self.paa * 100, "k--", label="MDR", **kwargs
+        )
 
         axis.set_xlim((self.intensity.min(), self.intensity.max()))
         axis.legend()
@@ -153,12 +157,16 @@ class ImpactFunc():
         ValueError
         """
         num_exp = len(self.intensity)
-        u_check.size(num_exp, self.mdd, 'ImpactFunc.mdd')
-        u_check.size(num_exp, self.paa, 'ImpactFunc.paa')
+        u_check.size(num_exp, self.mdd, "ImpactFunc.mdd")
+        u_check.size(num_exp, self.paa, "ImpactFunc.paa")
 
         if num_exp == 0:
-            LOGGER.warning("%s impact function with name '%s' (id=%s) has empty"
-                           " intensity.", self.haz_type, self.name, self.id)
+            LOGGER.warning(
+                "%s impact function with name '%s' (id=%s) has empty" " intensity.",
+                self.haz_type,
+                self.name,
+                self.id,
+            )
             return
 
     @classmethod
@@ -169,9 +177,9 @@ class ImpactFunc():
         mdd: tuple[float, float] = (0, 1),
         paa: tuple[float, float] = (1, 1),
         impf_id: int = 1,
-        **kwargs):
-
-        """ Step function type impact function.
+        **kwargs
+    ):
+        """Step function type impact function.
 
         By default, the impact is 100% above the step.
         Useful for high resolution modelling.
@@ -204,13 +212,21 @@ class ImpactFunc():
         mdd_min, mdd_max = mdd
         mdd = np.array([mdd_min, mdd_min, mdd_max, mdd_max])
 
-        return cls(haz_type=haz_type, id=impf_id,
-            intensity=intensity, mdd=mdd, paa=paa, **kwargs)
+        return cls(
+            haz_type=haz_type,
+            id=impf_id,
+            intensity=intensity,
+            mdd=mdd,
+            paa=paa,
+            **kwargs
+        )
 
     def set_step_impf(self, *args, **kwargs):
         """This function is deprecated, use ImpactFunc.from_step_impf instead."""
-        LOGGER.warning("The use of ImpactFunc.set_step_impf is deprecated." +
-                        "Use ImpactFunc.from_step_impf instead.")
+        LOGGER.warning(
+            "The use of ImpactFunc.set_step_impf is deprecated."
+            + "Use ImpactFunc.from_step_impf instead."
+        )
         self.__dict__ = ImpactFunc.from_step_impf(*args, **kwargs).__dict__
 
     @classmethod
@@ -222,7 +238,8 @@ class ImpactFunc():
         x0: float,
         haz_type: str,
         impf_id: int = 1,
-        **kwargs):
+        **kwargs
+    ):
         r"""Sigmoid type impact function hinging on three parameter.
 
         This type of impact function is very flexible for any sort of study,
@@ -264,13 +281,21 @@ class ImpactFunc():
         paa = np.ones(len(intensity))
         mdd = L / (1 + np.exp(-k * (intensity - x0)))
 
-        return cls(haz_type=haz_type, id=impf_id, intensity=intensity,
-            paa=paa, mdd=mdd, **kwargs)
+        return cls(
+            haz_type=haz_type,
+            id=impf_id,
+            intensity=intensity,
+            paa=paa,
+            mdd=mdd,
+            **kwargs
+        )
 
     def set_sigmoid_impf(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
-        LOGGER.warning("The use of ImpactFunc.set_sigmoid_impf is deprecated."
-                       "Use ImpactFunc.from_sigmoid_impf instead.")
+        LOGGER.warning(
+            "The use of ImpactFunc.set_sigmoid_impf is deprecated."
+            "Use ImpactFunc.from_sigmoid_impf instead."
+        )
         self.__dict__ = ImpactFunc.from_sigmoid_impf(*args, **kwargs).__dict__
 
     @classmethod
@@ -283,7 +308,8 @@ class ImpactFunc():
         exponent: float,
         haz_type: str,
         impf_id: int = 1,
-        **kwargs):
+        **kwargs
+    ):
         r"""S-shape polynomial impact function hinging on four parameter.
 
         .. math::
@@ -336,7 +362,7 @@ class ImpactFunc():
             s-shaped polynomial impact function
         """
         if exponent < 0:
-            raise ValueError('Exponent value must larger than 0')
+            raise ValueError("Exponent value must larger than 0")
 
         inten = np.linspace(*intensity)
 
@@ -349,11 +375,6 @@ class ImpactFunc():
         paa = np.ones_like(inten)
 
         impf = cls(
-            haz_type=haz_type,
-            id=impf_id,
-            intensity=inten,
-            paa=paa,
-            mdd=mdd,
-            **kwargs
+            haz_type=haz_type, id=impf_id, intensity=inten, paa=paa, mdd=mdd, **kwargs
         )
         return impf
