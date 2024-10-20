@@ -20,30 +20,30 @@ Test TropCyclone class
 """
 
 import datetime as dt
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
-import unittest
 
 import numpy as np
 from scipy import sparse
 
 import climada.hazard.test as hazard_test
-from climada.util import ureg
-from climada.test import get_test_file
-from climada.hazard.tc_tracks import TCTracks
-from climada.hazard.tc_clim_change import get_knutson_scaling_factor
-from climada.hazard.trop_cyclone.trop_cyclone import (
-    TropCyclone, )
 from climada.hazard.centroids.centr import Centroids
+from climada.hazard.tc_clim_change import get_knutson_scaling_factor
+from climada.hazard.tc_tracks import TCTracks
 from climada.hazard.test import download_ibtracs
+from climada.hazard.trop_cyclone.trop_cyclone import TropCyclone
+from climada.test import get_test_file
+from climada.util import ureg
 
-
-DATA_DIR = Path(hazard_test.__file__).parent.joinpath('data')
+DATA_DIR = Path(hazard_test.__file__).parent.joinpath("data")
 
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
 
-CENTR_TEST_BRB = Centroids.from_hdf5(get_test_file('centr_test_brb', file_format='hdf5'))
+CENTR_TEST_BRB = Centroids.from_hdf5(
+    get_test_file("centr_test_brb", file_format="hdf5")
+)
 
 
 class TestReader(unittest.TestCase):
@@ -62,11 +62,23 @@ class TestReader(unittest.TestCase):
         # This should not affect the results. In practice, chunking is not applied due to limited
         # memory, but due to very high spatial/temporal resolution of the centroids/tracks. We
         # simulate this situation by artificially reducing the available memory.
-        tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, max_memory_gb=0.001)
-        intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
+        tc_haz = TropCyclone.from_tracks(
+            tc_track, centroids=CENTR_TEST_BRB, max_memory_gb=0.001
+        )
+        intensity_idx = [0, 1, 2, 3, 80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = [
-            22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
-            18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
+            22.74903,
+            23.784691,
+            24.82255,
+            22.67403,
+            27.218706,
+            30.593959,
+            18.980878,
+            24.540069,
+            27.826407,
+            26.846293,
+            0.0,
+            34.568898,
         ]
 
         np.testing.assert_array_almost_equal(
@@ -76,16 +88,36 @@ class TestReader(unittest.TestCase):
 
     def test_set_one_pass(self):
         """Test _tc_from_track function."""
-        intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
+        intensity_idx = [0, 1, 2, 3, 80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = {
             "geosphere": [
-                22.74927,  23.78498,  24.822908, 22.674202, 27.220042, 30.602122,
-                18.981022, 24.540138, 27.830925, 26.8489,    0.,       34.572391,
+                22.74927,
+                23.78498,
+                24.822908,
+                22.674202,
+                27.220042,
+                30.602122,
+                18.981022,
+                24.540138,
+                27.830925,
+                26.8489,
+                0.0,
+                34.572391,
             ],
             "equirect": [
-                22.74903,  23.784691, 24.82255,  22.67403,  27.218706, 30.593959,
-                18.980878, 24.540069, 27.826407, 26.846293,  0.,       34.568898,
-            ]
+                22.74903,
+                23.784691,
+                24.82255,
+                22.67403,
+                27.218706,
+                30.593959,
+                18.980878,
+                24.540069,
+                27.826407,
+                26.846293,
+                0.0,
+                34.568898,
+            ],
         }
         # the values for the two metrics should agree up to first digit at least
         for i, val in enumerate(intensity_values["geosphere"]):
@@ -96,11 +128,16 @@ class TestReader(unittest.TestCase):
         tc_track.data = tc_track.data[:1]
 
         for metric in ["equirect", "geosphere"]:
-            tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model='H08',
-                                             store_windfields=True, metric=metric)
+            tc_haz = TropCyclone.from_tracks(
+                tc_track,
+                centroids=CENTR_TEST_BRB,
+                model="H08",
+                store_windfields=True,
+                metric=metric,
+            )
 
-            self.assertEqual(tc_haz.haz_type, 'TC')
-            self.assertEqual(tc_haz.units, 'm/s')
+            self.assertEqual(tc_haz.haz_type, "TC")
+            self.assertEqual(tc_haz.units, "m/s")
             self.assertEqual(tc_haz.centroids.size, 296)
             self.assertEqual(tc_haz.event_id.size, 1)
             self.assertEqual(tc_haz.date.size, 1)
@@ -108,7 +145,7 @@ class TestReader(unittest.TestCase):
             self.assertEqual(dt.datetime.fromordinal(tc_haz.date[0]).month, 8)
             self.assertEqual(dt.datetime.fromordinal(tc_haz.date[0]).day, 27)
             self.assertEqual(tc_haz.event_id[0], 1)
-            self.assertEqual(tc_haz.event_name, ['1951239N12334'])
+            self.assertEqual(tc_haz.event_name, ["1951239N12334"])
             self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
             self.assertTrue(isinstance(tc_haz.fraction, sparse.csr_matrix))
             self.assertEqual(tc_haz.fraction.shape, (1, 296))
@@ -119,7 +156,9 @@ class TestReader(unittest.TestCase):
             self.assertEqual(np.nonzero(tc_haz.intensity)[0].size, 255)
 
             np.testing.assert_array_almost_equal(
-                tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[metric])
+                tc_haz.intensity[0, intensity_idx].toarray()[0],
+                intensity_values[metric],
+            )
             for idx, val in zip(intensity_idx, intensity_values[metric]):
                 if val == 0:
                     self.assertEqual(tc_haz.intensity[0, idx], 0)
@@ -128,7 +167,7 @@ class TestReader(unittest.TestCase):
             windfields = windfields.reshape(windfields.shape[0], -1, 2)
             windfield_norms = np.linalg.norm(windfields, axis=-1).max(axis=0)
             intensity = tc_haz.intensity.toarray()[0, :]
-            msk = (intensity > 0)
+            msk = intensity > 0
             np.testing.assert_array_equal(windfield_norms[msk], intensity[msk])
 
     def test_cross_antimeridian(self):
@@ -152,38 +191,136 @@ class TestReader(unittest.TestCase):
 
     def test_windfield_models(self):
         """Test _tc_from_track function with different wind field models."""
-        intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
+        intensity_idx = [0, 1, 2, 3, 80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = [
-             ("H08", None, [
-                 22.74903, 23.784691, 24.82255, 22.67403, 27.218706, 30.593959,
-                 18.980878, 24.540069, 27.826407, 26.846293, 0., 34.568898,
-             ]),
-             ("H10", None, [
-                 24.745521, 25.596484, 26.475329, 24.690914, 28.650107, 31.584395,
-                 21.723546, 26.140293, 28.94964, 28.051915, 18.49378, 35.312152,
-             ]),
-             # The following model configurations use recorded wind speeds, while the above use
-             # pressure values only. That's why some of the values are so different.
-             ("H10", dict(vmax_from_cen=False, rho_air_const=1.2), [
-                 23.702232, 24.327615, 24.947161, 23.589233, 26.616085, 29.389295,
-                 21.338178, 24.257067, 26.472543, 25.662313, 18.535842, 31.886041,
-             ]),
-             ("H10", dict(vmax_from_cen=False, rho_air_const=None), [
-                 24.244162, 24.835561, 25.432454, 24.139294, 27.127457, 29.719196,
-                 21.910658, 24.692637, 26.783575, 25.971516, 19.005555, 31.904048,
-             ]),
-             ("H10", dict(vmax_from_cen=False, rho_air_const=None, vmax_in_brackets=True), [
-                 23.592924, 24.208169, 24.817104, 23.483053, 26.468975, 29.221715,
-                 21.260867, 24.150879, 26.34288 , 25.543635, 18.487385, 31.904048
-             ]),
-             ("H1980", None, [
-                 21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
-                 19.220149, 21.984516, 24.196388, 23.449116, 0, 31.550207,
-             ]),
-             ("ER11", None, [
-                 23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
-                 18.996389, 26.102109, 30.780737, 29.498453, 0, 38.368805,
-             ]),
+            (
+                "H08",
+                None,
+                [
+                    22.74903,
+                    23.784691,
+                    24.82255,
+                    22.67403,
+                    27.218706,
+                    30.593959,
+                    18.980878,
+                    24.540069,
+                    27.826407,
+                    26.846293,
+                    0.0,
+                    34.568898,
+                ],
+            ),
+            (
+                "H10",
+                None,
+                [
+                    24.745521,
+                    25.596484,
+                    26.475329,
+                    24.690914,
+                    28.650107,
+                    31.584395,
+                    21.723546,
+                    26.140293,
+                    28.94964,
+                    28.051915,
+                    18.49378,
+                    35.312152,
+                ],
+            ),
+            # The following model configurations use recorded wind speeds, while the above use
+            # pressure values only. That's why some of the values are so different.
+            (
+                "H10",
+                dict(vmax_from_cen=False, rho_air_const=1.2),
+                [
+                    23.702232,
+                    24.327615,
+                    24.947161,
+                    23.589233,
+                    26.616085,
+                    29.389295,
+                    21.338178,
+                    24.257067,
+                    26.472543,
+                    25.662313,
+                    18.535842,
+                    31.886041,
+                ],
+            ),
+            (
+                "H10",
+                dict(vmax_from_cen=False, rho_air_const=None),
+                [
+                    24.244162,
+                    24.835561,
+                    25.432454,
+                    24.139294,
+                    27.127457,
+                    29.719196,
+                    21.910658,
+                    24.692637,
+                    26.783575,
+                    25.971516,
+                    19.005555,
+                    31.904048,
+                ],
+            ),
+            (
+                "H10",
+                dict(vmax_from_cen=False, rho_air_const=None, vmax_in_brackets=True),
+                [
+                    23.592924,
+                    24.208169,
+                    24.817104,
+                    23.483053,
+                    26.468975,
+                    29.221715,
+                    21.260867,
+                    24.150879,
+                    26.34288,
+                    25.543635,
+                    18.487385,
+                    31.904048,
+                ],
+            ),
+            (
+                "H1980",
+                None,
+                [
+                    21.376807,
+                    21.957217,
+                    22.569568,
+                    21.284351,
+                    24.254226,
+                    26.971303,
+                    19.220149,
+                    21.984516,
+                    24.196388,
+                    23.449116,
+                    0,
+                    31.550207,
+                ],
+            ),
+            (
+                "ER11",
+                None,
+                [
+                    23.565332,
+                    24.931413,
+                    26.360758,
+                    23.490333,
+                    29.601171,
+                    34.522795,
+                    18.996389,
+                    26.102109,
+                    30.780737,
+                    29.498453,
+                    0,
+                    38.368805,
+                ],
+            ),
         ]
 
         tc_track = TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
@@ -192,10 +329,14 @@ class TestReader(unittest.TestCase):
 
         for model, model_kwargs, inten_ref in intensity_values:
             tc_haz = TropCyclone.from_tracks(
-                tc_track, centroids=CENTR_TEST_BRB, model=model, model_kwargs=model_kwargs,
+                tc_track,
+                centroids=CENTR_TEST_BRB,
+                model=model,
+                model_kwargs=model_kwargs,
             )
             np.testing.assert_array_almost_equal(
-                tc_haz.intensity[0, intensity_idx].toarray()[0], inten_ref,
+                tc_haz.intensity[0, intensity_idx].toarray()[0],
+                inten_ref,
             )
             for idx, val in zip(intensity_idx, inten_ref):
                 if val == 0:
@@ -205,18 +346,38 @@ class TestReader(unittest.TestCase):
         """
         Test _tc_from_track function should calculate the same results or raise ValueError
          with different windspeed units.
-         """
-        intensity_idx = [0, 1, 2,  3,  80, 100, 120, 200, 220, 250, 260, 295]
+        """
+        intensity_idx = [0, 1, 2, 3, 80, 100, 120, 200, 220, 250, 260, 295]
         intensity_values = {
             # Holland 1980 and Emanuel & Rotunno 2011 use recorded wind speeds, that is why checking them for different
             # windspeed units is so important:
             "H1980": [
-                21.376807, 21.957217, 22.569568, 21.284351, 24.254226, 26.971303,
-                19.220149, 21.984516, 24.196388, 23.449116,  0, 31.550207,
+                21.376807,
+                21.957217,
+                22.569568,
+                21.284351,
+                24.254226,
+                26.971303,
+                19.220149,
+                21.984516,
+                24.196388,
+                23.449116,
+                0,
+                31.550207,
             ],
             "ER11": [
-                23.565332, 24.931413, 26.360758, 23.490333, 29.601171, 34.522795,
-                18.996389, 26.102109, 30.780737, 29.498453,  0, 38.368805,
+                23.565332,
+                24.931413,
+                26.360758,
+                23.490333,
+                29.601171,
+                34.522795,
+                18.996389,
+                26.102109,
+                30.780737,
+                29.498453,
+                0,
+                38.368805,
             ],
         }
 
@@ -225,27 +386,31 @@ class TestReader(unittest.TestCase):
         tc_track.data = tc_track.data[:1]
 
         tc_track_kmph = TCTracks(data=[ds.copy(deep=True) for ds in tc_track.data])
-        tc_track_kmph.data[0]['max_sustained_wind'] *= (
+        tc_track_kmph.data[0]["max_sustained_wind"] *= (
             (1.0 * ureg.knot).to(ureg.km / ureg.hour).magnitude
         )
-        tc_track_kmph.data[0].attrs['max_sustained_wind_unit'] = 'km/h'
+        tc_track_kmph.data[0].attrs["max_sustained_wind_unit"] = "km/h"
 
         tc_track_mps = TCTracks(data=[ds.copy(deep=True) for ds in tc_track.data])
-        tc_track_mps.data[0]['max_sustained_wind'] *= (
+        tc_track_mps.data[0]["max_sustained_wind"] *= (
             (1.0 * ureg.knot).to(ureg.meter / ureg.second).magnitude
         )
-        tc_track_mps.data[0].attrs['max_sustained_wind_unit'] = 'm/s'
+        tc_track_mps.data[0].attrs["max_sustained_wind_unit"] = "m/s"
 
         for model in ["H1980", "ER11"]:
             for tc_track_i in [tc_track_kmph, tc_track_mps]:
-                tc_haz = TropCyclone.from_tracks(tc_track_i, centroids=CENTR_TEST_BRB, model=model)
+                tc_haz = TropCyclone.from_tracks(
+                    tc_track_i, centroids=CENTR_TEST_BRB, model=model
+                )
                 np.testing.assert_array_almost_equal(
-                    tc_haz.intensity[0, intensity_idx].toarray()[0], intensity_values[model])
+                    tc_haz.intensity[0, intensity_idx].toarray()[0],
+                    intensity_values[model],
+                )
                 for idx, val in zip(intensity_idx, intensity_values[model]):
                     if val == 0:
                         self.assertEqual(tc_haz.intensity[0, idx], 0)
 
-        tc_track.data[0].attrs['max_sustained_wind_unit'] = 'elbows/fortnight'
+        tc_track.data[0].attrs["max_sustained_wind_unit"] = "elbows/fortnight"
         with self.assertRaises(ValueError):
             TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB, model=model)
 
@@ -255,14 +420,14 @@ class TestReader(unittest.TestCase):
         tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
         tc_haz.check()
 
-        self.assertEqual(tc_haz.haz_type, 'TC')
-        self.assertEqual(tc_haz.units, 'm/s')
+        self.assertEqual(tc_haz.haz_type, "TC")
+        self.assertEqual(tc_haz.units, "m/s")
         self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.event_id[0], 1)
-        self.assertEqual(tc_haz.event_name, ['1951239N12334'])
+        self.assertEqual(tc_haz.event_name, ["1951239N12334"])
         self.assertEqual(tc_haz.category, tc_track.data[0].category)
-        self.assertEqual(tc_haz.basin[0], 'NA')
+        self.assertEqual(tc_haz.basin[0], "NA")
         self.assertIsInstance(tc_haz.basin, list)
         self.assertIsInstance(tc_haz.category, np.ndarray)
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
@@ -276,17 +441,19 @@ class TestReader(unittest.TestCase):
 
     def test_two_files_pass(self):
         """Test from_tracks with two ibtracs."""
-        tc_track = TCTracks.from_processed_ibtracs_csv([TEST_TRACK_SHORT, TEST_TRACK_SHORT])
+        tc_track = TCTracks.from_processed_ibtracs_csv(
+            [TEST_TRACK_SHORT, TEST_TRACK_SHORT]
+        )
         tc_haz = TropCyclone.from_tracks(tc_track, centroids=CENTR_TEST_BRB)
         tc_haz.remove_duplicates()
         tc_haz.check()
 
-        self.assertEqual(tc_haz.haz_type, 'TC')
-        self.assertEqual(tc_haz.units, 'm/s')
+        self.assertEqual(tc_haz.haz_type, "TC")
+        self.assertEqual(tc_haz.units, "m/s")
         self.assertEqual(tc_haz.centroids.size, 296)
         self.assertEqual(tc_haz.event_id.size, 1)
         self.assertEqual(tc_haz.event_id[0], 1)
-        self.assertEqual(tc_haz.event_name, ['1951239N12334'])
+        self.assertEqual(tc_haz.event_name, ["1951239N12334"])
         self.assertTrue(np.array_equal(tc_haz.frequency, np.array([1])))
         self.assertTrue(np.array_equal(tc_haz.orig, np.array([True])))
         self.assertTrue(isinstance(tc_haz.intensity, sparse.csr_matrix))
@@ -310,11 +477,11 @@ class TestClimateSce(unittest.TestCase):
 
         self.tc = TropCyclone(
             intensity=sparse.csr_matrix(intensity),
-            basin=['NA', 'NA', 'NA', 'WP'],
+            basin=["NA", "NA", "NA", "WP"],
             category=np.array([2, 0, 4, 1]),
             event_id=np.arange(intensity.shape[0]),
-            frequency=np.repeat(1./intensity.shape[0], intensity.shape[0]),
-            date=np.array([723795, 728395, 738395, 724395])
+            frequency=np.repeat(1.0 / intensity.shape[0], intensity.shape[0]),
+            date=np.array([723795, 728395, 738395, 724395]),
         )
 
     def test_apply_climate_scenario_knu_calculations(self):
@@ -324,50 +491,57 @@ class TestClimateSce(unittest.TestCase):
         self.create_tc()
 
         cat05_sel = np.repeat(True, self.tc.category.shape[0])
-        cat03_sel = np.array([cat in [0,1,2,3] for cat in self.tc.category])
-        cat45_sel = np.array([cat in [4,5] for cat in self.tc.category])
+        cat03_sel = np.array([cat in [0, 1, 2, 3] for cat in self.tc.category])
+        cat45_sel = np.array([cat in [4, 5] for cat in self.tc.category])
 
         ## Retrieve scaling factors for cat 4 to 5 and 0 to 5
-        percentile = '50'
+        percentile = "50"
         target_year = 2035
-        rcp = '8.5'
+        rcp = "8.5"
 
-        future_tc = self.tc.apply_climate_scenario_knu(percentile=percentile,
-                                                       scenario=rcp,
-                                                       target_year=target_year)
+        future_tc = self.tc.apply_climate_scenario_knu(
+            percentile=percentile, scenario=rcp, target_year=target_year
+        )
 
         for basin in np.unique(self.tc.basin):
-            basin_sel = np.array(self.tc.basin)==basin
+            basin_sel = np.array(self.tc.basin) == basin
 
             scaling_05, scaling_45 = [
-                get_knutson_scaling_factor(percentile=percentile,
-                                        variable=variable,
-                                        basin=basin).loc[target_year, rcp]
-                for variable in ['cat05', 'cat45']
-                ]
+                get_knutson_scaling_factor(
+                    percentile=percentile, variable=variable, basin=basin
+                ).loc[target_year, rcp]
+                for variable in ["cat05", "cat45"]
+            ]
 
             ## Calulate scaling factors for cat 0 to 3
-            freq_weighted_scaling_05 = scaling_05 * np.sum(self.tc.frequency[cat05_sel & basin_sel])
-            freq_weighted_scaling_45 = scaling_45 * np.sum(self.tc.frequency[cat45_sel & basin_sel])
+            freq_weighted_scaling_05 = scaling_05 * np.sum(
+                self.tc.frequency[cat05_sel & basin_sel]
+            )
+            freq_weighted_scaling_45 = scaling_45 * np.sum(
+                self.tc.frequency[cat45_sel & basin_sel]
+            )
             freq_sum_03 = np.sum(self.tc.frequency[cat03_sel & basin_sel])
 
-            scaling_03 = (freq_weighted_scaling_05 - freq_weighted_scaling_45) / freq_sum_03
+            scaling_03 = (
+                freq_weighted_scaling_05 - freq_weighted_scaling_45
+            ) / freq_sum_03
 
             ## Check that frequencies obtained by function are the same as those obtained by scaling
             ## historic frequencies with retrieved scaling factors
             np.testing.assert_array_equal(
-                self.tc.frequency[cat03_sel & basin_sel] * (1 + scaling_03/100),
-                future_tc.frequency[cat03_sel & basin_sel]
-                )
+                self.tc.frequency[cat03_sel & basin_sel] * (1 + scaling_03 / 100),
+                future_tc.frequency[cat03_sel & basin_sel],
+            )
             np.testing.assert_array_equal(
-                self.tc.frequency[cat45_sel & basin_sel] * (1 + scaling_45/100),
-                future_tc.frequency[cat45_sel & basin_sel]
-                )
+                self.tc.frequency[cat45_sel & basin_sel] * (1 + scaling_45 / 100),
+                future_tc.frequency[cat45_sel & basin_sel],
+            )
 
     def test_apply_climate_scenario_knu_target_year_out_of_range(self):
         self.create_tc()
         with self.assertRaises(KeyError):
             self.tc.apply_climate_scenario_knu(target_year=2200)
+
 
 class TestDumpReloadCycle(unittest.TestCase):
     def setUp(self):
