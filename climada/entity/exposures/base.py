@@ -958,15 +958,20 @@ class Exposures:
         """
 
         raster, meta = u_coord.points_to_raster(
-            self.gdf, ["value"], res, raster_res, scheduler
+            points_df=self.data,
+            val_names=["value"],
+            res=res,
+            raster_res=raster_res,
+            crs=self.crs,
+            scheduler=None,
         )
         raster = raster.reshape((meta["height"], meta["width"]))
 
         # save tiff
         if save_tiff is not None:
             with rasterio.open(
-                save_tiff,
-                "w",
+                fp=save_tiff,
+                mode="w",
                 driver="GTiff",
                 height=meta["height"],
                 width=meta["width"],
@@ -982,15 +987,15 @@ class Exposures:
         if isinstance(proj_data, ccrs.PlateCarree):
             # use different projections for plot and data to shift the central lon in the plot
             xmin, ymin, xmax, ymax = u_coord.latlon_bounds(
-                self.latitude, self.longitude
+                lat=self.latitude, lon=self.longitude
             )
             proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         else:
             xmin, ymin, xmax, ymax = (
                 self.longitude.min(),
-                self.gdf.latitude.min(),
+                self.latitude.min(),
                 self.longitude.max(),
-                self.gdf.latitude.max(),
+                self.latitude.max(),
             )
 
         if not axis:
