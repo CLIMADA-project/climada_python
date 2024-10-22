@@ -36,6 +36,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- Broken ECMWF links in pydoc of `climada.hazard.storm_europe` relocated. [#944](https://github.com/CLIMADA-project/climada_python/pull/944)
 - File handles are being closed after reading netcdf files with `climada.hazard` modules [#953](https://github.com/CLIMADA-project/climada_python/pull/953)
 - Avoids a ValueError in the impact calculation for cases with a single exposure point and MDR values of 0, by explicitly removing zeros in `climada.hazard.Hazard.get_mdr` [#933](https://github.com/CLIMADA-project/climada_python/pull/948)
 
