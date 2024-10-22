@@ -29,7 +29,7 @@ import climada.entity.exposures.test as exposures_test
 import climada.util.coordinates as u_coord
 from climada import CONFIG
 from climada.entity.entity_def import Entity
-from climada.entity.exposures.base import INDICATOR_IMPF, Exposures
+from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.measures.base import IMPF_ID_FACT, Measure
@@ -151,84 +151,20 @@ class TestApply(unittest.TestCase):
         new_haz = act_1._cutoff_hazard_damage(exp, imp_set, haz)
 
         self.assertFalse(id(new_haz) == id(haz))
-
+        # fmt: off
         pos_no_null = np.array(
             [
-                6249,
-                7697,
-                9134,
-                13500,
-                13199,
-                5944,
-                9052,
-                9050,
-                2429,
-                5139,
-                9053,
-                7102,
-                4096,
-                1070,
-                5948,
-                1076,
-                5947,
-                7432,
-                5949,
-                11694,
-                5484,
-                6246,
-                12147,
-                778,
-                3326,
-                7199,
-                12498,
-                11698,
-                6245,
-                5327,
-                4819,
-                8677,
-                5970,
-                7101,
-                779,
-                3894,
-                9051,
-                5976,
-                3329,
-                5978,
-                4282,
-                11697,
-                7193,
-                5351,
-                7310,
-                7478,
-                5489,
-                5526,
-                7194,
-                4283,
-                7191,
-                5328,
-                4812,
-                5528,
-                5527,
-                5488,
-                7475,
-                5529,
-                776,
-                5758,
-                4811,
-                6223,
-                7479,
-                7470,
-                5480,
-                5325,
-                7477,
-                7318,
-                7317,
-                11696,
-                7313,
-                13165,
-                6221,
+                6249, 7697, 9134, 13500, 13199, 5944, 9052, 9050, 2429, 5139,
+                9053, 7102, 4096, 1070, 5948, 1076, 5947, 7432, 5949, 11694,
+                5484, 6246, 12147, 778, 3326, 7199, 12498, 11698, 6245, 5327,
+                4819, 8677, 5970, 7101, 779, 3894, 9051, 5976, 3329, 5978,
+                4282, 11697, 7193, 5351, 7310, 7478, 5489, 5526, 7194, 4283,
+                7191, 5328, 4812, 5528, 5527, 5488, 7475, 5529, 776, 5758,
+                4811, 6223, 7479, 7470, 5480, 5325, 7477, 7318, 7317, 11696,
+                7313, 13165, 6221,
             ]
         )
+        # fmt: on
         all_haz = np.arange(haz.intensity.shape[0])
         all_haz[pos_no_null] = -1
         pos_null = np.argwhere(all_haz > 0).reshape(-1)
@@ -254,83 +190,20 @@ class TestApply(unittest.TestCase):
 
         self.assertFalse(id(new_haz) == id(haz))
 
+        # fmt: off
         pos_no_null = np.array(
             [
-                6249,
-                7697,
-                9134,
-                13500,
-                13199,
-                5944,
-                9052,
-                9050,
-                2429,
-                5139,
-                9053,
-                7102,
-                4096,
-                1070,
-                5948,
-                1076,
-                5947,
-                7432,
-                5949,
-                11694,
-                5484,
-                6246,
-                12147,
-                778,
-                3326,
-                7199,
-                12498,
-                11698,
-                6245,
-                5327,
-                4819,
-                8677,
-                5970,
-                7101,
-                779,
-                3894,
-                9051,
-                5976,
-                3329,
-                5978,
-                4282,
-                11697,
-                7193,
-                5351,
-                7310,
-                7478,
-                5489,
-                5526,
-                7194,
-                4283,
-                7191,
-                5328,
-                4812,
-                5528,
-                5527,
-                5488,
-                7475,
-                5529,
-                776,
-                5758,
-                4811,
-                6223,
-                7479,
-                7470,
-                5480,
-                5325,
-                7477,
-                7318,
-                7317,
-                11696,
-                7313,
-                13165,
-                6221,
+                6249, 7697, 9134, 13500, 13199, 5944, 9052, 9050, 2429, 5139,
+                9053, 7102, 4096, 1070, 5948, 1076, 5947, 7432, 5949, 11694,
+                5484, 6246, 12147, 778, 3326, 7199, 12498, 11698, 6245, 5327,
+                4819, 8677, 5970, 7101, 779, 3894, 9051, 5976, 3329, 5978,
+                4282, 11697, 7193, 5351, 7310, 7478, 5489, 5526, 7194, 4283,
+                7191, 5328, 4812, 5528, 5527, 5488, 7475, 5529, 776, 5758,
+                4811, 6223, 7479, 7470, 5480, 5325, 7477, 7318, 7317, 11696,
+                7313, 13165, 6221,
             ]
         )
+        # fmt: on
         all_haz = np.arange(haz.intensity.shape[0])
         all_haz[pos_no_null] = -1
         pos_null = np.argwhere(all_haz > 0).reshape(-1)
@@ -363,25 +236,14 @@ class TestApply(unittest.TestCase):
         self.assertEqual(new_exp.ref_year, exp.ref_year)
         self.assertEqual(new_exp.value_unit, exp.value_unit)
         self.assertEqual(new_exp.description, exp.description)
+        self.assertTrue(np.array_equal(new_exp.value, exp.value))
+        self.assertTrue(np.array_equal(new_exp.latitude, exp.latitude))
+        self.assertTrue(np.array_equal(new_exp.longitude, exp.longitude))
         self.assertTrue(
-            np.array_equal(new_exp.gdf["value"].values, exp.gdf["value"].values)
+            np.array_equal(exp.hazard_impf("TC"), np.ones(new_exp.gdf.shape[0]))
         )
         self.assertTrue(
-            np.array_equal(new_exp.gdf["latitude"].values, exp.gdf["latitude"].values)
-        )
-        self.assertTrue(
-            np.array_equal(new_exp.gdf["longitude"].values, exp.gdf["longitude"].values)
-        )
-        self.assertTrue(
-            np.array_equal(
-                exp.gdf[INDICATOR_IMPF + "TC"].values, np.ones(new_exp.gdf.shape[0])
-            )
-        )
-        self.assertTrue(
-            np.array_equal(
-                new_exp.gdf[INDICATOR_IMPF + "TC"].values,
-                np.ones(new_exp.gdf.shape[0]) * 3,
-            )
+            np.array_equal(new_exp.hazard_impf("TC"), np.ones(new_exp.gdf.shape[0]) * 3)
         )
 
     def test_change_all_hazard_pass(self):
@@ -417,19 +279,9 @@ class TestApply(unittest.TestCase):
         self.assertEqual(new_exp.ref_year, ref_exp.ref_year)
         self.assertEqual(new_exp.value_unit, ref_exp.value_unit)
         self.assertEqual(new_exp.description, ref_exp.description)
-        self.assertTrue(
-            np.array_equal(new_exp.gdf["value"].values, ref_exp.gdf["value"].values)
-        )
-        self.assertTrue(
-            np.array_equal(
-                new_exp.gdf["latitude"].values, ref_exp.gdf["latitude"].values
-            )
-        )
-        self.assertTrue(
-            np.array_equal(
-                new_exp.gdf["longitude"].values, ref_exp.gdf["longitude"].values
-            )
-        )
+        self.assertTrue(np.array_equal(new_exp.value, ref_exp.value))
+        self.assertTrue(np.array_equal(new_exp.latitude, ref_exp.latitude))
+        self.assertTrue(np.array_equal(new_exp.longitude, ref_exp.longitude))
 
     def test_not_filter_exposures_pass(self):
         """Test _filter_exposures method with []"""
@@ -496,17 +348,11 @@ class TestApply(unittest.TestCase):
         self.assertEqual(res_exp.value_unit, exp.value_unit)
         self.assertEqual(res_exp.description, exp.description)
         self.assertTrue(u_coord.equal_crs(res_exp.crs, exp.crs))
-        self.assertFalse(hasattr(exp.gdf, "crs"))
-        self.assertFalse(hasattr(res_exp.gdf, "crs"))
 
         # regions (that is just input data, no need for testing, but it makes the changed and unchanged parts obious)
-        self.assertTrue(np.array_equal(res_exp.gdf["region_id"].values[0], 4))
-        self.assertTrue(
-            np.array_equal(res_exp.gdf["region_id"].values[1:25], np.ones(24) * 3)
-        )
-        self.assertTrue(
-            np.array_equal(res_exp.gdf["region_id"].values[25:], np.ones(25))
-        )
+        self.assertTrue(np.array_equal(res_exp.region_id[0], 4))
+        self.assertTrue(np.array_equal(res_exp.region_id[1:25], np.ones(24) * 3))
+        self.assertTrue(np.array_equal(res_exp.region_id[25:], np.ones(25)))
 
         # changed exposures
         self.assertTrue(
@@ -529,17 +375,8 @@ class TestApply(unittest.TestCase):
                 )
             )
         )
-        self.assertTrue(
-            np.array_equal(
-                res_exp.gdf["latitude"].values[:25], new_exp.gdf["latitude"].values[:25]
-            )
-        )
-        self.assertTrue(
-            np.array_equal(
-                res_exp.gdf["longitude"].values[:25],
-                new_exp.gdf["longitude"].values[:25],
-            )
-        )
+        self.assertTrue(np.array_equal(res_exp.latitude[:25], new_exp.latitude[:25]))
+        self.assertTrue(np.array_equal(res_exp.longitude[:25], new_exp.longitude[:25]))
 
         # unchanged exposures
         self.assertTrue(
@@ -559,16 +396,8 @@ class TestApply(unittest.TestCase):
                 res_exp.gdf["impf_TC"].values[25:], exp.gdf["impf_TC"].values[25:]
             )
         )
-        self.assertTrue(
-            np.array_equal(
-                res_exp.gdf["latitude"].values[25:], exp.gdf["latitude"].values[25:]
-            )
-        )
-        self.assertTrue(
-            np.array_equal(
-                res_exp.gdf["longitude"].values[25:], exp.gdf["longitude"].values[25:]
-            )
-        )
+        self.assertTrue(np.array_equal(res_exp.latitude[25:], exp.latitude[25:]))
+        self.assertTrue(np.array_equal(res_exp.longitude[25:], exp.longitude[25:]))
 
         # unchanged impact functions
         self.assertEqual(list(res_ifs.get_func().keys()), [meas.haz_type])
@@ -784,12 +613,8 @@ class TestApply(unittest.TestCase):
         self.assertAlmostEqual(imp.at_event[12], 1.470194187501225e07)
         self.assertAlmostEqual(imp.at_event[41], 4.7226357936631286e08)
         self.assertAlmostEqual(imp.at_event[11890], 1.742110428135755e07)
-        self.assertTrue(
-            np.array_equal(imp.coord_exp[:, 0], entity.exposures.gdf["latitude"])
-        )
-        self.assertTrue(
-            np.array_equal(imp.coord_exp[:, 1], entity.exposures.gdf["longitude"])
-        )
+        self.assertTrue(np.array_equal(imp.coord_exp[:, 0], entity.exposures.latitude))
+        self.assertTrue(np.array_equal(imp.coord_exp[:, 1], entity.exposures.longitude))
         self.assertAlmostEqual(imp.eai_exp[0], 1.15677655725858e08)
         self.assertAlmostEqual(imp.eai_exp[-1], 7.528669956120645e07)
         self.assertAlmostEqual(imp.tot_value, 6.570532945599105e11)
