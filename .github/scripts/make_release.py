@@ -13,9 +13,9 @@ import subprocess
 def get_version() -> str:
     """Return the current version number, based on the _version.py file."""
     [version_file] = glob.glob("climada*/_version.py")
-    with open(version_file, 'r', encoding="UTF-8") as vfp:
+    with open(version_file, "r", encoding="UTF-8") as vfp:
         content = vfp.read()
-    regex = r'^__version__\s*=\s*[\'\"](.*)[\'\"]\s*$'
+    regex = r"^__version__\s*=\s*[\'\"](.*)[\'\"]\s*$"
     mtch = re.match(regex, content)
     return mtch.group(1)
 

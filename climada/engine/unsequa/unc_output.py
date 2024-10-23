@@ -19,57 +19,59 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty class.
 """
 
-__all__ = ['UncOutput', 'UncCostBenefitOutput', 'UncImpactOutput', 'UncDeltaImpactOutput']
+__all__ = [
+    "UncOutput",
+    "UncCostBenefitOutput",
+    "UncImpactOutput",
+    "UncDeltaImpactOutput",
+]
 
-import logging
 import datetime as dt
-
+import logging
 from itertools import zip_longest
 from pathlib import Path
 
-
 import h5py
-import pandas as pd
-import numpy as np
-import matplotlib.pyplot as plt
 import matplotlib as mpl
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
 from matplotlib import colormaps as cm
 
-from climada import CONFIG
-
-from climada.util.value_representation import value_to_monetary_unit as u_vtm
-from climada.util.value_representation import convert_monetary_value as u_cmv
-from climada.util import plot as u_plot
 import climada.util.hdf5_handler as u_hdf5
+from climada import CONFIG
+from climada.util import plot as u_plot
+from climada.util.value_representation import convert_monetary_value as u_cmv
+from climada.util.value_representation import value_to_monetary_unit as u_vtm
 
 LOGGER = logging.getLogger(__name__)
 
 # Metrics that are multi-dimensional
-METRICS_2D = ['eai_exp', 'at_event']
+METRICS_2D = ["eai_exp", "at_event"]
 
 DATA_DIR = CONFIG.engine.uncertainty.local_data.user_data.dir()
 
-FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
+FIG_W, FIG_H = 8, 5  # default figize width/heigh column/work multiplicators
 
-MAP_CMAP = 'Dark2' #Default color map for the sensitivity map
+MAP_CMAP = "Dark2"  # Default color map for the sensitivity map
 
-#Table of recommended pairing between salib sampling and sensitivity methods
+# Table of recommended pairing between salib sampling and sensitivity methods
 # NEEDS TO BE UPDATED REGULARLY!! https://salib.readthedocs.io/en/latest/api.html
 # Currently, we do not support the 'delta' method due to Singular matrix issues,
 SALIB_COMPATIBILITY = {
     #'delta': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
-    'dgsm': ['finite_diff'],
-    'fast': ['fast_sampler'],
-    'ff': ['ff'],
-    'hdmr': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
-    'morris': ['morris'],
-    'pawn': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
-    'rbd_fast': ['fast_sampler', 'ff', 'finite_diff', 'latin', 'morris', 'saltelli'],
-    'sobol': ['saltelli', 'sobol']
-    }
+    "dgsm": ["finite_diff"],
+    "fast": ["fast_sampler"],
+    "ff": ["ff"],
+    "hdmr": ["fast_sampler", "ff", "finite_diff", "latin", "morris", "saltelli"],
+    "morris": ["morris"],
+    "pawn": ["fast_sampler", "ff", "finite_diff", "latin", "morris", "saltelli"],
+    "rbd_fast": ["fast_sampler", "ff", "finite_diff", "latin", "morris", "saltelli"],
+    "sobol": ["saltelli", "sobol"],
+}
 
 
-class UncOutput():
+class UncOutput:
     """
     Class to store and plot uncertainty and sensitivity analysis output data
 
@@ -98,8 +100,12 @@ class UncOutput():
         https://salib.readthedocs.io/en/latest/basics.html.
     """
 
-    _metadata = ['sampling_method', 'sampling_kwargs', 'sensitivity_method',
-                 'sensitivity_kwargs']
+    _metadata = [
+        "sampling_method",
+        "sampling_kwargs",
+        "sensitivity_method",
+        "sensitivity_kwargs",
+    ]
 
     def __init__(self, samples_df, unit=None):
         """
@@ -112,7 +118,7 @@ class UncOutput():
         unit : str, optional
             value unit
         """
-        #Data
+        # Data
         self.samples_df = samples_df
         self.unit = unit
 
@@ -135,19 +141,19 @@ class UncOutput():
         self.samples_df.sort_values(by=by_parameters, inplace=True, axis=0)
 
     def get_samples_df(self):
-        return getattr(self, 'samples_df')
+        return getattr(self, "samples_df")
 
     def get_unc_df(self, metric_name):
-        return getattr(self, f'{metric_name}_unc_df')
+        return getattr(self, f"{metric_name}_unc_df")
 
     def set_unc_df(self, metric_name, unc_df):
-        setattr(self, f'{metric_name}_unc_df', unc_df)
+        setattr(self, f"{metric_name}_unc_df", unc_df)
 
     def get_sens_df(self, metric_name):
-        return getattr(self, f'{metric_name}_sens_df')
+        return getattr(self, f"{metric_name}_sens_df")
 
     def set_sens_df(self, metric_name, sens_df):
-        setattr(self, f'{metric_name}_sens_df', sens_df)
+        setattr(self, f"{metric_name}_sens_df", sens_df)
 
     def check_salib(self, sensitivity_method):
         """
@@ -171,12 +177,14 @@ class UncOutput():
         """
 
         if self.sampling_method not in SALIB_COMPATIBILITY[sensitivity_method]:
-            LOGGER.warning("The chosen combination of sensitivity method (%s)"
+            LOGGER.warning(
+                "The chosen combination of sensitivity method (%s)"
                 " and sampling method (%s) does not correspond to the"
                 " recommendation of the salib pacakge."
                 "\n https://salib.readthedocs.io/en/latest/api.html",
-                self.sampling_method, sensitivity_method
-                )
+                self.sampling_method,
+                sensitivity_method,
+            )
             return False
         return True
 
@@ -191,7 +199,7 @@ class UncOutput():
             Sampling method name
 
         """
-        return self.samples_df.attrs['sampling_method']
+        return self.samples_df.attrs["sampling_method"]
 
     @property
     def sampling_kwargs(self):
@@ -204,7 +212,7 @@ class UncOutput():
             Dictionary of arguments for SALib sampling method
 
         """
-        return self.samples_df.attrs['sampling_kwargs']
+        return self.samples_df.attrs["sampling_kwargs"]
 
     @property
     def n_samples(self):
@@ -246,10 +254,10 @@ class UncOutput():
 
         """
         return {
-            'num_vars' : len(self.param_labels),
-            'names' : self.param_labels,
-            'bounds' : [[0, 1]]*len(self.param_labels)
-            }
+            "num_vars": len(self.param_labels),
+            "names": self.param_labels,
+            "bounds": [[0, 1]] * len(self.param_labels),
+        }
 
     @property
     def uncertainty_metrics(self):
@@ -314,9 +322,8 @@ class UncOutput():
             metric_list = self.uncertainty_metrics
         try:
             unc_df = pd.concat(
-                [self.get_unc_df(metric) for metric in metric_list],
-                axis=1
-                )
+                [self.get_unc_df(metric) for metric in metric_list], axis=1
+            )
         except AttributeError:
             return pd.DataFrame([])
         return unc_df
@@ -358,14 +365,14 @@ class UncOutput():
         for metric in metric_list:
             submetric_df = self.get_sens_df(metric)
             if not submetric_df.empty:
-                submetric_df = submetric_df[submetric_df['si'] == salib_si]
+                submetric_df = submetric_df[submetric_df["si"] == salib_si]
                 df_all = pd.concat(
-                    [df_all, submetric_df.select_dtypes('number')],
-                    axis=1
-                    )
+                    [df_all, submetric_df.select_dtypes("number")], axis=1
+                )
                 if df_meta.empty:
                     df_meta = submetric_df.drop(
-                        submetric_df.select_dtypes('number').columns, axis=1)
+                        submetric_df.select_dtypes("number").columns, axis=1
+                    )
         return pd.concat([df_meta, df_all], axis=1).reset_index(drop=True)
 
     def get_largest_si(self, salib_si, metric_list=None, threshold=0.01):
@@ -394,25 +401,27 @@ class UncOutput():
 
         si_df = self.get_sensitivity(salib_si, metric_list)
 
-        #get max index
-        si_df_num = si_df.select_dtypes('number')
-        si_df_num[si_df_num<threshold] = 0 #remove noise whenn all si are 0
+        # get max index
+        si_df_num = si_df.select_dtypes("number")
+        si_df_num[si_df_num < threshold] = 0  # remove noise whenn all si are 0
         max_si_idx = si_df_num.idxmax().to_numpy()
         max_si_val = si_df_num.max().to_numpy()
 
-        #get parameter of max index
-        max_si_idx = np.nan_to_num(max_si_idx + 1).astype(int) # Set np.nan values to 0
-        param = np.concatenate((['None'], si_df['param']))
+        # get parameter of max index
+        max_si_idx = np.nan_to_num(max_si_idx + 1).astype(int)  # Set np.nan values to 0
+        param = np.concatenate((["None"], si_df["param"]))
         param_max_si = [param[idx] for idx in max_si_idx]
-        param2 = np.concatenate((['None'], si_df['param2']))
+        param2 = np.concatenate((["None"], si_df["param2"]))
         param2_max_si = [param2[idx] for idx in max_si_idx]
 
         max_si_df = pd.DataFrame(
-            {'metric' : si_df_num.columns,
-             'param' : param_max_si,
-             'param2' : param2_max_si,
-             'si' : max_si_val
-             })
+            {
+                "metric": si_df_num.columns,
+                "param": param_max_si,
+                "param2": param2_max_si,
+                "si": max_si_val,
+            }
+        )
 
         return max_si_df
 
@@ -446,23 +455,22 @@ class UncOutput():
         fontsize = 18
 
         if self.samples_df.empty:
-            raise ValueError("No uncertainty sample present."+
-                    "Please make a sample first.")
+            raise ValueError(
+                "No uncertainty sample present." + "Please make a sample first."
+            )
 
         nplots = len(self.param_labels)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if not figsize:
             figsize = (ncols * FIG_W, nrows * FIG_H)
         _fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
-        for ax, label in zip_longest(axes.flatten(),
-                                     self.param_labels,
-                                     fillvalue=None):
+        for ax, label in zip_longest(axes.flatten(), self.param_labels, fillvalue=None):
             if label is None:
                 ax.remove()
                 continue
             self.samples_df[label].hist(ax=ax, bins=100)
             ax.set_xlabel(label)
-            ax.set_ylabel('Sample count')
+            ax.set_ylabel("Sample count")
             ax.tick_params(labelsize=fontsize)
             for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
                 item.set_fontsize(fontsize)
@@ -471,8 +479,15 @@ class UncOutput():
 
         return axes
 
-    def plot_uncertainty(self, metric_list=None, orig_list=None, figsize=None,
-                         log=False, axes=None, calc_delta=False):
+    def plot_uncertainty(
+        self,
+        metric_list=None,
+        orig_list=None,
+        figsize=None,
+        log=False,
+        axes=None,
+        calc_delta=False,
+    ):
         """
         Plot the  uncertainty distribution
 
@@ -516,11 +531,13 @@ class UncOutput():
         uncertainty_metrics : list of all available uncertainty metrics
 
         """
-        fontsize = 18 #default label fontsize
+        fontsize = 18  # default label fontsize
 
         if not self.uncertainty_metrics:
-            raise ValueError("No uncertainty data present for these metrics. "+
-                    "Please run an uncertainty analysis first.")
+            raise ValueError(
+                "No uncertainty data present for these metrics. "
+                + "Please run an uncertainty analysis first."
+            )
 
         if orig_list is None:
             orig_list = []
@@ -530,13 +547,15 @@ class UncOutput():
                 metric
                 for metric in self.uncertainty_metrics
                 if metric not in METRICS_2D
-                ]
+            ]
 
         unc_df = self.get_uncertainty(metric_list)
 
         if unc_df.empty:
-            raise AttributeError(f"The listed metrics {metric_list} either "
-                 "do not exist or have no uncertainty values.")
+            raise AttributeError(
+                f"The listed metrics {metric_list} either "
+                "do not exist or have no uncertainty values."
+            )
 
         if log:
             unc_df_plt = unc_df.apply(np.log10).copy()
@@ -550,15 +569,15 @@ class UncOutput():
         if axes is None:
             if not figsize:
                 figsize = (ncols * FIG_W, nrows * FIG_H)
-            _fig, axes = plt.subplots(nrows = nrows,
-                                     ncols = ncols,
-                                     figsize = figsize)
+            _fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
             flat_axes = np.array([axes])
 
-        for ax, col, orig_val in zip_longest(flat_axes, cols, orig_list, fillvalue=None):
+        for ax, col, orig_val in zip_longest(
+            flat_axes, cols, orig_list, fillvalue=None
+        ):
             if col is None:
                 if ax is not None:
                     ax.remove()
@@ -569,11 +588,17 @@ class UncOutput():
             if data.empty or data.isna().all() or data.dropna().shape[0] < 2:
                 print(f"No data to plot for '{col}'.")
                 if ax is not None:
-                    ax.text(0.5, 0.5, 'No data to plot', fontsize=18,
-                            horizontalalignment='center', verticalalignment='center',
-                            transform=ax.transAxes)
+                    ax.text(
+                        0.5,
+                        0.5,
+                        "No data to plot",
+                        fontsize=18,
+                        horizontalalignment="center",
+                        verticalalignment="center",
+                        transform=ax.transAxes,
+                    )
                     ax.set_xlabel(col)
-                    ax.set_ylabel('density of samples')
+                    ax.set_ylabel("density of samples")
                     ax.tick_params(labelsize=fontsize)
                     for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
                         item.set_fontsize(fontsize)
@@ -583,10 +608,16 @@ class UncOutput():
             if data.empty:
                 ax.remove()
                 continue
-            data.hist(ax=ax, bins=30, density=True, histtype='bar',
-                      color='lightsteelblue', edgecolor='black')
+            data.hist(
+                ax=ax,
+                bins=30,
+                density=True,
+                histtype="bar",
+                color="lightsteelblue",
+                edgecolor="black",
+            )
             try:
-                data.plot.kde(ax=ax, color='darkblue', linewidth=4, label='')
+                data.plot.kde(ax=ax, color="darkblue", linewidth=4, label="")
             except np.linalg.LinAlgError:
                 pass
             avg, std = data.mean(), data.std()
@@ -595,33 +626,46 @@ class UncOutput():
                 avg_plot = np.log10(avg)
             else:
                 avg_plot = avg
-            ax.axvline(avg_plot, color='darkorange', linestyle='dashed', linewidth=2,
-                    label="avg=%.2f%s" %(avg, m_unit))
+            ax.axvline(
+                avg_plot,
+                color="darkorange",
+                linestyle="dashed",
+                linewidth=2,
+                label="avg=%.2f%s" % (avg, m_unit),
+            )
             if orig_val is not None:
                 if log:
                     orig_plot = np.log10(orig_val)
                 else:
                     orig_plot = orig_val
                 [orig_plot] = u_cmv(orig_plot, m_unit)
-                ax.axvline(orig_plot, color='green', linestyle='dotted', linewidth=2,
-                           label="orig=%.2f%s" %(orig_plot, m_unit))
+                ax.axvline(
+                    orig_plot,
+                    color="green",
+                    linestyle="dotted",
+                    linewidth=2,
+                    label="orig=%.2f%s" % (orig_plot, m_unit),
+                )
             if log:
                 std_m, std_p = np.log10(avg - std), np.log10(avg + std)
             else:
                 std_m, std_p = avg - std, avg + std
-            ax.plot([std_m, std_p],
-                    [0.3 * ymax, 0.3 * ymax], color='black',
-                    label="std=%.2f%s" %(std, m_unit))
-            xlabel = col + ' [' + m_unit + ' ' + self.unit + '] '
+            ax.plot(
+                [std_m, std_p],
+                [0.3 * ymax, 0.3 * ymax],
+                color="black",
+                label="std=%.2f%s" % (std, m_unit),
+            )
+            xlabel = col + " [" + m_unit + " " + self.unit + "] "
             if calc_delta:
                 # Modify the xlabel when calc_delta is True
-                xlabel = col + ' change [%]'
+                xlabel = col + " change [%]"
             if log:
-                ax.set_xlabel( xlabel + ' (log10 scale)')
+                ax.set_xlabel(xlabel + " (log10 scale)")
             else:
                 ax.set_xlabel(xlabel)
-            ax.set_ylabel('density of samples')
-            ax.legend(fontsize=fontsize-2)
+            ax.set_ylabel("density of samples")
+            ax.legend(fontsize=fontsize - 2)
 
             ax.tick_params(labelsize=fontsize)
             for item in [ax.title, ax.xaxis.label, ax.yaxis.label]:
@@ -631,9 +675,9 @@ class UncOutput():
 
         return axes
 
-
-    def plot_rp_uncertainty(self, orig_list=None, figsize=(16, 6), axes=None,
-                            calc_delta=False):
+    def plot_rp_uncertainty(
+        self, orig_list=None, figsize=(16, 6), axes=None, calc_delta=False
+    ):
         """
         Plot the distribution of return period uncertainty
 
@@ -667,23 +711,27 @@ class UncOutput():
         except AttributeError:
             unc_df = None
         if unc_df is None or unc_df.empty:
-            raise ValueError("No return period uncertainty data present "
-                    "Please run an uncertainty analysis with the desired "
-                    "return period specified.")
+            raise ValueError(
+                "No return period uncertainty data present "
+                "Please run an uncertainty analysis with the desired "
+                "return period specified."
+            )
 
-        add_orig=True
+        add_orig = True
         if orig_list is None:
-            add_orig=False
+            add_orig = False
 
         if axes is None:
             _fig, axes = plt.subplots(figsize=figsize, nrows=1, ncols=2)
 
-        [min_l, max_l], m_unit = u_vtm([unc_df.min().min(), unc_df.max().max()], n_sig_dig=4)
+        [min_l, max_l], m_unit = u_vtm(
+            [unc_df.min().min(), unc_df.max().max()], n_sig_dig=4
+        )
 
         # Plotting for the first axes
         ax = axes[0]
-        prop_cycle = plt.rcParams['axes.prop_cycle']
-        colors = prop_cycle.by_key()['color']
+        prop_cycle = plt.rcParams["axes.prop_cycle"]
+        colors = prop_cycle.by_key()["color"]
 
         for n, (_name, values) in enumerate(unc_df.items()):
             if values.isna().all() or len(values.dropna()) < 2:
@@ -692,67 +740,92 @@ class UncOutput():
             values = u_cmv(values, m_unit, n_sig_dig=4)
             count, division = np.histogram(values, bins=100)
             count = count / count.max()
-            losses = [(bin_i + bin_f)/2 for (bin_i, bin_f) in zip(division[:-1], division[1:])]
-            ax.plot([min_l, max_l], [2*n, 2*n], color='k', alpha=0.5)
-            ax.fill_between(losses, count + 2*n, 2*n)
+            losses = [
+                (bin_i + bin_f) / 2
+                for (bin_i, bin_f) in zip(division[:-1], division[1:])
+            ]
+            ax.plot([min_l, max_l], [2 * n, 2 * n], color="k", alpha=0.5)
+            ax.fill_between(losses, count + 2 * n, 2 * n)
             if add_orig:
                 [orig_val] = u_cmv(orig_list[n], m_unit, n_sig_dig=4)
                 ax.plot(
-                    [orig_val, orig_val], [2*n, 2*(n+1)],
-                    color=colors[n], linestyle='dotted', linewidth=2,
-                    label="orig=%.2f%s" %(orig_val, m_unit)
+                    [orig_val, orig_val],
+                    [2 * n, 2 * (n + 1)],
+                    color=colors[n],
+                    linestyle="dotted",
+                    linewidth=2,
+                    label="orig=%.2f%s" % (orig_val, m_unit),
                 )
 
         ax.set_xlim(min_l, max_l)
-        ax.set_ylim(0, 2*unc_df.shape[1])
-        ax.set_yticks(np.arange(0, 2*unc_df.shape[1], 2))
+        ax.set_ylim(0, 2 * unc_df.shape[1])
+        ax.set_yticks(np.arange(0, 2 * unc_df.shape[1], 2))
         ax.set_yticklabels([s[2:] for s in unc_df.columns])
-        ax.legend(loc='lower right')
+        ax.legend(loc="lower right")
 
         # Set x-axis label for the first axes
         if calc_delta:
-            ax.set_xlabel('Impact change [%]')
+            ax.set_xlabel("Impact change [%]")
         else:
-            ax.set_xlabel('Impact [%s %s]' % (m_unit, self.unit))
+            ax.set_xlabel("Impact [%s %s]" % (m_unit, self.unit))
 
-        ax.set_ylabel('Return period [years]')
+        ax.set_ylabel("Return period [years]")
 
         # Plotting for the second axes
         ax = axes[1]
-        high = u_cmv(self.get_unc_df('freq_curve').quantile(0.95).values,
-                     m_unit, n_sig_dig=4)
-        middle = u_cmv(self.get_unc_df('freq_curve').quantile(0.5).values,
-                       m_unit, n_sig_dig=4)
-        low = u_cmv(self.get_unc_df('freq_curve').quantile(0.05).values,
-                    m_unit, n_sig_dig=4)
+        high = u_cmv(
+            self.get_unc_df("freq_curve").quantile(0.95).values, m_unit, n_sig_dig=4
+        )
+        middle = u_cmv(
+            self.get_unc_df("freq_curve").quantile(0.5).values, m_unit, n_sig_dig=4
+        )
+        low = u_cmv(
+            self.get_unc_df("freq_curve").quantile(0.05).values, m_unit, n_sig_dig=4
+        )
 
         x = [float(rp[2:]) for rp in unc_df.columns]
-        ax.plot(x, high, linestyle='--', color='blue', alpha=0.5,
-                label='0.95 percentile')
-        ax.plot(x, middle, label='0.5 percentile')
-        ax.plot(x, low, linestyle='dashdot', color='blue', alpha=0.5,
-                label='0.05 percentile')
+        ax.plot(
+            x, high, linestyle="--", color="blue", alpha=0.5, label="0.95 percentile"
+        )
+        ax.plot(x, middle, label="0.5 percentile")
+        ax.plot(
+            x,
+            low,
+            linestyle="dashdot",
+            color="blue",
+            alpha=0.5,
+            label="0.05 percentile",
+        )
         ax.fill_between(x, low, high, alpha=0.2)
         if add_orig:
-            ax.plot(x, u_cmv(orig_list, m_unit, n_sig_dig=4), color='green',
-                    linestyle='dotted', label='orig')
-        ax.set_xlabel('Return period [year]')
+            ax.plot(
+                x,
+                u_cmv(orig_list, m_unit, n_sig_dig=4),
+                color="green",
+                linestyle="dotted",
+                label="orig",
+            )
+        ax.set_xlabel("Return period [year]")
 
         # Set y-axis label for the second axes
         if calc_delta:
-            ax.set_ylabel('Impact change [%]')
+            ax.set_ylabel("Impact change [%]")
         else:
-            ax.set_ylabel('Impact [' + m_unit + ' ' + self.unit + ']')
+            ax.set_ylabel("Impact [" + m_unit + " " + self.unit + "]")
 
         ax.legend()
 
         return axes
 
-
-
-    def plot_sensitivity(self, salib_si='S1', salib_si_conf='S1_conf',
-                         metric_list=None, figsize=None, axes=None,
-                         **kwargs):
+    def plot_sensitivity(
+        self,
+        salib_si="S1",
+        salib_si_conf="S1_conf",
+        metric_list=None,
+        figsize=None,
+        axes=None,
+        **kwargs,
+    ):
         """
         Bar plot of a first order sensitivity index
 
@@ -813,54 +886,63 @@ class UncOutput():
         """
 
         if not self.sensitivity_metrics:
-            raise ValueError("No sensitivity present. "
-                    "Please run a sensitivity analysis first.")
+            raise ValueError(
+                "No sensitivity present. " "Please run a sensitivity analysis first."
+            )
 
         if metric_list is None:
             metric_list = [
                 metric
                 for metric in self.sensitivity_metrics
                 if metric not in METRICS_2D
-                ]
+            ]
 
         nplots = len(metric_list)
         nrows, ncols = int(np.ceil(nplots / 2)), min(nplots, 2)
         if axes is None:
             if not figsize:
                 figsize = (ncols * FIG_W, nrows * FIG_H)
-            _fig, axes = plt.subplots(nrows = nrows,
-                                     ncols = ncols,
-                                     figsize = figsize)
+            _fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
         if nplots > 1:
             flat_axes = axes.flatten()
         else:
             flat_axes = np.array([axes])
 
         for ax, metric in zip(flat_axes, metric_list):
-            df_S = self.get_sensitivity(salib_si, [metric]).select_dtypes('number')
+            df_S = self.get_sensitivity(salib_si, [metric]).select_dtypes("number")
             if not df_S.columns[df_S.isnull().all()].empty:
-                LOGGER.warning("All-NaN columns encountered: %s",
-                               list(df_S.columns[df_S.isnull().all()]))
+                LOGGER.warning(
+                    "All-NaN columns encountered: %s",
+                    list(df_S.columns[df_S.isnull().all()]),
+                )
             df_S = df_S.loc[:, df_S.notnull().any()]
             if df_S.empty:
-                ax.set_xlabel('Input parameter')
+                ax.set_xlabel("Input parameter")
                 ax.remove()
                 continue
-            df_S_conf = self.get_sensitivity(salib_si_conf, [metric]).select_dtypes('number')
+            df_S_conf = self.get_sensitivity(salib_si_conf, [metric]).select_dtypes(
+                "number"
+            )
             df_S_conf = df_S_conf.loc[:, df_S.columns]
             if df_S_conf.empty:
-                df_S.plot(ax=ax, kind='bar', **kwargs)
-            df_S.plot(ax=ax, kind='bar', yerr=df_S_conf, **kwargs)
+                df_S.plot(ax=ax, kind="bar", **kwargs)
+            df_S.plot(ax=ax, kind="bar", yerr=df_S_conf, **kwargs)
             ax.set_xticklabels(self.param_labels, rotation=0)
-            ax.set_xlabel('Input parameter')
+            ax.set_xlabel("Input parameter")
             ax.set_ylabel(salib_si)
         plt.tight_layout()
 
         return axes
 
-    def plot_sensitivity_second_order(self, salib_si='S2', salib_si_conf='S2_conf',
-                                      metric_list=None, figsize=None, axes=None,
-                                      **kwargs):
+    def plot_sensitivity_second_order(
+        self,
+        salib_si="S2",
+        salib_si_conf="S2_conf",
+        metric_list=None,
+        figsize=None,
+        axes=None,
+        **kwargs,
+    ):
         """
         Plot second order sensitivity indices as matrix.
 
@@ -916,33 +998,34 @@ class UncOutput():
         """
 
         if not self.sensitivity_metrics:
-            raise ValueError("No sensitivity present for this metrics. "
-                    "Please run a sensitivity analysis first.")
+            raise ValueError(
+                "No sensitivity present for this metrics. "
+                "Please run a sensitivity analysis first."
+            )
 
         if metric_list is None:
             metric_list = [
                 metric
                 for metric in self.sensitivity_metrics
                 if metric not in METRICS_2D
-                ]
+            ]
 
+        if "cmap" not in kwargs.keys():
+            kwargs["cmap"] = "summer"
 
-        if 'cmap' not in kwargs.keys():
-            kwargs['cmap'] = 'summer'
-
-        #all the lowest level metrics (e.g. rp10) directly or as
-        #submetrics of the metrics in metrics_list
-        df_S = self.get_sensitivity(salib_si, metric_list).select_dtypes('number')
-        df_S_conf = self.get_sensitivity(salib_si_conf, metric_list).select_dtypes('number')
+        # all the lowest level metrics (e.g. rp10) directly or as
+        # submetrics of the metrics in metrics_list
+        df_S = self.get_sensitivity(salib_si, metric_list).select_dtypes("number")
+        df_S_conf = self.get_sensitivity(salib_si_conf, metric_list).select_dtypes(
+            "number"
+        )
 
         nplots = len(df_S.columns)
         nrows, ncols = int(np.ceil(nplots / 3)), min(nplots, 3)
         if axes is None:
             if not figsize:
                 figsize = (ncols * 5, nrows * 5)
-            _fig, axes = plt.subplots(nrows = nrows,
-                                     ncols = ncols,
-                                     figsize = figsize)
+            _fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=figsize)
 
         if nplots > 1:
             flat_axes = axes.flatten()
@@ -950,37 +1033,46 @@ class UncOutput():
             flat_axes = np.array([axes])
 
         for ax, submetric in zip(flat_axes, df_S.columns):
-            #Make matrix symmetric
+            # Make matrix symmetric
             s2_matrix = np.triu(
-                np.reshape(
-                    df_S[submetric].to_numpy(),
-                    (len(self.param_labels), -1)
-                    )
-                )
+                np.reshape(df_S[submetric].to_numpy(), (len(self.param_labels), -1))
+            )
             s2_matrix = s2_matrix + s2_matrix.T - np.diag(np.diag(s2_matrix))
             ax.imshow(s2_matrix, **kwargs)
             s2_conf_matrix = np.triu(
                 np.reshape(
-                    df_S_conf[submetric].to_numpy(),
-                    (len(self.param_labels), -1)
-                    )
+                    df_S_conf[submetric].to_numpy(), (len(self.param_labels), -1)
                 )
-            s2_conf_matrix = s2_conf_matrix + s2_conf_matrix.T - \
-                np.diag(np.diag(s2_conf_matrix))
+            )
+            s2_conf_matrix = (
+                s2_conf_matrix + s2_conf_matrix.T - np.diag(np.diag(s2_conf_matrix))
+            )
             for i in range(len(s2_matrix)):
                 for j in range(len(s2_matrix)):
                     if np.isnan(s2_matrix[i, j]):
-                        ax.text(j, i, np.nan,
-                           ha="center", va="center",
-                           color="k", fontsize='medium')
+                        ax.text(
+                            j,
+                            i,
+                            np.nan,
+                            ha="center",
+                            va="center",
+                            color="k",
+                            fontsize="medium",
+                        )
                     else:
-                        ax.text(j, i,
-                            str(round(s2_matrix[i, j], 2)) + u'\n\u00B1' +  #\u00B1 = +-
-                            str(round(s2_conf_matrix[i, j], 2)),
-                            ha="center", va="center",
-                            color="k", fontsize='medium')
+                        ax.text(
+                            j,
+                            i,
+                            str(round(s2_matrix[i, j], 2))
+                            + "\n\u00B1"  # \u00B1 = +-
+                            + str(round(s2_conf_matrix[i, j], 2)),
+                            ha="center",
+                            va="center",
+                            color="k",
+                            fontsize="medium",
+                        )
 
-            ax.set_title(salib_si + ' - ' + submetric, fontsize=18)
+            ax.set_title(salib_si + " - " + submetric, fontsize=18)
             labels = self.param_labels
             ax.set_xticks(np.arange(len(labels)))
             ax.set_yticks(np.arange(len(labels)))
@@ -990,7 +1082,7 @@ class UncOutput():
 
         return axes
 
-    def plot_sensitivity_map(self, salib_si='S1', **kwargs):
+    def plot_sensitivity_map(self, salib_si="S1", **kwargs):
         """
         Plot a map of the largest sensitivity index in each exposure point
 
@@ -1022,35 +1114,33 @@ class UncOutput():
 
         """
 
-        eai_max_si_df = self.get_largest_si(salib_si, metric_list=['eai_exp'])
+        eai_max_si_df = self.get_largest_si(salib_si, metric_list=["eai_exp"])
 
-        plot_val = eai_max_si_df['param']
-        coord = np.array([self.coord_df['latitude'], self.coord_df['longitude']]).transpose()  # pylint: disable=no-member
-        if 'var_name' not in kwargs:
-            kwargs['var_name'] = 'Input parameter with largest ' + salib_si
-        if 'title' not in kwargs:
-            kwargs['title'] = ''
-        if 'figsize' not in kwargs:
-            kwargs['figsize'] = (8,6)
-        if 'cmap' not in kwargs:
+        plot_val = eai_max_si_df["param"]
+        coord = np.array(
+            [self.coord_df["latitude"], self.coord_df["longitude"]]
+        ).transpose()  # pylint: disable=no-member
+        if "var_name" not in kwargs:
+            kwargs["var_name"] = "Input parameter with largest " + salib_si
+        if "title" not in kwargs:
+            kwargs["title"] = ""
+        if "figsize" not in kwargs:
+            kwargs["figsize"] = (8, 6)
+        if "cmap" not in kwargs:
             labels = np.unique(plot_val)
-            n=np.where(labels=='None')[0]
-            if len(n) > 0 :
+            n = np.where(labels == "None")[0]
+            if len(n) > 0:
                 n = n[0]
                 cmap = mpl.colors.ListedColormap(
-                    cm.get_cmap(MAP_CMAP).colors[:len(labels)]
-                    )
+                    cm.get_cmap(MAP_CMAP).colors[: len(labels)]
+                )
                 colors = list(cmap.colors)
                 colors[n] = tuple(np.repeat(0.93, 3))
                 cmap.colors = tuple(colors)
-                kwargs['cmap'] = cmap
-        ax = u_plot.geo_scatter_categorical(
-                plot_val, coord,
-                **kwargs
-                )
+                kwargs["cmap"] = cmap
+        ax = u_plot.geo_scatter_categorical(plot_val, coord, **kwargs)
 
         return ax
-
 
     def to_hdf5(self, filename=None):
         """
@@ -1070,29 +1160,27 @@ class UncOutput():
 
         """
         if filename is None:
-            filename = "unc_output" + dt.datetime.now().strftime(
-                                                            "%Y-%m-%d-%H%M%S"
-                                                            )
+            filename = "unc_output" + dt.datetime.now().strftime("%Y-%m-%d-%H%M%S")
             filename = Path(DATA_DIR) / Path(filename)
         save_path = Path(filename)
-        save_path = save_path.with_suffix('.hdf5')
+        save_path = save_path.with_suffix(".hdf5")
 
-        LOGGER.info('Writing %s', save_path)
-        store = pd.HDFStore(save_path, mode='w')
-        for (var_name, var_val) in self.__dict__.items():
+        LOGGER.info("Writing %s", save_path)
+        store = pd.HDFStore(save_path, mode="w")
+        for var_name, var_val in self.__dict__.items():
             if isinstance(var_val, pd.DataFrame):
-                store.put(var_name, var_val, format='fixed', complevel=9)
-        store.get_storer('/samples_df').attrs.metadata = self.samples_df.attrs
+                store.put(var_name, var_val, format="fixed", complevel=9)
+        store.get_storer("/samples_df").attrs.metadata = self.samples_df.attrs
         store.close()
 
         str_dt = h5py.special_dtype(vlen=str)
-        with h5py.File(save_path, 'a') as fh:
-            if getattr(self, 'unit'):
-                fh['impact_unit'] = [self.unit]
-            if hasattr(self, 'sensitivity_method'):
+        with h5py.File(save_path, "a") as fh:
+            if getattr(self, "unit"):
+                fh["impact_unit"] = [self.unit]
+            if hasattr(self, "sensitivity_method"):
                 if self.sensitivity_method:
-                    fh['sensitivity_method'] = [self.sensitivity_method]
-            if hasattr(self, 'sensitivity_kwargs'):
+                    fh["sensitivity_method"] = [self.sensitivity_method]
+            if hasattr(self, "sensitivity_kwargs"):
                 if self.sensitivity_kwargs:
                     grp = fh.create_group("sensitivity_kwargs")
                     for key, value in dict(self.sensitivity_kwargs).items():
@@ -1115,41 +1203,50 @@ class UncOutput():
         unc_output: climada.engine.uncertainty.unc_output.UncOutput
             Uncertainty and sensitivity data loaded from .hdf5 file.
         """
-        filename = Path(filename).with_suffix('.hdf5')
+        filename = Path(filename).with_suffix(".hdf5")
         if not filename.exists():
-            LOGGER.info('File not found')
+            LOGGER.info("File not found")
             return None
 
         unc_data = UncOutput(pd.DataFrame())
 
-        LOGGER.info('Reading %s', filename)
-        store = pd.HDFStore(filename, mode='r')
+        LOGGER.info("Reading %s", filename)
+        store = pd.HDFStore(filename, mode="r")
         for var_name in store.keys():
             setattr(unc_data, var_name[1:], store.get(var_name))
-        unc_data.samples_df.attrs = store.get_storer('/samples_df').attrs.metadata
+        unc_data.samples_df.attrs = store.get_storer("/samples_df").attrs.metadata
         store.close()
-        with h5py.File(filename, 'r') as fh:
-            if 'impact_unit' in list(fh.keys()):
-                unc_data.unit = fh.get('impact_unit')[0].decode('UTF-8')
-            if 'sensitivity_method' in list(fh.keys()):
-                unc_data.sensitivity_method = \
-                    fh.get('sensitivity_method')[0].decode('UTF-8')
-            if 'sensitivity_kwargs' in list(fh.keys()):
+        with h5py.File(filename, "r") as fh:
+            if "impact_unit" in list(fh.keys()):
+                unc_data.unit = fh.get("impact_unit")[0].decode("UTF-8")
+            if "sensitivity_method" in list(fh.keys()):
+                unc_data.sensitivity_method = fh.get("sensitivity_method")[0].decode(
+                    "UTF-8"
+                )
+            if "sensitivity_kwargs" in list(fh.keys()):
                 grp = fh["sensitivity_kwargs"]
                 sens_kwargs = {
-                    key: u_hdf5.to_string(grp.get(key)[0])
-                    for key in grp.keys()
-                    }
+                    key: u_hdf5.to_string(grp.get(key)[0]) for key in grp.keys()
+                }
                 unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
         return unc_data
 
 
 class UncImpactOutput(UncOutput):
     """Extension of UncOutput specific for CalcImpact, returned by the
-        uncertainty() method.
+    uncertainty() method.
     """
-    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df,
-                 eai_exp_unc_df, at_event_unc_df, coord_df):
+
+    def __init__(
+        self,
+        samples_df,
+        unit,
+        aai_agg_unc_df,
+        freq_curve_unc_df,
+        eai_exp_unc_df,
+        at_event_unc_df,
+        coord_df,
+    ):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
@@ -1186,11 +1283,21 @@ class UncImpactOutput(UncOutput):
         self.at_event_sens_df = None
         self.coord_df = coord_df
 
+
 class UncDeltaImpactOutput(UncOutput):
-    """Extension of UncOutput specific for CalcDeltaImpact, returned by the  uncertainty() method.
-    """
-    def __init__(self, samples_df, unit, aai_agg_unc_df, freq_curve_unc_df, eai_exp_unc_df,
-                 at_event_initial_unc_df, at_event_final_unc_df, coord_df):
+    """Extension of UncOutput specific for CalcDeltaImpact, returned by the  uncertainty() method."""
+
+    def __init__(
+        self,
+        samples_df,
+        unit,
+        aai_agg_unc_df,
+        freq_curve_unc_df,
+        eai_exp_unc_df,
+        at_event_initial_unc_df,
+        at_event_final_unc_df,
+        coord_df,
+    ):
         """Constructor
 
         Uncertainty output values from impact.calc for each sample
@@ -1234,11 +1341,19 @@ class UncDeltaImpactOutput(UncOutput):
 
 
 class UncCostBenefitOutput(UncOutput):
-    """Extension of UncOutput specific for CalcCostBenefit, returned by the uncertainty() method.
-    """
-    def __init__(self, samples_df, unit, imp_meas_present_unc_df, imp_meas_future_unc_df,
-                 tot_climate_risk_unc_df, benefit_unc_df, cost_ben_ratio_unc_df,
-                 cost_benefit_kwargs):
+    """Extension of UncOutput specific for CalcCostBenefit, returned by the uncertainty() method."""
+
+    def __init__(
+        self,
+        samples_df,
+        unit,
+        imp_meas_present_unc_df,
+        imp_meas_future_unc_df,
+        tot_climate_risk_unc_df,
+        benefit_unc_df,
+        cost_ben_ratio_unc_df,
+        cost_benefit_kwargs,
+    ):
         """Constructor
 
         Uncertainty output values from cost_benefit.calc for each sample
@@ -1270,9 +1385,9 @@ class UncCostBenefitOutput(UncOutput):
 
         """
         super().__init__(samples_df, unit)
-        self.imp_meas_present_unc_df= imp_meas_present_unc_df
+        self.imp_meas_present_unc_df = imp_meas_present_unc_df
         self.imp_meas_present_sens_df = None
-        self.imp_meas_future_unc_df= imp_meas_future_unc_df
+        self.imp_meas_future_unc_df = imp_meas_future_unc_df
         self.imp_meas_future_sens_df = None
         self.tot_climate_risk_unc_df = tot_climate_risk_unc_df
         self.tot_climate_risk_sens_df = None
