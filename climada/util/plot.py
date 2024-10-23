@@ -44,6 +44,7 @@ from cartopy.io import shapereader
 from cartopy.mpl.gridliner import LONGITUDE_FORMATTER, LATITUDE_FORMATTER
 from rasterio.crs import CRS
 import requests
+import geopandas as gpd
 
 from climada.util.constants import CMAP_EXPOSURES, CMAP_CAT, CMAP_RASTER
 from climada.util.files_handler import to_list
@@ -308,10 +309,15 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if not proj:
         mid_lon = 0.5 * sum(extent[:2])
         proj = ccrs.PlateCarree(central_longitude=mid_lon)
-    if 'vmin' not in kwargs:
-        kwargs['vmin'] = np.nanmin(array_sub)
-    if 'vmax' not in kwargs:
-        kwargs['vmax'] = np.nanmax(array_sub)
+
+    if "norm" in kwargs:
+        min_value = kwargs["norm"].vmin
+    else:
+        kwargs['vmin'] = kwargs.get("vmin", np.nanmin(array_sub))
+        min_value = kwargs['vmin']
+        kwargs['vmax'] = kwargs.get("vmax", np.nanmax(array_sub))
+    min_value = min_value/2 if min_value > 0 else min_value-1
+
     if axes is None:
         proj_plot = proj
         if isinstance(proj, ccrs.PlateCarree):
@@ -327,8 +333,10 @@ def geo_im_from_array(array_sub, coord, var_name, title,
     if not isinstance(axes, np.ndarray):
         axes_iter = np.array([[axes]])
 
-    if 'cmap' not in kwargs:
-        kwargs['cmap'] = CMAP_RASTER
+    # prepare colormap
+    cmap = plt.get_cmap(kwargs.pop("cmap", CMAP_RASTER))
+    cmap.set_bad("gainsboro")  # For NaNs and infs
+    cmap.set_under("white", alpha=0)  # For values below vmin
 
     # Generate each subplot
     for array_im, axis, tit, name in zip(list_arr, axes_iter.flatten(), list_tit, list_name):
@@ -339,8 +347,11 @@ def geo_im_from_array(array_sub, coord, var_name, title,
             grid_x, grid_y = np.mgrid[
                 extent[0]: extent[1]: complex(0, RESOLUTION),
                 extent[2]: extent[3]: complex(0, RESOLUTION)]
-            grid_im = griddata((coord[:, 1], coord[:, 0]), array_im,
-                               (grid_x, grid_y))
+            grid_im = griddata(
+                (coord[:, 1], coord[:, 0]),
+                array_im,
+                (grid_x, grid_y),
+                fill_value=min_value)
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()
             grid_y = coord[:, 0].reshape((width, height)).transpose()
@@ -358,8 +369,14 @@ def geo_im_from_array(array_sub, coord, var_name, title,
         # Create colormesh, colorbar and labels in axis
         cbax = make_axes_locatable(axis).append_axes('right', size="6.5%",
                                                      pad=0.1, axes_class=plt.Axes)
-        img = axis.pcolormesh(grid_x - mid_lon, grid_y, np.squeeze(grid_im),
-                              transform=proj, **kwargs)
+        img = axis.pcolormesh(
+            grid_x - mid_lon,
+            grid_y,
+            np.squeeze(grid_im),
+            transform=proj,
+            cmap=cmap,
+            **kwargs
+        )
         cbar = plt.colorbar(img, cax=cbax, orientation='vertical')
         cbar.set_label(name)
         axis.set_title("\n".join(wrap(tit)))
@@ -874,3 +891,89 @@ def multibar_plot(ax, data, colors=None, total_width=0.8, single_width=1,
     # Draw legend if we need
     if legend:
         ax.legend(bars, data.keys())
+
+def plot_from_gdf(
+        gdf: gpd.GeoDataFrame,
+        colorbar_name: str = None,
+        title_subplots: callable = None,
+        smooth=True,
+        axis=None,
+        figsize=(9, 13),
+        adapt_fontsize=True,
+        **kwargs
+):
+    """Plot several subplots from different columns of a GeoDataFrame, e.g., for 
+    plotting local return periods or local exceedance intensities.
+
+    Parameters
+    ----------
+    gdf: gpd.GeoDataFrame
+        return periods per threshold intensity
+    colorbar_name: str
+        title of the subplots' colorbars
+    title_subplots: function
+        function that generates the titles of the different subplots using the columns' names
+    smooth: bool, optional
+        Smooth plot to plot.RESOLUTION x plot.RESOLUTION. Default is True
+    axis: matplotlib.axes._subplots.AxesSubplot, optional
+        Axis to use. Default is None
+    figsize: tuple, optional
+        Figure size for plt.subplots. Default is (9, 13)
+    adapt_fontsize: bool, optional
+        If set to true, the size of the fonts will be adapted to the size of the figure.
+        Otherwise the default matplotlib font size is used. Default is True.
+    kwargs: optional
+        Arguments for pcolormesh matplotlib function used in event plots.
+
+    Returns
+    -------
+    axis: matplotlib.axes._subplots.AxesSubplot
+        Matplotlib axis with the plot.
+    """
+    # check if inputs are correct types
+    if not isinstance(gdf, gpd.GeoDataFrame):
+        raise ValueError("gdf is not a GeoDataFrame")
+    gdf_values = gdf.drop(columns='geometry').values.T
+
+    # read meta data for fig and axis labels
+    if not isinstance(colorbar_name, str):
+        print("Unknown colorbar name. Colorbar label will be missing.")
+        colorbar_name = ''
+    if not callable(title_subplots):
+        print("Unknown subplot-title-generation function. Subplot titles will be column names.")
+        title_subplots = lambda cols: [f"{col}" for col in cols]
+
+    # use log colorbar for return periods and impact
+    if (
+        colorbar_name.strip().startswith(('Return Period', 'Impact')) and
+        'norm' not in kwargs.keys() and
+        # check if there are no zeros values in gdf
+        not np.any(gdf_values == 0) and
+        # check if value range too small for logarithmic colorscale
+        (np.log10(np.nanmax(gdf_values)) - np.log10(np.nanmin(gdf_values))) > 2
+    ):
+        kwargs.update(
+            {'norm': mpl.colors.LogNorm(
+                vmin=np.nanmin(gdf_values), vmax=np.nanmax(gdf_values)
+                ),
+            'vmin': None, 'vmax': None}
+        )
+
+    # use inverted color bar for return periods
+    if (colorbar_name.strip().startswith('Return Period') and
+        'cmap' not in kwargs.keys()):
+        kwargs.update({'cmap': 'viridis_r'})
+
+    axis = geo_im_from_array(
+        gdf_values,
+        gdf.geometry.get_coordinates().values[:,::-1],
+        colorbar_name,
+        title_subplots(np.delete(gdf.columns, np.where(gdf.columns == 'geometry'))),
+        smooth=smooth,
+        axes=axis,
+        figsize=figsize,
+        adapt_fontsize=adapt_fontsize,
+        **kwargs
+    )
+
+    return axis
