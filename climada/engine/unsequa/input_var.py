@@ -722,9 +722,9 @@ def _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise):
     if EN is not None:
         rng = np.random.RandomState(int(EN))
         rnd_vals = rng.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
-        exp_tmp.gdf.value *= rnd_vals
+        exp_tmp.gdf['value'] *= rnd_vals
     if ET is not None:
-        exp_tmp.gdf.value *= ET
+        exp_tmp.gdf['value'] *= ET
     return exp_tmp
 
 def _exp_unc_dict(bounds_totval, bounds_noise, n_exp):

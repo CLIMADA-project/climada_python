@@ -173,11 +173,8 @@ class ImpactFunc():
 
         """ Step function type impact function.
 
-        By default, everything is destroyed above the step.
+        By default, the impact is 100% above the step.
         Useful for high resolution modelling.
-
-        This method modifies self (climada.entity.impact_funcs instance)
-        by assigning an id, intensity, mdd and paa to the impact function.
 
         Parameters
         ----------
@@ -226,12 +223,14 @@ class ImpactFunc():
         haz_type: str,
         impf_id: int = 1,
         **kwargs):
-        """Sigmoid type impact function hinging on three parameter.
+        r"""Sigmoid type impact function hinging on three parameter.
 
         This type of impact function is very flexible for any sort of study,
         hazard and resolution. The sigmoid is defined as:
 
-        .. math:: f(x) = \\frac{L}{1+exp^{-k(x-x0)}}
+        .. math::
+
+           f(x) = \frac{L}{1+e^{-k(x-x0)}}
 
         For more information: https://en.wikipedia.org/wiki/Logistic_function
 
@@ -240,7 +239,7 @@ class ImpactFunc():
 
         Parameters
         ----------
-        intensity: tuple(float, float, float)
+        intensity : tuple(float, float, float)
             tuple of 3 intensity numbers along np.arange(min, max, step)
         L : float
             "top" of sigmoid
@@ -273,3 +272,88 @@ class ImpactFunc():
         LOGGER.warning("The use of ImpactFunc.set_sigmoid_impf is deprecated."
                        "Use ImpactFunc.from_sigmoid_impf instead.")
         self.__dict__ = ImpactFunc.from_sigmoid_impf(*args, **kwargs).__dict__
+
+    @classmethod
+    def from_poly_s_shape(
+        cls,
+        intensity: tuple[float, float, int],
+        threshold: float,
+        half_point: float,
+        scale: float,
+        exponent: float,
+        haz_type: str,
+        impf_id: int = 1,
+        **kwargs):
+        r"""S-shape polynomial impact function hinging on four parameter.
+
+        .. math::
+
+            f(I) = \frac{\textrm{luk}(I)^{\textrm{exponent}}}{
+                1 + \textrm{luk}(I)^{\textrm{exponent}}
+            }
+                \cdot \textrm{scale} \\
+            \textrm{luk}(I) = \frac{\max[I - \textrm{threshold}, 0]}{
+                \textrm{half_point} - \textrm{threshold}
+            }
+
+        This function is inspired by Emanuel et al. (2011)
+        https://doi.org/10.1175/WCAS-D-11-00007.1
+
+        This method only specifies mdd, and paa = 1 for all intensities.
+
+        Parameters
+        ----------
+        intensity : tuple(float, float, float)
+            tuple of 3 intensity numbers along np.linsapce(min, max, num)
+        threshold : float
+            Intensity threshold below which there is no impact.
+            In general choose threshold > 0 for computational efficiency
+            of impacts.
+        half_point : float
+            Intensity at which 50% of maximum impact is expected.
+            If half_point <= threshold, mdd = 0 (and f(I)=0) for all
+            intensities.
+        scale : float
+            Multiplicative factor for the whole function. Typically,
+            this sets the maximum value at large intensities.
+        exponent: float
+            Exponent of the polynomial. Value must be exponent >= 0.
+            Emanuel et al. (2011) uses the value 3.
+        haz_type: str
+            Reference string for the hazard (e.g., 'TC', 'RF', 'WS', ...)
+        impf_id : int, optional, default=1
+            Impact function id
+        kwargs :
+            keyword arguments passed to ImpactFunc()
+
+        Raises
+        ------
+        ValueError : if exponent <= 0
+
+        Returns
+        -------
+        impf : climada.entity.impact_funcs.ImpactFunc
+            s-shaped polynomial impact function
+        """
+        if exponent < 0:
+            raise ValueError('Exponent value must larger than 0')
+
+        inten = np.linspace(*intensity)
+
+        if threshold >= half_point:
+            mdd = np.zeros_like(inten)
+        else:
+            luk = (inten - threshold) / (half_point - threshold)
+            luk[luk < 0] = 0
+            mdd = scale * luk**exponent / (1 + luk**exponent)
+        paa = np.ones_like(inten)
+
+        impf = cls(
+            haz_type=haz_type,
+            id=impf_id,
+            intensity=inten,
+            paa=paa,
+            mdd=mdd,
+            **kwargs
+        )
+        return impf

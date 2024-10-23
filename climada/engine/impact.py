@@ -243,8 +243,8 @@ class Impact():
             date = hazard.date,
             frequency = hazard.frequency,
             frequency_unit = hazard.frequency_unit,
-            coord_exp = np.stack([exposures.gdf.latitude.values,
-                                  exposures.gdf.longitude.values],
+            coord_exp = np.stack([exposures.gdf['latitude'].values,
+                                  exposures.gdf['longitude'].values],
                                  axis=1),
             crs = exposures.crs,
             unit = exposures.value_unit,
@@ -937,11 +937,6 @@ class Impact():
 
         The impact matrix can be stored in a sparse or dense format.
 
-        Notes
-        -----
-        This writer does not support attributes with variable types. Please make sure
-        that ``event_name`` is a list of equally-typed values, e.g., all ``str``.
-
         Parameters
         ----------
         file_path : str or Path
@@ -950,6 +945,11 @@ class Impact():
             If ``True``, write the impact matrix as dense matrix that can be more easily
             interpreted by common H5 file readers but takes up (vastly) more space.
             Defaults to ``False``.
+
+        Raises
+        ------
+        TypeError
+            If :py:attr:`event_name` does not contain strings exclusively.
         """
         # Define writers for all types (will be filled later)
         type_writers = dict()
@@ -983,7 +983,7 @@ class Impact():
 
         def _str_type_helper(values: Collection):
             """Return string datatype if we assume 'values' contains strings"""
-            if isinstance(next(iter(values)), str):
+            if all((isinstance(val, str) for val in values)):
                 return h5py.string_dtype()
             return None
 
@@ -1037,6 +1037,8 @@ class Impact():
             # Now write all attributes
             # NOTE: Remove leading underscore to write '_tot_value' as regular attribute
             for name, value in self.__dict__.items():
+                if name == "event_name" and _str_type_helper(value) is None:
+                    raise TypeError("'event_name' must be a list of strings")
                 write(file, name.lstrip("_"), value)
 
     def write_sparse_csr(self, file_name):
@@ -1079,25 +1081,25 @@ class Impact():
         # pylint: disable=no-member
         LOGGER.info('Reading %s', file_name)
         imp_df = pd.read_csv(file_name)
-        imp = cls(haz_type=imp_df.haz_type[0])
-        imp.unit = imp_df.unit[0]
-        imp.tot_value = imp_df.tot_value[0]
-        imp.aai_agg = imp_df.aai_agg[0]
-        imp.event_id = imp_df.event_id[~np.isnan(imp_df.event_id)].values
+        imp = cls(haz_type=imp_df['haz_type'][0])
+        imp.unit = imp_df['unit'][0]
+        imp.tot_value = imp_df['tot_value'][0]
+        imp.aai_agg = imp_df['aai_agg'][0]
+        imp.event_id = imp_df['event_id'][~np.isnan(imp_df['event_id'])].values
         num_ev = imp.event_id.size
-        imp.event_name = imp_df.event_name[:num_ev].values.tolist()
-        imp.date = imp_df.event_date[:num_ev].values
-        imp.at_event = imp_df.at_event[:num_ev].values
-        imp.frequency = imp_df.event_frequency[:num_ev].values
-        imp.frequency_unit = imp_df.frequency_unit[0] if 'frequency_unit' in imp_df \
+        imp.event_name = imp_df['event_name'][:num_ev].values.tolist()
+        imp.date = imp_df['event_date'][:num_ev].values
+        imp.at_event = imp_df['at_event'][:num_ev].values
+        imp.frequency = imp_df['event_frequency'][:num_ev].values
+        imp.frequency_unit = imp_df['frequency_unit'][0] if 'frequency_unit' in imp_df \
                              else DEF_FREQ_UNIT
-        imp.eai_exp = imp_df.eai_exp[~np.isnan(imp_df.eai_exp)].values
+        imp.eai_exp = imp_df['eai_exp'][~np.isnan(imp_df['eai_exp'])].values
         num_exp = imp.eai_exp.size
         imp.coord_exp = np.zeros((num_exp, 2))
-        imp.coord_exp[:, 0] = imp_df.exp_lat[:num_exp]
-        imp.coord_exp[:, 1] = imp_df.exp_lon[:num_exp]
+        imp.coord_exp[:, 0] = imp_df['exp_lat'][:num_exp]
+        imp.coord_exp[:, 1] = imp_df['exp_lon'][:num_exp]
         try:
-            imp.crs = u_coord.to_crs_user_input(imp_df.exp_crs.values[0])
+            imp.crs = u_coord.to_crs_user_input(imp_df['exp_crs'].values[0])
         except AttributeError:
             imp.crs = DEF_CRS
 
@@ -1127,23 +1129,23 @@ class Impact():
         dfr = pd.read_excel(file_name)
         imp = cls(haz_type=str(dfr['haz_type'][0]))
 
-        imp.unit = dfr.unit[0]
-        imp.tot_value = dfr.tot_value[0]
-        imp.aai_agg = dfr.aai_agg[0]
+        imp.unit = dfr['unit'][0]
+        imp.tot_value = dfr['tot_value'][0]
+        imp.aai_agg = dfr['aai_agg'][0]
 
-        imp.event_id = dfr.event_id[~np.isnan(dfr.event_id.values)].values
-        imp.event_name = dfr.event_name[:imp.event_id.size].values
-        imp.date = dfr.event_date[:imp.event_id.size].values
-        imp.frequency = dfr.event_frequency[:imp.event_id.size].values
-        imp.frequency_unit = dfr.frequency_unit[0] if 'frequency_unit' in dfr else DEF_FREQ_UNIT
-        imp.at_event = dfr.at_event[:imp.event_id.size].values
+        imp.event_id = dfr['event_id'][~np.isnan(dfr['event_id'].values)].values
+        imp.event_name = dfr['event_name'][:imp.event_id.size].values
+        imp.date = dfr['event_date'][:imp.event_id.size].values
+        imp.frequency = dfr['event_frequency'][:imp.event_id.size].values
+        imp.frequency_unit = dfr['frequency_unit'][0] if 'frequency_unit' in dfr else DEF_FREQ_UNIT
+        imp.at_event = dfr['at_event'][:imp.event_id.size].values
 
-        imp.eai_exp = dfr.eai_exp[~np.isnan(dfr.eai_exp.values)].values
+        imp.eai_exp = dfr['eai_exp'][~np.isnan(dfr['eai_exp'].values)].values
         imp.coord_exp = np.zeros((imp.eai_exp.size, 2))
-        imp.coord_exp[:, 0] = dfr.exp_lat.values[:imp.eai_exp.size]
-        imp.coord_exp[:, 1] = dfr.exp_lon.values[:imp.eai_exp.size]
+        imp.coord_exp[:, 0] = dfr['exp_lat'].values[:imp.eai_exp.size]
+        imp.coord_exp[:, 1] = dfr['exp_lon'].values[:imp.eai_exp.size]
         try:
-            imp.crs = u_coord.to_csr_user_input(dfr.exp_crs.values[0])
+            imp.crs = u_coord.to_csr_user_input(dfr['exp_crs'].values[0])
         except AttributeError:
             imp.crs = DEF_CRS
 
@@ -1240,10 +1242,18 @@ class Impact():
             ).intersection(file.keys())
             kwargs.update({attr: file[attr][:] for attr in array_attrs})
 
-            # Special handling for 'event_name' because it's a list of strings
+            # Special handling for 'event_name' because it should be a list of strings
             if "event_name" in file:
                 # pylint: disable=no-member
-                kwargs["event_name"] = list(file["event_name"].asstr()[:])
+                try:
+                    event_name = file["event_name"].asstr()[:]
+                except TypeError:
+                    LOGGER.warning(
+                        "'event_name' is not stored as strings. Trying to decode "
+                        "values with 'str()' instead."
+                    )
+                    event_name = map(str, file["event_name"][:])
+                kwargs["event_name"] = list(event_name)
 
         # Create the impact object
         return cls(**kwargs)
@@ -1314,14 +1324,14 @@ class Impact():
                  np.array([haz.intensity.max() for haz in haz_list]).max()]
 
         if 'vmin' not in args_exp:
-            args_exp['vmin'] = exp.gdf.value.values.min()
+            args_exp['vmin'] = exp.gdf['value'].values.min()
 
         if 'vmin' not in args_imp:
             args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
                                          if imp.eai_exp.size]).min()
 
         if 'vmax' not in args_exp:
-            args_exp['vmax'] = exp.gdf.value.values.max()
+            args_exp['vmax'] = exp.gdf['value'].values.max()
 
         if 'vmax' not in args_imp:
             args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list

@@ -32,7 +32,7 @@ from matplotlib.patches import Rectangle, FancyArrowPatch
 from tabulate import tabulate
 
 from climada.engine.impact_calc import ImpactCalc
-from climada.engine import Impact, ImpactFreqCurve
+from climada.engine.impact import Impact, ImpactFreqCurve
 
 LOGGER = logging.getLogger(__name__)
 

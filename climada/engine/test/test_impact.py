@@ -111,7 +111,7 @@ class TestImpact(unittest.TestCase):
         np.testing.assert_array_almost_equal(imp.at_event, fake_at_event)
         np.testing.assert_array_almost_equal(
             imp.coord_exp,
-            np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
+            np.stack([exp.gdf['latitude'].values, exp.gdf['longitude'].values], axis=1)
             )
 
     def test_pyproj_crs(self):
@@ -513,7 +513,7 @@ class TestRPmatrix(unittest.TestCase):
         impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
 
         self.assertIsInstance(impact_rp, np.ndarray)
-        self.assertEqual(impact_rp.size, 2 * ent.exposures.gdf.value.size)
+        self.assertEqual(impact_rp.size, 2 * ent.exposures.gdf['value'].size)
         self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
         self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
 
@@ -779,7 +779,8 @@ class TestSelect(unittest.TestCase):
         ent.exposures.assign_centroids(hazard)
 
         # Compute the impact over the whole exposures
-        imp = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True, assign_centroids=False)
+        imp = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(
+            save_mat=True, assign_centroids=False)
 
         sel_imp = imp.select(event_ids=imp.event_id,
                              event_names=imp.event_name,
@@ -940,7 +941,7 @@ class TestMatchCentroids(unittest.TestCase):
         fake_aai_agg = np.sum(fake_eai_exp)
         imp = Impact.from_eih(exp, HAZ, fake_at_event, fake_eai_exp, fake_aai_agg)
         imp_centr = imp.match_centroids(HAZ)
-        np.testing.assert_array_equal(imp_centr, exp.gdf.centr_TC)
+        np.testing.assert_array_equal(imp_centr, exp.gdf['centr_TC'])
 
 
 class TestImpactH5IO(unittest.TestCase):
@@ -1019,10 +1020,11 @@ class TestImpactH5IO(unittest.TestCase):
 
     def test_write_hdf5_type_fail(self):
         """Test that writing attributes with varying types results in an error"""
-        self.impact.event_name = [1, "a", 1.0, "b", "c", "d"]
-        with self.assertRaises(TypeError) as cm:
+        self.impact.event_name = ["a", 1, 1.0, "b", "c", "d"]
+        with self.assertRaisesRegex(
+            TypeError, "'event_name' must be a list of strings"
+        ):
             self.impact.write_hdf5(self.filepath)
-        self.assertIn("No conversion path for dtype", str(cm.exception))
 
     def test_cycle_hdf5(self):
         """Test writing and reading the same object"""
@@ -1120,6 +1122,15 @@ class TestImpactH5IO(unittest.TestCase):
         impact = Impact.from_hdf5(self.filepath)
         npt.assert_array_equal(impact.imp_mat.toarray(), [[0, 1, 2], [3, 0, 0]])
 
+        # Check with non-string event_name
+        event_name = [1.2, 2]
+        with h5py.File(self.filepath, "r+") as file:
+            del file["event_name"]
+            file.create_dataset("event_name", data=event_name)
+        with self.assertLogs("climada.engine.impact", "WARNING") as cm:
+            impact = Impact.from_hdf5(self.filepath)
+        self.assertIn("'event_name' is not stored as strings", cm.output[0])
+        self.assertListEqual(impact.event_name, ["1.2", "2.0"])
 
 # Execute Tests
 if __name__ == "__main__":
