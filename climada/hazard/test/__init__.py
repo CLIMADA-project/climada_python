@@ -21,10 +21,10 @@ init test
 
 import shutil
 
-from climada.util.constants import SYSTEM_DIR
-from climada.util.api_client import Client
-from climada.util.files_handler import download_ftp
 from climada.hazard.tc_tracks import IBTRACS_FILE, IBTRACS_URL
+from climada.util.api_client import Client
+from climada.util.constants import SYSTEM_DIR
+from climada.util.files_handler import download_ftp
 
 
 def download_ibtracs():
@@ -36,11 +36,17 @@ def download_ibtracs():
         return  # Nothing to do
 
     try:
-        download_ftp(f'{IBTRACS_URL}/{IBTRACS_FILE}', IBTRACS_FILE)
+        download_ftp(f"{IBTRACS_URL}/{IBTRACS_FILE}", IBTRACS_FILE)
         shutil.move(IBTRACS_FILE, SYSTEM_DIR)
 
-    except ValueError:  # plan b: download an old version of that file from the climada api
+    except (
+        ValueError
+    ):  # plan b: download an old version of that file from the climada api
         client = Client()
-        dsinfo = client.get_dataset_info(name="IBTrACS", version="v04r00", status="external")
-        [fileinfo] = [fi for fi in dsinfo.files if fi.file_name == 'IBTrACS.ALL.v04r00.nc']
+        dsinfo = client.get_dataset_info(
+            name="IBTrACS", version="v04r00", status="external"
+        )
+        [fileinfo] = [
+            fi for fi in dsinfo.files if fi.file_name == "IBTrACS.ALL.v04r00.nc"
+        ]
         client._download_file(local_path=SYSTEM_DIR, fileinfo=fileinfo)

@@ -20,6 +20,7 @@ Test of interpolation module
 """
 
 import unittest
+
 import numpy as np
 
 import climada.util.interpolation as u_interp
@@ -30,209 +31,259 @@ class TestFitMethods(unittest.TestCase):
 
     def test_interpolate_ev_linear_interp(self):
         """Test linear interpolation"""
-        x_train = np.array([1., 3., 5.])
-        y_train = np.array([8., 4., 2.])
-        x_test = np.array([0., 3., 4., 6.])
+        x_train = np.array([1.0, 3.0, 5.0])
+        y_train = np.array([8.0, 4.0, 2.0])
+        x_test = np.array([0.0, 3.0, 4.0, 6.0])
         np.testing.assert_allclose(
             u_interp.interpolate_ev(x_test, x_train, y_train),
-            np.array([np.nan, 4., 3., np.nan])
+            np.array([np.nan, 4.0, 3.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, extrapolation='extrapolate_constant'),
-            np.array([8., 4., 3., np.nan])
+            u_interp.interpolate_ev(
+                x_test, x_train, y_train, extrapolation="extrapolate_constant"
+            ),
+            np.array([8.0, 4.0, 3.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train,
-                        extrapolation='extrapolate_constant', y_asymptotic = 0),
-            np.array([8., 4., 3., 0.])
+            u_interp.interpolate_ev(
+                x_test,
+                x_train,
+                y_train,
+                extrapolation="extrapolate_constant",
+                y_asymptotic=0,
+            ),
+            np.array([8.0, 4.0, 3.0, 0.0]),
         )
 
     def test_interpolate_ev_threshold_parameters(self):
         """Test input threshold parameters"""
-        x_train = np.array([0., 3., 6.])
-        y_train = np.array([4., 1., 4.])
-        x_test = np.array([-1., 3., 4.])
+        x_train = np.array([0.0, 3.0, 6.0])
+        y_train = np.array([4.0, 1.0, 4.0])
+        x_test = np.array([-1.0, 3.0, 4.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, extrapolation='extrapolate_constant'),
-            np.array([4., 1., 2.])
+            u_interp.interpolate_ev(
+                x_test, x_train, y_train, extrapolation="extrapolate_constant"
+            ),
+            np.array([4.0, 1.0, 2.0]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, x_threshold=1.,
-                           extrapolation='extrapolate_constant'),
-            np.array([1., 1., 2.])
+            u_interp.interpolate_ev(
+                x_test,
+                x_train,
+                y_train,
+                x_threshold=1.0,
+                extrapolation="extrapolate_constant",
+            ),
+            np.array([1.0, 1.0, 2.0]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, y_threshold=2.,
-                           extrapolation='extrapolate_constant'),
-            np.array([4., 4., 4.])
+            u_interp.interpolate_ev(
+                x_test,
+                x_train,
+                y_train,
+                y_threshold=2.0,
+                extrapolation="extrapolate_constant",
+            ),
+            np.array([4.0, 4.0, 4.0]),
         )
-    
+
     def test_interpolate_ev_scale_parameters(self):
         """Test log scale parameters"""
         x_train = np.array([1e1, 1e3])
-        y_train = np.array([1., 3.])
+        y_train = np.array([1.0, 3.0])
         x_test = np.array([1e0, 1e2])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, logx=True, extrapolation='extrapolate'),
-            np.array([0., 2.])
+            u_interp.interpolate_ev(
+                x_test, x_train, y_train, logx=True, extrapolation="extrapolate"
+            ),
+            np.array([0.0, 2.0]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, logx=True,
-                           extrapolation='extrapolate_constant'),
-            np.array([1., 2.])
+            u_interp.interpolate_ev(
+                x_test,
+                x_train,
+                y_train,
+                logx=True,
+                extrapolation="extrapolate_constant",
+            ),
+            np.array([1.0, 2.0]),
         )
-        x_train = np.array([1., 3.])
+        x_train = np.array([1.0, 3.0])
         y_train = np.array([1e1, 1e3])
-        x_test = np.array([0., 2.])
+        x_test = np.array([0.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, logy=True, extrapolation='extrapolate'),
-            np.array([1e0, 1e2])
+            u_interp.interpolate_ev(
+                x_test, x_train, y_train, logy=True, extrapolation="extrapolate"
+            ),
+            np.array([1e0, 1e2]),
         )
         x_train = np.array([1e1, 1e3])
         y_train = np.array([1e1, 1e5])
         x_test = np.array([1e0, 1e2])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, logx=True, logy=True,
-                           extrapolation='extrapolate'),
-            np.array([1e-1, 1e3])
+            u_interp.interpolate_ev(
+                x_test,
+                x_train,
+                y_train,
+                logx=True,
+                logy=True,
+                extrapolation="extrapolate",
+            ),
+            np.array([1e-1, 1e3]),
         )
 
     def test_interpolate_ev_degenerate_input(self):
         """Test interp to constant zeros"""
-        x_train = np.array([1., 3., 5.])
-        x_test = np.array([0., 2., 4.])
+        x_train = np.array([1.0, 3.0, 5.0])
+        x_test = np.array([0.0, 2.0, 4.0])
         y_train = np.zeros(3)
         np.testing.assert_allclose(
             u_interp.interpolate_ev(x_test, x_train, y_train),
-            np.array([np.nan, 0., 0.])
+            np.array([np.nan, 0.0, 0.0]),
         )
 
     def test_interpolate_ev_small_input(self):
         """Test small input"""
-        x_train = np.array([1.])
-        y_train = np.array([2.])
-        x_test = np.array([0., 1., 2.])
+        x_train = np.array([1.0])
+        y_train = np.array([2.0])
+        x_test = np.array([0.0, 1.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, extrapolation='extrapolate'),
-            np.array([2., 2., np.nan])
+            u_interp.interpolate_ev(
+                x_test, x_train, y_train, extrapolation="extrapolate"
+            ),
+            np.array([2.0, 2.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train, extrapolation='extrapolate', y_asymptotic=0),
-            np.array([2., 2., 0.])
+            u_interp.interpolate_ev(
+                x_test, x_train, y_train, extrapolation="extrapolate", y_asymptotic=0
+            ),
+            np.array([2.0, 2.0, 0.0]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train),
-            np.full(3, np.nan)
+            u_interp.interpolate_ev(x_test, x_train, y_train), np.full(3, np.nan)
         )
 
         x_train = np.array([])
         y_train = np.array([])
-        x_test = np.array([0., 1., 2.])
+        x_test = np.array([0.0, 1.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train),
-            np.full(3, np.nan)
+            u_interp.interpolate_ev(x_test, x_train, y_train), np.full(3, np.nan)
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train,
-                           extrapolation='extrapolate_constant', y_asymptotic=0),
-            np.zeros(3)
+            u_interp.interpolate_ev(
+                x_test,
+                x_train,
+                y_train,
+                extrapolation="extrapolate_constant",
+                y_asymptotic=0,
+            ),
+            np.zeros(3),
         )
 
     def test_stepfunction_ev(self):
         """Test stepfunction method"""
-        x_train = np.array([1., 3., 5.])
-        y_train = np.array([8., 4., 2.])
-        x_test = np.array([0., 3., 4., 6.])
+        x_train = np.array([1.0, 3.0, 5.0])
+        y_train = np.array([8.0, 4.0, 2.0])
+        x_test = np.array([0.0, 3.0, 4.0, 6.0])
         np.testing.assert_allclose(
             u_interp.stepfunction_ev(x_test, x_train, y_train),
-            np.array([8., 4., 2., np.nan])
+            np.array([8.0, 4.0, 2.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0.),
-            np.array([8., 4., 2., 0.])
+            u_interp.stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0.0),
+            np.array([8.0, 4.0, 2.0, 0.0]),
         )
 
     def test_stepfunction_ev_small_input(self):
         """Test small input"""
-        x_train = np.array([1.])
-        y_train = np.array([2.])
-        x_test = np.array([0., 1., 2.])
+        x_train = np.array([1.0])
+        y_train = np.array([2.0])
+        x_test = np.array([0.0, 1.0, 2.0])
         np.testing.assert_allclose(
             u_interp.stepfunction_ev(x_test, x_train, y_train),
-            np.array([2., 2., np.nan])
+            np.array([2.0, 2.0, np.nan]),
         )
         np.testing.assert_allclose(
             u_interp.stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0),
-            np.array([2., 2., 0.])
+            np.array([2.0, 2.0, 0.0]),
         )
         x_train = np.array([])
         y_train = np.array([])
-        x_test = np.array([0., 1., 2.])
+        x_test = np.array([0.0, 1.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.stepfunction_ev(x_test, x_train, y_train),
-            np.full(3, np.nan)
+            u_interp.stepfunction_ev(x_test, x_train, y_train), np.full(3, np.nan)
         )
         np.testing.assert_allclose(
             u_interp.stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0),
-            np.zeros(3)
+            np.zeros(3),
         )
-    
+
     def test_frequency_group(self):
         """Test frequency grouping method"""
         frequency = np.ones(6)
-        intensity = np.array([1.00001, .999, 1., 2., 3., 3])
+        intensity = np.array([1.00001, 0.999, 1.0, 2.0, 3.0, 3])
         np.testing.assert_allclose(
-            u_interp.group_frequency(frequency, intensity), 
-            ([3, 1, 2], [1, 2, 3])
+            u_interp.group_frequency(frequency, intensity), ([3, 1, 2], [1, 2, 3])
         )
-        np.testing.assert_allclose(
-            u_interp.group_frequency([], []), 
-            ([], [])
-        )
+        np.testing.assert_allclose(u_interp.group_frequency([], []), ([], []))
         with self.assertRaises(ValueError):
             u_interp.group_frequency(frequency, intensity[::-1])
 
     def test_round_to_sig_digits(self):
-        array = [.00111, 999., 55.5, 0., -1.001, -1.08]
+        array = [0.00111, 999.0, 55.5, 0.0, -1.001, -1.08]
         np.testing.assert_allclose(
-            u_interp.round_to_sig_digits(array, n_sig_dig=2), 
-            [.0011, 1000., 56, 0., -1., -1.1]
+            u_interp.round_to_sig_digits(array, n_sig_dig=2),
+            [0.0011, 1000.0, 56, 0.0, -1.0, -1.1],
         )
 
     def test_preprocess_and_interpolate_ev(self):
         """Test wrapper function"""
-        frequency = np.array([.1, .9])
-        values = np.array([100., 10.])
-        test_frequency = np.array([.01, .55, 10.])
-        test_values = np.array([1., 55., 1000.])
+        frequency = np.array([0.1, 0.9])
+        values = np.array([100.0, 10.0])
+        test_frequency = np.array([0.01, 0.55, 10.0])
+        test_values = np.array([1.0, 55.0, 1000.0])
 
         # test interpolation
         np.testing.assert_allclose(
-            [np.nan, 55., np.nan],
-            u_interp.preprocess_and_interpolate_ev(test_frequency, None, frequency, values)
+            [np.nan, 55.0, np.nan],
+            u_interp.preprocess_and_interpolate_ev(
+                test_frequency, None, frequency, values
+            ),
         )
         np.testing.assert_allclose(
-            [np.nan, .55, np.nan],
-            u_interp.preprocess_and_interpolate_ev(None, test_values, frequency, values)
+            [np.nan, 0.55, np.nan],
+            u_interp.preprocess_and_interpolate_ev(
+                None, test_values, frequency, values
+            ),
         )
 
         # test extrapolation with constants
         np.testing.assert_allclose(
-            [100. , 55., 0.],
-            u_interp.preprocess_and_interpolate_ev(test_frequency, None, frequency, values,
-                                          method='extrapolate_constant', y_asymptotic=0.)
+            [100.0, 55.0, 0.0],
+            u_interp.preprocess_and_interpolate_ev(
+                test_frequency,
+                None,
+                frequency,
+                values,
+                method="extrapolate_constant",
+                y_asymptotic=0.0,
+            ),
         )
         np.testing.assert_allclose(
-            [1., .55, np.nan],
-            u_interp.preprocess_and_interpolate_ev(None, test_values, frequency, values,
-                                          method='extrapolate_constant')
+            [1.0, 0.55, np.nan],
+            u_interp.preprocess_and_interpolate_ev(
+                None, test_values, frequency, values, method="extrapolate_constant"
+            ),
         )
 
         # test error raising
         with self.assertRaises(ValueError):
-            u_interp.preprocess_and_interpolate_ev(test_frequency, test_values, frequency, values)
+            u_interp.preprocess_and_interpolate_ev(
+                test_frequency, test_values, frequency, values
+            )
         with self.assertRaises(ValueError):
             u_interp.preprocess_and_interpolate_ev(None, None, frequency, values)
+
 
 # Execute Tests
 if __name__ == "__main__":
