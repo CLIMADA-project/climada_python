@@ -23,13 +23,12 @@ import ast
 import copy
 import logging
 import math
-from multiprocessing import cpu_count
-from pathlib import Path
 import re
 import warnings
 import zipfile
+from multiprocessing import cpu_count
+from pathlib import Path
 
-from cartopy.io import shapereader
 import dask.dataframe as dd
 import geopandas as gpd
 import numba
@@ -41,23 +40,29 @@ import rasterio.crs
 import rasterio.features
 import rasterio.mask
 import rasterio.warp
-import scipy.spatial
 import scipy.interpolate
-from shapely.geometry import Polygon, MultiPolygon, Point, box
+import scipy.spatial
 import shapely.ops
 import shapely.vectorized
 import shapely.wkt
+from cartopy.io import shapereader
+from shapely.geometry import MultiPolygon, Point, Polygon, box
 from sklearn.neighbors import BallTree
 
-from climada.util.config import CONFIG
-from climada.util.constants import (DEF_CRS, EARTH_RADIUS_KM, SYSTEM_DIR, ONE_LAT_KM,
-                                    NATEARTH_CENTROIDS,
-                                    ISIMIP_GPWV3_NATID_150AS,
-                                    ISIMIP_NATID_TO_ISO,
-                                    NONISO_REGIONS,
-                                    RIVER_FLOOD_REGIONS_CSV)
-from climada.util.files_handler import download_file
 import climada.util.hdf5_handler as u_hdf5
+from climada.util.config import CONFIG
+from climada.util.constants import (
+    DEF_CRS,
+    EARTH_RADIUS_KM,
+    ISIMIP_GPWV3_NATID_150AS,
+    ISIMIP_NATID_TO_ISO,
+    NATEARTH_CENTROIDS,
+    NONISO_REGIONS,
+    ONE_LAT_KM,
+    RIVER_FLOOD_REGIONS_CSV,
+    SYSTEM_DIR,
+)
+from climada.util.files_handler import download_file
 
 pd.options.mode.chained_assignment = None
 
@@ -78,6 +83,7 @@ MAX_DEM_TILES_DOWN = 300
 NEAREST_NEIGHBOR_THRESHOLD = 100
 """Distance threshold in km for coordinate assignment. Nearest neighbors with greater distances
 are not considered."""
+
 
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     """Convert lat/lon coodinates to radial vectors (on geosphere)
@@ -110,15 +116,23 @@ def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     sin_lon, cos_lon = np.sin(rad_lon), np.cos(rad_lon)
     vecn = np.stack((sin_lat * cos_lon, sin_lat * sin_lon, cos_lat), axis=-1)
     if basis:
-        vbasis = np.stack((
-            cos_lat * cos_lon, cos_lat * sin_lon, -sin_lat,
-            -sin_lon, cos_lon, np.zeros_like(cos_lat),
-        ), axis=-1).reshape(lat.shape + (2, 3))
+        vbasis = np.stack(
+            (
+                cos_lat * cos_lon,
+                cos_lat * sin_lon,
+                -sin_lat,
+                -sin_lon,
+                cos_lon,
+                np.zeros_like(cos_lat),
+            ),
+            axis=-1,
+        ).reshape(lat.shape + (2, 3))
         return vecn, vbasis
     return vecn
 
+
 def lon_normalize(lon, center=0.0):
-    """ Normalizes degrees such that always -180 < lon - center <= 180
+    """Normalizes degrees such that always -180 < lon - center <= 180
 
     The input data is modified in place!
 
@@ -148,6 +162,7 @@ def lon_normalize(lon, center=0.0):
     else:
         lon[lon <= bounds[0]] += 360
     return lon
+
 
 def lon_bounds(lon, buffer=0.0):
     """Bounds of a set of degree values, respecting the periodicity in longitude
@@ -265,11 +280,17 @@ def toggle_extent_bounds(bounds_or_extent):
     extent_or_bounds : tuple (a, c, b, d)
         Bounding box of the given points in "extent" (or "bounds") convention.
     """
-    return (bounds_or_extent[0], bounds_or_extent[2], bounds_or_extent[1], bounds_or_extent[3])
+    return (
+        bounds_or_extent[0],
+        bounds_or_extent[2],
+        bounds_or_extent[1],
+        bounds_or_extent[3],
+    )
 
 
-def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
-                method="equirect", units='km'):
+def dist_approx(
+    lat1, lon1, lat2, lon2, log=False, normalize=True, method="equirect", units="km"
+):
     """Compute approximation of geodistance in specified units
 
     Several batches of points can be processed at once for improved performance. The distances of
@@ -334,15 +355,19 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
     elif units == "degree":
         unit_factor = 1
     else:
-        raise KeyError('Unknown distance unit: %s' % units)
+        raise KeyError("Unknown distance unit: %s" % units)
 
     if method == "equirect":
         if normalize:
-            mid_lon = 0.5 * sum(lon_bounds(np.concatenate([lon1.ravel(), lon2.ravel()])))
+            mid_lon = 0.5 * sum(
+                lon_bounds(np.concatenate([lon1.ravel(), lon2.ravel()]))
+            )
             lon_normalize(lon1, center=mid_lon)
             lon_normalize(lon2, center=mid_lon)
-        vtan = np.stack([lat2[:, None, :] - lat1[:, :, None],
-                         lon2[:, None, :] - lon1[:, :, None]], axis=-1)
+        vtan = np.stack(
+            [lat2[:, None, :] - lat1[:, :, None], lon2[:, None, :] - lon1[:, :, None]],
+            axis=-1,
+        )
         fact1 = np.heaviside(vtan[..., 1] - 180, 0)
         fact2 = np.heaviside(-vtan[..., 1] - 180, 0)
         vtan[..., 1] -= (fact1 - fact2) * 360
@@ -355,14 +380,16 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
         dlat = 0.5 * (lat2[:, None, :] - lat1[:, :, None])
         dlon = 0.5 * (lon2[:, None, :] - lon1[:, :, None])
         # haversine formula:
-        hav = np.sin(dlat)**2 \
-            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None, :]) * np.sin(dlon)**2
+        hav = (
+            np.sin(dlat) ** 2
+            + np.cos(lat1[:, :, None]) * np.cos(lat2[:, None, :]) * np.sin(dlon) ** 2
+        )
         dist = np.degrees(2 * np.arcsin(np.sqrt(hav))) * unit_factor
         if log:
             vec1, vbasis = latlon_to_geosph_vector(lat1, lon1, rad=True, basis=True)
             vec2 = latlon_to_geosph_vector(lat2, lon2, rad=True)
             vtan = vec2[:, None, :] - (1 - 2 * hav[..., None]) * vec1[:, :, None]
-            vtan = np.einsum('nkli,nkji->nklj', vtan, vbasis)
+            vtan = np.einsum("nkli,nkji->nklj", vtan, vbasis)
             # faster version of `vtan_norm = np.linalg.norm(vtan, axis=-1)`
             vtan_norm = np.sqrt(np.einsum("...l,...l->...", vtan, vtan))
             # for consistency, set dist to 0 if vtan is 0
@@ -371,6 +398,7 @@ def dist_approx(lat1, lon1, lat2, lon2, log=False, normalize=True,
     else:
         raise KeyError("Unknown distance approximation method: %s" % method)
     return (dist, vtan) if log else dist
+
 
 def compute_geodesic_lengths(gdf):
     """Calculate the great circle (geodesic / spherical) lengths along any
@@ -403,7 +431,7 @@ def compute_geodesic_lengths(gdf):
     return gdf_tmp.apply(lambda row: geod.geometry_length(row.geometry), axis=1)
 
 
-def get_gridcellarea(lat, resolution=0.5, unit='ha'):
+def get_gridcellarea(lat, resolution=0.5, unit="ha"):
     """The area covered by a grid cell is calculated depending on the latitude
 
     * 1 degree = ONE_LAT_KM (111.12km at the equator)
@@ -421,14 +449,15 @@ def get_gridcellarea(lat, resolution=0.5, unit='ha'):
         unit of the output area (default: ha, alternatives: m2, km2)
     """
 
-    if unit == 'm2':
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat)) * 1000000
-    elif unit == 'km2':
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat))
+    if unit == "m2":
+        area = (ONE_LAT_KM * resolution) ** 2 * np.cos(np.deg2rad(lat)) * 1000000
+    elif unit == "km2":
+        area = (ONE_LAT_KM * resolution) ** 2 * np.cos(np.deg2rad(lat))
     else:
-        area = (ONE_LAT_KM * resolution)**2 * np.cos(np.deg2rad(lat))*100
+        area = (ONE_LAT_KM * resolution) ** 2 * np.cos(np.deg2rad(lat)) * 100
 
     return area
+
 
 def grid_is_regular(coord):
     """Return True if grid is regular. If True, returns height and width.
@@ -453,10 +482,15 @@ def grid_is_regular(coord):
     _, count_lon = np.unique(coord[:, 1], return_counts=True)
     uni_lat_size = np.unique(count_lat).size
     uni_lon_size = np.unique(count_lon).size
-    if uni_lat_size == uni_lon_size and uni_lat_size == 1 \
-    and count_lat[0] > 1 and count_lon[0] > 1:
+    if (
+        uni_lat_size == uni_lon_size
+        and uni_lat_size == 1
+        and count_lat[0] > 1
+        and count_lon[0] > 1
+    ):
         regular = True
     return regular, count_lat[0], count_lon[0]
+
 
 def convert_wgs_to_utm(lon, lat):
     """Get EPSG code of UTM projection for input point in EPSG 4326
@@ -475,6 +509,7 @@ def convert_wgs_to_utm(lon, lat):
     """
     epsg_utm_base = 32601 + (0 if lat >= 0 else 100)
     return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
+
 
 def dist_to_coast(coord_lat, lon=None, highres=False, signed=False):
     """Read interpolated (signed) distance to coast (in m) from NASA data
@@ -512,18 +547,25 @@ def dist_to_coast(coord_lat, lon=None, highres=False, signed=False):
     if lon is None:
         if isinstance(coord_lat, (gpd.GeoDataFrame, gpd.GeoSeries)):
             if not equal_crs(coord_lat.crs, DEF_CRS):
-                raise ValueError('Input CRS is not %s' % str(DEF_CRS))
-            geom = coord_lat if isinstance(coord_lat, gpd.GeoSeries) else coord_lat["geometry"]
+                raise ValueError("Input CRS is not %s" % str(DEF_CRS))
+            geom = (
+                coord_lat
+                if isinstance(coord_lat, gpd.GeoSeries)
+                else coord_lat["geometry"]
+            )
             lon, lat = geom.x.values, geom.y.values
         elif isinstance(coord_lat, np.ndarray) and coord_lat.shape[1] == 2:
             lat, lon = coord_lat[:, 0], coord_lat[:, 1]
         else:
-            raise ValueError('Missing longitude values.')
+            raise ValueError("Missing longitude values.")
     else:
         lat, lon = [np.asarray(v).reshape(-1) for v in [coord_lat, lon]]
         if lat.size != lon.size:
-            raise ValueError(f'Mismatching input coordinates size: {lat.size} != {lon.size}')
+            raise ValueError(
+                f"Mismatching input coordinates size: {lat.size} != {lon.size}"
+            )
     return dist_to_coast_nasa(lat, lon, highres=highres, signed=signed)
+
 
 def _get_dist_to_coast_nasa_tif():
     """Get the path to the NASA raster file for distance to coast.
@@ -541,10 +583,11 @@ def _get_dist_to_coast_nasa_tif():
     if not path.is_file():
         url = CONFIG.util.coordinates.dist_to_coast_nasa_url.str()
         path_dwn = download_file(url, download_dir=SYSTEM_DIR)
-        zip_ref = zipfile.ZipFile(path_dwn, 'r')
+        zip_ref = zipfile.ZipFile(path_dwn, "r")
         zip_ref.extractall(SYSTEM_DIR)
         zip_ref.close()
     return path
+
 
 def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     """Read interpolated (signed) distance to coast (in m) from NASA data
@@ -572,15 +615,21 @@ def dist_to_coast_nasa(lat, lon, highres=False, signed=False):
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     lon = lon_normalize(lon.copy())
     intermediate_res = None if highres else 0.1
-    west_msk = (lon < 0)
+    west_msk = lon < 0
     dist = np.zeros_like(lat)
     for msk in [west_msk, ~west_msk]:
         if np.count_nonzero(msk) > 0:
             dist[msk] = read_raster_sample(
-                path, lat[msk], lon[msk], intermediate_res=intermediate_res, fill_value=0)
+                path,
+                lat[msk],
+                lon[msk],
+                intermediate_res=intermediate_res,
+                fill_value=0,
+            )
     if not signed:
         dist = np.abs(dist)
     return 1000 * dist
+
 
 def get_land_geometry(country_names=None, extent=None, resolution=10):
     """Get union of the specified (or all) countries or the points inside the extent.
@@ -606,6 +655,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
         geom = MultiPolygon([geom])
     return geom
 
+
 def coord_on_land(lat, lon, land_geom=None):
     """Check if points are on land.
 
@@ -624,8 +674,9 @@ def coord_on_land(lat, lon, land_geom=None):
         Entries are True if corresponding coordinate is on land and False otherwise.
     """
     if lat.size != lon.size:
-        raise ValueError('Wrong size input coordinates: %s != %s.'
-                         % (lat.size, lon.size))
+        raise ValueError(
+            "Wrong size input coordinates: %s != %s." % (lat.size, lon.size)
+        )
     if lat.size == 0:
         return np.empty((0,), dtype=bool)
     delta_deg = 1
@@ -639,8 +690,8 @@ def coord_on_land(lat, lon, land_geom=None):
         bounds = latlon_bounds(lat, lons, buffer=delta_deg)
         # load land geometry with appropriate same extent
         land_geom = get_land_geometry(
-            extent=toggle_extent_bounds(bounds),
-            resolution=10)
+            extent=toggle_extent_bounds(bounds), resolution=10
+        )
     elif not land_geom.is_empty:
         # ensure lon values are within extent of provided land_geom
         land_bounds = land_geom.bounds
@@ -650,6 +701,7 @@ def coord_on_land(lat, lon, land_geom=None):
             lon_normalize(lons, center=lon_mid)
 
     return shapely.vectorized.contains(land_geom, lons, lat)
+
 
 def nat_earth_resolution(resolution):
     """Check if resolution is available in Natural Earth. Build string.
@@ -670,10 +722,13 @@ def nat_earth_resolution(resolution):
     """
     avail_res = [10, 50, 110]
     if resolution not in avail_res:
-        raise ValueError('Natural Earth does not accept resolution %s m.' % resolution)
-    return str(resolution) + 'm'
+        raise ValueError("Natural Earth does not accept resolution %s m." % resolution)
+    return str(resolution) + "m"
 
-def get_country_geometries(country_names=None, extent=None, resolution=10, center_crs=True):
+
+def get_country_geometries(
+    country_names=None, extent=None, resolution=10, center_crs=True
+):
     """Natural Earth country boundaries within given extent
 
     If no arguments are given, simply returns the whole natural earth dataset.
@@ -708,19 +763,19 @@ def get_country_geometries(country_names=None, extent=None, resolution=10, cente
         within the specified extent.
     """
     resolution = nat_earth_resolution(resolution)
-    shp_file = shapereader.natural_earth(resolution=resolution,
-                                         category='cultural',
-                                         name='admin_0_countries')
-    nat_earth = gpd.read_file(shp_file, encoding='UTF-8')
+    shp_file = shapereader.natural_earth(
+        resolution=resolution, category="cultural", name="admin_0_countries"
+    )
+    nat_earth = gpd.read_file(shp_file, encoding="UTF-8")
 
     if not nat_earth.crs:
         nat_earth.crs = NE_CRS
 
     # fill gaps in nat_earth
-    gap_mask = (nat_earth['ISO_A3'] == '-99')
-    nat_earth.loc[gap_mask, 'ISO_A3'] = nat_earth.loc[gap_mask, 'ADM0_A3']
+    gap_mask = nat_earth["ISO_A3"] == "-99"
+    nat_earth.loc[gap_mask, "ISO_A3"] = nat_earth.loc[gap_mask, "ADM0_A3"]
 
-    gap_mask = (nat_earth['ISO_N3'] == '-99')
+    gap_mask = nat_earth["ISO_N3"] == "-99"
     for idx, country in nat_earth[gap_mask].iterrows():
         nat_earth.loc[idx, "ISO_N3"] = f"{natearth_country_to_int(country):03d}"
 
@@ -729,7 +784,7 @@ def get_country_geometries(country_names=None, extent=None, resolution=10, cente
         if isinstance(country_names, str):
             country_names = [country_names]
         country_mask = np.isin(
-            nat_earth[['ISO_A3', 'WB_A3', 'ADM0_A3']].values,
+            nat_earth[["ISO_A3", "WB_A3", "ADM0_A3"]].values,
             country_names,
         ).any(axis=1)
         out = out[country_mask]
@@ -759,21 +814,26 @@ def get_country_geometries(country_names=None, extent=None, resolution=10, cente
                 [box(*toggle_extent_bounds(e)) for e in [extent_left, extent_right]]
             )
         bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
-        bbox = gpd.GeoDataFrame({'geometry': bbox}, crs=DEF_CRS)
+        bbox = gpd.GeoDataFrame({"geometry": bbox}, crs=DEF_CRS)
         out = gpd.overlay(out, bbox, how="intersection")
         if ~lon_normalized and center_crs:
             lon_mid = 0.5 * (extent[0] + extent[1])
             # reset the CRS attribute after rewrapping (we don't really change the CRS)
-            out = (
-                out
-                .to_crs({"proj": "longlat", "lon_wrap": lon_mid})
-                .set_crs(DEF_CRS, allow_override=True)
+            out = out.to_crs({"proj": "longlat", "lon_wrap": lon_mid}).set_crs(
+                DEF_CRS, allow_override=True
             )
 
     return out
 
-def get_region_gridpoints(countries=None, regions=None, resolution=150,
-                          iso=True, rect=False, basemap="natearth"):
+
+def get_region_gridpoints(
+    countries=None,
+    regions=None,
+    resolution=150,
+    iso=True,
+    rect=False,
+    basemap="natearth",
+):
     """Get coordinates of gridpoints in specified countries or regions
 
     Parameters
@@ -809,31 +869,38 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
     if basemap == "natearth":
         base_file = NATEARTH_CENTROIDS[resolution]
         hdf5_f = u_hdf5.read(base_file)
-        meta = hdf5_f['meta']
-        grid_shape = (meta['height'][0], meta['width'][0])
-        transform = rasterio.Affine(*meta['transform'])
-        region_id = hdf5_f['region_id'].reshape(grid_shape)
+        meta = hdf5_f["meta"]
+        grid_shape = (meta["height"][0], meta["width"][0])
+        transform = rasterio.Affine(*meta["transform"])
+        region_id = hdf5_f["region_id"].reshape(grid_shape)
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
     elif basemap == "isimip":
         hdf5_f = u_hdf5.read(ISIMIP_GPWV3_NATID_150AS)
-        dim_lon, dim_lat = hdf5_f['lon'], hdf5_f['lat']
+        dim_lon, dim_lat = hdf5_f["lon"], hdf5_f["lat"]
         bounds = dim_lon.min(), dim_lat.min(), dim_lon.max(), dim_lat.max()
         orig_res = get_resolution(dim_lon, dim_lat)
         _, _, transform = pts_to_raster_meta(bounds, orig_res)
         grid_shape = (dim_lat.size, dim_lon.size)
-        region_id = hdf5_f['NatIdGrid'].reshape(grid_shape).astype(int)
+        region_id = hdf5_f["NatIdGrid"].reshape(grid_shape).astype(int)
         region_id[region_id < 0] = 0
-        natid2iso_numeric = np.array(country_natid2iso(list(range(231)), "numeric"), dtype=int)
+        natid2iso_numeric = np.array(
+            country_natid2iso(list(range(231)), "numeric"), dtype=int
+        )
         region_id = natid2iso_numeric[region_id]
         lon, lat = np.meshgrid(dim_lon, dim_lat)
     else:
         raise ValueError(f"Unknown basemap: {basemap}")
 
-    if basemap == "natearth" and resolution not in [150, 360] \
-       or basemap == "isimip" and resolution != 150:
+    if (
+        basemap == "natearth"
+        and resolution not in [150, 360]
+        or basemap == "isimip"
+        and resolution != 150
+    ):
         resolution /= 3600
         region_id, transform = refine_raster_data(
-            region_id, transform, resolution, method='nearest', fill_value=0)
+            region_id, transform, resolution, method="nearest", fill_value=0
+        )
         grid_shape = region_id.shape
         lon, lat = raster_to_meshgrid(transform, grid_shape[1], grid_shape[0])
 
@@ -858,10 +925,12 @@ def get_region_gridpoints(countries=None, regions=None, resolution=150,
         lat, lon = [ar.ravel() for ar in [lat, lon]]
     return lat, lon
 
+
 def assign_grid_points(*args, **kwargs):
     """This function has been renamed, use ``match_grid_points`` instead."""
     LOGGER.warning("This function has been renamed, use match_grid_points instead.")
     return match_grid_points(*args, **kwargs)
+
 
 def match_grid_points(x, y, grid_width, grid_height, grid_transform):
     """To each coordinate in `x` and `y`, assign the closest centroid in the given raster grid
@@ -900,13 +969,20 @@ def match_grid_points(x, y, grid_width, grid_height, grid_transform):
     assigned[(y_i < 0) | (y_i >= grid_height)] = -1
     return assigned
 
+
 def assign_coordinates(*args, **kwargs):
     """This function has been renamed, use ``match_coordinates`` instead."""
     LOGGER.warning("This function has been renamed, use match_coordinates instead.")
     return match_coordinates(*args, **kwargs)
 
-def match_coordinates(coords, coords_to_assign, distance="euclidean",
-                      threshold=NEAREST_NEIGHBOR_THRESHOLD, **kwargs):
+
+def match_coordinates(
+    coords,
+    coords_to_assign,
+    distance="euclidean",
+    threshold=NEAREST_NEIGHBOR_THRESHOLD,
+    **kwargs,
+):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
 
     If there is no exact match for some entry, an attempt is made to assign the geographically
@@ -969,40 +1045,54 @@ def match_coordinates(coords, coords_to_assign, distance="euclidean",
     }
     if distance not in nearest_neighbor_funcs:
         raise ValueError(
-            f'Coordinate assignment with "{distance}" distance is not supported.')
+            f'Coordinate assignment with "{distance}" distance is not supported.'
+        )
 
-    coords = coords.astype('float64')
-    coords_to_assign = coords_to_assign.astype('float64')
+    coords = coords.astype("float64")
+    coords_to_assign = coords_to_assign.astype("float64")
     if np.array_equal(coords, coords_to_assign):
         assigned_idx = np.arange(coords.shape[0])
     else:
-        LOGGER.info("No exact centroid match found. Reprojecting coordinates "
-                    "to nearest neighbor closer than the threshold = %s",
-                    threshold)
+        LOGGER.info(
+            "No exact centroid match found. Reprojecting coordinates "
+            "to nearest neighbor closer than the threshold = %s",
+            threshold,
+        )
         # pairs of floats can be sorted (lexicographically) in NumPy
-        coords_view = coords.view(dtype='float64,float64').reshape(-1)
-        coords_to_assign_view = coords_to_assign.view(dtype='float64,float64').reshape(-1)
+        coords_view = coords.view(dtype="float64,float64").reshape(-1)
+        coords_to_assign_view = coords_to_assign.view(dtype="float64,float64").reshape(
+            -1
+        )
 
         # assign each hazard coordsinate to an element in coords using searchsorted
         coords_sorter = np.argsort(coords_view)
-        sort_assign_idx = np.fmin(coords_sorter.size - 1, np.searchsorted(
-            coords_view, coords_to_assign_view, side="left", sorter=coords_sorter))
+        sort_assign_idx = np.fmin(
+            coords_sorter.size - 1,
+            np.searchsorted(
+                coords_view, coords_to_assign_view, side="left", sorter=coords_sorter
+            ),
+        )
         sort_assign_idx = coords_sorter[sort_assign_idx]
 
         # determine which of the assignements match exactly
-        exact_assign_idx = (coords_view[sort_assign_idx] == coords_to_assign_view).nonzero()[0]
+        exact_assign_idx = (
+            coords_view[sort_assign_idx] == coords_to_assign_view
+        ).nonzero()[0]
         assigned_idx = np.full_like(coords_sorter, -1)
         assigned_idx[sort_assign_idx[exact_assign_idx]] = exact_assign_idx
 
         # assign remaining coordinates to their geographically nearest neighbor
         if threshold > 0 and exact_assign_idx.size != coords_view.size:
-            not_assigned_idx_mask = (assigned_idx == -1)
+            not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
-                coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs)
+                coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs
+            )
     return assigned_idx
 
-def match_centroids(coord_gdf, centroids, distance='euclidean',
-                    threshold=NEAREST_NEIGHBOR_THRESHOLD):
+
+def match_centroids(
+    coord_gdf, centroids, distance="euclidean", threshold=NEAREST_NEIGHBOR_THRESHOLD
+):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
     If distances > threshold in points' distances, -1 is returned.
     If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
@@ -1049,17 +1139,20 @@ def match_centroids(coord_gdf, centroids, distance='euclidean',
 
     try:
         if not equal_crs(coord_gdf.crs, centroids.crs):
-            raise ValueError('Set hazard and GeoDataFrame to same CRS first!')
+            raise ValueError("Set hazard and GeoDataFrame to same CRS first!")
     except AttributeError:
         # If the coord_gdf has no crs defined (or no valid geometry column),
         # no error is raised and it is assumed that the user set the crs correctly
         pass
 
     assigned = match_coordinates(
-        np.stack([coord_gdf['latitude'].values, coord_gdf['longitude'].values], axis=1),
-        centroids.coord, distance=distance, threshold=threshold,
+        np.stack([coord_gdf["latitude"].values, coord_gdf["longitude"].values], axis=1),
+        centroids.coord,
+        distance=distance,
+        threshold=threshold,
     )
     return assigned
+
 
 @numba.njit
 def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
@@ -1069,7 +1162,10 @@ def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
     d_lat = lats1 - lats2
     return d_lon * d_lon * cos_lats1 * cos_lats1 + d_lat * d_lat
 
-def _nearest_neighbor_approx(centroids, coordinates, threshold, check_antimeridian=True):
+
+def _nearest_neighbor_approx(
+    centroids, coordinates, threshold, check_antimeridian=True
+):
     """Compute the nearest centroid for each coordinate using the
     euclidean distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
     (e.g. more than 100km apart) use the haversine distance.
@@ -1099,16 +1195,19 @@ def _nearest_neighbor_approx(centroids, coordinates, threshold, check_antimeridi
 
     # Compute only for the unique coordinates. Copy the results for the
     # not unique coordinates
-    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
-                            return_inverse=True)
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
     # Compute cos(lat) for all centroids
     centr_cos_lat = np.cos(np.radians(centroids[:, 0]))
     assigned = np.zeros(coordinates.shape[0], int)
     num_warn = 0
     for icoord, iidx in enumerate(idx):
-        dist = _dist_sqr_approx(centroids[:, 0], centroids[:, 1],
-                               centr_cos_lat, coordinates[iidx, 0],
-                               coordinates[iidx, 1])
+        dist = _dist_sqr_approx(
+            centroids[:, 0],
+            centroids[:, 1],
+            centr_cos_lat,
+            coordinates[iidx, 0],
+            coordinates[iidx, 1],
+        )
         min_idx = dist.argmin()
         # Raise a warning if the minimum distance is greater than the
         # threshold and set an unvalid index -1
@@ -1120,14 +1219,19 @@ def _nearest_neighbor_approx(centroids, coordinates, threshold, check_antimeridi
         assigned[inv == icoord] = min_idx
 
     if num_warn:
-        LOGGER.warning('Distance to closest centroid is greater than %s'
-                       'km for %s coordinates.', threshold, num_warn)
+        LOGGER.warning(
+            "Distance to closest centroid is greater than %s" "km for %s coordinates.",
+            threshold,
+            num_warn,
+        )
 
     if check_antimeridian:
         assigned = _nearest_neighbor_antimeridian(
-            centroids, coordinates, threshold, assigned)
+            centroids, coordinates, threshold, assigned
+        )
 
     return assigned
+
 
 def _nearest_neighbor_haversine(centroids, coordinates, threshold):
     """Compute the neareast centroid for each coordinate using a Ball tree with haversine distance.
@@ -1150,15 +1254,18 @@ def _nearest_neighbor_haversine(centroids, coordinates, threshold):
         with as many rows as coordinates containing the centroids indexes
     """
     # Construct tree from centroids
-    tree = BallTree(np.radians(centroids), metric='haversine')
+    tree = BallTree(np.radians(centroids), metric="haversine")
     # Select unique exposures coordinates
-    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
-                            return_inverse=True)
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
-    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1,
-                                return_distance=True, dualtree=True,
-                                breadth_first=False)
+    dist, assigned = tree.query(
+        np.radians(coordinates[idx]),
+        k=1,
+        return_distance=True,
+        dualtree=True,
+        breadth_first=False,
+    )
 
     # `BallTree.query` returns a row for each entry, even if k=1 (number of nearest neighbors)
     dist = dist[:, 0]
@@ -1168,15 +1275,20 @@ def _nearest_neighbor_haversine(centroids, coordinates, threshold):
     # threshold and set an unvalid index -1
     num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
     if num_warn:
-        LOGGER.warning('Distance to closest centroid is greater than %s'
-                       'km for %s coordinates.', threshold, num_warn)
+        LOGGER.warning(
+            "Distance to closest centroid is greater than %s" "km for %s coordinates.",
+            threshold,
+            num_warn,
+        )
         assigned[dist * EARTH_RADIUS_KM > threshold] = -1
 
     # Copy result to all exposures and return value
     return assigned[inv]
 
 
-def _nearest_neighbor_euclidean(centroids, coordinates, threshold, check_antimeridian=True):
+def _nearest_neighbor_euclidean(
+    centroids, coordinates, threshold, check_antimeridian=True
+):
     """Compute the neareast centroid for each coordinate using a k-d tree.
 
     Parameters
@@ -1204,8 +1316,7 @@ def _nearest_neighbor_euclidean(centroids, coordinates, threshold, check_antimer
     # Construct tree from centroids
     tree = scipy.spatial.KDTree(np.radians(centroids))
     # Select unique exposures coordinates
-    _, idx, inv = np.unique(coordinates, axis=0, return_index=True,
-                            return_inverse=True)
+    _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
     dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, p=2, workers=-1)
@@ -1214,16 +1325,21 @@ def _nearest_neighbor_euclidean(centroids, coordinates, threshold, check_antimer
     # threshold and set an unvalid index -1
     num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
     if num_warn:
-        LOGGER.warning('Distance to closest centroid is greater than %s'
-                       'km for %s coordinates.', threshold, num_warn)
+        LOGGER.warning(
+            "Distance to closest centroid is greater than %s" "km for %s coordinates.",
+            threshold,
+            num_warn,
+        )
         assigned[dist * EARTH_RADIUS_KM > threshold] = -1
 
     if check_antimeridian:
         assigned = _nearest_neighbor_antimeridian(
-            centroids, coordinates[idx], threshold, assigned)
+            centroids, coordinates[idx], threshold, assigned
+        )
 
     # Copy result to all exposures and return value
     return assigned[inv]
+
 
 def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
     """Recompute nearest neighbors close to the anti-meridian with the Haversine distance
@@ -1250,25 +1366,30 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
     lon_min = min(centroids[:, 1].min(), coordinates[:, 1].min())
     lon_max = max(centroids[:, 1].max(), coordinates[:, 1].max())
     if lon_max - lon_min > 360:
-        raise ValueError("Longitudinal coordinates need to be normalized"
-                         "to a common 360 degree range")
+        raise ValueError(
+            "Longitudinal coordinates need to be normalized"
+            "to a common 360 degree range"
+        )
     mid_lon = 0.5 * (lon_max + lon_min)
     antimeridian = mid_lon + 180
 
     thres_deg = np.degrees(threshold / EARTH_RADIUS_KM)
     coord_strip_bool = coordinates[:, 1] + antimeridian < 1.5 * thres_deg
-    coord_strip_bool |= coordinates[:, 1] - antimeridian >  -1.5 * thres_deg
+    coord_strip_bool |= coordinates[:, 1] - antimeridian > -1.5 * thres_deg
     if np.any(coord_strip_bool):
         coord_strip = coordinates[coord_strip_bool]
         cent_strip_bool = centroids[:, 1] + antimeridian < 2.5 * thres_deg
-        cent_strip_bool |= centroids[:, 1] - antimeridian >  -2.5 * thres_deg
+        cent_strip_bool |= centroids[:, 1] - antimeridian > -2.5 * thres_deg
         if np.any(cent_strip_bool):
             cent_strip = centroids[cent_strip_bool]
-            strip_assigned = _nearest_neighbor_haversine(cent_strip, coord_strip, threshold)
+            strip_assigned = _nearest_neighbor_haversine(
+                cent_strip, coord_strip, threshold
+            )
             new_coords = cent_strip_bool.nonzero()[0][strip_assigned]
             new_coords[strip_assigned == -1] = -1
             assigned[coord_strip_bool] = new_coords
     return assigned
+
 
 def region2isos(regions):
     """Convert region names to ISO 3166 alpha-3 codes of countries
@@ -1287,11 +1408,12 @@ def region2isos(regions):
     reg_info = pd.read_csv(RIVER_FLOOD_REGIONS_CSV)
     isos = []
     for region in regions:
-        region_msk = (reg_info['Reg_name'] == region)
+        region_msk = reg_info["Reg_name"] == region
         if not any(region_msk):
-            raise KeyError('Unknown region name: %s' % region)
-        isos += list(reg_info['ISO'][region_msk].values)
+            raise KeyError("Unknown region name: %s" % region)
+        isos += list(reg_info["ISO"][region_msk].values)
     return list(set(isos))
+
 
 def country_to_iso(countries, representation="alpha3", fillvalue=None):
     """Determine ISO 3166 representation of countries
@@ -1345,23 +1467,31 @@ def country_to_iso(countries, representation="alpha3", fillvalue=None):
             try:
                 match = pycountry.historic_countries.lookup(country)
             except LookupError:
-                match = next(filter(lambda c: country in c.values(), NONISO_REGIONS), None)
+                match = next(
+                    filter(lambda c: country in c.values(), NONISO_REGIONS), None
+                )
                 if match is not None:
                     match = pycountry.db.Data(**match)
                 elif fillvalue is not None:
                     match = pycountry.db.Data(**{representation: fillvalue})
                 else:
-                    raise LookupError(f'Unknown country identifier: {country}') from None
+                    raise LookupError(
+                        f"Unknown country identifier: {country}"
+                    ) from None
         iso = getattr(match, representation)
         if representation == "numeric":
             iso = int(iso)
         iso_list.append(iso)
     return iso_list[0] if return_single else iso_list
 
+
 def country_iso_alpha2numeric(iso_alpha):
     """Deprecated: Use `country_to_iso` with `representation="numeric"` instead"""
-    LOGGER.warning("country_iso_alpha2numeric is deprecated, use country_to_iso instead.")
+    LOGGER.warning(
+        "country_iso_alpha2numeric is deprecated, use country_to_iso instead."
+    )
     return country_to_iso(iso_alpha, "numeric")
+
 
 def country_natid2iso(natids, representation="alpha3"):
     """Convert internal NatIDs to ISO 3166-1 alpha-3 codes
@@ -1386,11 +1516,12 @@ def country_natid2iso(natids, representation="alpha3"):
     iso_list = []
     for natid in natids:
         if natid < 0 or natid >= len(ISIMIP_NATID_TO_ISO):
-            raise LookupError('Unknown country NatID: %s' % natid)
+            raise LookupError("Unknown country NatID: %s" % natid)
         iso_list.append(ISIMIP_NATID_TO_ISO[natid])
     if representation != "alpha3":
         iso_list = country_to_iso(iso_list, representation)
     return iso_list[0] if return_str else iso_list
+
 
 def country_iso2natid(isos):
     """Convert ISO 3166-1 alpha-3 codes to internal NatIDs
@@ -1412,8 +1543,9 @@ def country_iso2natid(isos):
         try:
             natids.append(ISIMIP_NATID_TO_ISO.index(iso))
         except ValueError as ver:
-            raise LookupError(f'Unknown country ISO: {iso}') from ver
+            raise LookupError(f"Unknown country ISO: {iso}") from ver
     return natids[0] if return_int else natids
+
 
 def natearth_country_to_int(country):
     """Integer representation (ISO 3166, if possible) of Natural Earth GeoPandas country row
@@ -1428,9 +1560,10 @@ def natearth_country_to_int(country):
     iso_numeric : int
         Integer representation of given country.
     """
-    if country.ISO_N3 != '-99':
+    if country.ISO_N3 != "-99":
         return int(country.ISO_N3)
     return country_to_iso(str(country.NAME), representation="numeric")
+
 
 def get_country_code(lat, lon, gridded=False):
     """Provide numeric (ISO 3166) code for every point.
@@ -1455,39 +1588,46 @@ def get_country_code(lat, lon, gridded=False):
     lat, lon = [np.asarray(ar).ravel() for ar in [lat, lon]]
     if lat.size == 0:
         return np.empty((0,), dtype=int)
-    LOGGER.info('Setting region_id %s points.', str(lat.size))
+    LOGGER.info("Setting region_id %s points.", str(lat.size))
     if gridded:
         base_file = u_hdf5.read(NATEARTH_CENTROIDS[150])
-        meta, region_id = base_file['meta'], base_file['region_id']
-        transform = rasterio.Affine(*meta['transform'])
-        region_id = region_id.reshape(meta['height'][0], meta['width'][0])
-        region_id = interp_raster_data(region_id, lat, lon, transform,
-                                       method='nearest', fill_value=0)
+        meta, region_id = base_file["meta"], base_file["region_id"]
+        transform = rasterio.Affine(*meta["transform"])
+        region_id = region_id.reshape(meta["height"][0], meta["width"][0])
+        region_id = interp_raster_data(
+            region_id, lat, lon, transform, method="nearest", fill_value=0
+        )
         region_id = region_id.astype(int)
     else:
         (lon_min, lat_min, lon_max, lat_max) = latlon_bounds(lat, lon, 0.001)
         countries = get_country_geometries(
-            extent=(lon_min, lon_max, lat_min, lat_max), center_crs=False)
+            extent=(lon_min, lon_max, lat_min, lat_max), center_crs=False
+        )
         with warnings.catch_warnings():
             # in order to suppress the following
             # UserWarning: Geometry is in a geographic CRS. Results from 'area' are likely
             # incorrect. Use 'GeoSeries.to_crs()' to re-project geometries to a projected CRS
             # before this operation.
-            warnings.simplefilter('ignore', UserWarning)
-            countries['area'] = countries.geometry.area
-        countries = countries.sort_values(by=['area'], ascending=False)
+            warnings.simplefilter("ignore", UserWarning)
+            countries["area"] = countries.geometry.area
+        countries = countries.sort_values(by=["area"], ascending=False)
         region_id = np.full((lon.size,), -1, dtype=int)
         total_land = countries.geometry.unary_union
-        ocean_mask = (region_id.all() if total_land is None
-                else ~shapely.vectorized.contains(total_land, lon, lat))
+        ocean_mask = (
+            region_id.all()
+            if total_land is None
+            else ~shapely.vectorized.contains(total_land, lon, lat)
+        )
         region_id[ocean_mask] = 0
         for country in countries.itertuples():
             unset = (region_id == -1).nonzero()[0]
-            select = shapely.vectorized.contains(country.geometry,
-                                                 lon[unset], lat[unset])
+            select = shapely.vectorized.contains(
+                country.geometry, lon[unset], lat[unset]
+            )
             region_id[unset[select]] = natearth_country_to_int(country)
         region_id[region_id == -1] = 0
     return region_id
+
 
 def get_admin1_info(country_names):
     """Provide Natural Earth registry info and shape files for admin1 regions
@@ -1506,6 +1646,7 @@ def get_admin1_info(country_names):
     admin1_shapes : dict
         Shape according to Natural Earth.
     """
+
     def _ensure_utf8(val):
         # Without the `*.cpg` file present, the shape reader wrongly assumes latin-1 encoding:
         # https://github.com/SciTools/cartopy/issues/1282
@@ -1513,7 +1654,7 @@ def get_admin1_info(country_names):
         # As a workaround, we encode and decode again, unless this fails which means
         # that the `*.cpg` is present and the encoding is correct:
         try:
-            return val.encode('latin-1').decode('utf-8')
+            return val.encode("latin-1").decode("utf-8")
         except (AttributeError, UnicodeDecodeError, UnicodeEncodeError):
             return val
 
@@ -1522,28 +1663,29 @@ def get_admin1_info(country_names):
     if not isinstance(country_names, list):
         LOGGER.error("country_names needs to be of type list, str, int or float")
         raise TypeError("Invalid type for input parameter 'country_names'")
-    admin1_file = shapereader.natural_earth(resolution='10m',
-                                            category='cultural',
-                                            name='admin_1_states_provinces')
+    admin1_file = shapereader.natural_earth(
+        resolution="10m", category="cultural", name="admin_1_states_provinces"
+    )
     admin1_recs = shapereader.Reader(admin1_file)
     admin1_info = dict()
     admin1_shapes = dict()
     for country in country_names:
         if isinstance(country, (int, float)):
             # transform numerric code to str
-            country = f'{int(country):03d}'
+            country = f"{int(country):03d}"
         # get alpha-3 code according to ISO 3166
         country = pycountry.countries.lookup(country).alpha_3
         admin1_info[country] = list()
         admin1_shapes[country] = list()
         for rec in admin1_recs.records():
-            if rec.attributes['adm0_a3'] == country:
+            if rec.attributes["adm0_a3"] == country:
                 rec_attributes = {k: _ensure_utf8(v) for k, v in rec.attributes.items()}
                 admin1_info[country].append(rec_attributes)
                 admin1_shapes[country].append(rec.geometry)
         if len(admin1_info[country]) == 0:
-            raise LookupError(f'natural_earth records are empty for country {country}')
+            raise LookupError(f"natural_earth records are empty for country {country}")
     return admin1_info, admin1_shapes
+
 
 def get_admin1_geometries(countries):
     """
@@ -1575,25 +1717,30 @@ def get_admin1_geometries(countries):
     """
     # init empty GeoDataFrame:
     gdf = gpd.GeoDataFrame(
-        columns = ("admin1_name", "iso_3166_2", "geometry", "iso_3n", "iso_3a"))
+        columns=("admin1_name", "iso_3166_2", "geometry", "iso_3n", "iso_3a")
+    )
 
     # extract admin 1 infos and shapes for each country:
     admin1_info, admin1_shapes = get_admin1_info(countries)
     for country in admin1_info:
         # fill admin 1 region names and codes to GDF for single country:
         gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
-        gdf_tmp['admin1_name'] = [record['name'] for record in admin1_info[country]]
-        gdf_tmp['iso_3166_2'] = [record['iso_3166_2'] for record in admin1_info[country]]
+        gdf_tmp["admin1_name"] = [record["name"] for record in admin1_info[country]]
+        gdf_tmp["iso_3166_2"] = [
+            record["iso_3166_2"] for record in admin1_info[country]
+        ]
         # With this initiation of GeoSeries in a list comprehension,
         # the ability of geopandas to convert shapereader.Shape to (Multi)Polygon is exploited:
-        geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0]
-                                   for shape in admin1_shapes[country]])
+        geoseries = gpd.GeoSeries(
+            [gpd.GeoSeries(shape).values[0] for shape in admin1_shapes[country]]
+        )
         gdf_tmp.geometry = list(geoseries)
         # fill columns with country identifiers (admin 0):
-        gdf_tmp['iso_3n'] = pycountry.countries.lookup(country).numeric
-        gdf_tmp['iso_3a'] = country
+        gdf_tmp["iso_3n"] = pycountry.countries.lookup(country).numeric
+        gdf_tmp["iso_3a"] = country
         gdf = pd.concat([gdf, gdf_tmp], ignore_index=True)
     return gdf
+
 
 def get_resolution_1d(coords, min_resol=1.0e-8):
     """Compute resolution of scalar grid
@@ -1668,6 +1815,7 @@ def pts_to_raster_meta(points_bounds, res):
     ras_trans = rasterio.Affine.translation(*origin) * rasterio.Affine.scale(*res)
     return int(nsteps[1]), int(nsteps[0]), ras_trans
 
+
 def raster_to_meshgrid(transform, width, height):
     """Get coordinates of grid points in raster
 
@@ -1690,8 +1838,9 @@ def raster_to_meshgrid(transform, width, height):
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax = xmin + width * xres
     ymax = ymin + height * yres
-    return np.meshgrid(np.arange(xmin + xres / 2, xmax, xres),
-                       np.arange(ymin + yres / 2, ymax, yres))
+    return np.meshgrid(
+        np.arange(xmin + xres / 2, xmax, xres), np.arange(ymin + yres / 2, ymax, yres)
+    )
 
 
 def to_crs_user_input(crs_obj):
@@ -1717,15 +1866,18 @@ def to_crs_user_input(crs_obj):
     ValueError
         if type(crs_obj) has the wrong type
     """
+
     def _is_deprecated_init_crs(crs_dict):
-        return (isinstance(crs_dict, dict)
-                and "init" in crs_dict
-                and all(k in ["init", "no_defs"] for k in crs_dict.keys())
-                and crs_dict.get("no_defs", True) is True)
+        return (
+            isinstance(crs_dict, dict)
+            and "init" in crs_dict
+            and all(k in ["init", "no_defs"] for k in crs_dict.keys())
+            and crs_dict.get("no_defs", True) is True
+        )
 
     if isinstance(crs_obj, (dict, int)):
         if _is_deprecated_init_crs(crs_obj):
-            return crs_obj['init']
+            return crs_obj["init"]
         return crs_obj
 
     crs_string = crs_obj.decode() if isinstance(crs_obj, bytes) else crs_obj
@@ -1733,10 +1885,10 @@ def to_crs_user_input(crs_obj):
     if not isinstance(crs_string, str):
         raise ValueError(f"crs has unhandled data set type: {type(crs_string)}")
 
-    if crs_string[0] == '{':
+    if crs_string[0] == "{":
         crs_dict = ast.literal_eval(crs_string)
         if _is_deprecated_init_crs(crs_dict):
-            return crs_dict['init']
+            return crs_dict["init"]
         return crs_dict
 
     return crs_string
@@ -1759,10 +1911,21 @@ def equal_crs(crs_one, crs_two):
     """
     if crs_one is None:
         return crs_two is None
-    return rasterio.crs.CRS.from_user_input(crs_one) == rasterio.crs.CRS.from_user_input(crs_two)
+    return rasterio.crs.CRS.from_user_input(
+        crs_one
+    ) == rasterio.crs.CRS.from_user_input(crs_two)
 
-def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst_crs=None,
-                           transform=None, resampling="nearest"):
+
+def _read_raster_reproject(
+    src,
+    src_crs,
+    dst_meta,
+    band=None,
+    geometry=None,
+    dst_crs=None,
+    transform=None,
+    resampling="nearest",
+):
     """Helper function for `read_raster`."""
     if isinstance(resampling, str):
         resampling = getattr(rasterio.warp.Resampling, resampling)
@@ -1772,19 +1935,22 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst
         dst_crs = src_crs
     if not transform:
         transform, width, height = rasterio.warp.calculate_default_transform(
-            src_crs, dst_crs, src.width, src.height, *src.bounds)
+            src_crs, dst_crs, src.width, src.height, *src.bounds
+        )
     else:
         transform, width, height = transform
-    dst_meta.update({
-        'crs': dst_crs,
-        'transform': transform,
-        'width': width,
-        'height': height,
-    })
+    dst_meta.update(
+        {
+            "crs": dst_crs,
+            "transform": transform,
+            "width": width,
+            "height": height,
+        }
+    )
     kwargs = {}
-    if src.meta['nodata']:
-        kwargs['src_nodata'] = src.meta['nodata']
-        kwargs['dst_nodata'] = src.meta['nodata']
+    if src.meta["nodata"]:
+        kwargs["src_nodata"] = src.meta["nodata"]
+        kwargs["dst_nodata"] = src.meta["nodata"]
 
     intensity = np.zeros((len(band), height, width))
     for idx_band, i_band in enumerate(band):
@@ -1796,39 +1962,45 @@ def _read_raster_reproject(src, src_crs, dst_meta, band=None, geometry=None, dst
             dst_transform=transform,
             dst_crs=dst_crs,
             resampling=resampling,
-            **kwargs)
+            **kwargs,
+        )
 
-        if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
+        if dst_meta["nodata"] and np.isnan(dst_meta["nodata"]):
             nodata_mask = np.isnan(intensity[idx_band, :])
         else:
-            nodata_mask = (intensity[idx_band, :] == dst_meta['nodata'])
+            nodata_mask = intensity[idx_band, :] == dst_meta["nodata"]
         intensity[idx_band, :][nodata_mask] = 0
 
     if geometry:
-        intensity = intensity.astype('float32')
+        intensity = intensity.astype("float32")
         # update driver to GTiff as netcdf does not work reliably
-        dst_meta.update(driver='GTiff')
+        dst_meta.update(driver="GTiff")
         with rasterio.MemoryFile() as memfile:
             with memfile.open(**dst_meta) as dst:
                 dst.write(intensity)
 
             with memfile.open() as dst:
-                inten, mask_trans = rasterio.mask.mask(dst, geometry, crop=True, indexes=band)
-                dst_meta.update({
-                    "height": inten.shape[1],
-                    "width": inten.shape[2],
-                    "transform": mask_trans,
-                })
+                inten, mask_trans = rasterio.mask.mask(
+                    dst, geometry, crop=True, indexes=band
+                )
+                dst_meta.update(
+                    {
+                        "height": inten.shape[1],
+                        "width": inten.shape[2],
+                        "transform": mask_trans,
+                    }
+                )
         intensity = inten[range(len(band)), :]
-        intensity = intensity.astype('float64')
+        intensity = intensity.astype("float64")
 
         # reset nodata values again as driver Gtiff resets them again
-        if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
+        if dst_meta["nodata"] and np.isnan(dst_meta["nodata"]):
             intensity[np.isnan(intensity)] = 0
         else:
-            intensity[intensity == dst_meta['nodata']] = 0
+            intensity[intensity == dst_meta["nodata"]] = 0
 
     return intensity
+
 
 def _add_gdal_vsi_prefix(path):
     """Add one of GDAL's virtual file system prefixes if applicable
@@ -1863,8 +2035,19 @@ def _add_gdal_vsi_prefix(path):
         path = f"/vsi{supported_suffixes[suffix]}/{path}"
     return str(path)
 
-def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
-                dst_crs=None, transform=None, width=None, height=None, resampling="nearest"):
+
+def read_raster(
+    file_name,
+    band=None,
+    src_crs=None,
+    window=None,
+    geometry=None,
+    dst_crs=None,
+    transform=None,
+    width=None,
+    height=None,
+    resampling="nearest",
+):
     """Read raster of bands and set 0-values to the masked ones.
 
     Parameters
@@ -1900,29 +2083,38 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
     """
     if not band:
         band = [1]
-    LOGGER.info('Reading %s', file_name)
+    LOGGER.info("Reading %s", file_name)
 
     with rasterio.Env():
-        with rasterio.open(_add_gdal_vsi_prefix(file_name), 'r') as src:
+        with rasterio.open(_add_gdal_vsi_prefix(file_name), "r") as src:
             dst_meta = src.meta.copy()
 
             if dst_crs or transform:
-                LOGGER.debug('Reprojecting ...')
+                LOGGER.debug("Reprojecting ...")
 
                 src_crs = src.crs if src_crs is None else src_crs
                 if not src_crs:
                     src_crs = rasterio.crs.CRS.from_user_input(DEF_CRS)
                 transform = (transform, width, height) if transform else None
-                inten = _read_raster_reproject(src, src_crs, dst_meta, band=band,
-                                               geometry=geometry, dst_crs=dst_crs,
-                                               transform=transform, resampling=resampling)
+                inten = _read_raster_reproject(
+                    src,
+                    src_crs,
+                    dst_meta,
+                    band=band,
+                    geometry=geometry,
+                    dst_crs=dst_crs,
+                    transform=transform,
+                    resampling=resampling,
+                )
             else:
                 if geometry:
-                    inten, trans = rasterio.mask.mask(src, geometry, crop=True, indexes=band)
-                    if dst_meta['nodata'] and np.isnan(dst_meta['nodata']):
+                    inten, trans = rasterio.mask.mask(
+                        src, geometry, crop=True, indexes=band
+                    )
+                    if dst_meta["nodata"] and np.isnan(dst_meta["nodata"]):
                         inten[np.isnan(inten)] = 0
                     else:
-                        inten[inten == dst_meta['nodata']] = 0
+                        inten[inten == dst_meta["nodata"]] = 0
 
                 else:
                     masked_array = src.read(band, window=window, masked=True)
@@ -1932,24 +2124,34 @@ def read_raster(file_name, band=None, src_crs=None, window=None, geometry=None,
                     if window:
                         trans = rasterio.windows.transform(window, src.transform)
                     else:
-                        trans = dst_meta['transform']
+                        trans = dst_meta["transform"]
 
-                dst_meta.update({
-                    "height": inten.shape[1],
-                    "width": inten.shape[2],
-                    "transform": trans,
-                })
+                dst_meta.update(
+                    {
+                        "height": inten.shape[1],
+                        "width": inten.shape[2],
+                        "transform": trans,
+                    }
+                )
 
-    if not dst_meta['crs']:
-        dst_meta['crs'] = rasterio.crs.CRS.from_user_input(DEF_CRS)
+    if not dst_meta["crs"]:
+        dst_meta["crs"] = rasterio.crs.CRS.from_user_input(DEF_CRS)
 
     intensity = inten[range(len(band)), :]
-    dst_shape = (len(band), dst_meta['height'] * dst_meta['width'])
+    dst_shape = (len(band), dst_meta["height"] * dst_meta["width"])
 
     return dst_meta, intensity.reshape(dst_shape)
 
-def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
-                       global_origin=None, pad_cells=1.0):
+
+def read_raster_bounds(
+    path,
+    bounds,
+    res=None,
+    bands=None,
+    resampling="nearest",
+    global_origin=None,
+    pad_cells=1.0,
+):
     """Read raster file within given bounds at given resolution
 
     By default, not only the grid cells of the destination raster whose cell centers fall within
@@ -1996,7 +2198,7 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
         resampling = getattr(rasterio.warp.Resampling, resampling)
     if not bands:
         bands = [1]
-    with rasterio.open(_add_gdal_vsi_prefix(path), 'r') as src:
+    with rasterio.open(_add_gdal_vsi_prefix(path), "r") as src:
         if res:
             if not isinstance(res, tuple):
                 res = (res, res)
@@ -2005,8 +2207,12 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
         res = (np.abs(res[0]), np.abs(res[1]))
 
         # make sure that the extent of pixel centers covers the specified region
-        bounds = (bounds[0] - pad_cells * res[0], bounds[1] - pad_cells * res[1],
-                  bounds[2] + pad_cells * res[0], bounds[3] + pad_cells * res[1])
+        bounds = (
+            bounds[0] - pad_cells * res[0],
+            bounds[1] - pad_cells * res[1],
+            bounds[2] + pad_cells * res[0],
+            bounds[3] + pad_cells * res[1],
+        )
 
         if src.crs is not None and src.crs.to_epsg() == 4326:
             # We consider WGS84 (EPSG:4326) as a special case just because it's so common.
@@ -2015,9 +2221,13 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
 
         if global_origin is None:
             global_origin = (src.transform[2], src.transform[5])
-        res_signed = (np.sign(src.transform[0]) * res[0], np.sign(src.transform[4]) * res[1])
+        res_signed = (
+            np.sign(src.transform[0]) * res[0],
+            np.sign(src.transform[4]) * res[1],
+        )
         global_transform = rasterio.transform.from_origin(
-            *global_origin, res_signed[0], -res_signed[1])
+            *global_origin, res_signed[0], -res_signed[1]
+        )
         transform, shape = subraster_from_bounds(global_transform, bounds)
 
         data = np.zeros((len(bands),) + shape, dtype=src.dtypes[0])
@@ -2030,8 +2240,10 @@ def read_raster_bounds(path, bounds, res=None, bands=None, resampling="nearest",
                 src_crs=src.crs,
                 dst_transform=transform,
                 dst_crs=crs,
-                resampling=resampling)
+                resampling=resampling,
+            )
     return data, transform
+
 
 def _raster_gradient(data, transform, latlon_to_m=False):
     """Compute the gradient of raster data using finite differences
@@ -2059,7 +2271,7 @@ def _raster_gradient(data, transform, latlon_to_m=False):
         Affine transformation defining the output raster.
     """
     xres, _, _, _, yres = transform[:5]
-    gradient_transform =  rasterio.Affine.translation(0.5 * xres, 0.5 * yres) * transform
+    gradient_transform = rasterio.Affine.translation(0.5 * xres, 0.5 * yres) * transform
 
     if latlon_to_m:
         height, width = [s - 1 for s in data.shape]
@@ -2074,6 +2286,7 @@ def _raster_gradient(data, transform, latlon_to_m=False):
     gradient_data = np.stack([diff_y / yres, diff_x / xres], axis=-1)
 
     return gradient_data, gradient_transform
+
 
 def _prepare_raster_sample(path, lat, lon, intermediate_res, fill_value):
     """Helper function for the sampling of points from a raster file.
@@ -2105,16 +2318,18 @@ def _prepare_raster_sample(path, lat, lon, intermediate_res, fill_value):
     crs : CRS
         The CRS of the raster file.
     """
-    LOGGER.info('Sampling from %s', path)
+    LOGGER.info("Sampling from %s", path)
 
     with rasterio.open(_add_gdal_vsi_prefix(path), "r") as src:
         if intermediate_res is None:
             intermediate_res = (np.abs(src.transform[0]), np.abs(src.transform[4]))
-        meta_nodata = src.meta['nodata']
+        meta_nodata = src.meta["nodata"]
         crs = src.crs
 
     bounds = (lon.min(), lat.min(), lon.max(), lat.max())
-    data, transform = read_raster_bounds(path, bounds, res=intermediate_res, pad_cells=2)
+    data, transform = read_raster_bounds(
+        path, bounds, res=intermediate_res, pad_cells=2
+    )
     data = data[0, :, :]
 
     if fill_value is not None:
@@ -2125,7 +2340,10 @@ def _prepare_raster_sample(path, lat, lon, intermediate_res, fill_value):
 
     return data, transform, fill_value, crs
 
-def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', fill_value=None):
+
+def read_raster_sample(
+    path, lat, lon, intermediate_res=None, method="linear", fill_value=None
+):
     """Read point samples from raster file.
 
     Parameters
@@ -2153,13 +2371,17 @@ def read_raster_sample(path, lat, lon, intermediate_res=None, method='linear', f
         return np.zeros_like(lat)
 
     data, transform, fill_value, _ = _prepare_raster_sample(
-        path, lat, lon, intermediate_res, fill_value)
+        path, lat, lon, intermediate_res, fill_value
+    )
 
     return interp_raster_data(
-        data, lat, lon, transform, method=method, fill_value=fill_value)
+        data, lat, lon, transform, method=method, fill_value=fill_value
+    )
 
-def read_raster_sample_with_gradients(path, lat, lon, intermediate_res=None,
-                                      method=('linear', 'nearest'), fill_value=None):
+
+def read_raster_sample_with_gradients(
+    path, lat, lon, intermediate_res=None, method=("linear", "nearest"), fill_value=None
+):
     """Read point samples with computed gradients from raster file.
 
     For convenience, and because this is the most common use case, the step sizes in the gradient
@@ -2205,19 +2427,25 @@ def read_raster_sample_with_gradients(path, lat, lon, intermediate_res=None,
         method = (method, method)
 
     data, transform, fill_value, crs = _prepare_raster_sample(
-        path, lat, lon, intermediate_res, fill_value)
+        path, lat, lon, intermediate_res, fill_value
+    )
 
     interp_data = interp_raster_data(
-        data, lat, lon, transform, method=method[0], fill_value=fill_value)
+        data, lat, lon, transform, method=method[0], fill_value=fill_value
+    )
 
     is_latlon = crs is not None and crs.to_epsg() == 4326
     grad_data, grad_transform = _raster_gradient(data, transform, latlon_to_m=is_latlon)
     interp_grad = interp_raster_data(
-        grad_data, lat, lon, grad_transform, method=method[1], fill_value=fill_value)
+        grad_data, lat, lon, grad_transform, method=method[1], fill_value=fill_value
+    )
 
     return interp_data, interp_grad
 
-def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fill_value=0):
+
+def interp_raster_data(
+    data, interp_y, interp_x, transform, method="linear", fill_value=0
+):
     """Interpolate raster data, given as array and affine transform
 
     Parameters
@@ -2247,7 +2475,9 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
     xres, _, xmin, _, yres, ymin = transform[:6]
     xmax = xmin + data.shape[1] * xres
     ymax = ymin + data.shape[0] * yres
-    data = np.pad(data, [(1, 1) if i < 2 else (0, 0) for i in range(data.ndim)], mode='edge')
+    data = np.pad(
+        data, [(1, 1) if i < 2 else (0, 0) for i in range(data.ndim)], mode="edge"
+    )
 
     if yres < 0:
         yres = -yres
@@ -2262,10 +2492,17 @@ def interp_raster_data(data, interp_y, interp_x, transform, method='linear', fil
 
     data = np.array(data, dtype=np.float64)
     data[np.isnan(data)] = fill_value
-    return scipy.interpolate.interpn((y_dim, x_dim), data, np.vstack([interp_y, interp_x]).T,
-                                     method=method, bounds_error=False, fill_value=fill_value)
+    return scipy.interpolate.interpn(
+        (y_dim, x_dim),
+        data,
+        np.vstack([interp_y, interp_x]).T,
+        method=method,
+        bounds_error=False,
+        fill_value=fill_value,
+    )
 
-def refine_raster_data(data, transform, res, method='linear', fill_value=0):
+
+def refine_raster_data(data, transform, res, method="linear", fill_value=0):
     """Refine raster data, given as array and affine transform
 
     Parameters
@@ -2297,10 +2534,12 @@ def refine_raster_data(data, transform, res, method='linear', fill_value=0):
     new_shape = (new_dimy.size, new_dimx.size)
     new_x, new_y = [ar.ravel() for ar in np.meshgrid(new_dimx, new_dimy)]
     new_transform = rasterio.Affine(res[0], 0, xmin, 0, res[1], ymin)
-    new_data = interp_raster_data(data, new_y, new_x, transform, method=method,
-                                  fill_value=fill_value)
+    new_data = interp_raster_data(
+        data, new_y, new_x, transform, method=method, fill_value=fill_value
+    )
     new_data = new_data.reshape(new_shape)
     return new_data, new_transform
+
 
 def read_vector(file_name, field_name, dst_crs=None):
     """Read vector file format supported by fiona.
@@ -2325,7 +2564,7 @@ def read_vector(file_name, field_name, dst_crs=None):
     value : np.array
         Values associated to each shape.
     """
-    LOGGER.info('Reading %s', file_name)
+    LOGGER.info("Reading %s", file_name)
     data_frame = gpd.read_file(file_name)
     if not data_frame.crs:
         data_frame.crs = DEF_CRS
@@ -2338,6 +2577,7 @@ def read_vector(file_name, field_name, dst_crs=None):
     for i_inten, inten in enumerate(field_name):
         value[i_inten, :] = data_frame[inten].values
     return lat, lon, geometry, value
+
 
 def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     """Write raster in GeoTiff format.
@@ -2355,20 +2595,22 @@ def write_raster(file_name, data_matrix, meta, dtype=np.float32):
     dtype : numpy dtype, optional
         A numpy dtype. Default: np.float32
     """
-    LOGGER.info('Writting %s', file_name)
-    if data_matrix.shape != (meta['height'], meta['width']):
+    LOGGER.info("Writting %s", file_name)
+    if data_matrix.shape != (meta["height"], meta["width"]):
         # every row is an event (from hazard intensity or fraction) == band
-        shape = (data_matrix.shape[0], meta['height'], meta['width'])
+        shape = (data_matrix.shape[0], meta["height"], meta["width"])
     else:
-        shape = (1, meta['height'], meta['width'])
+        shape = (1, meta["height"], meta["width"])
     dst_meta = copy.deepcopy(meta)
-    dst_meta.update(driver='GTiff', dtype=dtype, count=shape[0])
+    dst_meta.update(driver="GTiff", dtype=dtype, count=shape[0])
     data_matrix = np.asarray(data_matrix, dtype=dtype).reshape(shape)
-    with rasterio.open(file_name, 'w', **dst_meta) as dst:
+    with rasterio.open(file_name, "w", **dst_meta) as dst:
         dst.write(data_matrix, indexes=np.arange(1, shape[0] + 1))
 
-def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF_CRS,
-                     scheduler=None):
+
+def points_to_raster(
+    points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF_CRS, scheduler=None
+):
     """Compute raster (as data and transform) from GeoDataFrame.
 
     Parameters
@@ -2399,52 +2641,65 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
         Dictionary with 'crs', 'height', 'width' and 'transform' attributes.
     """
     if not val_names:
-        val_names = ['value']
+        val_names = ["value"]
     if not res:
-        res = np.abs(get_resolution(points_df['latitude'].values,
-                                    points_df['longitude'].values)).min()
+        res = np.abs(
+            get_resolution(points_df["latitude"].values, points_df["longitude"].values)
+        ).min()
     if not raster_res:
         raster_res = res
 
     def apply_box(df_exp):
-        fun = lambda r: Point(r['longitude'], r['latitude']).buffer(res / 2).envelope
+        fun = lambda r: Point(r["longitude"], r["latitude"]).buffer(res / 2).envelope
         return df_exp.apply(fun, axis=1)
 
-    LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
+    LOGGER.info("Raster from resolution %s to %s.", res, raster_res)
     df_poly = gpd.GeoDataFrame(points_df[val_names])
     if not scheduler:
-        df_poly['_-geometry-prov'] = apply_box(points_df)
+        df_poly["_-geometry-prov"] = apply_box(points_df)
     else:
-        ddata = dd.from_pandas(points_df[['latitude', 'longitude']],
-                               npartitions=cpu_count())
-        df_poly['_-geometry-prov'] = ddata.map_partitions(
-            apply_box).compute(scheduler=scheduler)
+        ddata = dd.from_pandas(
+            points_df[["latitude", "longitude"]], npartitions=cpu_count()
+        )
+        df_poly["_-geometry-prov"] = ddata.map_partitions(apply_box).compute(
+            scheduler=scheduler
+        )
         # depending on the dask/pandas version setting `meta=Polygon` in map_partitions
         # would just raise a warning and returns a string, so we have to convert explicitly
-        if isinstance(df_poly.loc[0, '_-geometry-prov'], str):  # fails for empty `points_df`
-            df_poly['_-geometry-prov'] = shapely.wkt.loads(df_poly['_-geometry-prov'])
+        if isinstance(
+            df_poly.loc[0, "_-geometry-prov"], str
+        ):  # fails for empty `points_df`
+            df_poly["_-geometry-prov"] = shapely.wkt.loads(df_poly["_-geometry-prov"])
 
-    df_poly.set_geometry('_-geometry-prov',
-                         crs=crs if crs else points_df.crs if points_df.crs else DEF_CRS,
-                         inplace=True,
-                         drop=True)
+    df_poly.set_geometry(
+        "_-geometry-prov",
+        crs=crs if crs else points_df.crs if points_df.crs else DEF_CRS,
+        inplace=True,
+        drop=True,
+    )
 
     # renormalize longitude if necessary
     if equal_crs(df_poly.crs, DEF_CRS):
-        xmin, ymin, xmax, ymax = latlon_bounds(points_df['latitude'].values,
-                                               points_df['longitude'].values)
+        xmin, ymin, xmax, ymax = latlon_bounds(
+            points_df["latitude"].values, points_df["longitude"].values
+        )
         x_mid = 0.5 * (xmin + xmax)
         # we don't really change the CRS when rewrapping, so we reset the CRS attribute afterwards
-        df_poly = df_poly \
-            .to_crs({"proj": "longlat", "lon_wrap": x_mid}) \
-            .set_crs(DEF_CRS, allow_override=True)
+        df_poly = df_poly.to_crs({"proj": "longlat", "lon_wrap": x_mid}).set_crs(
+            DEF_CRS, allow_override=True
+        )
     else:
-        xmin, ymin, xmax, ymax = (points_df['longitude'].min(), points_df['latitude'].min(),
-                                  points_df['longitude'].max(), points_df['latitude'].max())
+        xmin, ymin, xmax, ymax = (
+            points_df["longitude"].min(),
+            points_df["latitude"].min(),
+            points_df["longitude"].max(),
+            points_df["latitude"].max(),
+        )
 
     # construct raster
-    rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax),
-                                               (raster_res, -raster_res))
+    rows, cols, ras_trans = pts_to_raster_meta(
+        (xmin, ymin, xmax, ymax), (raster_res, -raster_res)
+    )
     raster_out = np.zeros((len(val_names), rows, cols))
 
     # TODO: parallel rasterize
@@ -2455,15 +2710,17 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
             transform=ras_trans,
             fill=0,
             all_touched=True,
-            dtype=rasterio.float32)
+            dtype=rasterio.float32,
+        )
 
     meta = {
-        'crs': df_poly.crs,
-        'height': rows,
-        'width': cols,
-        'transform': ras_trans,
+        "crs": df_poly.crs,
+        "height": rows,
+        "width": cols,
+        "transform": ras_trans,
     }
     return raster_out, meta
+
 
 def subraster_from_bounds(transform, bounds):
     """Compute a subraster definition from a given reference transform and bounds.
@@ -2494,16 +2751,30 @@ def subraster_from_bounds(transform, bounds):
 
     # align the window bounds to the raster by rounding
     col_min, col_max = np.round(window.col_off), np.round(window.col_off + window.width)
-    row_min, row_max = np.round(window.row_off), np.round(window.row_off + window.height)
-    window = rasterio.windows.Window(col_min, row_min, col_max - col_min, row_max - row_min)
+    row_min, row_max = np.round(window.row_off), np.round(
+        window.row_off + window.height
+    )
+    window = rasterio.windows.Window(
+        col_min, row_min, col_max - col_min, row_max - row_min
+    )
 
     dst_transform = rasterio.windows.transform(window, transform)
     dst_shape = (int(window.height), int(window.width))
     return dst_transform, dst_shape
 
-def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resolution=None,
-                      dst_bounds=None, global_origin=(-180, 90), resampling="nearest",
-                      conserve=None, **kwargs):
+
+def align_raster_data(
+    source,
+    src_crs,
+    src_transform,
+    dst_crs=None,
+    dst_resolution=None,
+    dst_bounds=None,
+    global_origin=(-180, 90),
+    resampling="nearest",
+    conserve=None,
+    **kwargs,
+):
     """Reproject 2D np.ndarray to be aligned to a reference grid.
 
     This function ensures that reprojected data with the same dst_resolution and global_origins are
@@ -2577,14 +2848,16 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
 
     destination = np.zeros(dst_shape, dtype=source.dtype)
     try:
-        rasterio.warp.reproject(source=source,
-                            destination=destination,
-                            src_transform=src_transform,
-                            src_crs=src_crs,
-                            dst_transform=dst_transform,
-                            dst_crs=dst_crs,
-                            resampling=resampling,
-                            **kwargs)
+        rasterio.warp.reproject(
+            source=source,
+            destination=destination,
+            src_transform=src_transform,
+            src_crs=src_crs,
+            dst_transform=dst_transform,
+            dst_crs=dst_crs,
+            resampling=resampling,
+            **kwargs,
+        )
     except Exception as raster_exc:
         # rasterio doesn't expose all of their error classes
         # in particular: rasterio._err.CPLE_AppDefinedError
@@ -2592,15 +2865,16 @@ def align_raster_data(source, src_crs, src_transform, dst_crs=None, dst_resoluti
         # e.g. in litpop._get_litpop_single_polygon
         raise ValueError(raster_exc) from raster_exc
 
-    if conserve == 'mean':
+    if conserve == "mean":
         destination *= source.mean() / destination.mean()
-    elif conserve == 'sum':
+    elif conserve == "sum":
         destination *= source.sum() / destination.sum()
-    elif conserve == 'norm':
+    elif conserve == "norm":
         destination *= 1.0 / destination.sum()
     elif conserve is not None:
         raise ValueError(f"Invalid value for conserve: {conserve}")
     return destination, dst_transform
+
 
 def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
     """
@@ -2633,7 +2907,7 @@ def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
     """
     with rasterio.io.MemoryFile() as memfile:
         with memfile.open(
-            driver='GTiff',
+            driver="GTiff",
             height=raster.shape[0],
             width=raster.shape[1],
             count=1,
@@ -2644,6 +2918,7 @@ def mask_raster_with_geometry(raster, transform, shapes, nodata=None, **kwargs):
         with memfile.open() as dataset:
             output, _ = rasterio.mask.mask(dataset, shapes, nodata=nodata, **kwargs)
     return output.squeeze(0)
+
 
 def set_df_geometry_points(df_val, scheduler=None, crs=None):
     """Set given geometry to given dataframe using dask if scheduler.
@@ -2660,16 +2935,22 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     crs : object (anything readable by pyproj4.CRS.from_user_input), optional
         Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """
-    LOGGER.info('Setting geometry points.')
+    LOGGER.info("Setting geometry points.")
     if scheduler is not None:
-        warnings.warn("This function does not use dask features anymore. The parameter has no"
-                      " effect and will be removed in a future version.", DeprecationWarning)
+        warnings.warn(
+            "This function does not use dask features anymore. The parameter has no"
+            " effect and will be removed in a future version.",
+            DeprecationWarning,
+        )
 
     # keep the original crs if any
-    crs = df_val['crs'] if crs is None else crs  # crs might now still be None
+    crs = df_val["crs"] if crs is None else crs  # crs might now still be None
 
-    df_val.set_geometry(gpd.points_from_xy(df_val['longitude'], df_val['latitude']),
-                        inplace=True, crs=crs)
+    df_val.set_geometry(
+        gpd.points_from_xy(df_val["longitude"], df_val["latitude"]),
+        inplace=True,
+        crs=crs,
+    )
 
 
 def fao_code_def():
@@ -2685,8 +2966,8 @@ def fao_code_def():
     # FAO_FILE2: contains FAO country codes and correstponding ISO3 Code
     #           (http://www.fao.org/faostat/en/#definitions)
     fao_file = pd.read_csv(SYSTEM_DIR.joinpath("FAOSTAT_data_country_codes.csv"))
-    fao_code = getattr(fao_file, 'Country Code').values
-    fao_iso = (getattr(fao_file, 'ISO3 Code').values).tolist()
+    fao_code = getattr(fao_file, "Country Code").values
+    fao_iso = (getattr(fao_file, "ISO3 Code").values).tolist()
 
     # create a list of ISO3 codes and corresponding fao country codes
     iso_list = list()
@@ -2697,6 +2978,7 @@ def fao_code_def():
             faocode_list.append(int(fao_code[idx]))
 
     return iso_list, faocode_list
+
 
 def country_faocode2iso(input_fao):
     """Convert FAO country code to ISO numeric-3 codes.
@@ -2723,6 +3005,7 @@ def country_faocode2iso(input_fao):
             output_iso[item] = iso_list[idx[0]]
 
     return output_iso
+
 
 def country_iso2faocode(input_iso):
     """Convert ISO numeric-3 codes to FAO country code.
