@@ -50,8 +50,8 @@ def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=
     """Test properties of imapcts"""
     self.assertEqual(len(haz.event_id), len(imp.at_event))
     self.assertIsInstance(imp, Impact)
-    np.testing.assert_allclose(imp.coord_exp[:, 0], exp.gdf["latitude"])
-    np.testing.assert_allclose(imp.coord_exp[:, 1], exp.gdf["longitude"])
+    np.testing.assert_allclose(imp.coord_exp[:, 0], exp.latitude)
+    np.testing.assert_allclose(imp.coord_exp[:, 1], exp.longitude)
     self.assertAlmostEqual(imp.aai_agg, aai_agg, 3)
     np.testing.assert_allclose(imp.eai_exp, eai_exp, rtol=1e-5)
     np.testing.assert_allclose(imp.at_event, at_event, rtol=1e-5)
@@ -221,103 +221,6 @@ class TestImpactCalc(unittest.TestCase):
         icalc = ImpactCalc(exp, impf_set, haz)
         impact = icalc.impact(assign_centroids=False)
         aai_agg = 161436.05112960344
-        eai_exp = np.array(
-            [
-                1.61159701e05,
-                1.33742847e02,
-                0.00000000e00,
-                4.21352988e-01,
-                1.42185609e02,
-                0.00000000e00,
-                0.00000000e00,
-                0.00000000e00,
-            ]
-        )
-        at_event = np.array(
-            [
-                0.00000000e00,
-                0.00000000e00,
-                9.85233619e04,
-                3.41245461e04,
-                7.73566566e07,
-                0.00000000e00,
-                0.00000000e00,
-            ]
-        )
-        imp_mat_array = np.array(
-            [
-                [
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                ],
-                [
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                ],
-                [
-                    0.00000000e00,
-                    6.41965663e04,
-                    0.00000000e00,
-                    2.02249434e02,
-                    3.41245461e04,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                ],
-                [
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    3.41245461e04,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                ],
-                [
-                    7.73566566e07,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                ],
-                [
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                ],
-                [
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                    0.00000000e00,
-                ],
-            ]
-        )
         eai_exp = np.array(
             [
                 1.61159701e05,
@@ -587,7 +490,12 @@ class TestImpactCalc(unittest.TestCase):
     def test_stitch_impact_matrix(self):
         """Check how sparse matrices from a generator are stitched together"""
         icalc = ImpactCalc(
-            Exposures({"blank": [1, 2, 3, 4]}), ImpactFuncSet(), Hazard()
+            Exposures(
+                {"blank": [1, 2, 3, 4]},
+                geometry=[],
+            ),
+            ImpactFuncSet(),
+            Hazard(),
         )
         icalc.hazard.event_id = np.array([1, 2, 3])
         icalc._orig_exp_idx = np.array([0, 1, 2, 3])
@@ -621,7 +529,14 @@ class TestImpactCalc(unittest.TestCase):
 
     def test_stitch_risk_metrics(self):
         """Test computing risk metrics from an impact matrix generator"""
-        icalc = ImpactCalc(Exposures({"blank": [1, 2, 3]}), ImpactFuncSet(), Hazard())
+        icalc = ImpactCalc(
+            Exposures(
+                {"blank": [1, 2, 3]},
+                geometry=[],
+            ),
+            ImpactFuncSet(),
+            Hazard(),
+        )
         icalc.hazard.event_id = np.array([1, 2])
         icalc.hazard.frequency = np.array([2, 0.5])
         icalc._orig_exp_idx = np.array([0, 1, 2])
