@@ -60,7 +60,7 @@ setup(
     keywords="climate adaptation",
     python_requires=">=3.9,<3.12",
     install_requires=[
-        "bayesian-optimization",
+        "bayesian-optimization<2.0",
         "bottleneck",
         "cartopy",
         "cfgrib",
