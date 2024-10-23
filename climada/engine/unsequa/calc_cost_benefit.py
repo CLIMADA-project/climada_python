@@ -27,14 +27,14 @@ import itertools
 
 from typing import Optional, Union
 import pandas as pd
-import numpy as np
 import pathos.multiprocessing as mp
 # use pathos.multiprocess fork of multiprocessing for compatibility
 # wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
 from climada.engine.cost_benefit import CostBenefit
-from climada.engine.unsequa import Calc, InputVar, UncCostBenefitOutput
-from climada.engine.unsequa.calc_base import _sample_parallel_iterator, _multiprocess_chunksize, _transpose_chunked_data
+from climada.engine.unsequa.input_var import InputVar
+from climada.engine.unsequa.unc_output import UncCostBenefitOutput
+from climada.engine.unsequa.calc_base import Calc, _sample_parallel_iterator, _multiprocess_chunksize, _transpose_chunked_data
 from climada.util import log_level
 from climada.hazard import Hazard
 from climada.entity import Entity

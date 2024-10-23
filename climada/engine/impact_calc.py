@@ -27,7 +27,7 @@ from scipy import sparse
 import geopandas as gpd
 
 from climada import CONFIG
-from climada.engine import Impact
+from climada.engine.impact import Impact
 
 LOGGER = logging.getLogger(__name__)
 
