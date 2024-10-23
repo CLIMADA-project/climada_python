@@ -69,4 +69,3 @@ climada\.hazard\.tc\_tracks\_synth module
     :members:
     :undoc-members:
     :show-inheritance:
-

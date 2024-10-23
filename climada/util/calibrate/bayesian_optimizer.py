@@ -18,26 +18,25 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Calibration with Bayesian Optimization
 """
 
-from dataclasses import dataclass, InitVar, field
-from typing import Mapping, Optional, Any, Union, List, Tuple
-from numbers import Number
-from itertools import combinations, repeat
-from collections import deque, namedtuple
 import logging
+from collections import deque, namedtuple
+from dataclasses import InitVar, dataclass, field
+from itertools import combinations, repeat
+from numbers import Number
 from pathlib import Path
+from typing import Any, List, Mapping, Optional, Tuple, Union
 
-import pandas as pd
-import numpy as np
 import matplotlib as mpl
-import matplotlib.pyplot as plt
 import matplotlib.axes as maxes
 import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
-from bayes_opt import BayesianOptimization, Events, UtilityFunction, ScreenLogger
+import numpy as np
+import pandas as pd
+from bayes_opt import BayesianOptimization, Events, ScreenLogger, UtilityFunction
 from bayes_opt.target_space import TargetSpace
 
-from .base import Input, Output, Optimizer, OutputEvaluator
-
+from .base import Input, Optimizer, Output, OutputEvaluator
 
 LOGGER = logging.getLogger(__name__)
 

@@ -20,17 +20,17 @@ Define configuration parameters.
 """
 
 __all__ = [
-    'CONFIG',
+    "CONFIG",
 ]
 
-import sys
-import re
 import json
 import logging
+import re
+import sys
 from pathlib import Path
 
 
-class Config():
+class Config:
     """Convenience Class. A Config object is a slow JSON object like nested dictonary who's values
     can be accessed by their names right away. E.g.: `a.b.c.str()` instead of `a['b']['c']`
     """
@@ -47,10 +47,14 @@ class Config():
         try:
             return super().__getattribute__(__name)
         except AttributeError:
-            conf_files = [Path(_find_in_parents(conf_dir, CONFIG_NAME))
-                          if _find_in_parents(conf_dir, CONFIG_NAME)
-                          else conf_dir / CONFIG_NAME
-                          for conf_dir in CONFIG_DIRS[::-1]]
+            conf_files = [
+                (
+                    Path(_find_in_parents(conf_dir, CONFIG_NAME))
+                    if _find_in_parents(conf_dir, CONFIG_NAME)
+                    else conf_dir / CONFIG_NAME
+                )
+                for conf_dir in CONFIG_DIRS[::-1]
+            ]
             raise AttributeError(  # pylint: disable=raise-missing-from
                 f"there is no '{__name}' configured for '{super().__getattribute__('_name')}'."
                 f" check your config files: {conf_files}"
@@ -58,19 +62,35 @@ class Config():
 
     def __str__(self):
         # pylint: disable=bare-except,multiple-statements,too-complex
-        try: return self.str()
-        except: pass
-        try: return str(self.int())
-        except: pass
-        try: return str(self.float())
-        except: pass
-        try: return str(self.bool())
-        except: pass
-        try: return str(self.list())
-        except: pass
-        return '{{{}}}'.format(", ".join([
-            f'{k}: {v}' for (k, v) in self.__dict__.items() if not k in {'_name', '_root'}
-        ]))
+        try:
+            return self.str()
+        except:
+            pass
+        try:
+            return str(self.int())
+        except:
+            pass
+        try:
+            return str(self.float())
+        except:
+            pass
+        try:
+            return str(self.bool())
+        except:
+            pass
+        try:
+            return str(self.list())
+        except:
+            pass
+        return "{{{}}}".format(
+            ", ".join(
+                [
+                    f"{k}: {v}"
+                    for (k, v) in self.__dict__.items()
+                    if not k in {"_name", "_root"}
+                ]
+            )
+        )
 
     def __repr__(self):
         return self.__str__()
@@ -111,15 +131,18 @@ class Config():
         Exception
             if it is not a string
         """
+
         def feval(root, cstr):
             def expand(dct, lst):
                 if len(lst) == 1:
                     return dct.__getattribute__(lst[0]).str()
                 return expand(dct.__getattribute__(lst[0]), lst[1:])
+
             def msub(match):
-                cpath = match.group(1).split('.')
+                cpath = match.group(1).split(".")
                 return expand(root, cpath)
-            return re.sub(r'{([\w\.]+)}', msub, cstr)
+
+            return re.sub(r"{([\w\.]+)}", msub, cstr)
 
         if index is None:
             if self._val.__class__ is str:
@@ -261,7 +284,7 @@ class Config():
     @classmethod
     def _expand_source_dir(cls, path):
         parts = path.parts
-        if parts[0] == '...':
+        if parts[0] == "...":
             return Path(cls.SOURCE_DIR, *parts[1:])
         return Path(*parts)
 
@@ -271,9 +294,13 @@ class Config():
         obj = Config(name=name, root=root)
         for key, val in dct.items():
             if val.__class__ is dict:
-                obj.__setattr__(key, cls._objectify_dict(name=key, dct=val, root=obj._root))
+                obj.__setattr__(
+                    key, cls._objectify_dict(name=key, dct=val, root=obj._root)
+                )
             elif val.__class__ is list:
-                obj.__setattr__(key, cls._objectify_list(name=key, lst=val, root=obj._root))
+                obj.__setattr__(
+                    key, cls._objectify_list(name=key, lst=val, root=obj._root)
+                )
             else:
                 obj.__setattr__(key, Config(name=key, val=val, root=obj._root))
         return obj
@@ -303,7 +330,7 @@ class Config():
         Config
             contaning the same data as the input parameter `dct`
         """
-        return cls._objectify_dict('climada.CONFIG', dct, root=None)
+        return cls._objectify_dict("climada.CONFIG", dct, root=None)
 
 
 def _supersede(nested, addendum):
@@ -328,15 +355,12 @@ def _find_in_parents(directory, filename):
 
 
 def _fetch_conf(directories, config_name):
-    superseding_configs = [
-        _find_in_parents(path, config_name)
-        for path in directories
-    ]
+    superseding_configs = [_find_in_parents(path, config_name) for path in directories]
     conf_dct = dict()
     for conf_path in superseding_configs:
         if conf_path is None:
             continue
-        with open(conf_path, encoding='utf-8') as conf:
+        with open(conf_path, encoding="utf-8") as conf:
             dct = json.load(conf)
             conf_dct = _supersede(conf_dct, dct)
 
@@ -344,11 +368,11 @@ def _fetch_conf(directories, config_name):
 
 
 SOURCE_DIR = Path(__file__).absolute().parent.parent.parent
-CONFIG_NAME = 'climada.conf'
+CONFIG_NAME = "climada.conf"
 CONFIG_DIRS = [
-    Path(SOURCE_DIR, 'climada', 'conf'),  # default config from the climada repository
-    Path(Path.home(), 'climada', 'conf'),  # ~/climada/conf directory
-    Path(Path.home(), '.config'),  # ~/.config directory
+    Path(SOURCE_DIR, "climada", "conf"),  # default config from the climada repository
+    Path(Path.home(), "climada", "conf"),  # ~/climada/conf directory
+    Path(Path.home(), ".config"),  # ~/.config directory
     Path.cwd(),  # current working directory
 ]
 
@@ -358,10 +382,11 @@ Config.SOURCE_DIR = SOURCE_DIR
 
 # set climada style logging
 if CONFIG.logging.managed.bool():
-    LOGGER = logging.getLogger('climada')
+    LOGGER = logging.getLogger("climada")
     LOGGER.propagate = False
     FORMATTER = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s")
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
     CONSOLE = logging.StreamHandler(stream=sys.stdout)
     CONSOLE.setFormatter(FORMATTER)
     LOGGER.addHandler(CONSOLE)

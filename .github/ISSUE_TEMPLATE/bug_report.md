@@ -12,7 +12,7 @@ A clear and concise description of what the bug is.
 
 **To Reproduce**
 Steps to reproduce the behavior/error:
-1. 
+1.
 
 Code example:
 ```python
@@ -29,7 +29,7 @@ If applicable, add screenshots to help explain your problem.
 
 **System Information (please complete the following information):**
  - Operating system and version: [e.g. Ubuntu 22.04, macOS 14.3.1, Windows 10]
- - Python version: [e.g. 3.10] 
+ - Python version: [e.g. 3.10]
  (to obtain this information execute > import sys  >print(sys.version))
 
 **Additional context**

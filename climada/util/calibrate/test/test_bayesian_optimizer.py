@@ -19,25 +19,25 @@ Tests for calibration module
 """
 
 import unittest
-from unittest.mock import patch, MagicMock
-from tempfile import TemporaryDirectory
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 from bayes_opt import BayesianOptimization, Events
-from scipy.optimize import NonlinearConstraint
 from matplotlib.axes import Axes
+from scipy.optimize import NonlinearConstraint
 
-from climada.util.calibrate import Input, BayesianOptimizer, BayesianOptimizerController
+from climada.util.calibrate import BayesianOptimizer, BayesianOptimizerController, Input
 from climada.util.calibrate.bayesian_optimizer import (
+    BayesianOptimizerOutput,
     Improvement,
     StopEarly,
-    BayesianOptimizerOutput,
 )
 
-from .test_base import hazard, exposure
+from .test_base import exposure, hazard
 
 
 def input():
