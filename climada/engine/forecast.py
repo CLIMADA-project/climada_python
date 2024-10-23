@@ -187,7 +187,7 @@ class Forecast:
         if exposure_name is None:
             try:
                 self.exposure_name = u_coord.country_to_iso(
-                    exposure.gdf["region_id"].unique()[0], "name"
+                    np.unique(exposure.region_id)[0], "name"
                 )
             except (KeyError, AttributeError):
                 self.exposure_name = "custom"
