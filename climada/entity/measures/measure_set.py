@@ -19,10 +19,11 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define MeasureSet class.
 """
 
-__all__ = ['MeasureSet']
+__all__ = ["MeasureSet"]
 
 import logging
 from typing import Iterable
+
 import numpy as np
 from scipy.sparse import csr_matrix
 
@@ -30,7 +31,8 @@ from climada.entity.measures.base import Measure
 
 LOGGER = logging.getLogger(__name__)
 
-class MeasureSet():
+
+class MeasureSet:
     """Contains measures of type Measure.
 
     Attributes
@@ -40,10 +42,7 @@ class MeasureSet():
         Use the available methods instead.
     """
 
-    def __init__(
-        self,
-        measures: Iterable[Measure]
-    ):
+    def __init__(self, measures: Iterable[Measure]):
         """Initialize a new MeasureSet object with specified data.
 
         Parameters
@@ -54,9 +53,7 @@ class MeasureSet():
         """
         haz_type = np.unique([meas.haz_type for meas in measures])[0]
         self.haz_type = haz_type
-        self._data = {
-            meas.name: meas for meas in measures
-        }
+        self._data = {meas.name: meas for meas in measures}
 
     def append(self, measure):
         """Append an Measure. Override if same name and haz_type.
@@ -89,7 +86,7 @@ class MeasureSet():
         """
         if names is None:
             return self._data
-        return {name:meas for name, meas in self._data.items() if name in names}
+        return {name: meas for name, meas in self._data.items() if name in names}
 
     @property
     def names(self):
@@ -126,7 +123,7 @@ class MeasureSet():
         """
         return len(self._data)
 
-    #def combine(self, names=None, start_year=None, end_year=None, combo_name=None):
+    # def combine(self, names=None, start_year=None, end_year=None, combo_name=None):
     def combine(self, names=None, combo_name=None):
         names = self.names if names is None else names
         # if start_year is None:
@@ -140,14 +137,18 @@ class MeasureSet():
             for measure in meas_list[1:]:
                 new_haz = measure.apply_to_hazard(hazard)
                 hazard_modified.intensity = csr_matrix(
-                    np.minimum(new_haz.intensity.todense(), hazard_modified.intensity.todense())
+                    np.minimum(
+                        new_haz.intensity.todense(), hazard_modified.intensity.todense()
+                    )
                 )
                 hazard_modified.fraction = csr_matrix(
-                    np.minimum(new_haz.fraction.todense(), hazard_modified.fraction.todense())
+                    np.minimum(
+                        new_haz.fraction.todense(), hazard_modified.fraction.todense()
+                    )
                 )
                 hazard_modified.frequency = np.minimum(
                     new_haz.frequency, hazard_modified.frequency
-                    )
+                )
             return hazard_modified
 
         def comb_impfset_map(impfset, year=None):
@@ -155,31 +156,39 @@ class MeasureSet():
             for measure in meas_list[1:]:
                 new_impfset = measure.apply_to_impfset(impfset)
                 for new_impf in new_impfset.get_func(self.haz_type):
-                    impf_modified = impfset_modified.get_func(self.haz_type, new_impf.id)
+                    impf_modified = impfset_modified.get_func(
+                        self.haz_type, new_impf.id
+                    )
                     impf_modified.paa = np.minimum(new_impf.paa, impf_modified.paa)
                     impf_modified.mdd = np.minimum(new_impf.mdd, impf_modified.mdd)
-                    impf_modified.intensity = np.maximum(new_impf.intensity, impf_modified.intensity)
+                    impf_modified.intensity = np.maximum(
+                        new_impf.intensity, impf_modified.intensity
+                    )
             return impfset_modified
 
         def comb_exp_map(exposures, year=None):
             exposures_modified = meas_list[0].apply_to_exposures(exposures)
             for measure in meas_list[1:]:
                 new_exposures = measure.apply_to_exposures(exposures)
-                exposures_modified.gdf['value'] = np.minimum(new_exposures.gdf['value'], exposures_modified.gdf['value'])
-                impf_col = f'impf_{measure.haz_type}'
-                changed_impf_ids = np.array(new_exposures.gdf[impf_col] != exposures.gdf[impf_col])
-                exposures_modified.gdf[changed_impf_ids] = new_exposures.gdf[changed_impf_ids]
+                exposures_modified.gdf["value"] = np.minimum(
+                    new_exposures.gdf["value"], exposures_modified.gdf["value"]
+                )
+                impf_col = f"impf_{measure.haz_type}"
+                changed_impf_ids = np.array(
+                    new_exposures.gdf[impf_col] != exposures.gdf[impf_col]
+                )
+                exposures_modified.gdf[changed_impf_ids] = new_exposures.gdf[
+                    changed_impf_ids
+                ]
             return exposures_modified
 
         return Measure(
-            name=  '_'.join(names) if combo_name is None else combo_name,
+            name="_".join(names) if combo_name is None else combo_name,
             haz_type=self.haz_type,
-            #start_year=start_year,
-            #end_year=end_year,
+            # start_year=start_year,
+            # end_year=end_year,
             exposures_change=comb_exp_map,
             impfset_change=comb_impfset_map,
-            hazard_change=comb_haz_map, 
-            combo = names
+            hazard_change=comb_haz_map,
+            combo=names,
         )
-
-    

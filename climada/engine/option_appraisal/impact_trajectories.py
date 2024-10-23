@@ -19,19 +19,19 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import copy
-from dataclasses import dataclass
-
-import pandas as pd
-import numpy as np
 import itertools
+from dataclasses import dataclass
 from datetime import datetime
+
+import numpy as np
+import pandas as pd
 from scipy.sparse import lil_matrix
 
 from climada import hazard
+from climada.engine.impact_calc import ImpactCalc
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.hazard import Hazard
-from climada.engine.impact_calc import ImpactCalc
 
 
 ### Utils functions
@@ -77,7 +77,9 @@ def interpolate_sm(mat_start, mat_end, year, year_start, year_end):
 
 
 # Risk transfer functions
-def calc_residual_or_risk_transf_imp_mat(imp_mat, attachment=None, cover=None, calc_residual=True):
+def calc_residual_or_risk_transf_imp_mat(
+    imp_mat, attachment=None, cover=None, calc_residual=True
+):
     """
     Calculate the residual or risk transfer impact matrix.
     The impact matrix is rescaled by the total impact at event.
@@ -108,8 +110,10 @@ def calc_residual_or_risk_transf_imp_mat(imp_mat, attachment=None, cover=None, c
         imp_mat = copy.deepcopy(imp_mat)
         # Calculate the total impact per event
         total_at_event = imp_mat.sum(axis=1).A1
-        # Risk layer at event  
-        transfer_at_event = np.minimum(np.maximum(total_at_event - attachment, 0), cover)
+        # Risk layer at event
+        transfer_at_event = np.minimum(
+            np.maximum(total_at_event - attachment, 0), cover
+        )
         # Resiudal impact
         residual_at_event = np.maximum(total_at_event - transfer_at_event, 0)
 
@@ -123,13 +127,18 @@ def calc_residual_or_risk_transf_imp_mat(imp_mat, attachment=None, cover=None, c
             numerator = transfer_at_event
 
         # Rescale the impact values
-        rescale_impact_values = np.divide(numerator, total_at_event, out=np.zeros_like(numerator, dtype=float), where=total_at_event != 0)
+        rescale_impact_values = np.divide(
+            numerator,
+            total_at_event,
+            out=np.zeros_like(numerator, dtype=float),
+            where=total_at_event != 0,
+        )
 
         # The multiplication is broadcasted across the columns for each row
         result_matrix = imp_mat.multiply(rescale_impact_values[:, np.newaxis])
 
         return result_matrix
-    
+
     else:
 
         return imp_mat
@@ -173,13 +182,14 @@ def snapshot_combinaisons(snapshot0, snapshot1):
 
 
 def interpolate_imp_mat(imp0, imp1, start_year, end_year):
-        return [
-            interpolate_sm(imp0.imp_mat, imp1.imp_mat, year, start_year, end_year)
-            for year in range(start_year, end_year + 1)
-        ]
+    return [
+        interpolate_sm(imp0.imp_mat, imp1.imp_mat, year, start_year, end_year)
+        for year in range(start_year, end_year + 1)
+    ]
+
 
 def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None):
-    '''
+    """
     Calculate the frequency curve
 
     Parameters:
@@ -190,9 +200,9 @@ def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None):
     Returns:
     ifc_return_per (np.array): The impact exceeding frequency
     ifc_impact (np.array): The impact exceeding the return period
-    '''
+    """
 
-    # Calculate the at_event make the np.array
+    # Calculate the at_event make the np.array
     at_event = np.sum(imp_mat_intrpl, axis=1).A1
 
     # Sort descendingly the impacts per events
@@ -220,6 +230,7 @@ def calc_yearly_eais(imp_mats_0, imp_mats_1, frequency_0, frequency_1):
     ]
     return yearly_eai_exp_0, yearly_eai_exp_1
 
+
 def calc_yearly_rps(imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_periods):
     rp_0 = [
         calc_freq_curve(imp_mat, frequency_0, return_periods) for imp_mat in imp_mats_0
@@ -229,23 +240,35 @@ def calc_yearly_rps(imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_per
     ]
     return rp_0, rp_1
 
+
 def calc_yearly_aais(yearly_eai_exp_0, yearly_eai_exp_1):
     yearly_aai_0 = [
-            ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_0
+        ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_0
     ]
     yearly_aai_1 = [
-            ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_1
+        ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_1
     ]
     return yearly_aai_0, yearly_aai_1
+
 
 def get_eai_exp(eai_exp, group_map):
     eai_region_id = {}
     for group_name, exp_indices in group_map.items():
-        eai_region_id[group_name] = (np.sum(eai_exp[:,exp_indices],axis=1))
+        eai_region_id[group_name] = np.sum(eai_exp[:, exp_indices], axis=1)
     return eai_region_id
 
-def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups=None, all_groups_name=pd.NA, 
-                   risk_transf_cover=None, risk_transf_attach=None, calc_residual=True):
+
+def bayesian_mixer(
+    start_snapshot,
+    end_snapshot,
+    metrics,
+    return_periods,
+    groups=None,
+    all_groups_name=pd.NA,
+    risk_transf_cover=None,
+    risk_transf_attach=None,
+    calc_residual=True,
+):
     # 1. Interpolate in between years
     prop_H0, prop_H1 = bayesian_viktypliers(start_snapshot.year, end_snapshot.year)
     imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = snapshot_combinaisons(
@@ -255,56 +278,76 @@ def bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups
     frequency_1 = end_snapshot.hazard.frequency
 
     # Modeify the impact matrices if risk transfer is provided
-    imp_E0H0.imp_mat = calc_residual_or_risk_transf_imp_mat(imp_E0H0.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual)
-    imp_E1H0.imp_mat = calc_residual_or_risk_transf_imp_mat(imp_E1H0.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual)
-    imp_E0H1.imp_mat = calc_residual_or_risk_transf_imp_mat(imp_E0H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual)
-    imp_E1H1.imp_mat = calc_residual_or_risk_transf_imp_mat(imp_E1H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual)
+    imp_E0H0.imp_mat = calc_residual_or_risk_transf_imp_mat(
+        imp_E0H0.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+    )
+    imp_E1H0.imp_mat = calc_residual_or_risk_transf_imp_mat(
+        imp_E1H0.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+    )
+    imp_E0H1.imp_mat = calc_residual_or_risk_transf_imp_mat(
+        imp_E0H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+    )
+    imp_E1H1.imp_mat = calc_residual_or_risk_transf_imp_mat(
+        imp_E1H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+    )
 
-    imp_mats_0 = interpolate_imp_mat(imp_E0H0, imp_E1H0, start_snapshot.year, end_snapshot.year)
-    imp_mats_1 = interpolate_imp_mat(imp_E0H1, imp_E1H1, start_snapshot.year, end_snapshot.year)
+    imp_mats_0 = interpolate_imp_mat(
+        imp_E0H0, imp_E1H0, start_snapshot.year, end_snapshot.year
+    )
+    imp_mats_1 = interpolate_imp_mat(
+        imp_E0H1, imp_E1H1, start_snapshot.year, end_snapshot.year
+    )
 
-    yearly_eai_exp_0, yearly_eai_exp_1 = calc_yearly_eais(imp_mats_0, imp_mats_1, frequency_0, frequency_1)
+    yearly_eai_exp_0, yearly_eai_exp_1 = calc_yearly_eais(
+        imp_mats_0, imp_mats_1, frequency_0, frequency_1
+    )
 
     res = []
 
-    year_idx = pd.Index(list (range(start_snapshot.year, end_snapshot.year+1)), name="year" )
+    year_idx = pd.Index(
+        list(range(start_snapshot.year, end_snapshot.year + 1)), name="year"
+    )
 
     if "aai" in metrics:
-        yearly_aai_0, yearly_aai_1 = calc_yearly_aais(yearly_eai_exp_0, yearly_eai_exp_1)
+        yearly_aai_0, yearly_aai_1 = calc_yearly_aais(
+            yearly_eai_exp_0, yearly_eai_exp_1
+        )
         yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
-        aai_df = pd.DataFrame(index=year_idx,
-                              columns=["result"],
-                              data=yearly_aai)
+        aai_df = pd.DataFrame(index=year_idx, columns=["result"], data=yearly_aai)
         aai_df["group"] = all_groups_name
         aai_df["metric"] = "aai"
         aai_df.reset_index(inplace=True)
         res.append(aai_df)
 
     if "rp" in metrics:
-        rp_0, rp_1 = calc_yearly_rps(imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_periods)
-        yearly_rp = np.multiply(prop_H0.reshape(-1,1), rp_0) + np.multiply(prop_H1.reshape(-1,1), rp_1)
-        rp_df = pd.DataFrame(index=year_idx,
-                                  columns=return_periods,
-                                  data=yearly_rp).melt(value_name="result", var_name="rp", ignore_index=False)
+        rp_0, rp_1 = calc_yearly_rps(
+            imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_periods
+        )
+        yearly_rp = np.multiply(prop_H0.reshape(-1, 1), rp_0) + np.multiply(
+            prop_H1.reshape(-1, 1), rp_1
+        )
+        rp_df = pd.DataFrame(
+            index=year_idx, columns=return_periods, data=yearly_rp
+        ).melt(value_name="result", var_name="rp", ignore_index=False)
         rp_df.reset_index(inplace=True)
         rp_df["group"] = all_groups_name
-        rp_df["metric"] = f"rp_"+rp_df["rp"].astype(str)
+        rp_df["metric"] = f"rp_" + rp_df["rp"].astype(str)
         res.append(rp_df)
 
     if groups is not None:
-        yearly_eai = (
-            np.multiply(prop_H0.reshape(-1,1), yearly_eai_exp_0) +
-            np.multiply(prop_H1.reshape(-1,1), yearly_eai_exp_1)
-        )
+        yearly_eai = np.multiply(
+            prop_H0.reshape(-1, 1), yearly_eai_exp_0
+        ) + np.multiply(prop_H1.reshape(-1, 1), yearly_eai_exp_1)
         yearly_eai_group = get_eai_exp(yearly_eai, groups)
-        eai_group_df = pd.DataFrame(index=year_idx,
-                                    data=yearly_eai_group).melt(value_name="result",
-                                                                var_name="group", ignore_index=False)
+        eai_group_df = pd.DataFrame(index=year_idx, data=yearly_eai_group).melt(
+            value_name="result", var_name="group", ignore_index=False
+        )
         eai_group_df["metric"] = "aai"
         eai_group_df.reset_index(inplace=True)
         res.append(eai_group_df)
 
-    return pd.concat(res,axis=0)
+    return pd.concat(res, axis=0)
+
 
 @dataclass
 class Snapshot:
@@ -368,23 +411,38 @@ class CalcImpactsSnapshots:
             ).impact()
         return impacts_list
 
-    def calc_all_years(self, metrics=["eai", "aai", "rp"], return_periods=[100, 500, 1000], compute_groups=False, 
-                                            risk_transf_cover=None, risk_transf_attach=None, calc_residual=True):
+    def calc_all_years(
+        self,
+        metrics=["eai", "aai", "rp"],
+        return_periods=[100, 500, 1000],
+        compute_groups=False,
+        risk_transf_cover=None,
+        risk_transf_attach=None,
+        calc_residual=True,
+    ):
         results_df = []
         if compute_groups:
             groups = self.group_map_exp_dict
         else:
             groups = None
         for start_snapshot, end_snapshot in pairwise(self.snapshots.data):
-            results_df.append(bayesian_mixer(start_snapshot, end_snapshot, metrics, return_periods, groups,
-                                            risk_transf_cover=risk_transf_cover, 
-                                            risk_transf_attach=risk_transf_attach, 
-                                            calc_residual=calc_residual))
-        results_df = pd.concat(results_df,axis=0)
+            results_df.append(
+                bayesian_mixer(
+                    start_snapshot,
+                    end_snapshot,
+                    metrics,
+                    return_periods,
+                    groups,
+                    risk_transf_cover=risk_transf_cover,
+                    risk_transf_attach=risk_transf_attach,
+                    calc_residual=calc_residual,
+                )
+            )
+        results_df = pd.concat(results_df, axis=0)
 
         # duplicate rows arise from overlapping end and start if there's more than two snapshots
         results_df.drop_duplicates(inplace=True)
-        return results_df[["group","year","metric","result"]]
+        return results_df[["group", "year", "metric", "result"]]
 
 
 #### WIP

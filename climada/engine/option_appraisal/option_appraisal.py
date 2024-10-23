@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
 from typing import List
+
 from climada.engine.impact_trajectories import (
     Snapshot,
     SnapshotsCollection,
@@ -88,7 +89,5 @@ class MeasureTrajectory:
         measure_snapshot_end = Snapshot(
             exp_end, haz_end, impfset_end, snapshot_end.year
         )
-
-
 
         return measure_snapshot_start, measure_snapshot_end

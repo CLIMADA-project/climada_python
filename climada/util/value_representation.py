@@ -21,11 +21,11 @@ Created on Mon Nov 16 19:21:42 2020
 @author: ckropf
 """
 
+import decimal
 import logging
 import math
-import decimal
-import numpy as np
 
+import numpy as np
 
 LOGGER = logging.getLogger(__name__)
 

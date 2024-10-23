@@ -27,10 +27,10 @@ Not that ISIMIP data comes in a range of resolutions, i.e. daily (e.g. discharge
 monthly, yearly (e.g. yield)
 """
 
-
 import xarray as xr
 
 bbox_world = [-85, 85, -180, 180]
+
 
 def _read_one_nc(file_name, bbox=None, years=None):
     """Reads 1 ISIMIP output NETCDF file data within a certain bounding box and time period
@@ -56,6 +56,9 @@ def _read_one_nc(file_name, bbox=None, years=None):
         if not years:
             return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]))
 
-        time_id = years - int(data['time'].units[12:16])
-        return data.sel(lat=slice(bbox[3], bbox[1]), lon=slice(bbox[0], bbox[2]),
-                        time=slice(time_id[0], time_id[1]))
+        time_id = years - int(data["time"].units[12:16])
+        return data.sel(
+            lat=slice(bbox[3], bbox[1]),
+            lon=slice(bbox[0], bbox[2]),
+            time=slice(time_id[0], time_id[1]),
+        )
