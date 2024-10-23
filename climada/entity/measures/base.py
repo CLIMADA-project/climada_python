@@ -324,11 +324,9 @@ class Measure:
             )
 
         if not np.array_equal(
-            np.unique(exposures.gdf["latitude"].values),
-            np.unique(new_exp.gdf["latitude"].values),
+            np.unique(exposures.latitude), np.unique(new_exp.latitude)
         ) or not np.array_equal(
-            np.unique(exposures.gdf["longitude"].values),
-            np.unique(new_exp.gdf["longitude"].values),
+            np.unique(exposures.longitude), np.unique(new_exp.longitude)
         ):
             LOGGER.warning("Exposures locations have changed.")
 
@@ -433,7 +431,7 @@ class Measure:
         if self.exp_region_id:
             # compute impact only in selected region
             in_reg = np.logical_or.reduce(
-                [exposures.gdf["region_id"].values == reg for reg in self.exp_region_id]
+                [exposures.region_id == reg for reg in self.exp_region_id]
             )
             exp_imp = Exposures(exposures.gdf[in_reg], crs=exposures.crs)
         else:
