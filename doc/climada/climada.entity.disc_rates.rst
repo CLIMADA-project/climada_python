@@ -8,4 +8,3 @@ climada\.entity\.disc\_rates\.base module
     :members:
     :undoc-members:
     :show-inheritance:
-
