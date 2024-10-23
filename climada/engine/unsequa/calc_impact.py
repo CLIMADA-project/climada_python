@@ -240,7 +240,9 @@ class CalcImpact(Calc):
 
         if calc_eai_exp:
             exp = self.exp_input_var.evaluate()
-            coord_df = exp.gdf[["latitude", "longitude"]]
+            coord_df = pd.DataFrame(
+                dict(latitude=exp.latitude, longitude=exp.longitude)
+            )
         else:
             coord_df = pd.DataFrame([])
 

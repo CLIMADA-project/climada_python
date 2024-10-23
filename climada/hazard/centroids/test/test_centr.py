@@ -392,7 +392,7 @@ class TestCentroidsTransformation(unittest.TestCase):
             centroids.set_region_id(level="continent", overwrite=True)
 
     def test_set_geometry_points_pass(self):
-        """Test set_geometry_points"""
+        """Test geometry is set"""
         centr_ras = Centroids.from_raster_file(HAZ_DEMO_FL, window=Window(0, 0, 50, 60))
         x_flat = np.arange(-69.3326495969998, -68.88264959699978, 0.009000000000000341)
         y_flat = np.arange(10.423720966978939, 9.883720966978919, -0.009000000000000341)
@@ -708,11 +708,13 @@ class TestCentroidsReaderWriter(unittest.TestCase):
             False,
         )
 
-    def test_from_exposure_exceptions(self):
+    def test_from_empty_exposures(self):
         gdf = gpd.GeoDataFrame({})
         exposures = Exposures(gdf)
-        with self.assertRaises(ValueError):
-            Centroids.from_exposures(exposures)
+        centroids = Centroids.from_exposures(exposures)
+        self.assertEqual(
+            centroids.gdf.shape, (0, 1)
+        )  # there is an empty geometry column
 
     def test_read_write_hdf5(self):
         tmpfile = Path("test_write_hdf5.out.hdf5")
