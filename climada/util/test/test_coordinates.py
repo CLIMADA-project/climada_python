@@ -567,7 +567,7 @@ class TestAssign(unittest.TestCase):
         })
         gdf = gpd.GeoDataFrame(
             df,
-            geometry=gpd.points_from_xy(df.longitude, df.latitude),
+            geometry=gpd.points_from_xy(df['longitude'], df['latitude']),
             crs=DEF_CRS,
         )
         assigned = u_coord.match_centroids(gdf, centroids)
@@ -591,7 +591,7 @@ class TestAssign(unittest.TestCase):
             'longitude': gdf_coords[:, 1],
             'latitude': gdf_coords[:, 0]
         })
-        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df['longitude'], df['latitude']),
                                crs=DEF_CRS)
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
@@ -626,7 +626,7 @@ class TestAssign(unittest.TestCase):
             'longitude': [10, 20, 30],
             'latitude': [50, 60, 70]
         })
-        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df.longitude, df.latitude),
+        gdf = gpd.GeoDataFrame(df,geometry=gpd.points_from_xy(df['longitude'], df['latitude']),
                                crs = 'EPSG:4326')
 
         coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
@@ -1152,11 +1152,11 @@ class TestGetGeodata(unittest.TestCase):
         self.assertEqual(len(gdf.iso_3a.unique()), 4) # 4 countries
         self.assertEqual(gdf.loc[gdf.iso_3a=='CHE'].shape[0], 26) # 26 cantons in CHE
         self.assertEqual(gdf.shape[0], 121) # 121 admin 1 regions in the 4 countries
-        self.assertIn('ARM', gdf.iso_3a.values) # Armenia (region_id 051)
-        self.assertIn('756', gdf.iso_3n.values) # Switzerland (region_id 756)
-        self.assertIn('CH-AI', gdf.iso_3166_2.values) # canton in CHE
-        self.assertIn('Sulawesi Tengah', gdf.admin1_name.values) # region in Indonesia
-        self.assertIsInstance(gdf.loc[gdf.iso_3166_2 == 'CH-AI'].geometry.values[0],
+        self.assertIn('ARM', gdf['iso_3a'].values) # Armenia (region_id 051)
+        self.assertIn('756', gdf['iso_3n'].values) # Switzerland (region_id 756)
+        self.assertIn('CH-AI', gdf['iso_3166_2'].values) # canton in CHE
+        self.assertIn('Sulawesi Tengah', gdf['admin1_name'].values) # region in Indonesia
+        self.assertIsInstance(gdf.loc[gdf['iso_3166_2'] == 'CH-AI'].geometry.values[0],
                               shapely.geometry.MultiPolygon)
         self.assertIsInstance(gdf.loc[gdf.admin1_name == 'Sulawesi Tengah'].geometry.values[0],
                               shapely.geometry.MultiPolygon)
@@ -1272,41 +1272,44 @@ class TestRasterMeta(unittest.TestCase):
 
     def test_points_to_raster_pass(self):
         """Test points_to_raster"""
-        df_val = gpd.GeoDataFrame()
-        x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
-        df_val['latitude'] = y.flatten()
-        df_val['longitude'] = x.flatten()
-        df_val['value'] = np.ones(len(df_val)) * 10
-        crs = 'epsg:2202'
-        _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs)
-        self.assertFalse(hasattr(df_val, "crs"))  # points_to_raster must not modify df_val
-        self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
-        self.assertAlmostEqual(meta['transform'][0], 0.5)
-        self.assertAlmostEqual(meta['transform'][1], 0)
-        self.assertAlmostEqual(meta['transform'][2], -0.25)
-        self.assertAlmostEqual(meta['transform'][3], 0)
-        self.assertAlmostEqual(meta['transform'][4], -0.5)
-        self.assertAlmostEqual(meta['transform'][5], 50.25)
-        self.assertEqual(meta['height'], 21)
-        self.assertEqual(meta['width'], 5)
+        for scheduler in [None, "threads", "synchronous", "processes"]:
 
-        # test for values crossing antimeridian
-        df_val = gpd.GeoDataFrame()
-        df_val['latitude'] = [1, 0, 1, 0]
-        df_val['longitude'] = [178, -179.0, 181, -180]
-        df_val['value'] = np.arange(4)
-        r_data, meta = u_coord.points_to_raster(
-            df_val, val_names=['value'], res=0.5, raster_res=1.0)
-        self.assertTrue(u_coord.equal_crs(meta['crs'], DEF_CRS))
-        self.assertAlmostEqual(meta['transform'][0], 1.0)
-        self.assertAlmostEqual(meta['transform'][1], 0)
-        self.assertAlmostEqual(meta['transform'][2], 177.5)
-        self.assertAlmostEqual(meta['transform'][3], 0)
-        self.assertAlmostEqual(meta['transform'][4], -1.0)
-        self.assertAlmostEqual(meta['transform'][5], 1.5)
-        self.assertEqual(meta['height'], 2)
-        self.assertEqual(meta['width'], 4)
-        np.testing.assert_array_equal(r_data[0], [[0, 0, 0, 2], [0, 0, 3, 1]])
+            df_val = gpd.GeoDataFrame()
+            x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
+            df_val['latitude'] = y.flatten()
+            df_val['longitude'] = x.flatten()
+            df_val['value'] = np.ones(len(df_val)) * 10
+            crs = 'epsg:2202'
+            _raster, meta = u_coord.points_to_raster(df_val, val_names=['value'], crs=crs,
+                                                     scheduler=scheduler)
+            self.assertFalse(hasattr(df_val, "crs"))  # points_to_raster must not modify df_val
+            self.assertTrue(u_coord.equal_crs(meta['crs'], crs))
+            self.assertAlmostEqual(meta['transform'][0], 0.5)
+            self.assertAlmostEqual(meta['transform'][1], 0)
+            self.assertAlmostEqual(meta['transform'][2], -0.25)
+            self.assertAlmostEqual(meta['transform'][3], 0)
+            self.assertAlmostEqual(meta['transform'][4], -0.5)
+            self.assertAlmostEqual(meta['transform'][5], 50.25)
+            self.assertEqual(meta['height'], 21)
+            self.assertEqual(meta['width'], 5)
+
+            # test for values crossing antimeridian
+            df_val = gpd.GeoDataFrame()
+            df_val['latitude'] = [1, 0, 1, 0]
+            df_val['longitude'] = [178, -179.0, 181, -180]
+            df_val['value'] = np.arange(4)
+            r_data, meta = u_coord.points_to_raster(
+                df_val, val_names=['value'], res=0.5, raster_res=1.0, scheduler=scheduler)
+            self.assertTrue(u_coord.equal_crs(meta['crs'], DEF_CRS))
+            self.assertAlmostEqual(meta['transform'][0], 1.0)
+            self.assertAlmostEqual(meta['transform'][1], 0)
+            self.assertAlmostEqual(meta['transform'][2], 177.5)
+            self.assertAlmostEqual(meta['transform'][3], 0)
+            self.assertAlmostEqual(meta['transform'][4], -1.0)
+            self.assertAlmostEqual(meta['transform'][5], 1.5)
+            self.assertEqual(meta['height'], 2)
+            self.assertEqual(meta['width'], 4)
+            np.testing.assert_array_equal(r_data[0], [[0, 0, 0, 2], [0, 0, 3, 1]])
 
 class TestRasterIO(unittest.TestCase):
     def test_write_raster_pass(self):

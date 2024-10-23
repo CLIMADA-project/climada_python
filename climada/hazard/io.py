@@ -1008,7 +1008,7 @@ class HazardIO():
                 if var_name == 'centroids':
                     # Centroids have their own write_hdf5 method,
                     # which is invoked at the end of this method (s.b.)
-                    pass
+                    continue
                 elif isinstance(var_val, sparse.csr_matrix):
                     if todense:
                         hf_data.create_dataset(var_name, data=var_val.toarray())

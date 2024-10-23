@@ -46,6 +46,7 @@ import scipy.interpolate
 from shapely.geometry import Polygon, MultiPolygon, Point, box
 import shapely.ops
 import shapely.vectorized
+import shapely.wkt
 from sklearn.neighbors import BallTree
 
 from climada.util.config import CONFIG
@@ -1581,16 +1582,16 @@ def get_admin1_geometries(countries):
     for country in admin1_info:
         # fill admin 1 region names and codes to GDF for single country:
         gdf_tmp = gpd.GeoDataFrame(columns=gdf.columns)
-        gdf_tmp.admin1_name = [record['name'] for record in admin1_info[country]]
-        gdf_tmp.iso_3166_2 = [record['iso_3166_2'] for record in admin1_info[country]]
+        gdf_tmp['admin1_name'] = [record['name'] for record in admin1_info[country]]
+        gdf_tmp['iso_3166_2'] = [record['iso_3166_2'] for record in admin1_info[country]]
         # With this initiation of GeoSeries in a list comprehension,
         # the ability of geopandas to convert shapereader.Shape to (Multi)Polygon is exploited:
         geoseries = gpd.GeoSeries([gpd.GeoSeries(shape).values[0]
                                    for shape in admin1_shapes[country]])
         gdf_tmp.geometry = list(geoseries)
         # fill columns with country identifiers (admin 0):
-        gdf_tmp.iso_3n = pycountry.countries.lookup(country).numeric
-        gdf_tmp.iso_3a = country
+        gdf_tmp['iso_3n'] = pycountry.countries.lookup(country).numeric
+        gdf_tmp['iso_3a'] = country
         gdf = pd.concat([gdf, gdf_tmp], ignore_index=True)
     return gdf
 
@@ -2400,13 +2401,13 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     if not val_names:
         val_names = ['value']
     if not res:
-        res = np.abs(get_resolution(points_df.latitude.values,
-                                    points_df.longitude.values)).min()
+        res = np.abs(get_resolution(points_df['latitude'].values,
+                                    points_df['longitude'].values)).min()
     if not raster_res:
         raster_res = res
 
     def apply_box(df_exp):
-        fun = lambda r: Point(r.longitude, r.latitude).buffer(res / 2).envelope
+        fun = lambda r: Point(r['longitude'], r['latitude']).buffer(res / 2).envelope
         return df_exp.apply(fun, axis=1)
 
     LOGGER.info('Raster from resolution %s to %s.', res, raster_res)
@@ -2416,8 +2417,13 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
     else:
         ddata = dd.from_pandas(points_df[['latitude', 'longitude']],
                                npartitions=cpu_count())
-        df_poly['_-geometry-prov'] = ddata.map_partitions(apply_box, meta=Polygon) \
-                                   .compute(scheduler=scheduler)
+        df_poly['_-geometry-prov'] = ddata.map_partitions(
+            apply_box).compute(scheduler=scheduler)
+        # depending on the dask/pandas version setting `meta=Polygon` in map_partitions
+        # would just raise a warning and returns a string, so we have to convert explicitly
+        if isinstance(df_poly.loc[0, '_-geometry-prov'], str):  # fails for empty `points_df`
+            df_poly['_-geometry-prov'] = shapely.wkt.loads(df_poly['_-geometry-prov'])
+
     df_poly.set_geometry('_-geometry-prov',
                          crs=crs if crs else points_df.crs if points_df.crs else DEF_CRS,
                          inplace=True,
@@ -2425,16 +2431,16 @@ def points_to_raster(points_df, val_names=None, res=0.0, raster_res=0.0, crs=DEF
 
     # renormalize longitude if necessary
     if equal_crs(df_poly.crs, DEF_CRS):
-        xmin, ymin, xmax, ymax = latlon_bounds(points_df.latitude.values,
-                                               points_df.longitude.values)
+        xmin, ymin, xmax, ymax = latlon_bounds(points_df['latitude'].values,
+                                               points_df['longitude'].values)
         x_mid = 0.5 * (xmin + xmax)
         # we don't really change the CRS when rewrapping, so we reset the CRS attribute afterwards
         df_poly = df_poly \
             .to_crs({"proj": "longlat", "lon_wrap": x_mid}) \
             .set_crs(DEF_CRS, allow_override=True)
     else:
-        xmin, ymin, xmax, ymax = (points_df.longitude.min(), points_df.latitude.min(),
-                                  points_df.longitude.max(), points_df.latitude.max())
+        xmin, ymin, xmax, ymax = (points_df['longitude'].min(), points_df['latitude'].min(),
+                                  points_df['longitude'].max(), points_df['latitude'].max())
 
     # construct raster
     rows, cols, ras_trans = pts_to_raster_meta((xmin, ymin, xmax, ymax),
@@ -2647,35 +2653,23 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
     df_val : GeoDataFrame
         contains latitude and longitude columns
     scheduler : str, optional
-        used for dask map_partitions. “threads”, “synchronous” or “processes”
+        Scheduler type for dask map_partitions.
+        .. deprecated:: 5.0
+           This function does not use dask features anymore. The parameter has no effect
+           and will be removed in a future version.
     crs : object (anything readable by pyproj4.CRS.from_user_input), optional
         Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """
     LOGGER.info('Setting geometry points.')
+    if scheduler is not None:
+        warnings.warn("This function does not use dask features anymore. The parameter has no"
+                      " effect and will be removed in a future version.", DeprecationWarning)
 
     # keep the original crs if any
-    crs = df_val.crs if crs is None else crs  # crs might now still be None
+    crs = df_val['crs'] if crs is None else crs  # crs might now still be None
 
-    # work in parallel
-    if scheduler:
-        def apply_point(df_exp):
-            return df_exp.apply(lambda row: Point(row.longitude, row.latitude), axis=1)
-
-        ddata = dd.from_pandas(df_val, npartitions=cpu_count())
-        df_val['_-geometry-prov'] = ddata.map_partitions(
-                                 apply_point,
-                                 meta=('geometry', gpd.array.GeometryDtype)
-                             ).compute(scheduler=scheduler)
-
-    # single process
-    else:
-        df_val['_-geometry-prov'] = gpd.GeoSeries(
-            gpd.points_from_xy(df_val.longitude, df_val.latitude),
-            index=df_val.index)
-
-    # A 'geometry' column must not be created in a GeoDataFrame except through the constructor
-    # or with set_geometry. That's why we first made a temporary columns with a weird name
-    df_val.set_geometry('_-geometry-prov', inplace=True, drop=True, crs=crs)
+    df_val.set_geometry(gpd.points_from_xy(df_val['longitude'], df_val['latitude']),
+                        inplace=True, crs=crs)
 
 
 def fao_code_def():

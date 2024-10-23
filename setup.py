@@ -24,16 +24,21 @@ DEPS_DOC = [
 DEPS_TEST = [
     "ipython",
     "mccabe>=0.6",
-    "pylint==2.7.1",
+    "pylint>=3.0",
     "pytest",
     "pytest-cov",
     "pytest-subtests",
 ]
 
+# Requirements for development
+DEPS_DEV = DEPS_DOC + DEPS_TEST + [
+    "pre-commit",
+]
+
 setup(
     name='climada',
 
-    version='4.1.2-dev',
+    version='5.0.1-dev',
 
     description='CLIMADA in Python',
 
@@ -49,7 +54,7 @@ setup(
 
     classifiers=[
         'Development Status :: 4 - Beta',
-        'Programming Language :: Python :: 3.9',
+        'Programming Language :: Python :: 3',
         'Topic :: Scientific/Engineering :: Atmospheric Science',
         'Topic :: Scientific/Engineering :: GIS',
         'Topic :: Scientific/Engineering :: Mathematics',
@@ -60,6 +65,7 @@ setup(
     python_requires=">=3.9,<3.12",
 
     install_requires=[
+        'bayesian-optimization',
         'bottleneck',
         'cartopy',
         'cfgrib',
@@ -85,6 +91,7 @@ setup(
         'rasterio',
         'salib',
         'scikit-learn',
+        'seaborn',
         'statsmodels',
         'sparse',
         'tables',
@@ -99,7 +106,7 @@ setup(
     extras_require={
         "doc": DEPS_DOC,
         "test": DEPS_TEST,
-        "dev": DEPS_DOC + DEPS_TEST
+        "dev": DEPS_DEV,
     },
 
     packages=find_namespace_packages(include=['climada*']),

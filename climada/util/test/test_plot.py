@@ -25,6 +25,8 @@ import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib import colormaps as cm
 import cartopy.crs as ccrs
+import geopandas as gpd
+from shapely import Point
 
 import climada.util.plot as u_plot
 
@@ -125,7 +127,7 @@ class TestPlots(unittest.TestCase):
         plt.close()
 
     def test_geo_im_from_array(self):
-        values = np.array([1, 2.0, 5, 1])
+        values = np.array([1, 2.0, 5, np.nan])
         coord = np.array([[-17, 178], [-10, 180], [-27, 175], [-16, 186]])
         var_name = 'test'
         title = 'test'
@@ -135,8 +137,8 @@ class TestPlots(unittest.TestCase):
                       proj=projection, smooth=True, axes=None, figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
         colorbar = next(x.colorbar for x in ax.collections if x.colorbar)
-        self.assertAlmostEqual(np.max(values), colorbar.vmax)
-        self.assertAlmostEqual(np.min(values), colorbar.vmin)
+        self.assertAlmostEqual(np.nanmax(values), colorbar.vmax)
+        self.assertAlmostEqual(np.nanmin(values), colorbar.vmin)
         self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
@@ -145,11 +147,44 @@ class TestPlots(unittest.TestCase):
                       proj=projection, smooth=True, axes=None, figsize=(9, 13), cmap=cmap)
         self.assertEqual(var_name, ax.get_title())
         colorbar = next(x.colorbar for x in ax.collections if x.colorbar)
-        self.assertAlmostEqual(np.max(values), colorbar.vmax)
-        self.assertAlmostEqual(np.min(values), colorbar.vmin)
+        self.assertAlmostEqual(np.nanmax(values), colorbar.vmax)
+        self.assertAlmostEqual(np.nanmin(values), colorbar.vmin)
         self.assertEqual(cmap, ax.collections[0].cmap.name)
         plt.close()
 
+    def test_plot_from_gdf_no_log(self):
+        """test plot_from_gdf() with linear color bar (because there is a 0 in data)"""
+        return_periods = gpd.GeoDataFrame(
+            data = ((2., 5.), (0., 6.), (None, 2.), (1., 1000.)),
+            columns = ('10.0', '20.0')
+        )
+        return_periods['geometry'] = (Point(45., 26.), Point(46., 26.), Point(45., 27.), Point(46., 27.))
+        colorbar_name = 'Return Periods (Years)'
+        title_subplots = lambda cols: [f'Threshold Intensity: {col} m/s' for col in cols]
+        (axis1, axis2) = u_plot.plot_from_gdf(
+            return_periods, 
+            colorbar_name=colorbar_name, 
+            title_subplots=title_subplots)
+        self.assertEqual('Threshold Intensity: 10.0 m/s', axis1.get_title())
+        self.assertEqual('Threshold Intensity: 20.0 m/s', axis2.get_title())
+        plt.close()
+
+    def test_plot_from_gdf_log(self):
+        """test plot_from_gdf() with log color bar)"""
+        return_periods = gpd.GeoDataFrame(
+            data = ((2., 5.), (3., 6.), (None, 2.), (1., 1000.)),
+            columns = ('10.0', '20.0')
+        )
+        return_periods['geometry'] = (Point(45., 26.), Point(46., 26.), Point(45., 27.), Point(46., 27.))
+        colorbar_name = 'Return Periods (Years)'
+        title_subplots = lambda cols: [f'Threshold Intensity: {col} m/s' for col in cols]
+        (axis1, axis2) = u_plot.plot_from_gdf(
+            return_periods, 
+            colorbar_name=colorbar_name, 
+            title_subplots=title_subplots)
+        self.assertEqual('Threshold Intensity: 10.0 m/s', axis1.get_title())
+        self.assertEqual('Threshold Intensity: 20.0 m/s', axis2.get_title())
+        plt.close()
 
 # Execute Tests
 if __name__ == "__main__":
