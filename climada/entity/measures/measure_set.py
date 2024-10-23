@@ -27,6 +27,7 @@ from typing import Iterable
 import numpy as np
 from scipy.sparse import csr_matrix
 
+import climada.util.hdf5_handler as u_hdf5
 from climada.entity.measures.base import Measure
 
 LOGGER = logging.getLogger(__name__)
