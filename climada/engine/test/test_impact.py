@@ -112,8 +112,7 @@ class TestImpact(unittest.TestCase):
         np.testing.assert_array_almost_equal(imp.eai_exp, fake_eai_exp)
         np.testing.assert_array_almost_equal(imp.at_event, fake_at_event)
         np.testing.assert_array_almost_equal(
-            imp.coord_exp,
-            np.stack([exp.gdf["latitude"].values, exp.gdf["longitude"].values], axis=1),
+            imp.coord_exp, np.stack([exp.latitude, exp.longitude], axis=1)
         )
 
     def test_pyproj_crs(self):
@@ -1070,9 +1069,9 @@ class TestConvertExp(unittest.TestCase):
 
         imp = dummy_impact()
         exp = imp._build_exp()
-        np.testing.assert_array_equal(imp.eai_exp, exp.gdf["value"])
-        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.gdf["latitude"])
-        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.gdf["longitude"])
+        np.testing.assert_array_equal(imp.eai_exp, exp.value)
+        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.latitude)
+        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.longitude)
         self.assertTrue(u_coord.equal_crs(exp.crs, imp.crs))
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)
@@ -1083,9 +1082,9 @@ class TestConvertExp(unittest.TestCase):
         imp = dummy_impact()
         event_id = imp.event_id[1]
         exp = imp._build_exp_event(event_id=event_id)
-        np.testing.assert_array_equal(imp.imp_mat[1].todense().A1, exp.gdf["value"])
-        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.gdf["latitude"])
-        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.gdf["longitude"])
+        np.testing.assert_array_equal(imp.imp_mat[1].todense().A1, exp.value)
+        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.latitude)
+        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.longitude)
         self.assertTrue(u_coord.equal_crs(exp.crs, imp.crs))
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)

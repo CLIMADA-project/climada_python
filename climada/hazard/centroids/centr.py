@@ -133,6 +133,8 @@ class Centroids:
     @property
     def on_land(self):
         """Get the on_land property"""
+        if "on_land" not in self.gdf:
+            return None
         if self.gdf["on_land"].isna().all():
             return None
         return self.gdf["on_land"].values
@@ -140,6 +142,8 @@ class Centroids:
     @property
     def region_id(self):
         """Get the assigned region_id"""
+        if "region_id" not in self.gdf:
+            return None
         if self.gdf["region_id"].isna().all():
             return None
         return self.gdf["region_id"].values
@@ -284,33 +288,15 @@ class Centroids:
         ------
         ValueError
         """
+        # exclude exposures specific columns
         col_names = [
             column
             for column in exposures.gdf.columns
             if not any(pattern in column for pattern in EXP_SPECIFIC_COLS)
         ]
 
-        # Legacy behaviour
-        # Exposures can be without geometry column
-        # TODO: remove once exposures is real geodataframe with geometry.
-        if "geometry" in exposures.gdf.columns:
-            gdf = exposures.gdf[col_names]
-            return cls.from_geodataframe(gdf)
-
-        if "latitude" in exposures.gdf.columns and "longitude" in exposures.gdf.columns:
-            gdf = exposures.gdf[col_names]
-            return cls(
-                lat=exposures.gdf["latitude"],
-                lon=exposures.gdf["longitude"],
-                crs=exposures.crs,
-                **dict(gdf.items()),
-            )
-
-        raise ValueError(
-            "The given exposures object has no coordinates information."
-            "The exposures' GeoDataFrame must have either point geometries"
-            " or latitude and longitude values."
-        )
+        gdf = exposures.gdf[col_names]
+        return cls.from_geodataframe(gdf)
 
     @classmethod
     def from_pnt_bounds(cls, points_bounds, res, crs=DEF_CRS):

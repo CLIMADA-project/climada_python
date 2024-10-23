@@ -14,6 +14,15 @@ Code freeze date: YYYY-MM-DD
 
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, that all use the `climada.util.interpolation` module [#918](https://github.com/CLIMADA-project/climada_python/pull/918)
 - `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
+- `climada.exposures.exposures.Exposures.geometry` property
+- `climada.exposures.exposures.Exposures.latitude` property
+- `climada.exposures.exposures.Exposures.longitude` property
+- `climada.exposures.exposures.Exposures.value` property
+- `climada.exposures.exposures.Exposures.region_id` property
+- `climada.exposures.exposures.Exposures.category_id` property
+- `climada.exposures.exposures.Exposures.cover` property
+- `climada.exposures.exposures.Exposures.hazard_impf` method
+- `climada.exposures.exposures.Exposures.hazard_centroids` method
 
 ### Changed
 
@@ -21,6 +30,11 @@ Code freeze date: YYYY-MM-DD
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - `Hazard.local_exceedance_inten`, `Hazard.local_return_period`, and `Impact.local_exceedance_imp` call the corresponding new functions and a deprecation warning is added [#918](https://github.com/CLIMADA-project/climada_python/pull/918). Some inconsistencies in the previous versions are removed and the default method is changed. To reconstruct results from the previous versions, use CLIMADA v5.0.0 or less.
+- Exposures complete overhaul. Notably
+  - the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization
+  - latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
+  - `Exposures.gdf` has been renamed to `Exposures.data` (it still works though, as it is a property now pointing to the latter)
+  - the `check` method does not add a default "IMPF_" column to the GeoDataFrame anymore
 
 ### Fixed
 
@@ -28,6 +42,10 @@ Code freeze date: YYYY-MM-DD
 - Avoids a ValueError in the impact calculation for cases with a single exposure point and MDR values of 0, by explicitly removing zeros in `climada.hazard.Hazard.get_mdr` [#933](https://github.com/CLIMADA-project/climada_python/pull/948)
 
 ### Deprecated
+
+- `climada.entity.exposures.Exposures.meta` attribute
+- `climada.entity.exposures.Exposures.set_lat_lon` method
+- `climada.entity.exposures.Exposures.set_geometry_points` method
 
 ### Removed
 

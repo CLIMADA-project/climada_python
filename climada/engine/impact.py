@@ -262,10 +262,7 @@ class Impact:
             date=hazard.date,
             frequency=hazard.frequency,
             frequency_unit=hazard.frequency_unit,
-            coord_exp=np.stack(
-                [exposures.gdf["latitude"].values, exposures.gdf["longitude"].values],
-                axis=1,
-            ),
+            coord_exp=np.stack([exposures.latitude, exposures.longitude], axis=1),
             crs=exposures.crs,
             unit=exposures.value_unit,
             tot_value=exposures.centroids_total_value(hazard),
@@ -810,9 +807,6 @@ class Impact:
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         eai_exp = self._build_exp()
-        # we need to set geometry points because the `plot_raster` method accesses the
-        # exposures' `gdf.crs` property, which raises an error when geometry is not set
-        eai_exp.set_geometry_points()
         axis = eai_exp.plot_raster(
             res,
             raster_res,

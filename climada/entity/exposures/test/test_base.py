@@ -27,6 +27,7 @@ import pandas as pd
 import rasterio
 import scipy as sp
 from rasterio.windows import Window
+from shapely.geometry import Point
 from sklearn.metrics import DistanceMetric
 
 import climada.util.coordinates as u_coord
@@ -74,20 +75,20 @@ class TestFuncs(unittest.TestCase):
         )
         ncentroids = haz.centroids.size
 
-        exp = Exposures(crs=haz.centroids.crs)
-
-        # some are matching exactly, some are geographically close
-        exp.gdf["longitude"] = np.concatenate(
-            [
-                haz.centroids.lon,
-                haz.centroids.lon + 0.001 * (-0.5 + np_rand.rand(ncentroids)),
-            ]
-        )
-        exp.gdf["latitude"] = np.concatenate(
-            [
-                haz.centroids.lat,
-                haz.centroids.lat + 0.001 * (-0.5 + np_rand.rand(ncentroids)),
-            ]
+        exp = Exposures(
+            crs=haz.centroids.crs,
+            lon=np.concatenate(
+                [
+                    haz.centroids.lon,
+                    haz.centroids.lon + 0.001 * (-0.5 + np_rand.rand(ncentroids)),
+                ]
+            ),
+            lat=np.concatenate(
+                [
+                    haz.centroids.lat,
+                    haz.centroids.lat + 0.001 * (-0.5 + np_rand.rand(ncentroids)),
+                ]
+            ),
         )
         expected_result = np.concatenate([np.arange(ncentroids), np.arange(ncentroids)])
 
@@ -96,25 +97,21 @@ class TestFuncs(unittest.TestCase):
             haz.centroids.gdf["lat"] = haz.centroids.lat.astype(test_dtype)
             haz.centroids.gdf["lon"] = haz.centroids.lon.astype(test_dtype)
             exp.assign_centroids(haz)
-            self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + "FL"]))
-            np.testing.assert_array_equal(
-                exp.gdf[INDICATOR_CENTR + "FL"].values, expected_result
-            )
+            self.assertEqual(exp.gdf.shape[0], len(exp.hazard_centroids("FL")))
+            np.testing.assert_array_equal(exp.hazard_centroids("FL"), expected_result)
             exp.assign_centroids(Hazard(), overwrite=False)
-            self.assertEqual(exp.gdf.shape[0], len(exp.gdf[INDICATOR_CENTR + "FL"]))
-            np.testing.assert_array_equal(
-                exp.gdf[INDICATOR_CENTR + "FL"].values, expected_result
-            )
+            self.assertEqual(exp.gdf.shape[0], len(exp.hazard_centroids("FL")))
+            np.testing.assert_array_equal(exp.hazard_centroids("FL"), expected_result)
 
     def test__init__meta_type(self):
         """Check if meta of type list raises a ValueError in __init__"""
-        with self.assertRaises(ValueError) as cm:
-            Exposures(meta=[])
-        self.assertEqual("meta must be a dictionary", str(cm.exception))
+        with self.assertRaises(TypeError) as cm:
+            Exposures(meta="{}")
+        self.assertEqual("meta must be of type dict", str(cm.exception))
 
     def test__init__geometry_type(self):
         """Check that initialization fails when `geometry` is given as a `str` argument"""
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(TypeError) as cm:
             Exposures(geometry="myname")
         self.assertEqual(
             "Exposures is not able to handle customized 'geometry' column names.",
@@ -135,17 +132,17 @@ class TestFuncs(unittest.TestCase):
         exp.check()
         self.assertTrue(u_coord.equal_crs(exp.crs, DEF_CRS))
         self.assertAlmostEqual(
-            exp.gdf["latitude"].max(), 10.248220966978932 - 0.009000000000000341 / 2
+            exp.latitude.max(), 10.248220966978932 - 0.009000000000000341 / 2
         )
         self.assertAlmostEqual(
-            exp.gdf["latitude"].min(),
+            exp.latitude.min(),
             10.248220966978932 - 0.009000000000000341 / 2 - 59 * 0.009000000000000341,
         )
         self.assertAlmostEqual(
-            exp.gdf["longitude"].min(), -69.2471495969998 + 0.009000000000000341 / 2
+            exp.longitude.min(), -69.2471495969998 + 0.009000000000000341 / 2
         )
         self.assertAlmostEqual(
-            exp.gdf["longitude"].max(),
+            exp.longitude.max(),
             -69.2471495969998 + 0.009000000000000341 / 2 + 49 * 0.009000000000000341,
         )
         self.assertEqual(len(exp.gdf), 60 * 50)
@@ -166,9 +163,9 @@ class TestFuncs(unittest.TestCase):
         haz = Hazard("FL", centroids=Centroids.from_meta(meta))
 
         # explicit points with known results (see `expected_result` for details)
-        exp = Exposures(crs=DEF_CRS)
-        exp.gdf["longitude"] = np.array(
-            [
+        exp = Exposures(
+            crs=DEF_CRS,
+            lon=[
                 -20.1,
                 -20.0,
                 -19.8,
@@ -190,10 +187,8 @@ class TestFuncs(unittest.TestCase):
                 -6.4,
                 9.8,
                 0.0,
-            ]
-        )
-        exp.gdf["latitude"] = np.array(
-            [
+            ],
+            lat=[
                 7.3,
                 7.3,
                 7.3,
@@ -215,7 +210,7 @@ class TestFuncs(unittest.TestCase):
                 -1.9,
                 -1.7,
                 0.0,
-            ]
+            ],
         )
         exp.assign_centroids(haz)
 
@@ -269,8 +264,8 @@ class TestFuncs(unittest.TestCase):
     def test_assign_large_hazard_subset_pass(self):
         """Test assign_centroids with raster hazard"""
         exp = Exposures.from_raster(HAZ_DEMO_FL, window=Window(10, 20, 50, 60))
-        exp.gdf["latitude"][[0, 1]] = exp.gdf["latitude"][[1, 0]]
-        exp.gdf["longitude"][[0, 1]] = exp.gdf["longitude"][[1, 0]]
+        exp.latitude[[0, 1]] = exp.latitude[[1, 0]]
+        exp.longitude[[0, 1]] = exp.longitude[[1, 0]]
         exp.check()
         haz = Hazard.from_raster([HAZ_DEMO_FL], haz_type="FL")
         exp.assign_centroids(haz)
@@ -278,10 +273,10 @@ class TestFuncs(unittest.TestCase):
             sel_cen=exp.gdf[INDICATOR_CENTR + "FL"].values
         )
         np.testing.assert_array_equal(
-            np.unique(assigned_centroids.lat), np.unique(exp.gdf["latitude"])
+            np.unique(assigned_centroids.lat), np.unique(exp.latitude)
         )
         np.testing.assert_array_equal(
-            np.unique(assigned_centroids.lon), np.unique(exp.gdf["longitude"])
+            np.unique(assigned_centroids.lon), np.unique(exp.longitude)
         )
 
     def test_affected_total_value(self):
@@ -340,59 +335,33 @@ class TestChecker(unittest.TestCase):
     def test_error_logs_fail(self):
         """Wrong exposures definition"""
         expo = good_exposures()
-        expo.gdf.drop(["longitude"], inplace=True, axis=1)
+        expo.gdf.drop(["value"], inplace=True, axis=1)
 
         with self.assertRaises(ValueError) as cm:
             expo.check()
-        self.assertIn("longitude missing", str(cm.exception))
+        self.assertIn("value missing", str(cm.exception))
 
     def test_error_logs_wrong_crs(self):
         """Ambiguous crs definition"""
-        expo = good_exposures()
-        expo.set_geometry_points()  # sets crs to 4326
+        expo = good_exposures()  # epsg:4326
 
         # all good
         _expo = Exposures(expo.gdf, meta={"crs": 4326}, crs=DEF_CRS)
+        self.assertEqual(expo.crs, _expo.crs)
 
+        # still good: crs in argument and meta override crs from data frame
+        _expo = Exposures(expo.gdf, meta={"crs": 4230})
+        self.assertNotEqual(expo.crs, _expo.crs)
+
+        _expo = Exposures(expo.gdf, crs="epsg:4230")
+        self.assertTrue(u_coord.equal_crs(_expo.crs, 4230))
+
+        # bad: direct and indirect (meta) argument conflict
         with self.assertRaises(ValueError) as cm:
             _expo = Exposures(expo.gdf, meta={"crs": 4230}, crs=4326)
         self.assertIn(
-            "Inconsistent CRS definition, crs and meta arguments don't match",
-            str(cm.exception),
+            "conflicting arguments: the given crs is different", str(cm.exception)
         )
-
-        with self.assertRaises(ValueError) as cm:
-            _expo = Exposures(expo.gdf, meta={"crs": 4230})
-        self.assertIn(
-            "Inconsistent CRS definition, data doesn't match meta or crs argument",
-            str(cm.exception),
-        )
-
-        with self.assertRaises(ValueError) as cm:
-            _expo = Exposures(expo.gdf, crs="epsg:4230")
-        self.assertIn(
-            "Inconsistent CRS definition, data doesn't match meta or crs argument",
-            str(cm.exception),
-        )
-
-        _expo = Exposures(expo.gdf)
-        _expo.meta["crs"] = "epsg:4230"
-        with self.assertRaises(ValueError) as cm:
-            _expo.check()
-        self.assertIn(
-            "Inconsistent CRS definition, gdf (EPSG:4326) attribute doesn't match "
-            "meta (epsg:4230) attribute.",
-            str(cm.exception),
-        )
-
-    def test_error_geometry_fail(self):
-        """Wrong exposures definition"""
-        expo = good_exposures()
-        expo.set_geometry_points()
-        expo.gdf["latitude"].values[0] = 5
-
-        with self.assertRaises(ValueError):
-            expo.check()
 
 
 class TestIO(unittest.TestCase):
@@ -410,7 +379,6 @@ class TestIO(unittest.TestCase):
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
         exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632")
-        exp_df.set_geometry_points()
         exp_df.check()
         # set metadata
         exp_df.ref_year = 2020
@@ -430,49 +398,40 @@ class TestIO(unittest.TestCase):
 
         self.assertEqual(exp_df.ref_year, exp_read.ref_year)
         self.assertEqual(exp_df.value_unit, exp_read.value_unit)
-        self.assertDictEqual(exp_df.meta, exp_read.meta)
-        self.assertTrue(u_coord.equal_crs(exp_df.crs, exp_read.crs))
-        self.assertTrue(u_coord.equal_crs(exp_df.gdf.crs, exp_read.gdf.crs))
         self.assertEqual(exp_df.description, exp_read.description)
+        np.testing.assert_array_equal(exp_df.latitude, exp_read.latitude)
+        np.testing.assert_array_equal(exp_df.longitude, exp_read.longitude)
+        np.testing.assert_array_equal(exp_df.value, exp_read.value)
         np.testing.assert_array_equal(
-            exp_df.gdf["latitude"].values, exp_read.gdf["latitude"].values
+            exp_df.data["deductible"].values, exp_read.data["deductible"].values
         )
         np.testing.assert_array_equal(
-            exp_df.gdf["longitude"].values, exp_read.gdf["longitude"].values
+            exp_df.data["cover"].values, exp_read.data["cover"].values
         )
         np.testing.assert_array_equal(
-            exp_df.gdf["value"].values, exp_read.gdf["value"].values
+            exp_df.data["region_id"].values, exp_read.data["region_id"].values
         )
         np.testing.assert_array_equal(
-            exp_df.gdf["deductible"].values, exp_read.gdf["deductible"].values
+            exp_df.data["category_id"].values, exp_read.data["category_id"].values
         )
         np.testing.assert_array_equal(
-            exp_df.gdf["cover"].values, exp_read.gdf["cover"].values
+            exp_df.data["impf_TC"].values, exp_read.data["impf_TC"].values
         )
         np.testing.assert_array_equal(
-            exp_df.gdf["region_id"].values, exp_read.gdf["region_id"].values
+            exp_df.data["centr_TC"].values, exp_read.data["centr_TC"].values
         )
         np.testing.assert_array_equal(
-            exp_df.gdf["category_id"].values, exp_read.gdf["category_id"].values
+            exp_df.data["impf_FL"].values, exp_read.data["impf_FL"].values
         )
         np.testing.assert_array_equal(
-            exp_df.gdf["impf_TC"].values, exp_read.gdf["impf_TC"].values
-        )
-        np.testing.assert_array_equal(
-            exp_df.gdf["centr_TC"].values, exp_read.gdf["centr_TC"].values
-        )
-        np.testing.assert_array_equal(
-            exp_df.gdf["impf_FL"].values, exp_read.gdf["impf_FL"].values
-        )
-        np.testing.assert_array_equal(
-            exp_df.gdf["centr_FL"].values, exp_read.gdf["centr_FL"].values
+            exp_df.data["centr_FL"].values, exp_read.data["centr_FL"].values
         )
 
-        for point_df, point_read in zip(
-            exp_df.gdf.geometry.values, exp_read.gdf.geometry.values
-        ):
-            self.assertEqual(point_df.x, point_read.x)
-            self.assertEqual(point_df.y, point_read.y)
+        self.assertTrue(
+            u_coord.equal_crs(exp_df.crs, exp_read.crs),
+            f"{exp_df.crs} and {exp_read.crs} are different",
+        )
+        self.assertTrue(u_coord.equal_crs(exp_df.gdf.crs, exp_read.gdf.crs))
 
 
 class TestAddSea(unittest.TestCase):
@@ -480,16 +439,20 @@ class TestAddSea(unittest.TestCase):
 
     def test_add_sea_pass(self):
         """Test add_sea function with fake data."""
-        exp = Exposures()
-        exp.gdf["value"] = np.arange(0, 1.0e6, 1.0e5)
         min_lat, max_lat = 27.5, 30
         min_lon, max_lon = -18, -12
-        exp.gdf["latitude"] = np.linspace(min_lat, max_lat, 10)
-        exp.gdf["longitude"] = np.linspace(min_lon, max_lon, 10)
-        exp.gdf["region_id"] = np.ones(10)
-        exp.gdf["impf_TC"] = np.ones(10)
-        exp.ref_year = 2015
-        exp.value_unit = "XSD"
+
+        exp = Exposures(
+            data=dict(
+                value=np.arange(0, 1.0e6, 1.0e5),
+                latitude=np.linspace(min_lat, max_lat, 10),
+                longitude=np.linspace(min_lon, max_lon, 10),
+                region_id=np.ones(10),
+                impf_TC=np.ones(10),
+            ),
+            ref_year=2015,
+            value_unit="XSD",
+        )
         exp.check()
 
         sea_coast = 100
@@ -505,16 +468,14 @@ class TestAddSea(unittest.TestCase):
         max_lat = max_lat + sea_coast
         min_lon = min_lon - sea_coast
         max_lon = max_lon + sea_coast
-        self.assertEqual(np.min(exp_sea.gdf["latitude"]), min_lat)
-        self.assertEqual(np.min(exp_sea.gdf["longitude"]), min_lon)
-        np.testing.assert_array_equal(
-            exp_sea.gdf.value.values[:10], np.arange(0, 1.0e6, 1.0e5)
-        )
+        self.assertEqual(np.min(exp_sea.latitude), min_lat)
+        self.assertEqual(np.min(exp_sea.longitude), min_lon)
+        np.testing.assert_array_equal(exp_sea.value[:10], np.arange(0, 1.0e6, 1.0e5))
         self.assertEqual(exp_sea.ref_year, exp.ref_year)
         self.assertEqual(exp_sea.value_unit, exp.value_unit)
 
-        on_sea_lat = exp_sea.gdf["latitude"].values[11:]
-        on_sea_lon = exp_sea.gdf["longitude"].values[11:]
+        on_sea_lat = exp_sea.latitude[11:]
+        on_sea_lon = exp_sea.longitude[11:]
         res_on_sea = u_coord.coord_on_land(on_sea_lat, on_sea_lon)
         res_on_sea = ~res_on_sea
         self.assertTrue(np.all(res_on_sea))
@@ -523,14 +484,8 @@ class TestAddSea(unittest.TestCase):
         self.assertAlmostEqual(
             dist.pairwise(
                 [
-                    [
-                        exp_sea.gdf["longitude"].values[-1],
-                        exp_sea.gdf["latitude"].values[-1],
-                    ],
-                    [
-                        exp_sea.gdf["longitude"].values[-2],
-                        exp_sea.gdf["latitude"].values[-2],
-                    ],
+                    [exp_sea.longitude[-1], exp_sea.latitude[-1]],
+                    [exp_sea.longitude[-2], exp_sea.latitude[-2]],
                 ]
             )[0][1],
             sea_res_km,
@@ -541,16 +496,20 @@ class TestConcat(unittest.TestCase):
     """Check constructor Exposures through DataFrames readers"""
 
     def setUp(self):
-        exp = Exposures(crs="epsg:3395")
-        exp.gdf["value"] = np.arange(0, 1.0e6, 1.0e5)
         min_lat, max_lat = 27.5, 30
         min_lon, max_lon = -18, -12
-        exp.gdf["latitude"] = np.linspace(min_lat, max_lat, 10)
-        exp.gdf["longitude"] = np.linspace(min_lon, max_lon, 10)
-        exp.gdf["region_id"] = np.ones(10)
-        exp.gdf["impf_TC"] = np.ones(10)
-        exp.ref_year = 2015
-        exp.value_unit = "XSD"
+        exp = Exposures(
+            crs="epsg:3395",
+            value=np.arange(0, 1.0e6, 1.0e5),
+            lat=np.linspace(min_lat, max_lat, 10),
+            lon=np.linspace(min_lon, max_lon, 10),
+            ref_year=2015,
+            value_unit="XSD",
+            data=dict(
+                region_id=np.ones(10),
+                impf_TC=np.ones(10),
+            ),
+        )
         self.dummy = exp
 
     def test_concat_pass(self):
@@ -566,8 +525,11 @@ class TestConcat(unittest.TestCase):
                 self.dummy,
             ]
         )
-        self.assertEqual(self.dummy.gdf.shape, (10, 5))
-        self.assertEqual(catexp.gdf.shape, (40, 5))
+        self.assertEqual(
+            list(self.dummy.gdf.columns), ["region_id", "impf_TC", "geometry", "value"]
+        )
+        self.assertEqual(self.dummy.gdf.shape, (10, 4))
+        self.assertEqual(catexp.gdf.shape, (40, 4))
         self.assertTrue(u_coord.equal_crs(catexp.crs, "epsg:3395"))
 
     def test_concat_fail(self):
@@ -592,17 +554,12 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertEqual(exp_copy.ref_year, exp.ref_year)
         self.assertEqual(exp_copy.value_unit, exp.value_unit)
         self.assertEqual(exp_copy.description, exp.description)
-        np.testing.assert_array_equal(
-            exp_copy.gdf["latitude"].values, exp.gdf["latitude"].values
-        )
-        np.testing.assert_array_equal(
-            exp_copy.gdf["longitude"].values, exp.gdf["longitude"].values
-        )
+        np.testing.assert_array_equal(exp_copy.latitude, exp.latitude)
+        np.testing.assert_array_equal(exp_copy.longitude, exp.longitude)
 
     def test_to_crs_inplace_pass(self):
         """Test to_crs function inplace."""
         exp = good_exposures()
-        exp.set_geometry_points()
         exp.check()
         exp.to_crs("epsg:3395", inplace=True)
         self.assertIsInstance(exp, Exposures)
@@ -614,7 +571,6 @@ class TestGeoDFFuncs(unittest.TestCase):
     def test_to_crs_pass(self):
         """Test to_crs function copy."""
         exp = good_exposures()
-        exp.set_geometry_points()
         exp.check()
         exp_tr = exp.to_crs("epsg:3395")
         self.assertIsInstance(exp, Exposures)
@@ -626,12 +582,13 @@ class TestGeoDFFuncs(unittest.TestCase):
 
     def test_constructor_pass(self):
         """Test initialization with input GeoDataFrame"""
-        in_gpd = gpd.GeoDataFrame()
-        in_gpd["value"] = np.zeros(10)
-        in_gpd.ref_year = 2015
+        in_gpd = gpd.GeoDataFrame(
+            dict(latitude=range(10), longitude=[0] * 10, value=np.zeros(10))
+        )
         in_exp = Exposures(in_gpd, ref_year=2015)
         self.assertEqual(in_exp.ref_year, 2015)
-        np.testing.assert_array_equal(in_exp.gdf["value"], np.zeros(10))
+        np.testing.assert_array_equal(in_exp.value, np.zeros(10))
+        self.assertEqual(in_exp.gdf.geometry[0], Point(0, 0))
 
     def test_error_on_access_item(self):
         """Test error output when trying to access items as in CLIMADA 1.x"""
@@ -647,33 +604,34 @@ class TestGeoDFFuncs(unittest.TestCase):
         gdf_without_geometry = good_exposures().gdf
         good_exp = good_exposures()
         good_exp.set_crs(crs="epsg:3395")
-        good_exp.set_geometry_points()
         gdf_with_geometry = good_exp.gdf
 
         probe = Exposures()
         self.assertRaises(ValueError, probe.set_gdf, pd.DataFrame())
 
         probe.set_gdf(empty_gdf)
-        self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame()))
+        self.assertTrue(probe.gdf.equals(gpd.GeoDataFrame().set_geometry([])))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertFalse(hasattr(probe.gdf, "crs"))
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.gdf.crs))
 
         probe.set_gdf(gdf_with_geometry)
         self.assertTrue(probe.gdf.equals(gdf_with_geometry))
-        self.assertTrue(u_coord.equal_crs("epsg:3395", probe.crs))
+        self.assertTrue(u_coord.equal_crs("epsg:3395", gdf_with_geometry.crs))
+        self.assertTrue(
+            u_coord.equal_crs("epsg:3395", probe.crs), f"unexpected: {probe.crs}"
+        )
         self.assertTrue(u_coord.equal_crs("epsg:3395", probe.gdf.crs))
 
         probe.set_gdf(gdf_without_geometry)
         self.assertTrue(probe.gdf.equals(good_exposures().gdf))
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertFalse(hasattr(probe.gdf, "crs"))
+        self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.gdf.crs))
 
     def test_set_crs(self):
         """Test setting the CRS"""
         empty_gdf = gpd.GeoDataFrame()
         gdf_without_geometry = good_exposures().gdf
         good_exp = good_exposures()
-        good_exp.set_geometry_points()
         gdf_with_geometry = good_exp.gdf
 
         probe = Exposures(gdf_without_geometry)
@@ -685,8 +643,8 @@ class TestGeoDFFuncs(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
         probe.set_crs(DEF_CRS)
         self.assertTrue(u_coord.equal_crs(DEF_CRS, probe.crs))
-        self.assertRaises(ValueError, probe.set_crs, "epsg:3395")
-        self.assertTrue(u_coord.equal_crs("EPSG:4326", probe.meta.get("crs")))
+        probe.set_crs("epsg:3395")
+        self.assertTrue(u_coord.equal_crs("epsg:3395", probe.crs))
 
     def test_to_crs_epsg_crs(self):
         """Check that if crs and epsg are both provided a ValueError is raised"""
@@ -708,30 +666,28 @@ class TestImpactFunctions(unittest.TestCase):
         self.assertRaises(ValueError, expo.get_impf_column, "HAZ")
 
         # removed impf column
-        expo.gdf.drop(columns="impf_NA", inplace=True)
+        expo.data.drop(columns="impf_NA", inplace=True)
         self.assertRaises(ValueError, expo.get_impf_column, "NA")
         self.assertRaises(ValueError, expo.get_impf_column)
 
         # default (anonymous) impf column
-        expo.check()
+        expo.data["impf_"] = 1
         self.assertEqual("impf_", expo.get_impf_column())
         self.assertEqual("impf_", expo.get_impf_column("HAZ"))
 
         # rename impf column to old style column name
-        expo.gdf.rename(columns={"impf_": "if_"}, inplace=True)
-        expo.check()
+        expo.data.rename(columns={"impf_": "if_"}, inplace=True)
         self.assertEqual("if_", expo.get_impf_column())
         self.assertEqual("if_", expo.get_impf_column("HAZ"))
 
         # rename impf column to old style column name
-        expo.gdf.rename(columns={"if_": "if_NA"}, inplace=True)
-        expo.check()
+        expo.data.rename(columns={"if_": "if_NA"}, inplace=True)
         self.assertEqual("if_NA", expo.get_impf_column("NA"))
         self.assertRaises(ValueError, expo.get_impf_column)
         self.assertRaises(ValueError, expo.get_impf_column, "HAZ")
 
         # add anonymous impf column
-        expo.gdf["impf_"] = expo.gdf["region_id"]
+        expo.data["impf_"] = expo.region_id
         self.assertEqual("if_NA", expo.get_impf_column("NA"))
         self.assertEqual("impf_", expo.get_impf_column())
         self.assertEqual("impf_", expo.get_impf_column("HAZ"))
