@@ -19,47 +19,53 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define ImpactFuncSet class.
 """
 
-__all__ = ['ImpactFuncSet']
+__all__ = ["ImpactFuncSet"]
 
 import copy
 import logging
-from typing import Optional, Iterable
 from itertools import repeat
+from typing import Iterable, Optional
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import xlsxwriter
 
-from climada.entity.impact_funcs.base import ImpactFunc
-import climada.util.plot as u_plot
 import climada.util.hdf5_handler as u_hdf5
+import climada.util.plot as u_plot
+from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
 
-DEF_VAR_EXCEL = {'sheet_name': 'impact_functions',
-                 'col_name': {'func_id': 'impact_fun_id',
-                              'inten': 'intensity',
-                              'mdd': 'mdd',
-                              'paa': 'paa',
-                              'name': 'name',
-                              'unit': 'intensity_unit',
-                              'peril': 'peril_id'
-                             }
-                }
+DEF_VAR_EXCEL = {
+    "sheet_name": "impact_functions",
+    "col_name": {
+        "func_id": "impact_fun_id",
+        "inten": "intensity",
+        "mdd": "mdd",
+        "paa": "paa",
+        "name": "name",
+        "unit": "intensity_unit",
+        "peril": "peril_id",
+    },
+}
 """Excel and csv variable names"""
 
-DEF_VAR_MAT = {'sup_field_name': 'entity',
-               'field_name': 'damagefunctions',
-               'var_name': {'fun_id': 'DamageFunID',
-                            'inten': 'Intensity',
-                            'mdd': 'MDD',
-                            'paa': 'PAA',
-                            'name': 'name',
-                            'unit': 'Intensity_unit',
-                            'peril': 'peril_ID'
-                           }
-              }
+DEF_VAR_MAT = {
+    "sup_field_name": "entity",
+    "field_name": "damagefunctions",
+    "var_name": {
+        "fun_id": "DamageFunID",
+        "inten": "Intensity",
+        "mdd": "MDD",
+        "paa": "PAA",
+        "name": "name",
+        "unit": "Intensity_unit",
+        "peril": "peril_ID",
+    },
+}
 """MATLAB variable names"""
+
 
 class ImpactFuncSet:
     """Contains impact functions of type ImpactFunc. Loads from
@@ -72,10 +78,7 @@ class ImpactFuncSet:
         directly accessed. Use the class methods instead.
     """
 
-    def __init__(
-        self,
-        impact_funcs: Optional[Iterable[ImpactFunc]] = None
-    ):
+    def __init__(self, impact_funcs: Optional[Iterable[ImpactFunc]] = None):
         """Initialization.
 
         Build an impact function set from an iterable of ImpactFunc.
@@ -147,8 +150,9 @@ class ImpactFuncSet:
             try:
                 del self._data[haz_type][fun_id]
             except KeyError:
-                LOGGER.warning("No ImpactFunc with hazard %s and id %s.",
-                               haz_type, fun_id)
+                LOGGER.warning(
+                    "No ImpactFunc with hazard %s and id %s.", haz_type, fun_id
+                )
         elif haz_type is not None:
             try:
                 del self._data[haz_type]
@@ -261,8 +265,11 @@ class ImpactFuncSet:
         -------
         int
         """
-        if (haz_type is not None) and (fun_id is not None) and \
-        (isinstance(self.get_func(haz_type, fun_id), ImpactFunc)):
+        if (
+            (haz_type is not None)
+            and (fun_id is not None)
+            and (isinstance(self.get_func(haz_type, fun_id), ImpactFunc))
+        ):
             return 1
         if (haz_type is not None) or (fun_id is not None):
             return len(self.get_func(haz_type, fun_id))
@@ -277,12 +284,14 @@ class ImpactFuncSet:
         """
         for key_haz, vul_dict in self._data.items():
             for fun_id, vul in vul_dict.items():
-                if (fun_id != vul.id) | (fun_id == ''):
-                    raise ValueError("Wrong ImpactFunc.id: %s != %s."
-                                     % (fun_id, vul.id))
-                if (key_haz != vul.haz_type) | (key_haz == ''):
-                    raise ValueError("Wrong ImpactFunc.haz_type: %s != %s."
-                                     % (key_haz, vul.haz_type))
+                if (fun_id != vul.id) | (fun_id == ""):
+                    raise ValueError(
+                        "Wrong ImpactFunc.id: %s != %s." % (fun_id, vul.id)
+                    )
+                if (key_haz != vul.haz_type) | (key_haz == ""):
+                    raise ValueError(
+                        "Wrong ImpactFunc.haz_type: %s != %s." % (key_haz, vul.haz_type)
+                    )
                 vul.check()
 
     def extend(self, impact_funcs):
@@ -368,7 +377,7 @@ class ImpactFuncSet:
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL
-        dfr = pd.read_excel(file_name, var_names['sheet_name'])
+        dfr = pd.read_excel(file_name, var_names["sheet_name"])
 
         imp_func_set = cls()
         imp_func_set._fill_dfr(dfr, var_names)
@@ -376,8 +385,10 @@ class ImpactFuncSet:
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use ImpactFuncSet.from_excel instead."""
-        LOGGER.warning("The use of ImpactFuncSet.read_excel is deprecated."
-                        " Use ImpactFuncSet.from_excel instead.")
+        LOGGER.warning(
+            "The use of ImpactFuncSet.read_excel is deprecated."
+            " Use ImpactFuncSet.from_excel instead."
+        )
         self.__dict__ = ImpactFuncSet.from_excel(*args, **kwargs).__dict__
 
     @classmethod
@@ -400,12 +411,16 @@ class ImpactFuncSet:
         """
         if var_names is None:
             var_names = DEF_VAR_MAT
+
         def _get_hdf5_funcs(imp, file_name, var_names):
             """Get rows that fill every impact function and its name."""
             func_pos = dict()
             for row, (fun_id, fun_type) in enumerate(
-                    zip(imp[var_names['var_name']['fun_id']].squeeze(),
-                        imp[var_names['var_name']['peril']].squeeze())):
+                zip(
+                    imp[var_names["var_name"]["fun_id"]].squeeze(),
+                    imp[var_names["var_name"]["peril"]].squeeze(),
+                )
+            ):
                 type_str = u_hdf5.get_str_from_ref(file_name, fun_type)
                 key = (type_str, int(fun_id))
                 if key not in func_pos:
@@ -421,17 +436,19 @@ class ImpactFuncSet:
                 if prev_str == "":
                     prev_str = cur_str
                 elif prev_str != cur_str:
-                    raise ValueError("Impact function with two different %s." % var_name)
+                    raise ValueError(
+                        "Impact function with two different %s." % var_name
+                    )
             return prev_str
 
         imp = u_hdf5.read(file_name)
 
         try:
-            imp = imp[var_names['sup_field_name']]
+            imp = imp[var_names["sup_field_name"]]
         except KeyError:
             pass
         try:
-            imp = imp[var_names['field_name']]
+            imp = imp[var_names["field_name"]]
             funcs_idx = _get_hdf5_funcs(imp, file_name, var_names)
             impact_funcs = []
             for imp_key, imp_rows in funcs_idx.items():
@@ -442,19 +459,26 @@ class ImpactFuncSet:
                 # check that this function only has one intensity unit, if provided
                 try:
                     impf_kwargs["intensity_unit"] = _get_hdf5_str(
-                        imp, imp_rows, file_name, var_names['var_name']['unit'])
+                        imp, imp_rows, file_name, var_names["var_name"]["unit"]
+                    )
                 except KeyError:
                     pass
                 # check that this function only has one name
                 try:
                     impf_kwargs["name"] = _get_hdf5_str(
-                        imp, imp_rows, file_name, var_names['var_name']['name'])
+                        imp, imp_rows, file_name, var_names["var_name"]["name"]
+                    )
                 except KeyError:
                     impf_kwargs["name"] = str(impf_kwargs["idx"])
                 impf_kwargs["intensity"] = np.take(
-                    imp[var_names['var_name']['inten']], imp_rows)
-                impf_kwargs["mdd"] = np.take(imp[var_names['var_name']['mdd']], imp_rows)
-                impf_kwargs["paa"] = np.take(imp[var_names['var_name']['paa']], imp_rows)
+                    imp[var_names["var_name"]["inten"]], imp_rows
+                )
+                impf_kwargs["mdd"] = np.take(
+                    imp[var_names["var_name"]["mdd"]], imp_rows
+                )
+                impf_kwargs["paa"] = np.take(
+                    imp[var_names["var_name"]["paa"]], imp_rows
+                )
                 impact_funcs.append(ImpactFunc(**impf_kwargs))
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
@@ -463,8 +487,10 @@ class ImpactFuncSet:
 
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use ImpactFuncSet.from_mat instead."""
-        LOGGER.warning("The use of ImpactFuncSet.read_mat  is deprecated."
-                       "Use ImpactFuncSet.from_mat  instead.")
+        LOGGER.warning(
+            "The use of ImpactFuncSet.read_mat  is deprecated."
+            "Use ImpactFuncSet.from_mat  instead."
+        )
         self.__dict__ = ImpactFuncSet.from_mat(*args, **kwargs).__dict__
 
     def write_excel(self, file_name, var_names=None):
@@ -479,6 +505,7 @@ class ImpactFuncSet:
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL
+
         def write_impf(row_ini, imp_ws, xls_data):
             """Write one impact function"""
             for icol, col_dat in enumerate(xls_data):
@@ -486,22 +513,32 @@ class ImpactFuncSet:
                     imp_ws.write(irow, icol, data)
 
         imp_wb = xlsxwriter.Workbook(file_name)
-        imp_ws = imp_wb.add_worksheet(var_names['sheet_name'])
+        imp_ws = imp_wb.add_worksheet(var_names["sheet_name"])
 
-        header = [var_names['col_name']['func_id'], var_names['col_name']['inten'],
-                  var_names['col_name']['mdd'], var_names['col_name']['paa'],
-                  var_names['col_name']['peril'], var_names['col_name']['unit'],
-                  var_names['col_name']['name']]
+        header = [
+            var_names["col_name"]["func_id"],
+            var_names["col_name"]["inten"],
+            var_names["col_name"]["mdd"],
+            var_names["col_name"]["paa"],
+            var_names["col_name"]["peril"],
+            var_names["col_name"]["unit"],
+            var_names["col_name"]["name"],
+        ]
         for icol, head_dat in enumerate(header):
             imp_ws.write(0, icol, head_dat)
         row_ini = 1
         for fun_haz_id, fun_haz in self._data.items():
             for fun_id, fun in fun_haz.items():
                 n_inten = fun.intensity.size
-                xls_data = [repeat(fun_id, n_inten), fun.intensity, fun.mdd,
-                            fun.paa, repeat(fun_haz_id, n_inten),
-                            repeat(fun.intensity_unit, n_inten),
-                            repeat(fun.name, n_inten)]
+                xls_data = [
+                    repeat(fun_id, n_inten),
+                    fun.intensity,
+                    fun.mdd,
+                    fun.paa,
+                    repeat(fun_haz_id, n_inten),
+                    repeat(fun.intensity_unit, n_inten),
+                    repeat(fun.name, n_inten),
+                ]
                 write_impf(row_ini, imp_ws, xls_data)
                 row_ini += n_inten
         imp_wb.close()
@@ -511,8 +548,10 @@ class ImpactFuncSet:
         def _get_xls_funcs(dfr, var_names):
             """Parse individual impact functions."""
             dist_func = []
-            for (haz_type, imp_id) in zip(dfr[var_names['col_name']['peril']],
-                                          dfr[var_names['col_name']['func_id']]):
+            for haz_type, imp_id in zip(
+                dfr[var_names["col_name"]["peril"]],
+                dfr[var_names["col_name"]["func_id"]],
+            ):
                 if (haz_type, imp_id) not in dist_func:
                     dist_func.append((haz_type, imp_id))
             return dist_func
@@ -520,9 +559,8 @@ class ImpactFuncSet:
         try:
             dist_func = _get_xls_funcs(dfr, var_names)
             for haz_type, imp_id in dist_func:
-                df_func = dfr[dfr[var_names['col_name']['peril']] == haz_type]
-                df_func = df_func[df_func[var_names['col_name']['func_id']]
-                                  == imp_id]
+                df_func = dfr[dfr[var_names["col_name"]["peril"]] == haz_type]
+                df_func = df_func[df_func[var_names["col_name"]["func_id"]] == imp_id]
 
                 # Store arguments in a dict (missing ones will be default)
                 impf_kwargs = dict()
@@ -530,26 +568,31 @@ class ImpactFuncSet:
                 impf_kwargs["id"] = imp_id
                 # check that the unit of the intensity is the same
                 try:
-                    if len(df_func[var_names['col_name']['name']].unique()) != 1:
-                        raise ValueError('Impact function with two different names.')
-                    impf_kwargs["name"] = df_func[var_names['col_name']
-                                                  ['name']].values[0]
+                    if len(df_func[var_names["col_name"]["name"]].unique()) != 1:
+                        raise ValueError("Impact function with two different names.")
+                    impf_kwargs["name"] = df_func[var_names["col_name"]["name"]].values[
+                        0
+                    ]
                 except KeyError:
                     impf_kwargs["name"] = str(impf_kwargs["id"])
 
                 # check that the unit of the intensity is the same, if provided
                 try:
-                    if len(df_func[var_names['col_name']['unit']].unique()) != 1:
-                        raise ValueError('Impact function with two different'
-                                         ' intensity units.')
-                    impf_kwargs["intensity_unit"] = df_func[var_names['col_name']
-                                                            ['unit']].values[0]
+                    if len(df_func[var_names["col_name"]["unit"]].unique()) != 1:
+                        raise ValueError(
+                            "Impact function with two different" " intensity units."
+                        )
+                    impf_kwargs["intensity_unit"] = df_func[
+                        var_names["col_name"]["unit"]
+                    ].values[0]
                 except KeyError:
                     pass
 
-                impf_kwargs["intensity"] = df_func[var_names['col_name']['inten']].values
-                impf_kwargs["mdd"] = df_func[var_names['col_name']['mdd']].values
-                impf_kwargs["paa"] = df_func[var_names['col_name']['paa']].values
+                impf_kwargs["intensity"] = df_func[
+                    var_names["col_name"]["inten"]
+                ].values
+                impf_kwargs["mdd"] = df_func[var_names["col_name"]["mdd"]].values
+                impf_kwargs["paa"] = df_func[var_names["col_name"]["paa"]].values
 
                 self.append(ImpactFunc(**impf_kwargs))
 

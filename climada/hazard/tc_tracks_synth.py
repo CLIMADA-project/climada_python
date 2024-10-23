@@ -22,23 +22,24 @@ Generate synthetic tropical cyclone tracks from real ones
 import array
 import itertools
 import logging
-from typing import Dict
 import os
 import warnings
+from copy import deepcopy
+from pathlib import Path
+from typing import Dict
+
 import matplotlib.cm as cm_mp
 import matplotlib.pyplot as plt
 import numba
 import numpy as np
-import xarray as xr
 import pandas as pd
-import scipy.stats
 import scipy.interpolate
+import scipy.stats
+import statsmodels.api as sm
+import xarray as xr
 from matplotlib.lines import Line2D
 from pathos.abstract_launcher import AbstractWorkerPool
 from shapely.geometry.multipolygon import MultiPolygon
-from pathlib import Path
-from copy import deepcopy
-import statsmodels.api as sm
 
 import climada.hazard.tc_tracks
 import climada.util.coordinates
@@ -53,7 +54,7 @@ LANDFALL_DECAY_V = {
     2: 0.0025968221565522698,
     3: 0.002626252944053856,
     4: 0.002550639312763181,
-    5: 0.003788695795963695
+    5: 0.003788695795963695,
 }
 """Global landfall decay parameters for wind speed by TC category.
 
@@ -76,7 +77,8 @@ LANDFALL_DECAY_P = {
     2: (1.0468630800617038, 0.004067381088015585),
     3: (1.0639055205005432, 0.003708174876364079),
     4: (1.0828373148889825, 0.003997492773076179),
-    5: (1.1088615145002092, 0.005224331234796362)}
+    5: (1.1088615145002092, 0.005224331234796362),
+}
 """Global landfall decay parameters for pressure by TC category.
 
 Keys are TC categories with -1='TD', 0='TS', 1='Cat 1', ..., 5='Cat 5'.
@@ -91,44 +93,50 @@ It is p_rel as derived from:
 >>> v_rel, p_rel = _calc_land_decay(tracks.data, land_geom, pool=tracks.pool)
 """
 
-DATA_DIR = Path(__file__).parent.joinpath('data')
-RANDOM_WALK_DATA_INTENSIFICATION = pd.read_csv(DATA_DIR.joinpath('tc_intensification_params.csv'))
-RANDOM_WALK_DATA_DURATION = pd.read_csv(DATA_DIR.joinpath('tc_peak_params.csv'), na_values='', keep_default_na=False)
-RANDOM_WALK_DATA_SEA_DECAY = pd.read_csv(DATA_DIR.joinpath('tc_decay_params.csv'), na_values='', keep_default_na=False)
+DATA_DIR = Path(__file__).parent.joinpath("data")
+RANDOM_WALK_DATA_INTENSIFICATION = pd.read_csv(
+    DATA_DIR.joinpath("tc_intensification_params.csv")
+)
+RANDOM_WALK_DATA_DURATION = pd.read_csv(
+    DATA_DIR.joinpath("tc_peak_params.csv"), na_values="", keep_default_na=False
+)
+RANDOM_WALK_DATA_SEA_DECAY = pd.read_csv(
+    DATA_DIR.joinpath("tc_decay_params.csv"), na_values="", keep_default_na=False
+)
 
 TIME_MODEL_BEFORE_HIST_LF_H = 4
 """Time (in hours) before a historical landfall from which intensity (central
 pressure) is assumed to be affected by the upcoming landfall"""
 
 RANDOM_WALK_DATA_CAT_STR = {
-    -1: 'TD-TS',
-    0: 'TD-TS',
+    -1: "TD-TS",
+    0: "TD-TS",
     1: "Cat 1",
     2: "Cat 2",
     3: "Cat 3",
     4: "Cat 4",
-    5: "Cat 5"
+    5: "Cat 5",
 }
 
 FIT_TRACK_VARS_RANGE = {
-    'max_sustained_wind': {
+    "max_sustained_wind": {
         # minimum value in IBTrACS
-        'min': 5,
+        "min": 5,
         # maximum in IBTrACS USA is 185 kts. But cannot exclude more powerful
         # (basic theory says 175 kts, which has already been exceeded; also,
         # hypothetical hypercanes)
-        'max': 200
+        "max": 200,
     },
-    'radius_max_wind': {
+    "radius_max_wind": {
         # range in IBTrACS
-        'min': 10,
-        'max': 650
+        "min": 10,
+        "max": 650,
     },
-    'radius_oci': {
+    "radius_oci": {
         # radius of outermost closed isobar: range in IBTrACS
-        'min': 4,
-        'max': 300
-    }
+        "min": 4,
+        "max": 300,
+    },
 }
 """Dict of track variables to estimate from track-specific fit to central_pressure after
 modelling intensity, containing 'min' and 'max' allowed values."""
@@ -138,16 +146,16 @@ FIT_TIME_ADJUST_HOUR = 6
 track parameters"""
 
 NEGLECT_LANDFALL_DURATION_HOUR = 4.5
-"""Minimum landfall duration in hours from which to correct intensity. Perturbed systems 
+"""Minimum landfall duration in hours from which to correct intensity. Perturbed systems
 spending less time than this over land will not be adjusted for landfall effects"""
 
 TRACK_EXTENSION_PARS = {
-    'max_shift_ini': 0,
-    'max_dspeed_rel': 0.05,
-    'max_ddirection': np.radians(3.5),
-    'autocorr_ddirection': 0.2,
-    'autocorr_dspeed': 0,
-    'decay_ddirection_hourly': 0
+    "max_shift_ini": 0,
+    "max_dspeed_rel": 0.05,
+    "max_ddirection": np.radians(3.5),
+    "autocorr_ddirection": 0.2,
+    "autocorr_dspeed": 0,
+    "decay_ddirection_hourly": 0,
 }
 """Trajectory perturbations parameters for track extension"""
 # - bearing angle change has mean 0 deg/h and std 3.35 deg/h, autocorr=0.21
@@ -155,83 +163,102 @@ TRACK_EXTENSION_PARS = {
 #   autocorr=0
 
 envvar_defaults = {
-    'TRACKGEN_TEST_DECAY_AT_EXTREME_LATS': '1',
-    'TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES': '1',
-    'TRACKGEN_TEST_KILL_BEYOND_ADVISORIES': '1',
-    'TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL': '1',
-    'TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA': '1',
-    'TRACKGEN_TEST_BIAS_TARGET_PRESSURE': '0'
+    "TRACKGEN_TEST_DECAY_AT_EXTREME_LATS": "1",
+    "TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES": "1",
+    "TRACKGEN_TEST_KILL_BEYOND_ADVISORIES": "1",
+    "TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL": "1",
+    "TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA": "1",
+    "TRACKGEN_TEST_BIAS_TARGET_PRESSURE": "0",
 }
 for envvar, default in envvar_defaults.items():
     if os.getenv(envvar) is None:
-        LOGGER.info(f'No value for {envvar} found in the environment: setting to {default} by default')
+        LOGGER.info(
+            f"No value for {envvar} found in the environment: setting to {default} by default"
+        )
         os.environ[envvar] = default
     else:
-        LOGGER.info(f'Found environment variable set for {envvar}: {str(os.getenv(envvar))}')
+        LOGGER.info(
+            f"Found environment variable set for {envvar}: {str(os.getenv(envvar))}"
+        )
 
 
-if int(os.getenv('TRACKGEN_TEST_DECAY_AT_EXTREME_LATS')):
+if int(os.getenv("TRACKGEN_TEST_DECAY_AT_EXTREME_LATS")):
     MAX_WIND_BY_LAT_RANGE = {
-        'EP': {
-            'lat_min': {'lat': [1, 2.5, 7.5], 'max_wind': [0, 72, 115]},
-            'lat_max' : {'lat': [37.5, 42.5, 47.5, 52.5, 57.5, 62.5, 65], 'max_wind': [95, 75, 75, 67, 55, 30, 0]}
+        "EP": {
+            "lat_min": {"lat": [1, 2.5, 7.5], "max_wind": [0, 72, 115]},
+            "lat_max": {
+                "lat": [37.5, 42.5, 47.5, 52.5, 57.5, 62.5, 65],
+                "max_wind": [95, 75, 75, 67, 55, 30, 0],
+            },
         },
-        'NA': {
-            'lat_min': {'lat': [5, 7.5, 12.5], 'max_wind': [0, 97, 150]},
-            'lat_max': {'lat': [57.5, 62.5, 67.5, 72.5, 75], 'max_wind': [75, 65, 50, 30, 0]}
+        "NA": {
+            "lat_min": {"lat": [5, 7.5, 12.5], "max_wind": [0, 97, 150]},
+            "lat_max": {
+                "lat": [57.5, 62.5, 67.5, 72.5, 75],
+                "max_wind": [75, 65, 50, 30, 0],
+            },
         },
-        'NI': {
-            'lat_min': {'lat': [1, 2.5, 7.5], 'max_wind': [0, 35, 90]},
-            'lat_max': {'lat': [22.5, 27.5, 30], 'max_wind': [140, 45, 0]}
+        "NI": {
+            "lat_min": {"lat": [1, 2.5, 7.5], "max_wind": [0, 35, 90]},
+            "lat_max": {"lat": [22.5, 27.5, 30], "max_wind": [140, 45, 0]},
         },
-        'SA': {
-            'lat_min': {'lat': [-40], 'max_wind': [45]},
-            'lat_max': {'lat': [15], 'max_wind': [30]}
+        "SA": {
+            "lat_min": {"lat": [-40], "max_wind": [45]},
+            "lat_max": {"lat": [15], "max_wind": [30]},
         },
-        'SI': {
-            'lat_min': {'lat': [-50, -47.5, -42.5, -37.5], 'max_wind': [0, 57, 74, 86]},
-            'lat_max': {'lat': [-7.5, -2.5, -1], 'max_wind': [155, 49, 0]}
+        "SI": {
+            "lat_min": {"lat": [-50, -47.5, -42.5, -37.5], "max_wind": [0, 57, 74, 86]},
+            "lat_max": {"lat": [-7.5, -2.5, -1], "max_wind": [155, 49, 0]},
         },
-        'SP': {
-            'lat_min': {'lat': [-70, -67.5, -62.5, -57.5, -52.5, -47.5, -42.5], 'max_wind': [0, 63, 63, 63, 63, 85, 90]},
-            'lat_max': {'lat': [-7.5, -2.5, -1], 'max_wind': [103, 34, 0]}
+        "SP": {
+            "lat_min": {
+                "lat": [-70, -67.5, -62.5, -57.5, -52.5, -47.5, -42.5],
+                "max_wind": [0, 63, 63, 63, 63, 85, 90],
+            },
+            "lat_max": {"lat": [-7.5, -2.5, -1], "max_wind": [103, 34, 0]},
         },
-        'WP': {
-            'lat_min': {'lat': [1, 2.5, 7.5], 'max_wind': [0, 125, 165]},
-            'lat_max': {'lat': [47.5, 52.5, 57.5, 62.5, 65], 'max_wind': [85, 75, 42, 40, 0]}
-        }
+        "WP": {
+            "lat_min": {"lat": [1, 2.5, 7.5], "max_wind": [0, 125, 165]},
+            "lat_max": {
+                "lat": [47.5, 52.5, 57.5, 62.5, 65],
+                "max_wind": [85, 75, 42, 40, 0],
+            },
+        },
     }
     """Maximum max_sustained_wind value found in each basin for latitudinal value ranges."""
 else:
     MAX_WIND_BY_LAT_RANGE = {
-        'EP': {
-            'lat_min': {'lat': [2.5, 7.5], 'max_wind': [72, 115]},
-            'lat_max' : {'lat': [37.5, 57.5], 'max_wind': [75, 55]}
+        "EP": {
+            "lat_min": {"lat": [2.5, 7.5], "max_wind": [72, 115]},
+            "lat_max": {"lat": [37.5, 57.5], "max_wind": [75, 55]},
         },
-        'NA': {
-            'lat_min': {'lat': [7.5, 12.5], 'max_wind': [97, 150]},
-            'lat_max': {'lat': [47.5, 57.5, 67.5], 'max_wind': [105, 75, 50]}
+        "NA": {
+            "lat_min": {"lat": [7.5, 12.5], "max_wind": [97, 150]},
+            "lat_max": {"lat": [47.5, 57.5, 67.5], "max_wind": [105, 75, 50]},
         },
-        'NI': {
-            'lat_min': {'lat': [2.5, 7.5], 'max_wind': [65, 90]},
-            'lat_max': {'lat': [27.5], 'max_wind': [65]}
+        "NI": {
+            "lat_min": {"lat": [2.5, 7.5], "max_wind": [65, 90]},
+            "lat_max": {"lat": [27.5], "max_wind": [65]},
         },
-        'SA': {
-            'lat_min': {'lat': [-40], 'max_wind': [65]},
-            'lat_max': {'lat': [-15], 'max_wind': [40]}
+        "SA": {
+            "lat_min": {"lat": [-40], "max_wind": [65]},
+            "lat_max": {"lat": [-15], "max_wind": [40]},
         },
-        'SI': {
-            'lat_min': {'lat': [-42.5, -37.5, -32.5], 'max_wind': [55, 80, 100]},
-            'lat_max': {'lat': [-7.5, -2.5], 'max_wind': [155, 45]}
+        "SI": {
+            "lat_min": {"lat": [-42.5, -37.5, -32.5], "max_wind": [55, 80, 100]},
+            "lat_max": {"lat": [-7.5, -2.5], "max_wind": [155, 45]},
         },
-        'SP': {
-            'lat_min': {'lat': [-52.5, -42.5, -32.5, -27.5], 'max_wind': [45, 60, 80, 120]},
-            'lat_max': {'lat': [-7.5, -2.5], 'max_wind': [120, 30]}
+        "SP": {
+            "lat_min": {
+                "lat": [-52.5, -42.5, -32.5, -27.5],
+                "max_wind": [45, 60, 80, 120],
+            },
+            "lat_max": {"lat": [-7.5, -2.5], "max_wind": [120, 30]},
         },
-        'WP': {
-            'lat_min': {'lat': [2.5, 7.5], 'max_wind': [115, 165]},
-            'lat_max': {'lat': [37.5, 42.5, 47.2], 'max_wind': [110, 90, 70]}
-        }
+        "WP": {
+            "lat_min": {"lat": [2.5, 7.5], "max_wind": [115, 165]},
+            "lat_max": {"lat": [37.5, 42.5, 47.2], "max_wind": [110, 90, 70]},
+        },
     }
     """Maximum max_sustained_wind value found in each basin for latitudinal value ranges."""
 
@@ -244,9 +271,9 @@ def calc_perturbed_trajectories(
     max_ddirection: float = np.pi / 360,
     autocorr_dspeed: float = 0.85,
     autocorr_ddirection: float = 0.5,
-    decay_ddirection_hourly: float = 1/(2.5*24),
+    decay_ddirection_hourly: float = 1 / (2.5 * 24),
     seed: int = CONFIG.hazard.trop_cyclone.random_seed.int(),
-    adjust_intensity: str = 'explicit',
+    adjust_intensity: str = "explicit",
     central_pressure_pert: float = 7.5,
     decay: bool = None,
     use_global_decay_params: bool = True,
@@ -320,9 +347,9 @@ def calc_perturbed_trajectories(
         max_sustained_wind) should be modelled. One of 'explicit',
         'legacy_decay', or 'none'.
         For 'explicit', intensity as well as radius_oci (outermost closed isobar)
-        and radius_max_wind are statistically modelled depending on landfalls in 
-        historical and synthetic tracks (track intensification, peak intensity 
-        duration as well as intensity decay over the ocean and over land are 
+        and radius_max_wind are statistically modelled depending on landfalls in
+        historical and synthetic tracks (track intensification, peak intensity
+        duration as well as intensity decay over the ocean and over land are
         explicitly modelled).
         For 'legacy_decay', a landfall decay is applied when a synthetic track
         reached land; however when a synthetic track is over the ocean while its
@@ -355,24 +382,29 @@ def calc_perturbed_trajectories(
         pool attribute of `tracks` will be used. Default: None
     """
     if decay is not None:
-        LOGGER.warning("`decay` is deprecated. "
-                        "Use `adjust_intensity` instead.")
-        if adjust_intensity == 'explicit':
+        LOGGER.warning("`decay` is deprecated. " "Use `adjust_intensity` instead.")
+        if adjust_intensity == "explicit":
             raise ValueError(
                 'Set `adjust_intensity` to "legacy_decay" or `decay` to False.'
             )
         if decay:
-            LOGGER.warning('decay is set to True - this sets adjust_intensity to "legacy_decay"')
-            adjust_intensity = 'legacy_decay'
+            LOGGER.warning(
+                'decay is set to True - this sets adjust_intensity to "legacy_decay"'
+            )
+            adjust_intensity = "legacy_decay"
         else:
-            LOGGER.warning('decay is set to False - this sets adjust_intensity to "none" (as a string)')
-            adjust_intensity = 'none'            
+            LOGGER.warning(
+                'decay is set to False - this sets adjust_intensity to "none" (as a string)'
+            )
+            adjust_intensity = "none"
     if adjust_intensity is None:
-        adjust_intensity = 'explicit'
-    if adjust_intensity not in ['explicit', 'legacy_decay', 'none']:
-        raise ValueError("adjust_intensity should be one of 'explicit', 'legacy_decay', 'none', or None")
-    
-    LOGGER.info('Computing %s synthetic tracks.', nb_synth_tracks * tracks.size)
+        adjust_intensity = "explicit"
+    if adjust_intensity not in ["explicit", "legacy_decay", "none"]:
+        raise ValueError(
+            "adjust_intensity should be one of 'explicit', 'legacy_decay', 'none', or None"
+        )
+
+    LOGGER.info("Computing %s synthetic tracks.", nb_synth_tracks * tracks.size)
 
     pool = tracks.pool if pool is None else pool
 
@@ -380,13 +412,19 @@ def calc_perturbed_trajectories(
         np.random.seed(seed)
 
     # ensure tracks have constant time steps
-    time_step_h = np.unique(np.concatenate([np.unique(x['time_step']) for x in tracks.data]))
+    time_step_h = np.unique(
+        np.concatenate([np.unique(x["time_step"]) for x in tracks.data])
+    )
     if not np.allclose(time_step_h, time_step_h[0]):
-        raise ValueError('Tracks have different temporal resolution. '
-                         'Please ensure constant time steps by applying equal_timestep beforehand')
+        raise ValueError(
+            "Tracks have different temporal resolution. "
+            "Please ensure constant time steps by applying equal_timestep beforehand"
+        )
     time_step_h = time_step_h[0]
     if 0 < NEGLECT_LANDFALL_DURATION_HOUR < time_step_h:
-        LOGGER.warning('A higher temporal resolution is recommended to resolve shorter landfalls.')
+        LOGGER.warning(
+            "A higher temporal resolution is recommended to resolve shorter landfalls."
+        )
 
     # ensure we're not making synths from synths
     if not sum(1 for t in tracks.data if t.orig_event_flag) == tracks.size:
@@ -397,22 +435,24 @@ def calc_perturbed_trajectories(
 
     # get variables and attributes to keep at the end
     track_vars_attrs = (
-        set(tracks.data[0].variables).union(['on_land', 'dist_since_lf']),
-        set(tracks.data[0].attrs.keys())
+        set(tracks.data[0].variables).union(["on_land", "dist_since_lf"]),
+        set(tracks.data[0].attrs.keys()),
     )
 
-    LOGGER.debug('Generating random number for locations perturbations...')
-    random_vec = _get_random_trajectories_perts(tracks,
-                                                nb_synth_tracks,
-                                                time_step_h,
-                                                max_shift_ini,
-                                                max_dspeed_rel,
-                                                max_ddirection,
-                                                autocorr_ddirection,
-                                                autocorr_dspeed,
-                                                decay_ddirection_hourly)
+    LOGGER.debug("Generating random number for locations perturbations...")
+    random_vec = _get_random_trajectories_perts(
+        tracks,
+        nb_synth_tracks,
+        time_step_h,
+        max_shift_ini,
+        max_dspeed_rel,
+        max_ddirection,
+        autocorr_ddirection,
+        autocorr_dspeed,
+        decay_ddirection_hourly,
+    )
 
-    if adjust_intensity == 'explicit':
+    if adjust_intensity == "explicit":
         # to assign land parameters to historical tracks for use in synthetic tracks later
         land_geom_hist = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
@@ -420,26 +460,35 @@ def calc_perturbed_trajectories(
     else:
         land_geom_hist = None
 
-    LOGGER.debug('Applying locations perturbations...')
+    LOGGER.debug("Applying locations perturbations...")
     if pool:
         chunksize = max(min(tracks.size // pool.ncpus, 1000), 1)
-        new_ens = pool.map(_one_rnd_walk, tracks.data,
-                           itertools.repeat(nb_synth_tracks, tracks.size),
-                           itertools.repeat(land_geom_hist, tracks.size),
-                           itertools.repeat(central_pressure_pert, tracks.size),
-                           random_vec, chunksize=chunksize)
+        new_ens = pool.map(
+            _one_rnd_walk,
+            tracks.data,
+            itertools.repeat(nb_synth_tracks, tracks.size),
+            itertools.repeat(land_geom_hist, tracks.size),
+            itertools.repeat(central_pressure_pert, tracks.size),
+            random_vec,
+            chunksize=chunksize,
+        )
     else:
-        new_ens = [_one_rnd_walk(track, nb_synth_tracks,
-                                 land_geom_hist, central_pressure_pert, rand)
-                   for track, rand in zip(tracks.data, random_vec)]
+        new_ens = [
+            _one_rnd_walk(
+                track, nb_synth_tracks, land_geom_hist, central_pressure_pert, rand
+            )
+            for track, rand in zip(tracks.data, random_vec)
+        ]
 
     if adjust_intensity == "explicit":
-        track_fits_warnings = ', '.join([x[3] for x in new_ens if x[3] is not None])
+        track_fits_warnings = ", ".join([x[3] for x in new_ens if x[3] is not None])
         if len(track_fits_warnings) > 0:
-            LOGGER.warning('Positive slope in wind-pressure relationship for the '
-                           'following storms (max amplitude, max potentially '
-                           'affected category, fitted relationship type): %s',
-                           track_fits_warnings)
+            LOGGER.warning(
+                "Positive slope in wind-pressure relationship for the "
+                "following storms (max amplitude, max potentially "
+                "affected category, fitted relationship type): %s",
+                track_fits_warnings,
+            )
     else:
         # log tracks that have been cut-off at high latitudes
         cutoff_track_ids_tc = [x[1] for x in new_ens]
@@ -447,24 +496,28 @@ def calc_perturbed_trajectories(
         cutoff_track_ids_ts = [x[2] for x in new_ens]
         cutoff_track_ids_ts = sum(cutoff_track_ids_ts, [])
         if len(cutoff_track_ids_tc) > 0:
-            LOGGER.info('The following generated synthetic tracks moved beyond '
-                        'the range of [-70, 70] degrees latitude. Cut out '
-                        'at TC category >1: %s.',
-                        ', '.join(cutoff_track_ids_tc))
+            LOGGER.info(
+                "The following generated synthetic tracks moved beyond "
+                "the range of [-70, 70] degrees latitude. Cut out "
+                "at TC category >1: %s.",
+                ", ".join(cutoff_track_ids_tc),
+            )
         if len(cutoff_track_ids_ts) > 0:
-            LOGGER.debug('The following generated synthetic tracks moved beyond '
-                        'the range of [-70, 70] degrees latitude. Cut out '
-                        'at TC category <= 1: %s.',
-                        ', '.join(cutoff_track_ids_ts))
+            LOGGER.debug(
+                "The following generated synthetic tracks moved beyond "
+                "the range of [-70, 70] degrees latitude. Cut out "
+                "at TC category <= 1: %s.",
+                ", ".join(cutoff_track_ids_ts),
+            )
     new_ens = [x[0] for x in new_ens]
     tracks.data = sum(new_ens, [])
 
-    if adjust_intensity == 'explicit':
+    if adjust_intensity == "explicit":
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
 
-        LOGGER.debug('Identifying tracks chunks...')
+        LOGGER.debug("Identifying tracks chunks...")
         if pool:
             chunksize = min(tracks.size // pool.ncpus, 2000)
             tracks_with_id_chunks = pool.map(
@@ -473,12 +526,14 @@ def calc_perturbed_trajectories(
                 itertools.repeat(time_step_h, tracks.size),
                 itertools.repeat(land_geom, tracks.size),
                 itertools.repeat(True, tracks.size),
-                chunksize=chunksize
+                chunksize=chunksize,
             )
         else:
             # returns a list of tuples (track, no_sea_chunks, no_land_chunks, track_ext)
             tracks_with_id_chunks = [
-                _add_id_synth_chunks_shift_init(track, time_step_h, land_geom, shift_values_init=True)
+                _add_id_synth_chunks_shift_init(
+                    track, time_step_h, land_geom, shift_values_init=True
+                )
                 for track in tracks.data
             ]
         # on_land and dist_since_lf calculated except for track extension
@@ -486,25 +541,33 @@ def calc_perturbed_trajectories(
         # track extension when shifted
         if extend_track:
             # get random numbers: track_ext.time.size-2 for each track_ext
-            LOGGER.debug('Extending tracks after shift')
+            LOGGER.debug("Extending tracks after shift")
             random_traj_extension = [
                 _get_random_trajectory_ext(track_ext, time_step_h)
-                for _,_,_,track_ext in tracks_with_id_chunks
+                for _, _, _, track_ext in tracks_with_id_chunks
             ]
             # create the tracks with extension - this is very fast
-            LOGGER.debug('create the tracks with extension')
-            sid_extended_tracks_shift = [track_ext.sid for _, _, _, track_ext in tracks_with_id_chunks if track_ext is not None]
-            tracks_with_id_chunks = [
-                (_create_track_from_ext(track, track_ext, rnd_tpl), -1, -1)
+            LOGGER.debug("create the tracks with extension")
+            sid_extended_tracks_shift = [
+                track_ext.sid
+                for _, _, _, track_ext in tracks_with_id_chunks
                 if track_ext is not None
-                else (track, no_chunks_sea, no_chunks_land)
-                for (track, no_chunks_sea, no_chunks_land, track_ext),rnd_tpl in zip(tracks_with_id_chunks, random_traj_extension)
+            ]
+            tracks_with_id_chunks = [
+                (
+                    (_create_track_from_ext(track, track_ext, rnd_tpl), -1, -1)
+                    if track_ext is not None
+                    else (track, no_chunks_sea, no_chunks_land)
+                )
+                for (track, no_chunks_sea, no_chunks_land, track_ext), rnd_tpl in zip(
+                    tracks_with_id_chunks, random_traj_extension
+                )
             ]
             # get new land_geom
             extent = climada.util.coordinates.latlon_bounds(
                 np.concatenate([t[0].lat.values for t in tracks_with_id_chunks]),
                 np.concatenate([t[0].lon.values for t in tracks_with_id_chunks]),
-                buffer=0.1
+                buffer=0.1,
             )
             extent = (extent[0], extent[2], extent[1], extent[3])
             land_geom = climada.util.coordinates.get_land_geometry(
@@ -512,11 +575,14 @@ def calc_perturbed_trajectories(
             )
             # on_land still True for id_chunk NA
             # extend id_chunk and get number of chunks
-            LOGGER.debug('extend id_chunk and get number of chunks')
+            LOGGER.debug("extend id_chunk and get number of chunks")
             no_chunks = [
-                _track_ext_id_chunk(track, land_geom)
-                if 'id_chunk' in track.variables and np.any(np.isnan(track['id_chunk'].values))
-                else (no_chunks_sea, no_chunks_land)
+                (
+                    _track_ext_id_chunk(track, land_geom)
+                    if "id_chunk" in track.variables
+                    and np.any(np.isnan(track["id_chunk"].values))
+                    else (no_chunks_sea, no_chunks_land)
+                )
                 for track, no_chunks_sea, no_chunks_land in tracks_with_id_chunks
             ]
             tracks_list = [track for track, _, _ in tracks_with_id_chunks]
@@ -530,9 +596,10 @@ def calc_perturbed_trajectories(
 
         # FOR EACH CHUNK OVER THE OCEAN, WE NEED 4 RANDOM VALUES: intensification
         # target perturbation, intensification shape, peak duration, decay
-        LOGGER.debug('Generating random number for intensity perturbations...')
-        random_vec_intensity = [np.random.uniform(size=nb_cnk[0] * 4)
-                                for nb_cnk in no_chunks]
+        LOGGER.debug("Generating random number for intensity perturbations...")
+        random_vec_intensity = [
+            np.random.uniform(size=nb_cnk[0] * 4) for nb_cnk in no_chunks
+        ]
 
         # calculate landfall decay parameters
         if use_global_decay_params:
@@ -544,18 +611,22 @@ def calc_perturbed_trajectories(
                 try:
                     v_rel, p_rel = _calc_land_decay(hist_tracks, land_geom, pool=pool)
                 except ValueError as verr:
-                    raise ValueError('Landfall decay parameters could not be calculated.') from verr
+                    raise ValueError(
+                        "Landfall decay parameters could not be calculated."
+                    ) from verr
             else:
-                raise ValueError('No historical tracks found. Historical'
-                                 ' tracks are needed for land decay calibration'
-                                 ' if use_global_decay_params=False.')
+                raise ValueError(
+                    "No historical tracks found. Historical"
+                    " tracks are needed for land decay calibration"
+                    " if use_global_decay_params=False."
+                )
 
-        LOGGER.debug('Modelling TC intensities...')
+        LOGGER.debug("Modelling TC intensities...")
         (
             ocean_modelled_tracks,
             sid_extended_tracks_intensity,
-            sid_outside_lat_range, 
-            sid_outside_intensity_range
+            sid_outside_lat_range,
+            sid_outside_intensity_range,
         ) = _model_synth_tc_intensity(
             tracks_list=tracks_list,
             random_vec_intensity=random_vec_intensity,
@@ -563,28 +634,38 @@ def calc_perturbed_trajectories(
             track_vars_attrs=track_vars_attrs,
             extend_track=extend_track,
             pool=pool,
-            central_pressure_pert = central_pressure_pert,
+            central_pressure_pert=central_pressure_pert,
             v_rel=v_rel,
             p_rel=p_rel,
-            s_rel=True
+            s_rel=True,
         )
         if extend_track:
-            nb_extended_tracks = np.unique(np.concatenate([sid_extended_tracks_shift, sid_extended_tracks_intensity])).size
+            nb_extended_tracks = np.unique(
+                np.concatenate(
+                    [sid_extended_tracks_shift, sid_extended_tracks_intensity]
+                )
+            ).size
         elif len(sid_extended_tracks_intensity) > 0:
-            raise ValueError('Track extension, why did it happen?')
+            raise ValueError("Track extension, why did it happen?")
         else:
             nb_extended_tracks = 0
         if len(sid_outside_lat_range):
-            LOGGER.debug('Outside latitude range for following events - applied land decay: %s',
-                         ', '.join(sid_outside_lat_range))
-        if int(os.getenv('TRACKGEN_TEST_KILL_BEYOND_ADVISORIES')):
+            LOGGER.debug(
+                "Outside latitude range for following events - applied land decay: %s",
+                ", ".join(sid_outside_lat_range),
+            )
+        if int(os.getenv("TRACKGEN_TEST_KILL_BEYOND_ADVISORIES")):
             if len(sid_outside_intensity_range):
-                LOGGER.debug('Tracks exceeding final advisory pressure - killed: %s',
-                            ', '.join(sid_outside_intensity_range))
-        elif int(os.getenv('TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES')):
+                LOGGER.debug(
+                    "Tracks exceeding final advisory pressure - killed: %s",
+                    ", ".join(sid_outside_intensity_range),
+                )
+        elif int(os.getenv("TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES")):
             if len(sid_outside_intensity_range):
-                LOGGER.debug('Tracks exceeding final advisory pressure - applied land decay: %s',
-                            ', '.join(sid_outside_intensity_range))
+                LOGGER.debug(
+                    "Tracks exceeding final advisory pressure - applied land decay: %s",
+                    ", ".join(sid_outside_intensity_range),
+                )
         LOGGER.debug(
             f"Extended {nb_extended_tracks} synthetic tracks that ended at Tropical Storm or above category. "
             f"Adapted intensity on {len(ocean_modelled_tracks)} tracks for a total of "
@@ -593,14 +674,15 @@ def calc_perturbed_trajectories(
         )
         tracks.data = ocean_modelled_tracks
 
-    elif adjust_intensity == 'legacy_decay':
+    elif adjust_intensity == "legacy_decay":
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=tracks.get_extent(deg_buffer=0.1), resolution=10
         )
 
         if use_global_decay_params:
-            tracks.data = _apply_land_decay(tracks.data, LANDFALL_DECAY_V,
-                                            LANDFALL_DECAY_P, land_geom, pool=pool)
+            tracks.data = _apply_land_decay(
+                tracks.data, LANDFALL_DECAY_V, LANDFALL_DECAY_P, land_geom, pool=pool
+            )
         else:
             # fit land decay coefficients based on historical tracks
             hist_tracks = [track for track in tracks.data if track.orig_event_flag]
@@ -608,20 +690,19 @@ def calc_perturbed_trajectories(
                 try:
                     v_rel, p_rel = _calc_land_decay(hist_tracks, land_geom, pool=pool)
                     tracks.data = _apply_land_decay(
-                        tracks.data, v_rel, p_rel, land_geom, pool=pool)
+                        tracks.data, v_rel, p_rel, land_geom, pool=pool
+                    )
                 except ValueError as verr:
-                    raise ValueError('Landfall decay could not be applied.') from verr
+                    raise ValueError("Landfall decay could not be applied.") from verr
             else:
-                raise ValueError('No historical tracks found. Historical'
-                                 ' tracks are needed for land decay calibration'
-                                 ' if use_global_decay_params=False.')
+                raise ValueError(
+                    "No historical tracks found. Historical"
+                    " tracks are needed for land decay calibration"
+                    " if use_global_decay_params=False."
+                )
 
 
-def _one_rnd_walk(track,
-                  nb_synth_tracks,
-                  land_geom,
-                  central_pressure_pert,
-                  rnd_tpl):
+def _one_rnd_walk(track, nb_synth_tracks, land_geom, central_pressure_pert, rnd_tpl):
     """
     Apply random walk to one track.
 
@@ -659,7 +740,9 @@ def _one_rnd_walk(track,
     """
     # on_land parameters of historical track will be required for each synthetic track
     if land_geom is not None:
-        climada.hazard.tc_tracks.track_land_params(track, land_geom, land_params='on_land')
+        climada.hazard.tc_tracks.track_land_params(
+            track, land_geom, land_params="on_land"
+        )
 
     ens_track = list()
     ens_track.append(track.copy(True))
@@ -667,19 +750,20 @@ def _one_rnd_walk(track,
     # calculate historical track values that are used for synthetic track modelling
     if land_geom is not None:
         # compute minimum pressure occurring on or after each timestep
-        if int(os.getenv('TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA')):
-            over_sea_pressure = np.array([
-                pres if not land
-                else track['central_pressure'].values[-1]
-                for pres, land in zip(track['central_pressure'].values, track['on_land'].values)
-            ])
-            target_pressure = np.flip(np.minimum.accumulate(
-                np.flip(over_sea_pressure)
-            ))
+        if int(os.getenv("TRACKGEN_TEST_TARGET_PRESSURE_OVER_SEA")):
+            over_sea_pressure = np.array(
+                [
+                    pres if not land else track["central_pressure"].values[-1]
+                    for pres, land in zip(
+                        track["central_pressure"].values, track["on_land"].values
+                    )
+                ]
+            )
+            target_pressure = np.flip(np.minimum.accumulate(np.flip(over_sea_pressure)))
         else:
-            target_pressure = np.flip(np.minimum.accumulate(
-                np.flip(track['central_pressure'].values)
-            ))
+            target_pressure = np.flip(
+                np.minimum.accumulate(np.flip(track["central_pressure"].values))
+            )
         # compute linear regression onto intensification and decay
         track_fits_warning = _add_fits_to_track(track, central_pressure_pert)
         # track are not to be cut-off. Latitudinal tresholds are applied later
@@ -687,7 +771,7 @@ def _one_rnd_walk(track,
         cutoff_track_ids_tstc = None
     else:
         # to keep track of cut-off tracks
-        cutoff_track_ids_tstc = {'tc': {}, 'ts': {}}
+        cutoff_track_ids_tstc = {"tc": {}, "ts": {}}
         track_fits_warning = None
 
     # generate tracks with perturbed trajectories
@@ -695,16 +779,14 @@ def _one_rnd_walk(track,
         i_track = track.copy(True)
 
         # adjust attributes
-        i_track.attrs['orig_event_flag'] = False
-        i_track.attrs['name'] = f"{i_track.attrs['name']}_gen{i_ens + 1}"
-        i_track.attrs['sid'] = f"{i_track.attrs['sid']}_gen{i_ens + 1}"
-        i_track.attrs['id_no'] = i_track.attrs['id_no'] + (i_ens + 1) / 100
+        i_track.attrs["orig_event_flag"] = False
+        i_track.attrs["name"] = f"{i_track.attrs['name']}_gen{i_ens + 1}"
+        i_track.attrs["sid"] = f"{i_track.attrs['sid']}_gen{i_ens + 1}"
+        i_track.attrs["id_no"] = i_track.attrs["id_no"] + (i_ens + 1) / 100
 
         # apply locations perturbations
         last_idx = _apply_random_walk_pert(
-            i_track,
-            rnd_tpl=rnd_tpl[i_ens],
-            cutoff_track_ids_tstc=cutoff_track_ids_tstc
+            i_track, rnd_tpl=rnd_tpl[i_ens], cutoff_track_ids_tstc=cutoff_track_ids_tstc
         )
 
         if land_geom is not None:
@@ -717,7 +799,9 @@ def _one_rnd_walk(track,
             i_track = i_track.rename({"on_land": "on_land_hist"})
 
         # remove 'on_land' and 'dist_since_lf' if present since not correct for synthetic track
-        vars_to_drop = [v for v in ['on_land', 'dist_since_lf'] if v in list(i_track.variables)]
+        vars_to_drop = [
+            v for v in ["on_land", "dist_since_lf"] if v in list(i_track.variables)
+        ]
         i_track = i_track.drop_vars(vars_to_drop)
         if last_idx < i_track.time.size:
             i_track = i_track.isel(time=slice(None, last_idx))
@@ -725,25 +809,32 @@ def _one_rnd_walk(track,
         ens_track.append(i_track)
 
     if land_geom is None:
-        cutoff_track_ids_tc = [f"{k} ({v})" for k,v in cutoff_track_ids_tstc['tc'].items()]
-        cutoff_track_ids_ts = [f"{k} ({v})" for k,v in cutoff_track_ids_tstc['ts'].items()]
+        cutoff_track_ids_tc = [
+            f"{k} ({v})" for k, v in cutoff_track_ids_tstc["tc"].items()
+        ]
+        cutoff_track_ids_ts = [
+            f"{k} ({v})" for k, v in cutoff_track_ids_tstc["ts"].items()
+        ]
     else:
         cutoff_track_ids_tc = []
         cutoff_track_ids_ts = []
 
     return ens_track, cutoff_track_ids_tc, cutoff_track_ids_ts, track_fits_warning
 
-def _get_random_trajectories_perts(tracks,
-                                    nb_synth_tracks,
-                                    time_step_h,
-                                    max_shift_ini,
-                                    max_dspeed_rel,
-                                    max_ddirection,
-                                    autocorr_ddirection,
-                                    autocorr_dspeed,
-                                    decay_ddirection_hourly):
+
+def _get_random_trajectories_perts(
+    tracks,
+    nb_synth_tracks,
+    time_step_h,
+    max_shift_ini,
+    max_dspeed_rel,
+    max_ddirection,
+    autocorr_ddirection,
+    autocorr_dspeed,
+    decay_ddirection_hourly,
+):
     """Generate random numbers for random walk
-    
+
     Parameters
     ----------
     tracks : List
@@ -794,56 +885,90 @@ def _get_random_trajectories_perts(tracks,
     if autocorr_ddirection == 0 and autocorr_dspeed == 0:
         random_vec = tuple(
             # one element for each historical track
-            tuple(
-                # one element for each synthetic track to create for that historical track
+            (
                 tuple(
-                    # ini pert: random, uncorrelated, within [-max_shift_ini, +max_shift_ini]
-                    [max_shift_ini * (2 * np.random.uniform(size=2) - 1)]
-                    # further random parameters are not required
+                    # one element for each synthetic track to create for that historical track
+                    tuple(
+                        # ini pert: random, uncorrelated, within [-max_shift_ini, +max_shift_ini]
+                        [max_shift_ini * (2 * np.random.uniform(size=2) - 1)]
+                        # further random parameters are not required
+                    )
+                    for i in range(nb_synth_tracks)
                 )
-                for i in range(nb_synth_tracks)
+                if track.time.size > 1
+                else tuple(tuple(np.random.uniform(size=nb_synth_tracks * 2)))
             )
-            if track.time.size > 1
-            else tuple(tuple(np.random.uniform(size=nb_synth_tracks * 2)))
             for track in tracks.data
         )
     else:
         random_vec = tuple(
             # one element for each historical track
-            tuple(
-                # one element for each synthetic track to create for that
-                # historical track
+            (
                 tuple(
-                    [
-                        # ini pert: random, uncorrelated, within [-max_shift_ini, +max_shift_ini]
-                        max_shift_ini * (2 * np.random.uniform(size=2) -1),
-                        # ddirection pert: autocorrelated hourly pert, used as angle
-                        # and scale
-                        np.cumsum(time_step_h * np.degrees(
-                            max_ddirection * (
-                                2 * _random_uniform_ac(track.time.size - 1,
-                                                    autocorr_ddirection,
-                                                    time_step_h) - 1
+                    # one element for each synthetic track to create for that
+                    # historical track
+                    tuple(
+                        [
+                            # ini pert: random, uncorrelated, within [-max_shift_ini, +max_shift_ini]
+                            max_shift_ini * (2 * np.random.uniform(size=2) - 1),
+                            # ddirection pert: autocorrelated hourly pert, used as angle
+                            # and scale
+                            np.cumsum(
+                                time_step_h
+                                * np.degrees(
+                                    max_ddirection
+                                    * (
+                                        2
+                                        * _random_uniform_ac(
+                                            track.time.size - 1,
+                                            autocorr_ddirection,
+                                            time_step_h,
+                                        )
+                                        - 1
+                                    )
+                                )
                             )
-                        )) * np.exp(-decay_ddirection_hourly*np.arange(0, time_step_h*(track.time.size-1), time_step_h)),
-                        1 + max_dspeed_rel * (
-                            2 *_random_uniform_ac(track.time.size - 1,
-                                                autocorr_dspeed,
-                                                time_step_h) - 1
-                        )
-                    ]
+                            * np.exp(
+                                -decay_ddirection_hourly
+                                * np.arange(
+                                    0, time_step_h * (track.time.size - 1), time_step_h
+                                )
+                            ),
+                            1
+                            + max_dspeed_rel
+                            * (
+                                2
+                                * _random_uniform_ac(
+                                    track.time.size - 1, autocorr_dspeed, time_step_h
+                                )
+                                - 1
+                            ),
+                        ]
+                    )
+                    for i in range(nb_synth_tracks)
                 )
-                for i in range(nb_synth_tracks)
+                if track.time.size > 1
+                else tuple(
+                    tuple(
+                        tuple(
+                            [
+                                max_shift_ini * (2 * np.random.uniform(size=2) - 1),
+                                None,
+                                None,
+                            ]
+                        )
+                    )
+                    for i in range(nb_synth_tracks)
+                )
             )
-            if track.time.size > 1
-            else tuple(tuple(tuple([max_shift_ini * (2 * np.random.uniform(size=2) -1), None, None])) for i in range(nb_synth_tracks))
             for track in tracks.data
         )
     return random_vec
 
-def _apply_random_walk_pert(track: xr.Dataset,
-                            rnd_tpl: tuple,
-                            cutoff_track_ids_tstc: dict):
+
+def _apply_random_walk_pert(
+    track: xr.Dataset, rnd_tpl: tuple, cutoff_track_ids_tstc: dict
+):
     """
     Perturb track locations using provided random numbers and parameters.
 
@@ -862,38 +987,47 @@ def _apply_random_walk_pert(track: xr.Dataset,
 
     # get bearings and angular distance for the original track
     bearings = _get_bearing_angle(track.lon.values, track.lat.values)
-    angular_dist = climada.util.coordinates.dist_approx(track.lat.values[:-1, None],
-                                                        track.lon.values[:-1, None],
-                                                        track.lat.values[1:, None],
-                                                        track.lon.values[1:, None],
-                                                        method="geosphere",
-                                                        units="degree")[:, 0, 0]
+    angular_dist = climada.util.coordinates.dist_approx(
+        track.lat.values[:-1, None],
+        track.lon.values[:-1, None],
+        track.lat.values[1:, None],
+        track.lon.values[1:, None],
+        method="geosphere",
+        units="degree",
+    )[:, 0, 0]
 
     # apply initial location shift
     new_lon[0] = track.lon.values[0] + xy_ini[0]
     new_lat[0] = track.lat.values[0] + xy_ini[1]
-    
+
     # apply perturbations along the track segments
     for i in range(n_seg):
-        new_lon[i + 1], new_lat[i + 1] = \
-            _get_destination_points(new_lon[i], new_lat[i],
-                                    bearings[i] + ang_pert_cum[i],
-                                    trans_pert[i] * angular_dist[i])
+        new_lon[i + 1], new_lat[i + 1] = _get_destination_points(
+            new_lon[i],
+            new_lat[i],
+            bearings[i] + ang_pert_cum[i],
+            trans_pert[i] * angular_dist[i],
+        )
         if cutoff_track_ids_tstc is not None:
             # if track crosses latitudinal thresholds (+-70°),
             # keep up to this segment (i+1), set i+2 as last point,
             # and discard all further points > i+2.
-            if i+2 < last_idx and (new_lat[i + 1] > 70 or new_lat[i + 1] < -70):
+            if i + 2 < last_idx and (new_lat[i + 1] > 70 or new_lat[i + 1] < -70):
                 last_idx = i + 2
                 # end the track here
-                max_wind_end = track['max_sustained_wind'].values[last_idx:]
-                ss_scale_end = climada.hazard.tc_tracks.set_category(max_wind_end,
-                        track.attrs['max_sustained_wind_unit'])
+                max_wind_end = track["max_sustained_wind"].values[last_idx:]
+                ss_scale_end = climada.hazard.tc_tracks.set_category(
+                    max_wind_end, track.attrs["max_sustained_wind_unit"]
+                )
                 # TC category at ending point should not be higher than 1
                 if ss_scale_end > 1:
-                    cutoff_track_ids_tstc['tc'][track.attrs['name']] = climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
+                    cutoff_track_ids_tstc["tc"][track.attrs["name"]] = (
+                        climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
+                    )
                 else:
-                    cutoff_track_ids_tstc['ts'][track.attrs['name']] = climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
+                    cutoff_track_ids_tstc["ts"][track.attrs["name"]] = (
+                        climada.hazard.tc_tracks.CAT_NAMES[ss_scale_end]
+                    )
                 break
     # make sure longitude values are within (-180, 180)
     climada.util.coordinates.lon_normalize(new_lon, center=0.0)
@@ -901,6 +1035,7 @@ def _apply_random_walk_pert(track: xr.Dataset,
     track.lon.values = new_lon
     track.lat.values = new_lat
     return last_idx
+
 
 def _random_uniform_ac(n_ts, autocorr, time_step_h):
     """
@@ -940,8 +1075,11 @@ def _random_uniform_ac(n_ts, autocorr, time_step_h):
     # scale x to have magnitude [0,1]
     x = (x + np.sqrt(3)) / (2 * np.sqrt(3))
     # resample at target time step
-    x_ts = np.interp(np.arange(start=0, stop=n_ts_hourly_exact, step=time_step_h),
-                     np.arange(n_ts_hourly), x)
+    x_ts = np.interp(
+        np.arange(start=0, stop=n_ts_hourly_exact, step=time_step_h),
+        np.arange(n_ts_hourly),
+        x,
+    )
     return x_ts
 
 
@@ -968,9 +1106,13 @@ def _h_ac(x, y, theta):
     x_next : float
         Next value in the series.
     """
-    gamma = np.abs(np.mod(theta, np.pi) - \
-                   np.floor((np.mod(theta, np.pi) / (np.pi / 2)) + 0.5) * np.pi / 2)
-    x_next = 2 * np.sqrt(3) * (_f_ac(np.cos(theta) * x + np.sin(theta) * y, gamma) - 1 / 2)
+    gamma = np.abs(
+        np.mod(theta, np.pi)
+        - np.floor((np.mod(theta, np.pi) / (np.pi / 2)) + 0.5) * np.pi / 2
+    )
+    x_next = (
+        2 * np.sqrt(3) * (_f_ac(np.cos(theta) * x + np.sin(theta) * y, gamma) - 1 / 2)
+    )
     return x_next
 
 
@@ -1001,13 +1143,21 @@ def _f_ac(z, theta):
     if z >= np.sqrt(3) * (c + s):
         res = 1
     elif z > np.sqrt(3) * (c - s):
-        res = 1 / 12 / np.sin(2 * theta) * \
-              (-3 - z ** 2 + 2 * np.sqrt(3) * z * (c + s) + 9 * np.sin(2 * theta))
+        res = (
+            1
+            / 12
+            / np.sin(2 * theta)
+            * (-3 - z**2 + 2 * np.sqrt(3) * z * (c + s) + 9 * np.sin(2 * theta))
+        )
     elif z > np.sqrt(3) * (-c + s):
         res = 1 / 6 * (3 + np.sqrt(3) * z / c)
     elif z > -np.sqrt(3) * (c + s):
-        res = 1 / 12 / np.sin(2 * theta) * \
-              (z ** 2 + 2 * np.sqrt(3) * z * (c + s) + 3 * (1 + np.sin(2 * theta)))
+        res = (
+            1
+            / 12
+            / np.sin(2 * theta)
+            * (z**2 + 2 * np.sqrt(3) * z * (c + s) + 3 * (1 + np.sin(2 * theta)))
+        )
     else:
         res = 0
     return res
@@ -1049,9 +1199,11 @@ def _get_bearing_angle(lon, lat):
     # what to do with the points that don't move?
     #   i.e. where lat_2=lat_1 and lon_2=lon_1? The angle does not matter in
     # that case because angular distance will be 0.
-    earth_ang_fix = np.arctan2(np.sin(delta_lon) * np.cos(lat_2),
-                               np.cos(lat_1) * np.sin(lat_2) - \
-                               np.sin(lat_1) * np.cos(lat_2) * np.cos(delta_lon))
+    earth_ang_fix = np.arctan2(
+        np.sin(delta_lon) * np.cos(lat_2),
+        np.cos(lat_1) * np.sin(lat_2)
+        - np.sin(lat_1) * np.cos(lat_2) * np.cos(delta_lon),
+    )
     return np.degrees(earth_ang_fix)
 
 
@@ -1081,11 +1233,16 @@ def _get_destination_points(lon, lat, bearing, angular_distance):
     lon, lat = map(np.radians, [lon, lat])
     bearing = np.radians(bearing)
     angular_distance = np.radians(angular_distance)
-    lat_2 = np.arcsin(np.sin(lat) * np.cos(angular_distance) + np.cos(lat) * \
-                      np.sin(angular_distance) * np.cos(bearing))
-    lon_2 = lon + np.arctan2(np.sin(bearing) * np.sin(angular_distance) * np.cos(lat),
-                             np.cos(angular_distance) - np.sin(lat) * np.sin(lat_2))
+    lat_2 = np.arcsin(
+        np.sin(lat) * np.cos(angular_distance)
+        + np.cos(lat) * np.sin(angular_distance) * np.cos(bearing)
+    )
+    lon_2 = lon + np.arctan2(
+        np.sin(bearing) * np.sin(angular_distance) * np.cos(lat),
+        np.cos(angular_distance) - np.sin(lat) * np.sin(lat_2),
+    )
     return np.degrees(lon_2), np.degrees(lat_2)
+
 
 def _create_track_from_ext(track, track_ext, rnd_tpl):
     """Create the actual track with extension.
@@ -1103,27 +1260,40 @@ def _create_track_from_ext(track, track_ext, rnd_tpl):
     _project_trajectory_track_ext(track_ext, rnd_tpl)
     miss_vars_ext = set(list(track.variables)) - set(list(track_ext.variables))
     if len(miss_vars_ext) > 0:
-        LOGGER.debug('Variables in track but not in track_ext: %s (%s)',
-                     miss_vars_ext, track.sid)
+        LOGGER.debug(
+            "Variables in track but not in track_ext: %s (%s)", miss_vars_ext, track.sid
+        )
     miss_vars = set(list(track_ext.variables)) - set(list(track.variables))
     if len(miss_vars) > 0:
-        LOGGER.debug('Variables in track_ext but not in track: %s (%s)',
-                     miss_vars, track.sid)
+        LOGGER.debug(
+            "Variables in track_ext but not in track: %s (%s)", miss_vars, track.sid
+        )
     if track.time.values[-1] != track_ext.time.values[1]:
-        raise ValueError('Time of track and track_ext do not match')
+        raise ValueError("Time of track and track_ext do not match")
     track_new = xr.concat([track, track_ext.isel(time=slice(2, None))], "time")
     return track_new
 
-def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_init=True, sid=None):
+
+def _get_shift_idx_start(
+    on_land_hist, on_land_synth, time_step_h, shift_values_init=True, sid=None
+):
     if np.all(on_land_synth) or np.all(on_land_hist):
-        raise ValueError('Cannot deal with tracks fully over land')
+        raise ValueError("Cannot deal with tracks fully over land")
 
     nts = on_land_hist.size
     # get the default transitions
-    transitions_hist = _get_transitions(on_land_hist, time_step_h, exclude_short_landfalls=True)
-    transitions_synth = _get_transitions(on_land_synth, time_step_h, exclude_short_landfalls=True)
-    transitions_hist_all = _get_transitions(on_land_hist, time_step_h, exclude_short_landfalls=False)
-    transitions_synth_all = _get_transitions(on_land_synth, time_step_h, exclude_short_landfalls=False)
+    transitions_hist = _get_transitions(
+        on_land_hist, time_step_h, exclude_short_landfalls=True
+    )
+    transitions_synth = _get_transitions(
+        on_land_synth, time_step_h, exclude_short_landfalls=True
+    )
+    transitions_hist_all = _get_transitions(
+        on_land_hist, time_step_h, exclude_short_landfalls=False
+    )
+    transitions_synth_all = _get_transitions(
+        on_land_synth, time_step_h, exclude_short_landfalls=False
+    )
 
     # identify landfalls
     idx_lf_hist = _get_landfall_idx(transitions_hist)
@@ -1133,10 +1303,10 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
     # idx_lf_hist and idx_lf_hist_all are index based on hist time - TODO shift later
 
     # if a track starts over the ocean, allow shift if reaches land in the next 6 hours
-    nts_in_next_lf = int(np.floor(6/time_step_h))
+    nts_in_next_lf = int(np.floor(6 / time_step_h))
     # if a track starts over ocean and does not move over land within nts_in_next_lf,
     #   allow shifting the other track
-    nts_in_next_ocean = int(np.floor(18/time_step_h))
+    nts_in_next_ocean = int(np.floor(18 / time_step_h))
 
     # case when any track starts over land, what is the shift between the first point
     # over the ocean in modelled vs historical track?
@@ -1146,9 +1316,9 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
         first_sea_hist = np.where(~on_land_hist)[0][0]
         first_sea_synth = np.where(~on_land_synth)[0][0]
         if on_land_synth[0] and on_land_hist[0]:
-            
+
             # 0) Both tracks start over land: shift values such as to match first point over the ocean.
-            
+
             shift_first_sea = first_sea_synth - first_sea_hist
             # no modelling needed before first synth landfall or first hist landfall.
             idx_start_model_hist = idx_lf_hist[0]
@@ -1160,7 +1330,7 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
             # 1) synth starts over the ocean: shift_first_sea <= 0, i.e. shift
             #    values back in time
 
-            if np.any(on_land_synth[:nts_in_next_lf + 1]):
+            if np.any(on_land_synth[: nts_in_next_lf + 1]):
                 # a) synth reaches land in the next 6 hours: shift to end of
                 # that landfall, i.e. first land-to-sea transition
                 # i.e. match
@@ -1174,7 +1344,9 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                     idx_start_model_hist = idx_lf_hist[0]
                     # From synth perspective, model latest from next landfall
                     # (i.e. second landfall)
-                    idx_start_model_synth = idx_lf_synth[1] if idx_lf_synth.size > 1 else nts
+                    idx_start_model_synth = (
+                        idx_lf_synth[1] if idx_lf_synth.size > 1 else nts
+                    )
                 else:
                     # ii) synth track never moves back to the sea after first
                     # landfall: model from the start of the synth landfall
@@ -1183,7 +1355,7 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                     idx_start_model_hist = idx_lf_hist[0]
                     idx_start_model_synth = idx_lf_synth[0]
 
-            elif np.all(on_land_hist[:nts_in_next_ocean + 1]):
+            elif np.all(on_land_hist[: nts_in_next_ocean + 1]):
 
                 # b) synth track not over land soon AND hist track NOT soon over the
                 #   ocean: model intensity explicitly from the start
@@ -1204,7 +1376,7 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
             # 2) hist starts over the ocean: shift_first_sea > 0, i.e. shift
             #    values forward in time
 
-            if np.any(on_land_hist[:nts_in_next_lf + 1]):
+            if np.any(on_land_hist[: nts_in_next_lf + 1]):
                 # a) hist reaches land in the next 6 hours: shift to end of
                 # that landfall, if any, i.e. first land-to-sea transition for both
 
@@ -1214,7 +1386,9 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                     shift_first_sea = first_sea_synth - first_sea_hist
                     # From hist perpective: model latest from next landfall
                     # (i.e. second landfall)
-                    idx_start_model_hist = idx_lf_hist[1] if idx_lf_hist.size >= 2 else nts
+                    idx_start_model_hist = (
+                        idx_lf_hist[1] if idx_lf_hist.size >= 2 else nts
+                    )
                     # From synth perspective: model latest from next landfall
                     # (first landfall)
                     idx_start_model_synth = idx_lf_synth[0]
@@ -1225,7 +1399,7 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
                     idx_start_model_synth = 0
                     idx_start_model_hist = 0
 
-            elif np.all(on_land_synth[:nts_in_next_ocean + 1]):
+            elif np.all(on_land_synth[: nts_in_next_ocean + 1]):
 
                 # b) Hist track not over land soon AND synth track NOT soon over the ocean
                 # -> model intensity explicitly from the start
@@ -1256,16 +1430,22 @@ def _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_
         # else:
         #     idx_start_model = ftr_hist -
         #     np.floor(TIME_MODEL_BEFORE_HIST_LF_H/time_step_h)
-    
+
     # account for shift and buffer for historical landfall
     if idx_start_model_hist < nts:
-        idx_start_model_hist = max(0, min(
-            nts,
-            idx_start_model_hist + shift_first_sea - np.floor(TIME_MODEL_BEFORE_HIST_LF_H/time_step_h)
-        ))
+        idx_start_model_hist = max(
+            0,
+            min(
+                nts,
+                idx_start_model_hist
+                + shift_first_sea
+                - np.floor(TIME_MODEL_BEFORE_HIST_LF_H / time_step_h),
+            ),
+        )
     # take the first idx
     idx_start_model = int(max(0, min(idx_start_model_hist, idx_start_model_synth)))
     return shift_first_sea, idx_start_model
+
 
 def _track_ext_id_chunk(track, land_geom):
     if track.orig_event_flag:
@@ -1274,11 +1454,11 @@ def _track_ext_id_chunk(track, land_geom):
     # up to this point, 'on_land' was set to True for all extension points
     # and dist_since_lf was not correct
     climada.hazard.tc_tracks.track_land_params(track, land_geom=land_geom)
-    if np.any(np.isnan(track['id_chunk'].values)):
+    if np.any(np.isnan(track["id_chunk"].values)):
         # case of extending due to a shift in values
-        na_start_idx = np.where(np.isnan(track['id_chunk']))[0][0]
+        na_start_idx = np.where(np.isnan(track["id_chunk"]))[0][0]
         # na_start_idx cannot be 0, otherwise it should fail in check_id_chunk above
-        id_chunk_full = track['id_chunk'].values[:na_start_idx]
+        id_chunk_full = track["id_chunk"].values[:na_start_idx]
         # re-compute id_chunk for the full track
         transitions = _get_transitions(track.on_land.values, track.time_step.values[0])
         if np.any(id_chunk_full != 0):
@@ -1288,38 +1468,58 @@ def _track_ext_id_chunk(track, land_geom):
         _set_first_transition(transitions, idx_start_model, track.on_land.values)
         id_chunk, no_chunks_sea, no_chunks_land = _get_id_chunk(transitions)
         # check that newly computed id_chunk values match the original ones
-        if np.any(id_chunk[:na_start_idx] != track['id_chunk'][:na_start_idx].values.astype(int)):
+        if np.any(
+            id_chunk[:na_start_idx]
+            != track["id_chunk"][:na_start_idx].values.astype(int)
+        ):
             # due to a short landfall at the end of track before missing values.
             # check if calculating id_chunk from subset
-            transitions_orig = _get_transitions(track.on_land.values[:na_start_idx], track.time_step.values[0])
+            transitions_orig = _get_transitions(
+                track.on_land.values[:na_start_idx], track.time_step.values[0]
+            )
             if np.any(id_chunk_full != 0):
                 idx_start_model = np.where(id_chunk_full != 0)[0][0]
             else:
                 idx_start_model = id_chunk_full.size
-            _set_first_transition(transitions_orig, idx_start_model, track.on_land.values)
+            _set_first_transition(
+                transitions_orig, idx_start_model, track.on_land.values
+            )
             id_chunk_orig, _, _ = _get_id_chunk(transitions_orig)
-            min_n_ts = np.ceil(NEGLECT_LANDFALL_DURATION_HOUR/track.time_step.values[0]).astype(int)
-            if np.any(id_chunk_orig != track['id_chunk'][:na_start_idx].values):
-                raise ValueError('id_chunk values mismatch: %s' % track.sid)
-            elif np.any(id_chunk[:max(0, na_start_idx-min_n_ts-1)] != track['id_chunk'][:max(0, na_start_idx-min_n_ts-1)].values.astype(int)):
-                raise ValueError('id_chunk values mismatch (2): %s' % track.sid)
+            min_n_ts = np.ceil(
+                NEGLECT_LANDFALL_DURATION_HOUR / track.time_step.values[0]
+            ).astype(int)
+            if np.any(id_chunk_orig != track["id_chunk"][:na_start_idx].values):
+                raise ValueError("id_chunk values mismatch: %s" % track.sid)
+            elif np.any(
+                id_chunk[: max(0, na_start_idx - min_n_ts - 1)]
+                != track["id_chunk"][
+                    : max(0, na_start_idx - min_n_ts - 1)
+                ].values.astype(int)
+            ):
+                raise ValueError("id_chunk values mismatch (2): %s" % track.sid)
         # now id_chunk should be valid and not contain any missing value
         check_id_chunk(id_chunk, track.sid, allow_missing=False)
-        if id_chunk[na_start_idx] != id_chunk[na_start_idx - 1] and id_chunk[na_start_idx-1] != 0:
-            if track.on_land.values[na_start_idx] == track.on_land.values[na_start_idx - 1]:
+        if (
+            id_chunk[na_start_idx] != id_chunk[na_start_idx - 1]
+            and id_chunk[na_start_idx - 1] != 0
+        ):
+            if (
+                track.on_land.values[na_start_idx]
+                == track.on_land.values[na_start_idx - 1]
+            ):
                 # TODO remove this check as should not be possible now
-                raise ValueError('Issue1: %s', track.sid)
-        track['id_chunk'] = ('time', id_chunk)
-    no_chunks_sea = int(max(0, track['id_chunk'].values.max()))
-    no_chunks_land = int(np.abs(min(0, track['id_chunk'].values.min())))
+                raise ValueError("Issue1: %s", track.sid)
+        track["id_chunk"] = ("time", id_chunk)
+    no_chunks_sea = int(max(0, track["id_chunk"].values.max()))
+    no_chunks_land = int(np.abs(min(0, track["id_chunk"].values.min())))
     return no_chunks_sea, no_chunks_land
 
-def _create_raw_track_extension(track,
-                                nb_time_steps,
-                                time_step_h,
-                                values_df: pd.DataFrame=None):
+
+def _create_raw_track_extension(
+    track, nb_time_steps, time_step_h, values_df: pd.DataFrame = None
+):
     """Append new time steps to a track.
-    
+
     For a TC track, create a new track starting at the end of the original
     track, with a given number of time steps and optionally some variables
     values set. Longitude/Latitude are all constant and set to the last values
@@ -1331,23 +1531,33 @@ def _create_raw_track_extension(track,
     track as its first time steps, followed by an additional 'nb_time_steps' time steps.
     allows applying trajectory modelling.
     """
-    time_append = np.array([
-        track.time.values[-1] + np.timedelta64(np.round(3600*dt).astype(int), 's')
-        for dt in np.arange(time_step_h, nb_time_steps*time_step_h+1, time_step_h)
-    ])
-    lon_append = track.lon.values[-1]*np.ones_like(time_append, dtype="float")
-    lat_append = track.lat.values[-1]*np.ones_like(time_append, dtype="float")
+    time_append = np.array(
+        [
+            track.time.values[-1] + np.timedelta64(np.round(3600 * dt).astype(int), "s")
+            for dt in np.arange(
+                time_step_h, nb_time_steps * time_step_h + 1, time_step_h
+            )
+        ]
+    )
+    lon_append = track.lon.values[-1] * np.ones_like(time_append, dtype="float")
+    lat_append = track.lat.values[-1] * np.ones_like(time_append, dtype="float")
+
     def _build_constant_var(x):
-        return ('time', np.repeat([x], nb_time_steps + 2))
+        return ("time", np.repeat([x], nb_time_steps + 2))
+
     # get the values where applicable
-    vars_set_missing = ['on_land', 'dist_since_lf', 'id_chunk']
-    vars_not_copy = ['time', 'lat', 'lon'] + vars_set_missing
+    vars_set_missing = ["on_land", "dist_since_lf", "id_chunk"]
+    vars_not_copy = ["time", "lat", "lon"] + vars_set_missing
     if values_df is not None and values_df.shape[0] > 0:
         vars_values = {
-            k:('time', np.concatenate([track[k].values[-2:], v.values])) for k,v in values_df.items()
+            k: ("time", np.concatenate([track[k].values[-2:], v.values]))
+            for k, v in values_df.items()
         }
-        vars_set_constant = [v for v in track.variables
-                        if v not in list(values_df.columns) + vars_not_copy]
+        vars_set_constant = [
+            v
+            for v in track.variables
+            if v not in list(values_df.columns) + vars_not_copy
+        ]
     else:
         vars_values = {}
         vars_set_constant = [v for v in track.variables if v not in vars_not_copy]
@@ -1355,37 +1565,42 @@ def _create_raw_track_extension(track,
         vars_values[v] = _build_constant_var(track[v].values[-1])
     for v in vars_set_missing:
         if v in track.variables:
-            if v == 'on_land':
+            if v == "on_land":
                 # to keep bool type
                 append_vals = np.repeat(True, nb_time_steps)
             else:
                 append_vals = np.repeat([np.nan], nb_time_steps)
-            vars_values[v] = ('time', np.concatenate([
-                track[v].values[-2:],
-                append_vals
-            ]))
+            vars_values[v] = (
+                "time",
+                np.concatenate([track[v].values[-2:], append_vals]),
+            )
     track_ext = xr.Dataset(
         vars_values,
         coords={
-            'time': np.concatenate([track.time.values[-2:], time_append]),
-            'lat': ('time', np.concatenate([track.lat.values[-2:], lat_append])),
-            'lon': ('time', np.concatenate([track.lon.values[-2:], lon_append])),
+            "time": np.concatenate([track.time.values[-2:], time_append]),
+            "lat": ("time", np.concatenate([track.lat.values[-2:], lat_append])),
+            "lon": ("time", np.concatenate([track.lon.values[-2:], lon_append])),
         },
-        attrs=track.attrs
+        attrs=track.attrs,
     )
     return track_ext
 
+
 def _project_trajectory_track_ext(track_ext, rnd_tpl):
-    """"Determine track trajectory for track extensions"""
+    """ "Determine track trajectory for track extensions"""
     nb_time_steps = track_ext.time.size - 2
     # get first bearing and translation speed in the extension
-    last_bearing = _get_bearing_angle(track_ext.lon.values[:2], track_ext.lat.values[:2])[0]
-    last_ang_dist = climada.util.coordinates.dist_approx(track_ext.lat.values[:1, None],
-                                                        track_ext.lon.values[:1, None],
-                                                        track_ext.lat.values[1:2, None],
-                                                        track_ext.lon.values[1:2, None],
-                                                        method="geosphere",
-                                                        units="degree")[0, 0, 0]
+    last_bearing = _get_bearing_angle(
+        track_ext.lon.values[:2], track_ext.lat.values[:2]
+    )[0]
+    last_ang_dist = climada.util.coordinates.dist_approx(
+        track_ext.lat.values[:1, None],
+        track_ext.lon.values[:1, None],
+        track_ext.lat.values[1:2, None],
+        track_ext.lon.values[1:2, None],
+        method="geosphere",
+        units="degree",
+    )[0, 0, 0]
     # generate random perturbations
     # according to get_changes_for_rnd_walk:
     # - bearing angle change has mean 0 deg/h and std 3.35 deg/h, autocorr=0.21
@@ -1396,17 +1611,20 @@ def _project_trajectory_track_ext(track_ext, rnd_tpl):
     ang_pert_cum, trans_pert = rnd_tpl
 
     # Create a straight line from last point
-    lon_append = track_ext.lon.values[1]*np.ones([nb_time_steps+1], dtype="float")
-    lat_append = track_ext.lat.values[1]*np.ones([nb_time_steps+1], dtype="float")
+    lon_append = track_ext.lon.values[1] * np.ones([nb_time_steps + 1], dtype="float")
+    lat_append = track_ext.lat.values[1] * np.ones([nb_time_steps + 1], dtype="float")
     for i in range(nb_time_steps):
-        lon_append[i + 1], lat_append[i + 1] = \
-            _get_destination_points(lon_append[i], lat_append[i],
-                                    bearing=last_bearing + ang_pert_cum[i],
-                                    angular_distance=last_ang_dist * trans_pert[i])
+        lon_append[i + 1], lat_append[i + 1] = _get_destination_points(
+            lon_append[i],
+            lat_append[i],
+            bearing=last_bearing + ang_pert_cum[i],
+            angular_distance=last_ang_dist * trans_pert[i],
+        )
     # make sure longitude values are within (-180, 180)
     climada.util.coordinates.lon_normalize(lon_append, center=0.0)
-    track_ext['lon'][2:] = lon_append[1:]
-    track_ext['lat'][2:] = lat_append[1:]
+    track_ext["lon"][2:] = lon_append[1:]
+    track_ext["lat"][2:] = lat_append[1:]
+
 
 def _get_random_trajectory_ext(track_ext, time_step_h):
     if track_ext is None:
@@ -1414,25 +1632,43 @@ def _get_random_trajectory_ext(track_ext, time_step_h):
     random_tpl = tuple(
         tuple(
             [
-                np.cumsum(time_step_h * np.degrees(
-                    TRACK_EXTENSION_PARS['max_ddirection'] * (
-                        2 * _random_uniform_ac(track_ext.time.size - 2,
-                                            TRACK_EXTENSION_PARS['autocorr_ddirection'],
-                                            time_step_h) - 1
+                np.cumsum(
+                    time_step_h
+                    * np.degrees(
+                        TRACK_EXTENSION_PARS["max_ddirection"]
+                        * (
+                            2
+                            * _random_uniform_ac(
+                                track_ext.time.size - 2,
+                                TRACK_EXTENSION_PARS["autocorr_ddirection"],
+                                time_step_h,
+                            )
+                            - 1
+                        )
                     )
-                )) * np.exp(-TRACK_EXTENSION_PARS['decay_ddirection_hourly']*np.arange(0, time_step_h*(track_ext.time.size-2), time_step_h)),
-                1 + TRACK_EXTENSION_PARS['max_dspeed_rel'] * (
-                    2 *_random_uniform_ac(track_ext.time.size - 1,
-                                        TRACK_EXTENSION_PARS['autocorr_dspeed'],
-                                        time_step_h) - 1
                 )
+                * np.exp(
+                    -TRACK_EXTENSION_PARS["decay_ddirection_hourly"]
+                    * np.arange(0, time_step_h * (track_ext.time.size - 2), time_step_h)
+                ),
+                1
+                + TRACK_EXTENSION_PARS["max_dspeed_rel"]
+                * (
+                    2
+                    * _random_uniform_ac(
+                        track_ext.time.size - 1,
+                        TRACK_EXTENSION_PARS["autocorr_dspeed"],
+                        time_step_h,
+                    )
+                    - 1
+                ),
             ]
         )
     )
     return random_tpl
 
-def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
-                     pool=None):
+
+def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False, pool=None):
     """Compute wind and pressure decay coefficients from historical events
 
     Decay is calculated for every TC category according to the formulas:
@@ -1460,13 +1696,16 @@ def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
     """
 
     if len(hist_tracks) < 100:
-        LOGGER.warning('For the calibration of the landfall decay '
-                       'it is recommended to provide as many historical '
-                       'tracks as possible, but only %s historical tracks '
-                       'were provided. '
-                       'For a more robust calculation consider using '
-                       'a larger number of tracks or set '
-                       '`use_global_decay_params` to True', len(hist_tracks))
+        LOGGER.warning(
+            "For the calibration of the landfall decay "
+            "it is recommended to provide as many historical "
+            "tracks as possible, but only %s historical tracks "
+            "were provided. "
+            "For a more robust calculation consider using "
+            "a larger number of tracks or set "
+            "`use_global_decay_params` to True",
+            len(hist_tracks),
+        )
 
     # Key is Saffir-Simpson scale
     # values are lists of wind/wind at landfall
@@ -1478,13 +1717,17 @@ def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False,
     x_val = dict()
 
     if pool:
-        dec_val = pool.map(_decay_values, hist_tracks, itertools.repeat(land_geom),
-                           itertools.repeat(s_rel),
-                           chunksize=max(min(len(hist_tracks) // pool.ncpus, 1000), 1))
+        dec_val = pool.map(
+            _decay_values,
+            hist_tracks,
+            itertools.repeat(land_geom),
+            itertools.repeat(s_rel),
+            chunksize=max(min(len(hist_tracks) // pool.ncpus, 1000), 1),
+        )
     else:
         dec_val = [_decay_values(track, land_geom, s_rel) for track in hist_tracks]
 
-    for (tv_lf, tp_lf, tx_val) in dec_val:
+    for tv_lf, tp_lf, tx_val in dec_val:
         for key in tv_lf.keys():
             v_lf.setdefault(key, []).extend(tv_lf[key])
             p_lf.setdefault(key, ([], []))
@@ -1521,29 +1764,37 @@ def _apply_land_decay(
     """
     sy_tracks = [track for track in tracks if not track.orig_event_flag]
     if not sy_tracks:
-        raise ValueError('No synthetic tracks contained. Synthetic tracks'
-                         ' are needed.')
+        raise ValueError(
+            "No synthetic tracks contained. Synthetic tracks" " are needed."
+        )
 
     if not v_rel or not p_rel:
-        LOGGER.info('No decay coefficients.')
+        LOGGER.info("No decay coefficients.")
         return
 
     if check_plot:
         orig_wind, orig_pres = [], []
         for track in sy_tracks:
-            orig_wind.append(np.copy(track['max_sustained_wind'].values))
-            orig_pres.append(np.copy(track['central_pressure'].values))
+            orig_wind.append(np.copy(track["max_sustained_wind"].values))
+            orig_pres.append(np.copy(track["central_pressure"].values))
 
     if pool:
         chunksize = max(min(len(tracks) // pool.ncpus, 1000), 1)
         # TODO @benoit did you actually mean to map over `tracks` instead of `sy_tracks`?
-        tracks = pool.map(_apply_decay_coeffs, tracks,
-                          itertools.repeat(v_rel), itertools.repeat(p_rel),
-                          itertools.repeat(land_geom), itertools.repeat(s_rel),
-                          chunksize=chunksize)
+        tracks = pool.map(
+            _apply_decay_coeffs,
+            tracks,
+            itertools.repeat(v_rel),
+            itertools.repeat(p_rel),
+            itertools.repeat(land_geom),
+            itertools.repeat(s_rel),
+            chunksize=chunksize,
+        )
     else:
-        tracks = [_apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel)
-                  for track in tracks]
+        tracks = [
+            _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel)
+            for track in tracks
+        ]
 
     for track in tracks:
         if track.orig_event_flag:
@@ -1586,35 +1837,35 @@ def _decay_values(track, land_geom, s_rel):
     sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track)
     if sea_land_idx.size:
         for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
-            v_landfall = track['max_sustained_wind'][sea_land - 1].values
-            ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
-                                                             track.attrs['max_sustained_wind_unit'])
+            v_landfall = track["max_sustained_wind"][sea_land - 1].values
+            ss_scale = climada.hazard.tc_tracks.set_category(
+                v_landfall, track.attrs["max_sustained_wind_unit"]
+            )
 
-            v_land = track['max_sustained_wind'][sea_land - 1:land_sea].values
+            v_land = track["max_sustained_wind"][sea_land - 1 : land_sea].values
             if v_land[0] > 0:
                 v_land = (v_land[1:] / v_land[0]).tolist()
             else:
                 v_land = v_land[1:].tolist()
 
-            p_landfall = float(track['central_pressure'][sea_land - 1].values)
-            p_land = track['central_pressure'][sea_land - 1:land_sea].values
+            p_landfall = float(track["central_pressure"][sea_land - 1].values)
+            p_land = track["central_pressure"][sea_land - 1 : land_sea].values
             p_land = (p_land[1:] / p_land[0]).tolist()
 
-            p_land_s = _calc_decay_ps_value(
-                track, p_landfall, land_sea - 1, s_rel)
+            p_land_s = _calc_decay_ps_value(track, p_landfall, land_sea - 1, s_rel)
             p_land_s = len(p_land) * [p_land_s]
 
             if ss_scale not in v_lf:
-                v_lf[ss_scale] = array.array('f', v_land)
-                p_lf[ss_scale] = (array.array('f', p_land_s),
-                                      array.array('f', p_land))
-                x_val[ss_scale] = array.array('f',
-                                                  track['dist_since_lf'][sea_land:land_sea])
+                v_lf[ss_scale] = array.array("f", v_land)
+                p_lf[ss_scale] = (array.array("f", p_land_s), array.array("f", p_land))
+                x_val[ss_scale] = array.array(
+                    "f", track["dist_since_lf"][sea_land:land_sea]
+                )
             else:
                 v_lf[ss_scale].extend(v_land)
                 p_lf[ss_scale][0].extend(p_land_s)
                 p_lf[ss_scale][1].extend(p_land)
-                x_val[ss_scale].extend(track['dist_since_lf'][sea_land:land_sea])
+                x_val[ss_scale].extend(track["dist_since_lf"][sea_land:land_sea])
     return v_lf, p_lf, x_val
 
 
@@ -1643,7 +1894,7 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
     v_rel : dict
     p_rel : dict
     """
-    warnings.filterwarnings('ignore')
+    warnings.filterwarnings("ignore")
     v_rel = dict()
     p_rel = dict()
     for ss_scale, val_lf in v_lf.items():
@@ -1671,29 +1922,36 @@ def _decay_calc_coeff(x_val, v_lf, p_lf):
 
     scale_fill = np.array(list(p_rel.keys()))
     if not scale_fill.size:
-        LOGGER.info('No historical track with landfall.')
+        LOGGER.info("No historical track with landfall.")
         return v_rel, p_rel
     for ss_scale, ss_name in climada.hazard.tc_tracks.CAT_NAMES.items():
         if ss_scale not in p_rel:
             close_scale = scale_fill[np.argmin(np.abs(scale_fill - ss_scale))]
             close_name = climada.hazard.tc_tracks.CAT_NAMES[close_scale]
-            LOGGER.debug('No historical track of category %s with landfall. '
-                         'Decay parameters from category %s taken.',
-                         ss_name, close_name)
+            LOGGER.debug(
+                "No historical track of category %s with landfall. "
+                "Decay parameters from category %s taken.",
+                ss_name,
+                close_name,
+            )
             v_rel[ss_scale] = v_rel[close_scale]
             p_rel[ss_scale] = p_rel[close_scale]
         elif v_rel[ss_scale] < 0:
-            raise ValueError('The calibration of landfall decay for wind speed resulted in'
-                             f' a wind speed increase for TC category {ss_name}.'
-                             ' This behaviour is unphysical. Please use a larger number of tracks'
-                             ' or use global paramaters by setting `use_global_decay_params` to'
-                             ' `True`')
+            raise ValueError(
+                "The calibration of landfall decay for wind speed resulted in"
+                f" a wind speed increase for TC category {ss_name}."
+                " This behaviour is unphysical. Please use a larger number of tracks"
+                " or use global paramaters by setting `use_global_decay_params` to"
+                " `True`"
+            )
         elif p_rel[ss_scale][0] < 0 or p_rel[ss_scale][1] < 0:
-            raise ValueError('The calibration of landfall decay for central pressure resulted in'
-                             f' a pressure decrease for TC category {ss_name}.'
-                             ' This behaviour is unphysical. Please use a larger number of tracks'
-                             ' or use global paramaters by setting `use_global_decay_params` to'
-                             ' `True`')
+            raise ValueError(
+                "The calibration of landfall decay for central pressure resulted in"
+                f" a pressure decrease for TC category {ss_name}."
+                " This behaviour is unphysical. Please use a larger number of tracks"
+                " or use global paramaters by setting `use_global_decay_params` to"
+                " `True`"
+            )
 
     return v_rel, p_rel
 
@@ -1702,28 +1960,45 @@ def _check_decay_values_plot(x_val, v_lf, p_lf, v_rel, p_rel):
     """Generate one graph with wind decay and an other with central pressure
     decay, true and approximated."""
     # One graph per TC category
-    for track_cat, color in zip(v_lf.keys(),
-                                cm_mp.rainbow(np.linspace(0, 1, len(v_lf)))):
+    for track_cat, color in zip(
+        v_lf.keys(), cm_mp.rainbow(np.linspace(0, 1, len(v_lf)))
+    ):
         _, axes = plt.subplots(2, 1)
         x_eval = np.linspace(0, np.max(x_val[track_cat]), 20)
 
-        axes[0].set_xlabel('Distance from landfall (km)')
-        axes[0].set_ylabel('Max sustained wind\nrelative to landfall')
-        axes[0].set_title(f'Wind, TC cat {climada.hazard.tc_tracks.CAT_NAMES[track_cat]}')
-        axes[0].plot(x_val[track_cat], v_lf[track_cat], '*', c=color,
-                     label=climada.hazard.tc_tracks.CAT_NAMES[track_cat])
-        axes[0].plot(x_eval, _decay_v_function(v_rel[track_cat], x_eval),
-                     '-', c=color)
+        axes[0].set_xlabel("Distance from landfall (km)")
+        axes[0].set_ylabel("Max sustained wind\nrelative to landfall")
+        axes[0].set_title(
+            f"Wind, TC cat {climada.hazard.tc_tracks.CAT_NAMES[track_cat]}"
+        )
+        axes[0].plot(
+            x_val[track_cat],
+            v_lf[track_cat],
+            "*",
+            c=color,
+            label=climada.hazard.tc_tracks.CAT_NAMES[track_cat],
+        )
+        axes[0].plot(x_eval, _decay_v_function(v_rel[track_cat], x_eval), "-", c=color)
 
-        axes[1].set_xlabel('Distance from landfall (km)')
-        axes[1].set_ylabel('Central pressure\nrelative to landfall')
-        axes[1].set_title(f'Pressure, TC cat {climada.hazard.tc_tracks.CAT_NAMES[track_cat]}')
-        axes[1].plot(x_val[track_cat], p_lf[track_cat][1], '*', c=color,
-                     label=climada.hazard.tc_tracks.CAT_NAMES[track_cat])
+        axes[1].set_xlabel("Distance from landfall (km)")
+        axes[1].set_ylabel("Central pressure\nrelative to landfall")
+        axes[1].set_title(
+            f"Pressure, TC cat {climada.hazard.tc_tracks.CAT_NAMES[track_cat]}"
+        )
+        axes[1].plot(
+            x_val[track_cat],
+            p_lf[track_cat][1],
+            "*",
+            c=color,
+            label=climada.hazard.tc_tracks.CAT_NAMES[track_cat],
+        )
         axes[1].plot(
             x_eval,
             _decay_p_function(p_rel[track_cat][0], p_rel[track_cat][1], x_eval),
-            '-', c=color)
+            "-",
+            c=color,
+        )
+
 
 def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
     """Calculate fit of variables to be modelled as a function of central
@@ -1731,7 +2006,7 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
     attributes to track.
 
     The input 'track' is modified in-place!
-    
+
     The following variables are fitted: Maximum sustained wind, radius of
     maximum winds and radius of outmost closed isobar.
 
@@ -1744,11 +2019,11 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
         A single TC track.
     central_pressure_pert : float
         Maximum perturbations in central pressure. Used to determine the range
-        of pressure values over which to fit data.    
+        of pressure values over which to fit data.
 
     Returns
     -------
-    track : xr.Dataset 
+    track : xr.Dataset
         Same as input parameter track but with additional attributes 'fit_intens' and
         'fit_decay' (see _get_fit_single_phase). If intensification and/or decay
         consist of less than 3 data points, the corresponding attribute is not set.
@@ -1759,27 +2034,34 @@ def _add_fits_to_track(track: xr.Dataset, central_pressure_pert: float):
     where_max_intensity = np.where(pcen == pcen.min())[0]
     warning_slope = []
     if where_max_intensity[0] > 3:
-        track_intens = track[dict(time=slice(None,where_max_intensity[0] + 1))]
-        fit_attrs_intens, warning_slope_intens = _get_fit_single_phase(track_intens, central_pressure_pert)
-        track.attrs['fit_intens'] = fit_attrs_intens
+        track_intens = track[dict(time=slice(None, where_max_intensity[0] + 1))]
+        fit_attrs_intens, warning_slope_intens = _get_fit_single_phase(
+            track_intens, central_pressure_pert
+        )
+        track.attrs["fit_intens"] = fit_attrs_intens
         if warning_slope_intens is not None:
-            warning_slope += ["%s intensification %s" % (track.sid, warning_slope_intens)]
-    if where_max_intensity[-1] < len(pcen) - 4:    
-        track_decay = track[dict(time=slice(where_max_intensity[-1],None))]
-        fit_attrs_decay, warning_slope_decay = _get_fit_single_phase(track_decay, central_pressure_pert)
-        track.attrs['fit_decay'] = fit_attrs_decay
+            warning_slope += [
+                "%s intensification %s" % (track.sid, warning_slope_intens)
+            ]
+    if where_max_intensity[-1] < len(pcen) - 4:
+        track_decay = track[dict(time=slice(where_max_intensity[-1], None))]
+        fit_attrs_decay, warning_slope_decay = _get_fit_single_phase(
+            track_decay, central_pressure_pert
+        )
+        track.attrs["fit_decay"] = fit_attrs_decay
         if warning_slope_decay is not None:
             warning_slope += ["%s decay %s" % (track.sid, warning_slope_decay)]
     if len(warning_slope) > 0:
-        warning_slope = ', '.join(warning_slope)
+        warning_slope = ", ".join(warning_slope)
     else:
         warning_slope = None
     return warning_slope
 
+
 def _get_fit_single_phase(track_sub, central_pressure_pert):
     """Calculate order and fit of variables to be modelled for a temporal subset
     of a track.
-    
+
     The following variables are fitted: Maximum sustained wind, radius of
     maximum winds and radius of outmost closed isobar.
 
@@ -1792,7 +2074,7 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
         A temporal subset of a single TC track.
     central_pressure_pert : float
         Maximum perturbations in central pressure. Used to determine the range
-        of pressure values over which to fit data.    
+        of pressure values over which to fit data.
 
     Returns
     -------
@@ -1806,57 +2088,53 @@ def _get_fit_single_phase(track_sub, central_pressure_pert):
         is an int or Tuple, and 'fit' is a statsmodels.regression.linear_model.RegressionResultsWrapper
         object.
     """
-    pcen = track_sub['central_pressure'].values
+    pcen = track_sub["central_pressure"].values
     fit_output = {}
     warning_str = None
     for var in FIT_TRACK_VARS_RANGE.keys():
         order = _get_fit_order(pcen, central_pressure_pert)
         d_explanatory = _prepare_data_piecewise(pcen, order)
-        d_explained = pd.DataFrame({
-            var: track_sub[var].values
-        })
+        d_explained = pd.DataFrame({var: track_sub[var].values})
         sm_results = sm.OLS(d_explained, d_explanatory).fit()
-        fit_output[var] = {
-            'order': order,
-            'fit': sm_results
-        }
+        fit_output[var] = {"order": order, "fit": sm_results}
         # for wind, check that slope is negative
-        if var == 'max_sustained_wind':
+        if var == "max_sustained_wind":
             # check that fit lead to monotonous negative function - or at
             # least not impacting more than 2.5 kts
             kts_margin = 2.5
             if isinstance(order, tuple):
                 interp_at_res = sm_results.predict(
-                    _prepare_data_piecewise(
-                        np.array(order),
-                        order
-                    )
+                    _prepare_data_piecewise(np.array(order), order)
                 )
                 if np.any(np.diff(interp_at_res.values) > kts_margin):
                     idx_pos = np.where(np.diff(interp_at_res.values) > kts_margin)[0]
-                    max_wind = [interp_at_res[i+1] for i in idx_pos]
+                    max_wind = [interp_at_res[i + 1] for i in idx_pos]
                     warning_str = "(%s kts, %s, piecewise linear)" % (
                         np.round(np.max(np.diff(interp_at_res.values)), 1),
                         climada.hazard.tc_tracks.CAT_NAMES[
-                            climada.hazard.tc_tracks.set_category(max_wind, track_sub.max_sustained_wind_unit)
-                        ]
+                            climada.hazard.tc_tracks.set_category(
+                                max_wind, track_sub.max_sustained_wind_unit
+                            )
+                        ],
                     )
             else:
-                pcen_range = np.diff([pcen.min()-central_pressure_pert, 1010])[0]
-                if sm_results.params.values[0]*pcen_range > kts_margin:
+                pcen_range = np.diff([pcen.min() - central_pressure_pert, 1010])[0]
+                if sm_results.params.values[0] * pcen_range > kts_margin:
                     max_wind = sm_results.predict(
                         _prepare_data_piecewise(
-                            np.array([pcen.min()-central_pressure_pert]),
-                            order
+                            np.array([pcen.min() - central_pressure_pert]), order
                         )
                     )
                     warning_str = "(%s kts, %s, linear)" % (
-                        np.round(sm_results.params.values[0]*pcen_range, 1),
+                        np.round(sm_results.params.values[0] * pcen_range, 1),
                         climada.hazard.tc_tracks.CAT_NAMES[
-                            climada.hazard.tc_tracks.set_category(max_wind, track_sub.max_sustained_wind_unit)
-                        ]
+                            climada.hazard.tc_tracks.set_category(
+                                max_wind, track_sub.max_sustained_wind_unit
+                            )
+                        ],
                     )
     return fit_output, warning_str
+
 
 def _get_fit_order(pcen, central_pressure_pert):
     """Get the order of the data fit.
@@ -1886,8 +2164,8 @@ def _get_fit_order(pcen, central_pressure_pert):
         4,
         np.fmin(
             np.floor(len(pcen) / min_bin_pts).astype(int),
-            np.floor((pcen.max()-pcen.min())/min_bin_width).astype(int)
-        )
+            np.floor((pcen.max() - pcen.min()) / min_bin_width).astype(int),
+        ),
     )
     # if var_name == 'max_sustained_wind' or len(pcen) <= 5:
     if n_bins_max <= 1:
@@ -1898,7 +2176,7 @@ def _get_fit_order(pcen, central_pressure_pert):
         # cover the full range of possible values
         # bins_range = [pcen_min -1, max(pcen.max()+1, 1021)]
         for n_bins in np.arange(n_bins_max, 1, -1):
-            order = np.linspace(pcen.min()-0.1, pcen.max(), num=n_bins+1)
+            order = np.linspace(pcen.min() - 0.1, pcen.max(), num=n_bins + 1)
             # count valuer per bin
             val_bins = np.digitize(pcen, order, right=True)
             if np.all(np.bincount(val_bins)[1:] >= min_bin_pts):
@@ -1911,6 +2189,7 @@ def _get_fit_order(pcen, central_pressure_pert):
         else:
             order = tuple(order)
     return order
+
 
 def _prepare_data_piecewise(pcen, order):
     """Prepare data for statistical modelling of track parameters.
@@ -1929,26 +2208,28 @@ def _prepare_data_piecewise(pcen, order):
     """
     if isinstance(order, int):
         if order != 1:
-            raise ValueError('Unexpected value in order')
-        d_explanatory = pd.DataFrame({
-            'pcen': pcen,
-            'const': [1.0] * len(pcen)
-        })
+            raise ValueError("Unexpected value in order")
+        d_explanatory = pd.DataFrame({"pcen": pcen, "const": [1.0] * len(pcen)})
     else:
         # piecewise linear regression
         d_explanatory = dict()
         for i, order_i in enumerate(order):
-            col = f'var{order_i}'
-            slope_0 = 1. / (order_i - order[i - 1]) if i > 0 else 0
-            slope_1 = 1. / (order[i + 1] - order_i) if i + 1 < len(order) else 0
-            d_explanatory[col] = np.fmax(0, (1 - slope_0 * np.fmax(0, order_i - pcen)
-                                                - slope_1 * np.fmax(0, pcen - order_i)))
+            col = f"var{order_i}"
+            slope_0 = 1.0 / (order_i - order[i - 1]) if i > 0 else 0
+            slope_1 = 1.0 / (order[i + 1] - order_i) if i + 1 < len(order) else 0
+            d_explanatory[col] = np.fmax(
+                0,
+                (
+                    1
+                    - slope_0 * np.fmax(0, order_i - pcen)
+                    - slope_1 * np.fmax(0, pcen - order_i)
+                ),
+            )
         d_explanatory = pd.DataFrame(d_explanatory)
     return d_explanatory
 
-def _estimate_vars_chunk(track: xr.Dataset,
-                         phase: str,
-                         idx):
+
+def _estimate_vars_chunk(track: xr.Dataset, phase: str, idx):
     """Estimate a synthetic track's parameters from central pressure based
     on relationships fitted on that track's historical values for a subset of
     the track as specified by the phase (intensification, peak, decay).
@@ -1972,90 +2253,116 @@ def _estimate_vars_chunk(track: xr.Dataset,
     Nothing.
     """
     pcen = track.central_pressure.values[idx]
-    if phase in ['intens', 'decay']:
-        if 'fit_' + phase in track.attrs.keys():
-            fit_data = track.attrs['fit_' + phase]
+    if phase in ["intens", "decay"]:
+        if "fit_" + phase in track.attrs.keys():
+            fit_data = track.attrs["fit_" + phase]
             for var in FIT_TRACK_VARS_RANGE.keys():
                 track[var][idx] = np.fmax(
-                    FIT_TRACK_VARS_RANGE[var]['min'],
+                    FIT_TRACK_VARS_RANGE[var]["min"],
                     np.fmin(
-                        FIT_TRACK_VARS_RANGE[var]['max'],
-                        fit_data[var]['fit'].predict(
-                            _prepare_data_piecewise(pcen, fit_data[var]['order'])
-                        ).values
-                    )
+                        FIT_TRACK_VARS_RANGE[var]["max"],
+                        fit_data[var]["fit"]
+                        .predict(_prepare_data_piecewise(pcen, fit_data[var]["order"]))
+                        .values,
+                    ),
                 )
         else:
             # apply global fit
-            track['max_sustained_wind'][idx] = climada.hazard.tc_tracks._estimate_vmax(
-                np.repeat(np.nan, pcen.shape), track.lat[idx], track.lon[idx], pcen)
-            track['radius_max_wind'][idx] = climada.hazard.tc_tracks.estimate_rmw(
-                np.repeat(np.nan, pcen.shape), pcen)
-            track['radius_oci'][idx] = climada.hazard.tc_tracks.estimate_roci(
-                np.repeat(np.nan, pcen.shape), pcen)
+            track["max_sustained_wind"][idx] = climada.hazard.tc_tracks._estimate_vmax(
+                np.repeat(np.nan, pcen.shape), track.lat[idx], track.lon[idx], pcen
+            )
+            track["radius_max_wind"][idx] = climada.hazard.tc_tracks.estimate_rmw(
+                np.repeat(np.nan, pcen.shape), pcen
+            )
+            track["radius_oci"][idx] = climada.hazard.tc_tracks.estimate_roci(
+                np.repeat(np.nan, pcen.shape), pcen
+            )
         return
     elif phase != "peak":
         raise ValueError("'phase' should be one of 'intens', 'decay' or 'peak'")
 
     # for peak: interpolate between estimated first and last value
-    if 'fit_intens' in track.attrs.keys():
-        fit_data = track.attrs['fit_intens']
+    if "fit_intens" in track.attrs.keys():
+        fit_data = track.attrs["fit_intens"]
         start_vals = {}
         for var in FIT_TRACK_VARS_RANGE.keys():
             start_vals[var] = np.fmax(
-                FIT_TRACK_VARS_RANGE[var]['min'],
+                FIT_TRACK_VARS_RANGE[var]["min"],
                 np.fmin(
-                    FIT_TRACK_VARS_RANGE[var]['max'],
-                    fit_data[var]['fit'].predict(
-                        _prepare_data_piecewise(np.array([pcen[0]]), fit_data[var]['order'])
-                    ).values[0]
-                )
+                    FIT_TRACK_VARS_RANGE[var]["max"],
+                    fit_data[var]["fit"]
+                    .predict(
+                        _prepare_data_piecewise(
+                            np.array([pcen[0]]), fit_data[var]["order"]
+                        )
+                    )
+                    .values[0],
+                ),
             )
     else:
         # take previous values or global fit
         if idx[0] > 0:
-            start_vals = {var: track[var].values[idx[0]-1] for var in FIT_TRACK_VARS_RANGE.keys()}
+            start_vals = {
+                var: track[var].values[idx[0] - 1]
+                for var in FIT_TRACK_VARS_RANGE.keys()
+            }
         else:
             start_vals = {}
             # TODO does not work for a single value...
-            start_vals['max_sustained_wind'] = climada.hazard.tc_tracks._estimate_vmax(
-                np.array([np.nan]), np.array([track.lat[0]]),
-                np.array([track.lon[0]]), np.array([pcen[0]]))[0]
-            start_vals['radius_max_wind'] = climada.hazard.tc_tracks.estimate_rmw(
-                np.array([np.nan]), np.array([pcen[0]]))[0]
-            start_vals['radius_oci'] = climada.hazard.tc_tracks.estimate_roci(
-                np.array([np.nan]), np.array([pcen[0]]))[0]
+            start_vals["max_sustained_wind"] = climada.hazard.tc_tracks._estimate_vmax(
+                np.array([np.nan]),
+                np.array([track.lat[0]]),
+                np.array([track.lon[0]]),
+                np.array([pcen[0]]),
+            )[0]
+            start_vals["radius_max_wind"] = climada.hazard.tc_tracks.estimate_rmw(
+                np.array([np.nan]), np.array([pcen[0]])
+            )[0]
+            start_vals["radius_oci"] = climada.hazard.tc_tracks.estimate_roci(
+                np.array([np.nan]), np.array([pcen[0]])
+            )[0]
     if len(idx) == 1:
         # no need to get the decay fit, just use the intens one
         for var in FIT_TRACK_VARS_RANGE.keys():
             track[var][idx] = start_vals[var]
         return
-    if 'fit_decay' in track.attrs.keys():
-        fit_data = track.attrs['fit_decay']
+    if "fit_decay" in track.attrs.keys():
+        fit_data = track.attrs["fit_decay"]
         end_vals = {}
         for var in FIT_TRACK_VARS_RANGE.keys():
             end_vals[var] = np.fmax(
-                FIT_TRACK_VARS_RANGE[var]['min'],
+                FIT_TRACK_VARS_RANGE[var]["min"],
                 np.fmin(
-                    FIT_TRACK_VARS_RANGE[var]['max'],
-                    fit_data[var]['fit'].predict(
-                        _prepare_data_piecewise(np.array([pcen[-1]]), fit_data[var]['order'])
-                    ).values[0]
-                )
+                    FIT_TRACK_VARS_RANGE[var]["max"],
+                    fit_data[var]["fit"]
+                    .predict(
+                        _prepare_data_piecewise(
+                            np.array([pcen[-1]]), fit_data[var]["order"]
+                        )
+                    )
+                    .values[0],
+                ),
             )
     else:
         # take next values or global fit
         if idx[-1] < len(pcen) - 1:
-            end_vals = {var: track[var][idx[-1]+1] for var in FIT_TRACK_VARS_RANGE.keys()}
+            end_vals = {
+                var: track[var][idx[-1] + 1] for var in FIT_TRACK_VARS_RANGE.keys()
+            }
         else:
             end_vals = {}
-            end_vals['max_sustained_wind'] = climada.hazard.tc_tracks._estimate_vmax(
-                np.array([np.nan]), np.array([track.lat[idx[-1]]]),
-                np.array([track.lon[idx[-1]]]), np.array([pcen[-1]]))[0]
-            end_vals['radius_max_wind'] = climada.hazard.tc_tracks.estimate_rmw(
-                np.array([np.nan]), np.array([pcen[-1]]))[0]
-            end_vals['radius_oci'] = climada.hazard.tc_tracks.estimate_roci(
-                np.array([np.nan]), np.array([pcen[-1]]))[0]
+            end_vals["max_sustained_wind"] = climada.hazard.tc_tracks._estimate_vmax(
+                np.array([np.nan]),
+                np.array([track.lat[idx[-1]]]),
+                np.array([track.lon[idx[-1]]]),
+                np.array([pcen[-1]]),
+            )[0]
+            end_vals["radius_max_wind"] = climada.hazard.tc_tracks.estimate_rmw(
+                np.array([np.nan]), np.array([pcen[-1]])
+            )[0]
+            end_vals["radius_oci"] = climada.hazard.tc_tracks.estimate_roci(
+                np.array([np.nan]), np.array([pcen[-1]])
+            )[0]
 
     for var in FIT_TRACK_VARS_RANGE.keys():
         track[var][idx] = np.interp(
@@ -2063,7 +2370,13 @@ def _estimate_vars_chunk(track: xr.Dataset,
         )
     return track
 
-def check_id_chunk(id_chunk: np.ndarray, sid: str, allow_missing: bool = False, raise_error: bool = True):
+
+def check_id_chunk(
+    id_chunk: np.ndarray,
+    sid: str,
+    allow_missing: bool = False,
+    raise_error: bool = True,
+):
     """Check if id_chunk values are valid
 
     Raises an error if id_chunk values are not valid.
@@ -2087,25 +2400,25 @@ def check_id_chunk(id_chunk: np.ndarray, sid: str, allow_missing: bool = False, 
     valid = True
     # check missing values in id_chunk
     if np.all(np.isnan(id_chunk)):
-        LOGGER.debug('All id_chunk values are missing.')
+        LOGGER.debug("All id_chunk values are missing.")
         valid = False
     elif np.any(np.isnan(id_chunk)):
         valid = allow_missing
         # nans are all at the end
-        if not np.all(np.isnan(id_chunk[np.where(np.isnan(id_chunk))[0][0]:])):
-            LOGGER.debug('id_chunk contains missing values before a non-missing value.')
+        if not np.all(np.isnan(id_chunk[np.where(np.isnan(id_chunk))[0][0] :])):
+            LOGGER.debug("id_chunk contains missing values before a non-missing value.")
             valid = False
         if np.isnan(id_chunk[0]):
-            LOGGER.debug('id_chunk starts with a missing value.')
+            LOGGER.debug("id_chunk starts with a missing value.")
             valid = False
         # remove NA values for further checks
         id_chunk = id_chunk[~np.isnan(id_chunk)]
-    elif id_chunk.dtype != 'int':
-        LOGGER.debug('id_chunk should be integer if no missing values is present.')
+    elif id_chunk.dtype != "int":
+        LOGGER.debug("id_chunk should be integer if no missing values is present.")
         valid = False
     if not valid:
         if raise_error:
-            raise ValueError('Invalid id_chunk values: %s.' % sid)
+            raise ValueError("Invalid id_chunk values: %s." % sid)
         return valid
     if np.all(id_chunk == 0):
         return valid
@@ -2113,47 +2426,48 @@ def check_id_chunk(id_chunk: np.ndarray, sid: str, allow_missing: bool = False, 
     # from here onwards there are not missing values in id_chunk
     if np.any(id_chunk == 0):
         # Any zero after first non-zero value?
-        if np.any(id_chunk[np.flatnonzero(id_chunk)[0]:] == 0):
-            LOGGER.debug('id_chunk contains zeros after a non-zero.')
+        if np.any(id_chunk[np.flatnonzero(id_chunk)[0] :] == 0):
+            LOGGER.debug("id_chunk contains zeros after a non-zero.")
             valid = False
     if np.any(np.diff(id_chunk[id_chunk >= 0]) < 0):
-        LOGGER.debug('Positive id_chunk values have negative increment.')
+        LOGGER.debug("Positive id_chunk values have negative increment.")
         valid = False
     if np.any(np.diff(id_chunk[id_chunk <= 0]) > 0):
-        LOGGER.debug('Negative id_chunk values have positive increment.')
+        LOGGER.debug("Negative id_chunk values have positive increment.")
         valid = False
     if np.any(np.diff(np.abs(id_chunk)) < 0):
-        LOGGER.debug('Absolute value of id_chunk decreases in time.')
+        LOGGER.debug("Absolute value of id_chunk decreases in time.")
         valid = False
     if np.abs(id_chunk[id_chunk != 0][0]) != 1:
-        LOGGER.debug('First id_chunk is not 1 or -1.')
+        LOGGER.debug("First id_chunk is not 1 or -1.")
         valid = False
     # complete check
     for id in np.unique(id_chunk):
         idx = np.where(id_chunk == id)[0]
-        start_idx,end_idx = idx[0],idx[-1]
-        if np.any(id_chunk[start_idx:end_idx+1] != id):
-            LOGGER.debug('Non-continuous id_chunks.')
+        start_idx, end_idx = idx[0], idx[-1]
+        if np.any(id_chunk[start_idx : end_idx + 1] != id):
+            LOGGER.debug("Non-continuous id_chunks.")
             valid = False
         if start_idx > 0:
-            if np.sign(id) == np.sign(id_chunk[start_idx-1]):
-                LOGGER.debug('Sign of id_chunk issue.')
+            if np.sign(id) == np.sign(id_chunk[start_idx - 1]):
+                LOGGER.debug("Sign of id_chunk issue.")
                 valid = False
-        if end_idx < id_chunk.size-1:
-            if np.sign(id) == np.sign(id_chunk[end_idx+1]):
-                LOGGER.debug('Sign of id_chunk issue.')
+        if end_idx < id_chunk.size - 1:
+            if np.sign(id) == np.sign(id_chunk[end_idx + 1]):
+                LOGGER.debug("Sign of id_chunk issue.")
                 valid = False
     # check number of chunks
     no_chunks_sea = int(max(0, id_chunk.max()))
     no_chunks_land = int(np.abs(min(0, id_chunk.min())))
     if np.abs(no_chunks_sea - no_chunks_land) > 1:
-        LOGGER.debug('Number of sea and land chunks differ by more than 1.')
+        LOGGER.debug("Number of sea and land chunks differ by more than 1.")
         valid = False
 
     if not valid:
         if raise_error:
-            raise ValueError('Invalid id_chunk values: %s.' % sid)
+            raise ValueError("Invalid id_chunk values: %s." % sid)
     return valid
+
 
 def _get_transitions(on_land, time_step_h, exclude_short_landfalls=True):
     """Get sea-land and land_sea transitions
@@ -2182,15 +2496,16 @@ def _get_transitions(on_land, time_step_h, exclude_short_landfalls=True):
     transitions = np.append(0, np.diff((~on_land).astype(int)))
     if exclude_short_landfalls:
         # remove short landfalls
-        min_n_ts = NEGLECT_LANDFALL_DURATION_HOUR/time_step_h
+        min_n_ts = NEGLECT_LANDFALL_DURATION_HOUR / time_step_h
         for idx in np.where(transitions == -1)[0]:
             transitions_end = transitions[idx:]
             if np.any(transitions_end == 1):
                 n_ts = np.where(transitions_end == 1)[0][0]
                 if n_ts < min_n_ts:
                     transitions[idx] = 0
-                    transitions[idx+n_ts] = 0
+                    transitions[idx + n_ts] = 0
     return transitions
+
 
 def _first_transition(transitions):
     """Get index of first transition.
@@ -2209,6 +2524,7 @@ def _first_transition(transitions):
     """
     tnz = np.flatnonzero(transitions)
     return tnz[0] if tnz.size > 0 else transitions.size
+
 
 def _set_first_transition(transitions_synth, idx_start_model, on_land_synth):
     """Remove any transition before idx_start_model and set the approriate first
@@ -2236,12 +2552,14 @@ def _set_first_transition(transitions_synth, idx_start_model, on_land_synth):
         # remove transitions before
         transitions_synth[:idx_start_model] = 0
 
+
 def _get_landfall_idx(transitions):
     if np.any(transitions == -1):
         tnz = np.where(transitions == -1)[0]
     else:
         tnz = np.array([transitions.size])
     return tnz
+
 
 def _remove_landstart(transitions):
     """Removes first transition if track starts over land.
@@ -2259,6 +2577,7 @@ def _remove_landstart(transitions):
     # if the first transition is from land to sea, drop it
     if ftr < transitions.size and transitions[ftr] == 1:
         transitions[ftr] = 0
+
 
 def _get_id_chunk(transitions_synth):
     """Get chunks of track to be modelled and number of land and ocean chunks.
@@ -2282,25 +2601,30 @@ def _get_id_chunk(transitions_synth):
     no_chunks_sea = np.count_nonzero(to_sea)
     to_land = np.where(transitions_synth < 0, transitions_synth, 0)
     no_chunks_land = np.count_nonzero(to_land)
+
     # filter out short landfalls from on_land_synth
     def get_on_land_from_transition(transitions):
         on_land_rec = np.zeros_like(transitions)
         trans_non0 = np.append(np.where(transitions != 0)[0], transitions.size)
-        for idx_start,idx_end in zip(trans_non0[:-1], trans_non0[1:]):
+        for idx_start, idx_end in zip(trans_non0[:-1], trans_non0[1:]):
             if transitions[idx_start] == -1:
                 on_land_rec[idx_start:idx_end] = True
         return on_land_rec
+
     id_chunks = np.where(
         get_on_land_from_transition(transitions_synth),
         to_land.cumsum(),
-        to_sea.cumsum()
+        to_sea.cumsum(),
     ).astype(int)
     return id_chunks, no_chunks_sea, no_chunks_land
 
-def _add_id_synth_chunks_shift_init(track: xr.Dataset,
-                                    time_step_h: float = None,
-                                    land_geom: MultiPolygon = None,
-                                    shift_values_init: bool = True):
+
+def _add_id_synth_chunks_shift_init(
+    track: xr.Dataset,
+    time_step_h: float = None,
+    land_geom: MultiPolygon = None,
+    shift_values_init: bool = True,
+):
     """Identify track chunks for which intensity is to be modelled, and shift
     track parameter value in case the track starts over land.
 
@@ -2333,7 +2657,7 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
 
     Returns
     -------
-    track : xr.Dataset 
+    track : xr.Dataset
         as input parameter track but with additional variable 'id_chunk'
         (ID of chunks value per track point) and, if shift_values_init is True,
         with variables shifted in time if the first track point over the ocean
@@ -2351,24 +2675,32 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
         return track, 0, 0, track_end_shift
 
     # default assignment
-    track = track.assign({
-        "id_chunk" : ("time", np.zeros_like(track.central_pressure, dtype='int')),
-    })
+    track = track.assign(
+        {
+            "id_chunk": ("time", np.zeros_like(track.central_pressure, dtype="int")),
+        }
+    )
     if track.time.size == 1:
         return track, 0, 0, track_end_shift
 
-    if 'on_land' not in list(track.data_vars):
+    if "on_land" not in list(track.data_vars):
         if land_geom is None:
-            raise ValueError('Track %s is missing land params. Argument land_geom should be provided.' % track.sid)
+            raise ValueError(
+                "Track %s is missing land params. Argument land_geom should be provided."
+                % track.sid
+            )
         climada.hazard.tc_tracks.track_land_params(track, land_geom)
     if time_step_h is None:
-        time_step_h = track['time_step'].values[0]
+        time_step_h = track["time_step"].values[0]
 
     on_land_synth = track.on_land.values.copy()
     on_land_hist = track.on_land_hist.values.copy()
 
-    n_frames_threshold = int(np.floor(6 / track.time_step[0]))   # 6 hours over land
-    below_threshold = np.sum(on_land_synth) <= n_frames_threshold and np.sum(on_land_hist) <= n_frames_threshold
+    n_frames_threshold = int(np.floor(6 / track.time_step[0]))  # 6 hours over land
+    below_threshold = (
+        np.sum(on_land_synth) <= n_frames_threshold
+        and np.sum(on_land_hist) <= n_frames_threshold
+    )
     all_equal = np.all(on_land_synth == on_land_hist)
     if below_threshold or all_equal:
         return track, 0, 0, track_end_shift
@@ -2377,36 +2709,49 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
     if np.all(on_land_synth):
         if np.any(~on_land_hist):
             # all over land but historical went over the ocean: prevent intensification
-            track['id_chunk'][:] = np.where(np.cumsum(~on_land_hist) > 0, -1, 0).astype(int)
-            check_id_chunk(track['id_chunk'].values, track.sid)
+            track["id_chunk"][:] = np.where(np.cumsum(~on_land_hist) > 0, -1, 0).astype(
+                int
+            )
+            check_id_chunk(track["id_chunk"].values, track.sid)
         return track, 0, 1, track_end_shift
     # hist track fully over land: model from first point over the ocean.
     if np.all(on_land_hist):
-        transitions_synth = _get_transitions(on_land_synth, time_step_h, exclude_short_landfalls=True)
+        transitions_synth = _get_transitions(
+            on_land_synth, time_step_h, exclude_short_landfalls=True
+        )
         id_chunk, no_chunks_sea, no_chunks_land = _get_id_chunk(transitions_synth)
         check_id_chunk(id_chunk, track.sid)
-        track['id_chunk'][:] = id_chunk
+        track["id_chunk"][:] = id_chunk
         return track, no_chunks_sea, no_chunks_land, track_end_shift
 
-    shift_first_sea, idx_start_model = _get_shift_idx_start(on_land_hist, on_land_synth, time_step_h, shift_values_init, track.sid)
+    shift_first_sea, idx_start_model = _get_shift_idx_start(
+        on_land_hist, on_land_synth, time_step_h, shift_values_init, track.sid
+    )
     if shift_first_sea != 0:
         if shift_first_sea > 0:
-            track_shift_values = track.isel(
-                time=slice(-shift_first_sea, None)
-            ).to_dataframe().reset_index().drop(['time', 'lat', 'lon'], axis=1)
+            track_shift_values = (
+                track.isel(time=slice(-shift_first_sea, None))
+                .to_dataframe()
+                .reset_index()
+                .drop(["time", "lat", "lon"], axis=1)
+            )
             track_end_shift = _create_raw_track_extension(
                 track,
                 nb_time_steps=shift_first_sea,
                 time_step_h=time_step_h,
-                values_df=track_shift_values
+                values_df=track_shift_values,
             )
-        params_fixed = ['time_step', 'basin', 'on_land', 'dist_since_lf']
+        params_fixed = ["time_step", "basin", "on_land", "dist_since_lf"]
         params_avail = list(track.data_vars)
         for tc_var in list(set(params_avail) - set(params_fixed)):
             if shift_first_sea < 0:
-                track[tc_var].values[:shift_first_sea] = track[tc_var].values[-shift_first_sea:]
+                track[tc_var].values[:shift_first_sea] = track[tc_var].values[
+                    -shift_first_sea:
+                ]
             else:
-                track[tc_var].values[shift_first_sea:] = track[tc_var].values[:-shift_first_sea]
+                track[tc_var].values[shift_first_sea:] = track[tc_var].values[
+                    :-shift_first_sea
+                ]
 
     if idx_start_model == on_land_synth.size:
         # intensity not to be modelled.
@@ -2417,21 +2762,24 @@ def _add_id_synth_chunks_shift_init(track: xr.Dataset,
 
     id_chunk, no_chunks_sea, no_chunks_land = _get_id_chunk(transitions_synth)
     check_id_chunk(id_chunk, track.sid)
-    track['id_chunk'][:] = id_chunk
+    track["id_chunk"][:] = id_chunk
     return track, no_chunks_sea, no_chunks_land, track_end_shift
 
-def _one_model_synth_tc_intensity(track: xr.Dataset,
-                                  v_rel: dict,
-                                  p_rel: dict,
-                                  s_rel: bool,
-                                  central_pressure_pert: float,
-                                  rnd_pars: np.ndarray):
+
+def _one_model_synth_tc_intensity(
+    track: xr.Dataset,
+    v_rel: dict,
+    p_rel: dict,
+    s_rel: bool,
+    central_pressure_pert: float,
+    rnd_pars: np.ndarray,
+):
     """Models a synthetic track's intensity evolution
 
     Sequentially moves over each unique track["id_chunk"] and applies the following:
     * If id_chunk is negative, i.e. over land, applies landfall decay logic
     * if id_chunk is positive, i.e. over sea, applies intensification/peak duration/decay logic
-    
+
     # TODO update docstring
 
     Parameters
@@ -2459,10 +2807,10 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
     values_ext_df = None
     if track.time.size == 1 or track.orig_event_flag:
         return track, values_ext_df
-    check_id_chunk(track['id_chunk'].values, track.sid, allow_missing=False)
-    if np.all(track['id_chunk'] == 0):
+    check_id_chunk(track["id_chunk"].values, track.sid, allow_missing=False)
+    if np.all(track["id_chunk"] == 0):
         return track, values_ext_df
-    
+
     # organise chunks to be processed in temporal sequence
     chunk_index = np.unique(track.id_chunk.values, return_index=True)[1]
     id_chunk_sorted = [track.id_chunk.values[index] for index in sorted(chunk_index)]
@@ -2470,37 +2818,45 @@ def _one_model_synth_tc_intensity(track: xr.Dataset,
 
     last_pcen = track.central_pressure.values[-1]
     track_orig = track.copy(deep=True)
-    
+
     for id_chunk in id_chunk_sorted:
         if id_chunk == 0:
             continue
         elif id_chunk > 0:
-            pcen_extend = intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars[4*(id_chunk-1):4*id_chunk])
+            pcen_extend = intensity_evolution_sea(
+                track,
+                id_chunk,
+                central_pressure_pert,
+                rnd_pars[4 * (id_chunk - 1) : 4 * id_chunk],
+            )
             v_extend = None
         else:
-            pcen_extend, v_extend = intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel)
+            pcen_extend, v_extend = intensity_evolution_land(
+                track, id_chunk, v_rel, p_rel, s_rel
+            )
 
     # make sure track ends meaningfully (low intensity)
     if pcen_extend is not None:
-        values_ext_df = {
-            'central_pressure': pcen_extend
-        }
+        values_ext_df = {"central_pressure": pcen_extend}
         if v_extend is not None:
-            values_ext_df['max_sustained_wind'] = v_extend
+            values_ext_df["max_sustained_wind"] = v_extend
         values_ext_df = pd.DataFrame(values_ext_df)
 
     return track, values_ext_df
 
-def _model_synth_tc_intensity(tracks_list,
-                              random_vec_intensity,
-                              time_step_h,
-                              track_vars_attrs,
-                              extend_track,
-                              pool,
-                              central_pressure_pert,
-                              v_rel,
-                              p_rel,
-                              s_rel):
+
+def _model_synth_tc_intensity(
+    tracks_list,
+    random_vec_intensity,
+    time_step_h,
+    track_vars_attrs,
+    extend_track,
+    pool,
+    central_pressure_pert,
+    v_rel,
+    p_rel,
+    s_rel,
+):
     # model track intensity
     sid_extended_tracks = []
     sid_outside_lat_range = []
@@ -2515,38 +2871,45 @@ def _model_synth_tc_intensity(tracks_list,
             itertools.repeat(s_rel, len(tracks_list)),
             itertools.repeat(central_pressure_pert, len(tracks_list)),
             random_vec_intensity,
-            chunksize=chunksize
+            chunksize=chunksize,
         )
     else:
         tracks_intensified = [
-            _one_model_synth_tc_intensity(track, v_rel, p_rel, s_rel,
-                                        central_pressure_pert, rnd_pars=random_intensity)
+            _one_model_synth_tc_intensity(
+                track,
+                v_rel,
+                p_rel,
+                s_rel,
+                central_pressure_pert,
+                rnd_pars=random_intensity,
+            )
             for track, random_intensity in zip(tracks_list, random_vec_intensity)
         ]
     if not extend_track:
-        for (track,_) in tracks_intensified:
+        for track, _ in tracks_intensified:
             if not track.orig_event_flag:
                 _estimate_params_track(track)
-                track.attrs['category'] = climada.hazard.tc_tracks.set_category(
-                    track.max_sustained_wind.values, track.max_sustained_wind_unit)
+                track.attrs["category"] = climada.hazard.tc_tracks.set_category(
+                    track.max_sustained_wind.values, track.max_sustained_wind_unit
+                )
         new_tracks_list = [
             drop_temporary_variables(track, track_vars_attrs)
-            for (track,_) in tracks_intensified
+            for (track, _) in tracks_intensified
         ]
         return (
-            new_tracks_list, 
+            new_tracks_list,
             sid_extended_tracks,
             sid_outside_lat_range,
-            sid_outside_intensity_range
-            )
+            sid_outside_intensity_range,
+        )
 
-    LOGGER.debug('Extending tracks after intensity modelling')
+    LOGGER.debug("Extending tracks after intensity modelling")
     # create extension and trajectory
     tracks_intensified_new = []
-    LOGGER.debug('create track extensions')
-    for i,(track,values_df) in enumerate(tracks_intensified):
+    LOGGER.debug("create track extensions")
+    for i, (track, values_df) in enumerate(tracks_intensified):
         if values_df is not None and values_df.shape[0] == 0:
-            LOGGER.warning('values_df has 0 rows, please check: %s', track.sid)
+            LOGGER.warning("values_df has 0 rows, please check: %s", track.sid)
         if values_df is None or values_df.shape[0] == 0:
             tracks_intensified_new.append(track)
             continue
@@ -2555,7 +2918,7 @@ def _model_synth_tc_intensity(tracks_list,
             track,
             nb_time_steps=values_df.shape[0],
             time_step_h=time_step_h,
-            values_df=values_df
+            values_df=values_df,
         )
         rnd_ext = _get_random_trajectory_ext(track_ext, time_step_h)
         tracks_intensified_new.append(_create_track_from_ext(track, track_ext, rnd_ext))
@@ -2563,32 +2926,31 @@ def _model_synth_tc_intensity(tracks_list,
     extent = climada.util.coordinates.latlon_bounds(
         np.concatenate([t.lat.values for t in tracks_intensified_new]),
         np.concatenate([t.lon.values for t in tracks_intensified_new]),
-        buffer=0.1
+        buffer=0.1,
     )
     extent = (extent[0], extent[2], extent[1], extent[3])
-    land_geom = climada.util.coordinates.get_land_geometry(
-        extent=extent, resolution=10
-    )
+    land_geom = climada.util.coordinates.get_land_geometry(extent=extent, resolution=10)
     # any sea-to-land transition? If so apply landfall decay thereafter
-    LOGGER.debug('apply decay after sea-to-land transition')
+    LOGGER.debug("apply decay after sea-to-land transition")
     tracks_intensified_new2 = []
-    for i,track in enumerate(tracks_intensified_new):
+    for i, track in enumerate(tracks_intensified_new):
         if track.orig_event_flag:
             tracks_intensified_new2.append(track)
             continue
-        
-        if np.sum(np.isnan(track['id_chunk'].values)) == 0:
+
+        if np.sum(np.isnan(track["id_chunk"].values)) == 0:
             # no track extension
             _estimate_params_track(track)
-            track.attrs['category'] = climada.hazard.tc_tracks.set_category(
-                track.max_sustained_wind.values, track.max_sustained_wind_unit)
+            track.attrs["category"] = climada.hazard.tc_tracks.set_category(
+                track.max_sustained_wind.values, track.max_sustained_wind_unit
+            )
             tracks_intensified_new2.append(track)
             continue
         climada.hazard.tc_tracks.track_land_params(track, land_geom=land_geom)
         sea_land = np.where(
-            np.isnan(track['id_chunk']),
+            np.isnan(track["id_chunk"]),
             np.append(0, np.diff(track.on_land.astype(int))) == 1,
-            False
+            False,
         )
         _estimate_params_track(track)
         # apply decay (landfall) if track moves too much poleward or equatorward
@@ -2599,147 +2961,195 @@ def _model_synth_tc_intensity(tracks_list,
                 sea_land[latrange_out_idx] = True
         # apply decay (landfall) if track falls below the intensity of the final
         # point in ibtracs
-        intensityrange_out_idx = _get_finalintensity_idx(track, original_track=tracks_list[i])
+        intensityrange_out_idx = _get_finalintensity_idx(
+            track, original_track=tracks_list[i]
+        )
         if intensityrange_out_idx < track.time.size:
-            if int(os.getenv('TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES')):
-                if np.all(~sea_land) or np.where(sea_land)[0][0] > intensityrange_out_idx:
+            if int(os.getenv("TRACKGEN_TEST_DECAY_BEYOND_ADVISORIES")):
+                if (
+                    np.all(~sea_land)
+                    or np.where(sea_land)[0][0] > intensityrange_out_idx
+                ):
                     sid_outside_intensity_range.append(track.sid)
                     sea_land[intensityrange_out_idx] = True
         if np.any(sea_land):
             # apply landfall decay thereafter
             sea_land_idx = np.where(sea_land)[0][0]
-            track['id_chunk'] = ('time', np.concatenate([
-                np.repeat([0], sea_land_idx),
-                np.repeat([-1], track.time.size - sea_land_idx)
-            ]).astype(int))
-            check_id_chunk(track['id_chunk'].values, track.sid, allow_missing=False)
+            track["id_chunk"] = (
+                "time",
+                np.concatenate(
+                    [
+                        np.repeat([0], sea_land_idx),
+                        np.repeat([-1], track.time.size - sea_land_idx),
+                    ]
+                ).astype(int),
+            )
+            check_id_chunk(track["id_chunk"].values, track.sid, allow_missing=False)
             # assign fake dist_since_lf
-            track['on_land'][sea_land_idx:] = True
-            track['dist_since_lf'] = ('time', climada.hazard.tc_tracks._dist_since_lf(track))
-            pcen_extend, v_extend = intensity_evolution_land(track,
-                                                             id_chunk=-1,
-                                                             v_rel=v_rel,
-                                                             p_rel=p_rel,
-                                                             s_rel=s_rel)
+            track["on_land"][sea_land_idx:] = True
+            track["dist_since_lf"] = (
+                "time",
+                climada.hazard.tc_tracks._dist_since_lf(track),
+            )
+            pcen_extend, v_extend = intensity_evolution_land(
+                track, id_chunk=-1, v_rel=v_rel, p_rel=p_rel, s_rel=s_rel
+            )
             if v_extend is not None:
                 LOGGER.warning(
-                    f'Track extension not over owing to a landfall for {track.sid}. '
-                    f'Central pressure: {pcen_extend[-1]}, Max sustained wind: {v_extend[-1]}.'
+                    f"Track extension not over owing to a landfall for {track.sid}. "
+                    f"Central pressure: {pcen_extend[-1]}, Max sustained wind: {v_extend[-1]}."
                 )
             elif pcen_extend is not None:
                 LOGGER.warning(
-                    f'Track extension not over owing to a landfall for {track.sid}. '
-                    f'Central pressure: {pcen_extend[-1]}.'
+                    f"Track extension not over owing to a landfall for {track.sid}. "
+                    f"Central pressure: {pcen_extend[-1]}."
                 )
             _estimate_params_track(track)
-        
+
         # cutoff track end?
-        extended_cat = np.array([
-            climada.hazard.tc_tracks.set_category(
-                track['max_sustained_wind'].values[idx],
-                wind_unit=track.max_sustained_wind_unit
-            )
-            for idx in range(track.time.size)
-        ])
+        extended_cat = np.array(
+            [
+                climada.hazard.tc_tracks.set_category(
+                    track["max_sustained_wind"].values[idx],
+                    wind_unit=track.max_sustained_wind_unit,
+                )
+                for idx in range(track.time.size)
+            ]
+        )
 
         if np.any(extended_cat >= 0):
             # Kill the extended track 12 hours after dropping below Cat 1
-            buffer_frames = int(np.ceil(12/time_step_h))
-            cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + buffer_frames, extended_cat.size-1)
+            buffer_frames = int(np.ceil(12 / time_step_h))
+            cutoff_idx = min(
+                np.where(extended_cat >= 0)[0][-1] + buffer_frames,
+                extended_cat.size - 1,
+            )
             track = track.isel(time=slice(None, cutoff_idx))
 
         # If the parent storm finished as extratropical, kill any extension frames at times beyond the original track end
         original_size = tracks_list[i].time.size
-        if hasattr(track, 'nature'):
-            advisory_range_et_idx = original_size if tracks_list[i].nature.values[-1] == 'ET' else track.time.size
+        if hasattr(track, "nature"):
+            advisory_range_et_idx = (
+                original_size
+                if tracks_list[i].nature.values[-1] == "ET"
+                else track.time.size
+            )
             if advisory_range_et_idx < track.time.size:
-                if int(os.getenv('TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL')):
+                if int(os.getenv("TRACKGEN_TEST_KILL_BEYOND_EXTRATROPICAL")):
                     track = track.isel(time=slice(None, advisory_range_et_idx))
                     sid_outside_intensity_range.append(track.sid)
                     sid_outside_intensity_range = list(set(sid_outside_intensity_range))
-        
+
         # If the child storm weakens below the parent's final strength, kill it
-        intensityrange_out_idx = _get_finalintensity_idx(track, original_track=tracks_list[i])
+        intensityrange_out_idx = _get_finalintensity_idx(
+            track, original_track=tracks_list[i]
+        )
         intensityrange_out_idx = max(original_size, intensityrange_out_idx)
         if intensityrange_out_idx < track.time.size:
-            if int(os.getenv('TRACKGEN_TEST_KILL_BEYOND_ADVISORIES')):
+            if int(os.getenv("TRACKGEN_TEST_KILL_BEYOND_ADVISORIES")):
                 track = track.isel(time=slice(None, intensityrange_out_idx))
                 sid_outside_intensity_range.append(track.sid)
                 sid_outside_intensity_range = list(set(sid_outside_intensity_range))
-        
+
         tracks_intensified_new2.append(track)
-        tracks_intensified_new2[i].attrs['category'] = climada.hazard.tc_tracks.set_category(
-            tracks_intensified_new2[i].max_sustained_wind.values,
-            tracks_intensified_new2[i].max_sustained_wind_unit
+        tracks_intensified_new2[i].attrs["category"] = (
+            climada.hazard.tc_tracks.set_category(
+                tracks_intensified_new2[i].max_sustained_wind.values,
+                tracks_intensified_new2[i].max_sustained_wind_unit,
+            )
         )
-        
-    LOGGER.debug('dropping temporary variables')
+
+    LOGGER.debug("dropping temporary variables")
     new_tracks_list = [
         drop_temporary_variables(track, track_vars_attrs)
         for track in tracks_intensified_new2
     ]
-    return new_tracks_list, sid_extended_tracks, sid_outside_lat_range, sid_outside_intensity_range
+    return (
+        new_tracks_list,
+        sid_extended_tracks,
+        sid_outside_lat_range,
+        sid_outside_intensity_range,
+    )
 
-def drop_temporary_variables(track : xr.Dataset, track_vars_attrs):
+
+def drop_temporary_variables(track: xr.Dataset, track_vars_attrs):
     # TODO docstring
     vars_to_drop = set(track.variables) - track_vars_attrs[0]
     attrs_to_drop = set(track.attrs.keys()) - track_vars_attrs[1]
     for attr in attrs_to_drop:
-        del(track.attrs[attr])
-    for v in ['central_pressure', 'max_sustained_wind', 'radius_max_wind', 'environmental_pressure',
-            'time', 'lat', 'lon', 'on_land']:
+        del track.attrs[attr]
+    for v in [
+        "central_pressure",
+        "max_sustained_wind",
+        "radius_max_wind",
+        "environmental_pressure",
+        "time",
+        "lat",
+        "lon",
+        "on_land",
+    ]:
         if v in track.variables:
             if np.any(np.isnan(track[v].values)):
-                raise ValueError('Missing values in %s: %s', v, track.sid)
+                raise ValueError("Missing values in %s: %s", v, track.sid)
     # check time
-    time_steps_h = np.diff(track.time.values) / np.timedelta64(1, 'h')
+    time_steps_h = np.diff(track.time.values) / np.timedelta64(1, "h")
     if track.time.size > 1 and not np.allclose(time_steps_h, time_steps_h[0]):
-        LOGGER.debug('time steps in hour: %s' % ','.join(time_steps_h.astype(str)))
-        raise ValueError('Temporal resolution not constant: %s', track.sid)
+        LOGGER.debug("time steps in hour: %s" % ",".join(time_steps_h.astype(str)))
+        raise ValueError("Temporal resolution not constant: %s", track.sid)
     return track.drop_vars(vars_to_drop)
+
 
 def _get_cat_from_pcen(track_chunk, phase, idx=None, pcen=None):
     if pcen is not None:
         if isinstance(pcen, float):
-            pcen = np.array([pcen], dtype = 'float')
+            pcen = np.array([pcen], dtype="float")
         if idx is not None:
-            raise ValueError('only one of pcen and idx can be provided')
-        track_peak = track_chunk.copy(True).isel(time = slice(None, pcen.size))
-        track_peak['central_pressure'][:] = pcen
+            raise ValueError("only one of pcen and idx can be provided")
+        track_peak = track_chunk.copy(True).isel(time=slice(None, pcen.size))
+        track_peak["central_pressure"][:] = pcen
     else:
-        track_peak = track_chunk.copy(True).isel(time = [idx])
+        track_peak = track_chunk.copy(True).isel(time=[idx])
     _estimate_vars_chunk(track_peak, phase=phase, idx=np.zeros(1).astype(int))
-    peak_vmax = track_peak['max_sustained_wind'].values
-    peak_cat = climada.hazard.tc_tracks.set_category(peak_vmax, wind_unit=track_chunk.max_sustained_wind_unit)
+    peak_vmax = track_peak["max_sustained_wind"].values
+    peak_cat = climada.hazard.tc_tracks.set_category(
+        peak_vmax, wind_unit=track_chunk.max_sustained_wind_unit
+    )
     return peak_cat
+
 
 def _get_peak_duration(track_chunk, peak_pcen_i, pcen, rnd_par):
     peak_cat = _get_cat_from_pcen(track_chunk, "peak", pcen=pcen)
     peak_cat = RANDOM_WALK_DATA_CAT_STR[peak_cat]
     peak_basin = track_chunk.basin.values[peak_pcen_i]
     duration_i = np.logical_and(
-        RANDOM_WALK_DATA_DURATION['basin'] == peak_basin,
-        RANDOM_WALK_DATA_DURATION['category'] == peak_cat
+        RANDOM_WALK_DATA_DURATION["basin"] == peak_basin,
+        RANDOM_WALK_DATA_DURATION["category"] == peak_cat,
     )
-    lognorm_pars = RANDOM_WALK_DATA_DURATION.loc[duration_i, ['meanlog', 'sdlog']].to_dict('records')[0]
+    lognorm_pars = RANDOM_WALK_DATA_DURATION.loc[
+        duration_i, ["meanlog", "sdlog"]
+    ].to_dict("records")[0]
     # sample from that distribution
-    peak_duration_days = np.exp(scipy.stats.norm.ppf(rnd_par,
-                                                        loc=lognorm_pars['meanlog'],
-                                                        scale=lognorm_pars['sdlog']))
+    peak_duration_days = np.exp(
+        scipy.stats.norm.ppf(
+            rnd_par, loc=lognorm_pars["meanlog"], scale=lognorm_pars["sdlog"]
+        )
+    )
     return peak_duration_days
+
 
 def _get_decay_k(basin, rnd_par):
     weibull_pars = RANDOM_WALK_DATA_SEA_DECAY.loc[
-        RANDOM_WALK_DATA_SEA_DECAY['basin'] == basin
-    ].to_dict('records')[0]
-    peak_decay_k = scipy.stats.weibull_min.ppf(rnd_par,
-                                                c = weibull_pars['shape'],
-                                                scale = weibull_pars['scale'])
+        RANDOM_WALK_DATA_SEA_DECAY["basin"] == basin
+    ].to_dict("records")[0]
+    peak_decay_k = scipy.stats.weibull_min.ppf(
+        rnd_par, c=weibull_pars["shape"], scale=weibull_pars["scale"]
+    )
     return peak_decay_k
+
 
 def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
     if id_chunk <= 0:
-        raise ValueError('id_chunk should be positive')
+        raise ValueError("id_chunk should be positive")
     # TODO docstring
     in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
     pcen_extend = None
@@ -2747,34 +3157,44 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
     if len(in_chunk) == 1:
         # TODO if last point, any need to model?
         if in_chunk[-1] == track.time.size - 1:
-            peak_cat = _get_cat_from_pcen(track, "decay", idx = in_chunk[-1])
+            peak_cat = _get_cat_from_pcen(track, "decay", idx=in_chunk[-1])
             if peak_cat > 0:
-                LOGGER.warning('Track ends on a single ocean point with cat %s' % RANDOM_WALK_DATA_CAT_STR[peak_cat])
+                LOGGER.warning(
+                    "Track ends on a single ocean point with cat %s"
+                    % RANDOM_WALK_DATA_CAT_STR[peak_cat]
+                )
         if in_chunk[0] > 0:
-            track['max_sustained_wind'][in_chunk] = track['max_sustained_wind'].values[in_chunk-1]
-            track['central_pressure'][in_chunk] = track['central_pressure'].values[in_chunk-1]
+            track["max_sustained_wind"][in_chunk] = track["max_sustained_wind"].values[
+                in_chunk - 1
+            ]
+            track["central_pressure"][in_chunk] = track["central_pressure"].values[
+                in_chunk - 1
+            ]
         return pcen_extend
-    track_stage_end = 'intens'
-    
+    track_stage_end = "intens"
+
     # taking last value before the chunk as a starting point from where to model intensity
     if in_chunk[0] > 0:
-        in_chunk = np.append(in_chunk[0]-1, in_chunk)
-    
-    track_chunk = track.isel(time = in_chunk)
+        in_chunk = np.append(in_chunk[0] - 1, in_chunk)
+
+    track_chunk = track.isel(time=in_chunk)
     pcen = track_chunk.central_pressure.values
     time_days = np.append(0, np.cumsum(track_chunk.time_step.values[1:] / 24))
     time_step_h = track_chunk.time_step.values[0]
 
     # perturb target central pressure: truncated normal distribution
-    target_peak_pert = central_pressure_pert / 2 * scipy.stats.truncnorm.ppf(rnd_pars_i[0], -2, 2)
+    target_peak_pert = (
+        central_pressure_pert / 2 * scipy.stats.truncnorm.ppf(rnd_pars_i[0], -2, 2)
+    )
     target_peak = track_chunk.target_central_pressure.values[0] + target_peak_pert
-    
-    target_pressure_bias = float(os.getenv('TRACKGEN_TEST_BIAS_TARGET_PRESSURE'))
+
+    target_pressure_bias = float(os.getenv("TRACKGEN_TEST_BIAS_TARGET_PRESSURE"))
     if target_pressure_bias != 0:
         if target_pressure_bias > 0:
-            LOGGER.warning('Applying a positive pressure bias to target pressures. Is this deliberate?')
+            LOGGER.warning(
+                "Applying a positive pressure bias to target pressures. Is this deliberate?"
+            )
         target_peak = target_peak + target_pressure_bias
-
 
     if pcen[0] <= target_peak:
         # already at target, no intensification needed - keep at current intensity
@@ -2784,21 +3204,35 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
     else:
         # intensification parameters
         # was there any landfall prior to then?
-        after_lf = int(np.any(np.diff(track.on_land[:in_chunk[1]].values.astype(int)) == 1))
+        after_lf = int(
+            np.any(np.diff(track.on_land[: in_chunk[1]].values.astype(int)) == 1)
+        )
         # filter to current case
-        inten_i = (after_lf == RANDOM_WALK_DATA_INTENSIFICATION['afterLF']) & \
-            (rnd_pars_i[1] >= RANDOM_WALK_DATA_INTENSIFICATION['cumfreqlow']) & \
-            (rnd_pars_i[1] < RANDOM_WALK_DATA_INTENSIFICATION['cumfreqhigh']) & \
-            (pcen[0] - target_peak >= RANDOM_WALK_DATA_INTENSIFICATION['pcen_low_bnds'])
+        inten_i = (
+            (after_lf == RANDOM_WALK_DATA_INTENSIFICATION["afterLF"])
+            & (rnd_pars_i[1] >= RANDOM_WALK_DATA_INTENSIFICATION["cumfreqlow"])
+            & (rnd_pars_i[1] < RANDOM_WALK_DATA_INTENSIFICATION["cumfreqhigh"])
+            & (
+                pcen[0] - target_peak
+                >= RANDOM_WALK_DATA_INTENSIFICATION["pcen_low_bnds"]
+            )
+        )
         # keep the one with highest pcen_low_bnds
-        inten_pars = RANDOM_WALK_DATA_INTENSIFICATION.loc[
-            inten_i, ['a', 'b', 'pcen_low_bnds']
-        ].sort_values('pcen_low_bnds', ascending=False).iloc[0].loc[['a', 'b']].to_dict()
+        inten_pars = (
+            RANDOM_WALK_DATA_INTENSIFICATION.loc[inten_i, ["a", "b", "pcen_low_bnds"]]
+            .sort_values("pcen_low_bnds", ascending=False)
+            .iloc[0]
+            .loc[["a", "b"]]
+            .to_dict()
+        )
         # apply intensification
-        pcen = np.fmax(pcen[0] + inten_pars['a']*(1-np.exp(inten_pars['b']*time_days)), np.array([target_peak]))
+        pcen = np.fmax(
+            pcen[0] + inten_pars["a"] * (1 - np.exp(inten_pars["b"] * time_days)),
+            np.array([target_peak]),
+        )
         # ensure central pressure < environmental pressure
         pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
-        track_chunk['central_pressure'][:] = pcen
+        track_chunk["central_pressure"][:] = pcen
 
     # peak duration
     # defined as the time difference between the first point after peak
@@ -2812,16 +3246,18 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
         # peak duration
         if is_peak[0]:
             # account for previous time steps for peak duration
-            pcen_before_peak_rev = np.flip(track.central_pressure.values[:in_chunk[0]])
+            pcen_before_peak_rev = np.flip(track.central_pressure.values[: in_chunk[0]])
             idx_before_peak_rev = np.where(pcen_before_peak_rev - target_peak > 5)[0]
-            time_before_peak_rev = np.flip(track.time.values[:in_chunk[0]])
+            time_before_peak_rev = np.flip(track.time.values[: in_chunk[0]])
             if idx_before_peak_rev.shape[0] > 0:
-                idx_start_peak_rev = idx_before_peak_rev[0] -1
+                idx_start_peak_rev = idx_before_peak_rev[0] - 1
                 # time of first point within peak
                 peak_start_time = time_before_peak_rev[idx_start_peak_rev]
                 # time spent in peak until chunk start
                 time_already_in_peak = track_chunk.time.values[0] - peak_start_time
-                time_already_in_peak_days = time_already_in_peak / np.timedelta64(1, 'D')
+                time_already_in_peak_days = time_already_in_peak / np.timedelta64(
+                    1, "D"
+                )
             else:
                 time_already_in_peak_days = 0
         else:
@@ -2832,9 +3268,13 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
         # since we do not know if we are in the intensification or decay
         # phase of the whole TC, take the average Vmax estimate from both
         # fits to determine TC category at peak
-        peak_duration_days = _get_peak_duration(track_chunk, peak_pcen_i, np.min(pcen), rnd_pars_i[2])
+        peak_duration_days = _get_peak_duration(
+            track_chunk, peak_pcen_i, np.min(pcen), rnd_pars_i[2]
+        )
         # last peak point
-        time_in_peak = time_days - time_days[np.where(is_peak)[0][0]] + time_already_in_peak_days
+        time_in_peak = (
+            time_days - time_days[np.where(is_peak)[0][0]] + time_already_in_peak_days
+        )
         if np.any(time_in_peak <= peak_duration_days):
             end_peak = np.where(time_in_peak <= peak_duration_days)[0][-1]
             if end_peak > 2:
@@ -2843,43 +3283,59 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
                     # starting at peak: linear decrease to peak value +2.5mbar
                     # from peak center
                     peak_start_idx = np.where(pcen == np.min(pcen))[0][0]
-                    mid_peak_idx = np.floor((end_peak+1)/2).astype(int)
-                    pcen[mid_peak_idx:end_peak + 1] = np.interp(
-                        np.arange(mid_peak_idx, end_peak+1),
+                    mid_peak_idx = np.floor((end_peak + 1) / 2).astype(int)
+                    pcen[mid_peak_idx : end_peak + 1] = np.interp(
+                        np.arange(mid_peak_idx, end_peak + 1),
                         np.array([mid_peak_idx, end_peak]),
-                        np.array([pcen[mid_peak_idx], target_peak+2.5])
+                        np.array([pcen[mid_peak_idx], target_peak + 2.5]),
                     )
                 elif end_peak - np.where(is_peak)[0][0] >= 2:
                     # model peak as a quadratic function
                     peak_start_idx = np.where(is_peak)[0][0]
-                    mid_peak_idx = (peak_start_idx + np.floor((end_peak-peak_start_idx+1)/2)).astype(int)
+                    mid_peak_idx = (
+                        peak_start_idx + np.floor((end_peak - peak_start_idx + 1) / 2)
+                    ).astype(int)
                     if pcen[peak_start_idx] == pcen[mid_peak_idx]:
                         pcen[peak_start_idx] = pcen[peak_start_idx] + 2.5
                     interp_fun = scipy.interpolate.interp1d(
                         x=np.array([peak_start_idx, mid_peak_idx, end_peak]),
-                        y=np.array([pcen[peak_start_idx], pcen[mid_peak_idx], pcen[end_peak]+2.5]),
-                        kind='quadratic'
+                        y=np.array(
+                            [
+                                pcen[peak_start_idx],
+                                pcen[mid_peak_idx],
+                                pcen[end_peak] + 2.5,
+                            ]
+                        ),
+                        kind="quadratic",
                     )
-                    pcen[peak_start_idx:end_peak+1] = interp_fun(np.arange(peak_start_idx, end_peak+1))
+                    pcen[peak_start_idx : end_peak + 1] = interp_fun(
+                        np.arange(peak_start_idx, end_peak + 1)
+                    )
         else:
             # peak already ends
             end_peak = 0
 
         # decay required?
         if end_peak < len(time_days) - 1:
-            peak_decay_k = _get_decay_k(track_chunk.basin.values[end_peak], rnd_pars_i[3])
+            peak_decay_k = _get_decay_k(
+                track_chunk.basin.values[end_peak], rnd_pars_i[3]
+            )
             time_in_decay = time_days[end_peak:] - time_days[end_peak]
             # decay: p(t) = p_env(t) + (p(t=0) - p_env(t)) * exp(-k*t)
-            p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
+            p_drop = (
+                pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:]
+            )
             p_drop = p_drop * np.exp(-peak_decay_k * time_in_decay)
-            pcen[end_peak:] = track_chunk.environmental_pressure.values[end_peak:] + p_drop
+            pcen[end_peak:] = (
+                track_chunk.environmental_pressure.values[end_peak:] + p_drop
+            )
 
             # ensure central pressure < environmental pressure
             pcen = np.fmin(pcen, track_chunk.environmental_pressure.values)
-            track_stage_end = 'decay'
+            track_stage_end = "decay"
 
         else:
-            track_stage_end = 'peak'
+            track_stage_end = "peak"
 
     if track.id_chunk.values[-1] == id_chunk:
         # Add additional data points if ends at high category
@@ -2890,35 +3346,58 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
             # when will peak be reached?
 
             # INTENSIFICATION EXTENSION
-            if track_stage_end == 'intens':
-                nb_days_extend_peak = np.log(1-(target_peak-pcen[0])/inten_pars['a'])/inten_pars['b']
-                nts_extend_peak = int(np.ceil(24*nb_days_extend_peak/time_step_h)) - len(pcen) + 1
-                time_days_extend = time_days[-1] + np.cumsum(np.repeat([time_step_h/24], nts_extend_peak))
-                pcen_extend = np.fmax(pcen[0] + inten_pars['a']*(1-np.exp(inten_pars['b']*time_days_extend)), np.array([target_peak]))
-                pcen_extend = np.fmin(pcen_extend, track_chunk.environmental_pressure.values[-1])
+            if track_stage_end == "intens":
+                nb_days_extend_peak = (
+                    np.log(1 - (target_peak - pcen[0]) / inten_pars["a"])
+                    / inten_pars["b"]
+                )
+                nts_extend_peak = (
+                    int(np.ceil(24 * nb_days_extend_peak / time_step_h)) - len(pcen) + 1
+                )
+                time_days_extend = time_days[-1] + np.cumsum(
+                    np.repeat([time_step_h / 24], nts_extend_peak)
+                )
+                pcen_extend = np.fmax(
+                    pcen[0]
+                    + inten_pars["a"]
+                    * (1 - np.exp(inten_pars["b"] * time_days_extend)),
+                    np.array([target_peak]),
+                )
+                pcen_extend = np.fmin(
+                    pcen_extend, track_chunk.environmental_pressure.values[-1]
+                )
                 # track_stage_end = 'peak'
             else:
-                pcen_extend = np.array([], dtype='float')
+                pcen_extend = np.array([], dtype="float")
 
             # PEAK EXTENSION
-            if track_stage_end in ['intens', 'peak']:
+            if track_stage_end in ["intens", "peak"]:
                 track_chunk_peak = track_chunk.copy(True).isel(time=[-1])
-                peak_duration_days = _get_peak_duration(track_chunk_peak, -1, target_peak, rnd_pars_i[2])
-                peak_nts = np.floor(24*peak_duration_days/time_step_h)
-                if track_stage_end == 'intens':
+                peak_duration_days = _get_peak_duration(
+                    track_chunk_peak, -1, target_peak, rnd_pars_i[2]
+                )
+                peak_nts = np.floor(24 * peak_duration_days / time_step_h)
+                if track_stage_end == "intens":
                     # peak starts during extension
-                    track_chunk_peak['central_pressure'][:] = pcen_extend[-1]
+                    track_chunk_peak["central_pressure"][:] = pcen_extend[-1]
                     peak_start_idx = np.where(pcen_extend <= target_peak + 5)[0][0]
                 else:
                     # peak starts before extension
-                    track_chunk_peak['central_pressure'][:] = pcen[-1]
+                    track_chunk_peak["central_pressure"][:] = pcen[-1]
                     peak_start_idx = np.where(pcen <= target_peak + 5)[0][0] - pcen.size
                 peak_end_idx = int(peak_start_idx + peak_nts)
                 if peak_end_idx >= 0 and peak_end_idx < pcen_extend.size:
                     pcen_extend = pcen_extend[:peak_end_idx]
                 elif peak_end_idx >= pcen_extend.size:
-                    pcen_extend = np.concatenate([pcen_extend, np.repeat([target_peak], peak_end_idx-pcen_extend.size)])
-                pcen_extend = np.fmin(pcen_extend, track_chunk.environmental_pressure.values[-1])
+                    pcen_extend = np.concatenate(
+                        [
+                            pcen_extend,
+                            np.repeat([target_peak], peak_end_idx - pcen_extend.size),
+                        ]
+                    )
+                pcen_extend = np.fmin(
+                    pcen_extend, track_chunk.environmental_pressure.values[-1]
+                )
                 # if peak_end_idx is negative: peak occurs before extension
             else:
                 # if extension starts at decay, set negative peak_end_idx
@@ -2931,21 +3410,29 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
             peak_decay_k = _get_decay_k(track_chunk.basin.values[-1], rnd_pars_i[3])
             if peak_end_idx >= 0:
                 if len(pcen_extend) > 0:
-                    p_drop = pcen_extend[-1] - track_chunk.environmental_pressure.values[-1]
+                    p_drop = (
+                        pcen_extend[-1] - track_chunk.environmental_pressure.values[-1]
+                    )
                 else:
                     # happens if track_stage_end was 'peak' but peak duration was already reached.
                     p_drop = pcen[-1] - track_chunk.environmental_pressure.values[-1]
             else:
-                p_drop = pcen[peak_end_idx] - track_chunk.environmental_pressure.values[-1]
+                p_drop = (
+                    pcen[peak_end_idx] - track_chunk.environmental_pressure.values[-1]
+                )
             # p_drop >= 0 implies pcen >= penv i.e. no extension to be applied.
             # Hence, decay extension is to be applied only if p_drop < 0
             if p_drop < 0:
                 target_decay_pres = track_chunk.environmental_pressure.values[-1] - 5
-                p_drop_rel = (target_decay_pres - track_chunk.environmental_pressure.values[-1])/p_drop
+                p_drop_rel = (
+                    target_decay_pres - track_chunk.environmental_pressure.values[-1]
+                ) / p_drop
                 nb_days_decay = -np.log(p_drop_rel) / peak_decay_k
-                nts_extend_decay = int(np.ceil(24*nb_days_decay/time_step_h))
+                nts_extend_decay = int(np.ceil(24 * nb_days_decay / time_step_h))
                 if nts_extend_decay > 0:
-                    time_in_decay = np.cumsum(np.repeat([time_step_h/24], nts_extend_decay))
+                    time_in_decay = np.cumsum(
+                        np.repeat([time_step_h / 24], nts_extend_decay)
+                    )
                     p_drop2 = p_drop * np.exp(-peak_decay_k * time_in_decay)
                     pcen_decay = track_chunk.environmental_pressure.values[-1] + p_drop2
                     # p_drop = (pcen[end_peak] - track_chunk.environmental_pressure.values[end_peak:])
@@ -2954,100 +3441,117 @@ def intensity_evolution_sea(track, id_chunk, central_pressure_pert, rnd_pars_i):
                     if peak_end_idx < 0:
                         # peak ended during existing chunk, therefore first
                         # abs(peak_end_idx) time steps already in pcen: exclude those
-                        pcen_decay = pcen_decay[-(peak_end_idx+1):]
+                        pcen_decay = pcen_decay[-(peak_end_idx + 1) :]
                     pcen_extend = np.concatenate([pcen_extend, pcen_decay])
-            pcen_extend = np.fmin(pcen_extend, track_chunk.environmental_pressure.values[-1])
+            pcen_extend = np.fmin(
+                pcen_extend, track_chunk.environmental_pressure.values[-1]
+            )
 
             # finally, truncate track to keep only 4 hours after entering TD category
-            extended_cat = np.array([
-                _get_cat_from_pcen(track_chunk, phase='decay', pcen=pcen_extend[idx])
-                for idx in range(pcen_extend.size)
-            ])
+            extended_cat = np.array(
+                [
+                    _get_cat_from_pcen(
+                        track_chunk, phase="decay", pcen=pcen_extend[idx]
+                    )
+                    for idx in range(pcen_extend.size)
+                ]
+            )
             n_buffer_frames = int(np.ceil(12 / time_step_h))
             if np.any(extended_cat >= 0):
-                cutoff_idx = min(np.where(extended_cat >= 0)[0][-1] + n_buffer_frames, extended_cat.size-1)
+                cutoff_idx = min(
+                    np.where(extended_cat >= 0)[0][-1] + n_buffer_frames,
+                    extended_cat.size - 1,
+                )
                 pcen_extend = pcen_extend[:cutoff_idx]
             if pcen_extend.size == 0:
                 # in case in the end there is nothing to extend (0 time steps)
                 pcen_extend = None
 
     # Now central pressure has been modelled
-    track_chunk['central_pressure'][:] = pcen
-    track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
+    track_chunk["central_pressure"][:] = pcen
+    track["central_pressure"][in_chunk] = track_chunk["central_pressure"][:]
     return pcen_extend
+
 
 def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
     # TODO docstring
     if id_chunk >= 0:
-        raise ValueError('id_chunk should be negative')
+        raise ValueError("id_chunk should be negative")
     if track.time.size < 2:
-        raise ValueError('track intensity can only be modelled if track consists of at least 2 points')
+        raise ValueError(
+            "track intensity can only be modelled if track consists of at least 2 points"
+        )
     # taking last value before the chunk as a starting point from where to model intensity
     in_chunk = np.where(track.id_chunk.values == id_chunk)[0]
 
     if in_chunk[0] > 0:
-        if track.id_chunk.values[in_chunk[0]-1] != 0:
+        if track.id_chunk.values[in_chunk[0] - 1] != 0:
             # need to estimate wind speed
             _estimate_params_track(track)
         # values just before landfall
-        p_landfall = float(track.central_pressure[in_chunk[0]-1].values)
-        v_landfall = float(track.max_sustained_wind[in_chunk[0]-1].values)
+        p_landfall = float(track.central_pressure[in_chunk[0] - 1].values)
+        v_landfall = float(track.max_sustained_wind[in_chunk[0] - 1].values)
     else:
         p_landfall = float(track.central_pressure[in_chunk[0]].values)
         v_landfall = float(track.max_sustained_wind[in_chunk[0]].values)
-    track_chunk = track.isel(time = in_chunk)
+    track_chunk = track.isel(time=in_chunk)
     # implement that part
-    ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
-                                                        track.max_sustained_wind_unit)
+    ss_scale = climada.hazard.tc_tracks.set_category(
+        v_landfall, track.max_sustained_wind_unit
+    )
     # position of the last point on land: last item in chunk
-    S = _calc_decay_ps_value(track_chunk, p_landfall, len(in_chunk)-1, s_rel)
+    S = _calc_decay_ps_value(track_chunk, p_landfall, len(in_chunk) - 1, s_rel)
     if S <= 1:
         # central_pressure at start of landfall > env_pres after landfall:
         # set central_pressure to environmental pressure during whole lf
         track_chunk.central_pressure[:] = track_chunk.environmental_pressure.values
     else:
-        p_decay = _decay_p_function(S, p_rel[ss_scale][1],
-                                    track_chunk.dist_since_lf.values)
+        p_decay = _decay_p_function(
+            S, p_rel[ss_scale][1], track_chunk.dist_since_lf.values
+        )
         # dont apply decay if it would decrease central pressure
         if np.any(p_decay < 1):
-            LOGGER.info('Landfall decay would decrease pressure for '
-                        'track id %s, leading to an intensification '
-                        'of the Tropical Cyclone. This behaviour is '
-                        'unphysical and therefore landfall decay is not '
-                        'applied in this case.',
-                        track_chunk.sid)
-            p_decay[p_decay < 1] = (track_chunk.central_pressure[p_decay < 1]
-                                    / p_landfall)
-        track_chunk['central_pressure'][:] = p_landfall * p_decay
+            LOGGER.info(
+                "Landfall decay would decrease pressure for "
+                "track id %s, leading to an intensification "
+                "of the Tropical Cyclone. This behaviour is "
+                "unphysical and therefore landfall decay is not "
+                "applied in this case.",
+                track_chunk.sid,
+            )
+            p_decay[p_decay < 1] = (
+                track_chunk.central_pressure[p_decay < 1] / p_landfall
+            )
+        track_chunk["central_pressure"][:] = p_landfall * p_decay
 
-    v_decay = _decay_v_function(v_rel[ss_scale],
-                                track_chunk.dist_since_lf.values)
+    v_decay = _decay_v_function(v_rel[ss_scale], track_chunk.dist_since_lf.values)
     # dont apply decay if it would increase wind speeds
     if np.any(v_decay > 1):
         # should not happen unless v_rel is negative
-        LOGGER.info('Landfall decay would increase wind speed for '
-                    'track id %s. This behaviour is unphysical and '
-                    'therefore landfall decay is not applied in this '
-                    'case.',
-                    track_chunk.sid)
-        v_decay[v_decay > 1] = (track_chunk.max_sustained_wind[v_decay > 1]
-                                / v_landfall)
-    track_chunk['max_sustained_wind'][:] = v_landfall * v_decay
+        LOGGER.info(
+            "Landfall decay would increase wind speed for "
+            "track id %s. This behaviour is unphysical and "
+            "therefore landfall decay is not applied in this "
+            "case.",
+            track_chunk.sid,
+        )
+        v_decay[v_decay > 1] = track_chunk.max_sustained_wind[v_decay > 1] / v_landfall
+    track_chunk["max_sustained_wind"][:] = v_landfall * v_decay
 
     # Any need to extend the track?
     pcen_extend, v_extend = None, None
     if track.id_chunk.values[-1] == id_chunk:
-        end_cat = _get_cat_from_pcen(track_chunk, "decay", track_chunk.time.size-1)
+        end_cat = _get_cat_from_pcen(track_chunk, "decay", track_chunk.time.size - 1)
         if end_cat > 0:
             target_wind_speed = 25
             target_v_decay = target_wind_speed / v_landfall
-            target_dist_since_lf = -np.log(target_v_decay)/v_rel[ss_scale]
+            target_dist_since_lf = -np.log(target_v_decay) / v_rel[ss_scale]
             # approximate the distance between points in the extension with the
             #   distance between the last two existing points
             if track_chunk.lon.values.size == 1:
                 # this chunk is the end and track.time.size>1 hence in_chunk[0]>0
-                lon_last_but_one = track.lon.values[in_chunk[0]-1:in_chunk[0], None]
-                lat_last_but_one = track.lat.values[in_chunk[0]-1:in_chunk[0], None]
+                lon_last_but_one = track.lon.values[in_chunk[0] - 1 : in_chunk[0], None]
+                lat_last_but_one = track.lat.values[in_chunk[0] - 1 : in_chunk[0], None]
             else:
                 lon_last_but_one = track_chunk.lon.values[-2:-1, None]
                 lat_last_but_one = track_chunk.lat.values[-2:-1, None]
@@ -3057,35 +3561,47 @@ def intensity_evolution_land(track, id_chunk, v_rel, p_rel, s_rel):
                 track_chunk.lat.values[-1:, None],
                 track_chunk.lon.values[-1:, None],
                 method="geosphere",
-                units="km"
+                units="km",
             )[0, 0, 0]
             if d_dist_since_lf < 1:
-                LOGGER.debug('Tiny distance since landfall found, adjusting up for track '
-                             'extension calculations: %s',  str(d_dist_since_lf))
+                LOGGER.debug(
+                    "Tiny distance since landfall found, adjusting up for track "
+                    "extension calculations: %s",
+                    str(d_dist_since_lf),
+                )
                 d_dist_since_lf = 1
 
-            dist_since_lf_extend = np.arange(
-                track_chunk.dist_since_lf.values[-1],
-                target_dist_since_lf,
-                d_dist_since_lf
-            ) + d_dist_since_lf
+            dist_since_lf_extend = (
+                np.arange(
+                    track_chunk.dist_since_lf.values[-1],
+                    target_dist_since_lf,
+                    d_dist_since_lf,
+                )
+                + d_dist_since_lf
+            )
 
             if dist_since_lf_extend.size > 0:
-                v_decay_extend = _decay_v_function(v_rel[ss_scale], dist_since_lf_extend)
+                v_decay_extend = _decay_v_function(
+                    v_rel[ss_scale], dist_since_lf_extend
+                )
                 v_extend = v_landfall * v_decay_extend
-                p_decay_extend = _decay_p_function(S, p_rel[ss_scale][1],
-                                            dist_since_lf_extend)
+                p_decay_extend = _decay_p_function(
+                    S, p_rel[ss_scale][1], dist_since_lf_extend
+                )
                 pcen_extend = p_landfall * p_decay_extend
 
     # correct limits
-    np.warnings.filterwarnings('ignore')
-    cor_p = track_chunk.central_pressure.values > track_chunk.environmental_pressure.values
+    np.warnings.filterwarnings("ignore")
+    cor_p = (
+        track_chunk.central_pressure.values > track_chunk.environmental_pressure.values
+    )
     track_chunk.central_pressure[cor_p] = track_chunk.environmental_pressure[cor_p]
     track_chunk.max_sustained_wind[track_chunk.max_sustained_wind < 0] = 0
 
     # assign output
-    track['central_pressure'][in_chunk] = track_chunk['central_pressure'][:]
+    track["central_pressure"][in_chunk] = track_chunk["central_pressure"][:]
     return pcen_extend, v_extend
+
 
 def _estimate_params_track(track):
     """Estimate a synthetic track's parameters from central pressure based
@@ -3108,6 +3624,7 @@ def _estimate_params_track(track):
     if np.all(track.id_chunk.values == 0):
         return
     pcen = track.central_pressure.values
+
     def _get_peak_idx(pcen):
         peak_idx = np.where(pcen == pcen.min())[0]
         if np.all(pcen - pcen.min() <= 5):
@@ -3115,7 +3632,9 @@ def _estimate_params_track(track):
         peak_idx = peak_idx[0]
         # detect end of peak
         if peak_idx < len(pcen) - 1:
-            idx_out = np.where(np.diff((pcen[peak_idx:] - pcen.min() <= 5).astype(int)) == -1)[0]
+            idx_out = np.where(
+                np.diff((pcen[peak_idx:] - pcen.min() <= 5).astype(int)) == -1
+            )[0]
             if idx_out.shape[0] == 0:
                 peak_end_idx = len(pcen) - 1
             else:
@@ -3124,7 +3643,10 @@ def _estimate_params_track(track):
             peak_end_idx = peak_idx
         # detect start of peak
         if peak_idx > 0:
-            idx_out = np.where(np.diff((np.flip(pcen[:peak_idx+1]) - pcen.min() <= 5).astype(int)) == -1)[0]
+            idx_out = np.where(
+                np.diff((np.flip(pcen[: peak_idx + 1]) - pcen.min() <= 5).astype(int))
+                == -1
+            )[0]
             if idx_out.shape[0] == 0:
                 peak_start_idx = 0
             else:
@@ -3140,18 +3662,22 @@ def _estimate_params_track(track):
     interp_idx = None
     if first_idx > 0:
         # how many time steps to go back
-        time_step_h = np.unique(track['time_step'].values)[0]
-        nb_timesteps_adjust = np.ceil(FIT_TIME_ADJUST_HOUR/time_step_h).astype(int)
+        time_step_h = np.unique(track["time_step"].values)[0]
+        nb_timesteps_adjust = np.ceil(FIT_TIME_ADJUST_HOUR / time_step_h).astype(int)
         # where to adjust previous time steps
         if nb_timesteps_adjust > 0:
             # copy original values
-            track_orig = track.copy(deep = True)
+            track_orig = track.copy(deep=True)
             # indices where to interpolate between original and estimated values
             interp_idx = np.arange(max(0, first_idx - nb_timesteps_adjust), first_idx)
         # where to estimate each chunk: not before first_idx - nb_timesteps_adjust
         intens_idx = np.arange(max(0, first_idx - nb_timesteps_adjust), peak_start_idx)
-        peak_idx = np.arange(max(peak_start_idx, first_idx - nb_timesteps_adjust), peak_end_idx + 1)
-        decay_idx = np.arange(max(peak_end_idx + 1, first_idx - nb_timesteps_adjust), len(pcen))
+        peak_idx = np.arange(
+            max(peak_start_idx, first_idx - nb_timesteps_adjust), peak_end_idx + 1
+        )
+        decay_idx = np.arange(
+            max(peak_end_idx + 1, first_idx - nb_timesteps_adjust), len(pcen)
+        )
     else:
         intens_idx = np.arange(peak_start_idx)
         peak_idx = np.arange(peak_start_idx, peak_end_idx + 1)
@@ -3159,22 +3685,26 @@ def _estimate_params_track(track):
 
     # apply adjustments
     if len(intens_idx) > 0:
-        _estimate_vars_chunk(track, 'intens', intens_idx)
+        _estimate_vars_chunk(track, "intens", intens_idx)
     if len(decay_idx) > 0:
-        _estimate_vars_chunk(track, 'decay', decay_idx)
+        _estimate_vars_chunk(track, "decay", decay_idx)
     if len(peak_idx) > 0:
-        _estimate_vars_chunk(track, 'peak', peak_idx)
+        _estimate_vars_chunk(track, "peak", peak_idx)
 
     # mediate adjustments
     if interp_idx is not None:
         # interpolate between new and old values
         weights_idx = (np.arange(len(interp_idx)) + 1) / (len(interp_idx) + 1)
         for var in FIT_TRACK_VARS_RANGE.keys():
-            track[var][interp_idx] = weights_idx * track[var][interp_idx] + (1-weights_idx) * track_orig[var][interp_idx]
+            track[var][interp_idx] = (
+                weights_idx * track[var][interp_idx]
+                + (1 - weights_idx) * track_orig[var][interp_idx]
+            )
+
 
 def _get_outside_lat_idx(track):
     """Get the index of the first track point located too poleward or equatorward
-    
+
     A track point with unrealistically high wind speed for its latitude is
     considered to be too poleward or too equatorward.
 
@@ -3189,35 +3719,34 @@ def _get_outside_lat_idx(track):
         Index of the first point with unrealistic wind speed for its latitude.
         If no such point if found in the track, set to track.time.size.
     """
-    mid_basin = track.basin.values[int(np.floor(track.basin.size/2))]
+    mid_basin = track.basin.values[int(np.floor(track.basin.size / 2))]
     latrange_out_idx = track.time.size
-    for lat_max,max_wind in zip(
-        MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_max']['lat'],
-        MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_max']['max_wind']
+    for lat_max, max_wind in zip(
+        MAX_WIND_BY_LAT_RANGE[mid_basin]["lat_max"]["lat"],
+        MAX_WIND_BY_LAT_RANGE[mid_basin]["lat_max"]["max_wind"],
     ):
         outside_range = np.logical_and(
-            track.lat.values > lat_max,
-            track.max_sustained_wind.values > 1.1*max_wind
+            track.lat.values > lat_max, track.max_sustained_wind.values > 1.1 * max_wind
         )
         if np.sum(outside_range) > 3:
             latrange_out_idx = min(np.where(outside_range)[0][0], latrange_out_idx)
-    for lat_min,max_wind in zip(
-        MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_min']['lat'],
-        MAX_WIND_BY_LAT_RANGE[mid_basin]['lat_min']['max_wind']
+    for lat_min, max_wind in zip(
+        MAX_WIND_BY_LAT_RANGE[mid_basin]["lat_min"]["lat"],
+        MAX_WIND_BY_LAT_RANGE[mid_basin]["lat_min"]["max_wind"],
     ):
         outside_range = np.logical_and(
-            track.lat.values < lat_min,
-            track.max_sustained_wind.values > 1.1*max_wind
+            track.lat.values < lat_min, track.max_sustained_wind.values > 1.1 * max_wind
         )
         if np.sum(outside_range) > 3:
             latrange_out_idx = min(np.where(outside_range)[0][0], latrange_out_idx)
     return latrange_out_idx
 
+
 def _get_finalintensity_idx(track, original_track):
-    '''Get the index of the frame where the synthetic track's central 
-    pressure first goes above source track's final central pressure (or 
-    the source track's maximum pressure reacheed after its minimum pressure, 
-    whichever is higher). This is usually the last frame.'''
+    """Get the index of the frame where the synthetic track's central
+    pressure first goes above source track's final central pressure (or
+    the source track's maximum pressure reacheed after its minimum pressure,
+    whichever is higher). This is usually the last frame."""
     original_pres = original_track.central_pressure.values
     min_idx = np.where(original_pres == np.min(original_pres))[0][-1]
     max_pres = np.max(original_pres[min_idx:])
@@ -3249,51 +3778,61 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
     sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track)
     if not sea_land_idx.size:
         return track
-    for idx, (sea_land, land_sea) \
-            in enumerate(zip(sea_land_idx, land_sea_idx)):
-        v_landfall = track['max_sustained_wind'][sea_land - 1].values
-        p_landfall = float(track['central_pressure'][sea_land - 1].values)
-        ss_scale = climada.hazard.tc_tracks.set_category(v_landfall,
-                                                         track.attrs['max_sustained_wind_unit'])
+    for idx, (sea_land, land_sea) in enumerate(zip(sea_land_idx, land_sea_idx)):
+        v_landfall = track["max_sustained_wind"][sea_land - 1].values
+        p_landfall = float(track["central_pressure"][sea_land - 1].values)
+        ss_scale = climada.hazard.tc_tracks.set_category(
+            v_landfall, track.attrs["max_sustained_wind_unit"]
+        )
         if land_sea - sea_land == 1:
             continue
         S = _calc_decay_ps_value(track, p_landfall, land_sea - 1, s_rel)
         if S <= 1:
             # central_pressure at start of landfall > env_pres after landfall:
             # set central_pressure to environmental pressure during whole lf
-            track['central_pressure'][sea_land:land_sea] = \
-            track['environmental_pressure'][sea_land:land_sea]
+            track["central_pressure"][sea_land:land_sea] = track[
+                "environmental_pressure"
+            ][sea_land:land_sea]
         else:
-            p_decay = _decay_p_function(S, p_rel[ss_scale][1],
-                                        track['dist_since_lf'][sea_land:land_sea].values)
+            p_decay = _decay_p_function(
+                S, p_rel[ss_scale][1], track["dist_since_lf"][sea_land:land_sea].values
+            )
             # dont apply decay if it would decrease central pressure
             if np.any(p_decay < 1):
-                LOGGER.info('Landfall decay would decrease pressure for '
-                            'track id %s, leading to an intensification '
-                            'of the Tropical Cyclone. This behaviour is '
-                            'unphysical and therefore landfall decay is not '
-                            'applied in this case.',
-                            track.sid)
-                p_decay[p_decay < 1] = (track['central_pressure'][sea_land:land_sea][p_decay < 1]
-                                        / p_landfall)
-            track['central_pressure'][sea_land:land_sea] = p_landfall * p_decay
+                LOGGER.info(
+                    "Landfall decay would decrease pressure for "
+                    "track id %s, leading to an intensification "
+                    "of the Tropical Cyclone. This behaviour is "
+                    "unphysical and therefore landfall decay is not "
+                    "applied in this case.",
+                    track.sid,
+                )
+                p_decay[p_decay < 1] = (
+                    track["central_pressure"][sea_land:land_sea][p_decay < 1]
+                    / p_landfall
+                )
+            track["central_pressure"][sea_land:land_sea] = p_landfall * p_decay
 
-        v_decay = _decay_v_function(v_rel[ss_scale],
-                                    track['dist_since_lf'][sea_land:land_sea].values)
+        v_decay = _decay_v_function(
+            v_rel[ss_scale], track["dist_since_lf"][sea_land:land_sea].values
+        )
         # dont apply decay if it would increase wind speeds
         if np.any(v_decay > 1):
             # should not happen unless v_rel is negative
-            LOGGER.info('Landfall decay would increase wind speed for '
-                        'track id %s. This behaviour is unphysical and '
-                        'therefore landfall decay is not applied in this '
-                        'case.',
-                        track['sid'])
-            v_decay[v_decay > 1] = (track['max_sustained_wind'][sea_land:land_sea][v_decay > 1]
-                                    / v_landfall)
-        track['max_sustained_wind'][sea_land:land_sea] = v_landfall * v_decay
+            LOGGER.info(
+                "Landfall decay would increase wind speed for "
+                "track id %s. This behaviour is unphysical and "
+                "therefore landfall decay is not applied in this "
+                "case.",
+                track["sid"],
+            )
+            v_decay[v_decay > 1] = (
+                track["max_sustained_wind"][sea_land:land_sea][v_decay > 1] / v_landfall
+            )
+        track["max_sustained_wind"][sea_land:land_sea] = v_landfall * v_decay
 
         # correct values of sea after a landfall (until next landfall, if any)
-        if land_sea < track['time'].size:
+        if land_sea < track["time"].size:
             if idx + 1 < sea_land_idx.size:
                 # if there is a next landfall, correct until last point before
                 # reaching land again
@@ -3301,25 +3840,34 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
             else:
                 # if there is no further landfall, correct until the end of
                 # the track
-                end_cor = track['time'].size
+                end_cor = track["time"].size
             rndn = 0.1 * float(np.abs(np.random.normal(size=1) * 5) + 6)
-            r_diff = track['central_pressure'][land_sea].values - \
-                     track['central_pressure'][land_sea - 1].values + rndn
-            track['central_pressure'][land_sea:end_cor] += - r_diff
+            r_diff = (
+                track["central_pressure"][land_sea].values
+                - track["central_pressure"][land_sea - 1].values
+                + rndn
+            )
+            track["central_pressure"][land_sea:end_cor] += -r_diff
 
             rndn = rndn * 10  # mean value 10
-            r_diff = track['max_sustained_wind'][land_sea].values - \
-                     track['max_sustained_wind'][land_sea - 1].values - rndn
-            track['max_sustained_wind'][land_sea:end_cor] += - r_diff
+            r_diff = (
+                track["max_sustained_wind"][land_sea].values
+                - track["max_sustained_wind"][land_sea - 1].values
+                - rndn
+            )
+            track["max_sustained_wind"][land_sea:end_cor] += -r_diff
 
         # correct limits
-        warnings.filterwarnings('ignore')
-        cor_p = track['central_pressure'].values > track['environmental_pressure'].values
-        track['central_pressure'][cor_p] = track['environmental_pressure'][cor_p]
-        track['max_sustained_wind'][track['max_sustained_wind'] < 0] = 0
+        warnings.filterwarnings("ignore")
+        cor_p = (
+            track["central_pressure"].values > track["environmental_pressure"].values
+        )
+        track["central_pressure"][cor_p] = track["environmental_pressure"][cor_p]
+        track["max_sustained_wind"][track["max_sustained_wind"] < 0] = 0
 
-    track.attrs['category'] = climada.hazard.tc_tracks.set_category(
-        track['max_sustained_wind'].values, track.attrs['max_sustained_wind_unit'])
+    track.attrs["category"] = climada.hazard.tc_tracks.set_category(
+        track["max_sustained_wind"].values, track.attrs["max_sustained_wind_unit"]
+    )
     return track
 
 
@@ -3328,25 +3876,40 @@ def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
     Plot wind and presure for unchanged historical tracks."""
     # Plot synthetic tracks
     sy_tracks = [track for track in all_tracks if not track.orig_event_flag]
-    graph_v_b, graph_v_a, graph_p_b, graph_p_a, graph_pd_a, graph_ped_a = \
-        _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
-                                    syn_orig_pres)
+    graph_v_b, graph_v_a, graph_p_b, graph_p_a, graph_pd_a, graph_ped_a = (
+        _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind, syn_orig_pres)
+    )
 
     # Plot historic tracks
     hist_tracks = [track for track in all_tracks if track.orig_event_flag]
-    graph_hv, graph_hp, graph_hpd_a, graph_hped_a = \
-        _check_apply_decay_hist_plot(hist_tracks)
+    graph_hv, graph_hp, graph_hpd_a, graph_hped_a = _check_apply_decay_hist_plot(
+        hist_tracks
+    )
 
     # Put legend and fix size
     scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
-    leg_lines = [Line2D([0], [0], color=climada.hazard.tc_tracks.CAT_COLORS[i_col], lw=2)
-                 for i_col in range(len(scale_thresholds))]
-    leg_lines.append(Line2D([0], [0], color='k', lw=2))
-    leg_names = [climada.hazard.tc_tracks.CAT_NAMES[i_col]
-                 for i_col in sorted(climada.hazard.tc_tracks.CAT_NAMES.keys())]
-    leg_names.append('Sea')
-    all_gr = [graph_v_a, graph_v_b, graph_p_a, graph_p_b, graph_ped_a,
-              graph_pd_a, graph_hv, graph_hp, graph_hpd_a, graph_hped_a]
+    leg_lines = [
+        Line2D([0], [0], color=climada.hazard.tc_tracks.CAT_COLORS[i_col], lw=2)
+        for i_col in range(len(scale_thresholds))
+    ]
+    leg_lines.append(Line2D([0], [0], color="k", lw=2))
+    leg_names = [
+        climada.hazard.tc_tracks.CAT_NAMES[i_col]
+        for i_col in sorted(climada.hazard.tc_tracks.CAT_NAMES.keys())
+    ]
+    leg_names.append("Sea")
+    all_gr = [
+        graph_v_a,
+        graph_v_b,
+        graph_p_a,
+        graph_p_b,
+        graph_ped_a,
+        graph_pd_a,
+        graph_hv,
+        graph_hp,
+        graph_hpd_a,
+        graph_hped_a,
+    ]
     for graph in all_gr:
         graph.axs[0].legend(leg_lines, leg_names)
         fig, _ = graph.get_elems()
@@ -3355,9 +3918,9 @@ def _check_apply_decay_plot(all_tracks, syn_orig_wind, syn_orig_pres):
 
 def _calc_decay_ps_value(track, p_landfall, pos, s_rel):
     if s_rel:
-        p_land_s = track['environmental_pressure'][pos].values
+        p_land_s = track["environmental_pressure"][pos].values
     else:
-        p_land_s = track['central_pressure'][pos].values
+        p_land_s = track["central_pressure"][pos].values
     return float(p_land_s / p_landfall)
 
 
@@ -3382,78 +3945,99 @@ def _solve_decay_p_function(ps_y, p_y, x_val):
     return -np.log((ps_y - p_y) / (ps_y - 1.0)) / x_val
 
 
-def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind,
-                                syn_orig_pres):
+def _check_apply_decay_syn_plot(sy_tracks, syn_orig_wind, syn_orig_pres):
     """Plot winds and pressures of synthetic tracks before and after
     correction."""
     # pylint: disable=protected-access
     _, graph_v_b = plt.subplots()
-    graph_v_b.set_title('Wind before land decay correction')
-    graph_v_b.set_xlabel('Node number')
-    graph_v_b.set_ylabel('Max sustained wind (kn)')
+    graph_v_b.set_title("Wind before land decay correction")
+    graph_v_b.set_xlabel("Node number")
+    graph_v_b.set_ylabel("Max sustained wind (kn)")
 
     _, graph_v_a = plt.subplots()
-    graph_v_a.set_title('Wind after land decay correction')
-    graph_v_a.set_xlabel('Node number')
-    graph_v_a.set_ylabel('Max sustained wind (kn)')
+    graph_v_a.set_title("Wind after land decay correction")
+    graph_v_a.set_xlabel("Node number")
+    graph_v_a.set_ylabel("Max sustained wind (kn)")
 
     _, graph_p_b = plt.subplots()
-    graph_p_b.set_title('Pressure before land decay correctionn')
-    graph_p_b.set_xlabel('Node number')
-    graph_p_b.set_ylabel('Central pressure (mb)')
+    graph_p_b.set_title("Pressure before land decay correctionn")
+    graph_p_b.set_xlabel("Node number")
+    graph_p_b.set_ylabel("Central pressure (mb)")
 
     _, graph_p_a = plt.subplots()
-    graph_p_a.set_title('Pressure after land decay correctionn')
-    graph_p_a.set_xlabel('Node number')
-    graph_p_a.set_ylabel('Central pressure (mb)')
+    graph_p_a.set_title("Pressure after land decay correctionn")
+    graph_p_a.set_xlabel("Node number")
+    graph_p_a.set_ylabel("Central pressure (mb)")
 
     _, graph_pd_a = plt.subplots()
-    graph_pd_a.set_title('Relative pressure after land decay correction')
-    graph_pd_a.set_xlabel('Distance from landfall (km)')
-    graph_pd_a.set_ylabel('Central pressure relative to landfall')
+    graph_pd_a.set_title("Relative pressure after land decay correction")
+    graph_pd_a.set_xlabel("Distance from landfall (km)")
+    graph_pd_a.set_ylabel("Central pressure relative to landfall")
 
     _, graph_ped_a = plt.subplots()
     graph_ped_a.set_title(
-        'Environmental - central pressure after land decay correction')
-    graph_ped_a.set_xlabel('Distance from landfall (km)')
-    graph_ped_a.set_ylabel('Environmental pressure - Central pressure (mb)')
+        "Environmental - central pressure after land decay correction"
+    )
+    graph_ped_a.set_xlabel("Distance from landfall (km)")
+    graph_ped_a.set_ylabel("Environmental pressure - Central pressure (mb)")
 
-    for track, orig_wind, orig_pres in \
-            zip(sy_tracks, syn_orig_wind, syn_orig_pres):
+    for track, orig_wind, orig_pres in zip(sy_tracks, syn_orig_wind, syn_orig_pres):
         sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track)
         if sea_land_idx.size:
             for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
-                v_lf = track['max_sustained_wind'][sea_land - 1].values
-                p_lf = track['central_pressure'][sea_land - 1].values
+                v_lf = track["max_sustained_wind"][sea_land - 1].values
+                p_lf = track["central_pressure"][sea_land - 1].values
                 scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
                 ss_scale_idx = np.where(v_lf < scale_thresholds)[0][0]
-                on_land = np.arange(track['time'].size)[sea_land:land_sea]
+                on_land = np.arange(track["time"].size)[sea_land:land_sea]
 
-                graph_v_a.plot(on_land, track['max_sustained_wind'][on_land],
-                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
-                graph_v_b.plot(on_land, orig_wind[on_land],
-                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
-                graph_p_a.plot(on_land, track['central_pressure'][on_land],
-                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
-                graph_p_b.plot(on_land, orig_pres[on_land],
-                               'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
-                graph_pd_a.plot(track['dist_since_lf'][on_land],
-                                track['central_pressure'][on_land] / p_lf,
-                                'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
-                graph_ped_a.plot(track['dist_since_lf'][on_land],
-                                 track['environmental_pressure'][on_land] -
-                                 track['central_pressure'][on_land],
-                                 'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
+                graph_v_a.plot(
+                    on_land,
+                    track["max_sustained_wind"][on_land],
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
+                graph_v_b.plot(
+                    on_land,
+                    orig_wind[on_land],
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
+                graph_p_a.plot(
+                    on_land,
+                    track["central_pressure"][on_land],
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
+                graph_p_b.plot(
+                    on_land,
+                    orig_pres[on_land],
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
+                graph_pd_a.plot(
+                    track["dist_since_lf"][on_land],
+                    track["central_pressure"][on_land] / p_lf,
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
+                graph_ped_a.plot(
+                    track["dist_since_lf"][on_land],
+                    track["environmental_pressure"][on_land]
+                    - track["central_pressure"][on_land],
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
 
-            on_sea = np.arange(track['time'].size)[~track['on_land']]
-            graph_v_a.plot(on_sea, track['max_sustained_wind'][on_sea],
-                           'o', c='k', markersize=5)
-            graph_v_b.plot(on_sea, orig_wind[on_sea],
-                           'o', c='k', markersize=5)
-            graph_p_a.plot(on_sea, track['central_pressure'][on_sea],
-                           'o', c='k', markersize=5)
-            graph_p_b.plot(on_sea, orig_pres[on_sea],
-                           'o', c='k', markersize=5)
+            on_sea = np.arange(track["time"].size)[~track["on_land"]]
+            graph_v_a.plot(
+                on_sea, track["max_sustained_wind"][on_sea], "o", c="k", markersize=5
+            )
+            graph_v_b.plot(on_sea, orig_wind[on_sea], "o", c="k", markersize=5)
+            graph_p_a.plot(
+                on_sea, track["central_pressure"][on_sea], "o", c="k", markersize=5
+            )
+            graph_p_b.plot(on_sea, orig_pres[on_sea], "o", c="k", markersize=5)
 
     return graph_v_b, graph_v_a, graph_p_b, graph_p_a, graph_pd_a, graph_ped_a
 
@@ -3462,51 +4046,68 @@ def _check_apply_decay_hist_plot(hist_tracks):
     """Plot winds and pressures of historical tracks."""
     # pylint: disable=protected-access
     _, graph_hv = plt.subplots()
-    graph_hv.set_title('Historical wind')
-    graph_hv.set_xlabel('Node number')
-    graph_hv.set_ylabel('Max sustained wind (kn)')
+    graph_hv.set_title("Historical wind")
+    graph_hv.set_xlabel("Node number")
+    graph_hv.set_ylabel("Max sustained wind (kn)")
 
     _, graph_hp = plt.subplots()
-    graph_hp.set_title('Historical pressure')
-    graph_hp.set_xlabel('Node number')
-    graph_hp.set_ylabel('Central pressure (mb)')
+    graph_hp.set_title("Historical pressure")
+    graph_hp.set_xlabel("Node number")
+    graph_hp.set_ylabel("Central pressure (mb)")
 
     _, graph_hpd_a = plt.subplots()
-    graph_hpd_a.set_title('Historical relative pressure')
-    graph_hpd_a.set_xlabel('Distance from landfall (km)')
-    graph_hpd_a.set_ylabel('Central pressure relative to landfall')
+    graph_hpd_a.set_title("Historical relative pressure")
+    graph_hpd_a.set_xlabel("Distance from landfall (km)")
+    graph_hpd_a.set_ylabel("Central pressure relative to landfall")
 
     _, graph_hped_a = plt.subplots()
-    graph_hped_a.set_title('Historical environmental - central pressure')
-    graph_hped_a.set_xlabel('Distance from landfall (km)')
-    graph_hped_a.set_ylabel('Environmental pressure - Central pressure (mb)')
+    graph_hped_a.set_title("Historical environmental - central pressure")
+    graph_hped_a.set_xlabel("Distance from landfall (km)")
+    graph_hped_a.set_ylabel("Environmental pressure - Central pressure (mb)")
 
     for track in hist_tracks:
         sea_land_idx, land_sea_idx = climada.hazard.tc_tracks._get_landfall_idx(track)
         if sea_land_idx.size:
             for sea_land, land_sea in zip(sea_land_idx, land_sea_idx):
                 scale_thresholds = climada.hazard.tc_tracks.SAFFIR_SIM_CAT
-                ss_scale_idx = np.where(track['max_sustained_wind'][sea_land - 1].values
-                                 < scale_thresholds)[0][0]
-                on_land = np.arange(track['time'].size)[sea_land:land_sea]
+                ss_scale_idx = np.where(
+                    track["max_sustained_wind"][sea_land - 1].values < scale_thresholds
+                )[0][0]
+                on_land = np.arange(track["time"].size)[sea_land:land_sea]
 
-                graph_hv.add_curve(on_land, track['max_sustained_wind'][on_land],
-                                   'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
-                graph_hp.add_curve(on_land, track['central_pressure'][on_land],
-                                   'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
-                graph_hpd_a.plot(track['dist_since_lf'][on_land],
-                                 track['central_pressure'][on_land]
-                                 / track['central_pressure'][sea_land - 1].values,
-                                 'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
-                graph_hped_a.plot(track['dist_since_lf'][on_land],
-                                  track['environmental_pressure'][on_land] -
-                                  track['central_pressure'][on_land],
-                                  'o', c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx])
+                graph_hv.add_curve(
+                    on_land,
+                    track["max_sustained_wind"][on_land],
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
+                graph_hp.add_curve(
+                    on_land,
+                    track["central_pressure"][on_land],
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
+                graph_hpd_a.plot(
+                    track["dist_since_lf"][on_land],
+                    track["central_pressure"][on_land]
+                    / track["central_pressure"][sea_land - 1].values,
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
+                graph_hped_a.plot(
+                    track["dist_since_lf"][on_land],
+                    track["environmental_pressure"][on_land]
+                    - track["central_pressure"][on_land],
+                    "o",
+                    c=climada.hazard.tc_tracks.CAT_COLORS[ss_scale_idx],
+                )
 
-            on_sea = np.arange(track['time'].size)[~track.on_land]
-            graph_hp.plot(on_sea, track['central_pressure'][on_sea],
-                          'o', c='k', markersize=5)
-            graph_hv.plot(on_sea, track['max_sustained_wind'][on_sea],
-                          'o', c='k', markersize=5)
+            on_sea = np.arange(track["time"].size)[~track.on_land]
+            graph_hp.plot(
+                on_sea, track["central_pressure"][on_sea], "o", c="k", markersize=5
+            )
+            graph_hv.plot(
+                on_sea, track["max_sustained_wind"][on_sea], "o", c="k", markersize=5
+            )
 
     return graph_hv, graph_hp, graph_hpd_a, graph_hped_a
