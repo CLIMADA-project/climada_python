@@ -299,14 +299,14 @@ def wealth2gdp(cntry_iso, non_financial=True, ref_year=2016,
     if non_financial:
         try:
             val = factors_all_countries[
-                factors_all_countries.country_iso3 == cntry_iso]['NFW-to-GDP-ratio'].values[0]
+                factors_all_countries['country_iso3'] == cntry_iso]['NFW-to-GDP-ratio'].values[0]
         except (AttributeError, KeyError, IndexError):
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["NFW-to-GDP-ratio"].mean()
     else:
         try:
             val = factors_all_countries[
-                factors_all_countries.country_iso3 == cntry_iso]['TW-to-GDP-ratio'].values[0]
+                factors_all_countries['country_iso3'] == cntry_iso]['TW-to-GDP-ratio'].values[0]
         except (AttributeError, KeyError, IndexError):
             LOGGER.warning('No data for country, using mean factor.')
             val = factors_all_countries["TW-to-GDP-ratio"].mean()
