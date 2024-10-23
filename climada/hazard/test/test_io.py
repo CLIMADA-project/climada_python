@@ -18,20 +18,21 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Hazard base class.
 """
-import unittest
-from unittest.mock import patch
+
 import datetime as dt
+import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
-from pyproj import CRS
 import numpy as np
-from scipy.sparse import csr_matrix
 import xarray as xr
+from pyproj import CRS
+from scipy.sparse import csr_matrix
 
 from climada.hazard.base import Hazard
-from climada.util.constants import DEF_FREQ_UNIT, HAZ_TEMPLATE_XLS, HAZ_DEMO_FL, DEF_CRS
 from climada.hazard.test.test_base import DATA_DIR, dummy_hazard
+from climada.util.constants import DEF_CRS, DEF_FREQ_UNIT, HAZ_DEMO_FL, HAZ_TEMPLATE_XLS
 
 
 class TestReadDefaultNetCDF(unittest.TestCase):
@@ -605,13 +606,13 @@ class TestReaderExcel(unittest.TestCase):
         """Read an hazard excel file correctly."""
 
         # Read demo excel file
-        hazard = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type='TC')
+        hazard = Hazard.from_excel(HAZ_TEMPLATE_XLS, haz_type="TC")
 
         # Check results
         n_events = 100
         n_centroids = 45
 
-        self.assertEqual(hazard.units, '')
+        self.assertEqual(hazard.units, "")
 
         self.assertEqual(hazard.centroids.coord.shape, (n_centroids, 2))
         self.assertEqual(hazard.centroids.coord[0][0], -25.95)
@@ -620,7 +621,7 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.centroids.coord[n_centroids - 1][1], 33.88)
 
         self.assertEqual(len(hazard.event_name), 100)
-        self.assertEqual(hazard.event_name[12], 'event013')
+        self.assertEqual(hazard.event_name[12], "event013")
 
         self.assertEqual(hazard.event_id.dtype, int)
         self.assertEqual(hazard.event_id.shape, (n_events,))
@@ -632,9 +633,9 @@ class TestReaderExcel(unittest.TestCase):
         self.assertEqual(hazard.date[0], 675874)
         self.assertEqual(hazard.date[n_events - 1], 676329)
 
-        self.assertEqual(hazard.event_name[0], 'event001')
-        self.assertEqual(hazard.event_name[50], 'event051')
-        self.assertEqual(hazard.event_name[-1], 'event100')
+        self.assertEqual(hazard.event_name[0], "event001")
+        self.assertEqual(hazard.event_name[50], "event051")
+        self.assertEqual(hazard.event_name[-1], "event100")
 
         self.assertEqual(hazard.frequency.dtype, float)
         self.assertEqual(hazard.frequency.shape, (n_events,))
@@ -654,7 +655,7 @@ class TestReaderExcel(unittest.TestCase):
 
         self.assertTrue(np.all(hazard.orig))
 
-        self.assertEqual(hazard.haz_type, 'TC')
+        self.assertEqual(hazard.haz_type, "TC")
 
 
 class TestHDF5(unittest.TestCase):
@@ -662,7 +663,7 @@ class TestHDF5(unittest.TestCase):
 
     def test_write_read_unsupported_type(self):
         """Check if the write command correctly handles unsupported types"""
-        file_name = str(DATA_DIR.joinpath('test_unsupported.h5'))
+        file_name = str(DATA_DIR.joinpath("test_unsupported.h5"))
 
         # Define an unsupported type
         class CustomID:
@@ -680,13 +681,17 @@ class TestHDF5(unittest.TestCase):
         # Load the file again and compare to previous instance
         hazard_read = Hazard.from_hdf5(file_name)
         self.assertTrue(np.array_equal(hazard.date, hazard_read.date))
-        self.assertTrue(np.array_equal(hazard_read.event_id, np.array([])))  # Empty array
+        self.assertTrue(
+            np.array_equal(hazard_read.event_id, np.array([]))
+        )  # Empty array
 
 
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestReadDefaultNetCDF)
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReadDimsCoordsNetCDF))
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestReadDimsCoordsNetCDF)
+    )
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHDF5))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
