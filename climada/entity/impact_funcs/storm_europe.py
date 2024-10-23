@@ -19,24 +19,25 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define impact functions for extratropical storms (mainly windstorms in Europe).
 """
 
-__all__ = ['ImpfStormEurope', 'IFStormEurope']
+__all__ = ["ImpfStormEurope", "IFStormEurope"]
 
 import logging
-from deprecation import deprecated
+
 import numpy as np
+from deprecation import deprecated
 
-from climada.entity.impact_funcs.base import ImpactFunc
 from climada.engine.calibration_opt import init_impf
-
+from climada.entity.impact_funcs.base import ImpactFunc
 
 LOGGER = logging.getLogger(__name__)
+
 
 class ImpfStormEurope(ImpactFunc):
     """Impact functions for tropical cyclones."""
 
     def __init__(self):
         ImpactFunc.__init__(self)
-        self.haz_type = 'WS'
+        self.haz_type = "WS"
 
     @classmethod
     def from_schwierz(cls, impf_id=1):
@@ -50,16 +51,42 @@ class ImpfStormEurope(ImpactFunc):
         """
 
         impf = cls()
-        impf.name = 'Schwierz 2010'
+        impf.name = "Schwierz 2010"
         impf.id = impf_id
-        impf.intensity_unit = 'm/s'
+        impf.intensity_unit = "m/s"
         impf.intensity = np.array([0, 20, 25, 30, 35, 40, 45, 50, 55, 60, 80, 100])
-        impf.paa = np.array([0., 0., 0.001, 0.00676,
-                             0.03921, 0.10707, 0.25357, 0.48869,
-                             0.82907, 1., 1., 1.])
-        impf.mdd = np.array([0., 0., 0.001, 0.00177515,
-                             0.00367253, 0.00749977, 0.01263556, 0.01849639,
-                             0.02370487, 0.037253, 0.037253, 0.037253])
+        impf.paa = np.array(
+            [
+                0.0,
+                0.0,
+                0.001,
+                0.00676,
+                0.03921,
+                0.10707,
+                0.25357,
+                0.48869,
+                0.82907,
+                1.0,
+                1.0,
+                1.0,
+            ]
+        )
+        impf.mdd = np.array(
+            [
+                0.0,
+                0.0,
+                0.001,
+                0.00177515,
+                0.00367253,
+                0.00749977,
+                0.01263556,
+                0.01849639,
+                0.02370487,
+                0.037253,
+                0.037253,
+                0.037253,
+            ]
+        )
         impf.check()
         return impf
 
@@ -77,11 +104,11 @@ class ImpfStormEurope(ImpactFunc):
         """
 
         temp_Impf = ImpfStormEurope.from_schwierz()
-        scaling_factor = {'paa_scale': 1.332518, 'mdd_scale': 1.332518}
+        scaling_factor = {"paa_scale": 1.332518, "mdd_scale": 1.332518}
         temp_Impf = init_impf(temp_Impf, scaling_factor)[0]
-        temp_Impf.name = 'Welker 2021'
+        temp_Impf.name = "Welker 2021"
         temp_Impf.id = impf_id
-        temp_Impf.intensity_unit = 'm/s'
+        temp_Impf.intensity_unit = "m/s"
         temp_Impf.check()
         return temp_Impf
 
@@ -90,8 +117,10 @@ class ImpfStormEurope(ImpactFunc):
         This function is deprecated, use ImpfStormEurope.from_schwierz
         instead.
         """
-        LOGGER.warning("The use of ImpfStormEurope.set_schwierz is deprecated."
-                       "Use ImpfStormEurope.from_schwierz instead.")
+        LOGGER.warning(
+            "The use of ImpfStormEurope.set_schwierz is deprecated."
+            "Use ImpfStormEurope.from_schwierz instead."
+        )
         self.__dict__ = ImpfStormEurope.from_schwierz(impf_id=impf_id).__dict__
 
     def set_welker(self, impf_id=1):
@@ -99,12 +128,16 @@ class ImpfStormEurope(ImpactFunc):
         This function is deprecated, use ImpfStormEurope.from_welker
         instead.
         """
-        LOGGER.warning("The use of ImpfStormEurope.set_welker is deprecated."
-                       "Use ImpfStormEurope.from_welker instead.")
+        LOGGER.warning(
+            "The use of ImpfStormEurope.set_welker is deprecated."
+            "Use ImpfStormEurope.from_welker instead."
+        )
         self.__dict__ = ImpfStormEurope.from_welker(impf_id=impf_id).__dict__
 
 
-@deprecated(details="The class name IFStormEurope is deprecated and won't be supported in a future "
-                   +"version. Use ImpfStormEurope instead")
+@deprecated(
+    details="The class name IFStormEurope is deprecated and won't be supported in a future "
+    + "version. Use ImpfStormEurope instead"
+)
 class IFStormEurope(ImpfStormEurope):
     """Is ImpfStormEurope now"""

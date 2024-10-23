@@ -15,8 +15,9 @@ You should have received a copy of the GNU Lesser General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
-import logging
+
 import copy
+import logging
 from enum import Enum
 
 import cartopy.crs as ccrs
@@ -41,8 +42,9 @@ class DisaggMethod(Enum):
     DIV : the geometry's distributed to equal parts over all its interpolated points
     FIX : the geometry's value is replicated over all its interpolated points
     """
-    DIV = 'div'
-    FIX = 'fix'
+
+    DIV = "div"
+    FIX = "fix"
 
 
 class AggMethod(Enum):
@@ -51,12 +53,20 @@ class AggMethod(Enum):
 
     SUM : the impact is summed over all points in the polygon/line
     """
-    SUM = 'sum'
+
+    SUM = "sum"
 
 
 def calc_geom_impact(
-        exp, impf_set, haz, res, to_meters=False, disagg_met=DisaggMethod.DIV,
-        disagg_val=None, agg_met=AggMethod.SUM):
+    exp,
+    impf_set,
+    haz,
+    res,
+    to_meters=False,
+    disagg_met=DisaggMethod.DIV,
+    disagg_val=None,
+    agg_met=AggMethod.SUM,
+):
     """
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
     Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
@@ -116,10 +126,12 @@ def calc_geom_impact(
 
     # disaggregate exposure
     exp_pnt = exp_geom_to_pnt(
-        exp=exp, res=res,
-        to_meters=to_meters, disagg_met=disagg_met,
-        disagg_val=disagg_val
-        )
+        exp=exp,
+        res=res,
+        to_meters=to_meters,
+        disagg_met=disagg_met,
+        disagg_val=disagg_val,
+    )
     exp_pnt.assign_centroids(haz)
 
     # compute point impact
@@ -174,14 +186,16 @@ def impact_pnt_agg(impact_pnt, exp_pnt_gdf, agg_met):
 
     # add exposure representation points as coordinates
     repr_pnts = gpd.GeoSeries(
-        exp_pnt_gdf['geometry_orig'][:,0].apply(
-            lambda x: x.representative_point()))
+        exp_pnt_gdf["geometry_orig"][:, 0].apply(lambda x: x.representative_point())
+    )
     impact_agg.coord_exp = np.array([repr_pnts.y, repr_pnts.x]).transpose()
 
     # Add original geometries for plotting
-    impact_agg.geom_exp = exp_pnt_gdf.xs(0, level=1)\
-        .set_geometry('geometry_orig')\
-            .geometry.rename('geometry')
+    impact_agg.geom_exp = (
+        exp_pnt_gdf.xs(0, level=1)
+        .set_geometry("geometry_orig")
+        .geometry.rename("geometry")
+    )
 
     return impact_agg
 
@@ -221,18 +235,24 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
         mask = np.ones(len(col_geom))
     else:
         raise NotImplementedError(
-            f'The available aggregation methods are {AggMethod._member_names_}') # pylint: disable=no-member, protected-access
+            f"The available aggregation methods are {AggMethod._member_names_}"
+        )  # pylint: disable=no-member, protected-access
     csr_mask = sp.sparse.csr_matrix(
-        (mask, (row_pnt, col_geom)),
-         shape=(len(row_pnt), len(np.unique(col_geom)))
-        )
+        (mask, (row_pnt, col_geom)), shape=(len(row_pnt), len(np.unique(col_geom)))
+    )
 
     return imp_pnt.imp_mat.dot(csr_mask)
 
 
 def calc_grid_impact(
-        exp, impf_set, haz, grid, disagg_met=DisaggMethod.DIV, disagg_val=None,
-        agg_met=AggMethod.SUM):
+    exp,
+    impf_set,
+    haz,
+    grid,
+    disagg_met=DisaggMethod.DIV,
+    disagg_val=None,
+    agg_met=AggMethod.SUM,
+):
     """
     Compute impact for exposure with (multi-)polygons and/or (multi-)lines.
     Lat/Lon values in exp.gdf are ignored, only exp.gdf.geometry is considered.
@@ -288,13 +308,14 @@ def calc_grid_impact(
 
     # disaggregate exposure
     exp_pnt = exp_geom_to_grid(
-        exp=exp, grid= grid, disagg_met=disagg_met,
-        disagg_val=disagg_val
-        )
+        exp=exp, grid=grid, disagg_met=disagg_met, disagg_val=disagg_val
+    )
     exp_pnt.assign_centroids(haz)
 
     # compute point impact
-    impact_pnt = ImpactCalc(exp_pnt, impf_set, haz).impact(save_mat=True, assign_centroids=False)
+    impact_pnt = ImpactCalc(exp_pnt, impf_set, haz).impact(
+        save_mat=True, assign_centroids=False
+    )
 
     # re-aggregate impact to original exposure geometry
     impact_agg = impact_pnt_agg(impact_pnt, exp_pnt.gdf, agg_met)
@@ -324,22 +345,22 @@ def plot_eai_exp_geom(imp_geom, centered=False, figsize=(9, 13), **kwargs):
         matplotlib axes instance
 
     """
-    kwargs['figsize'] = figsize
-    if 'legend_kwds' not in kwargs:
-        kwargs['legend_kwds'] = {
-            'label': f"Impact [{imp_geom.unit}]",
-            'orientation': "horizontal"
-            }
-    if 'legend' not in kwargs:
-        kwargs['legend'] = True
+    kwargs["figsize"] = figsize
+    if "legend_kwds" not in kwargs:
+        kwargs["legend_kwds"] = {
+            "label": f"Impact [{imp_geom.unit}]",
+            "orientation": "horizontal",
+        }
+    if "legend" not in kwargs:
+        kwargs["legend"] = True
     gdf_plot = gpd.GeoDataFrame(imp_geom.geom_exp)
-    gdf_plot['impact'] = imp_geom.eai_exp
+    gdf_plot["impact"] = imp_geom.eai_exp
     if centered:
         # pylint: disable=abstract-class-instantiated
-        xmin, xmax = u_coord.lon_bounds(imp_geom.coord_exp[:,1])
+        xmin, xmax = u_coord.lon_bounds(imp_geom.coord_exp[:, 1])
         proj_plot = ccrs.PlateCarree(central_longitude=0.5 * (xmin + xmax))
         gdf_plot = gdf_plot.to_crs(proj_plot)
-    return gdf_plot.plot(column = 'impact', **kwargs)
+    return gdf_plot.plot(column="impact", **kwargs)
 
 
 def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
@@ -385,11 +406,13 @@ def exp_geom_to_pnt(exp, res, to_meters, disagg_met, disagg_val):
 
     if disagg_val is not None:
         exp = exp.copy()
-        exp.gdf['value'] = disagg_val
+        exp.gdf["value"] = disagg_val
 
-    if ((disagg_val is None) and ('value' not in exp.gdf.columns)):
-        raise ValueError('There is no value column in the exposure gdf to'+
-                         ' disaggregate from. Please set disagg_val explicitly.')
+    if (disagg_val is None) and ("value" not in exp.gdf.columns):
+        raise ValueError(
+            "There is no value column in the exposure gdf to"
+            + " disaggregate from. Please set disagg_val explicitly."
+        )
 
     gdf_pnt = gdf_to_pnts(exp.gdf, res, to_meters)
 
@@ -445,11 +468,13 @@ def exp_geom_to_grid(exp, grid, disagg_met, disagg_val):
 
     if disagg_val is not None:
         exp = exp.copy()
-        exp.gdf['value'] = disagg_val
+        exp.gdf["value"] = disagg_val
 
-    if ((disagg_val is None) and ('value' not in exp.gdf.columns)):
-        raise ValueError('There is no value column in the exposure gdf to'+
-                         ' disaggregate from. Please set disagg_val explicitly.')
+    if (disagg_val is None) and ("value" not in exp.gdf.columns):
+        raise ValueError(
+            "There is no value column in the exposure gdf to"
+            + " disaggregate from. Please set disagg_val explicitly."
+        )
 
     gdf_pnt = gdf_to_grid(exp.gdf, grid)
 
@@ -479,13 +504,13 @@ def _pnt_line_poly_mask(gdf):
     -------
     pnt_mask, line_mask, poly_mask :
     """
-    pnt_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.Point))
+    pnt_mask = gdf.geometry.apply(lambda x: isinstance(x, shgeom.Point))
 
-    line_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.LineString))
-    line_mask |=  gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiLineString))
+    line_mask = gdf.geometry.apply(lambda x: isinstance(x, shgeom.LineString))
+    line_mask |= gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiLineString))
 
-    poly_mask =  gdf.geometry.apply(lambda x: isinstance(x, shgeom.Polygon))
-    poly_mask |=  gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiPolygon))
+    poly_mask = gdf.geometry.apply(lambda x: isinstance(x, shgeom.Polygon))
+    poly_mask |= gdf.geometry.apply(lambda x: isinstance(x, shgeom.MultiPolygon))
 
     return pnt_mask, line_mask, poly_mask
 
@@ -525,23 +550,18 @@ def gdf_to_pnts(gdf, res, to_meters):
     gdf_pnt = gpd.GeoDataFrame([])
     if pnt_mask.any():
         gdf_pnt_only = gdf[pnt_mask]
-        gdf_pnt_only['geometry_orig'] = gdf_pnt_only['geometry'].copy()
+        gdf_pnt_only["geometry_orig"] = gdf_pnt_only["geometry"].copy()
         index = gdf_pnt_only.index.values
         gdf_pnt_only.index = pd.MultiIndex.from_arrays([index, np.zeros(len(index))])
-        gdf_pnt = gpd.GeoDataFrame(pd.concat([
-            gdf_pnt,
-            gdf_pnt_only
-        ]))
+        gdf_pnt = gpd.GeoDataFrame(pd.concat([gdf_pnt, gdf_pnt_only]))
     if line_mask.any():
-        gdf_pnt = gpd.GeoDataFrame(pd.concat([
-            gdf_pnt,
-            _line_to_pnts(gdf[line_mask], res, to_meters)
-        ]))
+        gdf_pnt = gpd.GeoDataFrame(
+            pd.concat([gdf_pnt, _line_to_pnts(gdf[line_mask], res, to_meters)])
+        )
     if poly_mask.any():
-        gdf_pnt = gpd.GeoDataFrame(pd.concat([
-            gdf_pnt,
-            _poly_to_pnts(gdf[poly_mask], res, to_meters)
-        ]))
+        gdf_pnt = gpd.GeoDataFrame(
+            pd.concat([gdf_pnt, _poly_to_pnts(gdf[poly_mask], res, to_meters)])
+        )
 
     return gdf_pnt
 
@@ -583,10 +603,12 @@ def gdf_to_grid(gdf, grid):
     # Concatenating an empty dataframe with an index together with
     # a dataframe with a multi-index breaks the multi-index
 
-    if (line_mask.any() or pnt_mask.any()):
-        raise AttributeError("The dataframe contains lines and/or polygons."
-                             "Currently only polygon dataframes can be "
-                             "disaggregated onto a fixed grid.")
+    if line_mask.any() or pnt_mask.any():
+        raise AttributeError(
+            "The dataframe contains lines and/or polygons."
+            "Currently only polygon dataframes can be "
+            "disaggregated onto a fixed grid."
+        )
     if poly_mask.any():
         return _poly_to_grid(gdf[poly_mask], grid)
 
@@ -615,10 +637,10 @@ def _disagg_values_div(gdf_pnts):
     gdf_disagg = gdf_pnts.copy(deep=False)
 
     group = gdf_pnts.groupby(axis=0, level=0)
-    vals = group['value'].mean() / group['value'].count()
+    vals = group["value"].mean() / group["value"].count()
 
     vals = vals.reindex(gdf_pnts.index, level=0)
-    gdf_disagg['value'] = vals
+    gdf_disagg["value"] = vals
 
     return gdf_disagg
 
@@ -652,20 +674,23 @@ def _poly_to_pnts(gdf, res, to_meters):
         return gdf
 
     # Needed because gdf.explode(index_parts=True) requires numeric index
-    idx = gdf.index.to_list() #To restore the naming of the index
+    idx = gdf.index.to_list()  # To restore the naming of the index
 
     gdf_points = gdf.copy().reset_index(drop=True)
 
     # Check if we need to reproject
     if to_meters and not gdf.geometry.crs.is_projected:
-        gdf_points['geometry_pnt'] = gdf_points.apply(
-            lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1)
+        gdf_points["geometry_pnt"] = gdf_points.apply(
+            lambda row: _interp_one_poly_m(row.geometry, res, gdf.crs), axis=1
+        )
     else:
-        gdf_points['geometry_pnt'] = gdf_points.apply(
-            lambda row: _interp_one_poly(row.geometry, res), axis=1)
+        gdf_points["geometry_pnt"] = gdf_points.apply(
+            lambda row: _interp_one_poly(row.geometry, res), axis=1
+        )
 
     gdf_points = _swap_geom_cols(
-        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
+        gdf_points, geom_to="geometry_orig", new_geom="geometry_pnt"
+    )
 
     gdf_points = gdf_points.explode(index_parts=True)
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
@@ -699,16 +724,18 @@ def _poly_to_grid(gdf, grid):
         return gdf
 
     # Needed because gdf.explode(index_parts=True) requires numeric index
-    idx = gdf.index.to_list() #To restore the naming of the index
+    idx = gdf.index.to_list()  # To restore the naming of the index
 
     gdf_points = gdf.copy().reset_index(drop=True)
 
     x_grid, y_grid = grid
-    gdf_points['geometry_pnt'] = gdf_points.apply(
-        lambda row: _interp_one_poly_grid(row.geometry, x_grid, y_grid), axis=1)
+    gdf_points["geometry_pnt"] = gdf_points.apply(
+        lambda row: _interp_one_poly_grid(row.geometry, x_grid, y_grid), axis=1
+    )
 
     gdf_points = _swap_geom_cols(
-        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
+        gdf_points, geom_to="geometry_orig", new_geom="geometry_pnt"
+    )
 
     gdf_points = gdf_points.explode(index_parts=True)
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
@@ -743,7 +770,7 @@ def _interp_one_poly_grid(poly, x_grid, y_grid):
     if sum(in_geom.flatten()) > 1:
         return shgeom.MultiPoint(list(zip(x_grid[in_geom], y_grid[in_geom])))
 
-    LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
+    LOGGER.warning("Polygon smaller than resolution. Setting a representative point.")
     return shgeom.MultiPoint([poly.representative_point()])
 
 
@@ -775,7 +802,7 @@ def _interp_one_poly(poly, res):
     if sum(in_geom.flatten()) > 1:
         return shgeom.MultiPoint(list(zip(x_grid[in_geom], y_grid[in_geom])))
 
-    LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
+    LOGGER.warning("Polygon smaller than resolution. Setting a representative point.")
     return shgeom.MultiPoint([poly.representative_point()])
 
 
@@ -812,10 +839,11 @@ def _interp_one_poly_m(poly, res, orig_crs):
     in_geom = sh.vectorized.contains(poly_m, x_grid, y_grid)
     if sum(in_geom.flatten()) > 1:
         x_poly, y_poly = reproject_grid(
-            x_grid[in_geom], y_grid[in_geom], m_crs, orig_crs)
+            x_grid[in_geom], y_grid[in_geom], m_crs, orig_crs
+        )
         return shgeom.MultiPoint(list(zip(x_poly, y_poly)))
 
-    LOGGER.warning('Polygon smaller than resolution. Setting a representative point.')
+    LOGGER.warning("Polygon smaller than resolution. Setting a representative point.")
     return shgeom.MultiPoint([poly.representative_point()])
 
 
@@ -835,9 +863,9 @@ def _get_pyproj_trafo(orig_crs, dest_crs):
     """
     Get pyproj projection from orig_crs to dest_crs
     """
-    return pyproj.Transformer.from_proj(pyproj.Proj(orig_crs),
-                                        pyproj.Proj(dest_crs),
-                                        always_xy=True)
+    return pyproj.Transformer.from_proj(
+        pyproj.Proj(orig_crs), pyproj.Proj(dest_crs), always_xy=True
+    )
 
 
 def reproject_grid(x_grid, y_grid, orig_crs, dest_crs):
@@ -889,7 +917,6 @@ def reproject_poly(poly, orig_crs, dest_crs):
 
 
 def _line_to_pnts(gdf_lines, res, to_meters):
-
     """
     Convert a GeoDataFrame with LineString geometries to
     Point geometries, where Points are placed at a specified distance
@@ -922,7 +949,7 @@ def _line_to_pnts(gdf_lines, res, to_meters):
         return gdf_lines
 
     # Needed because gdf.explode(index_parts=True) requires numeric index
-    idx = gdf_lines.index.to_list() #To restore the naming of the index
+    idx = gdf_lines.index.to_list()  # To restore the naming of the index
     gdf_points = gdf_lines.copy().reset_index(drop=True)
 
     if to_meters:
@@ -931,31 +958,28 @@ def _line_to_pnts(gdf_lines, res, to_meters):
         line_lengths = gdf_lines.length
 
     # Add warning if lines are too short w.r.t. resolution
-    failing_res_check_count = len(line_lengths[line_lengths > 10*res])
+    failing_res_check_count = len(line_lengths[line_lengths > 10 * res])
     if failing_res_check_count > 0:
         LOGGER.warning(
             "%d lines with a length < 10*resolution were found. "
             "Each of these lines is disaggregate to one point. "
             "Reaggregatint values will thus likely lead to overestimattion. "
             "Consider chosing a smaller resolution or filter out the short lines. ",
-            failing_res_check_count
-            )
+            failing_res_check_count,
+        )
 
-    line_fractions = [
-        _line_fraction(length, res)
-        for length in line_lengths
-        ]
+    line_fractions = [_line_fraction(length, res) for length in line_lengths]
 
-    gdf_points['geometry_pnt'] = [
-        shgeom.MultiPoint([
-            line.interpolate(dist, normalized=True)
-            for dist in fractions
-            ])
+    gdf_points["geometry_pnt"] = [
+        shgeom.MultiPoint(
+            [line.interpolate(dist, normalized=True) for dist in fractions]
+        )
         for line, fractions in zip(gdf_points.geometry, line_fractions)
-        ]
+    ]
 
     gdf_points = _swap_geom_cols(
-        gdf_points, geom_to='geometry_orig', new_geom='geometry_pnt')
+        gdf_points, geom_to="geometry_orig", new_geom="geometry_pnt"
+    )
 
     gdf_points = gdf_points.explode(index_parts=True)
     gdf_points.index = gdf_points.index.set_levels(idx, level=0)
@@ -984,6 +1008,7 @@ def _line_fraction(length, res):
     eff_res = 1 / nb_points
     start = eff_res / 2
     return np.arange(start, 1, eff_res)
+
 
 def _pnts_per_line(length, res):
     """Calculate number of points fitting along a line, given a certain
@@ -1021,9 +1046,9 @@ def _swap_geom_cols(gdf, geom_to, new_geom):
     gdf_swap : gpd.GeoDataFrame
         Copy of gdf with the new geometry column
     """
-    gdf_swap = gdf.rename(columns = {'geometry': geom_to})
-    gdf_swap.rename(columns = {new_geom: 'geometry'}, inplace=True)
-    gdf_swap.set_geometry('geometry', inplace=True, crs=gdf.crs)
+    gdf_swap = gdf.rename(columns={"geometry": geom_to})
+    gdf_swap.rename(columns={new_geom: "geometry"}, inplace=True)
+    gdf_swap.set_geometry("geometry", inplace=True, crs=gdf.crs)
     return gdf_swap
 
 

@@ -24,6 +24,6 @@ from .bayesian_optimizer import (
     BayesianOptimizerController,
     BayesianOptimizerOutput,
     BayesianOptimizerOutputEvaluator,
-    select_best
+    select_best,
 )
 from .scipy_optimizer import ScipyMinimizeOptimizer

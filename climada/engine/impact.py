@@ -19,42 +19,43 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Impact and ImpactFreqCurve classes.
 """
 
-__all__ = ['ImpactFreqCurve', 'Impact']
+__all__ = ["ImpactFreqCurve", "Impact"]
 
-from dataclasses import dataclass, field
-import logging
 import copy
 import csv
-import warnings
 import datetime as dt
-from itertools import zip_longest
-from typing import Any, Iterable, Union
+import logging
+import warnings
 from collections.abc import Collection
+from dataclasses import dataclass, field
+from itertools import zip_longest
 from pathlib import Path
+from typing import Any, Iterable, Union
 
 import contextily as ctx
-import numpy as np
-from scipy import sparse
-import matplotlib.pyplot as plt
+import h5py
 import matplotlib.animation as animation
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import xlsxwriter
-from tqdm import tqdm
-import h5py
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
+from scipy import sparse
+from tqdm import tqdm
 
-from climada.entity import Exposures
-from climada import CONFIG
-from climada.util.constants import DEF_CRS, CMAP_IMPACT, DEF_FREQ_UNIT
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 import climada.util.plot as u_plot
+from climada import CONFIG
+from climada.entity import Exposures
+from climada.util.constants import CMAP_IMPACT, DEF_CRS, DEF_FREQ_UNIT
 from climada.util.select import get_attributes_with_matching_dimension
 
 LOGGER = logging.getLogger(__name__)
 
-class Impact():
+
+class Impact:
     """Impact definition. Compute from an entity (exposures and impact
     functions) and hazard.
 
@@ -91,21 +92,23 @@ class Impact():
         the hazard type of the hazard
     """
 
-    def __init__(self,
-                 event_id=None,
-                 event_name=None,
-                 date=None,
-                 frequency=None,
-                 frequency_unit=DEF_FREQ_UNIT,
-                 coord_exp=None,
-                 crs=DEF_CRS,
-                 eai_exp=None,
-                 at_event=None,
-                 tot_value=0,
-                 aai_agg=0,
-                 unit='',
-                 imp_mat=None,
-                 haz_type=''):
+    def __init__(
+        self,
+        event_id=None,
+        event_name=None,
+        date=None,
+        frequency=None,
+        frequency_unit=DEF_FREQ_UNIT,
+        coord_exp=None,
+        crs=DEF_CRS,
+        eai_exp=None,
+        at_event=None,
+        tot_value=0,
+        aai_agg=0,
+        unit="",
+        imp_mat=None,
+        haz_type="",
+    ):
         """
         Init Impact object
 
@@ -152,7 +155,7 @@ class Impact():
         self.crs = crs.to_wkt() if isinstance(crs, (pyprojCRS, rasterioCRS)) else crs
         self.eai_exp = np.array([], float) if eai_exp is None else eai_exp
         self.at_event = np.array([], float) if at_event is None else at_event
-        self.frequency = np.array([],float) if frequency is None else frequency
+        self.frequency = np.array([], float) if frequency is None else frequency
         self.frequency_unit = frequency_unit
         self._tot_value = tot_value
         self.aai_agg = aai_agg
@@ -160,52 +163,65 @@ class Impact():
 
         if len(self.event_id) != len(self.event_name):
             raise AttributeError(
-                f'Hazard event ids {len(self.event_id)} and event names'
-                f' {len(self.event_name)} are not of the same length')
+                f"Hazard event ids {len(self.event_id)} and event names"
+                f" {len(self.event_name)} are not of the same length"
+            )
         if len(self.event_id) != len(self.date):
             raise AttributeError(
-                f'Hazard event ids {len(self.event_id)} and event dates'
-                f' {len(self.date)} are not of the same length')
+                f"Hazard event ids {len(self.event_id)} and event dates"
+                f" {len(self.date)} are not of the same length"
+            )
         if len(self.event_id) != len(self.frequency):
             raise AttributeError(
-                f'Hazard event ids {len(self.event_id)} and event frequency'
-                f' {len(self.frequency)} are not of the same length')
+                f"Hazard event ids {len(self.event_id)} and event frequency"
+                f" {len(self.frequency)} are not of the same length"
+            )
         if len(self.event_id) != len(self.at_event):
             raise AttributeError(
-                f'Number of hazard event ids {len(self.event_id)} is different '
-                f'from number of at_event values {len(self.at_event)}')
+                f"Number of hazard event ids {len(self.event_id)} is different "
+                f"from number of at_event values {len(self.at_event)}"
+            )
         if len(self.coord_exp) != len(self.eai_exp):
-            raise AttributeError('Number of exposures points is different from'
-                                 'number of eai_exp values')
+            raise AttributeError(
+                "Number of exposures points is different from"
+                "number of eai_exp values"
+            )
         if imp_mat is not None:
             self.imp_mat = imp_mat
             if self.imp_mat.size > 0:
                 if len(self.event_id) != self.imp_mat.shape[0]:
                     raise AttributeError(
-                        f'The number of rows {imp_mat.shape[0]} of the impact ' +
-                        f'matrix is inconsistent with the number {len(event_id)} '
-                        'of hazard events.')
+                        f"The number of rows {imp_mat.shape[0]} of the impact "
+                        + f"matrix is inconsistent with the number {len(event_id)} "
+                        "of hazard events."
+                    )
                 if len(self.coord_exp) != self.imp_mat.shape[1]:
                     raise AttributeError(
-                        f'The number of columns {imp_mat.shape[1]} of the impact' +
-                        f' matrix is inconsistent with the number {len(coord_exp)}'
-                        ' exposures points.')
+                        f"The number of columns {imp_mat.shape[1]} of the impact"
+                        + f" matrix is inconsistent with the number {len(coord_exp)}"
+                        " exposures points."
+                    )
         else:
             self.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
-    def calc(self, exposures, impact_funcs, hazard, save_mat=False, assign_centroids=True):
-        """This function is deprecated, use ``ImpactCalc.impact`` instead.
-        """
-        LOGGER.warning("The use of Impact().calc() is deprecated."
-                       " Use ImpactCalc().impact() instead.")
-        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
+    def calc(
+        self, exposures, impact_funcs, hazard, save_mat=False, assign_centroids=True
+    ):
+        """This function is deprecated, use ``ImpactCalc.impact`` instead."""
+        LOGGER.warning(
+            "The use of Impact().calc() is deprecated."
+            " Use ImpactCalc().impact() instead."
+        )
+        from climada.engine.impact_calc import (
+            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        )
+
         impcalc = ImpactCalc(exposures, impact_funcs, hazard)
         self.__dict__ = impcalc.impact(
-            save_mat=save_mat,
-            assign_centroids=assign_centroids
+            save_mat=save_mat, assign_centroids=assign_centroids
         ).__dict__
 
-#TODO: new name
+    # TODO: new name
     @classmethod
     def from_eih(cls, exposures, hazard, at_event, eai_exp, aai_agg, imp_mat=None):
         """
@@ -238,23 +254,24 @@ class Impact():
             impact with all risk metrics set based on the given impact matrix
         """
         return cls(
-            event_id = hazard.event_id,
-            event_name = hazard.event_name,
-            date = hazard.date,
-            frequency = hazard.frequency,
-            frequency_unit = hazard.frequency_unit,
-            coord_exp = np.stack([exposures.gdf['latitude'].values,
-                                  exposures.gdf['longitude'].values],
-                                 axis=1),
-            crs = exposures.crs,
-            unit = exposures.value_unit,
-            tot_value = exposures.centroids_total_value(hazard),
-            eai_exp = eai_exp,
-            at_event = at_event,
-            aai_agg = aai_agg,
-            imp_mat = imp_mat if imp_mat is not None else sparse.csr_matrix((0, 0)),
-            haz_type = hazard.haz_type,
-            )
+            event_id=hazard.event_id,
+            event_name=hazard.event_name,
+            date=hazard.date,
+            frequency=hazard.frequency,
+            frequency_unit=hazard.frequency_unit,
+            coord_exp=np.stack(
+                [exposures.gdf["latitude"].values, exposures.gdf["longitude"].values],
+                axis=1,
+            ),
+            crs=exposures.crs,
+            unit=exposures.value_unit,
+            tot_value=exposures.centroids_total_value(hazard),
+            eai_exp=eai_exp,
+            at_event=at_event,
+            aai_agg=aai_agg,
+            imp_mat=imp_mat if imp_mat is not None else sparse.csr_matrix((0, 0)),
+            haz_type=hazard.haz_type,
+        )
 
     @property
     def tot_value(self):
@@ -264,19 +281,23 @@ class Impact():
            Use :py:meth:`climada.entity.exposures.base.Exposures.affected_total_value`
            instead.
         """
-        LOGGER.warning("The Impact.tot_value attribute is deprecated."
-                       "Use Exposures.affected_total_value to calculate the affected "
-                       "total exposure value based on a specific hazard intensity "
-                       "threshold")
+        LOGGER.warning(
+            "The Impact.tot_value attribute is deprecated."
+            "Use Exposures.affected_total_value to calculate the affected "
+            "total exposure value based on a specific hazard intensity "
+            "threshold"
+        )
         return self._tot_value
 
     @tot_value.setter
     def tot_value(self, value):
         """Set the total exposure value close to a hazard"""
-        LOGGER.warning("The Impact.tot_value attribute is deprecated."
-                       "Use Exposures.affected_total_value to calculate the affected "
-                       "total exposure value based on a specific hazard intensity "
-                       "threshold")
+        LOGGER.warning(
+            "The Impact.tot_value attribute is deprecated."
+            "Use Exposures.affected_total_value to calculate the affected "
+            "total exposure value based on a specific hazard intensity "
+            "threshold"
+        )
         self._tot_value = value
 
     def transfer_risk(self, attachment, cover):
@@ -336,7 +357,7 @@ class Impact():
         residual_aai_agg = np.sum(residual_at_event * self.frequency)
         return residual_at_event, residual_aai_agg
 
-#TODO: rewrite and deprecate method
+    # TODO: rewrite and deprecate method
     def calc_risk_transfer(self, attachment, cover):
         """Compute traaditional risk transfer over impact. Returns new impact
         with risk transfer applied and the insurance layer resulting
@@ -392,8 +413,7 @@ class Impact():
         if year_range is None:
             year_range = []
 
-        orig_year = np.array([dt.datetime.fromordinal(date).year
-                              for date in self.date])
+        orig_year = np.array([dt.datetime.fromordinal(date).year for date in self.date])
         if orig_year.size == 0 and len(year_range) == 0:
             return dict()
         if orig_year.size == 0 or (len(year_range) > 0 and all_years):
@@ -461,13 +481,15 @@ class Impact():
 
         return at_reg_event
 
-    def calc_impact_year_set(self,all_years=True, year_range=None):
+    def calc_impact_year_set(self, all_years=True, year_range=None):
         """This function is deprecated, use Impact.impact_per_year instead."""
-        LOGGER.warning("The use of Impact.calc_impact_year_set is deprecated."
-                       "Use Impact.impact_per_year instead.")
+        LOGGER.warning(
+            "The use of Impact.calc_impact_year_set is deprecated."
+            "Use Impact.impact_per_year instead."
+        )
         return self.impact_per_year(all_years=all_years, year_range=year_range)
 
-#TODO: rewrite and deprecate method
+    # TODO: rewrite and deprecate method
     def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
         """Compute exceedance impact map for given return periods.
         Requires attribute imp_mat.
@@ -482,26 +504,35 @@ class Impact():
         -------
         np.array
         """
-        LOGGER.info('Computing exceedance impact map for return periods: %s',
-                    return_periods)
+        LOGGER.info(
+            "Computing exceedance impact map for return periods: %s", return_periods
+        )
         if self.imp_mat.size == 0:
-            raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
-                             'instance with parameter save_mat=True')
+            raise ValueError(
+                "Attribute imp_mat is empty. Recalculate Impact"
+                "instance with parameter save_mat=True"
+            )
         num_cen = self.imp_mat.shape[1]
         imp_stats = np.zeros((len(return_periods), num_cen))
         cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
         if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to > '
-                             f'{self.imp_mat.shape[0]}')
+            raise ValueError(
+                "Increase max_matrix_size configuration parameter to > "
+                f"{self.imp_mat.shape[0]}"
+            )
         # separte in chunks
         chk = -1
         for chk in range(int(num_cen / cen_step)):
-            self._loc_return_imp(np.array(return_periods),
-                                 self.imp_mat[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-                                 imp_stats[:, chk * cen_step:(chk + 1) * cen_step])
-        self._loc_return_imp(np.array(return_periods),
-                             self.imp_mat[:, (chk + 1) * cen_step:].toarray(),
-                             imp_stats[:, (chk + 1) * cen_step:])
+            self._loc_return_imp(
+                np.array(return_periods),
+                self.imp_mat[:, chk * cen_step : (chk + 1) * cen_step].toarray(),
+                imp_stats[:, chk * cen_step : (chk + 1) * cen_step],
+            )
+        self._loc_return_imp(
+            np.array(return_periods),
+            self.imp_mat[:, (chk + 1) * cen_step :].toarray(),
+            imp_stats[:, (chk + 1) * cen_step :],
+        )
 
         return imp_stats
 
@@ -536,21 +567,29 @@ class Impact():
             impact=ifc_impact,
             unit=self.unit,
             frequency_unit=self.frequency_unit,
-            label='Exceedance frequency curve'
+            label="Exceedance frequency curve",
         )
 
     def _eai_title(self):
-        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
-            return 'Expected annual impact'
-        if self.frequency_unit in ['1/day', 'daily', '1/d']:
-            return 'Expected daily impact'
-        if self.frequency_unit in ['1/month', 'monthly', '1/m']:
-            return 'Expected monthly impact'
-        return f'Expected impact ({self.frequency_unit})'
+        if self.frequency_unit in ["1/year", "annual", "1/y", "1/a"]:
+            return "Expected annual impact"
+        if self.frequency_unit in ["1/day", "daily", "1/d"]:
+            return "Expected daily impact"
+        if self.frequency_unit in ["1/month", "monthly", "1/m"]:
+            return "Expected monthly impact"
+        return f"Expected impact ({self.frequency_unit})"
 
-    def plot_scatter_eai_exposure(self, mask=None, ignore_zero=False,
-                                  pop_name=True, buffer=0.0, extend='neither',
-                                  axis=None, adapt_fontsize=True, **kwargs):
+    def plot_scatter_eai_exposure(
+        self,
+        mask=None,
+        ignore_zero=False,
+        pop_name=True,
+        buffer=0.0,
+        extend="neither",
+        axis=None,
+        adapt_fontsize=True,
+        **kwargs,
+    ):
         """Plot scatter expected impact within a period of 1/frequency_unit of each exposure.
 
         Parameters
@@ -580,18 +619,34 @@ class Impact():
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_IMPACT
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = CMAP_IMPACT
 
         eai_exp = self._build_exp()
-        axis = eai_exp.plot_scatter(mask, ignore_zero, pop_name, buffer,
-                                    extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
+        axis = eai_exp.plot_scatter(
+            mask,
+            ignore_zero,
+            pop_name,
+            buffer,
+            extend,
+            axis=axis,
+            adapt_fontsize=adapt_fontsize,
+            **kwargs,
+        )
         axis.set_title(self._eai_title())
         return axis
 
-    def plot_hexbin_eai_exposure(self, mask=None, ignore_zero=False,
-                                 pop_name=True, buffer=0.0, extend='neither',
-                                 axis=None, adapt_fontsize=True, **kwargs):
+    def plot_hexbin_eai_exposure(
+        self,
+        mask=None,
+        ignore_zero=False,
+        pop_name=True,
+        buffer=0.0,
+        extend="neither",
+        axis=None,
+        adapt_fontsize=True,
+        **kwargs,
+    ):
         """Plot hexbin expected impact within a period of 1/frequency_unit of each exposure.
 
         Parameters
@@ -621,19 +676,34 @@ class Impact():
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_IMPACT
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = CMAP_IMPACT
 
         eai_exp = self._build_exp()
-        axis = eai_exp.plot_hexbin(mask, ignore_zero, pop_name, buffer,
-                                   extend, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
+        axis = eai_exp.plot_hexbin(
+            mask,
+            ignore_zero,
+            pop_name,
+            buffer,
+            extend,
+            axis=axis,
+            adapt_fontsize=adapt_fontsize,
+            **kwargs,
+        )
         axis.set_title(self._eai_title())
         return axis
 
-    def plot_raster_eai_exposure(self, res=None, raster_res=None, save_tiff=None,
-                                 raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
-                                 label='value (log10)', axis=None, adapt_fontsize=True,
-                                 **kwargs):
+    def plot_raster_eai_exposure(
+        self,
+        res=None,
+        raster_res=None,
+        save_tiff=None,
+        raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
+        label="value (log10)",
+        axis=None,
+        adapt_fontsize=True,
+        **kwargs,
+    ):
         """Plot raster expected impact within a period of 1/frequency_unit of each exposure.
 
         Parameters
@@ -666,15 +736,31 @@ class Impact():
         # we need to set geometry points because the `plot_raster` method accesses the
         # exposures' `gdf.crs` property, which raises an error when geometry is not set
         eai_exp.set_geometry_points()
-        axis = eai_exp.plot_raster(res, raster_res, save_tiff, raster_f,
-                                   label, axis=axis, adapt_fontsize=adapt_fontsize, **kwargs)
+        axis = eai_exp.plot_raster(
+            res,
+            raster_res,
+            save_tiff,
+            raster_f,
+            label,
+            axis=axis,
+            adapt_fontsize=adapt_fontsize,
+            **kwargs,
+        )
         axis.set_title(self._eai_title())
         return axis
 
-    def plot_basemap_eai_exposure(self, mask=None, ignore_zero=False, pop_name=True,
-                                  buffer=0.0, extend='neither', zoom=10,
-                                  url=ctx.providers.CartoDB.Positron,
-                                  axis=None, **kwargs):
+    def plot_basemap_eai_exposure(
+        self,
+        mask=None,
+        ignore_zero=False,
+        pop_name=True,
+        buffer=0.0,
+        extend="neither",
+        zoom=10,
+        url=ctx.providers.CartoDB.Positron,
+        axis=None,
+        **kwargs,
+    ):
         """Plot basemap expected impact of each exposure within a period of 1/frequency_unit.
 
         Parameters
@@ -705,17 +791,27 @@ class Impact():
         -------
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
-        if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_IMPACT
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = CMAP_IMPACT
         eai_exp = self._build_exp()
-        axis = eai_exp.plot_basemap(mask, ignore_zero, pop_name, buffer,
-                                    extend, zoom, url, axis=axis, **kwargs)
+        axis = eai_exp.plot_basemap(
+            mask, ignore_zero, pop_name, buffer, extend, zoom, url, axis=axis, **kwargs
+        )
         axis.set_title(self._eai_title())
         return axis
 
-    def plot_hexbin_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
-                                    pop_name=True, buffer=0.0, extend='neither',
-                                    axis=None, adapt_fontsize=True, **kwargs):
+    def plot_hexbin_impact_exposure(
+        self,
+        event_id=1,
+        mask=None,
+        ignore_zero=False,
+        pop_name=True,
+        buffer=0.0,
+        extend="neither",
+        axis=None,
+        adapt_fontsize=True,
+        **kwargs,
+    ):
         """Plot hexbin impact of an event at each exposure.
         Requires attribute imp_mat.
 
@@ -750,22 +846,39 @@ class Impact():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.imp_mat.size == 0:
-            raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
-                             'instance with parameter save_mat=True')
-        if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_IMPACT
+            raise ValueError(
+                "Attribute imp_mat is empty. Recalculate Impact"
+                "instance with parameter save_mat=True"
+            )
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = CMAP_IMPACT
         impact_at_events_exp = self._build_exp_event(event_id)
-        axis = impact_at_events_exp.plot_hexbin(mask, ignore_zero, pop_name,
-                                                buffer, extend, axis=axis,
-                                                adapt_fontsize=adapt_fontsize,
-                                                **kwargs)
+        axis = impact_at_events_exp.plot_hexbin(
+            mask,
+            ignore_zero,
+            pop_name,
+            buffer,
+            extend,
+            axis=axis,
+            adapt_fontsize=adapt_fontsize,
+            **kwargs,
+        )
 
         return axis
 
-    def plot_basemap_impact_exposure(self, event_id=1, mask=None, ignore_zero=False,
-                                     pop_name=True, buffer=0.0, extend='neither', zoom=10,
-                                     url=ctx.providers.CartoDB.Positron,
-                                     axis=None, **kwargs):
+    def plot_basemap_impact_exposure(
+        self,
+        event_id=1,
+        mask=None,
+        ignore_zero=False,
+        pop_name=True,
+        buffer=0.0,
+        extend="neither",
+        zoom=10,
+        url=ctx.providers.CartoDB.Positron,
+        axis=None,
+        **kwargs,
+    ):
         """Plot basemap impact of an event at each exposure.
         Requires attribute imp_mat.
 
@@ -801,21 +914,30 @@ class Impact():
         cartopy.mpl.geoaxes.GeoAxesSubplot
         """
         if self.imp_mat.size == 0:
-            raise ValueError('Attribute imp_mat is empty. Recalculate Impact'
-                             'instance with parameter save_mat=True')
+            raise ValueError(
+                "Attribute imp_mat is empty. Recalculate Impact"
+                "instance with parameter save_mat=True"
+            )
 
         if event_id not in self.event_id:
-            raise ValueError(f'Event ID {event_id} not found')
-        if 'cmap' not in kwargs:
-            kwargs['cmap'] = CMAP_IMPACT
+            raise ValueError(f"Event ID {event_id} not found")
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = CMAP_IMPACT
         impact_at_events_exp = self._build_exp_event(event_id)
-        axis = impact_at_events_exp.plot_basemap(mask, ignore_zero, pop_name,
-                                                 buffer, extend, zoom, url, axis=axis, **kwargs)
+        axis = impact_at_events_exp.plot_basemap(
+            mask, ignore_zero, pop_name, buffer, extend, zoom, url, axis=axis, **kwargs
+        )
 
         return axis
 
-    def plot_rp_imp(self, return_periods=(25, 50, 100, 250),
-                    log10_scale=True, smooth=True, axis=None, **kwargs):
+    def plot_rp_imp(
+        self,
+        return_periods=(25, 50, 100, 250),
+        log10_scale=True,
+        smooth=True,
+        axis=None,
+        **kwargs,
+    ):
         """Compute and plot exceedance impact maps for different return periods.
         Calls local_exceedance_imp.
 
@@ -839,26 +961,35 @@ class Impact():
         """
         imp_stats = self.local_exceedance_imp(np.array(return_periods))
         if imp_stats.size == 0:
-            raise ValueError('Error: Attribute imp_mat is empty. Recalculate Impact'
-                             'instance with parameter save_mat=True')
+            raise ValueError(
+                "Error: Attribute imp_mat is empty. Recalculate Impact"
+                "instance with parameter save_mat=True"
+            )
         if log10_scale:
             if np.min(imp_stats) < 0:
                 imp_stats_log = np.log10(abs(imp_stats) + 1)
-                colbar_name = 'Log10(abs(Impact)+1) (' + self.unit + ')'
+                colbar_name = "Log10(abs(Impact)+1) (" + self.unit + ")"
             elif np.min(imp_stats) < 1:
                 imp_stats_log = np.log10(imp_stats + 1)
-                colbar_name = 'Log10(Impact+1) (' + self.unit + ')'
+                colbar_name = "Log10(Impact+1) (" + self.unit + ")"
             else:
                 imp_stats_log = np.log10(imp_stats)
-                colbar_name = 'Log10(Impact) (' + self.unit + ')'
+                colbar_name = "Log10(Impact) (" + self.unit + ")"
         else:
             imp_stats_log = imp_stats
-            colbar_name = 'Impact (' + self.unit + ')'
+            colbar_name = "Impact (" + self.unit + ")"
         title = list()
         for ret in return_periods:
-            title.append('Return period: ' + str(ret) + ' years')
-        axis = u_plot.geo_im_from_array(imp_stats_log, self.coord_exp,
-                                        colbar_name, title, smooth=smooth, axes=axis, **kwargs)
+            title.append("Return period: " + str(ret) + " years")
+        axis = u_plot.geo_im_from_array(
+            imp_stats_log,
+            self.coord_exp,
+            colbar_name,
+            title,
+            smooth=smooth,
+            axes=axis,
+            **kwargs,
+        )
 
         return axis, imp_stats
 
@@ -870,18 +1001,43 @@ class Impact():
         file_name : str
             absolute path of the file
         """
-        LOGGER.info('Writing %s', file_name)
-        with open(file_name, "w", encoding='utf-8') as imp_file:
+        LOGGER.info("Writing %s", file_name)
+        with open(file_name, "w", encoding="utf-8") as imp_file:
             imp_wr = csv.writer(imp_file)
-            imp_wr.writerow(["haz_type", "unit", "tot_value", "aai_agg", "event_id",
-                             "event_name", "event_date", "event_frequency", "frequency_unit",
-                             "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"])
-            csv_data = [[self.haz_type],
-                        [self.unit], [self._tot_value], [self.aai_agg],
-                        self.event_id, self.event_name, self.date,
-                        self.frequency, [self.frequency_unit], self.at_event,
-                        self.eai_exp, self.coord_exp[:, 0], self.coord_exp[:, 1],
-                        [str(self.crs)]]
+            imp_wr.writerow(
+                [
+                    "haz_type",
+                    "unit",
+                    "tot_value",
+                    "aai_agg",
+                    "event_id",
+                    "event_name",
+                    "event_date",
+                    "event_frequency",
+                    "frequency_unit",
+                    "at_event",
+                    "eai_exp",
+                    "exp_lat",
+                    "exp_lon",
+                    "exp_crs",
+                ]
+            )
+            csv_data = [
+                [self.haz_type],
+                [self.unit],
+                [self._tot_value],
+                [self.aai_agg],
+                self.event_id,
+                self.event_name,
+                self.date,
+                self.frequency,
+                [self.frequency_unit],
+                self.at_event,
+                self.eai_exp,
+                self.coord_exp[:, 0],
+                self.coord_exp[:, 1],
+                [str(self.crs)],
+            ]
             for values in zip_longest(*csv_data):
                 imp_wr.writerow(values)
 
@@ -893,7 +1049,8 @@ class Impact():
         file_name : str
             absolute path of the file
         """
-        LOGGER.info('Writing %s', file_name)
+        LOGGER.info("Writing %s", file_name)
+
         def write_col(i_col, imp_ws, xls_data):
             """Write one measure"""
             row_ini = 1
@@ -904,9 +1061,22 @@ class Impact():
         imp_wb = xlsxwriter.Workbook(file_name)
         imp_ws = imp_wb.add_worksheet()
 
-        header = ["haz_type", "unit", "tot_value", "aai_agg", "event_id",
-                  "event_name", "event_date", "event_frequency", "frequency_unit",
-                  "at_event", "eai_exp", "exp_lat", "exp_lon", "exp_crs"]
+        header = [
+            "haz_type",
+            "unit",
+            "tot_value",
+            "aai_agg",
+            "event_id",
+            "event_name",
+            "event_date",
+            "event_frequency",
+            "frequency_unit",
+            "at_event",
+            "eai_exp",
+            "exp_lat",
+            "exp_lon",
+            "exp_crs",
+        ]
         for icol, head_dat in enumerate(header):
             imp_ws.write(0, icol, head_dat)
         data = [str(self.haz_type)]
@@ -927,7 +1097,7 @@ class Impact():
 
         imp_wb.close()
 
-    def write_hdf5(self, file_path: Union[str, Path], dense_imp_mat: bool=False):
+    def write_hdf5(self, file_path: Union[str, Path], dense_imp_mat: bool = False):
         """Write the data stored in this object into an H5 file.
 
         Try to write all attributes of this class into H5 datasets or attributes.
@@ -1043,9 +1213,14 @@ class Impact():
 
     def write_sparse_csr(self, file_name):
         """Write imp_mat matrix in numpy's npz format."""
-        LOGGER.info('Writing %s', file_name)
-        np.savez(file_name, data=self.imp_mat.data, indices=self.imp_mat.indices,
-                 indptr=self.imp_mat.indptr, shape=self.imp_mat.shape)
+        LOGGER.info("Writing %s", file_name)
+        np.savez(
+            file_name,
+            data=self.imp_mat.data,
+            indices=self.imp_mat.indices,
+            indptr=self.imp_mat.indptr,
+            shape=self.imp_mat.shape,
+        )
 
     @staticmethod
     def read_sparse_csr(file_name):
@@ -1059,10 +1234,11 @@ class Impact():
         -------
         sparse.csr_matrix
         """
-        LOGGER.info('Reading %s', file_name)
+        LOGGER.info("Reading %s", file_name)
         loader = np.load(file_name)
         return sparse.csr_matrix(
-            (loader['data'], loader['indices'], loader['indptr']), shape=loader['shape'])
+            (loader["data"], loader["indices"], loader["indptr"]), shape=loader["shape"]
+        )
 
     @classmethod
     def from_csv(cls, file_name):
@@ -1079,27 +1255,28 @@ class Impact():
             Impact from csv file
         """
         # pylint: disable=no-member
-        LOGGER.info('Reading %s', file_name)
+        LOGGER.info("Reading %s", file_name)
         imp_df = pd.read_csv(file_name)
-        imp = cls(haz_type=imp_df['haz_type'][0])
-        imp.unit = imp_df['unit'][0]
-        imp.tot_value = imp_df['tot_value'][0]
-        imp.aai_agg = imp_df['aai_agg'][0]
-        imp.event_id = imp_df['event_id'][~np.isnan(imp_df['event_id'])].values
+        imp = cls(haz_type=imp_df["haz_type"][0])
+        imp.unit = imp_df["unit"][0]
+        imp.tot_value = imp_df["tot_value"][0]
+        imp.aai_agg = imp_df["aai_agg"][0]
+        imp.event_id = imp_df["event_id"][~np.isnan(imp_df["event_id"])].values
         num_ev = imp.event_id.size
-        imp.event_name = imp_df['event_name'][:num_ev].values.tolist()
-        imp.date = imp_df['event_date'][:num_ev].values
-        imp.at_event = imp_df['at_event'][:num_ev].values
-        imp.frequency = imp_df['event_frequency'][:num_ev].values
-        imp.frequency_unit = imp_df['frequency_unit'][0] if 'frequency_unit' in imp_df \
-                             else DEF_FREQ_UNIT
-        imp.eai_exp = imp_df['eai_exp'][~np.isnan(imp_df['eai_exp'])].values
+        imp.event_name = imp_df["event_name"][:num_ev].values.tolist()
+        imp.date = imp_df["event_date"][:num_ev].values
+        imp.at_event = imp_df["at_event"][:num_ev].values
+        imp.frequency = imp_df["event_frequency"][:num_ev].values
+        imp.frequency_unit = (
+            imp_df["frequency_unit"][0] if "frequency_unit" in imp_df else DEF_FREQ_UNIT
+        )
+        imp.eai_exp = imp_df["eai_exp"][~np.isnan(imp_df["eai_exp"])].values
         num_exp = imp.eai_exp.size
         imp.coord_exp = np.zeros((num_exp, 2))
-        imp.coord_exp[:, 0] = imp_df['exp_lat'][:num_exp]
-        imp.coord_exp[:, 1] = imp_df['exp_lon'][:num_exp]
+        imp.coord_exp[:, 0] = imp_df["exp_lat"][:num_exp]
+        imp.coord_exp[:, 1] = imp_df["exp_lon"][:num_exp]
         try:
-            imp.crs = u_coord.to_crs_user_input(imp_df['exp_crs'].values[0])
+            imp.crs = u_coord.to_crs_user_input(imp_df["exp_crs"].values[0])
         except AttributeError:
             imp.crs = DEF_CRS
 
@@ -1107,8 +1284,9 @@ class Impact():
 
     def read_csv(self, *args, **kwargs):
         """This function is deprecated, use Impact.from_csv instead."""
-        LOGGER.warning("The use of Impact.read_csv is deprecated."
-                       "Use Impact.from_csv instead.")
+        LOGGER.warning(
+            "The use of Impact.read_csv is deprecated." "Use Impact.from_csv instead."
+        )
         self.__dict__ = Impact.from_csv(*args, **kwargs).__dict__
 
     @classmethod
@@ -1125,27 +1303,29 @@ class Impact():
         imp : climada.engine.impact.Impact
             Impact from excel file
         """
-        LOGGER.info('Reading %s', file_name)
+        LOGGER.info("Reading %s", file_name)
         dfr = pd.read_excel(file_name)
-        imp = cls(haz_type=str(dfr['haz_type'][0]))
+        imp = cls(haz_type=str(dfr["haz_type"][0]))
 
-        imp.unit = dfr['unit'][0]
-        imp.tot_value = dfr['tot_value'][0]
-        imp.aai_agg = dfr['aai_agg'][0]
+        imp.unit = dfr["unit"][0]
+        imp.tot_value = dfr["tot_value"][0]
+        imp.aai_agg = dfr["aai_agg"][0]
 
-        imp.event_id = dfr['event_id'][~np.isnan(dfr['event_id'].values)].values
-        imp.event_name = dfr['event_name'][:imp.event_id.size].values
-        imp.date = dfr['event_date'][:imp.event_id.size].values
-        imp.frequency = dfr['event_frequency'][:imp.event_id.size].values
-        imp.frequency_unit = dfr['frequency_unit'][0] if 'frequency_unit' in dfr else DEF_FREQ_UNIT
-        imp.at_event = dfr['at_event'][:imp.event_id.size].values
+        imp.event_id = dfr["event_id"][~np.isnan(dfr["event_id"].values)].values
+        imp.event_name = dfr["event_name"][: imp.event_id.size].values
+        imp.date = dfr["event_date"][: imp.event_id.size].values
+        imp.frequency = dfr["event_frequency"][: imp.event_id.size].values
+        imp.frequency_unit = (
+            dfr["frequency_unit"][0] if "frequency_unit" in dfr else DEF_FREQ_UNIT
+        )
+        imp.at_event = dfr["at_event"][: imp.event_id.size].values
 
-        imp.eai_exp = dfr['eai_exp'][~np.isnan(dfr['eai_exp'].values)].values
+        imp.eai_exp = dfr["eai_exp"][~np.isnan(dfr["eai_exp"].values)].values
         imp.coord_exp = np.zeros((imp.eai_exp.size, 2))
-        imp.coord_exp[:, 0] = dfr['exp_lat'].values[:imp.eai_exp.size]
-        imp.coord_exp[:, 1] = dfr['exp_lon'].values[:imp.eai_exp.size]
+        imp.coord_exp[:, 0] = dfr["exp_lat"].values[: imp.eai_exp.size]
+        imp.coord_exp[:, 1] = dfr["exp_lon"].values[: imp.eai_exp.size]
         try:
-            imp.crs = u_coord.to_csr_user_input(dfr['exp_crs'].values[0])
+            imp.crs = u_coord.to_csr_user_input(dfr["exp_crs"].values[0])
         except AttributeError:
             imp.crs = DEF_CRS
 
@@ -1153,8 +1333,10 @@ class Impact():
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Impact.from_excel instead."""
-        LOGGER.warning("The use of Impact.read_excel is deprecated."
-                       "Use Impact.from_excel instead.")
+        LOGGER.warning(
+            "The use of Impact.read_excel is deprecated."
+            "Use Impact.from_excel instead."
+        )
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
     @classmethod
@@ -1259,10 +1441,18 @@ class Impact():
         return cls(**kwargs)
 
     @staticmethod
-    def video_direct_impact(exp, impf_set, haz_list, file_name='',
-                            writer=animation.PillowWriter(bitrate=500),
-                            imp_thresh=0, args_exp=None, args_imp=None,
-                            ignore_zero=False, pop_name=False):
+    def video_direct_impact(
+        exp,
+        impf_set,
+        haz_list,
+        file_name="",
+        writer=animation.PillowWriter(bitrate=500),
+        imp_thresh=0,
+        args_exp=None,
+        args_imp=None,
+        ignore_zero=False,
+        pop_name=False,
+    ):
         """
         Computes and generates video of accumulated impact per input events
         over exposure.
@@ -1299,7 +1489,9 @@ class Impact():
         -------
         list of Impact
         """
-        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
+        from climada.engine.impact_calc import (
+            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        )
 
         if args_exp is None:
             args_exp = dict()
@@ -1311,7 +1503,9 @@ class Impact():
         # assign centroids once for all
         exp.assign_centroids(haz_list[0])
         for i_time, _ in enumerate(haz_list):
-            imp_tmp = ImpactCalc(exp, impf_set, haz_list[i_time]).impact(assign_centroids=False)
+            imp_tmp = ImpactCalc(exp, impf_set, haz_list[i_time]).impact(
+                assign_centroids=False
+            )
             imp_arr = np.maximum(imp_arr, imp_tmp.eai_exp)
             # remove not impacted exposures
             save_exp = imp_arr > imp_thresh
@@ -1320,63 +1514,84 @@ class Impact():
             imp_list.append(imp_tmp)
             exp_list.append(~save_exp)
 
-        v_lim = [np.array([haz.intensity.min() for haz in haz_list]).min(),
-                 np.array([haz.intensity.max() for haz in haz_list]).max()]
+        v_lim = [
+            np.array([haz.intensity.min() for haz in haz_list]).min(),
+            np.array([haz.intensity.max() for haz in haz_list]).max(),
+        ]
 
-        if 'vmin' not in args_exp:
-            args_exp['vmin'] = exp.gdf['value'].values.min()
+        if "vmin" not in args_exp:
+            args_exp["vmin"] = exp.gdf["value"].values.min()
 
-        if 'vmin' not in args_imp:
-            args_imp['vmin'] = np.array([imp.eai_exp.min() for imp in imp_list
-                                         if imp.eai_exp.size]).min()
+        if "vmin" not in args_imp:
+            args_imp["vmin"] = np.array(
+                [imp.eai_exp.min() for imp in imp_list if imp.eai_exp.size]
+            ).min()
 
-        if 'vmax' not in args_exp:
-            args_exp['vmax'] = exp.gdf['value'].values.max()
+        if "vmax" not in args_exp:
+            args_exp["vmax"] = exp.gdf["value"].values.max()
 
-        if 'vmax' not in args_imp:
-            args_imp['vmax'] = np.array([imp.eai_exp.max() for imp in imp_list
-                                         if imp.eai_exp.size]).max()
+        if "vmax" not in args_imp:
+            args_imp["vmax"] = np.array(
+                [imp.eai_exp.max() for imp in imp_list if imp.eai_exp.size]
+            ).max()
 
-        if 'cmap' not in args_exp:
-            args_exp['cmap'] = 'winter_r'
+        if "cmap" not in args_exp:
+            args_exp["cmap"] = "winter_r"
 
-        if 'cmap' not in args_imp:
-            args_imp['cmap'] = 'autumn_r'
-
+        if "cmap" not in args_imp:
+            args_imp["cmap"] = "autumn_r"
 
         plot_raster = False
         if exp.meta:
             plot_raster = True
 
         def run(i_time):
-            haz_list[i_time].plot_intensity(1, axis=axis, cmap='Greys', vmin=v_lim[0],
-                                            vmax=v_lim[1], alpha=0.8)
+            haz_list[i_time].plot_intensity(
+                1, axis=axis, cmap="Greys", vmin=v_lim[0], vmax=v_lim[1], alpha=0.8
+            )
             if plot_raster:
-                exp.plot_hexbin(axis=axis, mask=exp_list[i_time], ignore_zero=ignore_zero,
-                                pop_name=pop_name, **args_exp)
+                exp.plot_hexbin(
+                    axis=axis,
+                    mask=exp_list[i_time],
+                    ignore_zero=ignore_zero,
+                    pop_name=pop_name,
+                    **args_exp,
+                )
                 if imp_list[i_time].coord_exp.size:
-                    imp_list[i_time].plot_hexbin_eai_exposure(axis=axis, pop_name=pop_name,
-                                                              **args_imp)
+                    imp_list[i_time].plot_hexbin_eai_exposure(
+                        axis=axis, pop_name=pop_name, **args_imp
+                    )
                     fig.delaxes(fig.axes[1])
             else:
-                exp.plot_scatter(axis=axis, mask=exp_list[i_time], ignore_zero=ignore_zero,
-                                 pop_name=pop_name, **args_exp)
+                exp.plot_scatter(
+                    axis=axis,
+                    mask=exp_list[i_time],
+                    ignore_zero=ignore_zero,
+                    pop_name=pop_name,
+                    **args_exp,
+                )
                 if imp_list[i_time].coord_exp.size:
-                    imp_list[i_time].plot_scatter_eai_exposure(axis=axis, pop_name=pop_name,
-                                                               **args_imp)
+                    imp_list[i_time].plot_scatter_eai_exposure(
+                        axis=axis, pop_name=pop_name, **args_imp
+                    )
                     fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
             fig.delaxes(fig.axes[1])
-            axis.set_xlim(haz_list[-1].centroids.lon.min(), haz_list[-1].centroids.lon.max())
-            axis.set_ylim(haz_list[-1].centroids.lat.min(), haz_list[-1].centroids.lat.max())
+            axis.set_xlim(
+                haz_list[-1].centroids.lon.min(), haz_list[-1].centroids.lon.max()
+            )
+            axis.set_ylim(
+                haz_list[-1].centroids.lat.min(), haz_list[-1].centroids.lat.max()
+            )
             axis.set_title(haz_list[i_time].event_name[0])
             pbar.update()
 
         if file_name:
-            LOGGER.info('Generating video %s', file_name)
+            LOGGER.info("Generating video %s", file_name)
             fig, axis, _fontsize = u_plot.make_map()
-            ani = animation.FuncAnimation(fig, run, frames=len(haz_list),
-                                          interval=500, blit=False)
+            ani = animation.FuncAnimation(
+                fig, run, frames=len(haz_list), interval=500, blit=False
+            )
             pbar = tqdm(total=len(haz_list))
             fig.tight_layout()
             ani.save(file_name, writer=writer)
@@ -1384,7 +1599,7 @@ class Impact():
 
         return imp_list
 
-#TODO: rewrite and deprecate method
+    # TODO: rewrite and deprecate method
     def _loc_return_imp(self, return_periods, imp, exc_imp):
         """Compute local exceedence impact for given return period.
 
@@ -1411,20 +1626,20 @@ class Impact():
 
         for cen_idx in range(imp.shape[1]):
             exc_imp[:, cen_idx] = self._cen_return_imp(
-                imp_sort[:, cen_idx], freq_sort[:, cen_idx],
-                0, return_periods)
+                imp_sort[:, cen_idx], freq_sort[:, cen_idx], 0, return_periods
+            )
 
     def _build_exp(self):
         return Exposures(
             data={
-                'value': self.eai_exp,
-                'latitude': self.coord_exp[:, 0],
-                'longitude': self.coord_exp[:, 1],
+                "value": self.eai_exp,
+                "latitude": self.coord_exp[:, 0],
+                "longitude": self.coord_exp[:, 1],
             },
             crs=self.crs,
             value_unit=self.unit,
             ref_year=0,
-            meta=None
+            meta=None,
         )
 
     def _build_exp_event(self, event_id):
@@ -1438,14 +1653,14 @@ class Impact():
         [[idx]] = (self.event_id == event_id).nonzero()
         return Exposures(
             data={
-                'value': self.imp_mat[idx].toarray().ravel(),
-                'latitude': self.coord_exp[:, 0],
-                'longitude': self.coord_exp[:, 1],
+                "value": self.imp_mat[idx].toarray().ravel(),
+                "latitude": self.coord_exp[:, 0],
+                "longitude": self.coord_exp[:, 1],
             },
             crs=self.crs,
             value_unit=self.unit,
             ref_year=0,
-            meta=None
+            meta=None,
         )
 
     @staticmethod
@@ -1481,7 +1696,7 @@ class Impact():
             pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
         imp_fit = np.polyval(pol_coef, np.log(1 / return_periods))
         wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(imp_fit)
-        imp_fit[wrong_inten] = 0.
+        imp_fit[wrong_inten] = 0.0
 
         return imp_fit
 
@@ -1491,7 +1706,7 @@ class Impact():
         event_names=None,
         dates=None,
         coord_exp=None,
-        reset_frequency=False
+        reset_frequency=False,
     ):
         """
         Select a subset of events and/or exposure points from the impact.
@@ -1544,18 +1759,22 @@ class Impact():
         nb_exp = len(self.coord_exp)
 
         if self.imp_mat.shape != (nb_events, nb_exp):
-            raise ValueError("The impact matrix is missing or incomplete. "
-                             "The eai_exp and aai_agg cannot be computed. "
-                             "Please recompute impact.calc() with save_mat=True "
-                             "before using impact.select()")
+            raise ValueError(
+                "The impact matrix is missing or incomplete. "
+                "The eai_exp and aai_agg cannot be computed. "
+                "Please recompute impact.calc() with save_mat=True "
+                "before using impact.select()"
+            )
 
         if nb_events == nb_exp:
-            LOGGER.warning("The number of events is equal to the number of "
-                           "exposure points. It is not possible to "
-                           "differentiate events and exposures attributes. "
-                           "Please add/remove one event/exposure point. "
-                           "This is a purely technical limitation of this "
-                           "method.")
+            LOGGER.warning(
+                "The number of events is equal to the number of "
+                "exposure points. It is not possible to "
+                "differentiate events and exposures attributes. "
+                "Please add/remove one event/exposure point. "
+                "This is a purely technical limitation of this "
+                "method."
+            )
             return None
 
         imp = copy.deepcopy(self)
@@ -1571,10 +1790,12 @@ class Impact():
                     if value.ndim == 1:
                         setattr(imp, attr, value[sel_ev])
                     else:
-                        LOGGER.warning("Found a multidimensional numpy array "
-                                       "with one dimension matching the number of events. "
-                                       "But multidimensional numpy arrays are not handled "
-                                       "in impact.select")
+                        LOGGER.warning(
+                            "Found a multidimensional numpy array "
+                            "with one dimension matching the number of events. "
+                            "But multidimensional numpy arrays are not handled "
+                            "in impact.select"
+                        )
                 elif isinstance(value, sparse.csr_matrix):
                     setattr(imp, attr, value[sel_ev, :])
                 elif isinstance(value, list) and value:
@@ -1582,9 +1803,11 @@ class Impact():
                 else:
                     pass
 
-            LOGGER.info("The eai_exp and aai_agg are computed for the "
-                        "selected subset of events WITHOUT modification of "
-                        "the frequencies.")
+            LOGGER.info(
+                "The eai_exp and aai_agg are computed for the "
+                "selected subset of events WITHOUT modification of "
+                "the frequencies."
+            )
 
         # apply exposure selection to impact attributes
         if coord_exp is not None:
@@ -1595,20 +1818,35 @@ class Impact():
             # .A1 reduce 1d matrix to 1d array
             imp.at_event = imp.imp_mat.sum(axis=1).A1
             imp.tot_value = None
-            LOGGER.info("The total value cannot be re-computed for a "
-                        "subset of exposures and is set to None.")
+            LOGGER.info(
+                "The total value cannot be re-computed for a "
+                "subset of exposures and is set to None."
+            )
 
         # reset frequency if date span has changed (optional):
         if reset_frequency:
-            if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
-                LOGGER.warning("Resetting the frequency is based on the calendar year of given"
+            if self.frequency_unit not in ["1/year", "annual", "1/y", "1/a"]:
+                LOGGER.warning(
+                    "Resetting the frequency is based on the calendar year of given"
                     " dates but the frequency unit here is %s. Consider setting the frequency"
                     " manually for the selection or changing the frequency unit to %s.",
-                    self.frequency_unit, DEF_FREQ_UNIT)
-            year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
-                                   dt.datetime.fromordinal(self.date.min()).year) + 1
-            year_span_new = np.abs(dt.datetime.fromordinal(imp.date.max()).year -
-                                   dt.datetime.fromordinal(imp.date.min()).year) + 1
+                    self.frequency_unit,
+                    DEF_FREQ_UNIT,
+                )
+            year_span_old = (
+                np.abs(
+                    dt.datetime.fromordinal(self.date.max()).year
+                    - dt.datetime.fromordinal(self.date.min()).year
+                )
+                + 1
+            )
+            year_span_new = (
+                np.abs(
+                    dt.datetime.fromordinal(imp.date.max()).year
+                    - dt.datetime.fromordinal(imp.date.min()).year
+                )
+                + 1
+            )
             imp.frequency = imp.frequency * year_span_old / year_span_new
 
         # cast frequency vector into 2d array for sparse matrix multiplication
@@ -1632,10 +1870,10 @@ class Impact():
             if isinstance(date_ini, str):
                 date_ini = u_dt.str_to_date(date_ini)
                 date_end = u_dt.str_to_date(date_end)
-            mask_dt &= (date_ini <= self.date)
-            mask_dt &= (self.date <= date_end)
+            mask_dt &= date_ini <= self.date
+            mask_dt &= self.date <= date_end
             if not np.any(mask_dt):
-                LOGGER.info('No impact event in given date range %s.', dates)
+                LOGGER.info("No impact event in given date range %s.", dates)
 
         sel_dt = mask_dt.nonzero()[0]  # Convert bool to indices
 
@@ -1646,7 +1884,7 @@ class Impact():
             (sel_id,) = np.isin(self.event_id, event_ids).nonzero()
             # pylint: disable=no-member
             if sel_id.size == 0:
-                LOGGER.info('No impact event with given ids %s found.', event_ids)
+                LOGGER.info("No impact event with given ids %s found.", event_ids)
 
         # filter events by name
         if event_names is None:
@@ -1655,7 +1893,7 @@ class Impact():
             (sel_na,) = np.isin(self.event_name, event_names).nonzero()
             # pylint: disable=no-member
             if sel_na.size == 0:
-                LOGGER.info('No impact event with given names %s found.', event_names)
+                LOGGER.info("No impact event with given names %s found.", event_names)
 
         # select events with machting id, name or date field.
         sel_ev = np.unique(np.concatenate([sel_dt, sel_id, sel_na]))
@@ -1713,6 +1951,7 @@ class Impact():
         - Concatenation of impacts with different exposure (e.g. different countries)
           could also be implemented here in the future.
         """
+
         def check_unique_attr(attr_name: str):
             """Check if an attribute is unique among all impacts"""
             if len({getattr(imp, attr_name) for imp in imp_list}) > 1:
@@ -1778,8 +2017,9 @@ class Impact():
             **kwargs,
         )
 
-    def match_centroids(self, hazard, distance='euclidean',
-                        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD):
+    def match_centroids(
+        self, hazard, distance="euclidean", threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD
+    ):
         """
         Finds the closest hazard centroid for each impact coordinate.
         Creates a temporary GeoDataFrame and uses ``u_coord.match_centroids()``.
@@ -1809,26 +2049,27 @@ class Impact():
             self._build_exp().gdf,
             hazard.centroids,
             distance=distance,
-            threshold=threshold)
+            threshold=threshold,
+        )
+
 
 @dataclass
-class ImpactFreqCurve():
-    """Impact exceedence frequency curve.
-    """
+class ImpactFreqCurve:
+    """Impact exceedence frequency curve."""
 
-    return_per : np.ndarray = field(default_factory=lambda: np.empty(0))
+    return_per: np.ndarray = field(default_factory=lambda: np.empty(0))
     """return period"""
 
-    impact : np.ndarray = field(default_factory=lambda: np.empty(0))
+    impact: np.ndarray = field(default_factory=lambda: np.empty(0))
     """impact exceeding frequency"""
 
-    unit : str = ''
+    unit: str = ""
     """value unit used (given by exposures unit)"""
 
-    frequency_unit : str = DEF_FREQ_UNIT
+    frequency_unit: str = DEF_FREQ_UNIT
     """value unit used (given by exposures unit)"""
 
-    label : str = ''
+    label: str = ""
     """string describing source data"""
 
     def plot(self, axis=None, log_frequency=False, **kwargs):
@@ -1850,12 +2091,12 @@ class ImpactFreqCurve():
         if not axis:
             _, axis = plt.subplots(1, 1)
         axis.set_title(self.label)
-        axis.set_ylabel('Impact (' + self.unit + ')')
+        axis.set_ylabel("Impact (" + self.unit + ")")
         if log_frequency:
-            axis.set_xlabel(f'Exceedance frequency ({self.frequency_unit})')
-            axis.set_xscale('log')
+            axis.set_xlabel(f"Exceedance frequency ({self.frequency_unit})")
+            axis.set_xscale("log")
             axis.plot(self.return_per**-1, self.impact, **kwargs)
         else:
-            axis.set_xlabel('Return period (year)')
+            axis.set_xlabel("Return period (year)")
             axis.plot(self.return_per, self.impact, **kwargs)
         return axis
