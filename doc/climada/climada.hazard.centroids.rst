@@ -8,4 +8,3 @@ climada\.hazard\.centroids\.centr module
     :members:
     :undoc-members:
     :show-inheritance:
-

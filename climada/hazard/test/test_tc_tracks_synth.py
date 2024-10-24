@@ -29,17 +29,17 @@ import xarray as xr
 import climada.hazard.tc_tracks as tc
 import climada.hazard.tc_tracks_synth as tc_synth
 import climada.util.coordinates
-from climada.util.constants import TC_ANDREW_FL
 from climada.hazard.test import download_ibtracs
+from climada.util.constants import TC_ANDREW_FL
 
-
-DATA_DIR = Path(__file__).parent.joinpath('data')
+DATA_DIR = Path(__file__).parent.joinpath("data")
 TEST_TRACK = DATA_DIR.joinpath("trac_brb_test.csv")
 TEST_TRACK_SHORT = DATA_DIR.joinpath("trac_short_test.csv")
-TEST_TRACK_DECAY_END_OCEAN = DATA_DIR.joinpath('1997018S11059_gen3.nc')
-TEST_TRACK_DECAY_END_OCEAN_HIST = DATA_DIR.joinpath('1997018S11059.nc')
-TEST_TRACK_DECAY_PENV_GT_PCEN = DATA_DIR.joinpath('1988021S12080_gen2.nc')
-TEST_TRACK_DECAY_PENV_GT_PCEN_HIST = DATA_DIR.joinpath('1988021S12080.nc')
+TEST_TRACK_DECAY_END_OCEAN = DATA_DIR.joinpath("1997018S11059_gen3.nc")
+TEST_TRACK_DECAY_END_OCEAN_HIST = DATA_DIR.joinpath("1997018S11059.nc")
+TEST_TRACK_DECAY_PENV_GT_PCEN = DATA_DIR.joinpath("1988021S12080_gen2.nc")
+TEST_TRACK_DECAY_PENV_GT_PCEN_HIST = DATA_DIR.joinpath("1988021S12080.nc")
+
 
 def dummy_track_builder(vars_dict):
     """Create a simply tc track xarray using a dictionary of variables"""
@@ -47,32 +47,34 @@ def dummy_track_builder(vars_dict):
     # on_land = np.array([False, False, False, True, True, True, False])
     # expected_id_chunk = np.array([0, 0, 1, -1, -1, -1, 2])
     # time does not matter here but is needed as a coordinate, use 3h res
-    if 'time' not in vars_dict:
-      n_time = len(vars_dict[list(vars_dict.keys())[0]])
-      time = np.arange(
-        np.datetime64('2020-06-01'),
-        np.datetime64('2020-06-01') + np.timedelta64(3, 'h')*n_time,
-        np.timedelta64(3, 'h')
-      )
-    if 'time_step' not in vars_dict:
-        vars_dict['time_step'] = np.repeat([3], n_time)
-    if 'max_sustained_wind' not in vars_dict:
-        vars_dict['max_sustained_wind'] = np.repeat([22.5], n_time)
+    if "time" not in vars_dict:
+        n_time = len(vars_dict[list(vars_dict.keys())[0]])
+        time = np.arange(
+            np.datetime64("2020-06-01"),
+            np.datetime64("2020-06-01") + np.timedelta64(3, "h") * n_time,
+            np.timedelta64(3, "h"),
+        )
+    if "time_step" not in vars_dict:
+        vars_dict["time_step"] = np.repeat([3], n_time)
+    if "max_sustained_wind" not in vars_dict:
+        vars_dict["max_sustained_wind"] = np.repeat([22.5], n_time)
     for v in vars_dict.keys():
-        vars_dict[v] = ('time', vars_dict[v])
+        vars_dict[v] = ("time", vars_dict[v])
     tc_track = xr.Dataset(
-      vars_dict,
-      coords={
-          'time': time
-      }, attrs={
-          'orig_event_flag': False,
-          'max_sustained_wind_unit': 'kn',
-          'sid': 'XXXX'
-      }
+        vars_dict,
+        coords={"time": time},
+        attrs={
+            "orig_event_flag": False,
+            "max_sustained_wind_unit": "kn",
+            "sid": "XXXX",
+        },
     )
     return tc_track
 
-def check_id_chunk_vs_on_land_synth(id_chunk, on_land_synth, idx_start_model, time_step_h=3):
+
+def check_id_chunk_vs_on_land_synth(
+    id_chunk, on_land_synth, idx_start_model, time_step_h=3
+):
     """Checks that id_chunk is compatible with on_land_synth and idx_start_model"""
     # ensure id_chunk is non-0 from idx_start_model onwards
     if np.flatnonzero(id_chunk)[0] != idx_start_model:
@@ -84,22 +86,26 @@ def check_id_chunk_vs_on_land_synth(id_chunk, on_land_synth, idx_start_model, ti
             return False
     elif idx_start_model != 0:
         return False
-    min_n_ts = tc_synth.NEGLECT_LANDFALL_DURATION_HOUR/time_step_h
+    min_n_ts = tc_synth.NEGLECT_LANDFALL_DURATION_HOUR / time_step_h
     # check long landfalls have negative id_chunk
     if np.any(np.diff(on_land_synth.astype(int)) == 1):
-        for lf_start in np.where(np.diff(on_land_synth.astype(int)) == 1)[0]+1:
+        for lf_start in np.where(np.diff(on_land_synth.astype(int)) == 1)[0] + 1:
             if np.any(np.diff(on_land_synth[lf_start:].astype(int)) == -1):
-                nts_lf = np.where(np.diff(on_land_synth[lf_start:].astype(int)) == -1)[0][0]+1
+                nts_lf = (
+                    np.where(np.diff(on_land_synth[lf_start:].astype(int)) == -1)[0][0]
+                    + 1
+                )
             else:
                 nts_lf = on_land_synth.size - lf_start
             if nts_lf > min_n_ts:
-                if np.any(id_chunk[lf_start:lf_start+nts_lf] > 0):
+                if np.any(id_chunk[lf_start : lf_start + nts_lf] > 0):
                     return False
     if np.any(np.logical_and(~on_land_synth, id_chunk < 0)):
         return False
 
     # check id chunk
     return tc_synth.check_id_chunk(id_chunk, sid="test", raise_error=False)
+
 
 class TestDecay(unittest.TestCase):
 
@@ -115,17 +121,29 @@ class TestDecay(unittest.TestCase):
             extent=extent, resolution=10
         )
         tc.track_land_params(tc_track.data[0], land_geom)
-        tc_track.data[0]['orig_event_flag'] = False
+        tc_track.data[0]["orig_event_flag"] = False
         tc_ref = tc_track.data[0].copy()
         tc_synth._apply_land_decay(tc_track.data, dict(), dict(), land_geom)
 
-        self.assertTrue(np.allclose(tc_track.data[0]['max_sustained_wind'].values,
-                                    tc_ref['max_sustained_wind'].values))
-        self.assertTrue(np.allclose(tc_track.data[0]['central_pressure'].values,
-                                    tc_ref['central_pressure'].values))
-        self.assertTrue(np.allclose(tc_track.data[0]['environmental_pressure'].values,
-                                    tc_ref['environmental_pressure'].values))
-        self.assertTrue(np.all(np.isnan(tc_track.data[0]['dist_since_lf'].values)))
+        self.assertTrue(
+            np.allclose(
+                tc_track.data[0]["max_sustained_wind"].values,
+                tc_ref["max_sustained_wind"].values,
+            )
+        )
+        self.assertTrue(
+            np.allclose(
+                tc_track.data[0]["central_pressure"].values,
+                tc_ref["central_pressure"].values,
+            )
+        )
+        self.assertTrue(
+            np.allclose(
+                tc_track.data[0]["environmental_pressure"].values,
+                tc_ref["environmental_pressure"].values,
+            )
+        )
+        self.assertTrue(np.all(np.isnan(tc_track.data[0]["dist_since_lf"].values)))
 
     def test_apply_decay_pass(self):
         """Test _apply_land_decay against MATLAB reference."""
@@ -136,7 +154,7 @@ class TestDecay(unittest.TestCase):
             1: 0.0038950967656296597,
             2: 0.0038950967656296597,
             3: 0.0038950967656296597,
-            5: 0.0038950967656296597
+            5: 0.0038950967656296597,
         }
 
         p_rel = {
@@ -146,62 +164,141 @@ class TestDecay(unittest.TestCase):
             1: (1.0499941, 0.007978940084158488),
             2: (1.0499941, 0.007978940084158488),
             3: (1.0499941, 0.007978940084158488),
-            5: (1.0499941, 0.007978940084158488)
+            5: (1.0499941, 0.007978940084158488),
         }
 
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
-        tc_track.data[0]['orig_event_flag'] = False
+        tc_track.data[0]["orig_event_flag"] = False
         extent = tc_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=extent, resolution=10
         )
         tc.track_land_params(tc_track.data[0], land_geom)
-        tc_synth._apply_land_decay(tc_track.data, v_rel, p_rel, land_geom,
-                                   s_rel=True, check_plot=False)
+        tc_synth._apply_land_decay(
+            tc_track.data, v_rel, p_rel, land_geom, s_rel=True, check_plot=False
+        )
 
-        p_ref = np.array([
-            1.010000000000000, 1.009000000000000, 1.008000000000000,
-            1.006000000000000, 1.003000000000000, 1.002000000000000,
-            1.001000000000000, 1.000000000000000, 1.000000000000000,
-            1.001000000000000, 1.002000000000000, 1.005000000000000,
-            1.007000000000000, 1.010000000000000, 1.010000000000000,
-            1.010000000000000, 1.010000000000000, 1.010000000000000,
-            1.010000000000000, 1.007000000000000, 1.004000000000000,
-            1.000000000000000, 0.994000000000000, 0.981000000000000,
-            0.969000000000000, 0.961000000000000, 0.947000000000000,
-            0.933000000000000, 0.922000000000000, 0.930000000000000,
-            0.937000000000000, 0.951000000000000, 0.947000000000000,
-            0.943000000000000, 0.948000000000000, 0.946000000000000,
-            0.941000000000000, 0.937000000000000, 0.955000000000000,
-            0.9741457117, 0.99244068917, 1.00086729492, 1.00545853355,
-            1.00818354609, 1.00941850023, 1.00986192053, 1.00998400565
-        ]) * 1e3
+        p_ref = (
+            np.array(
+                [
+                    1.010000000000000,
+                    1.009000000000000,
+                    1.008000000000000,
+                    1.006000000000000,
+                    1.003000000000000,
+                    1.002000000000000,
+                    1.001000000000000,
+                    1.000000000000000,
+                    1.000000000000000,
+                    1.001000000000000,
+                    1.002000000000000,
+                    1.005000000000000,
+                    1.007000000000000,
+                    1.010000000000000,
+                    1.010000000000000,
+                    1.010000000000000,
+                    1.010000000000000,
+                    1.010000000000000,
+                    1.010000000000000,
+                    1.007000000000000,
+                    1.004000000000000,
+                    1.000000000000000,
+                    0.994000000000000,
+                    0.981000000000000,
+                    0.969000000000000,
+                    0.961000000000000,
+                    0.947000000000000,
+                    0.933000000000000,
+                    0.922000000000000,
+                    0.930000000000000,
+                    0.937000000000000,
+                    0.951000000000000,
+                    0.947000000000000,
+                    0.943000000000000,
+                    0.948000000000000,
+                    0.946000000000000,
+                    0.941000000000000,
+                    0.937000000000000,
+                    0.955000000000000,
+                    0.9741457117,
+                    0.99244068917,
+                    1.00086729492,
+                    1.00545853355,
+                    1.00818354609,
+                    1.00941850023,
+                    1.00986192053,
+                    1.00998400565,
+                ]
+            )
+            * 1e3
+        )
 
-        self.assertTrue(np.allclose(p_ref, tc_track.data[0]['central_pressure'].values))
+        self.assertTrue(np.allclose(p_ref, tc_track.data[0]["central_pressure"].values))
 
-        v_ref = np.array([
-            0.250000000000000, 0.300000000000000, 0.300000000000000,
-            0.350000000000000, 0.350000000000000, 0.400000000000000,
-            0.450000000000000, 0.450000000000000, 0.450000000000000,
-            0.450000000000000, 0.450000000000000, 0.450000000000000,
-            0.450000000000000, 0.400000000000000, 0.400000000000000,
-            0.400000000000000, 0.400000000000000, 0.450000000000000,
-            0.450000000000000, 0.500000000000000, 0.500000000000000,
-            0.550000000000000, 0.650000000000000, 0.800000000000000,
-            0.950000000000000, 1.100000000000000, 1.300000000000000,
-            1.450000000000000, 1.500000000000000, 1.250000000000000,
-            1.300000000000000, 1.150000000000000, 1.150000000000000,
-            1.150000000000000, 1.150000000000000, 1.200000000000000,
-            1.250000000000000, 1.250000000000000, 1.200000000000000,
-            0.9737967353, 0.687255951, 0.4994850556, 0.3551480462, 0.2270548036,
-            0.1302099557, 0.0645385918, 0.0225325851
-        ]) * 1e2
+        v_ref = (
+            np.array(
+                [
+                    0.250000000000000,
+                    0.300000000000000,
+                    0.300000000000000,
+                    0.350000000000000,
+                    0.350000000000000,
+                    0.400000000000000,
+                    0.450000000000000,
+                    0.450000000000000,
+                    0.450000000000000,
+                    0.450000000000000,
+                    0.450000000000000,
+                    0.450000000000000,
+                    0.450000000000000,
+                    0.400000000000000,
+                    0.400000000000000,
+                    0.400000000000000,
+                    0.400000000000000,
+                    0.450000000000000,
+                    0.450000000000000,
+                    0.500000000000000,
+                    0.500000000000000,
+                    0.550000000000000,
+                    0.650000000000000,
+                    0.800000000000000,
+                    0.950000000000000,
+                    1.100000000000000,
+                    1.300000000000000,
+                    1.450000000000000,
+                    1.500000000000000,
+                    1.250000000000000,
+                    1.300000000000000,
+                    1.150000000000000,
+                    1.150000000000000,
+                    1.150000000000000,
+                    1.150000000000000,
+                    1.200000000000000,
+                    1.250000000000000,
+                    1.250000000000000,
+                    1.200000000000000,
+                    0.9737967353,
+                    0.687255951,
+                    0.4994850556,
+                    0.3551480462,
+                    0.2270548036,
+                    0.1302099557,
+                    0.0645385918,
+                    0.0225325851,
+                ]
+            )
+            * 1e2
+        )
 
-        self.assertTrue(np.allclose(v_ref, tc_track.data[0]['max_sustained_wind'].values))
+        self.assertTrue(
+            np.allclose(v_ref, tc_track.data[0]["max_sustained_wind"].values)
+        )
 
-        cat_ref = tc.set_category(tc_track.data[0]['max_sustained_wind'].values,
-                                  tc_track.data[0].attrs['max_sustained_wind_unit'])
-        self.assertEqual(cat_ref, tc_track.data[0].attrs['category'])
+        cat_ref = tc.set_category(
+            tc_track.data[0]["max_sustained_wind"].values,
+            tc_track.data[0].attrs["max_sustained_wind_unit"],
+        )
+        self.assertEqual(cat_ref, tc_track.data[0].attrs["category"])
 
     def test_func_decay_p_pass(self):
         """Test decay function for pressure with its inverse."""
@@ -211,7 +308,9 @@ class TestDecay(unittest.TestCase):
         res = tc_synth._decay_p_function(s_coef, b_coef, x_val)
         b_coef_res = tc_synth._solve_decay_p_function(s_coef, res, x_val)
 
-        self.assertTrue(np.allclose(b_coef_res[1:], np.ones((x_val.size - 1,)) * b_coef))
+        self.assertTrue(
+            np.allclose(b_coef_res[1:], np.ones((x_val.size - 1,)) * b_coef)
+        )
         self.assertTrue(np.isnan(b_coef_res[0]))
 
     def test_func_decay_v_pass(self):
@@ -221,38 +320,46 @@ class TestDecay(unittest.TestCase):
         res = tc_synth._decay_v_function(a_coef, x_val)
         a_coef_res = tc_synth._solve_decay_v_function(res, x_val)
 
-        self.assertTrue(np.allclose(a_coef_res[1:], np.ones((x_val.size - 1,)) * a_coef))
+        self.assertTrue(
+            np.allclose(a_coef_res[1:], np.ones((x_val.size - 1,)) * a_coef)
+        )
         self.assertTrue(np.isnan(a_coef_res[0]))
 
     def test_decay_ps_value(self):
         """Test the calculation of S in pressure decay."""
         on_land_idx = 5
         tr_ds = xr.Dataset()
-        tr_ds.coords['time'] = ('time', np.arange(10))
-        tr_ds['central_pressure'] = ('time', np.arange(10, 20))
-        tr_ds['environmental_pressure'] = ('time', np.arange(20, 30))
-        tr_ds['on_land'] = ('time', np.zeros((10,)).astype(bool))
+        tr_ds.coords["time"] = ("time", np.arange(10))
+        tr_ds["central_pressure"] = ("time", np.arange(10, 20))
+        tr_ds["environmental_pressure"] = ("time", np.arange(20, 30))
+        tr_ds["on_land"] = ("time", np.zeros((10,)).astype(bool))
         tr_ds.on_land[on_land_idx] = True
         p_landfall = 100
 
         res = tc_synth._calc_decay_ps_value(tr_ds, p_landfall, on_land_idx, s_rel=True)
-        self.assertEqual(res, float(tr_ds['environmental_pressure'][on_land_idx] / p_landfall))
+        self.assertEqual(
+            res, float(tr_ds["environmental_pressure"][on_land_idx] / p_landfall)
+        )
         res = tc_synth._calc_decay_ps_value(tr_ds, p_landfall, on_land_idx, s_rel=False)
-        self.assertEqual(res, float(tr_ds['central_pressure'][on_land_idx] / p_landfall))
+        self.assertEqual(
+            res, float(tr_ds["central_pressure"][on_land_idx] / p_landfall)
+        )
 
     def test_calc_decay_no_landfall_pass(self):
         """Test _calc_land_decay with no historical tracks with landfall"""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        expected_warning = 'only %s historical tracks were provided. ' % len(tc_track.data)
+        expected_warning = "only %s historical tracks were provided. " % len(
+            tc_track.data
+        )
         extent = tc_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=extent, resolution=10
         )
         tc.track_land_params(tc_track.data[0], land_geom)
-        with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
+        with self.assertLogs("climada.hazard.tc_tracks_synth", level="INFO") as cm:
             tc_synth._calc_land_decay(tc_track.data, land_geom)
         self.assertIn(expected_warning, cm.output[0])
-        self.assertIn('No historical track with landfall.', cm.output[1])
+        self.assertIn("No historical track with landfall.", cm.output[1])
 
     def test_calc_land_decay_pass(self):
         """Test _calc_land_decay with environmental pressure function."""
@@ -291,56 +398,98 @@ class TestDecay(unittest.TestCase):
         s_cell_2 = 8 * [1.047120451927185]
         s_cell = s_cell_1 + s_cell_2
         p_vs_lf_time_relative = [
-            1.0149413020277482, 1.018848167539267, 1.037696335078534,
-            1.0418848167539267, 1.043979057591623, 1.0450261780104713,
-            1.0460732984293193, 1.0471204188481675, 1.0471204188481675
+            1.0149413020277482,
+            1.018848167539267,
+            1.037696335078534,
+            1.0418848167539267,
+            1.043979057591623,
+            1.0450261780104713,
+            1.0460732984293193,
+            1.0471204188481675,
+            1.0471204188481675,
         ]
 
         self.assertEqual(list(p_lf.keys()), [ss_category])
-        self.assertEqual(p_lf[ss_category][0], array.array('f', s_cell))
-        self.assertEqual(p_lf[ss_category][1], array.array('f', p_vs_lf_time_relative))
+        self.assertEqual(p_lf[ss_category][0], array.array("f", s_cell))
+        self.assertEqual(p_lf[ss_category][1], array.array("f", p_vs_lf_time_relative))
 
         v_vs_lf_time_relative = [
-            0.8846153846153846, 0.6666666666666666, 0.4166666666666667,
-            0.2916666666666667, 0.250000000000000, 0.250000000000000,
-            0.20833333333333334, 0.16666666666666666, 0.16666666666666666
+            0.8846153846153846,
+            0.6666666666666666,
+            0.4166666666666667,
+            0.2916666666666667,
+            0.250000000000000,
+            0.250000000000000,
+            0.20833333333333334,
+            0.16666666666666666,
+            0.16666666666666666,
         ]
         self.assertEqual(list(v_lf.keys()), [ss_category])
-        self.assertEqual(v_lf[ss_category], array.array('f', v_vs_lf_time_relative))
+        self.assertEqual(v_lf[ss_category], array.array("f", v_vs_lf_time_relative))
 
-        x_val_ref = np.array([
-            95.9512939453125, 53.624916076660156, 143.09530639648438,
-            225.0262908935547, 312.5832824707031, 427.43109130859375,
-            570.1857299804688, 750.3827514648438, 1020.5431518554688
-        ])
+        x_val_ref = np.array(
+            [
+                95.9512939453125,
+                53.624916076660156,
+                143.09530639648438,
+                225.0262908935547,
+                312.5832824707031,
+                427.43109130859375,
+                570.1857299804688,
+                750.3827514648438,
+                1020.5431518554688,
+            ]
+        )
         self.assertEqual(list(x_val.keys()), [ss_category])
         self.assertTrue(np.allclose(x_val[ss_category], x_val_ref))
 
     def test_decay_calc_coeff(self):
         """Test _decay_calc_coeff against MATLAB"""
         x_val = {
-            4: np.array([
-                53.57314960249573, 142.97903059281566, 224.76733726289183,
-                312.14621544207563, 426.6757021862584, 568.9358305779094,
-                748.3713215157885, 1016.9904230811956
-            ])
+            4: np.array(
+                [
+                    53.57314960249573,
+                    142.97903059281566,
+                    224.76733726289183,
+                    312.14621544207563,
+                    426.6757021862584,
+                    568.9358305779094,
+                    748.3713215157885,
+                    1016.9904230811956,
+                ]
+            )
         }
 
         v_lf = {
-            4: np.array([
-                0.6666666666666666, 0.4166666666666667, 0.2916666666666667,
-                0.250000000000000, 0.250000000000000, 0.20833333333333334,
-                0.16666666666666666, 0.16666666666666666
-            ])
+            4: np.array(
+                [
+                    0.6666666666666666,
+                    0.4166666666666667,
+                    0.2916666666666667,
+                    0.250000000000000,
+                    0.250000000000000,
+                    0.20833333333333334,
+                    0.16666666666666666,
+                    0.16666666666666666,
+                ]
+            )
         }
 
         p_lf = {
-            4: (8 * [1.0471204188481675],
-                np.array([
-                    1.018848167539267, 1.037696335078534, 1.0418848167539267,
-                    1.043979057591623, 1.0450261780104713, 1.0460732984293193,
-                    1.0471204188481675, 1.0471204188481675
-                ])
+            4: (
+                8 * [1.0471204188481675],
+                np.array(
+                    [
+                        1.018848167539267,
+                        1.037696335078534,
+                        1.0418848167539267,
+                        1.043979057591623,
+                        1.0450261780104713,
+                        1.0460732984293193,
+                        1.0471204188481675,
+                        1.0471204188481675,
+                    ]
+                ),
             )
         }
 
@@ -357,41 +506,141 @@ class TestDecay(unittest.TestCase):
 
     def test_wrong_decay_pass(self):
         """Test decay not implemented when coefficient < 1"""
-        track = tc.TCTracks.from_ibtracs_netcdf(provider='usa', storm_id='1975178N28281')
+        track = tc.TCTracks.from_ibtracs_netcdf(
+            provider="usa", storm_id="1975178N28281"
+        )
 
         track_gen = track.data[0]
-        track_gen['lat'] = np.array([
-            28.20340431, 28.7915261, 29.38642458, 29.97836984, 30.56844404,
-            31.16265292, 31.74820301, 32.34449825, 32.92261894, 33.47430891,
-            34.01492525, 34.56789399, 35.08810845, 35.55965893, 35.94835174,
-            36.29355848, 36.45379561, 36.32473812, 36.07552209, 35.92224784,
-            35.84144186, 35.78298537, 35.86090718, 36.02440372, 36.37555559,
-            37.06207765, 37.73197352, 37.97524273, 38.05560287, 38.21901208,
-            38.31486156, 38.30813367, 38.28481808, 38.28410366, 38.25894812,
-            38.20583372, 38.22741099, 38.39970022, 38.68367797, 39.08329904,
-            39.41434629, 39.424984, 39.31327716, 39.30336335, 39.31714429,
-            39.27031932, 39.30848775, 39.48759833, 39.73326595, 39.96187967,
-            40.26954226, 40.76882202, 41.40398607, 41.93809726, 42.60395785,
-            43.57074792, 44.63816143, 45.61450458, 46.68528511, 47.89209365,
-            49.15580502
-        ])
-        track_gen['lon'] = np.array([
-            -79.20514075, -79.25243311, -79.28393082, -79.32324646,
-            -79.36668585, -79.41495519, -79.45198688, -79.40580325,
-            -79.34965443, -79.36938122, -79.30294825, -79.06809546,
-            -78.70281969, -78.29418936, -77.82170609, -77.30034709,
-            -76.79004969, -76.37038827, -75.98641014, -75.58383356,
-            -75.18310414, -74.7974524, -74.3797645, -73.86393572, -73.37910948,
-            -73.01059003, -72.77051313, -72.68011328, -72.66864779,
-            -72.62579773, -72.56307717, -72.46607618, -72.35871353,
-            -72.31120649, -72.15537583, -71.75577051, -71.25287498,
-            -70.75527907, -70.34788946, -70.17518421, -70.04446577,
-            -69.76582749, -69.44372386, -69.15881376, -68.84351922,
-            -68.47890287, -68.04184565, -67.53541437, -66.94008642,
-            -66.25596075, -65.53496635, -64.83491802, -64.12962685,
-            -63.54118808, -62.72934383, -61.34915091, -59.72580755,
-            -58.24404252, -56.71972992, -55.0809336, -53.31524758
-        ])
+        track_gen["lat"] = np.array(
+            [
+                28.20340431,
+                28.7915261,
+                29.38642458,
+                29.97836984,
+                30.56844404,
+                31.16265292,
+                31.74820301,
+                32.34449825,
+                32.92261894,
+                33.47430891,
+                34.01492525,
+                34.56789399,
+                35.08810845,
+                35.55965893,
+                35.94835174,
+                36.29355848,
+                36.45379561,
+                36.32473812,
+                36.07552209,
+                35.92224784,
+                35.84144186,
+                35.78298537,
+                35.86090718,
+                36.02440372,
+                36.37555559,
+                37.06207765,
+                37.73197352,
+                37.97524273,
+                38.05560287,
+                38.21901208,
+                38.31486156,
+                38.30813367,
+                38.28481808,
+                38.28410366,
+                38.25894812,
+                38.20583372,
+                38.22741099,
+                38.39970022,
+                38.68367797,
+                39.08329904,
+                39.41434629,
+                39.424984,
+                39.31327716,
+                39.30336335,
+                39.31714429,
+                39.27031932,
+                39.30848775,
+                39.48759833,
+                39.73326595,
+                39.96187967,
+                40.26954226,
+                40.76882202,
+                41.40398607,
+                41.93809726,
+                42.60395785,
+                43.57074792,
+                44.63816143,
+                45.61450458,
+                46.68528511,
+                47.89209365,
+                49.15580502,
+            ]
+        )
+        track_gen["lon"] = np.array(
+            [
+                -79.20514075,
+                -79.25243311,
+                -79.28393082,
+                -79.32324646,
+                -79.36668585,
+                -79.41495519,
+                -79.45198688,
+                -79.40580325,
+                -79.34965443,
+                -79.36938122,
+                -79.30294825,
+                -79.06809546,
+                -78.70281969,
+                -78.29418936,
+                -77.82170609,
+                -77.30034709,
+                -76.79004969,
+                -76.37038827,
+                -75.98641014,
+                -75.58383356,
+                -75.18310414,
+                -74.7974524,
+                -74.3797645,
+                -73.86393572,
+                -73.37910948,
+                -73.01059003,
+                -72.77051313,
+                -72.68011328,
+                -72.66864779,
+                -72.62579773,
+                -72.56307717,
+                -72.46607618,
+                -72.35871353,
+                -72.31120649,
+                -72.15537583,
+                -71.75577051,
+                -71.25287498,
+                -70.75527907,
+                -70.34788946,
+                -70.17518421,
+                -70.04446577,
+                -69.76582749,
+                -69.44372386,
+                -69.15881376,
+                -68.84351922,
+                -68.47890287,
+                -68.04184565,
+                -67.53541437,
+                -66.94008642,
+                -66.25596075,
+                -65.53496635,
+                -64.83491802,
+                -64.12962685,
+                -63.54118808,
+                -62.72934383,
+                -61.34915091,
+                -59.72580755,
+                -58.24404252,
+                -56.71972992,
+                -55.0809336,
+                -53.31524758,
+            ]
+        )
 
         v_rel = {
             1: 0.002249541544102336,
@@ -411,22 +660,26 @@ class TestDecay(unittest.TestCase):
             5: (1.0894914184297835, 0.004315034379018768),
             4: (1.0714354641894077, 0.002783787561718677),
         }
-        track_gen.attrs['orig_event_flag'] = False
+        track_gen.attrs["orig_event_flag"] = False
 
-        cp_ref = np.array([1012., 1012.])
+        cp_ref = np.array([1012.0, 1012.0])
         single_track = tc.TCTracks([track_gen])
         extent = single_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
             extent=extent, resolution=10
         )
-        track_res = tc_synth._apply_decay_coeffs(track_gen, v_rel, p_rel, land_geom, True)
-        self.assertTrue(np.array_equal(cp_ref, track_res['central_pressure'][9:11]))
+        track_res = tc_synth._apply_decay_coeffs(
+            track_gen, v_rel, p_rel, land_geom, True
+        )
+        self.assertTrue(np.array_equal(cp_ref, track_res["central_pressure"][9:11]))
 
     def test_decay_end_ocean(self):
         """Test decay is applied after landfall if the track ends over the ocean"""
         # this track was generated without applying landfall decay
         # (i.e. with decay=False in tc_synth.calc_perturbed_trajectories)
-        tracks_synth_nodecay_example = tc.TCTracks.from_netcdf(TEST_TRACK_DECAY_END_OCEAN)
+        tracks_synth_nodecay_example = tc.TCTracks.from_netcdf(
+            TEST_TRACK_DECAY_END_OCEAN
+        )
 
         # apply landfall decay
         extent = tracks_synth_nodecay_example.get_extent()
@@ -437,7 +690,8 @@ class TestDecay(unittest.TestCase):
             tracks_synth_nodecay_example.data,
             tc_synth.LANDFALL_DECAY_V,
             tc_synth.LANDFALL_DECAY_P,
-            land_geom)
+            land_geom,
+        )
         track = tracks_synth_nodecay_example.data[0]
 
         # read its corresponding historical track
@@ -449,34 +703,53 @@ class TestDecay(unittest.TestCase):
         lf_idx = tc._get_landfall_idx(track)
         last_lf_idx = lf_idx[-1][1]
         # only suitable if track ends over the ocean
-        self.assertTrue(last_lf_idx < track['time'].size-2,
-                         'This test should be re-written, data not suitable')
+        self.assertTrue(
+            last_lf_idx < track["time"].size - 2,
+            "This test should be re-written, data not suitable",
+        )
         # check pressure and wind values
-        p_hist_end = track_hist['central_pressure'].values[last_lf_idx:]
-        p_synth_end = track['central_pressure'].values[last_lf_idx:]
+        p_hist_end = track_hist["central_pressure"].values[last_lf_idx:]
+        p_synth_end = track["central_pressure"].values[last_lf_idx:]
         self.assertTrue(np.all(p_synth_end > p_hist_end))
-        v_hist_end = track_hist['max_sustained_wind'].values[last_lf_idx:]
-        v_synth_end = track['max_sustained_wind'].values[last_lf_idx:]
+        v_hist_end = track_hist["max_sustained_wind"].values[last_lf_idx:]
+        v_synth_end = track["max_sustained_wind"].values[last_lf_idx:]
         self.assertTrue(np.all(v_synth_end < v_hist_end))
 
         # Part 2: is landfall applied in all landfalls?
-        p_hist_lf = np.concatenate([track_hist['central_pressure'].values[lfs:lfe]
-                                    for lfs,lfe in zip(*lf_idx)])
-        p_synth_lf = np.concatenate([track['central_pressure'].values[lfs:lfe]
-                                     for lfs,lfe in zip(*lf_idx)])
-        v_hist_lf = np.concatenate([track_hist['max_sustained_wind'].values[lfs:lfe]
-                                    for lfs,lfe in zip(*lf_idx)])
-        v_synth_lf = np.concatenate([track['max_sustained_wind'].values[lfs:lfe]
-                                     for lfs,lfe in zip(*lf_idx)])
+        p_hist_lf = np.concatenate(
+            [
+                track_hist["central_pressure"].values[lfs:lfe]
+                for lfs, lfe in zip(*lf_idx)
+            ]
+        )
+        p_synth_lf = np.concatenate(
+            [track["central_pressure"].values[lfs:lfe] for lfs, lfe in zip(*lf_idx)]
+        )
+        v_hist_lf = np.concatenate(
+            [
+                track_hist["max_sustained_wind"].values[lfs:lfe]
+                for lfs, lfe in zip(*lf_idx)
+            ]
+        )
+        v_synth_lf = np.concatenate(
+            [track["max_sustained_wind"].values[lfs:lfe] for lfs, lfe in zip(*lf_idx)]
+        )
         self.assertTrue(np.all(p_synth_lf > p_hist_lf))
         self.assertTrue(np.all(v_synth_lf < v_hist_lf))
-        self.assertTrue(np.all(track['central_pressure'].values <= track['environmental_pressure'].values))
+        self.assertTrue(
+            np.all(
+                track["central_pressure"].values
+                <= track["environmental_pressure"].values
+            )
+        )
 
     def test_decay_penv_gt_pcen(self):
         """Test decay is applied if penv at end of landfall < pcen just before landfall"""
         # this track was generated without applying landfall decay
         # (i.e. with decay=False in tc_synth.calc_perturbed_trajectories)
-        tracks_synth_nodecay_example = tc.TCTracks.from_netcdf(TEST_TRACK_DECAY_PENV_GT_PCEN)
+        tracks_synth_nodecay_example = tc.TCTracks.from_netcdf(
+            TEST_TRACK_DECAY_PENV_GT_PCEN
+        )
 
         # apply landfall decay
         extent = tracks_synth_nodecay_example.get_extent()
@@ -487,7 +760,8 @@ class TestDecay(unittest.TestCase):
             tracks_synth_nodecay_example.data,
             tc_synth.LANDFALL_DECAY_V,
             tc_synth.LANDFALL_DECAY_P,
-            land_geom)
+            land_geom,
+        )
         track = tracks_synth_nodecay_example.data[0]
 
         # read its corresponding historical track
@@ -500,40 +774,49 @@ class TestDecay(unittest.TestCase):
         start_lf_idx, end_lf_idx = lf_idx[0][0], lf_idx[1][0]
 
         # check pressure and wind values
-        p_hist_end = track_hist['central_pressure'].values[end_lf_idx:]
-        p_synth_end = track['central_pressure'].values[end_lf_idx:]
+        p_hist_end = track_hist["central_pressure"].values[end_lf_idx:]
+        p_synth_end = track["central_pressure"].values[end_lf_idx:]
         self.assertTrue(np.all(p_synth_end > p_hist_end))
-        v_hist_end = track_hist['max_sustained_wind'].values[end_lf_idx:]
-        v_synth_end = track['max_sustained_wind'].values[end_lf_idx:]
+        v_hist_end = track_hist["max_sustained_wind"].values[end_lf_idx:]
+        v_synth_end = track["max_sustained_wind"].values[end_lf_idx:]
         self.assertTrue(np.all(v_synth_end < v_hist_end))
 
         # Part 2: is landfall applied in all landfalls?
 
         # central pressure
-        p_hist_lf = track_hist['central_pressure'].values[start_lf_idx:end_lf_idx]
-        p_synth_lf = track['central_pressure'].values[start_lf_idx:end_lf_idx]
+        p_hist_lf = track_hist["central_pressure"].values[start_lf_idx:end_lf_idx]
+        p_synth_lf = track["central_pressure"].values[start_lf_idx:end_lf_idx]
         # central pressure should be higher in synth than hist; unless it was set to p_env
-        self.assertTrue(np.all(
-            np.logical_or(p_synth_lf > p_hist_lf,
-                          p_synth_lf == track['environmental_pressure'].values[start_lf_idx:end_lf_idx])
-            ))
+        self.assertTrue(
+            np.all(
+                np.logical_or(
+                    p_synth_lf > p_hist_lf,
+                    p_synth_lf
+                    == track["environmental_pressure"].values[start_lf_idx:end_lf_idx],
+                )
+            )
+        )
         # but for this track is should be higher towards the end
         self.assertTrue(np.any(p_synth_lf > p_hist_lf))
         self.assertTrue(np.all(p_synth_lf >= p_hist_lf))
 
         # wind speed
-        v_hist_lf = track_hist['max_sustained_wind'].values[start_lf_idx:end_lf_idx]
-        v_synth_lf = track['max_sustained_wind'].values[start_lf_idx:end_lf_idx]
+        v_hist_lf = track_hist["max_sustained_wind"].values[start_lf_idx:end_lf_idx]
+        v_synth_lf = track["max_sustained_wind"].values[start_lf_idx:end_lf_idx]
         # wind should decrease over time for that landfall
-        v_before_lf = track_hist['max_sustained_wind'].values[start_lf_idx-1]
+        v_before_lf = track_hist["max_sustained_wind"].values[start_lf_idx - 1]
         self.assertTrue(np.all(v_synth_lf[1:] < v_before_lf))
         # and wind speed should be lower in synth than hist at the end of and after this landfall
-        self.assertTrue(np.all(
-            track['max_sustained_wind'].values[end_lf_idx:] < track_hist['max_sustained_wind'].values[end_lf_idx:]
-            ))
+        self.assertTrue(
+            np.all(
+                track["max_sustained_wind"].values[end_lf_idx:]
+                < track_hist["max_sustained_wind"].values[end_lf_idx:]
+            )
+        )
         # finally, central minus env pressure cannot increase during this landfall
-        p_env_lf = track['central_pressure'].values[start_lf_idx:end_lf_idx]
+        p_env_lf = track["central_pressure"].values[start_lf_idx:end_lf_idx]
         self.assertTrue(np.all(np.diff(p_env_lf - p_synth_lf) <= 0))
+
 
 class TestSynth(unittest.TestCase):
 
@@ -543,69 +826,85 @@ class TestSynth(unittest.TestCase):
 
     def test_angle_funs_pass(self):
         """Test functions used by random walk code"""
-        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([15, 20]),
-                                                           np.array([0, 0]))[0], 90.0)
-        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([20, 20]),
-                                                           np.array([0, 5]))[0], 0.0)
-        self.assertAlmostEqual(tc_synth._get_bearing_angle(np.array([0, 0.00001]),
-                                                           np.array([0, 0.00001]))[0], 45)
+        self.assertAlmostEqual(
+            tc_synth._get_bearing_angle(np.array([15, 20]), np.array([0, 0]))[0], 90.0
+        )
+        self.assertAlmostEqual(
+            tc_synth._get_bearing_angle(np.array([20, 20]), np.array([0, 5]))[0], 0.0
+        )
+        self.assertAlmostEqual(
+            tc_synth._get_bearing_angle(np.array([0, 0.00001]), np.array([0, 0.00001]))[
+                0
+            ],
+            45,
+        )
         pt_north = tc_synth._get_destination_points(0, 0, 0, 1)
         self.assertAlmostEqual(pt_north[0], 0.0)
         self.assertAlmostEqual(pt_north[1], 1.0)
         pt_west = tc_synth._get_destination_points(0, 0, -90, 3)
         self.assertAlmostEqual(pt_west[0], -3.0)
         self.assertAlmostEqual(pt_west[1], 0.0)
-        pt_test = tc_synth._get_destination_points(8.523224, 47.371102,
-                                                   151.14161003, 52.80812463)
+        pt_test = tc_synth._get_destination_points(
+            8.523224, 47.371102, 151.14161003, 52.80812463
+        )
         self.assertAlmostEqual(pt_test[0], 31.144113)
         self.assertAlmostEqual(pt_test[1], -1.590347)
 
     def test_random_no_landfall_pass(self):
         """Test calc_perturbed_trajectories with decay and no historical tracks with landfall"""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
-        expected_warning = 'only %s historical tracks were provided. ' % len(tc_track.data)
-        with self.assertLogs('climada.hazard.tc_tracks_synth', level='INFO') as cm:
-            tc_track.calc_perturbed_trajectories(use_global_decay_params=False, adjust_intensity='legacy_decay')
+        expected_warning = "only %s historical tracks were provided. " % len(
+            tc_track.data
+        )
+        with self.assertLogs("climada.hazard.tc_tracks_synth", level="INFO") as cm:
+            tc_track.calc_perturbed_trajectories(
+                use_global_decay_params=False, adjust_intensity="legacy_decay"
+            )
         self.assertIn(expected_warning, cm.output[2])
-        self.assertIn('No historical track with landfall.', cm.output[3])
+        self.assertIn("No historical track with landfall.", cm.output[3])
 
     def test_random_walk_ref_pass(self):
         """Test against MATLAB reference."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK_SHORT)
         nb_synth_tracks = 2
-        tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=False, decay_ddirection_hourly=0)
+        tc_track.calc_perturbed_trajectories(
+            nb_synth_tracks=nb_synth_tracks,
+            seed=25,
+            decay=False,
+            decay_ddirection_hourly=0,
+        )
 
         self.assertEqual(len(tc_track.data), nb_synth_tracks + 1)
 
-        self.assertFalse(tc_track.data[1].attrs['orig_event_flag'])
-        self.assertEqual(tc_track.data[1].attrs['name'], '1951239N12334_gen1')
-        self.assertEqual(tc_track.data[1].attrs['id_no'], 1.951239012334010e+12)
-        self.assertAlmostEqual(tc_track.data[1]['lon'][0].values, -25.0448138)
-        self.assertAlmostEqual(tc_track.data[1]['lon'][1].values, -25.74439739)
-        self.assertAlmostEqual(tc_track.data[1]['lon'][2].values, -26.54491644)
-        self.assertAlmostEqual(tc_track.data[1]['lon'][3].values, -27.73156829)
-        self.assertAlmostEqual(tc_track.data[1]['lon'][4].values, -28.63175987)
-        self.assertAlmostEqual(tc_track.data[1]['lon'][8].values, -34.05293373)
+        self.assertFalse(tc_track.data[1].attrs["orig_event_flag"])
+        self.assertEqual(tc_track.data[1].attrs["name"], "1951239N12334_gen1")
+        self.assertEqual(tc_track.data[1].attrs["id_no"], 1.951239012334010e12)
+        self.assertAlmostEqual(tc_track.data[1]["lon"][0].values, -25.0448138)
+        self.assertAlmostEqual(tc_track.data[1]["lon"][1].values, -25.74439739)
+        self.assertAlmostEqual(tc_track.data[1]["lon"][2].values, -26.54491644)
+        self.assertAlmostEqual(tc_track.data[1]["lon"][3].values, -27.73156829)
+        self.assertAlmostEqual(tc_track.data[1]["lon"][4].values, -28.63175987)
+        self.assertAlmostEqual(tc_track.data[1]["lon"][8].values, -34.05293373)
 
-        self.assertAlmostEqual(tc_track.data[1]['lat'][0].values, 11.96825841)
-        self.assertAlmostEqual(tc_track.data[1]['lat'][4].values, 11.86769405)
-        self.assertAlmostEqual(tc_track.data[1]['lat'][5].values, 11.84378139)
-        self.assertAlmostEqual(tc_track.data[1]['lat'][6].values, 11.85957282)
-        self.assertAlmostEqual(tc_track.data[1]['lat'][7].values, 11.84555291)
-        self.assertAlmostEqual(tc_track.data[1]['lat'][8].values, 11.8065998)
+        self.assertAlmostEqual(tc_track.data[1]["lat"][0].values, 11.96825841)
+        self.assertAlmostEqual(tc_track.data[1]["lat"][4].values, 11.86769405)
+        self.assertAlmostEqual(tc_track.data[1]["lat"][5].values, 11.84378139)
+        self.assertAlmostEqual(tc_track.data[1]["lat"][6].values, 11.85957282)
+        self.assertAlmostEqual(tc_track.data[1]["lat"][7].values, 11.84555291)
+        self.assertAlmostEqual(tc_track.data[1]["lat"][8].values, 11.8065998)
 
-        self.assertFalse(tc_track.data[2].attrs['orig_event_flag'])
-        self.assertEqual(tc_track.data[2].attrs['name'], '1951239N12334_gen2')
-        self.assertAlmostEqual(tc_track.data[2].attrs['id_no'], 1.951239012334020e+12)
-        self.assertAlmostEqual(tc_track.data[2]['lon'][0].values, -25.47658461)
-        self.assertAlmostEqual(tc_track.data[2]['lon'][3].values, -28.08465841)
-        self.assertAlmostEqual(tc_track.data[2]['lon'][4].values, -28.85901852)
-        self.assertAlmostEqual(tc_track.data[2]['lon'][8].values, -33.62144837)
+        self.assertFalse(tc_track.data[2].attrs["orig_event_flag"])
+        self.assertEqual(tc_track.data[2].attrs["name"], "1951239N12334_gen2")
+        self.assertAlmostEqual(tc_track.data[2].attrs["id_no"], 1.951239012334020e12)
+        self.assertAlmostEqual(tc_track.data[2]["lon"][0].values, -25.47658461)
+        self.assertAlmostEqual(tc_track.data[2]["lon"][3].values, -28.08465841)
+        self.assertAlmostEqual(tc_track.data[2]["lon"][4].values, -28.85901852)
+        self.assertAlmostEqual(tc_track.data[2]["lon"][8].values, -33.62144837)
 
-        self.assertAlmostEqual(tc_track.data[2]['lat'][0].values, 11.82886685)
-        self.assertAlmostEqual(tc_track.data[2]['lat'][6].values, 11.71068012)
-        self.assertAlmostEqual(tc_track.data[2]['lat'][7].values, 11.69832976)
-        self.assertAlmostEqual(tc_track.data[2]['lat'][8].values, 11.64145734)
+        self.assertAlmostEqual(tc_track.data[2]["lat"][0].values, 11.82886685)
+        self.assertAlmostEqual(tc_track.data[2]["lat"][6].values, 11.71068012)
+        self.assertAlmostEqual(tc_track.data[2]["lat"][7].values, 11.69832976)
+        self.assertAlmostEqual(tc_track.data[2]["lat"][8].values, 11.64145734)
 
     def test_random_walk_decay_pass(self):
         """Test land decay is called from calc_perturbed_trajectories."""
@@ -613,72 +912,111 @@ class TestSynth(unittest.TestCase):
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         nb_synth_tracks = 2
         # should work if using global parameters
-        with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm0:
-            tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, decay=True,
-                                                 use_global_decay_params=True)
+        with self.assertLogs("climada.hazard.tc_tracks_synth", level="DEBUG") as cm0:
+            tc_track.calc_perturbed_trajectories(
+                nb_synth_tracks=nb_synth_tracks,
+                seed=25,
+                decay=True,
+                use_global_decay_params=True,
+            )
         self.assertEqual(len(cm0), 2)
         self.assertEqual(tc_track.size, 3)
         # but alert the user otherwise
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
-        with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
-            tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks, seed=25, adjust_intensity='legacy_decay',
-                                                 use_global_decay_params=False)
-        self.assertIn('No historical track of category Tropical Depression '
-                      'with landfall.', cm.output[5])
-        self.assertIn('Decay parameters from category Hurricane Cat. 4 taken.',
-                      cm.output[6])
-        self.assertIn('No historical track of category Hurricane Cat. 1 with '
-                      'landfall.', cm.output[7])
-        self.assertIn('Decay parameters from category Hurricane Cat. 4 taken.',
-                      cm.output[8])
-        self.assertIn('No historical track of category Hurricane Cat. 3 with '
-                      'landfall. Decay parameters from category Hurricane Cat. '
-                      '4 taken.', cm.output[9])
-        self.assertIn('No historical track of category Hurricane Cat. 5 with '
-                      'landfall.', cm.output[10])
+        with self.assertLogs("climada.hazard.tc_tracks_synth", level="DEBUG") as cm:
+            tc_track.calc_perturbed_trajectories(
+                nb_synth_tracks=nb_synth_tracks,
+                seed=25,
+                adjust_intensity="legacy_decay",
+                use_global_decay_params=False,
+            )
+        self.assertIn(
+            "No historical track of category Tropical Depression " "with landfall.",
+            cm.output[5],
+        )
+        self.assertIn(
+            "Decay parameters from category Hurricane Cat. 4 taken.", cm.output[6]
+        )
+        self.assertIn(
+            "No historical track of category Hurricane Cat. 1 with " "landfall.",
+            cm.output[7],
+        )
+        self.assertIn(
+            "Decay parameters from category Hurricane Cat. 4 taken.", cm.output[8]
+        )
+        self.assertIn(
+            "No historical track of category Hurricane Cat. 3 with "
+            "landfall. Decay parameters from category Hurricane Cat. "
+            "4 taken.",
+            cm.output[9],
+        )
+        self.assertIn(
+            "No historical track of category Hurricane Cat. 5 with " "landfall.",
+            cm.output[10],
+        )
 
     def test_random_walk_identical_pass(self):
         """Test 0 perturbation leads to identical tracks."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TC_ANDREW_FL)
         nb_synth_tracks = 2
-        tc_track.calc_perturbed_trajectories(nb_synth_tracks=nb_synth_tracks,
-                                  max_shift_ini=0, max_dspeed_rel=0, max_ddirection=0, decay=False)
+        tc_track.calc_perturbed_trajectories(
+            nb_synth_tracks=nb_synth_tracks,
+            max_shift_ini=0,
+            max_dspeed_rel=0,
+            max_ddirection=0,
+            decay=False,
+        )
         orig_track = tc_track.data[0]
         for syn_track in tc_track.data[1:]:
-            np.testing.assert_allclose(orig_track['lon'].values, syn_track['lon'].values, atol=1e-4)
-            np.testing.assert_allclose(orig_track['lat'].values, syn_track['lat'].values, atol=1e-4)
-            for varname in ["time", "time_step", "radius_max_wind", "max_sustained_wind",
-                            "central_pressure", "environmental_pressure"]:
-                np.testing.assert_array_equal(orig_track[varname].values,
-                                              syn_track[varname].values)
+            np.testing.assert_allclose(
+                orig_track["lon"].values, syn_track["lon"].values, atol=1e-4
+            )
+            np.testing.assert_allclose(
+                orig_track["lat"].values, syn_track["lat"].values, atol=1e-4
+            )
+            for varname in [
+                "time",
+                "time_step",
+                "radius_max_wind",
+                "max_sustained_wind",
+                "central_pressure",
+                "environmental_pressure",
+            ]:
+                np.testing.assert_array_equal(
+                    orig_track[varname].values, syn_track[varname].values
+                )
 
     def test_random_walk_single_point(self):
         found = False
         for year in range(1951, 1981):
-            tc_track = tc.TCTracks.from_ibtracs_netcdf(provider='usa',
-                                         year_range=(year,year),
-                                         discard_single_points=False)
-            singlept = np.where([x['time'].size == 1 for x in tc_track.data])[0]
+            tc_track = tc.TCTracks.from_ibtracs_netcdf(
+                provider="usa", year_range=(year, year), discard_single_points=False
+            )
+            singlept = np.where([x["time"].size == 1 for x in tc_track.data])[0]
             found = len(singlept) > 0
             if found:
                 # found a case with a single-point track, keep max three tracks for efficiency
-                tc_track.data = tc_track.data[max(0, singlept[0]-1):singlept[0]+2]
+                tc_track.data = tc_track.data[max(0, singlept[0] - 1) : singlept[0] + 2]
                 n_tr = tc_track.size
                 tc_track.equal_timestep()
                 tc_track.calc_perturbed_trajectories(nb_synth_tracks=2)
-                self.assertEqual((2+1)*n_tr, tc_track.size)
+                self.assertEqual((2 + 1) * n_tr, tc_track.size)
                 break
         self.assertTrue(found)
 
     def test_cutoff_tracks(self):
-        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id='1986226N30276')
+        tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id="1986226N30276")
         tc_track.equal_timestep()
-        with self.assertLogs('climada.hazard.tc_tracks_synth', level='DEBUG') as cm:
-            tc_track.calc_perturbed_trajectories(nb_synth_tracks=25,
-                                                 adjust_intensity='none',
-                                                 decay_ddirection_hourly=0)
-        self.assertIn('The following generated synthetic tracks moved beyond '
-                      'the range of [-70, 70] degrees latitude', cm.output[3])
+        with self.assertLogs("climada.hazard.tc_tracks_synth", level="DEBUG") as cm:
+            tc_track.calc_perturbed_trajectories(
+                nb_synth_tracks=25, adjust_intensity="none", decay_ddirection_hourly=0
+            )
+        self.assertIn(
+            "The following generated synthetic tracks moved beyond "
+            "the range of [-70, 70] degrees latitude",
+            cm.output[3],
+        )
+
 
 class TestSynthIdChunks(unittest.TestCase):
     def test_add_id_synth_chunks_nolf(self):
@@ -691,9 +1029,17 @@ class TestSynthIdChunks(unittest.TestCase):
         expected_no_chunks_land = 0
         expected_no_chunks_sea = 0
         # create fake xarray with time, on_land and on_land_hist
-        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+            }
+        )
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        synth_track, no_chunks_sea, no_chunks_land, _ = (
+            tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        )
         # check output
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
@@ -702,7 +1048,9 @@ class TestSynthIdChunks(unittest.TestCase):
 
     def test_add_id_synth_chunks_all_equal(self):
         """Test _add_id_synth_chunks_shift_init for idealized case without difference in landfall"""
-        on_land_hist = np.array([False, False, False, False, True, True, True, False, False])
+        on_land_hist = np.array(
+            [False, False, False, False, True, True, True, False, False]
+        )
         on_land = on_land_hist.copy()
         pcen = np.arange(0, len(on_land))
         # expected values
@@ -710,13 +1058,19 @@ class TestSynthIdChunks(unittest.TestCase):
         expected_no_chunks_land = 0
         expected_no_chunks_sea = 0
         # create fake xarray with time, on_land and on_land_hist
-        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+            }
+        )
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(
-            tc_track, time_step_h=3
+        synth_track, no_chunks_sea, no_chunks_land, _ = (
+            tc_synth._add_id_synth_chunks_shift_init(tc_track, time_step_h=3)
         )
         # check output
-        self.assertEqual(synth_track.drop_vars('id_chunk'), tc_track.drop_vars)
+        self.assertEqual(synth_track.drop_vars("id_chunk"), tc_track.drop_vars)
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
         np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
@@ -725,21 +1079,31 @@ class TestSynthIdChunks(unittest.TestCase):
     def test_add_id_synth_chunks_short_lf(self):
         """Test _add_id_synth_chunks_shift_init for idealized case with short landfall (no
         correction applied"""
-        on_land_hist = np.array([False, False, False, False, True, True, False, False, False])
-        on_land = np.array([False, False, False, False, False, True, True, False, False])
+        on_land_hist = np.array(
+            [False, False, False, False, True, True, False, False, False]
+        )
+        on_land = np.array(
+            [False, False, False, False, False, True, True, False, False]
+        )
         pcen = np.arange(0, len(on_land))
         # expected values
         expected_id_chunk = np.repeat(0, len(on_land))
         expected_no_chunks_land = 0
         expected_no_chunks_sea = 0
         # create fake xarray with time, on_land and on_land_hist
-        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+            }
+        )
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(
-            tc_track, 3
+        synth_track, no_chunks_sea, no_chunks_land, _ = (
+            tc_synth._add_id_synth_chunks_shift_init(tc_track, 3)
         )
         # check output
-        self.assertEqual(synth_track.drop_vars('id_chunk'), tc_track)
+        self.assertEqual(synth_track.drop_vars("id_chunk"), tc_track)
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
         np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
@@ -760,13 +1124,27 @@ class TestSynthIdChunks(unittest.TestCase):
         # second case: shifted forward
         expected_pcen2 = np.append(pcen[0], pcen[:-1])
         # create fake xarray with time, on_land and on_land_hist
-        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
-        tc_track2 = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist2, 'central_pressure': pcen.copy()})
-        # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(
-            tc_track, 3
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+            }
         )
-        synth_track2, no_chunks_sea2, no_chunks_land2, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track2, 3)
+        tc_track2 = dummy_track_builder(
+            {
+                "on_land": on_land,
+                "on_land_hist": on_land_hist2,
+                "central_pressure": pcen.copy(),
+            }
+        )
+        # call _add_id_synth_chunks
+        synth_track, no_chunks_sea, no_chunks_land, _ = (
+            tc_synth._add_id_synth_chunks_shift_init(tc_track, 3)
+        )
+        synth_track2, no_chunks_sea2, no_chunks_land2, _ = (
+            tc_synth._add_id_synth_chunks_shift_init(tc_track2, 3)
+        )
         # check output
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
@@ -775,7 +1153,9 @@ class TestSynthIdChunks(unittest.TestCase):
         np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
         np.testing.assert_array_equal(synth_track2.id_chunk.data, expected_id_chunk)
         np.testing.assert_array_equal(synth_track.central_pressure.data, expected_pcen)
-        np.testing.assert_array_equal(synth_track2.central_pressure.data, expected_pcen2)
+        np.testing.assert_array_equal(
+            synth_track2.central_pressure.data, expected_pcen2
+        )
 
     def test_add_id_synth_chunks_typical(self):
         """Test _add_id_synth_chunks_shift_init for idealized cases"""
@@ -787,9 +1167,17 @@ class TestSynthIdChunks(unittest.TestCase):
         expected_no_chunks_land = 1
         expected_no_chunks_sea = 2
         # create fake xarray with time, on_land and on_land_hist
-        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+            }
+        )
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track, 3)
+        synth_track, no_chunks_sea, no_chunks_land, _ = (
+            tc_synth._add_id_synth_chunks_shift_init(tc_track, 3)
+        )
         # check output
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
@@ -798,7 +1186,9 @@ class TestSynthIdChunks(unittest.TestCase):
 
     def test_add_id_synth_chunks_complex(self):
         """Test _add_id_synth_chunks_shift_init for idealized cases"""
-        on_land_hist = np.array([True, True, False, False, True, True, True, False, False])
+        on_land_hist = np.array(
+            [True, True, False, False, True, True, True, False, False]
+        )
         on_land = np.array([True, False, False, False, False, True, True, True, False])
         pcen = np.arange(0, len(on_land))
         # expected values
@@ -807,14 +1197,23 @@ class TestSynthIdChunks(unittest.TestCase):
         expected_no_chunks_sea = 2
         expected_pcen = np.append(pcen[1:], pcen[-1])
         # create fake xarray with time, on_land and on_land_hist
-        tc_track = dummy_track_builder({'on_land': on_land, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+            }
+        )
         # call _add_id_synth_chunks
-        synth_track, no_chunks_sea, no_chunks_land, _ = tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        synth_track, no_chunks_sea, no_chunks_land, _ = (
+            tc_synth._add_id_synth_chunks_shift_init(tc_track)
+        )
         # check output
         self.assertEqual(no_chunks_land, expected_no_chunks_land)
         self.assertEqual(no_chunks_sea, expected_no_chunks_sea)
         np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
         np.testing.assert_array_equal(synth_track.central_pressure.data, expected_pcen)
+
 
 class TestSynthExtIdChunks(unittest.TestCase):
     def test_get_shift_idx_start_wo_transition_both(self):
@@ -822,7 +1221,9 @@ class TestSynthExtIdChunks(unittest.TestCase):
         # case without any landfall
         on_land_hist = np.repeat([False], 10)
         on_land_synth = np.repeat([False], 10)
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         self.assertEqual(shift_first_sea, 0)
         self.assertEqual(idx_start_model, 10)
 
@@ -840,133 +1241,236 @@ class TestSynthExtIdChunks(unittest.TestCase):
         # landfall (or at synth landfall)
 
         # case with same landfalls
-        on_land_hist = np.array([False, False, False, True, True, True, False, False, True])
+        on_land_hist = np.array(
+            [False, False, False, True, True, True, False, False, True]
+        )
         on_land_synth = on_land_hist
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         self.assertEqual(shift_first_sea, 0)
         # modelling one timestep before hist LF
         self.assertEqual(idx_start_model, 2)
 
-
         # Synth LF before Hist LF: no shift, model from synth LF
-        on_land_hist = np.array([False, False, False, True, True, True, False, False, True])
-        on_land_synth = np.array([False, False, True, True, True, True, False, False, True])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [False, False, False, True, True, True, False, False, True]
+        )
+        on_land_synth = np.array(
+            [False, False, True, True, True, True, False, False, True]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         self.assertEqual(shift_first_sea, 0)
         self.assertEqual(idx_start_model, 2)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
         self.assertIsNone(track_end_shift)
 
         # Hist LF before Synth LF: no shift, model from hist LF minus 4h
-        on_land_hist = np.array([False, False, True, True, True, True, False, False, True])
-        on_land_synth = np.array([False, False, False, True, True, True, False, False, True])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [False, False, True, True, True, True, False, False, True]
+        )
+        on_land_synth = np.array(
+            [False, False, False, True, True, True, False, False, True]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         self.assertEqual(shift_first_sea, 0)
         self.assertEqual(idx_start_model, 1)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist, 'central_pressure': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
         self.assertIsNone(track_end_shift)
 
     def test_get_shift_idx_start_land_hist(self):
         """Test _get_shift_idx_start for idealized case with hist starting over land"""
 
         # case 1a i: synth reaches land soonish and moves back to sea thereafter
-        on_land_hist = np.array([True, True, False, False, True, True, False, False, True])
-        on_land_synth = np.array([False, False, True, False, False, False, False, True, False])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [True, True, False, False, True, True, False, False, True]
+        )
+        on_land_synth = np.array(
+            [False, False, True, False, False, False, False, True, False]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         # shift by +1 (End of LF: index 2 of on_land_hist to index 3 of on_land_synth)
         self.assertEqual(shift_first_sea, 1)
         # modelling 4h i.e. one timestep before hist LF, that is, index 4 + 1 (shift) - 1 (4h) = 4
         self.assertEqual(idx_start_model, 4)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
-                                        'central_pressure': pcen.copy(),
-                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+                "lon": pcen.copy(),
+                "lat": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
-        np.testing.assert_array_equal(track_end_shift['lon'].values, on_land_hist.size - np.array([2,1,1]))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
+        np.testing.assert_array_equal(
+            track_end_shift["lon"].values, on_land_hist.size - np.array([2, 1, 1])
+        )
 
         # case 1a ii: synth reaches land soonish but never moves back to sea thereafter
-        on_land_hist = np.array([True, True, False, False, True, True, False, False, True])
-        on_land_synth = np.array([False, False, True, True, True, True, True, True, True])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [True, True, False, False, True, True, False, False, True]
+        )
+        on_land_synth = np.array(
+            [False, False, True, True, True, True, True, True, True]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         # shift by -2 (First over sea: index 2 of on_land_hist to index 0 of on_land_synth)
         self.assertEqual(shift_first_sea, -2)
         # modelling 4h i.e. one timestep before hist LF, that is, index 4 + -2 (shift) - 1 (4h) = 1
         self.assertEqual(idx_start_model, 1)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
-                                        'central_pressure': pcen.copy(),
-                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+                "lon": pcen.copy(),
+                "lat": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
         self.assertIsNone(track_end_shift)
-
 
         # case 1b: synth not over land soon and hist not over ocean soon:
         # no shift, explicit modelling from the start
         on_land_hist = np.array([True, True, True, True, True, True, True, False, True])
-        on_land_synth = np.array([False, False, False, False, False, False, False, True, False])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_synth = np.array(
+            [False, False, False, False, False, False, False, True, False]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         # shift by +1 (End of LF: index 2 of on_land_hist to index 3 of on_land_synth)
         self.assertEqual(shift_first_sea, 0)
         # modelling 4h i.e. one timestep before hist LF, that is, index 4 + 1 (shift) - 1 (4h) = 4
         self.assertEqual(idx_start_model, 0)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
-                                        'central_pressure': pcen.copy(),
-                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+                "lon": pcen.copy(),
+                "lat": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
         self.assertIsNone(track_end_shift)
 
-
         # case 1c: synth not over land anytime soon but hist soon over the ocean
-        on_land_hist = np.array([True, True, False, False, True, True, False, False, True])
-        on_land_synth = np.array([False, False, False, False, False, False, False, True, False])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [True, True, False, False, True, True, False, False, True]
+        )
+        on_land_synth = np.array(
+            [False, False, False, False, False, False, False, True, False]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         # shift by -2 (First over sea: index 2 of on_land_hist to index 0 of on_land_synth)
         self.assertEqual(shift_first_sea, -2)
         # modelling 4h i.e. one timestep before hist LF, that is, index 4 + -2 (shift) - 1 (4h) = 1
         self.assertEqual(idx_start_model, 1)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
-                                        'central_pressure': pcen.copy(),
-                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+                "lon": pcen.copy(),
+                "lat": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
         self.assertIsNone(track_end_shift)
 
     def test_get_shift_idx_start_land_synth(self):
         """Test _get_shift_idx_start for idealized case with synth starting over land"""
 
         # case 2a i: hist reaches land soonish and moves back to sea thereafter
-        on_land_hist = np.array([False, False, True, False, False, False, False, True, False])
-        on_land_synth = np.array([True, True, False, False, True, True, False, False, True])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [False, False, True, False, False, False, False, True, False]
+        )
+        on_land_synth = np.array(
+            [True, True, False, False, True, True, False, False, True]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         # shift by -1 (End of LF: index 3 of on_land_hist to index 2 of on_land_synth)
         self.assertEqual(shift_first_sea, -1)
         # modelling 4h i.e. one timestep before hist LF would be, index 7 + -1
@@ -974,62 +1478,108 @@ class TestSynthExtIdChunks(unittest.TestCase):
         self.assertEqual(idx_start_model, 4)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
-                                        'central_pressure': pcen.copy(),
-                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+                "lon": pcen.copy(),
+                "lat": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
         # TODO understand why this fails. Somehow id_chunk is not what it should be
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
         self.assertIsNone(track_end_shift)
 
         # case 2a ii: hist reaches land soonish but never moves back to sea
         # thereafter: need to model from the start
-        on_land_hist = np.array([False, False, True, True, True, True, True, True, True])
-        on_land_synth = np.array([True, True, False, False, True, True, False, False, True])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [False, False, True, True, True, True, True, True, True]
+        )
+        on_land_synth = np.array(
+            [True, True, False, False, True, True, False, False, True]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         # no shift
         self.assertEqual(shift_first_sea, 0)
         # modelling from the start
         self.assertEqual(idx_start_model, 0)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
-                                        'central_pressure': pcen.copy(),
-                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+                "lon": pcen.copy(),
+                "lat": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
         self.assertIsNone(track_end_shift)
-
 
         # case 2b: Hist track not over land soon AND synth track NOT soon over the ocean:
         # no shift, explicit modelling from the start
-        on_land_hist = np.array([False, False, False, False, False, False, False, True, False])
-        on_land_synth = np.array([True, True, True, True, True, True, True, False, True])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [False, False, False, False, False, False, False, True, False]
+        )
+        on_land_synth = np.array(
+            [True, True, True, True, True, True, True, False, True]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         # shift by +1 (End of LF: index 2 of on_land_hist to index 3 of on_land_synth)
         self.assertEqual(shift_first_sea, 0)
         # modelling 4h i.e. one timestep before hist LF, that is, index 4 + 1 (shift) - 1 (4h) = 4
         self.assertEqual(idx_start_model, 0)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
-                                        'central_pressure': pcen.copy(),
-                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+                "lon": pcen.copy(),
+                "lat": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
         self.assertIsNone(track_end_shift)
 
-
         # case 1c: hist track not over land soon AND synth track soon over the ocean
-        on_land_hist = np.array([False, False, False, False, False, False, False, True, False])
-        on_land_synth = np.array([True, True, False, False, True, True, True, False, True])
-        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(on_land_hist, on_land_synth, 3)
+        on_land_hist = np.array(
+            [False, False, False, False, False, False, False, True, False]
+        )
+        on_land_synth = np.array(
+            [True, True, False, False, True, True, True, False, True]
+        )
+        shift_first_sea, idx_start_model = tc_synth._get_shift_idx_start(
+            on_land_hist, on_land_synth, 3
+        )
         # shift by 2 (First over sea: index 0 of on_land_hist to index 2 of on_land_synth)
         self.assertEqual(shift_first_sea, 2)
         # modelling 4h i.e. one timestep before hist LF, that is, index 7 + 2
@@ -1037,19 +1587,30 @@ class TestSynthExtIdChunks(unittest.TestCase):
         self.assertEqual(idx_start_model, 4)
         # check if id_chunk would match as well
         pcen = np.arange(on_land_hist.size)
-        tc_track = dummy_track_builder({'on_land': on_land_synth, 'on_land_hist': on_land_hist,
-                                        'central_pressure': pcen.copy(),
-                                        'lon': pcen.copy(), 'lat': pcen.copy()})
+        tc_track = dummy_track_builder(
+            {
+                "on_land": on_land_synth,
+                "on_land_hist": on_land_hist,
+                "central_pressure": pcen.copy(),
+                "lon": pcen.copy(),
+                "lat": pcen.copy(),
+            }
+        )
         tc_track_new, _, _, track_end_shift = tc_synth._add_id_synth_chunks_shift_init(
             tc_track, 3
         )
-        self.assertTrue(check_id_chunk_vs_on_land_synth(tc_track_new['id_chunk'].values, on_land_synth, idx_start_model))
-        np.testing.assert_array_equal(track_end_shift['lon'].values, on_land_hist.size - np.array([2,1,1,1]))
+        self.assertTrue(
+            check_id_chunk_vs_on_land_synth(
+                tc_track_new["id_chunk"].values, on_land_synth, idx_start_model
+            )
+        )
+        np.testing.assert_array_equal(
+            track_end_shift["lon"].values, on_land_hist.size - np.array([2, 1, 1, 1])
+        )
 
     # def test_ext_id_synth_chunks_nolf(self):
     #     """Test _add_id_synth_chunks_shift_init for idealized case without any
     #     landfall"""
-
 
     #     # process is:
     #     # _add_id_synth_chunks_shift_init
@@ -1110,6 +1671,7 @@ class TestSynthExtIdChunks(unittest.TestCase):
     #     np.testing.assert_array_equal(synth_track.id_chunk.data, expected_id_chunk)
     #     np.testing.assert_array_equal(synth_track.central_pressure.data, pcen)
 
+
 class TestSynthDataFit(unittest.TestCase):
 
     def test_get_fit_order(self):
@@ -1117,24 +1679,40 @@ class TestSynthDataFit(unittest.TestCase):
         # sample values
         pcen_vals = np.arange(880, 1000)
         pcen_pert = 15
-        var_names = ['max_sustained_wind', 'radius_max_wind', "radius_oci"]
+        var_names = ["max_sustained_wind", "radius_max_wind", "radius_oci"]
 
         # 1 for max_sustained_wind
-        self.assertEqual(tc_synth._get_fit_order(pcen=pcen_vals, central_pressure_pert=pcen_pert, var_name=var_names[0]),
-                         1)
+        self.assertEqual(
+            tc_synth._get_fit_order(
+                pcen=pcen_vals, central_pressure_pert=pcen_pert, var_name=var_names[0]
+            ),
+            1,
+        )
         # 1 if less than 5 pcen values provided
         for i in range(5):
             self.assertEqual(
-                tc_synth._get_fit_order(pcen=pcen_vals[:i], central_pressure_pert=pcen_pert, var_name='radius_max_wind'),
-                1
+                tc_synth._get_fit_order(
+                    pcen=pcen_vals[:i],
+                    central_pressure_pert=pcen_pert,
+                    var_name="radius_max_wind",
+                ),
+                1,
             )
         # tuple if more than 5 values provided and covering enough bins
-        self.assertIsInstance(tc_synth._get_fit_order(pcen=pcen_vals, central_pressure_pert=pcen_pert, var_name=var_names[1]),
-                            tuple)
+        self.assertIsInstance(
+            tc_synth._get_fit_order(
+                pcen=pcen_vals, central_pressure_pert=pcen_pert, var_name=var_names[1]
+            ),
+            tuple,
+        )
         # 1 if enough values but only covering a single bin
         self.assertEqual(
-            tc_synth._get_fit_order(pcen=np.arange(999,1000,0.01), central_pressure_pert=pcen_pert, var_name='radius_max_wind'),
-            1
+            tc_synth._get_fit_order(
+                pcen=np.arange(999, 1000, 0.01),
+                central_pressure_pert=pcen_pert,
+                var_name="radius_max_wind",
+            ),
+            1,
         )
         # check number of bins is a expected - up to 4
         # range over which bins cover values: [pcen.min() - pcen_pert-1, pcen.max()+1]
@@ -1150,33 +1728,33 @@ class TestSynthDataFit(unittest.TestCase):
         #     print(max_pcen)
         #     print(tc_synth._get_fit_order(pcen=pcen_vals[pcen_vals < max_pcen], central_pressure_pert=pcen_pert, var_name='radius_max_wind'))
 
-
-
-
     def test_prepare_data_piecewise(self):
         """Test _prepare_data_piecewise"""
         # TODO
-        x = _prepare_data_piecewise(np.arange(20), (0,5,12,20))
+        x = _prepare_data_piecewise(np.arange(20), (0, 5, 12, 20))
 
     def test_get_fit_single_phase(self):
         """Test _get_fit_single_phase"""
 
         # sample:
-        pcen = np.concatenate([np.arange(1000,900,-5), np.arange(905,990,10)])
+        pcen = np.concatenate([np.arange(1000, 900, -5), np.arange(905, 990, 10)])
         lons = np.repeat([-80], len(pcen))
         lats = np.repeat([30], len(pcen))
         vmax = tc._estimate_vmax(np.repeat([np.nan], len(pcen)), lons, lats, pcen)
         rmax = tc.estimate_rmw(np.repeat([np.nan], len(pcen)), pcen)
         roci = tc.estimate_roci(np.repeat([np.nan], len(pcen)), pcen)
-        tc_track = dummy_track_builder({
-            'central_pressure': np.concatenate([np.arange(1000,900,-5), np.arange(905,990,10)]),
-            'max_sustained_wind': vmax,
-            'radius_max_wind': rmax,
-            'radius_oci': roci
-        })
+        tc_track = dummy_track_builder(
+            {
+                "central_pressure": np.concatenate(
+                    [np.arange(1000, 900, -5), np.arange(905, 990, 10)]
+                ),
+                "max_sustained_wind": vmax,
+                "radius_max_wind": rmax,
+                "radius_oci": roci,
+            }
+        )
         res = _get_fit_single_phase(tc_track, 15)
         # res['radius_max_wind']['fit'].predict(tc_synth._prepare_data_piecewise(pcen, res['radius_max_wind']['order']))
-
 
 
 # Execute Tests
