@@ -24,8 +24,6 @@ import logging
 import numpy as np
 from scipy import interpolate
 
-from climada.util.value_representation import sig_dig_list
-
 LOGGER = logging.getLogger(__name__)
 
 
