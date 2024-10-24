@@ -55,7 +55,7 @@ class TestKnutson(unittest.TestCase):
 
         knutson_data = tc_cc.get_knutson_data()
         knutson_value = knutson_data[var_id, basin_id, perc_id]
-    
+
         start_ind = base_start - gmst_info['gmst_start_year']
         end_ind = base_end - gmst_info['gmst_start_year']
 
@@ -85,7 +85,7 @@ class TestKnutson(unittest.TestCase):
 
     def test_get_knutson_scaling_structure(self):
         """Test get_knutson_criterion function."""
-        
+
         yearly_steps = 8
         predicted_changes = tc_cc.get_knutson_scaling_factor(yearly_steps=yearly_steps)
 

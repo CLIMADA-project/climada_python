@@ -28,8 +28,8 @@ from pathlib import Path
 
 from climada import CONFIG
 from climada.entity.entity_def import Entity
-from climada.entity import Exposures, ImpactFuncSet, ImpactFunc
-from climada.hazard.base import Hazard
+from climada.entity import Exposures, ImpactFuncSet, ImpactFunc, ImpfTropCyclone
+from climada.hazard.base import Hazard, Centroids
 from climada.engine import ImpactCalc, Impact
 from climada.engine.impact_calc import LOGGER as ILOG
 from climada.util.constants import ENT_DEMO_TODAY, DEMO_DIR
@@ -50,8 +50,8 @@ def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=
     """Test properties of imapcts"""
     self.assertEqual(len(haz.event_id), len(imp.at_event))
     self.assertIsInstance(imp, Impact)
-    np.testing.assert_allclose(imp.coord_exp[:,0], exp.gdf.latitude)
-    np.testing.assert_allclose(imp.coord_exp[:,1], exp.gdf.longitude)
+    np.testing.assert_allclose(imp.coord_exp[:,0], exp.gdf['latitude'])
+    np.testing.assert_allclose(imp.coord_exp[:,1], exp.gdf['longitude'])
     self.assertAlmostEqual(imp.aai_agg, aai_agg, 3)
     np.testing.assert_allclose(imp.eai_exp, eai_exp, rtol=1e-5)
     np.testing.assert_allclose(imp.at_event, at_event, rtol=1e-5)
@@ -271,7 +271,7 @@ class TestImpactCalc(unittest.TestCase):
 
         self.assertIsInstance(impact.imp_mat, sparse.csr_matrix)
         self.assertEqual(impact.imp_mat.shape, (HAZ.event_id.size,
-                                                ENT.exposures.gdf.value.size))
+                                                ENT.exposures.gdf['value'].size))
         np.testing.assert_array_almost_equal_nulp(
             np.array(impact.imp_mat.sum(axis=1)).ravel(), impact.at_event, nulp=5)
         np.testing.assert_array_almost_equal_nulp(
@@ -294,8 +294,8 @@ class TestImpactCalc(unittest.TestCase):
     def test_calc_insured_impact_pass(self):
         """Test compute insured impact"""
         exp = ENT.exposures.copy()
-        exp.gdf.cover /= 1e3
-        exp.gdf.deductible += 1e5
+        exp.gdf['cover'] /= 1e3
+        exp.gdf['deductible'] += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
         with self.assertLogs(ILOG, level='INFO') as logs:
             impact = icalc.impact()
@@ -316,8 +316,8 @@ class TestImpactCalc(unittest.TestCase):
     def test_calc_insured_impact_no_cover(self):
         """Test compute insured impact"""
         exp = ENT.exposures.copy()
-        exp.gdf.cover /= 1e3
-        exp.gdf.deductible += 1e5
+        exp.gdf['cover'] /= 1e3
+        exp.gdf['deductible'] += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
         with self.assertLogs(ILOG, level='INFO') as logs:
             impact = icalc.impact(ignore_cover=True)
@@ -338,8 +338,8 @@ class TestImpactCalc(unittest.TestCase):
     def test_calc_insured_impact_no_deductible(self):
         """Test compute insured impact"""
         exp = ENT.exposures.copy()
-        exp.gdf.cover /= 1e3
-        exp.gdf.deductible += 1e5
+        exp.gdf['cover'] /= 1e3
+        exp.gdf['deductible'] += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
         with self.assertLogs(ILOG, level='INFO') as logs:
             impact = icalc.impact(ignore_deductible=True)
@@ -360,8 +360,8 @@ class TestImpactCalc(unittest.TestCase):
     def test_calc_insured_impact_no_insurance(self):
         """Test compute insured impact"""
         exp = ENT.exposures.copy()
-        exp.gdf.cover /= 1e3
-        exp.gdf.deductible += 1e5
+        exp.gdf['cover'] /= 1e3
+        exp.gdf['deductible'] += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
         with self.assertLogs(ILOG, level='INFO') as logs:
             impact = icalc.impact(ignore_cover=True, ignore_deductible=True)
@@ -384,14 +384,14 @@ class TestImpactCalc(unittest.TestCase):
     def test_calc_insured_impact_save_mat_pass(self):
         """Test compute impact with impact matrix"""
         exp = ENT.exposures.copy()
-        exp.gdf.cover /= 1e3
-        exp.gdf.deductible += 1e5
+        exp.gdf['cover'] /= 1e3
+        exp.gdf['deductible'] += 1e5
         icalc = ImpactCalc(exp, ENT.impact_funcs, HAZ)
         impact = icalc.impact(save_mat=True)
 
         self.assertIsInstance(impact.imp_mat, sparse.csr_matrix)
         self.assertEqual(impact.imp_mat.shape, (HAZ.event_id.size,
-                                                ENT.exposures.gdf.value.size))
+                                                ENT.exposures.gdf['value'].size))
         np.testing.assert_array_almost_equal_nulp(
             np.array(impact.imp_mat.sum(axis=1)).ravel(), impact.at_event, nulp=5)
         np.testing.assert_array_almost_equal_nulp(
@@ -418,9 +418,9 @@ class TestImpactCalc(unittest.TestCase):
                                             ignore_cover=True, ignore_deductible=True)
         self.assertSetEqual(set(exp_min_gdf.columns),
                             set(['value', 'impf_TC', 'centr_TC']))
-        np.testing.assert_array_equal(exp_min_gdf.value, ENT.exposures.gdf.value)
-        np.testing.assert_array_equal(exp_min_gdf.impf_TC, ENT.exposures.gdf.impf_TC)
-        np.testing.assert_array_equal(exp_min_gdf.centr_TC, ENT.exposures.gdf.centr_TC)
+        np.testing.assert_array_equal(exp_min_gdf['value'], ENT.exposures.gdf['value'])
+        np.testing.assert_array_equal(exp_min_gdf['impf_TC'], ENT.exposures.gdf['impf_TC'])
+        np.testing.assert_array_equal(exp_min_gdf['centr_TC'], ENT.exposures.gdf['centr_TC'])
 
     def test_stitch_impact_matrix(self):
         """Check how sparse matrices from a generator are stitched together"""
@@ -471,6 +471,34 @@ class TestImpactCalc(unittest.TestCase):
         np.testing.assert_array_equal(eai_exp, [2.25, 1.25, 4.5])
         self.assertEqual(aai_agg, 8.0)  # Sum of eai_exp
 
+    def test_single_exp_zero_mdr(self):
+        """Test for case where exposure has a single value and MDR or fraction contains zeros"""
+        centroids = Centroids.from_lat_lon([-26.16], [28.20])
+        haz = Hazard(
+            intensity=sparse.csr_matrix(np.array([[31.5], [19.0]])),
+            event_id=np.arange(2),
+            event_name=[0,1],
+            frequency=np.ones(2) / 2,
+            fraction=sparse.csr_matrix(np.zeros((2,1))),
+            date=np.array([0, 1]),
+            centroids=centroids,
+            haz_type='TC'
+        )
+        exp = Exposures({'value': [1.],
+                            'longitude': 28.22,
+                            'latitude': -26.17,
+                            'impf_TC': 1},
+                            crs="EPSG:4326")
+        imp_evt = 0.00250988804927603
+        aai_agg = imp_evt/2
+        eai_exp = np.array([aai_agg])
+        at_event = np.array([imp_evt, 0])
+        exp.set_geometry_points()
+        impf_tc = ImpfTropCyclone.from_emanuel_usa()
+        impf_set = ImpactFuncSet([impf_tc])
+        impf_set.check()
+        imp = ImpactCalc(exp, impf_set, haz).impact(save_mat=True)
+        check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
 
 class TestImpactMatrixCalc(unittest.TestCase):
     """Verify the computation of the impact matrix"""
