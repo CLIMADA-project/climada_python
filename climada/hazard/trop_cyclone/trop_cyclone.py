@@ -19,36 +19,40 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define TC wind hazard (TropCyclone class).
 """
 
-__all__ = ['TropCyclone']
+__all__ = ["TropCyclone"]
 
 import copy
 import datetime as dt
 import itertools
 import logging
 import time
-from typing import Optional, Tuple, List
+from typing import List, Optional, Tuple
 
-import numpy as np
-from scipy import sparse
 import matplotlib.animation as animation
-from tqdm import tqdm
+import numpy as np
 import pathos.pools
 import xarray as xr
+from scipy import sparse
+from tqdm import tqdm
 
-from climada.hazard.base import Hazard
-from climada.hazard.tc_tracks import TCTracks
-from climada.hazard.tc_clim_change import get_knutson_scaling_factor
-from climada.hazard.centroids.centr import Centroids
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
+from climada.hazard.base import Hazard
+from climada.hazard.centroids.centr import Centroids
+from climada.hazard.tc_clim_change import get_knutson_scaling_factor
+from climada.hazard.tc_tracks import TCTracks
 
-from .trop_cyclone_windfields import DEF_MAX_DIST_EYE_KM, DEF_INTENSITY_THRES, \
-    DEF_MAX_MEMORY_GB, compute_windfields_sparse
+from .trop_cyclone_windfields import (
+    DEF_INTENSITY_THRES,
+    DEF_MAX_DIST_EYE_KM,
+    DEF_MAX_MEMORY_GB,
+    compute_windfields_sparse,
+)
 
 LOGGER = logging.getLogger(__name__)
 
-HAZ_TYPE = 'TC'
+HAZ_TYPE = "TC"
 """Hazard type acronym for Tropical Cyclone"""
 
 
@@ -83,10 +87,11 @@ class TropCyclone(Hazard):
         matrix of shape (npositions, ncentroids * 2) that can be reshaped to a full ndarray of
         shape (npositions, ncentroids, 2).
     """
+
     intensity_thres = DEF_INTENSITY_THRES
     """intensity threshold for storage in m/s"""
 
-    vars_opt = Hazard.vars_opt.union({'category'})
+    vars_opt = Hazard.vars_opt.union({"category"})
     """Name of the variables that are not needed to compute the impact."""
 
     def __init__(
@@ -125,7 +130,7 @@ class TropCyclone(Hazard):
         **kwargs : Hazard properties, optional
             All other keyword arguments are passed to the Hazard constructor.
         """
-        kwargs.setdefault('haz_type', HAZ_TYPE)
+        kwargs.setdefault("haz_type", HAZ_TYPE)
         Hazard.__init__(self, **kwargs)
         self.category = category if category is not None else np.array([], int)
         self.basin = basin if basin is not None else []
@@ -133,13 +138,15 @@ class TropCyclone(Hazard):
 
     def set_from_tracks(self, *args, **kwargs):
         """This function is deprecated, use TropCyclone.from_tracks instead."""
-        LOGGER.warning("The use of TropCyclone.set_from_tracks is deprecated."
-                       "Use TropCyclone.from_tracks instead.")
+        LOGGER.warning(
+            "The use of TropCyclone.set_from_tracks is deprecated."
+            "Use TropCyclone.from_tracks instead."
+        )
         if "intensity_thres" not in kwargs:
             # some users modify the threshold attribute before calling `set_from_tracks`
             kwargs["intensity_thres"] = self.intensity_thres
-        if self.pool is not None and 'pool' not in kwargs:
-            kwargs['pool'] = self.pool
+        if self.pool is not None and "pool" not in kwargs:
+            kwargs["pool"] = self.pool
         self.__dict__ = TropCyclone.from_tracks(*args, **kwargs).__dict__
 
     @classmethod
@@ -148,7 +155,7 @@ class TropCyclone(Hazard):
         tracks: TCTracks,
         centroids: Centroids,
         pool: Optional[pathos.pools.ProcessPool] = None,
-        model: str = 'H08',
+        model: str = "H08",
         model_kwargs: Optional[dict] = None,
         ignore_distance_to_coast: bool = False,
         store_windfields: bool = False,
@@ -290,10 +297,10 @@ class TropCyclone(Hazard):
             [idx_centr_filter] = (np.abs(centroids.lat) <= max_latitude).nonzero()
         else:
             # Select centroids which are inside max_dist_inland_km and lat <= max_latitude
-            if 'dist_coast' not in centroids.gdf.columns:
+            if "dist_coast" not in centroids.gdf.columns:
                 dist_coast = centroids.get_dist_coast()
             else:
-                dist_coast = centroids.gdf['dist_coast'].values
+                dist_coast = centroids.gdf["dist_coast"].values
             [idx_centr_filter] = (
                 (dist_coast <= max_dist_inland_km * 1000)
                 & (np.abs(centroids.lat) <= max_latitude)
@@ -306,7 +313,9 @@ class TropCyclone(Hazard):
         )
 
         # Restrict to coastal centroids within reach of any of the tracks
-        t_lon_min, t_lat_min, t_lon_max, t_lat_max = tracks.get_bounds(deg_buffer=max_dist_eye_deg)
+        t_lon_min, t_lat_min, t_lon_max, t_lat_max = tracks.get_bounds(
+            deg_buffer=max_dist_eye_deg
+        )
         t_mid_lon = 0.5 * (t_lon_min + t_lon_max)
         filtered_centroids = centroids.coord[idx_centr_filter]
         u_coord.lon_normalize(filtered_centroids[:, 1], center=t_mid_lon)
@@ -331,7 +340,9 @@ class TropCyclone(Hazard):
         )
 
         LOGGER.info(
-            'Mapping %d tracks to %d coastal centroids.', num_tracks, idx_centr_filter.size,
+            "Mapping %d tracks to %d coastal centroids.",
+            num_tracks,
+            idx_centr_filter.size,
         )
         if pool:
             chunksize = max(min(num_tracks // pool.ncpus, 1000), 1)
@@ -359,20 +370,20 @@ class TropCyclone(Hazard):
             if last_perc < 100:
                 LOGGER.info("Progress: 100%")
 
-        LOGGER.debug('Concatenate events.')
+        LOGGER.debug("Concatenate events.")
         haz = cls.concat(tc_haz_list)
         haz.pool = pool
         haz.intensity_thres = intensity_thres
-        LOGGER.debug('Compute frequency.')
+        LOGGER.debug("Compute frequency.")
         haz.frequency_from_tracks(tracks.data)
         return haz
 
     def apply_climate_scenario_knu(
         self,
-        percentile: str='50',
-        scenario: str='4.5',
-        target_year: int=2050,
-        **kwargs
+        percentile: str = "50",
+        scenario: str = "4.5",
+        target_year: int = 2050,
+        **kwargs,
     ):
         """
         From current TC hazard instance, return new hazard set with future events
@@ -424,9 +435,11 @@ class TropCyclone(Hazard):
         """
 
         if self.category.size == 0:
-            LOGGER.warning("Tropical cyclone categories are missing and"
-                           "no effect of climate change can be modelled."
-                           "The original event set is returned")
+            LOGGER.warning(
+                "Tropical cyclone categories are missing and"
+                "no effect of climate change can be modelled."
+                "The original event set is returned"
+            )
             return self
 
         tc_cc = copy.deepcopy(self)
@@ -439,40 +452,48 @@ class TropCyclone(Hazard):
 
         for basin in np.unique(tc_cc.basin):
             scale_year_rcp_05, scale_year_rcp_45 = [
-                        get_knutson_scaling_factor(
-                                percentile=percentile,
-                                variable=variable,
-                                basin=basin,
-                                baseline=(np.min(years), np.max(years)),
-                                **kwargs
-                                ).loc[target_year, scenario]
-                                for variable in ['cat05', 'cat45']
-                                ]
+                get_knutson_scaling_factor(
+                    percentile=percentile,
+                    variable=variable,
+                    basin=basin,
+                    baseline=(np.min(years), np.max(years)),
+                    **kwargs,
+                ).loc[target_year, scenario]
+                for variable in ["cat05", "cat45"]
+            ]
 
             bas_sel = np.array(tc_cc.basin) == basin
 
-            cat_05_freqs_change = scale_year_rcp_05 * np.sum(tc_cc.frequency[sel_cat05 & bas_sel])
-            cat_45_freqs_change = scale_year_rcp_45 * np.sum(tc_cc.frequency[sel_cat45 & bas_sel])
+            cat_05_freqs_change = scale_year_rcp_05 * np.sum(
+                tc_cc.frequency[sel_cat05 & bas_sel]
+            )
+            cat_45_freqs_change = scale_year_rcp_45 * np.sum(
+                tc_cc.frequency[sel_cat45 & bas_sel]
+            )
             cat_03_freqs = np.sum(tc_cc.frequency[sel_cat03 & bas_sel])
 
-            scale_year_rcp_03 = (cat_05_freqs_change-cat_45_freqs_change) / cat_03_freqs
+            scale_year_rcp_03 = (
+                cat_05_freqs_change - cat_45_freqs_change
+            ) / cat_03_freqs
 
-            tc_cc.frequency[sel_cat03 & bas_sel] *= 1 + scale_year_rcp_03/100
-            tc_cc.frequency[sel_cat45 & bas_sel] *= 1 + scale_year_rcp_45/100
+            tc_cc.frequency[sel_cat03 & bas_sel] *= 1 + scale_year_rcp_03 / 100
+            tc_cc.frequency[sel_cat45 & bas_sel] *= 1 + scale_year_rcp_45 / 100
 
             if any(tc_cc.frequency) < 0:
                 raise ValueError(
                     " The application of the climate scenario leads to "
                     " negative frequencies. One solution - if appropriate -"
                     " could be to use a less extreme percentile."
-                    )
+                )
 
         return tc_cc
 
     def set_climate_scenario_knu(self, *args, **kwargs):
         """This function is deprecated, use TropCyclone.apply_climate_scenario_knu instead."""
-        LOGGER.warning("The use of TropCyclone.set_climate_scenario_knu is deprecated."
-                       "Use TropCyclone.apply_climate_scenario_knu instead.")
+        LOGGER.warning(
+            "The use of TropCyclone.set_climate_scenario_knu is deprecated."
+            "Use TropCyclone.apply_climate_scenario_knu instead."
+        )
         return self.apply_climate_scenario_knu(*args, **kwargs)
 
     @classmethod
@@ -485,7 +506,7 @@ class TropCyclone(Hazard):
         writer: animation = animation.PillowWriter(bitrate=500),
         figsize: Tuple[float, float] = (9, 13),
         adapt_fontsize: bool = True,
-        **kwargs
+        **kwargs,
     ):
         """
         Generate video of TC wind fields node by node and returns its
@@ -523,55 +544,64 @@ class TropCyclone(Hazard):
         # initialization
         track = tracks.get_track(track_name)
         if not track:
-            raise ValueError(f'{track_name} not found in track data.')
+            raise ValueError(f"{track_name} not found in track data.")
         idx_plt = np.argwhere(
-            (track['lon'].values < centroids.total_bounds[2] + 1)
-            & (centroids.total_bounds[0] - 1 < track['lon'].values)
-            & (track['lat'].values < centroids.total_bounds[3] + 1)
-            & (centroids.total_bounds[1] - 1 < track['lat'].values)
+            (track["lon"].values < centroids.total_bounds[2] + 1)
+            & (centroids.total_bounds[0] - 1 < track["lon"].values)
+            & (track["lat"].values < centroids.total_bounds[3] + 1)
+            & (centroids.total_bounds[1] - 1 < track["lat"].values)
         ).reshape(-1)
 
         tc_list = []
-        tr_coord = {'lat': [], 'lon': []}
+        tr_coord = {"lat": [], "lon": []}
         for node in range(idx_plt.size - 2):
             tr_piece = track.sel(
-                time=slice(track['time'].values[idx_plt[node]],
-                           track['time'].values[idx_plt[node + 2]]))
-            tr_piece.attrs['n_nodes'] = 2  # plot only one node
+                time=slice(
+                    track["time"].values[idx_plt[node]],
+                    track["time"].values[idx_plt[node + 2]],
+                )
+            )
+            tr_piece.attrs["n_nodes"] = 2  # plot only one node
             tr_sel = TCTracks()
             tr_sel.append(tr_piece)
-            tr_coord['lat'].append(tr_sel.data[0]['lat'].values[:-1])
-            tr_coord['lon'].append(tr_sel.data[0]['lon'].values[:-1])
+            tr_coord["lat"].append(tr_sel.data[0]["lat"].values[:-1])
+            tr_coord["lon"].append(tr_sel.data[0]["lon"].values[:-1])
 
             tc_tmp = cls.from_tracks(tr_sel, centroids=centroids)
             tc_tmp.event_name = [
-                track['name'] + ' ' + time.strftime(
+                track["name"]
+                + " "
+                + time.strftime(
                     "%d %h %Y %H:%M",
-                    time.gmtime(tr_sel.data[0]['time'][1].values.astype(int)
-                                / 1000000000)
+                    time.gmtime(
+                        tr_sel.data[0]["time"][1].values.astype(int) / 1000000000
+                    ),
                 )
             ]
             tc_list.append(tc_tmp)
 
-        if 'cmap' not in kwargs:
-            kwargs['cmap'] = 'Greys'
-        if 'vmin' not in kwargs:
-            kwargs['vmin'] = np.array([tc_.intensity.min() for tc_ in tc_list]).min()
-        if 'vmax' not in kwargs:
-            kwargs['vmax'] = np.array([tc_.intensity.max() for tc_ in tc_list]).max()
+        if "cmap" not in kwargs:
+            kwargs["cmap"] = "Greys"
+        if "vmin" not in kwargs:
+            kwargs["vmin"] = np.array([tc_.intensity.min() for tc_ in tc_list]).min()
+        if "vmax" not in kwargs:
+            kwargs["vmax"] = np.array([tc_.intensity.max() for tc_ in tc_list]).max()
 
         def run(node):
             tc_list[node].plot_intensity(1, axis=axis, **kwargs)
-            axis.plot(tr_coord['lon'][node], tr_coord['lat'][node], 'k')
+            axis.plot(tr_coord["lon"][node], tr_coord["lat"][node], "k")
             axis.set_title(tc_list[node].event_name[0])
             pbar.update()
 
         if file_name:
-            LOGGER.info('Generating video %s', file_name)
-            fig, axis, _fontsize = u_plot.make_map(figsize=figsize, adapt_fontsize=adapt_fontsize)
+            LOGGER.info("Generating video %s", file_name)
+            fig, axis, _fontsize = u_plot.make_map(
+                figsize=figsize, adapt_fontsize=adapt_fontsize
+            )
             pbar = tqdm(total=idx_plt.size - 2)
-            ani = animation.FuncAnimation(fig, run, frames=idx_plt.size - 2,
-                                          interval=500, blit=False)
+            ani = animation.FuncAnimation(
+                fig, run, frames=idx_plt.size - 2, interval=500, blit=False
+            )
             fig.tight_layout()
             ani.save(file_name, writer=writer)
             pbar.close()
@@ -587,8 +617,8 @@ class TropCyclone(Hazard):
         """
         if not tracks:
             return
-        year_max = np.amax([t['time'].dt.year.values.max() for t in tracks])
-        year_min = np.amin([t['time'].dt.year.values.min() for t in tracks])
+        year_max = np.amax([t["time"].dt.year.values.max() for t in tracks])
+        year_min = np.amin([t["time"].dt.year.values.min() for t in tracks])
         year_delta = year_max - year_min + 1
         num_orig = np.count_nonzero(self.orig)
         ens_size = (self.event_id.size / num_orig) if num_orig > 0 else 1
@@ -600,7 +630,7 @@ class TropCyclone(Hazard):
         track: xr.Dataset,
         centroids: Centroids,
         idx_centr_filter: np.ndarray,
-        model: str = 'H08',
+        model: str = "H08",
         model_kwargs: Optional[dict] = None,
         store_windfields: bool = False,
         metric: str = "equirect",
@@ -668,31 +698,36 @@ class TropCyclone(Hazard):
         new_haz.intensity = intensity_sparse
         if store_windfields:
             new_haz.windfields = [windfields_sparse]
-        new_haz.units = 'm/s'
+        new_haz.units = "m/s"
         new_haz.centroids = centroids
         new_haz.event_id = np.array([1])
         new_haz.frequency = np.array([1])
-        new_haz.event_name = [track.attrs['sid']]
+        new_haz.event_name = [track.attrs["sid"]]
         new_haz.fraction = sparse.csr_matrix(new_haz.intensity.shape)
         # store first day of track as date
-        new_haz.date = np.array([
-            dt.datetime(track['time'].dt.year.values[0],
-                        track['time'].dt.month.values[0],
-                        track['time'].dt.day.values[0]).toordinal()
-        ])
-        new_haz.orig = np.array([track.attrs['orig_event_flag']])
-        new_haz.category = np.array([track.attrs['category']])
+        new_haz.date = np.array(
+            [
+                dt.datetime(
+                    track["time"].dt.year.values[0],
+                    track["time"].dt.month.values[0],
+                    track["time"].dt.day.values[0],
+                ).toordinal()
+            ]
+        )
+        new_haz.orig = np.array([track.attrs["orig_event_flag"]])
+        new_haz.category = np.array([track.attrs["category"]])
         # users that pickle TCTracks objects might still have data with the legacy basin attribute,
         # so we have to deal with it here
-        new_haz.basin = [track['basin'] if isinstance(track['basin'], str)
-                         else str(track['basin'].values[0])]
+        new_haz.basin = [
+            (
+                track["basin"]
+                if isinstance(track["basin"], str)
+                else str(track["basin"].values[0])
+            )
+        ]
         return new_haz
 
-    def _apply_knutson_criterion(
-        self,
-        chg_int_freq: List,
-        scaling_rcp_year: float
-    ):
+    def _apply_knutson_criterion(self, chg_int_freq: List, scaling_rcp_year: float):
         """
         Apply changes to intensities and cumulative frequencies.
 
@@ -718,41 +753,42 @@ class TropCyclone(Hazard):
             bas_sel = np.array(tc_cc.basin) == basin
 
             # Apply intensity change
-            inten_chg = [chg
-                         for chg in chg_int_freq
-                         if (chg['variable'] == 'intensity' and
-                             chg['basin'] == basin)
-                         ]
+            inten_chg = [
+                chg
+                for chg in chg_int_freq
+                if (chg["variable"] == "intensity" and chg["basin"] == basin)
+            ]
             for chg in inten_chg:
-                sel_cat_chg = np.isin(tc_cc.category, chg['category']) & bas_sel
-                inten_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+                sel_cat_chg = np.isin(tc_cc.category, chg["category"]) & bas_sel
+                inten_scaling = 1 + (chg["change"] - 1) * scaling_rcp_year
                 tc_cc.intensity = sparse.diags(
                     np.where(sel_cat_chg, inten_scaling, 1)
-                    ).dot(tc_cc.intensity)
+                ).dot(tc_cc.intensity)
 
             # Apply frequency change
-            freq_chg = [chg
-                        for chg in chg_int_freq
-                        if (chg['variable'] == 'frequency' and
-                            chg['basin'] == basin)
-                        ]
-            freq_chg.sort(reverse=False, key=lambda x: len(x['category']))
+            freq_chg = [
+                chg
+                for chg in chg_int_freq
+                if (chg["variable"] == "frequency" and chg["basin"] == basin)
+            ]
+            freq_chg.sort(reverse=False, key=lambda x: len(x["category"]))
 
             # Scale frequencies by category
             cat_larger_list = []
             for chg in freq_chg:
-                cat_chg_list = [cat
-                                for cat in chg['category']
-                                if cat not in cat_larger_list
-                                ]
+                cat_chg_list = [
+                    cat for cat in chg["category"] if cat not in cat_larger_list
+                ]
                 sel_cat_chg = np.isin(tc_cc.category, cat_chg_list) & bas_sel
                 if sel_cat_chg.any():
-                    freq_scaling = 1 + (chg['change'] - 1) * scaling_rcp_year
+                    freq_scaling = 1 + (chg["change"] - 1) * scaling_rcp_year
                     tc_cc.frequency[sel_cat_chg] *= freq_scaling
                 cat_larger_list += cat_chg_list
 
         if (tc_cc.frequency < 0).any():
-            raise ValueError("The application of the given climate scenario"
-                             "resulted in at least one negative frequency.")
+            raise ValueError(
+                "The application of the given climate scenario"
+                "resulted in at least one negative frequency."
+            )
 
         return tc_cc

@@ -19,15 +19,16 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define DiscRates class.
 """
 
-__all__ = ['DiscRates']
+__all__ = ["DiscRates"]
 
 import copy
-from array import array
 import logging
+from array import array
 from typing import Optional
+
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 import xlsxwriter
 
 import climada.util.checker as u_check
@@ -37,22 +38,20 @@ import climada.util.hdf5_handler as u_hdf5
 LOGGER = logging.getLogger(__name__)
 
 """MATLAB variable names"""
-DEF_VAR_MAT = {'sup_field_name': 'entity',
-               'field_name': 'discount',
-               'var_name': {'year': 'year',
-                            'disc': 'discount_rate'
-                           }
-              }
+DEF_VAR_MAT = {
+    "sup_field_name": "entity",
+    "field_name": "discount",
+    "var_name": {"year": "year", "disc": "discount_rate"},
+}
 
 """Excel variable names"""
-DEF_VAR_EXCEL = {'sheet_name': 'discount',
-                 'col_name': {'year': 'year',
-                              'disc': 'discount_rate'
-                             }
-                }
+DEF_VAR_EXCEL = {
+    "sheet_name": "discount",
+    "col_name": {"year": "year", "disc": "discount_rate"},
+}
 
 
-class DiscRates():
+class DiscRates:
     """
     Defines discount rates and basic methods. Loads from
     files with format defined in FILE_EXT.
@@ -66,10 +65,8 @@ class DiscRates():
     """
 
     def __init__(
-        self,
-        years : Optional[np.ndarray] = None,
-        rates : Optional[np.ndarray] = None
-        ):
+        self, years: Optional[np.ndarray] = None, rates: Optional[np.ndarray] = None
+    ):
         """
         Fill discount rates with values and check consistency data
 
@@ -100,7 +97,7 @@ class DiscRates():
         ------
         ValueError
         """
-        u_check.size(len(self.years), self.rates, 'DiscRates.rates')
+        u_check.size(len(self.years), self.rates, "DiscRates.rates")
 
     def select(self, year_range):
         """
@@ -116,12 +113,11 @@ class DiscRates():
         """
         pos_year = np.isin(year_range, self.years)
         if not np.all(pos_year):
-            LOGGER.info('No discount rates for given years.')
+            LOGGER.info("No discount rates for given years.")
             return None
         pos_year = np.isin(self.years, year_range)
 
-        return DiscRates(years=self.years[pos_year],
-                         rates=self.rates[pos_year])
+        return DiscRates(years=self.years[pos_year], rates=self.rates[pos_year])
 
     def append(self, disc_rates):
         """
@@ -142,8 +138,8 @@ class DiscRates():
             self.__dict__ = copy.deepcopy(disc_rates.__dict__)
             return
 
-        new_year = array('l')
-        new_rate = array('d')
+        new_year = array("l")
+        new_rate = array("d")
         for year, rate in zip(disc_rates.years, disc_rates.rates):
             found = np.where(year == self.years)[0]
             if found.size > 0:
@@ -176,13 +172,14 @@ class DiscRates():
         """
         year_range = np.arange(ini_year, end_year + 1)
         if year_range.size != val_years.size:
-            raise ValueError('Wrong size of yearly values.')
+            raise ValueError("Wrong size of yearly values.")
         sel_disc = self.select(year_range)
         if sel_disc is None:
-            raise ValueError('No information of discount rates for provided years:'
-                             f' {ini_year} - {end_year}')
-        return u_fin.net_present_value(sel_disc.years, sel_disc.rates,
-                                       val_years)
+            raise ValueError(
+                "No information of discount rates for provided years:"
+                f" {ini_year} - {end_year}"
+            )
+        return u_fin.net_present_value(sel_disc.years, sel_disc.rates, val_years)
 
     def plot(self, axis=None, figsize=(6, 8), **kwargs):
         """
@@ -205,9 +202,9 @@ class DiscRates():
         if not axis:
             _, axis = plt.subplots(1, 1, figsize=figsize)
 
-        axis.set_title('Discount rates')
-        axis.set_xlabel('Year')
-        axis.set_ylabel('discount rate (%)')
+        axis.set_title("Discount rates")
+        axis.set_xlabel("Year")
+        axis.set_ylabel("discount rate (%)")
         axis.plot(self.years, self.rates * 100, **kwargs)
         axis.set_xlim((self.years.min(), self.years.max()))
         return axis
@@ -244,15 +241,16 @@ class DiscRates():
             var_names = DEF_VAR_MAT
         disc = u_hdf5.read(file_name)
         try:
-            disc = disc[var_names['sup_field_name']]
+            disc = disc[var_names["sup_field_name"]]
         except KeyError:
             pass
 
         try:
-            disc = disc[var_names['field_name']]
-            years = np.squeeze(disc[var_names['var_name']['year']]). \
-                astype(int, copy=False)
-            rates = np.squeeze(disc[var_names['var_name']['disc']])
+            disc = disc[var_names["field_name"]]
+            years = np.squeeze(disc[var_names["var_name"]["year"]]).astype(
+                int, copy=False
+            )
+            rates = np.squeeze(disc[var_names["var_name"]["disc"]])
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
@@ -295,11 +293,10 @@ class DiscRates():
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL
-        dfr = pd.read_excel(file_name, var_names['sheet_name'])
+        dfr = pd.read_excel(file_name, var_names["sheet_name"])
         try:
-            years = dfr[var_names['col_name']['year']].values. \
-                astype(int, copy=False)
-            rates = dfr[var_names['col_name']['disc']].values
+            years = dfr[var_names["col_name"]["year"]].values.astype(int, copy=False)
+            rates = dfr[var_names["col_name"]["disc"]].values
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err
 
@@ -307,8 +304,10 @@ class DiscRates():
 
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use DiscRates.from_excel instead."""
-        LOGGER.warning("The use of DiscRates.read_excel is deprecated."
-                       "Use DiscRates.from_excel instead.")
+        LOGGER.warning(
+            "The use of DiscRates.read_excel is deprecated."
+            "Use DiscRates.from_excel instead."
+        )
         self.__dict__ = DiscRates.from_excel(*args, **kwargs).__dict__
 
     def write_excel(self, file_name, var_names=None):
@@ -333,9 +332,9 @@ class DiscRates():
         if var_names is None:
             var_names = DEF_VAR_EXCEL
         disc_wb = xlsxwriter.Workbook(file_name)
-        disc_ws = disc_wb.add_worksheet(var_names['sheet_name'])
+        disc_ws = disc_wb.add_worksheet(var_names["sheet_name"])
 
-        header = [var_names['col_name']['year'], var_names['col_name']['disc']]
+        header = [var_names["col_name"]["year"], var_names["col_name"]["disc"]]
         for icol, head_dat in enumerate(header):
             disc_ws.write(0, icol, head_dat)
         for i_yr, (disc_yr, disc_rt) in enumerate(zip(self.years, self.rates), 1):

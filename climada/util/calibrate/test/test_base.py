@@ -19,19 +19,18 @@ Tests for calibration module
 """
 
 import unittest
-from unittest.mock import patch, create_autospec, MagicMock
-from tempfile import TemporaryDirectory
 from pathlib import Path
+from tempfile import TemporaryDirectory
+from unittest.mock import MagicMock, create_autospec, patch
 
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 from scipy.sparse import csr_matrix
 
-from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
-from climada.hazard import Hazard, Centroids
 from climada.engine import ImpactCalc
-
+from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
+from climada.hazard import Centroids, Hazard
 from climada.util.calibrate import Input, OutputEvaluator
 from climada.util.calibrate.base import Optimizer, Output
 
@@ -221,6 +220,7 @@ class TestOuput(unittest.TestCase):
             output_2 = Output.from_hdf5(outfile)
         self.assertEqual(output.target, output_2.target)
         self.assertDictEqual(output.params, output_2.params)
+
 
 class TestOutputEvaluator(unittest.TestCase):
     """Test the output evaluator"""
