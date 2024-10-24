@@ -37,7 +37,7 @@ import xarray as xr
 
 from climada.hazard.base import Hazard
 from climada.hazard.tc_tracks import TCTracks
-from climada.hazard.tc_clim_change import get_knutson_criterion, calc_scale_knutson
+from climada.hazard.tc_clim_change import get_knutson_scaling_factor
 from climada.hazard.centroids.centr import Centroids
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
@@ -293,7 +293,7 @@ class TropCyclone(Hazard):
             if 'dist_coast' not in centroids.gdf.columns:
                 dist_coast = centroids.get_dist_coast()
             else:
-                dist_coast = centroids.gdf.dist_coast.values
+                dist_coast = centroids.gdf['dist_coast'].values
             [idx_centr_filter] = (
                 (dist_coast <= max_dist_inland_km * 1000)
                 & (np.abs(centroids.lat) <= max_latitude)
@@ -369,46 +369,105 @@ class TropCyclone(Hazard):
 
     def apply_climate_scenario_knu(
         self,
-        ref_year: int = 2050,
-        rcp_scenario: int = 45
+        percentile: str='50',
+        scenario: str='4.5',
+        target_year: int=2050,
+        **kwargs
     ):
         """
-        From current TC hazard instance, return new hazard set with
-        future events for a given RCP scenario and year based on the
-        parametrized values derived from Table 3 in Knutson et al 2015.
-        https://doi.org/10.1175/JCLI-D-15-0129.1 . The scaling for different
-        years and RCP scenarios is obtained by linear interpolation.
+        From current TC hazard instance, return new hazard set with future events
+        for a given RCP scenario and year based on the parametrized values derived
+        by Jewson 2021 (https://doi.org/10.1175/JAMC-D-21-0102.1) based on those
+        published by Knutson 2020 (https://doi.org/10.1175/BAMS-D-18-0194.1). The
+        scaling for different years and RCP scenarios is obtained by linear
+        interpolation.
 
-        Note: The parametrized values are derived from the overall changes
-        in statistical ensemble of tracks. Hence, this method should only be
-        applied to sufficiently large tropical cyclone event sets that
-        approximate the reference years 1981 - 2008 used in Knutson et. al.
-
-        The frequency and intensity changes are applied independently from
-        one another. The mean intensity factors can thus slightly deviate
-        from the Knutson value (deviation was found to be less than 1%
-        for default IBTrACS event sets 1980-2020 for each basin).
+        Note: Only frequency changes are applied as suggested by Jewson 2022
+        (https://doi.org/10.1007/s00477-021-02142-6). Applying only frequency anyway
+        changes mean intensities and most importantly avoids possible inconsistencies
+        (including possible double-counting) that may arise from the application of both
+        frequency and intensity changes, as the relationship between these two is non
+        trivial to resolve.
 
         Parameters
         ----------
-        ref_year : int
-            year between 2000 ad 2100. Default: 2050
-        rcp_scenario : int
-            26 for RCP 2.6, 45 for RCP 4.5, 60 for RCP 6.0 and 85 for RCP 8.5.
-            The default is 45.
-
+        percentile: str
+            percentiles of Knutson et al. 2020 estimates, representing the mode
+            uncertainty in future changes in TC activity. These estimates come from
+            a review of state-of-the-art literature and models. For the 'cat05' variable
+            (i.e. frequency of all tropical cyclones) the 5th, 25th, 50th, 75th and 95th
+            percentiles are provided. For 'cat45' and 'intensity', the provided percentiles
+            are the 10th, 25th, 50th, 75th and 90th. Please refer to the mentioned publications
+            for more details.
+            possible percentiles:
+                '5/10' either the 5th or 10th percentile depending on variable (see text above)
+                '25' for the 25th percentile
+                '50' for the 50th percentile
+                '75' for the 75th percentile
+                '90/95' either the 90th or 95th percentile depending on variable  (see text above)
+            Default: '50'
+        scenario : str
+            possible scenarios:
+                '2.6' for RCP 2.6
+                '4.5' for RCP 4.5
+                '6.0' for RCP 6.0
+                '8.5' for RCP 8.5
+        target_year : int
+            future year to be simulated, between 2000 and 2100. Default: 2050.
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
             Tropical cyclone with frequencies and intensity scaled according
-            to the Knutson criterion for the given year and RCP. Returns
-            a new instance of climada.hazard.TropCyclone, self is not
+            to the Knutson criterion for the given year, RCP and percentile.
+            Returns a new instance of climada.hazard.TropCyclone, self is not
             modified.
         """
-        chg_int_freq = get_knutson_criterion()
-        scale_rcp_year  = calc_scale_knutson(ref_year, rcp_scenario)
-        haz_cc = self._apply_knutson_criterion(chg_int_freq, scale_rcp_year)
-        return haz_cc
+
+        if self.category.size == 0:
+            LOGGER.warning("Tropical cyclone categories are missing and"
+                           "no effect of climate change can be modelled."
+                           "The original event set is returned")
+            return self
+
+        tc_cc = copy.deepcopy(self)
+
+        sel_cat05 = np.isin(tc_cc.category, [0, 1, 2, 3, 4, 5])
+        sel_cat03 = np.isin(tc_cc.category, [0, 1, 2, 3])
+        sel_cat45 = np.isin(tc_cc.category, [4, 5])
+
+        years = np.array([dt.datetime.fromordinal(date).year for date in self.date])
+
+        for basin in np.unique(tc_cc.basin):
+            scale_year_rcp_05, scale_year_rcp_45 = [
+                        get_knutson_scaling_factor(
+                                percentile=percentile,
+                                variable=variable,
+                                basin=basin,
+                                baseline=(np.min(years), np.max(years)),
+                                **kwargs
+                                ).loc[target_year, scenario]
+                                for variable in ['cat05', 'cat45']
+                                ]
+
+            bas_sel = np.array(tc_cc.basin) == basin
+
+            cat_05_freqs_change = scale_year_rcp_05 * np.sum(tc_cc.frequency[sel_cat05 & bas_sel])
+            cat_45_freqs_change = scale_year_rcp_45 * np.sum(tc_cc.frequency[sel_cat45 & bas_sel])
+            cat_03_freqs = np.sum(tc_cc.frequency[sel_cat03 & bas_sel])
+
+            scale_year_rcp_03 = (cat_05_freqs_change-cat_45_freqs_change) / cat_03_freqs
+
+            tc_cc.frequency[sel_cat03 & bas_sel] *= 1 + scale_year_rcp_03/100
+            tc_cc.frequency[sel_cat45 & bas_sel] *= 1 + scale_year_rcp_45/100
+
+            if any(tc_cc.frequency) < 0:
+                raise ValueError(
+                    " The application of the climate scenario leads to "
+                    " negative frequencies. One solution - if appropriate -"
+                    " could be to use a less extreme percentile."
+                    )
+
+        return tc_cc
 
     def set_climate_scenario_knu(self, *args, **kwargs):
         """This function is deprecated, use TropCyclone.apply_climate_scenario_knu instead."""
@@ -466,29 +525,29 @@ class TropCyclone(Hazard):
         if not track:
             raise ValueError(f'{track_name} not found in track data.')
         idx_plt = np.argwhere(
-            (track.lon.values < centroids.total_bounds[2] + 1)
-            & (centroids.total_bounds[0] - 1 < track.lon.values)
-            & (track.lat.values < centroids.total_bounds[3] + 1)
-            & (centroids.total_bounds[1] - 1 < track.lat.values)
+            (track['lon'].values < centroids.total_bounds[2] + 1)
+            & (centroids.total_bounds[0] - 1 < track['lon'].values)
+            & (track['lat'].values < centroids.total_bounds[3] + 1)
+            & (centroids.total_bounds[1] - 1 < track['lat'].values)
         ).reshape(-1)
 
         tc_list = []
         tr_coord = {'lat': [], 'lon': []}
         for node in range(idx_plt.size - 2):
             tr_piece = track.sel(
-                time=slice(track.time.values[idx_plt[node]],
-                           track.time.values[idx_plt[node + 2]]))
+                time=slice(track['time'].values[idx_plt[node]],
+                           track['time'].values[idx_plt[node + 2]]))
             tr_piece.attrs['n_nodes'] = 2  # plot only one node
             tr_sel = TCTracks()
             tr_sel.append(tr_piece)
-            tr_coord['lat'].append(tr_sel.data[0].lat.values[:-1])
-            tr_coord['lon'].append(tr_sel.data[0].lon.values[:-1])
+            tr_coord['lat'].append(tr_sel.data[0]['lat'].values[:-1])
+            tr_coord['lon'].append(tr_sel.data[0]['lon'].values[:-1])
 
             tc_tmp = cls.from_tracks(tr_sel, centroids=centroids)
             tc_tmp.event_name = [
-                track.name + ' ' + time.strftime(
+                track['name'] + ' ' + time.strftime(
                     "%d %h %Y %H:%M",
-                    time.gmtime(tr_sel.data[0].time[1].values.astype(int)
+                    time.gmtime(tr_sel.data[0]['time'][1].values.astype(int)
                                 / 1000000000)
                 )
             ]
@@ -528,8 +587,8 @@ class TropCyclone(Hazard):
         """
         if not tracks:
             return
-        year_max = np.amax([t.time.dt.year.values.max() for t in tracks])
-        year_min = np.amin([t.time.dt.year.values.min() for t in tracks])
+        year_max = np.amax([t['time'].dt.year.values.max() for t in tracks])
+        year_min = np.amin([t['time'].dt.year.values.min() for t in tracks])
         year_delta = year_max - year_min + 1
         num_orig = np.count_nonzero(self.orig)
         ens_size = (self.event_id.size / num_orig) if num_orig > 0 else 1
@@ -613,20 +672,20 @@ class TropCyclone(Hazard):
         new_haz.centroids = centroids
         new_haz.event_id = np.array([1])
         new_haz.frequency = np.array([1])
-        new_haz.event_name = [track.sid]
+        new_haz.event_name = [track.attrs['sid']]
         new_haz.fraction = sparse.csr_matrix(new_haz.intensity.shape)
         # store first day of track as date
         new_haz.date = np.array([
-            dt.datetime(track.time.dt.year.values[0],
-                        track.time.dt.month.values[0],
-                        track.time.dt.day.values[0]).toordinal()
+            dt.datetime(track['time'].dt.year.values[0],
+                        track['time'].dt.month.values[0],
+                        track['time'].dt.day.values[0]).toordinal()
         ])
-        new_haz.orig = np.array([track.orig_event_flag])
-        new_haz.category = np.array([track.category])
+        new_haz.orig = np.array([track.attrs['orig_event_flag']])
+        new_haz.category = np.array([track.attrs['category']])
         # users that pickle TCTracks objects might still have data with the legacy basin attribute,
         # so we have to deal with it here
-        new_haz.basin = [track.basin if isinstance(track.basin, str)
-                         else str(track.basin.values[0])]
+        new_haz.basin = [track['basin'] if isinstance(track['basin'], str)
+                         else str(track['basin'].values[0])]
         return new_haz
 
     def _apply_knutson_criterion(

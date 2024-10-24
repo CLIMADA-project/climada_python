@@ -739,7 +739,7 @@ class Client:
     def _multi_version(datasets):
         ddf = pd.DataFrame(datasets)
         gdf = ddf.groupby("name").agg({"version": "nunique"})
-        return list(gdf[gdf.version > 1].index)
+        return list(gdf[gdf["version"] > 1].index)
 
     def get_hazard(
         self,
@@ -1101,7 +1101,7 @@ class Client:
         """
         dsdf = pd.DataFrame(dataset_infos)
         ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
-        dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf.data_type])
+        dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf["data_type"]])
 
         return (
             dtdf.loc[

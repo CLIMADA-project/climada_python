@@ -355,23 +355,23 @@ def create_lookup(emdat_data, start, end, disaster_subtype='Tropical cyclone'):
                                    'Date_start_EM_ordinal', 'Disaster_name',
                                    'EM_ID', 'ibtracsID', 'allocation_level',
                                    'possible_track', 'possible_track_all'])
-    lookup.hit_country = data.ISO
-    lookup.Date_start_EM = data.Date_start_clean
-    lookup.Disaster_name = data.Disaster_name
-    lookup.EM_ID = data.Disaster_No
+    lookup['hit_country'] = data['ISO']
+    lookup['Date_start_EM'] = data['Date_start_clean']
+    lookup['Disaster_name'] = data['Disaster_name']
+    lookup['EM_ID'] = data['Disaster_No']
     lookup = lookup.reset_index(drop=True)
     # create ordinals
-    for i in range(0, len(data.Date_start_clean.values)):
-        lookup.Date_start_EM_ordinal[i] = datetime.toordinal(
-            datetime.strptime(lookup.Date_start_EM.values[i], '%Y-%m-%d'))
+    for i in range(0, len(data['Date_start_clean'].values)):
+        lookup['Date_start_EM_ordinal'][i] = datetime.toordinal(
+            datetime.strptime(lookup['Date_start_EM'].values[i], '%Y-%m-%d'))
         # ordinals to numeric
-    lookup.Date_start_EM_ordinal = pd.to_numeric(lookup.Date_start_EM_ordinal)
+    lookup['Date_start_EM_ordinal'] = pd.to_numeric(lookup['Date_start_EM_ordinal'])
     # select time
     emdat_start = datetime.toordinal(datetime.strptime(start, '%Y-%m-%d'))
     emdat_end = datetime.toordinal(datetime.strptime(end, '%Y-%m-%d'))
 
-    lookup = lookup[lookup.Date_start_EM_ordinal.values > emdat_start]
-    lookup = lookup[lookup.Date_start_EM_ordinal.values < emdat_end]
+    lookup = lookup[lookup['Date_start_EM_ordinal'].values > emdat_start]
+    lookup = lookup[lookup['Date_start_EM_ordinal'].values < emdat_end]
 
     return lookup
 
@@ -397,15 +397,16 @@ def emdat_possible_hit(lookup, hit_countries, delta_t):
     # tracks: processed IBtracks with info which track hit which country
     # delta_t: time difference of start of EMdat and IBrtacks
     possible_hit_all = []
-    for i in range(0, len(lookup.EM_ID.values)):
+    for i in range(0, len(lookup['EM_ID'].values)):
         possible_hit = []
         country_tracks = hit_countries[
-            hit_countries['hit_country'] == lookup.hit_country.values[i]]
-        for j in range(0, len(country_tracks.Date_start.values)):
-            if (lookup.Date_start_EM_ordinal.values[i] - country_tracks.Date_start.values[j]) < \
-                delta_t and (lookup.Date_start_EM_ordinal.values[i] -
-                             country_tracks.Date_start.values[j]) >= 0:
-                possible_hit.append(country_tracks.ibtracsID.values[j])
+            hit_countries['hit_country'] == lookup['hit_country'].values[i]]
+        for j in range(0, len(country_tracks['Date_start'].values)):
+            if (lookup['Date_start_EM_ordinal'].values[i] -
+                country_tracks['Date_start'].values[j]) < \
+                delta_t and (lookup['Date_start_EM_ordinal'].values[i] -
+                             country_tracks['Date_start'].values[j]) >= 0:
+                possible_hit.append(country_tracks['ibtracsID'].values[j])
         possible_hit_all.append(possible_hit)
 
     return possible_hit_all
@@ -428,14 +429,14 @@ def match_em_id(lookup, poss_hit):
             with all possible hits per EMdat ID
         """
     possible_hit_all = []
-    for i in range(0, len(lookup.EM_ID.values)):
+    for i in range(0, len(lookup['EM_ID'].values)):
         possible_hit = []
         # lookup without line i
         #lookup_match = lookup.drop(i)
         lookup_match = lookup
         # Loop over check if EM dat ID is the same
-        for i_match in range(0, len(lookup_match.EM_ID.values)):
-            if lookup.EM_ID.values[i] == lookup_match.EM_ID.values[i_match]:
+        for i_match in range(0, len(lookup_match['EM_ID'].values)):
+            if lookup['EM_ID'].values[i] == lookup_match['EM_ID'].values[i_match]:
                 possible_hit.append(poss_hit[i])
         possible_hit_all.append(possible_hit)
     return possible_hit_all
@@ -467,7 +468,7 @@ def assign_track_to_em(lookup, possible_tracks_1, possible_tracks_2, level):
     """
 
     for i, _ in enumerate(possible_tracks_1):
-        if np.isnan(lookup.allocation_level.values[i]):
+        if np.isnan(lookup['allocation_level'].values[i]):
             number_emdat_id = len(possible_tracks_1[i])
             # print(number_emdat_id)
             for j in range(0, number_emdat_id):
@@ -479,14 +480,15 @@ def assign_track_to_em(lookup, possible_tracks_1, possible_tracks_2, level):
                     if all(possible_tracks_1[i][0] == possible_tracks_1[i][k]
                            for k in range(0, len(possible_tracks_1[i]))):
                         # check that track ID has not been assigned to that country already
-                        ctry_lookup = lookup[lookup['hit_country'] == lookup.hit_country.values[i]]
-                        if possible_tracks_1[i][0][0] not in ctry_lookup.ibtracsID.values:
-                            lookup.ibtracsID.values[i] = possible_tracks_1[i][0][0]
-                            lookup.allocation_level.values[i] = level
+                        ctry_lookup = lookup[lookup['hit_country']
+                                             == lookup['hit_country'].values[i]]
+                        if possible_tracks_1[i][0][0] not in ctry_lookup['ibtracsID'].values:
+                            lookup['ibtracsID'].values[i] = possible_tracks_1[i][0][0]
+                            lookup['allocation_level'].values[i] = level
                 elif possible_tracks_1[i][j] != []:
-                    lookup.possible_track.values[i] = possible_tracks_1[i]
+                    lookup['possible_track'].values[i] = possible_tracks_1[i]
         else:
-            lookup.possible_track_all.values[i] = possible_tracks_1[i]
+            lookup['possible_track_all'].values[i] = possible_tracks_1[i]
     return lookup
 
 
@@ -507,13 +509,13 @@ def check_assigned_track(lookup, checkset):
     # merge checkset and lookup
     check = pd.merge(checkset, lookup[['hit_country', 'EM_ID', 'ibtracsID']],
                      on=['hit_country', 'EM_ID'])
-    check_size = len(check.ibtracsID.values)
-    # not assigned values
-    not_assigned = check.ibtracsID.isnull().sum(axis=0)
+    check_size = len(check['ibtracsID'].values)
+    # not assigned values]
+    not_assigned = check['ibtracsID'].isnull().sum(axis=0)
     # correct assigned values
-    correct = sum(check.ibtracsID.values == check.IBtracsID_checked.values)
+    correct = sum(check['ibtracsID'].values == check['IBtracsID_checked'].values)
     # wrongly assigned values
-    wrong = len(check.ibtracsID.values) - not_assigned - correct
+    wrong = len(check['ibtracsID'].values) - not_assigned - correct
     print('%.1f%% tracks assigned correctly, %.1f%% wrongly, %.1f%% not assigned'
           % (correct / check_size * 100,
              wrong / check_size * 100,
@@ -707,7 +709,7 @@ def emdat_countries_by_hazard(emdat_file_csv, hazard=None, year_range=None):
         List of names of countries impacted by the disaster (sub-)types
     """
     df_data = clean_emdat_df(emdat_file_csv, hazard=hazard, year_range=year_range)
-    countries_iso3a = list(df_data.ISO.unique())
+    countries_iso3a = list(df_data['ISO'].unique())
     countries_names = list()
     for iso3a in countries_iso3a:
         try:
@@ -800,26 +802,27 @@ def emdat_impact_yearlysum(emdat_file_csv, countries=None, hazard=None, year_ran
                              year_range=year_range, target_version=version)
 
     df_data[imp_str + " scaled"] = scale_impact2refyear(df_data[imp_str].values,
-                                                        df_data.Year.values, df_data.ISO.values,
+                                                        df_data['Year'].values,
+                                                        df_data['ISO'].values,
                                                         reference_year=reference_year)
 
     def country_df(df_data):
-        for data_iso in df_data.ISO.unique():
+        for data_iso in df_data['ISO'].unique():
             country = u_coord.country_to_iso(data_iso, "alpha3")
 
-            df_country = df_data.loc[df_data.ISO == country]
+            df_country = df_data.loc[df_data['ISO'] == country]
             if not df_country.size:
                 continue
 
             # Retrieve impact data for all years
-            all_years = np.arange(min(df_data.Year), max(df_data.Year) + 1)
+            all_years = np.arange(min(df_data['Year']), max(df_data['Year']) + 1)
             data_out = pd.DataFrame.from_records(
                 [
                     (
                         year,
-                        np.nansum(df_country[df_country.Year.isin([year])][imp_str]),
+                        np.nansum(df_country[df_country['Year'].isin([year])][imp_str]),
                         np.nansum(
-                            df_country[df_country.Year.isin([year])][
+                            df_country[df_country['Year'].isin([year])][
                                 imp_str + " scaled"
                             ]
                         ),
@@ -894,13 +897,13 @@ def emdat_impact_event(emdat_file_csv, countries=None, hazard=None, year_range=N
     df_data['year'] = df_data['Year']
     df_data['reference_year'] = reference_year
     df_data['impact'] = df_data[imp_str]
-    df_data['impact_scaled'] = scale_impact2refyear(df_data[imp_str].values, df_data.Year.values,
-                                                    df_data.ISO.values,
+    df_data['impact_scaled'] = scale_impact2refyear(df_data[imp_str].values, df_data['Year'].values,
+                                                    df_data['ISO'].values,
                                                     reference_year=reference_year)
     df_data['region_id'] = np.nan
-    for country in df_data.ISO.unique():
+    for country in df_data['ISO'].unique():
         try:
-            df_data.loc[df_data.ISO == country, 'region_id'] = \
+            df_data.loc[df_data['ISO'] == country, 'region_id'] = \
                 u_coord.country_to_iso(country, "numeric")
         except LookupError:
             LOGGER.warning('ISO3alpha code not found in iso_country: %s', country)

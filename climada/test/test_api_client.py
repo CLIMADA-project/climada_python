@@ -148,7 +148,7 @@ class TestClient(unittest.TestCase):
                                          version='v1',
                                          dump_dir=DATA_DIR)
         self.assertEqual(len(exposures.gdf), 5782)
-        self.assertEqual(np.unique(exposures.gdf.region_id), 40)
+        self.assertEqual(np.unique(exposures.gdf['region_id']), 40)
         self.assertEqual(exposures.description,
             "LitPop Exposure for ['AUT'] at 150 as, year: 2018, financial mode: pop, exp: [0, 1], admin1_calc: False")
 
@@ -202,7 +202,7 @@ class TestClient(unittest.TestCase):
         client = Client()
         litpop = client.get_litpop(country='LUX', version='v1', dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
-        self.assertEqual(np.unique(litpop.gdf.region_id), 442)
+        self.assertEqual(np.unique(litpop.gdf['region_id']), 442)
         self.assertEqual(litpop.description,
             "LitPop Exposure for ['LUX'] at 150 as, year: 2018, financial mode: pc, exp: [1, 1], admin1_calc: False")
 
@@ -212,7 +212,7 @@ class TestClient(unittest.TestCase):
             client.get_litpop(['AUT', 'CHE'])
         self.assertIn(" can only query single countries. Download the data for multiple countries individually and concatenate ",
             str(cm.exception))
-        
+
     def test_get_centroids_plot(self):
         client = Client()
         client.get_centroids(country='COM').plot()
