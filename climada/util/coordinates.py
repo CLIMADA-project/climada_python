@@ -1100,7 +1100,7 @@ def match_centroids(
     Parameters
     ----------
     coord_gdf : gpd.GeoDataFrame
-        GeoDataframe with defined latitude/longitude column and crs
+        GeoDataframe with defined geometry column and crs
     centroids : Centroids
         (Hazard) centroids to match (as raster or vector centroids).
     distance : str, optional
@@ -1146,7 +1146,7 @@ def match_centroids(
         pass
 
     assigned = match_coordinates(
-        np.stack([coord_gdf["latitude"].values, coord_gdf["longitude"].values], axis=1),
+        np.stack([coord_gdf.geometry.y.values, coord_gdf.geometry.x.values], axis=1),
         centroids.coord,
         distance=distance,
         threshold=threshold,
@@ -1911,6 +1911,8 @@ def equal_crs(crs_one, crs_two):
     """
     if crs_one is None:
         return crs_two is None
+    if crs_two is None:
+        return False
     return rasterio.crs.CRS.from_user_input(
         crs_one
     ) == rasterio.crs.CRS.from_user_input(crs_two)
@@ -2615,8 +2617,9 @@ def points_to_raster(
 
     Parameters
     ----------
-    points_df : GeoDataFrame
-        contains columns latitude, longitude and those listed in the parameter `val_names`.
+    points_df : GeoDataFrame | DataFrame
+        contains columns listed in the parameter `val_names` and 'geometry' if it is a GeoDataFrame
+        or 'latitude' and 'longitude' if it is a DataFrame.
     val_names : list of str, optional
         The names of columns in `points_df` containing values. The raster will contain one band per
         column. Default: ['value']
@@ -2642,15 +2645,25 @@ def points_to_raster(
     """
     if not val_names:
         val_names = ["value"]
+
+    if "geometry" in points_df:
+        latval = points_df.geometry.y
+        lonval = points_df.geometry.x
+    else:
+        latval = points_df["latitude"].values
+        lonval = points_df["longitude"].values
+
     if not res:
-        res = np.abs(
-            get_resolution(points_df["latitude"].values, points_df["longitude"].values)
-        ).min()
+        res = np.abs(get_resolution(latval, lonval)).min()
     if not raster_res:
         raster_res = res
 
-    def apply_box(df_exp):
+    if "geometry" in points_df:
+        fun = lambda r: r.geometry.buffer(res / 2).envelope
+    else:
         fun = lambda r: Point(r["longitude"], r["latitude"]).buffer(res / 2).envelope
+
+    def apply_box(df_exp):
         return df_exp.apply(fun, axis=1)
 
     LOGGER.info("Raster from resolution %s to %s.", res, raster_res)
@@ -2680,9 +2693,7 @@ def points_to_raster(
 
     # renormalize longitude if necessary
     if equal_crs(df_poly.crs, DEF_CRS):
-        xmin, ymin, xmax, ymax = latlon_bounds(
-            points_df["latitude"].values, points_df["longitude"].values
-        )
+        xmin, ymin, xmax, ymax = latlon_bounds(latval, lonval)
         x_mid = 0.5 * (xmin + xmax)
         # we don't really change the CRS when rewrapping, so we reset the CRS attribute afterwards
         df_poly = df_poly.to_crs({"proj": "longlat", "lon_wrap": x_mid}).set_crs(
@@ -2690,10 +2701,10 @@ def points_to_raster(
         )
     else:
         xmin, ymin, xmax, ymax = (
-            points_df["longitude"].min(),
-            points_df["latitude"].min(),
-            points_df["longitude"].max(),
-            points_df["latitude"].max(),
+            lonval.min(),
+            latval.min(),
+            lonval.max(),
+            latval.max(),
         )
 
     # construct raster

@@ -62,7 +62,6 @@ from climada.hazard import Hazard
 def load_entity():
     ent_file = "FL_entity_Acelhuate_houses.xlsx"
     ent = Entity.from_excel(ent_file)
-    ent.exposures.set_geometry_points()
     ent.check()
     return ent
 
@@ -277,7 +276,6 @@ def load_accounting():
 def generate_plots_risk():
     fig_ma = plot_salvador_ma()
     ent = load_entity()
-    ent.exposures.set_geometry_points()
     ent.exposures.to_crs(epsg=3857, inplace=True)
     fig_point = plot_exposure_ss(ent.exposures, 1064)
     fig_houses = plot_exposure_ss(ent.exposures)
