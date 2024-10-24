@@ -29,6 +29,7 @@ from tables.exceptions import HDF5ExtError
 
 from climada import CONFIG
 from climada.engine import impact_data as im_d
+from climada.engine.test.test_impact import dummy_impact
 from climada.engine.unsequa import CalcCostBenefit, InputVar
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
