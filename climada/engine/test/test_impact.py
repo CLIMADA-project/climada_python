@@ -106,7 +106,7 @@ class TestImpact(unittest.TestCase):
         self.assertEqual(imp.frequency_unit, HAZ.frequency_unit)
         self.assertEqual(imp.tot_value, tot_value)
         np.testing.assert_array_almost_equal(imp.event_id, HAZ.event_id)
-        np.testing.assert_array_almost_equal(imp.event_name, HAZ.event_name)
+        np.testing.assert_array_equal(imp.event_name, HAZ.event_name)
         np.testing.assert_array_almost_equal(imp.date, HAZ.date)
         np.testing.assert_array_almost_equal(imp.frequency, HAZ.frequency)
         np.testing.assert_array_almost_equal(imp.eai_exp, fake_eai_exp)

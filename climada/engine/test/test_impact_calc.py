@@ -297,7 +297,7 @@ class TestImpactCalc(unittest.TestCase):
 
     def test_single_event_impact(self):
         """Check impact for single event"""
-        haz = HAZ.select([1])
+        haz = HAZ.select(event_id=[1])
         icalc = ImpactCalc(ENT.exposures, ENT.impact_funcs, haz)
         impact = icalc.impact()
         aai_agg = 0.0
