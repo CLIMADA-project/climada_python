@@ -100,7 +100,6 @@ def compute_angular_windspeeds(
     mask_centr_close: np.ndarray,
     model: int,
     model_kwargs: Optional[dict] = None,
-    cyclostrophic: bool = False,
 ):
     """Compute (absolute) angular wind speeds according to a parametric wind profile
 
@@ -117,9 +116,6 @@ def compute_angular_windspeeds(
         Wind profile model selection according to MODEL_VANG.
     model_kwargs: dict, optional
         If given, forward these kwargs to the selected model. Default: None
-    cyclostrophic : bool, optional
-        If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0).
-        Default: False
 
     Returns
     -------
@@ -139,7 +135,6 @@ def compute_angular_windspeeds(
         si_track,
         d_centr,
         mask_centr_close,
-        cyclostrophic=cyclostrophic,
         **model_kwargs,
     )
     result[0, :] *= 0
@@ -286,7 +281,7 @@ def _compute_angular_windspeeds_h10(
         containing the magnitude of the angular windspeed per track position per centroid location
     """
     if not cyclostrophic:
-        LOGGER.debug(
+        LOGGER.warning(
             "The function _compute_angular_windspeeds_h10 was called with parameter "
             '"cyclostrophic" equal to false. Please be aware that this setting is ignored as the'
             " Holland et al. 2010 model is always cyclostrophic."
@@ -1203,7 +1198,6 @@ def _compute_windfields(
         mask_centr_close,
         model,
         model_kwargs=model_kwargs,
-        cyclostrophic=False,
     )
 
     # Influence of translational speed decreases with distance from eye.
