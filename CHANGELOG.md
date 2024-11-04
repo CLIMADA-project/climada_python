@@ -46,7 +46,10 @@ Code freeze date: YYYY-MM-DD
 - `climada.entity.exposures.Exposures.meta` attribute
 - `climada.entity.exposures.Exposures.set_lat_lon` method
 - `climada.entity.exposures.Exposures.set_geometry_points` method
+- `climada.hazard.Hazard.local_exceedance_inten` method
 - `climada.hazard.Hazard.plot_rp_intensity` method
+- `climada.engine.impact.Impact.local_exceedance_imp` method
+- `climada.engine.impact.Impact.plot_rp_imp` method
 
 ### Removed
 
