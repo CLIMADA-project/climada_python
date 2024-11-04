@@ -44,20 +44,20 @@ def preprocess_and_interpolate_ev(
     Parameters
     ----------
     test_frequency : array_like
-        1-D array of test frequencies for which values (e.g., intensities) should be assigned.
+        1-D array of test frequencies for which values (e.g., intensities or impacts) should be assigned.
     test_values : array_like
-        1-D array of test values (e.g., intensities) for which frequencies should be assigned.
+        1-D array of test values (e.g., intensities or impacts) for which frequencies should be assigned.
     frequency : array_like
         1-D array of frequencies to be interpolated.
     values : array_like
-        1-D array of values (e.g., intensities) to be interpolated.
+        1-D array of values (e.g., intensities or impacts) to be interpolated.
     log_frequency : bool, optional
         If set to True, frequencies are interpolated on log scale. Defaults to False.
     log_values : bool, optional
         If set to True, values (e.g., intensities) are interpolated on log scale.
         Defaults to False.
     value_threshold : float, optional
-        Lower threshold to filter values (e.g., intensities). Defaults to None.
+        Lower threshold to filter values (e.g., intensities or impacts). Defaults to None.
     method : str, optional
         Method to interpolate to test x values. Currently available are
         "interpolate", "extrapolate", "extrapolate_constant" and "stepfunction". If set to
