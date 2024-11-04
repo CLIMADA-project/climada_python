@@ -123,12 +123,26 @@ todo_include_todos = True
 
 # The theme to use for HTML and HTML Help pages.  Major themes that come with
 # Sphinx are currently 'default' and 'sphinxdoc'.
-html_theme = "sphinx_book_theme"
+html_theme = "pydata_sphinx_theme"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
-# html_theme_options = {}
+html_theme_options = {
+    "header_links_before_dropdown": 7,
+    "icon_links": [
+        {
+            # Label for this link
+            "name": "GitHub",
+            # URL where the link will redirect
+            "url": "https://github.com/CLIMADA-project",  # required
+            # Icon class (if "type": "fontawesome"), or path to local image (if "type": "local")
+            "icon": "fa-brands fa-square-github",
+            # The type of image to be used (see below for details)
+            "type": "fontawesome",
+        }
+    ],
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 # html_theme_path = []
@@ -154,6 +168,9 @@ html_favicon = "img/petals.ico"
 # so a file named "default.css" will overwrite the builtin "default.css".
 html_static_path = ["_static"]
 
+html_css_files = [
+    "css/custom.css",
+]
 # If not '', a 'Last updated on:' timestamp is inserted at every page bottom,
 # using the given strftime format.
 # html_last_updated_fmt = '%b %d, %Y'
