@@ -88,8 +88,25 @@ class TestDateNumpy(unittest.TestCase):
         self.assertEqual(u_dt.first_year(np.array(ordinal_date)), 1918)
 
 
+class TestUnitConversion(unittest.TestCase):
+    """Test time and frequency conversion functions"""
+
+    def test_convert_frequency_unit_to_time_unit(self):
+        # test frequency unit to time unit conversion
+        frequency_units = ["1/year", "1/y", "1/month", "1/week", "", "unknown"]
+        time_units = ["years", "years", "months", "weeks", "years", "years"]
+        np.testing.assert_equal(
+            time_units,
+            [
+                u_dt.convert_frequency_unit_to_time_unit(frequency_unit)
+                for frequency_unit in frequency_units
+            ],
+        )
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDateString)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDateNumpy))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUnitConversion))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

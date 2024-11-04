@@ -46,7 +46,6 @@ from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 from scipy import sparse
 from tqdm import tqdm
 
-import climada.util.checker as u_check
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 import climada.util.interpolation as u_interp
@@ -549,7 +548,7 @@ class Impact:
             )
 
         # check frequency unit
-        return_period_unit = u_check.convert_frequency_unit_to_time_unit(
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
             self.frequency_unit
         )
 

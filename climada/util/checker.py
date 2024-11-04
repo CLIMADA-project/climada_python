@@ -228,32 +228,3 @@ def prune_csr_matrix(matrix: sparse.csr_matrix):
     matrix.check_format()
     matrix.eliminate_zeros()
     matrix.sum_duplicates()
-
-
-def convert_frequency_unit_to_time_unit(frequency_unit):
-    """Converts common frequency units to corresponding time units. Unknown frequency
-    units are converted to "years".
-
-    Parameters
-    ----------
-    frequency_unit : str
-        unit of frequency
-
-    Returns
-    -------
-    str
-        corresponding time unit.
-    """
-    if frequency_unit in ["1/year", "annual", "1/y", "1/a"]:
-        time_unit = "years"
-    elif frequency_unit in ["1/month", "monthly", "1/m"]:
-        time_unit = "months"
-    elif frequency_unit in ["1/week", "weekly", "1/w"]:
-        time_unit = "weeks"
-    else:
-        LOGGER.warning(
-            f"Frequency unit {frequency_unit} is not known, "
-            "years will be used as time unit."
-        )
-        time_unit = "years"
-    return time_unit
