@@ -29,6 +29,7 @@ from typing import List, Optional
 
 import geopandas as gpd
 import numpy as np
+from deprecation import deprecated
 from pathos.pools import ProcessPool as Pool
 from scipy import sparse
 
@@ -584,14 +585,14 @@ class Hazard(HazardIO, HazardPlot):
 
         return gdf, label, column_label
 
+    @deprecated(
+        details="The use of Hazard.local_exceedance_inten is deprecated. Use "
+        "Hazard.local_exceedance_intensity instead. Some errors in the previous calculation "
+        "in Hazard.local_exceedance_inten have been corrected. To reproduce data with the "
+        "previous calculation, use CLIMADA v5.0.0 or less."
+    )
     def local_exceedance_inten(self, return_period=(25, 50, 100, 250)):
         """This function is deprecated, use Hazard.local_exceedance_intensity instead."""
-        LOGGER.warning(
-            "The use of Hazard.local_exceedance_inten is deprecated. Use "
-            "Hazard.local_exceedance_intensity instead. Some errors in the previous calculation "
-            "in Hazard.local_exceedance_inten have been corrected. To reproduce data with the "
-            "previous calculation, use CLIMADA v5.0.0 or less."
-        )
         return (
             self.local_exceedance_intensity(return_period)[0]
             .values[:, 1:]

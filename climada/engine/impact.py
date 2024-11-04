@@ -40,6 +40,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xlsxwriter
+from deprecation import deprecated
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 from scipy import sparse
@@ -595,14 +596,14 @@ class Impact:
 
         return gdf, label, column_label
 
+    @deprecated(
+        details="The use of Impact.local_exceedance_imp is deprecated. Use "
+        "Impact.local_exceedance_impact instead. Some errors in the previous calculation "
+        "in Impact.local_exceedance_imp have been corrected. To reproduce data with the "
+        "previous calculation, use CLIMADA v5.0.0 or less."
+    )
     def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
         """This function is deprecated, use Impact.local_exceedance_impact instead."""
-        LOGGER.warning(
-            "The use of Impact.local_exceedance_imp is deprecated. Use "
-            "Impact.local_exceedance_impact instead. Some errors in the previous calculation "
-            "in Impact.local_exceedance_imp have been corrected. To reproduce data with the "
-            "previous calculation, use CLIMADA v5.0.0 or less."
-        )
 
         return (
             self.local_exceedance_impact(return_periods)[0]
@@ -1001,7 +1002,10 @@ class Impact:
 
         return axis
 
-    # TODO: replace with plot_from_gdf()
+    @deprecated(
+        details="The use of Impact.plot_rp_imp is deprecated."
+        "Use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead."
+    )
     def plot_rp_imp(
         self,
         return_periods=(25, 50, 100, 250),
@@ -1013,13 +1017,8 @@ class Impact:
         """
         This function is deprecated, use Impact.local_exceedance_impact and
         util.plot.plot_from_gdf instead.
-        """
-        LOGGER.warning(
-            "The use of Impact.plot_rp_imp is deprecated."
-            "Use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead."
-        )
 
-        """Compute and plot exceedance impact maps for different return periods.
+        Compute and plot exceedance impact maps for different return periods.
         Calls local_exceedance_imp.
 
         Parameters

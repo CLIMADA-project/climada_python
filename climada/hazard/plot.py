@@ -23,6 +23,7 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
+from deprecation import deprecated
 
 import climada.util.plot as u_plot
 
@@ -36,7 +37,10 @@ class HazardPlot:
     Contains all plotting methods of the Hazard class
     """
 
-    # TODO depreciating warning, to be replaced with plot_from_gdf
+    @deprecated(
+        details="The use of Hazard.plot_rp_intensity is deprecated."
+        "Use Hazard.local_exceedance_intensity and util.plot.plot_from_gdf instead."
+    )
     def plot_rp_intensity(
         self,
         return_periods=(25, 50, 100, 250),
@@ -49,13 +53,8 @@ class HazardPlot:
         """
         This function is deprecated,
         use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead.
-        """
-        LOGGER.warning(
-            "The use of Hazard.plot_rp_intensity is deprecated."
-            "Use Hazard.local_exceedance_intensity and util.plot.plot_from_gdf instead."
-        )
 
-        """Compute and plot hazard exceedance intensity maps for different
+        Compute and plot hazard exceedance intensity maps for different
         return periods. Calls local_exceedance_inten.
 
         Parameters
