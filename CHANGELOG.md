@@ -13,7 +13,7 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - `climada.engine.impact.Impact.local_return_period` method [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
-- `doc.tutorial.climada_util_local_exceedance_values.ipynb` tutorial explaining `local_exceedance_intensity` and `local_return_period` methods of Hazard and Impact objects [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
+- `doc.tutorial.climada_util_local_exceedance_values.ipynb` tutorial explaining `Hazard.local_exceedance_intensity`, `Hazard.local_return_period`, `Impact.local_exceedance_impact`, and `Impact.local_return_period` methods [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, that all use the `climada.util.interpolation` module [#918](https://github.com/CLIMADA-project/climada_python/pull/918)
 - `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
 - `climada.exposures.exposures.Exposures.geometry` property
