@@ -33,12 +33,14 @@ from pathlib import Path
 from typing import Any, Iterable, Union
 
 import contextily as ctx
+import geopandas as gpd
 import h5py
 import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xlsxwriter
+from deprecation import deprecated
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 from scipy import sparse
@@ -46,6 +48,7 @@ from tqdm import tqdm
 
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
+import climada.util.interpolation as u_interp
 import climada.util.plot as u_plot
 from climada import CONFIG
 from climada.entity import Exposures
@@ -486,20 +489,54 @@ class Impact:
         )
         return self.impact_per_year(all_years=all_years, year_range=year_range)
 
-    # TODO: rewrite and deprecate method
-    def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
-        """Compute exceedance impact map for given return periods.
-        Requires attribute imp_mat.
+    def local_exceedance_impact(
+        self,
+        return_periods=(25, 50, 100, 250),
+        method="interpolate",
+        min_impact=0,
+        log_frequency=True,
+        log_impact=True,
+    ):
+        """Compute local exceedance impact for given return periods. The default method
+        is fitting the ordered impacts per centroid to the corresponding cummulated
+        frequency with by linear interpolation on log-log scale.
 
         Parameters
         ----------
-        return_periods : Any, optional
-            return periods to consider
-            Dafault is (25, 50, 100, 250)
+        return_periods : array_like
+            User-specified return periods for which the exceedance intensity should be calculated
+            locally (at each centroid). Defaults to (25, 50, 100, 250).
+        method : str
+            Method to interpolate to new return periods. Currently available are "interpolate",
+            "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
+            return periods outside the range of the Impact object's observed local return periods
+            will be assigned NaN. If set to "extrapolate_constant" or "stepfunction",
+            return periods larger than the Impact object's observed local return periods will be
+            assigned the largest local impact, and return periods smaller than the Impact object's
+            observed local return periods will be assigned 0. If set to "extrapolate", local
+            exceedance impacts will be extrapolated (and interpolated). Defauls to "interpolate".
+        min_impact : float, optional
+            Minimum threshold to filter the impact. Defaults to 0.
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "extrapolate" or "interpolate". If set
+            to True, (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_impact : bool, optional
+            This parameter is only used if method is set to "extrapolate" or "interpolate". If set
+            to True, impact values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
 
         Returns
         -------
-        np.array
+        gdf : gpd.GeoDataFrame
+            GeoDataFrame containing exeedance impacts for given return periods. Each column
+            corresponds to a return period, each row corresponds to a centroid. Values
+            in the gdf correspond to the exceedance impact for the given centroid and
+            return period
+        label : str
+            GeoDataFrame label, for reporting and plotting
+        column_label : function
+            Column-label-generating function, for reporting and plotting
         """
         LOGGER.info(
             "Computing exceedance impact map for return periods: %s", return_periods
@@ -509,29 +546,69 @@ class Impact:
                 "Attribute imp_mat is empty. Recalculate Impact"
                 "instance with parameter save_mat=True"
             )
-        num_cen = self.imp_mat.shape[1]
-        imp_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = CONFIG.max_matrix_size.int() // self.imp_mat.shape[0]
-        if not cen_step:
-            raise ValueError(
-                "Increase max_matrix_size configuration parameter to > "
-                f"{self.imp_mat.shape[0]}"
-            )
-        # separte in chunks
-        chk = -1
-        for chk in range(int(num_cen / cen_step)):
-            self._loc_return_imp(
-                np.array(return_periods),
-                self.imp_mat[:, chk * cen_step : (chk + 1) * cen_step].toarray(),
-                imp_stats[:, chk * cen_step : (chk + 1) * cen_step],
-            )
-        self._loc_return_imp(
-            np.array(return_periods),
-            self.imp_mat[:, (chk + 1) * cen_step :].toarray(),
-            imp_stats[:, (chk + 1) * cen_step :],
+
+        # check frequency unit
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
+            self.frequency_unit
         )
 
-        return imp_stats
+        # check method
+        if method not in [
+            "interpolate",
+            "extrapolate",
+            "extrapolate_constant",
+            "stepfunction",
+        ]:
+            raise ValueError(f"Unknown method: {method}")
+
+        # calculate local exceedance impact
+        test_frequency = 1 / np.array(return_periods)
+        exceedance_impact = np.array(
+            [
+                u_interp.preprocess_and_interpolate_ev(
+                    test_frequency,
+                    None,
+                    self.frequency,
+                    self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                    log_frequency=log_frequency,
+                    log_values=log_impact,
+                    value_threshold=min_impact,
+                    method=method,
+                    y_asymptotic=0.0,
+                )
+                for i_centroid in range(self.imp_mat.shape[1])
+            ]
+        )
+
+        # create the output GeoDataFrame
+        gdf = gpd.GeoDataFrame(
+            geometry=gpd.points_from_xy(self.coord_exp[:, 1], self.coord_exp[:, 0]),
+            crs=self.crs,
+        )
+        col_names = [f"{ret_per}" for ret_per in return_periods]
+        gdf[col_names] = exceedance_impact
+        # create label and column_label
+        label = f"Impact ({self.unit})"
+        column_label = lambda column_names: [
+            f"Return Period: {col} {return_period_unit}" for col in column_names
+        ]
+
+        return gdf, label, column_label
+
+    @deprecated(
+        details="The use of Impact.local_exceedance_imp is deprecated. Use "
+        "Impact.local_exceedance_impact instead. Some errors in the previous calculation "
+        "in Impact.local_exceedance_imp have been corrected. To reproduce data with the "
+        "previous calculation, use CLIMADA v5.0.0 or less."
+    )
+    def local_exceedance_imp(self, return_periods=(25, 50, 100, 250)):
+        """This function is deprecated, use Impact.local_exceedance_impact instead."""
+
+        return (
+            self.local_exceedance_impact(return_periods)[0]
+            .values[:, 1:]
+            .T.astype(float)
+        )
 
     def calc_freq_curve(self, return_per=None):
         """Compute impact exceedance frequency curve.
@@ -924,6 +1001,10 @@ class Impact:
 
         return axis
 
+    @deprecated(
+        details="The use of Impact.plot_rp_imp is deprecated."
+        "Use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead."
+    )
     def plot_rp_imp(
         self,
         return_periods=(25, 50, 100, 250),
@@ -932,7 +1013,11 @@ class Impact:
         axis=None,
         **kwargs,
     ):
-        """Compute and plot exceedance impact maps for different return periods.
+        """
+        This function is deprecated, use Impact.local_exceedance_impact and
+        util.plot.plot_from_gdf instead.
+
+        Compute and plot exceedance impact maps for different return periods.
         Calls local_exceedance_imp.
 
         Parameters
@@ -953,7 +1038,10 @@ class Impact:
         imp_stats : np.array
             return_periods.size x num_centroids
         """
-        imp_stats = self.local_exceedance_imp(np.array(return_periods))
+        imp_stats = (
+            self.local_exceedance_impact(np.array(return_periods))[0].values[:, 1:].T
+        )
+        imp_stats = imp_stats.astype(float)
         if imp_stats.size == 0:
             raise ValueError(
                 "Error: Attribute imp_mat is empty. Recalculate Impact"
@@ -1593,36 +1681,6 @@ class Impact:
 
         return imp_list
 
-    # TODO: rewrite and deprecate method
-    def _loc_return_imp(self, return_periods, imp, exc_imp):
-        """Compute local exceedence impact for given return period.
-
-        Parameters
-        ----------
-        return_periods : np.array
-            return periods to consider
-        cen_pos :int
-            centroid position
-
-        Returns
-        -------
-        np.array
-        """
-        # sorted impacts
-        sort_pos = np.argsort(imp, axis=0)[::-1, :]
-        columns = np.ones(imp.shape, int)
-        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
-        columns *= np.arange(columns.shape[1])
-        imp_sort = imp[sort_pos, columns]
-        # cummulative frequency at sorted intensity
-        freq_sort = self.frequency[sort_pos]
-        np.cumsum(freq_sort, axis=0, out=freq_sort)
-
-        for cen_idx in range(imp.shape[1]):
-            exc_imp[:, cen_idx] = self._cen_return_imp(
-                imp_sort[:, cen_idx], freq_sort[:, cen_idx], 0, return_periods
-            )
-
     def _build_exp(self):
         return Exposures(
             data={
@@ -1656,43 +1714,6 @@ class Impact:
             ref_year=0,
             meta=None,
         )
-
-    @staticmethod
-    def _cen_return_imp(imp, freq, imp_th, return_periods):
-        """From ordered impact and cummulative frequency at centroid, get
-        exceedance impact at input return periods.
-
-        Parameters
-        ----------
-        imp : np.array
-            sorted impact at centroid
-        freq : np.array
-            cummulative frequency at centroid
-        imp_th : float
-            impact threshold
-        return_periods : np.array
-            return periods
-
-        Returns
-        -------
-        np.array
-        """
-        imp_th = np.asarray(imp > imp_th).squeeze()
-        imp_cen = imp[imp_th]
-        freq_cen = freq[imp_th]
-        if not imp_cen.size:
-            return np.zeros((return_periods.size,))
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=1)
-        except ValueError:
-            pol_coef = np.polyfit(np.log(freq_cen), imp_cen, deg=0)
-        imp_fit = np.polyval(pol_coef, np.log(1 / return_periods))
-        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(imp_fit)
-        imp_fit[wrong_inten] = 0.0
-
-        return imp_fit
 
     def select(
         self,

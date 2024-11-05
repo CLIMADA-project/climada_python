@@ -29,6 +29,7 @@ from typing import List, Optional
 
 import geopandas as gpd
 import numpy as np
+from deprecation import deprecated
 from pathos.pools import ProcessPool as Pool
 from scipy import sparse
 
@@ -36,10 +37,12 @@ import climada.util.checker as u_check
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
+import climada.util.interpolation as u_interp
 from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.io import HazardIO
 from climada.hazard.plot import HazardPlot
+from climada.util.value_representation import safe_divide
 
 LOGGER = logging.getLogger(__name__)
 
@@ -481,56 +484,120 @@ class Hazard(HazardIO, HazardPlot):
             )
         )
 
-    def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
-        """Compute exceedance intensity map for given return periods.
+    def local_exceedance_intensity(
+        self,
+        return_periods=(25, 50, 100, 250),
+        method="interpolate",
+        min_intensity=None,
+        log_frequency=True,
+        log_intensity=True,
+    ):
+        """Compute local exceedance intensity for given return periods. The default method
+        is fitting the ordered intensitites per centroid to the corresponding cummulated
+        frequency with by linear interpolation on log-log scale.
 
         Parameters
         ----------
-        return_periods : np.array
-            return periods to consider
+        return_periods : array_like
+            User-specified return periods for which the exceedance intensity should be calculated
+            locally (at each centroid). Defaults to (25, 50, 100, 250).
+        method : str
+            Method to interpolate to new return periods. Currently available are "interpolate",
+            "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
+            return periods outside the range of the Hazard object's observed local return periods
+            will be assigned NaN. If set to "extrapolate_constant" or "stepfunction", return
+            periods larger than the Hazard object's observed local return periods will be assigned
+            the largest local intensity, and return periods smaller than the Hazard object's
+            observed local return periods will be assigned 0. If set to "extrapolate", local
+            exceedance intensities will be extrapolated (and interpolated).
+            Defauls to "interpolate".
+        min_intensity : float, optional
+            Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
+            will be used. Defaults to None.
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_intensity : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            intensity values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
 
         Returns
         -------
-        inten_stats: np.array
+        gdf : gpd.GeoDataFrame
+            GeoDataFrame containing exeedance intensities for given return periods. Each column
+            corresponds to a return period, each row corresponds to a centroid. Values
+            in the gdf correspond to the exceedance intensity for the given centroid and
+            return period
+        label : str
+            GeoDataFrame label, for reporting and plotting
+        column_label : function
+            Column-label-generating function, for reporting and plotting
         """
-        # warn if return period is above return period of rarest event:
-        for period in return_periods:
-            if period > 1 / self.frequency.min():
-                LOGGER.warning(
-                    "Return period %1.1f exceeds max. event return period.", period
+        if not min_intensity and min_intensity != 0:
+            min_intensity = self.intensity_thres
+        # check frequency unit
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
+            self.frequency_unit
+        )
+
+        # check method
+        if method not in [
+            "interpolate",
+            "extrapolate",
+            "extrapolate_constant",
+            "stepfunction",
+        ]:
+            raise ValueError(f"Unknown method: {method}")
+
+        # calculate local exceedance intensity
+        test_frequency = 1 / np.array(return_periods)
+        exceedance_intensity = np.array(
+            [
+                u_interp.preprocess_and_interpolate_ev(
+                    test_frequency,
+                    None,
+                    self.frequency,
+                    self.intensity.getcol(i_centroid).toarray().flatten(),
+                    log_frequency=log_frequency,
+                    log_values=log_intensity,
+                    value_threshold=min_intensity,
+                    method=method,
+                    y_asymptotic=0.0,
                 )
-        LOGGER.info(
-            "Computing exceedance intenstiy map for return periods: %s", return_periods
+                for i_centroid in range(self.intensity.shape[1])
+            ]
         )
-        num_cen = self.intensity.shape[1]
-        inten_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-        if not cen_step:
-            raise ValueError(
-                "Increase max_matrix_size configuration parameter to >"
-                f" {self.intensity.shape[0]}"
-            )
-        # separte in chunks
-        chk = -1
-        for chk in range(int(num_cen / cen_step)):
-            self._loc_return_inten(
-                np.array(return_periods),
-                self.intensity[:, chk * cen_step : (chk + 1) * cen_step].toarray(),
-                inten_stats[:, chk * cen_step : (chk + 1) * cen_step],
-            )
-        self._loc_return_inten(
-            np.array(return_periods),
-            self.intensity[:, (chk + 1) * cen_step :].toarray(),
-            inten_stats[:, (chk + 1) * cen_step :],
+
+        # create the output GeoDataFrame
+        gdf = gpd.GeoDataFrame(
+            geometry=self.centroids.gdf["geometry"], crs=self.centroids.gdf.crs
         )
-        # set values below 0 to zero if minimum of hazard.intensity >= 0:
-        if np.min(inten_stats) < 0 <= self.intensity.min():
-            LOGGER.warning(
-                "Exceedance intenstiy values below 0 are set to 0. \
-                   Reason: no negative intensity values were found in hazard."
-            )
-            inten_stats[inten_stats < 0] = 0
-        return inten_stats
+        column_names = [f"{rp}" for rp in return_periods]
+        gdf[column_names] = exceedance_intensity
+
+        # create label and column_label
+        label = f"Intensity ({self.units})"
+        column_label = lambda column_names: [
+            f"Return Period: {col} {return_period_unit}" for col in column_names
+        ]
+
+        return gdf, label, column_label
+
+    @deprecated(
+        details="The use of Hazard.local_exceedance_inten is deprecated. Use "
+        "Hazard.local_exceedance_intensity instead. Some errors in the previous calculation "
+        "in Hazard.local_exceedance_inten have been corrected. To reproduce data with the "
+        "previous calculation, use CLIMADA v5.0.0 or less."
+    )
+    def local_exceedance_inten(self, return_period=(25, 50, 100, 250)):
+        """This function is deprecated, use Hazard.local_exceedance_intensity instead."""
+        return (
+            self.local_exceedance_intensity(return_period)[0]
+            .values[:, 1:]
+            .T.astype(float)
+        )
 
     def sanitize_event_ids(self):
         """Make sure that event ids are unique"""
@@ -538,16 +605,44 @@ class Hazard(HazardIO, HazardPlot):
             LOGGER.debug("Resetting event_id.")
             self.event_id = np.arange(1, self.event_id.size + 1)
 
-    def local_return_period(self, threshold_intensities=(5.0, 10.0, 20.0)):
-        """Compute local return periods for given hazard intensities. The used method
+    def local_return_period(
+        self,
+        threshold_intensities=(10.0, 20.0),
+        method="interpolate",
+        min_intensity=None,
+        log_frequency=True,
+        log_intensity=True,
+    ):
+        """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with a step function.
+        frequency with by linear interpolation on log-log scale.
 
         Parameters
         ----------
-        threshold_intensities : np.array
+        threshold_intensities : array_like
             User-specified hazard intensities for which the return period should be calculated
-            locally (at each centroid). Defaults to (5, 10, 20)
+            locally (at each centroid). Defaults to (10, 20)
+        method : str
+            Method to interpolate to new threshold intensities. Currently available are
+            "interpolate", "extrapolate", "extrapolate_constant" and "stepfunction". If set to
+            "interpolate", threshold intensities outside the range of the Hazard object's local
+            intensities will be assigned NaN. If set to "extrapolate_constant" or
+            "stepfunction", threshold intensities larger than the Hazard object's local
+            intensities will be assigned NaN, and threshold intensities smaller than the Hazard
+            object's local intensities will be assigned the smallest observed local return period.
+            If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            Defaults to "interpolate".
+        min_intensity : float, optional
+            Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
+            will be used. Defaults to None.
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_intensity : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            intensity values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
 
         Returns
         -------
@@ -561,52 +656,50 @@ class Hazard(HazardIO, HazardPlot):
         column_label : function
             Column-label-generating function, for reporting and plotting
         """
+        if not min_intensity and min_intensity != 0:
+            min_intensity = self.intensity_thres
         # check frequency unit
-        if self.frequency_unit in ["1/year", "annual", "1/y", "1/a"]:
-            rp_unit = "Years"
-        elif self.frequency_unit in ["1/month", "monthly", "1/m"]:
-            rp_unit = "Months"
-        elif self.frequency_unit in ["1/week", "weekly", "1/w"]:
-            rp_unit = "Weeks"
-        else:
-            LOGGER.warning(
-                "Hazard's frequency unit %s is not known, "
-                "years will be used as return period unit.",
-                self.frequency_unit,
-            )
-            rp_unit = "Years"
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
+            self.frequency_unit
+        )
 
-        # Ensure threshold_intensities is a numpy array
-        threshold_intensities = np.array(threshold_intensities)
+        # check method
+        if method not in [
+            "interpolate",
+            "extrapolate",
+            "extrapolate_constant",
+            "stepfunction",
+        ]:
+            raise ValueError(f"Unknown method: {method}")
 
-        num_cen = self.intensity.shape[1]
-        return_periods = np.zeros((len(threshold_intensities), num_cen))
-
-        # batch_centroids = number of centroids that are handled in parallel:
-        # batch_centroids = maximal matrix size // number of events
-        batch_centroids = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-        if batch_centroids < 1:
-            raise ValueError(
-                "Increase max_matrix_size configuration parameter to >"
-                f"{self.intensity.shape[0]}"
-            )
-
-        # Process the intensities in chunks of centroids
-        for start_col in range(0, num_cen, batch_centroids):
-            end_col = min(start_col + batch_centroids, num_cen)
-            return_periods[:, start_col:end_col] = self._loc_return_period(
-                threshold_intensities, self.intensity[:, start_col:end_col].toarray()
-            )
+        # calculate local return periods
+        return_periods = np.array(
+            [
+                u_interp.preprocess_and_interpolate_ev(
+                    None,
+                    np.array(threshold_intensities),
+                    self.frequency,
+                    self.intensity.getcol(i_centroid).toarray().flatten(),
+                    log_frequency=log_frequency,
+                    log_values=log_intensity,
+                    value_threshold=min_intensity,
+                    method=method,
+                    y_asymptotic=np.nan,
+                )
+                for i_centroid in range(self.intensity.shape[1])
+            ]
+        )
+        return_periods = safe_divide(1.0, return_periods)
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(
             geometry=self.centroids.gdf["geometry"], crs=self.centroids.gdf.crs
         )
         col_names = [f"{tresh_inten}" for tresh_inten in threshold_intensities]
-        gdf[col_names] = return_periods.T
+        gdf[col_names] = return_periods
 
         # create label and column_label
-        label = f"Return Periods ({rp_unit})"
+        label = f"Return Periods ({return_period_unit})"
         column_label = lambda column_names: [
             f"Threshold Intensity: {col} {self.units}" for col in column_names
         ]
@@ -760,86 +853,6 @@ class Hazard(HazardIO, HazardPlot):
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _loc_return_inten(self, return_periods, inten, exc_inten):
-        """Compute local exceedence intensity for given return period.
-
-        Parameters
-        ----------
-        return_periods: np.array
-            return periods to consider
-        cen_pos: int
-            centroid position
-
-        Returns
-        -------
-            np.array
-        """
-        # sorted intensity
-        sort_pos = np.argsort(inten, axis=0)[::-1, :]
-        columns = np.ones(inten.shape, int)
-        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
-        columns *= np.arange(columns.shape[1])
-        inten_sort = inten[sort_pos, columns]
-        # cummulative frequency at sorted intensity
-        freq_sort = self.frequency[sort_pos]
-        np.cumsum(freq_sort, axis=0, out=freq_sort)
-
-        for cen_idx in range(inten.shape[1]):
-            exc_inten[:, cen_idx] = self._cen_return_inten(
-                inten_sort[:, cen_idx],
-                freq_sort[:, cen_idx],
-                self.intensity_thres,
-                return_periods,
-            )
-
-    def _loc_return_period(self, threshold_intensities, inten):
-        """Compute local return periods for user-specified threshold intensities
-         for a subset of hazard centroids
-
-        Parameters
-        ----------
-        threshold_intensities: np.array
-            User-specified hazard intensities for which the return period should be calculated
-            locally (at each centroid).
-        inten: np.array
-            subarray of full hazard intensities corresponding to a subset of the centroids
-            (rows corresponds to events, columns correspond to centroids)
-
-        Returns
-        -------
-            np.array
-            (rows corresponds to threshold_intensities, columns correspond to centroids)
-        """
-        # Assuming inten is sorted and calculating cumulative frequency
-        sort_pos = np.argsort(inten, axis=0)[::-1, :]
-        inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
-        freq_sort = self.frequency[sort_pos]
-        freq_sort = np.cumsum(freq_sort, axis=0)
-        return_periods = np.zeros((len(threshold_intensities), inten.shape[1]))
-
-        for cen_idx in range(inten.shape[1]):
-            sorted_inten_cen = inten_sort[:, cen_idx]
-            cum_freq_cen = freq_sort[:, cen_idx]
-
-            for i, intensity in enumerate(threshold_intensities):
-                # Find the first occurrence where the intensity is less than the sorted intensities
-                exceedance_index = np.searchsorted(
-                    sorted_inten_cen[::-1], intensity, side="left"
-                )
-
-                # Calculate exceedance probability
-                if exceedance_index < len(cum_freq_cen):
-                    exceedance_probability = cum_freq_cen[-exceedance_index - 1]
-                else:
-                    exceedance_probability = 0  # Or set a default minimal probability
-
-                # Calculate and store return period
-                if exceedance_probability > 0:
-                    return_periods[i, cen_idx] = 1 / exceedance_probability
-                else:
-                    return_periods[i, cen_idx] = np.nan
-        return return_periods
-
     def _check_events(self):
         """Check that all attributes but centroids contain consistent data.
         Put default date, event_name and orig if not provided. Check not
@@ -869,43 +882,6 @@ class Hazard(HazardIO, HazardPlot):
         )
         if len(self._events_set()) != num_ev:
             raise ValueError("There are events with same date and name.")
-
-    @staticmethod
-    def _cen_return_inten(inten, freq, inten_th, return_periods):
-        """From ordered intensity and cummulative frequency at centroid, get
-        exceedance intensity at input return periods.
-
-        Parameters
-        ----------
-        inten: np.array
-            sorted intensity at centroid
-        freq: np.array
-            cummulative frequency at centroid
-        inten_th: float
-            intensity threshold
-        return_periods: np.array
-            return periods
-
-        Returns
-        -------
-            np.array
-        """
-        inten_th = np.asarray(inten > inten_th).squeeze()
-        inten_cen = inten[inten_th]
-        freq_cen = freq[inten_th]
-        if not inten_cen.size:
-            return np.zeros((return_periods.size,))
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=1)
-        except ValueError:
-            pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=0)
-        inten_fit = np.polyval(pol_coef, np.log(1 / return_periods))
-        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(inten_fit)
-        inten_fit[wrong_inten] = 0.0
-
-        return inten_fit
 
     def append(self, *others):
         """Append the events and centroids to this hazard object.

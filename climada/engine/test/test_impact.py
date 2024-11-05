@@ -538,26 +538,109 @@ class TestIO(unittest.TestCase):
 class TestRPmatrix(unittest.TestCase):
     """Test computation of impact per return period for whole exposure"""
 
-    def test_local_exceedance_imp_pass(self):
-        """Test calc local impacts per return period"""
-        # Read default entity values
-        ent = Entity.from_excel(ENT_DEMO_TODAY)
-        ent.check()
-
-        # Read default hazard file
-        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
-
-        # Compute the impact over the whole exposures
-        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(
-            save_mat=True
+    def test_local_exceedance_impact(self):
+        """Test calc local impacts per return period lin lin interpolation"""
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 1, 2], [0, 0, 4, 4], [0, 0, 1, 1], [0, 1, 1, 3]])
         )
-        # Compute the impact per return period over the whole exposures
-        impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
+        impact.frequency = np.ones(4)
+        # first centroid has intensities None with cum frequencies None
+        # second centroid has intensities 1 with cum frequencies 1
+        # third centroid has intensities 1, 4 with cum frequencies 4, 1
+        # fourth centroid has intensities 1,2,3,4 with cum frequencies 4,3,2,1
+        # testing at frequencies 5, 2, 1, 0.5
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(0.2, 0.5, 1, 2),
+            method="extrapolate",
+            log_frequency=False,
+            log_impact=False,
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 1.0],
+                    [0.0, 3.0, 4.0, 4.5],
+                    [0.0, 3.0, 4.0, 4.5],
+                ]
+            ),
+        )
 
-        self.assertIsInstance(impact_rp, np.ndarray)
-        self.assertEqual(impact_rp.size, 2 * ent.exposures.gdf["value"].size)
-        self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
-        self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
+    def test_local_exceedance_impact_methods(self):
+        """Test local exceedance impacts per return period with different methods"""
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 0, 1e1], [0, 0, 1e1, 1e2], [0, 1e3, 1e3, 1e3]])
+        )
+        impact.frequency = np.array([1.0, 0.1, 0.01])
+        # first centroid has impacts None with cum frequencies None
+        # second centroid has impacts 1e3 with frequencies .01, cum freq .01
+        # third centroid has impacts 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # fourth centroid has impacts 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at frequencies .001, .033, 10.
+
+        # test stepfunction
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1), method="stepfunction"
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array([[0, 0, 0], [1e3, 0, 0], [1e3, 1e1, 0], [1e3, 1e2, 0]]),
+        )
+
+        # test log log extrapolation
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1), method="extrapolate"
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array([[0, 0, 0], [1e3, 0, 0], [1e5, 1e2, 1e-3], [1e4, 300, 1]]),
+            rtol=0.8,
+        )
+
+        # test log log interpolation and extrapolation with constant
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1), method="extrapolate_constant"
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array([[0, 0, 0], [1e3, 0, 0], [1e3, 1e2, 0], [1e3, 300, 0]]),
+            rtol=0.8,
+        )
+
+        # test log log interpolation and no extrapolation
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1)
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [np.nan, np.nan, np.nan],
+                    [np.nan, 1e2, np.nan],
+                    [np.nan, 300, np.nan],
+                ]
+            ),
+            rtol=0.8,
+        )
+
+        # test lin lin interpolation with no extrapolation
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1),
+            method="extrapolate_constant",
+            log_frequency=False,
+            log_impact=False,
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array([[0, 0, 0], [1e3, 0, 0], [1e3, 750, 0], [1e3, 750, 0]]),
+            rtol=0.8,
+        )
 
 
 class TestImpactReg(unittest.TestCase):

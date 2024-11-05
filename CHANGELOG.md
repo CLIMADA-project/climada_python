@@ -12,6 +12,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, that all use the `climada.util.interpolation` module [#918](https://github.com/CLIMADA-project/climada_python/pull/918)
 - `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
 - `climada.exposures.exposures.Exposures.geometry` property
 - `climada.exposures.exposures.Exposures.latitude` property
@@ -28,6 +29,7 @@ Code freeze date: YYYY-MM-DD
 - Improved scaling factors implemented in `climada.hazard.trop_cyclone.apply_climate_scenario_knu` to model the impact of climate changes to tropical cyclones [#734](https://github.com/CLIMADA-project/climada_python/pull/734)
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+- `Hazard.local_exceedance_inten`, `Hazard.local_return_period`, and `Impact.local_exceedance_imp` call the corresponding new functions and a deprecation warning is added [#918](https://github.com/CLIMADA-project/climada_python/pull/918). Some inconsistencies in the previous versions are removed and the default method is changed. To reconstruct results from the previous versions, use CLIMADA v5.0.0 or less.
 - Exposures complete overhaul. Notably
   - the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization
   - latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
@@ -44,6 +46,10 @@ Code freeze date: YYYY-MM-DD
 - `climada.entity.exposures.Exposures.meta` attribute
 - `climada.entity.exposures.Exposures.set_lat_lon` method
 - `climada.entity.exposures.Exposures.set_geometry_points` method
+- `climada.hazard.Hazard.local_exceedance_inten` method
+- `climada.hazard.Hazard.plot_rp_intensity` method
+- `climada.engine.impact.Impact.local_exceedance_imp` method
+- `climada.engine.impact.Impact.plot_rp_imp` method
 
 ### Removed
 
