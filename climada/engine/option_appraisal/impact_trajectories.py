@@ -36,21 +36,99 @@ from climada.hazard import Hazard
 
 ### Utils functions
 def pairwise(iterable):
-    "s -> (s0, s1), (s1, s2), (s2, s3), ..."
+    """
+    Generate pairs of successive elements from an iterable.
+
+    Parameters
+    ----------
+    iterable : iterable
+        An iterable sequence from which successive pairs of elements are generated.
+
+    Returns
+    -------
+    zip
+        A zip object containing tuples of successive pairs from the input iterable.
+
+    Example
+    -------
+    >>> list(pairwise([1, 2, 3, 4]))
+    [(1, 2), (2, 3), (3, 4)]
+    """
     a, b = itertools.tee(iterable)
     next(b, None)
     return zip(a, b)
 
 
 def get_dates(haz: Hazard):
+    """
+    Convert ordinal dates from a Hazard object to datetime objects.
+
+    Parameters
+    ----------
+    haz : Hazard
+        A Hazard instance with ordinal date values.
+
+    Returns
+    -------
+    list of datetime
+        List of datetime objects corresponding to the ordinal dates in `haz`.
+
+    Example
+    -------
+    >>> haz = Hazard(...)
+    >>> get_dates(haz)
+    [datetime(2020, 1, 1), datetime(2020, 1, 2), ...]
+    """
     return [datetime.fromordinal(date) for date in haz.date]
 
 
 def get_years(haz: Hazard):
+    """
+    Extract unique years from ordinal dates in a Hazard object.
+
+    Parameters
+    ----------
+    haz : Hazard
+        A Hazard instance containing ordinal date values.
+
+    Returns
+    -------
+    np.ndarray
+        Array of unique years as integers, derived from the ordinal dates in `haz`.
+
+    Example
+    -------
+    >>> haz = Hazard(...)
+    >>> get_years(haz)
+    array([2020, 2021, ...])
+    """
     return np.unique(np.array([datetime.fromordinal(date).year for date in haz.date]))
 
 
 def grow_exp(exp, exp_growth_rate, elapsed):
+    """
+    Apply exponential growth to the exposure values over a specified period.
+
+    Parameters
+    ----------
+    exp : Exposures
+        The initial Exposures object with values to be grown.
+    exp_growth_rate : float
+        The annual growth rate to apply (in decimal form, e.g., 0.01 for 1%).
+    elapsed : int
+        Number of years over which to apply the growth.
+
+    Returns
+    -------
+    Exposures
+        A deep copy of the original Exposures object with grown exposure values.
+
+    Example
+    -------
+    >>> exp = Exposures(...)
+    >>> grow_exp(exp, 0.01, 5)
+    Exposures object with values grown by 5%.
+    """
     exp_grown = copy.deepcopy(exp)
     # Exponential growth
     exp_growth_rate = 0.01
@@ -59,6 +137,37 @@ def grow_exp(exp, exp_growth_rate, elapsed):
 
 
 def interpolate_sm(mat_start, mat_end, year, year_start, year_end):
+    """
+    Perform linear interpolation between two matrices for a specified year.
+
+    Parameters
+    ----------
+    mat_start : scipy.sparse.lil_matrix
+        The starting matrix at `year_start`.
+    mat_end : scipy.sparse.lil_matrix
+        The ending matrix at `year_end`.
+    year : int
+        The target year for interpolation.
+    year_start : int
+        The starting year of the interpolation range.
+    year_end : int
+        The ending year of the interpolation range.
+
+    Returns
+    -------
+    scipy.sparse.lil_matrix
+        The interpolated matrix for the specified year.
+
+    Raises
+    ------
+    ValueError
+        If `year` is outside the range defined by `year_start` and `year_end`.
+
+    Example
+    -------
+    >>> interpolate_sm(mat_start, mat_end, 2015, 2010, 2020)
+    Interpolated sparse matrix for the year 2015.
+    """
     if year < year_start or year > year_end:
         raise ValueError("Year must be within the start and end years")
 
@@ -81,30 +190,37 @@ def calc_residual_or_risk_transf_imp_mat(
     imp_mat, attachment=None, cover=None, calc_residual=True
 ):
     """
-    Calculate the residual or risk transfer impact matrix.
-    The impact matrix is rescaled by the total impact at event.
-    The residual impact is calculated as the total impact minus the risk layer.
-    The risk layer is calculated as the minimum between the cover and the maximum between the total impact and the attachment.
-    The residual impact is calculated as the maximum between the total impact and the attachment minus the risk layer.
-    The impact matrix is rescaled by the total impact at event.
+    Calculate either the residual or the risk transfer impact matrix.
 
-    Parameters:
-    -----------
-    imp_mat: scipy.sparse.csr_matrix
-        The impact matrix to be rescaled.
-    attachment: float
-        The attachment point of the risk layer.
-    cover: float
-        The cover of the risk layer.
-    calc_residual: bool
-        If True, the residual impact is calculated, otherwise the risk layer is calculated.
+    The impact matrix is adjusted based on the total impact for each event.
+    When calculating the residual impact, the result is the total impact minus
+    the risk layer. The risk layer is defined as the minimum of the cover and
+    the maximum of the difference between the total impact and the attachment.
+    If `calc_residual` is False, the function returns the risk layer matrix
+    instead of the residual.
 
-    Returns:
-    --------
-    result_matrix: scipy.sparse.csr_matrix
-        The rescaled impact matrix.
+    Parameters
+    ----------
+    imp_mat : scipy.sparse.csr_matrix
+        The original impact matrix to be scaled.
+    attachment : float, optional
+        The attachment point for the risk layer.
+    cover : float, optional
+        The maximum coverage for the risk layer.
+    calc_residual : bool, default=True
+        Determines if the function calculates the residual (if True) or the
+        risk layer (if False).
+
+    Returns
+    -------
+    scipy.sparse.csr_matrix
+        The adjusted impact matrix, either residual or risk transfer.
+
+    Example
+    -------
+    >>> calc_residual_or_risk_transf_imp_mat(imp_mat, attachment=100, cover=500, calc_residual=True)
+    Residual impact matrix with applied risk layer adjustments.
     """
-
     if attachment and cover:
         # Make a copy of the impact matrix
         imp_mat = copy.deepcopy(imp_mat)
@@ -146,18 +262,70 @@ def calc_residual_or_risk_transf_imp_mat(
 
 # Derive the intermediate probability distributions
 def interpolate_years(year_start, year_end):
-    # Generate an array of interpolated values between 0 and 1
+    """
+    Generate an array of interpolated values between 0 and 1 for a range of years.
+
+    Parameters
+    ----------
+    year_start : int
+        The starting year of interpolation.
+    year_end : int
+        The ending year of interpolation.
+
+    Returns
+    -------
+    np.ndarray
+        Array of interpolated values between 0 and 1 for each year in the range.
+    """
     values = np.linspace(0, 1, num=year_end - year_start + 1)
     return values
 
 
 def bayesian_viktypliers(year0, year1):
+    """
+    Calculate the Bayesian interpolation proportions for a given year range.
+
+    Parameters
+    ----------
+    year0 : int
+        Starting year.
+    year1 : int
+        Ending year.
+
+    Returns
+    -------
+    tuple of np.ndarray
+        Tuple containing:
+        - prop_H0 : np.ndarray
+            Array of proportions for the H0 hypothesis.
+        - prop_H1 : np.ndarray
+            Array of proportions for the H1 hypothesis.
+    """
     prop_H1 = interpolate_years(year0, year1)
     prop_H0 = 1 - prop_H1
     return prop_H0, prop_H1
 
 
 def snapshot_combinaisons(snapshot0, snapshot1):
+    """
+    Calculate impact combinations between two snapshots with shared impact function set.
+
+    Parameters
+    ----------
+    snapshot0 : Snapshot
+        The starting snapshot.
+    snapshot1 : Snapshot
+        The ending snapshot.
+
+    Returns
+    -------
+    tuple
+        Tuple containing the impacts for each scenario:
+        - imp_E0H0 : ImpactCalc result for exposure from snapshot0, hazard from snapshot0.
+        - imp_E1H0 : ImpactCalc result for exposure from snapshot1, hazard from snapshot0.
+        - imp_E0H1 : ImpactCalc result for exposure from snapshot0, hazard from snapshot1.
+        - imp_E1H1 : ImpactCalc result for exposure from snapshot1, hazard from snapshot1.
+    """
     impfset0 = snapshot0.impfset
     impfset1 = snapshot1.impfset
     assert impfset0 is impfset1  # We don't allow for different impfset
@@ -182,6 +350,25 @@ def snapshot_combinaisons(snapshot0, snapshot1):
 
 
 def interpolate_imp_mat(imp0, imp1, start_year, end_year):
+    """
+    Interpolate between two impact matrices over a specified year range.
+
+    Parameters
+    ----------
+    imp0 : ImpactCalc
+        The impact calculation for the starting year.
+    imp1 : ImpactCalc
+        The impact calculation for the ending year.
+    start_year : int
+        The starting year for interpolation.
+    end_year : int
+        The ending year for interpolation.
+
+    Returns
+    -------
+    list of np.ndarray
+        List of interpolated impact matrices for each year in the specified range.
+    """
     return [
         interpolate_sm(imp0.imp_mat, imp1.imp_mat, year, start_year, end_year)
         for year in range(start_year, end_year + 1)
@@ -222,6 +409,29 @@ def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None):
 
 
 def calc_yearly_eais(imp_mats_0, imp_mats_1, frequency_0, frequency_1):
+    """
+    Calculate yearly expected annual impact (EAI) values for two scenarios.
+
+    Parameters
+    ----------
+    imp_mats_0 : list of np.ndarray
+        List of interpolated impact matrices for scenario 0.
+    imp_mats_1 : list of np.ndarray
+        List of interpolated impact matrices for scenario 1.
+    frequency_0 : np.ndarray
+        Frequency values associated with scenario 0.
+    frequency_1 : np.ndarray
+        Frequency values associated with scenario 1.
+
+    Returns
+    -------
+    tuple
+        Tuple containing:
+        - yearly_eai_exp_0 : list of float
+            Yearly expected annual impacts for scenario 0.
+        - yearly_eai_exp_1 : list of float
+            Yearly expected annual impacts for scenario 1.
+    """
     yearly_eai_exp_0 = [
         ImpactCalc.eai_exp_from_mat(imp_mat, frequency_0) for imp_mat in imp_mats_0
     ]
@@ -232,6 +442,31 @@ def calc_yearly_eais(imp_mats_0, imp_mats_1, frequency_0, frequency_1):
 
 
 def calc_yearly_rps(imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_periods):
+    """
+    Calculate yearly return period impact values for two scenarios.
+
+    Parameters
+    ----------
+    imp_mats_0 : list of np.ndarray
+        List of interpolated impact matrices for scenario 0.
+    imp_mats_1 : list of np.ndarray
+        List of interpolated impact matrices for scenario 1.
+    frequency_0 : np.ndarray
+        Frequency values for scenario 0.
+    frequency_1 : np.ndarray
+        Frequency values for scenario 1.
+    return_periods : list of int
+        Return periods to calculate impact values for.
+
+    Returns
+    -------
+    tuple
+        Tuple containing:
+        - rp_0 : list of np.ndarray
+            Yearly return period impact values for scenario 0.
+        - rp_1 : list of np.ndarray
+            Yearly return period impact values for scenario 1.
+    """
     rp_0 = [
         calc_freq_curve(imp_mat, frequency_0, return_periods) for imp_mat in imp_mats_0
     ]
@@ -242,6 +477,25 @@ def calc_yearly_rps(imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_per
 
 
 def calc_yearly_aais(yearly_eai_exp_0, yearly_eai_exp_1):
+    """
+    Calculate yearly aggregate annual impact (AAI) values for two scenarios.
+
+    Parameters
+    ----------
+    yearly_eai_exp_0 : list of float
+        Yearly expected annual impacts for scenario 0.
+    yearly_eai_exp_1 : list of float
+        Yearly expected annual impacts for scenario 1.
+
+    Returns
+    -------
+    tuple
+        Tuple containing:
+        - yearly_aai_0 : list of float
+            Aggregate annual impact values for scenario 0.
+        - yearly_aai_1 : list of float
+            Aggregate annual impact values for scenario 1.
+    """
     yearly_aai_0 = [
         ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in yearly_eai_exp_0
     ]
@@ -252,6 +506,21 @@ def calc_yearly_aais(yearly_eai_exp_0, yearly_eai_exp_1):
 
 
 def get_eai_exp(eai_exp, group_map):
+    """
+    Aggregate expected annual impact (EAI) by groups.
+
+    Parameters
+    ----------
+    eai_exp : np.ndarray
+        Array of EAI values.
+    group_map : dict
+        Mapping of group names to indices for aggregation.
+
+    Returns
+    -------
+    dict
+        Dictionary of EAI values aggregated by specified groups.
+    """
     eai_region_id = {}
     for group_name, exp_indices in group_map.items():
         eai_region_id[group_name] = np.sum(eai_exp[:, exp_indices], axis=1)
@@ -269,6 +538,35 @@ def bayesian_mixer(
     risk_transf_attach=None,
     calc_residual=True,
 ):
+    """
+    Perform Bayesian mixing of impacts across snapshots.
+
+    Parameters
+    ----------
+    start_snapshot : Snapshot
+        The starting snapshot.
+    end_snapshot : Snapshot
+        The ending snapshot.
+    metrics : list of str
+        Metrics to calculate (e.g., 'eai', 'aai', 'rp').
+    return_periods : list of int
+        Return periods for calculating impact values.
+    groups : dict, optional
+        Mapping of group names to indices for aggregating EAI values by group.
+    all_groups_name : str, optional
+        Name for all-groups aggregation in the output.
+    risk_transf_cover : float, optional
+        Coverage level for risk transfer calculations.
+    risk_transf_attach : float, optional
+        Attachment point for risk transfer calculations.
+    calc_residual : bool, optional
+        Whether to calculate residual impacts after applying risk transfer.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of calculated impact values by year, group, and metric.
+    """
     # 1. Interpolate in between years
     prop_H0, prop_H1 = bayesian_viktypliers(start_snapshot.year, end_snapshot.year)
     imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1 = snapshot_combinaisons(
@@ -351,6 +649,21 @@ def bayesian_mixer(
 
 @dataclass
 class Snapshot:
+    """
+    A snapshot of exposure, hazard, and impact function set for a given year.
+
+    Attributes
+    ----------
+    exposure : Exposures
+        Exposure data for the snapshot.
+    hazard : Hazard
+        Hazard data for the snapshot.
+    impfset : ImpactFuncSet
+        Impact function set associated with the snapshot.
+    year : int
+        Year of the snapshot.
+    """
+
     exposure: Exposures
     hazard: Hazard
     impfset: ImpactFuncSet
@@ -358,6 +671,23 @@ class Snapshot:
 
 
 class SnapshotsCollection:
+    """
+    Collection of snapshots for different years.
+
+    Attributes
+    ----------
+    exposure_set : dict
+        Dictionary of exposure data by year.
+    hazard_set : dict
+        Dictionary of hazard data by year.
+    impfset : ImpactFuncSet
+        Impact function set shared across snapshots.
+    snapshots_years : list of int
+        Years associated with each snapshot in the collection.
+    data : list of Snapshot
+        List of Snapshot objects in the collection.
+    """
+
     def __init__(self, exposure_set, hazard_set, impfset, snapshot_years):
         self.exposure_set = exposure_set
         self.hazard_set = hazard_set
@@ -373,6 +703,21 @@ class SnapshotsCollection:
 
     @classmethod
     def from_dict(cls, snapshots_dict, impfset):
+        """
+        Create a SnapshotsCollection from a dictionary of snapshots.
+
+        Parameters
+        ----------
+        snapshots_dict : dict
+            Dictionary of snapshots data by year.
+        impfset : ImpactFuncSet
+            Impact function set shared across snapshots.
+
+        Returns
+        -------
+        SnapshotsCollection
+            A new SnapshotsCollection instance.
+        """
         snapshot_years = list(snapshots_dict.keys())
         exposure_set = {year: snapshots_dict[year][0] for year in snapshot_years}
         hazard_set = {year: snapshots_dict[year][1] for year in snapshot_years}
@@ -385,6 +730,25 @@ class SnapshotsCollection:
 
     @classmethod
     def from_lists(cls, hazard_list, exposure_list, impfset, snapshot_years):
+        """
+        Create a SnapshotsCollection from separate lists of hazard and exposure data.
+
+        Parameters
+        ----------
+        hazard_list : list
+            List of hazard data for each year, in the same order as `snapshot_years`.
+        exposure_list : list
+            List of exposure data for each year, in the same order as `snapshot_years`.
+        impfset : ImpactFuncSet
+            Impact function set shared across snapshots.
+        snapshot_years : list of int
+            List of years corresponding to each hazard and exposure data entry.
+
+        Returns
+        -------
+        SnapshotsCollection
+            A new SnapshotsCollection instance.
+        """
         exposure_set = {year: exposure_list[i] for i, year in enumerate(snapshot_years)}
         hazard_set = {year: hazard_list[i] for i, year in enumerate(snapshot_years)}
         return cls(
@@ -396,6 +760,19 @@ class SnapshotsCollection:
 
 
 class CalcImpactsSnapshots:
+    """
+    Calculate impacts for each year in a collection of snapshots.
+
+    Attributes
+    ----------
+    snapshots : SnapshotsCollection
+        Collection of snapshots to calculate impacts for.
+    group_map_exp_dict : dict, optional
+        Dictionary mapping group names to indices for impact aggregation by group.
+    yearly_eai_exp_tuples : list of tuple
+        List of tuples containing yearly expected annual impact data.
+    """
+
     def __init__(self, snapshots: SnapshotsCollection, group_map_exp_dict=None):
         self.snapshots = snapshots
         self.group_map_exp_dict = group_map_exp_dict
@@ -404,6 +781,14 @@ class CalcImpactsSnapshots:
     # An init param could be the region aggregation you want
 
     def calc_impacts_snapshots(self):
+        """
+        Calculate impacts for each snapshot year.
+
+        Returns
+        -------
+        dict
+            Dictionary of impacts for each year, keyed by year.
+        """
         impacts_list = {}
         for snapshot in self.snapshots.data:
             impacts_list[snapshot.year] = ImpactCalc(
@@ -420,6 +805,31 @@ class CalcImpactsSnapshots:
         risk_transf_attach=None,
         calc_residual=True,
     ):
+        """
+        Calculate impacts for all years in the snapshots collection.
+
+        This method computes specified metrics (e.g., expected annual impact, aggregated annual impact, and return periods) for each year in the snapshot collection. The results are aggregated and returned as a DataFrame.
+
+        Parameters
+        ----------
+        metrics : list of str, optional
+            List of metrics to compute. Options include "eai" (expected annual impact), "aai" (aggregated annual impact), and "rp" (return periods). Default is ["eai", "aai", "rp"].
+        return_periods : list of int, optional
+            List of return periods (in years) to compute for the "rp" metric. Default is [100, 500, 1000].
+        compute_groups : bool, optional
+            Whether to compute the metrics for specific groups (e.g., regions). Default is False.
+        risk_transf_cover : optional
+            Coverage values for risk transfer, used in the calculation of impacts.
+        risk_transf_attach : optional
+            Attachment points for risk transfer, used in the calculation of impacts.
+        calc_residual : bool, optional
+            Whether to calculate the residual impacts after risk transfer. Default is True.
+
+        Returns
+        -------
+        pd.DataFrame
+            DataFrame containing the computed metrics, with columns for "group", "year", "metric", and "result".
+        """
         results_df = []
         if compute_groups:
             groups = self.group_map_exp_dict
@@ -447,8 +857,13 @@ class CalcImpactsSnapshots:
 
 #### WIP
 
+# Implement collections of trajectories.
+
 
 class TBRTrajectories:
+
+    # Compute impacts for trajectories with present exposure and future exposure
+    #
 
     @classmethod
     def create_hazard_yearly_set(cls, haz: Hazard):
