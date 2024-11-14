@@ -48,14 +48,72 @@ Jump right in:
 
 
 .. toctree::
-   :maxdepth: 1
+   :hidden:
 
-   Getting started <getting-started/index>
-   User Guide <user-guide/index>
-   Development <development/index>
-   API <api/index>
-   Authors <misc/AUTHORS>
-   Changelog <misc/CHANGELOG>
-   Contribute <misc/CONTRIBUTING>
+   GitHub Repositories <https://github.com/CLIMADA-project>
    CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>
    Weather and Climate Risks Group <https://wcr.ethz.ch/>
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: User Guide
+   :hidden:
+
+   guide/Guide_Introduction
+   Getting Started <guide/Guide_get_started>
+   guide/install
+   Running CLIMADA on Euler <guide/Guide_Euler>
+
+
+.. toctree::
+   :caption: API Reference
+   :hidden:
+
+   Python Modules <climada/climada>
+
+
+.. toctree::
+   :maxdepth: 2
+   :caption: Tutorials
+   :hidden:
+
+   Overview <tutorial/1_main_climada>
+   Python Introduction <tutorial/0_intro_python>
+   Hazard <tutorial/hazard>
+   Exposures <tutorial/exposures>
+   Impact <tutorial/impact>
+   Uncertainty Quantification <tutorial/unsequa>
+   tutorial/climada_engine_Forecast
+   tutorial/climada_util_calibrate
+   Google Earth Engine <tutorial/climada_util_earth_engine>
+   tutorial/climada_util_api_client
+
+
+.. toctree::
+   :maxdepth: 1
+   :caption: Developer Guide
+   :hidden:
+
+   Development with Git <guide/Guide_Git_Development>
+   guide/Guide_CLIMADA_Tutorial
+   guide/Guide_Configuration
+   guide/Guide_Testing
+   guide/Guide_continuous_integration_GitHub_actions
+   guide/Guide_Review
+   guide/Guide_PythonDos-n-Donts
+   guide/Guide_Exception_Logging
+   Performance and Best Practices <guide/Guide_Py_Performance>
+   CLIMADA Coding Conventions <guide/Guide_CLIMADA_conventions>
+   Building the Documentation <README>
+
+
+.. toctree::
+   :caption: Miscellaneous
+   :hidden:
+
+   README <misc/README>
+   Changelog <misc/CHANGELOG>
+   List of Authors <misc/AUTHORS>
+   Contribution Guide <misc/CONTRIBUTING>
+   misc/citation
