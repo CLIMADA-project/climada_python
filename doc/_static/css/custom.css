@@ -1,0 +1,18 @@
+:root {
+
+    .navbar-brand {
+        height: 7rem;
+        max-height: 7rem;
+    }
+
+}
+
+.bd-page-width {
+    max-width: 98rem;
+}
+
+
+html {
+    --pst-font-size-base: 18px;
+    --pst-header-height: 7rem;
+}
