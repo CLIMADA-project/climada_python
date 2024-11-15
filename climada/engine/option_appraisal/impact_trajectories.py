@@ -862,7 +862,7 @@ class CalcImpactsSnapshots:
 
 class TBRTrajectories:
 
-    # Compute impacts for trajectories with present exposure and future exposure
+    # Compute impacts for trajectories with present exposure and future exposure and interpolate in between
     #
 
     @classmethod

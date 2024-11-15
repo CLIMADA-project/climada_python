@@ -194,6 +194,8 @@ def create_group_map_exp_dict(snapshots, group_col_str=None):
 
 def generate_meas_times_df(measure_set, snapshots, planner=None):
     # Create the df
+    # TODO: improve df concatenation (list dfs and concat at the end)
+
     cols = ["measure", "start_year", "end_year"]
     meas_times_df = pd.DataFrame(columns=cols)
 
