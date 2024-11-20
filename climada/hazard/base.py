@@ -184,7 +184,7 @@ class Hazard(HazardIO, HazardPlot):
 
         Take hazard values from file:
 
-        >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
+        >>> haz = Hazard.from_hdf5(HAZ_DEMO_H5)
 
         """
         self.haz_type = haz_type

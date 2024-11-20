@@ -138,6 +138,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 ### Removed
 
 - climada.hazard.base.Hazard.clear
+- climada.hazard.base.Hazard.from_mat
 - climada.hazard.base.Hazard.raster_to_vector
 - climada.hazard.base.Hazard.read_mat
 - climada.hazard.base.Hazard.reproject_raster
