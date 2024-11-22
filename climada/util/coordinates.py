@@ -1637,7 +1637,7 @@ def bounds_from_user_input(area_selection, margin=0.2):
     ----------
     area_selection (str, list): Defines the geographic area to determine bounds for. Accepted formats include:
         - 'global': Returns bounds for the entire globe ([north, west, south, east] = [90, -180, -90, 180]).
-        - A list of ISO country codes (e.g., ['USA', 'CAN']): Combines bounds for the specified countries.
+        - A list of ISO country codes (e.g.,['ITA'], ['ITA', 'CHE']): Combines bounds for the specified countries.
         - A bounding box [north, west, south, east]: Returns the bounding box directly, optionally extended by a margin.
 
     margin (float): A fractional margin to extend the bounding box in all directions. This is applied only to bounding box or ISO country code inputs. Default is 0.2.
@@ -1653,6 +1653,11 @@ def bounds_from_user_input(area_selection, margin=0.2):
     -------
     ValueError: If the input format is invalid or unrecognized.
     """
+    if not area_selection:
+        raise ValueError(
+            f"Invalid area_selection format: {area_selection}. The input cannot be empty."
+        )
+
     if isinstance(area_selection, str):
         if area_selection.lower() == "global":
             return [90, -180, -90, 180]  # Global bounds
@@ -1663,6 +1668,7 @@ def bounds_from_user_input(area_selection, margin=0.2):
 
     elif isinstance(area_selection, list):
         # If the input is a bounding box
+
         if len(area_selection) == 4:
             try:
                 north, west, south, east = area_selection
