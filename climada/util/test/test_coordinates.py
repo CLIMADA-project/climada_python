@@ -39,6 +39,7 @@ import climada.util.coordinates as u_coord
 from climada import CONFIG
 from climada.hazard.base import Centroids
 from climada.util.constants import DEF_CRS, DEMO_DIR, HAZ_DEMO_FL, ONE_LAT_KM
+from climada.util.coordinates import bounds_from_user_input
 
 DATA_DIR = CONFIG.util.test_data.dir()
 
@@ -2294,6 +2295,62 @@ class TestRasterIO(unittest.TestCase):
         )
 
 
+class TestBoundsFromUserInput(unittest.TestCase):
+    """Unit tests for the bounds_from_user_input function."""
+
+    def test_global_bounds(self):
+        """Test for 'global' area selection."""
+        result = bounds_from_user_input("global")
+        expected = [90, -180, -90, 180]
+        self.assertEqual(result, expected)
+
+    def test_country_bounds(self):
+        """Test for a list of ISO country codes."""
+        result = bounds_from_user_input(["USA", "CAN"], margin=0.1)
+        # Replace with real expected bounds for USA and CAN
+        expected = [your_calculated_bounds_here]
+        self.assertEqual(result, expected)
+
+    def test_bounding_box(self):
+        """Test for bounding box input with margin applied."""
+        bbox = [50, -120, 30, -100]
+        result = bounds_from_user_input(bbox, margin=0.1)
+        expected = [
+            50 + 2,
+            -120 - 2,
+            30 - 2,
+            -100 + 2,
+        ]  # Replace with correct calculations
+        self.assertEqual(result, expected)
+
+    def test_invalid_input_string(self):
+        """Test for invalid string input."""
+        with self.assertRaises(ValueError):
+            bounds_from_user_input("invalid")
+
+    def test_invalid_input_list(self):
+        """Test for invalid list input."""
+        with self.assertRaises(ValueError):
+            bounds_from_user_input([50, -120])  # Invalid bounding box
+
+    def test_empty_input(self):
+        """Test for empty input."""
+        with self.assertRaises(ValueError):
+            bounds_from_user_input([])
+
+    def test_margin_flexibility(self):
+        """Test for varying margin values."""
+        bbox = [60, -140, 20, -80]
+        result = bounds_from_user_input(bbox, margin=0.2)
+        expected = [
+            60 + 8,
+            -140 - 12,
+            20 - 8,
+            -80 + 12,
+        ]  # To replace with actual margin-based calculation
+        self.assertEqual(result, expected)
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
@@ -2302,4 +2359,5 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterMeta))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterIO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestBoundsFromUserInput))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

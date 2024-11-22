@@ -1629,6 +1629,90 @@ def get_country_code(lat, lon, gridded=False):
     return region_id
 
 
+def bounds_from_user_input(area_selection, margin=0.2):
+    """
+    Determine geographic bounds based on user-provided input, including global or country ISO codes.
+
+    Parameters
+    ----------
+    area_selection (str, list): Defines the geographic area to determine bounds for. Accepted formats include:
+        - 'global': Returns bounds for the entire globe ([north, west, south, east] = [90, -180, -90, 180]).
+        - A list of ISO country codes (e.g., ['USA', 'CAN']): Combines bounds for the specified countries.
+        - A bounding box [north, west, south, east]: Returns the bounding box directly, optionally extended by a margin.
+
+    margin (float): A fractional margin to extend the bounding box in all directions. This is applied only to bounding box or ISO country code inputs. Default is 0.2.
+
+    Returns
+    -------
+        list: The calculated bounding box as [north, west, south, east], or None if the input is invalid.
+            - For 'global', returns [90, -180, -90, 180].
+            - For ISO country codes, combines and extends the bounding boxes of the specified countries.
+            - For a provided bounding box, applies the margin and returns the extended bounds.
+
+    Raises
+    -------
+    ValueError: If the input format is invalid or unrecognized.
+    """
+    if isinstance(area_selection, str):
+        if area_selection.lower() == "global":
+            return [90, -180, -90, 180]  # Global bounds
+        else:
+            raise ValueError(
+                f"Invalid string for area_selection: '{area_selection}'. Expected 'global' or a list of ISO codes."
+            )
+
+    elif isinstance(area_selection, list):
+        # If the input is a bounding box
+        if len(area_selection) == 4:
+            try:
+                north, west, south, east = area_selection
+                lat_margin = margin * (north - south)
+                lon_margin = margin * (east - west)
+                north += lat_margin
+                east += lon_margin
+                south -= lat_margin
+                west -= lon_margin
+                return [north, west, south, east]
+            except ValueError:
+                LOGGER.error(
+                    f"Invalid area selection bounds provided: {area_selection}. "
+                    "Expected a list of four numerical values [north, west, south, east]."
+                )
+                raise
+
+        # If the input is a list of ISO country codes
+        combined_bounds = [-90, 180, 90, -180]
+        for iso in area_selection:
+            geo = get_country_geometries(iso).to_crs(epsg=4326)
+            bounds = geo.total_bounds
+            if np.any(np.isnan(bounds)):
+                LOGGER.warning(
+                    f"ISO code '{iso}' not recognized. This region will not be included."
+                )
+                continue
+
+            min_lon, min_lat, max_lon, max_lat = bounds
+
+            lat_margin = margin * (max_lat - min_lat)
+            lon_margin = margin * (max_lon - min_lon)
+
+            combined_bounds[0] = max(combined_bounds[0], max_lat + lat_margin)
+            combined_bounds[1] = min(combined_bounds[1], min_lon - lon_margin)
+            combined_bounds[2] = min(combined_bounds[2], min_lat - lat_margin)
+            combined_bounds[3] = max(combined_bounds[3], max_lon + lon_margin)
+
+        if combined_bounds == [-90, 180, 90, -180]:
+            return None
+        else:
+            return combined_bounds
+
+    else:
+        raise ValueError(
+            f"Invalid area_selection format: {area_selection}. "
+            "Expected 'global', a list of ISO codes, or [north, west, south, east]."
+        )
+
+
 def get_admin1_info(country_names):
     """Provide Natural Earth registry info and shape files for admin1 regions
 
