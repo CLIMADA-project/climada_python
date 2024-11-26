@@ -1629,94 +1629,98 @@ def get_country_code(lat, lon, gridded=False):
     return region_id
 
 
-def bounds_from_user_input(area_selection, margin=0.2):
+def boundsNESW_from_global():
     """
-    Determine geographic bounds based on user-provided input, including global or country ISO codes.
-
-    Parameters
-    ----------
-    area_selection (str, list): Defines the geographic area to determine bounds for. Accepted formats include:
-        - 'global': Returns bounds for the entire globe ([north, west, south, east] = [90, -180, -90, 180]).
-        - A list of ISO country codes (e.g.,['ITA'], ['ITA', 'CHE']): Combines bounds for the specified countries.
-        - A bounding box [north, west, south, east]: Returns the bounding box directly, optionally extended by a margin.
-
-    margin (float): A fractional margin to extend the bounding box in all directions. This is applied only to bounding box or ISO country code inputs. Default is 0.2.
+    Return global NESW
 
     Returns
     -------
-        list: The calculated bounding box as [north, west, south, east], or None if the input is invalid.
-            - For 'global', returns [90, -180, -90, 180].
-            - For ISO country codes, combines and extends the bounding boxes of the specified countries.
-            - For a provided bounding box, applies the margin and returns the extended bounds.
-
-    Raises
-    -------
-    ValueError: If the input format is invalid or unrecognized.
+    list:
+        The calculated bounding box as [north, east, south, west]
     """
-    if not area_selection:
-        raise ValueError(
-            f"Invalid area_selection format: {area_selection}. The input cannot be empty."
-        )
+    return [90, 180, -90, -180]
 
-    if isinstance(area_selection, str):
-        if area_selection.lower() == "global":
-            return [90, -180, -90, 180]  # Global bounds
-        else:
-            raise ValueError(
-                f"Invalid string for area_selection: '{area_selection}'. Expected 'global' or a list of ISO codes."
+
+def boundsNESW_from_country_codes(country_codes, rel_margin=0.2):
+    """
+    Return NESW bounds for the combined area defined by given country ISO codes.
+
+    Parameters
+    ----------
+    country_codes : list
+        A list of ISO country codes (e.g.,['ITA'], ['ITA', 'CHE']).
+    rel_margin : float
+        A relative margin to extend the bounding box in all directions. Default is 0.2.
+
+    Returns
+    -------
+    list:
+        The calculated bounding box as [north, east, south, west]
+    """
+    [north, east, south, west] = [-90, -180, 90, 180]
+
+    # loop through ISO codes
+    for iso in country_codes:
+        geo = get_country_geometries(iso).to_crs(epsg=4326)
+        iso_west, iso_south, iso_east, iso_north = geo.total_bounds
+        if np.any(np.isnan([iso_west, iso_south, iso_east, iso_north])):
+            LOGGER.warning(
+                f"ISO code '{iso}' not recognized. This region will not be included."
             )
+            continue
 
-    elif isinstance(area_selection, list):
-        # If the input is a bounding box
+        north = max(north, iso_north)
+        east = max(east, iso_east)
+        south = min(south, iso_south)
+        west = min(west, iso_west)
 
-        if len(area_selection) == 4:
-            try:
-                north, west, south, east = area_selection
-                lat_margin = margin * (north - south)
-                lon_margin = margin * (east - west)
-                north += lat_margin
-                east += lon_margin
-                south -= lat_margin
-                west -= lon_margin
-                return [north, west, south, east]
-            except ValueError:
-                LOGGER.error(
-                    f"Invalid area selection bounds provided: {area_selection}. "
-                    "Expected a list of four numerical values [north, west, south, east]."
-                )
-                raise
+    # no countries recognized
+    if [north, east, south, west] == [-90, -180, 90, 180]:
+        raise Exception("No ISO code was recognized.")
 
-        # If the input is a list of ISO country codes
-        combined_bounds = [-90, 180, 90, -180]
-        for iso in area_selection:
-            geo = get_country_geometries(iso).to_crs(epsg=4326)
-            bounds = geo.total_bounds
-            if np.any(np.isnan(bounds)):
-                LOGGER.warning(
-                    f"ISO code '{iso}' not recognized. This region will not be included."
-                )
-                continue
+    # add relative margin
+    lat_margin = rel_margin * (north - south)
+    lon_margin = rel_margin * (east - west)
+    north = min(north + lat_margin, 90)
+    east = min(east + lon_margin, 180)
+    south = max(south - lat_margin, -90)
+    west = max(west - lon_margin, -180)
 
-            min_lon, min_lat, max_lon, max_lat = bounds
+    return [north, east, south, west]
 
-            lat_margin = margin * (max_lat - min_lat)
-            lon_margin = margin * (max_lon - min_lon)
 
-            combined_bounds[0] = max(combined_bounds[0], max_lat + lat_margin)
-            combined_bounds[1] = min(combined_bounds[1], min_lon - lon_margin)
-            combined_bounds[2] = min(combined_bounds[2], min_lat - lat_margin)
-            combined_bounds[3] = max(combined_bounds[3], max_lon + lon_margin)
+def boundsNESW_from_NESW(*, north, east, south, west, rel_margin=0.2):
+    """
+    Return NESW bounds with relative margin with given NESW values.
 
-        if combined_bounds == [-90, 180, 90, -180]:
-            return None
-        else:
-            return combined_bounds
+    Parameters
+    ----------
+    north : (float, int)
+        Maximal latitude of bounds.
+    east : (float, int)
+        Maximal longitute of bounds.
+    south : (float, int)
+        Minimal latitude of bounds.
+    west : (float, int)
+        Minimal longitude of bounds.
+    rel_margin : float
+        A relative margin to extend the bounding box in all directions. Default is 0.2.
 
-    else:
-        raise ValueError(
-            f"Invalid area_selection format: {area_selection}. "
-            "Expected 'global', a list of ISO codes, or [north, west, south, east]."
-        )
+    Returns
+    -------
+    list:
+        The calculated bounding box as [north, east, south, west]
+    """
+
+    # add relative margin
+    lat_margin = rel_margin * (north - south)
+    lon_margin = rel_margin * (east - west)
+    north = min(north + lat_margin, 90)
+    east = min(east + lon_margin, 180)
+    south = max(south - lat_margin, -90)
+    west = max(west - lon_margin, -180)
+
+    return [north, east, south, west]
 
 
 def get_admin1_info(country_names):
