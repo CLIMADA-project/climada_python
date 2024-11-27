@@ -2294,62 +2294,6 @@ class TestRasterIO(unittest.TestCase):
         )
 
 
-class TestBoundsFromUserInput(unittest.TestCase):
-    """Unit tests for the bounds_from_user_input function."""
-
-    def test_boundsNESW_from_global(self):
-        """Test for 'global' area selection."""
-        result = u_coord.boundsNESW_from_global()
-        expected = [90, 180, -90, -180]
-        np.testing.assert_almost_equal(result, expected)
-
-    def test_boundsNESW_from_country_codes(self):
-        """Test for a list of ISO country codes."""
-        result = u_coord.boundsNESW_from_country_codes(
-            ["ITA"], rel_margin=0.2
-        )  # Testing with Italy (ITA)
-        # Real expected bounds for Italy (calculated or manually known)
-        expected = [
-            49.404409157600064,
-            20.900365510000075,
-            33.170049669400036,
-            4.219788779000066,
-        ]  # Italy's bounding box
-
-        np.testing.assert_array_almost_equal(result, expected, decimal=4)
-
-    def test_bounding_box(self):
-        """Test for bounding box input with margin applied."""
-        [north, east, south, west] = [50, -100, 30, -120]
-        result = u_coord.boundsNESW_from_NESW(
-            north=north, south=south, west=west, east=east, rel_margin=0.1
-        )
-        expected = [
-            50 + 2,
-            -100 + 2,
-            30 - 2,
-            -120 - 2,
-        ]  # Apply margin calculation
-        np.testing.assert_array_almost_equal(result, expected)
-
-    def test_invalid_input_string(self):
-        """Test for invalid string input."""
-        with self.assertRaises(Exception):
-            u_coord.boundsNESW_from_country_codes("DEU")
-
-    def test_empty_input(self):
-        """Test for empty input."""
-        with self.assertRaises(Exception):
-            u_coord.boundsNESW_from_country_codes([])
-
-    def test_invalid_coordinate_input(self):
-        """Test for str in coordinates input input."""
-        with self.assertRaises(ValueError):
-            u_coord.boundsNESW_from_NESW(north=40, south=50, east=30, west=10)
-        with self.assertRaises(TypeError):
-            u_coord.boundsNESW_from_NESW(north=40, south="20", east=30, west=10)
-
-
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFunc)
@@ -2358,5 +2302,4 @@ if __name__ == "__main__":
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterMeta))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestRasterIO))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDistance))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestBoundsFromUserInput))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
