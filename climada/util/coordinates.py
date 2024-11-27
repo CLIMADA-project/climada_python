@@ -1631,19 +1631,19 @@ def get_country_code(lat, lon, gridded=False):
 
 def boundsNESW_from_global():
     """
-    Return global NESW
+    Return global NESW bounds in EPSG 4326
 
     Returns
     -------
     list:
-        The calculated bounding box as [north, east, south, west]
+        The calculated bounding box as [north, east, south, west] in EPSG 4326
     """
     return [90, 180, -90, -180]
 
 
 def boundsNESW_from_country_codes(country_codes, rel_margin=0.2):
     """
-    Return NESW bounds for the combined area defined by given country ISO codes.
+    Return NESW bounds in EPSG 4326 for the combined area defined by given country ISO codes.
 
     Parameters
     ----------
@@ -1655,7 +1655,7 @@ def boundsNESW_from_country_codes(country_codes, rel_margin=0.2):
     Returns
     -------
     list:
-        The calculated bounding box as [north, east, south, west]
+        The calculated bounding box as [north, east, south, west] in EPSG 4326
     """
     [north, east, south, west] = [-90, -180, 90, 180]
 
@@ -1689,28 +1689,32 @@ def boundsNESW_from_country_codes(country_codes, rel_margin=0.2):
     return [north, east, south, west]
 
 
-def boundsNESW_from_NESW(*, north, east, south, west, rel_margin=0.2):
+def boundsNESW_from_NESW(*, north, east, south, west, rel_margin=0.0):
     """
-    Return NESW bounds with relative margin with given NESW values.
+    Return NESW bounds in EPSG 4326 with relative margin from given NESW values in EPSG 4326.
 
     Parameters
     ----------
     north : (float, int)
-        Maximal latitude of bounds.
+        Maximal latitude in EPSG 4326.
     east : (float, int)
-        Maximal longitute of bounds.
+        Maximal longitute in EPSG 4326.
     south : (float, int)
-        Minimal latitude of bounds.
+        Minimal latitude in EPSG 4326.
     west : (float, int)
-        Minimal longitude of bounds.
+        Minimal longitude in EPSG 4326.
     rel_margin : float
         A relative margin to extend the bounding box in all directions. Default is 0.2.
 
     Returns
     -------
     list:
-        The calculated bounding box as [north, east, south, west]
+        The calculated bounding box as [north, east, south, west] in EPSG 4326
     """
+
+    # simple bounds check
+    if not ((90 >= north > south >= -90) and (180 >= east > west >= -180)):
+        raise ValueError("Given bounds are not in standard order or standard bounds")
 
     # add relative margin
     lat_margin = rel_margin * (north - south)

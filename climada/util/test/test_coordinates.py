@@ -2342,6 +2342,13 @@ class TestBoundsFromUserInput(unittest.TestCase):
         with self.assertRaises(Exception):
             u_coord.boundsNESW_from_country_codes([])
 
+    def test_invalid_coordinate_input(self):
+        """Test for str in coordinates input input."""
+        with self.assertRaises(ValueError):
+            u_coord.boundsNESW_from_NESW(north=40, south=50, east=30, west=10)
+        with self.assertRaises(TypeError):
+            u_coord.boundsNESW_from_NESW(north=40, south="20", east=30, west=10)
+
 
 # Execute Tests
 if __name__ == "__main__":
