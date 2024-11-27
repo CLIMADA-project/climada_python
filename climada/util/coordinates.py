@@ -1687,6 +1687,104 @@ def get_admin1_info(country_names):
     return admin1_info, admin1_shapes
 
 
+def boundsNESW_from_global():
+    """
+    Return global NESW bounds in EPSG 4326
+
+    Returns
+    -------
+    list:
+        The calculated bounding box as [north, east, south, west] in EPSG 4326
+    """
+    return [90, 180, -90, -180]
+
+
+def boundsNESW_from_country_codes(country_codes, rel_margin=0.2):
+    """
+    Return NESW bounds in EPSG 4326 for the combined area defined by given country ISO codes.
+
+    Parameters
+    ----------
+    country_codes : list
+        A list of ISO country codes (e.g.,['ITA'], ['ITA', 'CHE']).
+    rel_margin : float
+        A relative margin to extend the bounding box in all directions. Default is 0.2.
+
+    Returns
+    -------
+    list:
+        The calculated bounding box as [north, east, south, west] in EPSG 4326
+    """
+    [north, east, south, west] = [-90, -180, 90, 180]
+
+    # loop through ISO codes
+    for iso in country_codes:
+        geo = get_country_geometries(iso).to_crs(epsg=4326)
+        iso_west, iso_south, iso_east, iso_north = geo.total_bounds
+        if np.any(np.isnan([iso_west, iso_south, iso_east, iso_north])):
+            LOGGER.warning(
+                f"ISO code '{iso}' not recognized. This region will not be included."
+            )
+            continue
+
+        north = max(north, iso_north)
+        east = max(east, iso_east)
+        south = min(south, iso_south)
+        west = min(west, iso_west)
+
+    # no countries recognized
+    if [north, east, south, west] == [-90, -180, 90, 180]:
+        raise Exception("No ISO code was recognized.")
+
+    # add relative margin
+    lat_margin = rel_margin * (north - south)
+    lon_margin = rel_margin * (east - west)
+    north = min(north + lat_margin, 90)
+    east = min(east + lon_margin, 180)
+    south = max(south - lat_margin, -90)
+    west = max(west - lon_margin, -180)
+
+    return [north, east, south, west]
+
+
+def boundsNESW_from_NESW(*, north, east, south, west, rel_margin=0.0):
+    """
+    Return NESW bounds in EPSG 4326 with relative margin from given NESW values in EPSG 4326.
+
+    Parameters
+    ----------
+    north : (float, int)
+        Maximal latitude in EPSG 4326.
+    east : (float, int)
+        Maximal longitute in EPSG 4326.
+    south : (float, int)
+        Minimal latitude in EPSG 4326.
+    west : (float, int)
+        Minimal longitude in EPSG 4326.
+    rel_margin : float
+        A relative margin to extend the bounding box in all directions. Default is 0.2.
+
+    Returns
+    -------
+    list:
+        The calculated bounding box as [north, east, south, west] in EPSG 4326
+    """
+
+    # simple bounds check
+    if not ((90 >= north > south >= -90) and (180 >= east > west >= -180)):
+        raise ValueError("Given bounds are not in standard order or standard bounds")
+
+    # add relative margin
+    lat_margin = rel_margin * (north - south)
+    lon_margin = rel_margin * (east - west)
+    north = min(north + lat_margin, 90)
+    east = min(east + lon_margin, 180)
+    south = max(south - lat_margin, -90)
+    west = max(west - lon_margin, -180)
+
+    return [north, east, south, west]
+
+
 def get_admin1_geometries(countries):
     """
     return geometries, names and codes of admin 1 regions in given countries
