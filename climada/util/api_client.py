@@ -22,50 +22,25 @@ Data API client
 import hashlib
 import json
 import logging
-import time
 from dataclasses import dataclass
-from datetime import datetime
 from os.path import commonprefix
 from pathlib import Path
-from urllib.parse import quote, unquote, urlsplit, urlunsplit
+from urllib.parse import quote, urlsplit, urlunsplit
 
 import pandas as pd
 import pycountry
 import requests
-from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
 
 from climada import CONFIG
 from climada.entity import Exposures
 from climada.hazard import Centroids, Hazard
 from climada.util.constants import SYSTEM_DIR
+from climada.util.files_handler import Download, Downloader, file_checksum
 
 LOGGER = logging.getLogger(__name__)
 
-DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
-
 HAZ_TYPES = [ht.str() for ht in CONFIG.data_api.supported_hazard_types.list()]
 EXP_TYPES = [et.str() for et in CONFIG.data_api.supported_exposures_types.list()]
-
-
-class Download(Model):
-    """Database entry keeping track of downloaded files from the CLIMADA data API"""
-
-    url = CharField()
-    path = CharField(unique=True)
-    startdownload = DateTimeField()
-    enddownload = DateTimeField(null=True)
-
-    class Meta:
-        """SQL database and table definition."""
-
-        database = DB
-
-    class Failed(Exception):
-        """The download failed for some reason."""
-
-
-DB.connect()
-DB.create_tables([Download])
 
 
 @dataclass
@@ -140,46 +115,62 @@ class DatasetInfo:
         return dataset
 
 
-def checksize(local_path, fileinfo):
-    """Checks sanity of downloaded file simply by comparing actual and registered size.
+def checksize(expected_size):
+    """Returns a check method that checks sanity of downloaded file simply by comparing actual
+    and expected size.
 
     Parameters
     ----------
-    local_path : Path
-        the downloaded file
-    filinfo : FileInfo
-        file information from CLIMADA data API
+    expected_size: int
+        expected file size in bytes
 
-    Raises
-    ------
-    Download.Failed
-        if the file is not what it's supposed to be
+    Returns
+    -------
+    function(local_path: Path)->()
+        a function taking a `Path` argument, returning None and raising `Download.Failed`
+        if the file is not like it's supposed to be
     """
-    if not local_path.is_file():
-        raise Download.Failed(f"{str(local_path)} is not a file")
-    if local_path.stat().st_size != fileinfo.file_size:
-        raise Download.Failed(
-            f"{str(local_path)} has the wrong size:"
-            f"{local_path.stat().st_size} instead of {fileinfo.file_size}"
-        )
+
+    def _check_method(local_path):
+        if not local_path.is_file():
+            raise Download.Failed(f"{str(local_path)} is not a file")
+        if local_path.stat().st_size != expected_size:
+            raise Download.Failed(
+                f"{str(local_path)} has the wrong size:"
+                f"{local_path.stat().st_size} instead of {expected_size}"
+            )
+
+    return _check_method
 
 
-def checkhash(local_path, fileinfo):
-    """Checks sanity of downloaded file by comparing actual and registered check sum.
+def checkhash(expected_checksum):
+    """Returns a check method that checks sanity of downloaded file simply by comparing actual
+    and expected checksum.
 
     Parameters
     ----------
-    local_path : Path
-        the downloaded file
-    filinfo : FileInfo
-        file information from CLIMADA data API
+    expected_checksum: int
+        expected checksum as str, e.g., sha1:
 
-    Raises
-    ------
-    Download.Failed
-        if the file is not what it's supposed to be
+    Returns
+    -------
+    function(local_path: Path)->()
+        a function taking a `Path` argument, returning None and raising `Download.Failed`
+        if the file is not like it's supposed to be
     """
-    raise NotImplementedError("sanity check by hash sum needs to be implemented yet")
+    csm, hsh = expected_checksum.split(":")
+
+    def _check_method(local_path):
+        if not local_path.is_file():
+            raise Download.Failed(f"{str(local_path)} is not a file")
+        present_hsh = file_checksum(local_path, csm)
+        if present_hsh != hsh:
+            raise Download.Failed(
+                f"{str(local_path)} has the wrong checksum:"
+                f"{present_hsh} instead of {hsh}"
+            )
+
+    return _check_method
 
 
 class Cacher:
@@ -257,9 +248,7 @@ class Cacher:
 class Client:
     """Python wrapper around REST calls to the CLIMADA data API server."""
 
-    MAX_WAITING_PERIOD = 6
     UNLIMITED = 100000
-    DOWNLOAD_TIMEOUT = 3600
     QUERY_TIMEOUT = 300
 
     class AmbiguousResult(Exception):
@@ -301,6 +290,7 @@ class Client:
         self.headers = {"accept": "application/json"}
         self.url = CONFIG.data_api.url.str().rstrip("/")
         self.chunk_size = CONFIG.data_api.chunk_size.int()
+        self.downloader = Downloader(checksum=None)
         self.cache = Cacher(cache_enabled)
         self.online = self._online()
 
@@ -539,136 +529,13 @@ class Client:
         url = f"{self.url}/data_type/{quote(data_type)}/"
         return DataTypeInfo(**self._request_200(url))
 
-    def _download(self, url, path, replace=False):
-        """Downloads a file from the given url to a specified location.
-
-        Parameters
-        ----------
-        url : str
-            the link to the file to be downloaded
-        path : Path
-            download path, if it's a directory the original file name is kept
-        replace : bool, optional
-            flag to indicate whether a present file with the same name should
-            be replaced
-
-        Returns
-        -------
-        Path
-            Path to the downloaded file
-
-        Raises
-        ------
-        FileExistsError
-            in case there is already a file present at the given location
-            and replace is False
-        """
-        if path.is_dir():
-            path /= unquote(url.split("/")[-1])
-        if path.is_file() and not replace:
-            raise FileExistsError(path)
-        with requests.get(url, stream=True, timeout=Client.DOWNLOAD_TIMEOUT) as stream:
-            stream.raise_for_status()
-            with open(path, "wb") as dump:
-                for chunk in stream.iter_content(chunk_size=self.chunk_size):
-                    dump.write(chunk)
-        return path
-
-    def _tracked_download(self, remote_url, local_path):
-        if local_path.is_dir():
-            raise ValueError(
-                "tracked download requires a path to a file not a directory"
-            )
-        path_as_str = str(local_path.absolute())
-        try:
-            dlf = Download.create(
-                url=remote_url, path=path_as_str, startdownload=datetime.utcnow()
-            )
-        except IntegrityError as ierr:
-            dlf = Download.get(
-                Download.path == path_as_str
-            )  # path is the table's one unique column
-            if not Path(path_as_str).is_file():  # in case the file has been removed
-                dlf.delete_instance()  # delete entry from database
-                return self._tracked_download(remote_url, local_path)  # and try again
-            if dlf.url != remote_url:
-                raise RuntimeError(
-                    f"this file ({path_as_str}) has been downloaded from another"
-                    f" url ({dlf.url}), possibly because it belongs to a dataset with"
-                    " a recent version update. Please remove the file or purge the"
-                    " entry from data base before trying again"
-                ) from ierr
-            return dlf
-        try:
-            self._download(url=remote_url, path=local_path, replace=True)
-            dlf.enddownload = datetime.utcnow()
-            dlf.save()
-        except Exception:
-            dlf.delete_instance()
-            raise
-        return Download.get(Download.path == path_as_str)
-
-    def _download_file(self, local_path, fileinfo, check=checksize, retries=3):
-        """Download a file if it is not already present at the target destination.
-
-        Parameters
-        ----------
-        local_path : Path
-            target destination,
-            if it is a directory the original filename (fileinfo.filen_name) is kept
-        fileinfo : FileInfo
-            file object as retrieved from the data api
-        check : function, optional
-            how to check download success, by default checksize
-        retries : int, optional
-            how many times one should retry in case of failure, by default 3
-
-        Returns
-        -------
-        Path
-            the path to the downloaded file
-
-        Raises
-        ------
-        Exception
-            when number of retries was exceeded or when a download is already running
-        """
-        try:
-            if local_path.is_dir():
-                local_path /= fileinfo.file_name
-            downloaded = self._tracked_download(
-                remote_url=fileinfo.url, local_path=local_path
-            )
-            if not downloaded.enddownload:
-                raise Download.Failed(
-                    f"A download of {fileinfo.url} via the API Client has been"
-                    " requested before. Either it is still in progress or the"
-                    " process got interrupted. In the former case just wait"
-                    " until the download has finished and try again, in the"
-                    f" latter run `Client.purge_cache_db(Path('{local_path}'))`"
-                    " from Python. If unsure, check your internet connection,"
-                    " wait for as long as it takes to download a file of size"
-                    f" {fileinfo.file_size} and try again. If the problem"
-                    " persists, purge the cache db with said call."
-                )
-            try:
-                check(local_path, fileinfo)
-            except Download.Failed as dlf:
-                local_path.unlink(missing_ok=True)
-                self.purge_cache_db(local_path)
-                raise dlf
-            return local_path
-        except Download.Failed as dle:
-            if retries < 1:
-                raise dle
-            LOGGER.warning("Download failed: %s, retrying...", dle)
-            time.sleep(Client.MAX_WAITING_PERIOD / retries)
-            return self._download_file(
-                local_path=local_path,
-                fileinfo=fileinfo,
-                check=check,
-                retries=retries - 1,
-            )
+    def _download_file(self, target_dir: Path, dsfile: FileInfo):
+        return self.downloader.download(
+            url=dsfile.url,
+            target_dir=target_dir,
+            file_name=dsfile.file_name,
+            integrity_check=checksize(dsfile.file_size),
+        )
 
     def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True):
         """Download all files from a given dataset to a given directory.
@@ -704,8 +571,7 @@ class Client:
             target_dir = self._organize_path(dataset, target_dir)
 
         return target_dir, [
-            self._download_file(local_path=target_dir, fileinfo=dsfile)
-            for dsfile in dataset.files
+            self._download_file(target_dir, dsfile) for dsfile in dataset.files
         ]
 
     @staticmethod
@@ -719,22 +585,6 @@ class Client:
             target_dir /= dataset.version
         target_dir.mkdir(exist_ok=True, parents=True)
         return target_dir
-
-    @staticmethod
-    def purge_cache_db(local_path):
-        """Removes entry from the sqlite database that keeps track of files downloaded by
-        `cached_download`. This may be necessary in case a previous attempt has failed
-        in an uncontroled way (power outage or the like).
-
-        Parameters
-        ----------
-        local_path : Path
-            target destination
-        fileinfo : FileInfo
-            file object as retrieved from the data api
-        """
-        dlf = Download.get(Download.path == str(local_path.absolute()))
-        dlf.delete_instance()
 
     @staticmethod
     def _multi_version(datasets):

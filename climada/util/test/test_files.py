@@ -23,12 +23,7 @@ import unittest
 from pathlib import Path
 
 from climada.util.constants import DEMO_DIR, ENT_TEMPLATE_XLS, GLB_CENTROIDS_MAT
-from climada.util.files_handler import (
-    download_file,
-    get_extension,
-    get_file_names,
-    to_list,
-)
+from climada.util.files_handler import download_file, get_file_names, to_list
 
 
 class TestDownloadUrl(unittest.TestCase):
@@ -133,51 +128,9 @@ class TestGetFileNames(unittest.TestCase):
         self.assertListEqual(sorted(tmp_files), sorted(out))
 
 
-class TestExtension(unittest.TestCase):
-    """Test get_extension"""
-
-    def test_get_extension_no_pass(self):
-        """Test no extension"""
-        file_name = (
-            "/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1"
-        )
-        self.assertEqual("", get_extension(file_name)[1])
-        self.assertEqual(str(Path(file_name)), get_extension(file_name)[0])
-
-    def test_get_extension_one_pass(self):
-        """Test not compressed"""
-        file_name = "/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1.grd"
-        self.assertEqual(".grd", get_extension(file_name)[1])
-        self.assertEqual(
-            str(
-                Path(
-                    "/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1"
-                )
-            ),
-            get_extension(file_name)[0],
-        )
-
-    def test_get_extension_two_pass(self):
-        """Test compressed"""
-        file_name = (
-            "/Users/aznarsig/Documents/Python/climada_python"
-            "/data/demo/SC22000_VE__M1.grd.gz"
-        )
-        self.assertEqual(".grd.gz", get_extension(file_name)[1])
-        self.assertEqual(
-            str(
-                Path(
-                    "/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1"
-                )
-            ),
-            get_extension(file_name)[0],
-        )
-
-
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestToStrList)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetFileNames))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDownloadUrl))
-    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestExtension))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

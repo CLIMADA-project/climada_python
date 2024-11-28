@@ -55,6 +55,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Removed
 
+- `climada.util.files_handler.get_extension`, use `Path.stem` and `Path.suffixes` instead
+
 ## 5.0.0
 
 Release date: 2024-07-19

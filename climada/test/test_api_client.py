@@ -26,7 +26,7 @@ from pathlib import Path
 import numpy as np
 
 from climada import CONFIG
-from climada.util.api_client import Client, DataTypeShortInfo, Download
+from climada.util.api_client import Client, DataTypeShortInfo, Download, Downloader
 
 DATA_DIR = CONFIG.test_data.dir()
 
@@ -127,15 +127,16 @@ class TestClient(unittest.TestCase):
         )
 
         # test failure
-        def fail(x, y):
+        def fail(_):
             raise Download.Failed("on purpose")
 
         self.assertRaises(
             Download.Failed,
-            client._download_file,
+            Downloader().download,
+            dataset.files[0].url,
             DATA_DIR,
-            dataset.files[0],
-            check=fail,
+            dataset.files[0].file_name,
+            integrity_check=fail,
         )
         self.assertFalse(DATA_DIR.joinpath(dataset.files[0].file_name).is_file())
 
