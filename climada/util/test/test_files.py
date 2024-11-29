@@ -26,10 +26,13 @@ import unittest
 from concurrent.futures import thread
 from pathlib import Path
 
+from isort import file
+
+from climada.hazard.io import LOGGER
 from climada.util.constants import DEMO_DIR, ENT_TEMPLATE_XLS, GLB_CENTROIDS_MAT
 from climada.util.files_handler import (
-    Download,
     Downloader,
+    DownloadFailed,
     download_file,
     get_file_names,
     to_list,
@@ -42,25 +45,78 @@ class TestDownloader(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.tmpdir = tempfile.mkdtemp()
-        return super().setUpClass()
-
-    @classmethod
-    def tearDownClass(cls):
-        time.sleep(1)
-        shutil.rmtree(cls.tmpdir)
-        return super().tearDownClass()
 
     def setUp(self):
+        Downloader.MAX_WAITING_PERIOD = 0.0
+        Downloader.DOWNLOAD_TIMEOUT = 10.0
         self.downloader = Downloader(Path(self.tmpdir, ".downloads.db"))
 
     def tearDown(self):
         self.downloader.DB.close()
 
+    @classmethod
+    def tearDownClass(cls):
+        for i in range(3):
+            try:
+                shutil.rmtree(cls.tmpdir)
+                return
+            except OSError as ose:
+                if i > -1:
+                    LOGGER.warning(f"cannot delete {cls.tmpdir} due to {ose}")
+                time.sleep(0.1)
+        shutil.rmtree(cls.tmpdir)
+
     def test_failing_download(self):
-        Downloader.MAX_WAITING_PERIOD = 0.01
-        with self.assertRaises(Download.Failed) as dfe:
+        # fails with wrong url
+        with self.assertRaises(DownloadFailed) as dfe:
             self.downloader.download(
-                url="http://where/ev.er", target_dir=self.tmpdir, file_name="who cares"
+                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_48_8.cpg",
+                target_dir=self.tmpdir,
+            )
+
+        # fails with not passing integrity check
+        def always_fails(_local_path):
+            raise DownloadFailed("!")
+
+        with self.assertRaises(DownloadFailed) as dfe:
+            self.downloader.download(
+                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_47_8.cpg",
+                target_dir=self.tmpdir,
+                integrity_check=always_fails,
+            )
+
+    def test_passing_download(self):
+        before_download = time.time()
+        dlf = self.downloader.download(
+            url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_47_8.cpg",
+            target_dir=self.tmpdir,
+        )
+        after_download = time.time()
+        # the file is there
+        self.assertTrue(Path(self.tmpdir, "OSM_features_47_8.cpg").is_file())
+        # and is the same as the one returned
+        self.assertTrue(dlf.is_file())
+        self.assertEqual(dlf.name, "OSM_features_47_8.cpg")
+        self.assertEqual(dlf.parent, Path(self.tmpdir))
+
+        # check times
+        timestamp = dlf.stat().st_mtime
+        self.assertGreaterEqual(timestamp, before_download)
+        self.assertLessEqual(timestamp, after_download)
+
+        # download again
+        dlf = self.downloader.download(
+            url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_47_8.cpg",
+            target_dir=self.tmpdir,
+        )
+        # there was nothing downloaded, file is the same as before
+        self.assertEqual(timestamp, dlf.stat().st_mtime)
+
+        with self.assertRaises(RuntimeError) as rte:
+            self.downloader.download(
+                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_48_8.cpg",
+                target_dir=self.tmpdir,
+                file_name="OSM_features_47_8.cpg",
             )
 
 
