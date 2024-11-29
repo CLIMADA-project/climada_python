@@ -56,28 +56,28 @@ HASH_FUNCS = {
 }
 
 
-def file_checksum(filename, hash_func):
+def file_checksum(file_name, hash_method):  # pylint: disable=invalid-name
     """Utiliity function calculating a checksum md5 or sha1 of a file.
 
     Parameters
     ----------
-    filename : str
+    file_name : str
         path to the file
-    hash_func : {'md5', 'sha'}
+    hash_method : {'md5', 'sha'}
         hash method
 
     Returns:
     --------
     str : formatted string, e.g. "md5:66358e7c618a1bafc2e4f04518cb4263"
     """
-    hf = HASH_FUNCS[hash_func]()
-    ba = bytearray(128 * 1024)
-    mv = memoryview(ba)
-    with open(filename, "rb", buffering=0) as f:
-        for n in iter(lambda: f.readinto(mv), 0):
-            hf.update(mv[:n])
-    hashsum = hf.hexdigest()
-    return f"{hash_func}:{hashsum}"
+    hash_func = HASH_FUNCS[hash_method]()
+    bytar = bytearray(128 * 1024)
+    memv = memoryview(bytar)
+    with open(file_name, "rb", buffering=0) as fp:
+        for n in iter(lambda: fp.readinto(memv), 0):
+            hash_func.update(memv[:n])
+    hashsum = hash_func.hexdigest()
+    return f"{hash_method}:{hashsum}"
 
 
 class Download(Model):

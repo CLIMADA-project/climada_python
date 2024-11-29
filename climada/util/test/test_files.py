@@ -34,6 +34,7 @@ from climada.util.files_handler import (
     Downloader,
     DownloadFailed,
     download_file,
+    file_checksum,
     get_file_names,
     to_list,
 )
@@ -70,7 +71,8 @@ class TestDownloader(unittest.TestCase):
         # fails with wrong url
         with self.assertRaises(DownloadFailed) as dfe:
             self.downloader.download(
-                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_48_8.cpg",
+                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/"
+                "OSM_features_48_8.cpg",
                 target_dir=self.tmpdir,
             )
 
@@ -80,7 +82,8 @@ class TestDownloader(unittest.TestCase):
 
         with self.assertRaises(DownloadFailed) as dfe:
             self.downloader.download(
-                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_47_8.cpg",
+                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/"
+                "OSM_features_47_8.cpg",
                 target_dir=self.tmpdir,
                 integrity_check=always_fails,
             )
@@ -88,7 +91,8 @@ class TestDownloader(unittest.TestCase):
     def test_passing_download(self):
         before_download = time.time()
         dlf = self.downloader.download(
-            url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_47_8.cpg",
+            url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/"
+            "OSM_features_47_8.cpg",
             target_dir=self.tmpdir,
         )
         after_download = time.time()
@@ -106,7 +110,8 @@ class TestDownloader(unittest.TestCase):
 
         # download again
         dlf = self.downloader.download(
-            url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_47_8.cpg",
+            url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/"
+            "OSM_features_47_8.cpg",
             target_dir=self.tmpdir,
         )
         # there was nothing downloaded, file is the same as before
@@ -114,10 +119,25 @@ class TestDownloader(unittest.TestCase):
 
         with self.assertRaises(RuntimeError) as rte:
             self.downloader.download(
-                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/OSM_features_48_8.cpg",
+                url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/"
+                "OSM_features_48_8.cpg",
                 target_dir=self.tmpdir,
                 file_name="OSM_features_47_8.cpg",
             )
+
+
+class TestChecksum(unittest.TestCase):
+    """Test file_checksum function"""
+
+    def test_hashsum(self):
+        self.assertEqual(
+            "md5:7451535a7ec33ac056cd30b1a664fdcb",
+            file_checksum(Path(__file__).parent / "__init__.py", "md5"),
+        )
+        self.assertEqual(
+            "sha1:967e1de9d4f866f36c209dbd2aa52504a36553f7",
+            file_checksum(Path(__file__).parent / "__init__.py", "sha1"),
+        )
 
 
 class TestDownloadUrl(unittest.TestCase):
@@ -224,7 +244,9 @@ class TestGetFileNames(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestToStrList)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDownloader)
+    TESTS = TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecksum))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestToStrList))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGetFileNames))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestDownloadUrl))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
