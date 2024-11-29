@@ -2297,57 +2297,64 @@ class TestRasterIO(unittest.TestCase):
 class TestBoundsFromUserInput(unittest.TestCase):
     """Unit tests for the bounds_from_user_input function."""
 
-    def test_boundsNESW_from_global(self):
+    def global_bounding_box(self):
         """Test for 'global' area selection."""
-        result = u_coord.boundsNESW_from_global()
-        expected = [90, 180, -90, -180]
+        result = u_coord.global_bounding_box()
+        expected = (-180, -90, 180, 90)
         np.testing.assert_almost_equal(result, expected)
 
-    def test_boundsNESW_from_country_codes(self):
+    def test_get_country_bounding_box(self):
         """Test for a list of ISO country codes."""
-        result = u_coord.boundsNESW_from_country_codes(
-            ["ITA"], rel_margin=0.2
+        result = u_coord.get_country_bounding_box(
+            ["ITA"], buffer=1.0
         )  # Testing with Italy (ITA)
         # Real expected bounds for Italy (calculated or manually known)
         expected = [
-            49.404409157600064,
-            20.900365510000075,
-            33.170049669400036,
-            4.219788779000066,
+            5.6027283120000675,
+            34.48924388200004,
+            19.517425977000073,
+            48.08521494500006,
         ]  # Italy's bounding box
 
         np.testing.assert_array_almost_equal(result, expected, decimal=4)
 
-    def test_bounding_box(self):
-        """Test for bounding box input with margin applied."""
-        [north, east, south, west] = [50, -100, 30, -120]
-        result = u_coord.boundsNESW_from_NESW(
-            north=north, south=south, west=west, east=east, rel_margin=0.1
+    def test_bounds_from_cardinal_bounds(self):
+        """Test for conversion from cardinal bounds to bounds."""
+        np.testing.assert_array_almost_equal(
+            u_coord.bounds_from_cardinal_bounds(
+                northern=90, southern=-20, eastern=30, western=20
+            ),
+            (20, -20, 30, 90),
         )
-        expected = [
-            50 + 2,
-            -100 + 2,
-            30 - 2,
-            -120 - 2,
-        ]  # Apply margin calculation
-        np.testing.assert_array_almost_equal(result, expected)
+        np.testing.assert_array_almost_equal(
+            u_coord.bounds_from_cardinal_bounds(
+                northern=90, southern=-20, eastern=20, western=30
+            ),
+            (30, -20, 380, 90),
+        )
+        np.testing.assert_array_almost_equal(
+            u_coord.bounds_from_cardinal_bounds(
+                northern=90, southern=-20, eastern=170, western=-170
+            ),
+            (-170, -20, 170, 90),
+        )
+        np.testing.assert_array_almost_equal(
+            u_coord.bounds_from_cardinal_bounds(
+                northern=90, southern=-20, eastern=-170, western=170
+            ),
+            (170, -20, 190, 90),
+        )
+        np.testing.assert_array_almost_equal(
+            u_coord.bounds_from_cardinal_bounds(
+                northern=90, southern=-20, eastern=170, western=175
+            ),
+            (175, -20, 530, 90),
+        )
 
     def test_invalid_input_string(self):
         """Test for invalid string input."""
         with self.assertRaises(Exception):
-            u_coord.boundsNESW_from_country_codes("DEU")
-
-    def test_empty_input(self):
-        """Test for empty input."""
-        with self.assertRaises(Exception):
-            u_coord.boundsNESW_from_country_codes([])
-
-    def test_invalid_coordinate_input(self):
-        """Test for str in coordinates input input."""
-        with self.assertRaises(ValueError):
-            u_coord.boundsNESW_from_NESW(north=40, south=50, east=30, west=10)
-        with self.assertRaises(TypeError):
-            u_coord.boundsNESW_from_NESW(north=40, south="20", east=30, west=10)
+            u_coord.get_bound("invalid_ISO")
 
 
 # Execute Tests

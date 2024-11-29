@@ -783,11 +783,21 @@ def get_country_geometries(
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
+
+        # print warning if ISO code not recognized
+        for country_name in country_names:
+            if not country_name in nat_earth[["ISO_A3", "WB_A3", "ADM0_A3"]].values:
+                LOGGER.warning(f"ISO code {country_name} not recognized.")
+
         country_mask = np.isin(
             nat_earth[["ISO_A3", "WB_A3", "ADM0_A3"]].values,
             country_names,
         ).any(axis=1)
         out = out[country_mask]
+
+    # exit with Value error if no country code was recognized
+    if out.size == 0:
+        raise ValueError(f"None of the given country codes were regocnized.")
 
     if extent:
         if extent[1] - extent[0] > 360:
@@ -1687,102 +1697,84 @@ def get_admin1_info(country_names):
     return admin1_info, admin1_shapes
 
 
-def boundsNESW_from_global():
+def global_bounding_box():
     """
-    Return global NESW bounds in EPSG 4326
+    Return global bounds in EPSG 4326
 
     Returns
     -------
-    list:
-        The calculated bounding box as [north, east, south, west] in EPSG 4326
+    tuple:
+        The global bounding box as (min_lon, min_lat, max_lon, max_lat)
     """
-    return [90, 180, -90, -180]
+    return (-180, -90, 180, 90)
 
 
-def boundsNESW_from_country_codes(country_codes, rel_margin=0.2):
+def get_country_bounding_box(country_names, buffer=1.0):
     """
-    Return NESW bounds in EPSG 4326 for the combined area defined by given country ISO codes.
+    Return bounding box in EPSG 4326 containing given countries.
 
     Parameters
     ----------
-    country_codes : list
-        A list of ISO country codes (e.g.,['ITA'], ['ITA', 'CHE']).
-    rel_margin : float
-        A relative margin to extend the bounding box in all directions. Default is 0.2.
+    country_names : list or str
+        list with ISO 3166 alpha-3 codes of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
+    buffer : float, optional
+        Buffer to add to both sides of the bounding box. Default: 1.0.
 
     Returns
     -------
-    list:
-        The calculated bounding box as [north, east, south, west] in EPSG 4326
+    tuple
+        The bounding box containing all given coutries as (min_lon, min_lat, max_lon, max_lat)
     """
-    [north, east, south, west] = [-90, -180, 90, 180]
 
-    # loop through ISO codes
-    for iso in country_codes:
-        geo = get_country_geometries(iso).to_crs(epsg=4326)
-        iso_west, iso_south, iso_east, iso_north = geo.total_bounds
-        if np.any(np.isnan([iso_west, iso_south, iso_east, iso_north])):
-            LOGGER.warning(
-                f"ISO code '{iso}' not recognized. This region will not be included."
-            )
-            continue
+    country_geometry = get_country_geometries(country_names).geometry
+    longitudes, latitudes = [], []
+    for multipolygon in country_geometry:
+        for polygon in multipolygon.geoms:  # Loop through each polygon
+            for coord in polygon.exterior.coords:  # Extract exterior coordinates
+                longitudes.append(coord[0])
+                latitudes.append(coord[1])
 
-        north = max(north, iso_north)
-        east = max(east, iso_east)
-        south = min(south, iso_south)
-        west = min(west, iso_west)
-
-    # no countries recognized
-    if [north, east, south, west] == [-90, -180, 90, 180]:
-        raise Exception("No ISO code was recognized.")
-
-    # add relative margin
-    lat_margin = rel_margin * (north - south)
-    lon_margin = rel_margin * (east - west)
-    north = min(north + lat_margin, 90)
-    east = min(east + lon_margin, 180)
-    south = max(south - lat_margin, -90)
-    west = max(west - lon_margin, -180)
-
-    return [north, east, south, west]
+    return latlon_bounds(np.array(latitudes), np.array(longitudes), buffer=buffer)
 
 
-def boundsNESW_from_NESW(*, north, east, south, west, rel_margin=0.0):
+def bounds_from_cardinal_bounds(*, northern, eastern, western, southern):
     """
-    Return NESW bounds in EPSG 4326 with relative margin from given NESW values in EPSG 4326.
+    Return and normalize bounding box in EPSG 4326 from given cardinal bounds.
 
     Parameters
     ----------
-    north : (float, int)
-        Maximal latitude in EPSG 4326.
-    east : (float, int)
-        Maximal longitute in EPSG 4326.
-    south : (float, int)
-        Minimal latitude in EPSG 4326.
-    west : (float, int)
-        Minimal longitude in EPSG 4326.
-    rel_margin : float
-        A relative margin to extend the bounding box in all directions. Default is 0.2.
+    northern : (int, float)
+        Northern boundary of bounding box
+    eastern : (int, float)
+        Eastern boundary of bounding box
+    western : (int, float)
+        Western boundary of bounding box
+    southern : (int, float)
+        Southern boundary of bounding box
 
     Returns
     -------
-    list:
-        The calculated bounding box as [north, east, south, west] in EPSG 4326
+    tuple
+        The resulting normalized bounding box (min_lon, min_lat, max_lon, max_lat) with -180 <= min_lon < max_lon < 540
+
     """
 
-    # simple bounds check
-    if not ((90 >= north > south >= -90) and (180 >= east > west >= -180)):
-        raise ValueError("Given bounds are not in standard order or standard bounds")
+    # latitude bounds check
+    if not ((90 >= northern > southern >= -90)):
+        raise ValueError(
+            "Given northern bound is below given southern bound or out of bounds"
+        )
 
-    # add relative margin
-    lat_margin = rel_margin * (north - south)
-    lon_margin = rel_margin * (east - west)
-    north = min(north + lat_margin, 90)
-    east = min(east + lon_margin, 180)
-    south = max(south - lat_margin, -90)
-    west = max(west - lon_margin, -180)
+    if not (360 >= eastern >= -180) or not (360 >= western >= -180):
+        raise ValueError("Given eastern/western bounds are out of range (-180, 360).")
+    # order eastern and western coordinates
+    if western > eastern:
+        eastern += 360
+    if eastern > 360 and western > 180:
+        eastern -= 360
+        western -= 360
 
-    return [north, east, south, west]
+    return (western, southern, eastern, northern)
 
 
 def get_admin1_geometries(countries):
