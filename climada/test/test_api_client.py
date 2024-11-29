@@ -120,8 +120,8 @@ class TestClient(unittest.TestCase):
 
     def test_download_file(self):
         """"""
+        Downloader.MAX_WAITING_PERIOD = 0.1
         client = Client()
-        client.MAX_WAITING_PERIOD = 0.1
         dataset = client.get_dataset_info(
             name="FAOSTAT_data_producer_prices", status="test_dataset"
         )
@@ -147,11 +147,12 @@ class TestClient(unittest.TestCase):
         self.assertEqual(download.stat().st_size, dataset.files[0].file_size)
         download.unlink()
         self.assertFalse(download.is_file())
+        Downloader.MAX_WAITING_PERIOD = 6.0
 
     def test_download_dataset(self):
         """"""
+        Downloader.MAX_WAITING_PERIOD = 0.1
         client = Client()
-        client.MAX_WAITING_PERIOD = 0.1
 
         dataset = client.get_dataset_info(
             name="test_write_raster", status="test_dataset"
@@ -168,6 +169,7 @@ class TestClient(unittest.TestCase):
             self.assertEqual(download.parent, download_dir)
             download.unlink()
         rm_empty_dir(download.parent.parent.parent)
+        Downloader.MAX_WAITING_PERIOD = 6.0
 
     def test_get_exposures(self):
         client = Client()

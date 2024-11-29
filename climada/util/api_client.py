@@ -289,8 +289,9 @@ class Client:
         """
         self.headers = {"accept": "application/json"}
         self.url = CONFIG.data_api.url.str().rstrip("/")
-        self.chunk_size = CONFIG.data_api.chunk_size.int()
-        self.downloader = Downloader(checksum=None)
+        self.downloader = Downloader(
+            downloads_db=Path(CONFIG.data_api.cache_db.str()).expanduser(),
+        )
         self.cache = Cacher(cache_enabled)
         self.online = self._online()
 

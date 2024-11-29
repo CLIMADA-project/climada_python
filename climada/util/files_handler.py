@@ -35,7 +35,6 @@ from pathlib import Path
 
 import requests
 from peewee import (
-    AutoField,
     CharField,
     DateTimeField,
     IntegerField,
@@ -50,7 +49,35 @@ from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
-DB = SqliteDatabase(Path(CONFIG.data_api.cache_db.str()).expanduser())
+
+HASH_FUNCS = {
+    "md5": hashlib.md5,
+    "sha1": hashlib.sha1,
+}
+
+
+def file_checksum(filename, hash_func):
+    """Utiliity function calculating a checksum md5 or sha1 of a file.
+
+    Parameters
+    ----------
+    filename : str
+        path to the file
+    hash_func : {'md5', 'sha'}
+        hash method
+
+    Returns:
+    --------
+    str : formatted string, e.g. "md5:66358e7c618a1bafc2e4f04518cb4263"
+    """
+    hf = HASH_FUNCS[hash_func]()
+    ba = bytearray(128 * 1024)
+    mv = memoryview(ba)
+    with open(filename, "rb", buffering=0) as f:
+        for n in iter(lambda: f.readinto(mv), 0):
+            hf.update(mv[:n])
+    hashsum = hf.hexdigest()
+    return f"{hash_func}:{hashsum}"
 
 
 class Download(Model):
@@ -66,65 +93,65 @@ class Download(Model):
     filesize = IntegerField(null=True)
     checksum = CharField(null=True)
 
-    class Meta:
-        """SQL database and table definition."""
-
-        database = DB
-
     class Failed(Exception):
         """The download failed for some reason."""
 
 
-def init_DB():
-    DB.connect()
-    DB.create_tables([Download])
-    try:
-        migrator = SqliteMigrator(DB)
-        migrate(
-            migrator.add_column("download", "checksum", CharField(null=True)),
-            migrator.add_column("download", "timestamp", IntegerField(null=True)),
-            migrator.add_column("download", "filesize", IntegerField(null=True)),
-        )
-    except Exception as exc:
-        print(exc)
-    DB.close()
-
-
-init_DB()
-
-HASH_FUNCS = {
-    "md5": hashlib.md5,
-    "sha1": hashlib.sha1,
-}
-
-
-def file_checksum(filename, hash_func):
-    hf = HASH_FUNCS[hash_func]()
-    ba = bytearray(128 * 1024)
-    mv = memoryview(ba)
-    with open(filename, "rb", buffering=0) as f:
-        for n in iter(lambda: f.readinto(mv), 0):
-            hf.update(mv[:n])
-    hashsum = hf.hexdigest()
-    return f"{hash_func}:{hashsum}"
-
-
 class Downloader:
 
-    MAX_WAITING_PERIOD = 6
+    MAX_WAITING_PERIOD = 6.0
+    """Sets the limit in seconds for the downloader to wait for another download in progress to
+    finish. (The total time before giving up is about twice as much.)"""
+
     DOWNLOAD_TIMEOUT = 3600
 
-    def __init__(self, checksum=None):
+    def __init__(
+        self,
+        downloads_db: Path = None,
+        checksum: str = None,
+    ):
         """Downloader
 
         Parameters
         ----------
+        downloads_db : Path
+            Path to the sqlite db where the download records are stored.
+            Default: the path configured as CONFIG.data_api.cache_db
         checksum : {'md5', 'sha1}, optional
             if not None, the checksum of downloaded files are being recorded.
             Default: None
         """
+        self.DB = SqliteDatabase(
+            downloads_db or Path(CONFIG.data_api.cache_db.str()).expanduser()
+        )
         self.chunk_size = CONFIG.data_api.chunk_size.int()
         self.checksum = checksum
+        self._init_database()
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        self.DB.close()
+
+    def _init_database(self):
+        """sets up the database in case it isn't already ready"""
+        with Download.bind_ctx(self.DB):
+            self.DB.create_tables([Download])
+
+            # migration
+            # 1: 2024-11-29, PR #982, feature/public_tracked_download,
+            #    additional columns checksum timestamp and filesize
+            present_names = [x.name for x in self.DB.get_columns("download")]
+            migrator = SqliteMigrator(self.DB)
+            migrate(
+                *[
+                    migrator.add_column("download", col_name, col_field(null=True))
+                    for (col_name, col_field) in [
+                        ["filesize", IntegerField],
+                        ["timestamp", IntegerField],
+                        ["checksum", CharField],
+                    ]
+                    if col_name not in present_names
+                ]
+            )
 
     def _tracked_download(self, remote_url, local_path):
         if local_path.is_dir():
@@ -165,10 +192,10 @@ class Downloader:
             dlf.filesize = local_path.stat().st_size
             if self.checksum:
                 dlf.checksum = file_checksum(local_path, self.checksum)
-            dlf.save()
-        except Exception:
+            dlf.save(force_insert=True)
+        except Exception as exc:
             dlf.delete_instance()
-            raise
+            raise Download.Failed from exc
         return Download.get(Download.path == path_as_str)
 
     def download(self, url, target_dir, file_name, integrity_check=None):
@@ -200,7 +227,7 @@ class Downloader:
             url=url,
             target_dir=target_dir,
             file_name=file_name,
-            check_method=integrity_check or self.file_unchanged_since,
+            check_method=integrity_check or self._file_unchanged_since,
             retries=3,
         )
 
@@ -231,7 +258,10 @@ class Downloader:
         """
         try:
             local_path = Path(target_dir, file_name)
-            downloaded = self._tracked_download(remote_url=url, local_path=local_path)
+            with Download.bind_ctx(self.DB):
+                downloaded = self._tracked_download(
+                    remote_url=url, local_path=local_path
+                )
             if not downloaded.enddownload:
                 raise Download.Failed(
                     f"A download of {url} via the climada.util.files_handler.Downloader has been"
@@ -253,7 +283,7 @@ class Downloader:
             if retries < 1:
                 raise dle
             LOGGER.warning("Download failed: %s, retrying...", dle)
-            time.sleep(Downloader.MAX_WAITING_PERIOD / retries)
+            time.sleep(self.MAX_WAITING_PERIOD / retries)
             return self._download_file(
                 url=url,
                 target_dir=target_dir,
@@ -278,7 +308,7 @@ class Downloader:
         dlf = Download.get(Download.path == str(local_path.absolute()))
         dlf.delete_instance()
 
-    def file_unchanged_since(self, local_path):
+    def _file_unchanged_since(self, local_path):
         """default method for checking file integrity
         basically checks whether the file has changed since the download
 

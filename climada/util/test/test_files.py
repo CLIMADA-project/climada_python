@@ -19,11 +19,49 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test files_handler module.
 """
 
+import shutil
+import tempfile
+import time
 import unittest
+from concurrent.futures import thread
 from pathlib import Path
 
 from climada.util.constants import DEMO_DIR, ENT_TEMPLATE_XLS, GLB_CENTROIDS_MAT
-from climada.util.files_handler import download_file, get_file_names, to_list
+from climada.util.files_handler import (
+    Download,
+    Downloader,
+    download_file,
+    get_file_names,
+    to_list,
+)
+
+
+class TestDownloader(unittest.TestCase):
+    """Test Downloader methods"""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.tmpdir = tempfile.mkdtemp()
+        return super().setUpClass()
+
+    @classmethod
+    def tearDownClass(cls):
+        time.sleep(1)
+        shutil.rmtree(cls.tmpdir)
+        return super().tearDownClass()
+
+    def setUp(self):
+        self.downloader = Downloader(Path(self.tmpdir, ".downloads.db"))
+
+    def tearDown(self):
+        self.downloader.DB.close()
+
+    def test_failing_download(self):
+        Downloader.MAX_WAITING_PERIOD = 0.01
+        with self.assertRaises(Download.Failed) as dfe:
+            self.downloader.download(
+                url="http://where/ev.er", target_dir=self.tmpdir, file_name="who cares"
+            )
 
 
 class TestDownloadUrl(unittest.TestCase):
