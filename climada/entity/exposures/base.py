@@ -132,12 +132,38 @@ class Exposures:
     @property
     def latitude(self):
         """Latitude array of exposures"""
-        return self.data.geometry.y.values
+        try:
+            return self.data.geometry.y.values
+        except ValueError as valerr:
+            nonpoints = list(
+                self.data[
+                    self.data.geometry.type != "Point"
+                ].geometry.type.drop_duplicates()
+            )
+            if nonpoints:
+                raise ValueError(
+                    "Can only calculate latitude from Points."
+                    f" GeoDataFrame contains {', '.join(nonpoints)}"
+                ) from valerr
+            raise
 
     @property
     def longitude(self):
         """Longitude array of exposures"""
-        return self.data.geometry.x.values
+        try:
+            return self.data.geometry.x.values
+        except ValueError as valerr:
+            nonpoints = list(
+                self.data[
+                    self.data.geometry.type != "Point"
+                ].geometry.type.drop_duplicates()
+            )
+            if nonpoints:
+                raise ValueError(
+                    "Can only calculate longitude from Points."
+                    f" GeoDataFrame contains {', '.join(nonpoints)}"
+                ) from valerr
+            raise
 
     @property
     def geometry(self):
