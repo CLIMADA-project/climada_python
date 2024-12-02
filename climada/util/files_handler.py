@@ -153,6 +153,7 @@ class Downloader:
                     if col_name not in present_names
                 ]
             )
+        self.DB.close()
 
     def download(self, url, target_dir, file_name=None, integrity_check=None):
         """Download a file if it is not already present at the target destination.
@@ -226,13 +227,14 @@ class Downloader:
                 download = self._tracked_download(remote_url=url, local_path=local_path)
                 if not download.enddownload:
                     raise DownloadFailed(
-                        f"A download of {url} via the climada.util.files_handler.Downloader has been"
-                        " requested before. Either it is still in progress or the process got"
-                        " interrupted. In the former case just wait until the download has finished"
-                        " and try again, in the latter run `Downloader.purge_cache_db(Path('"
-                        f"{local_path}'))` from Python. If unsure, check your internet connection,"
-                        " wait for as long as it takes to download a file of the given size and try"
-                        " again. If the problem persists, purge the cache db with said call."
+                        f"A download of {url} via the climada.util.files_handler.Downloader has"
+                        " been requested before. Either it is still in progress or the process"
+                        " got interrupted. In the former case just wait until the download has"
+                        " finished and try again, in the latter run"
+                        f" `Downloader.purge_cache_db(Path('{local_path}'))` from Python."
+                        " If unsure, check your internet connection, wait for as long as it takes"
+                        " to download a file of the given size and try again."
+                        " If the problem persists, purge the cache db with said call."
                     )
             try:
                 check_method(local_path)
@@ -253,6 +255,8 @@ class Downloader:
                 check_method=check_method,
                 retries=retries - 1,
             )
+        finally:
+            self.DB.close()
 
     def _tracked_download(self, remote_url, local_path) -> Download:
         """Creates or looks up an entry in the download db.
@@ -333,9 +337,13 @@ class Downloader:
         fileinfo : FileInfo
             file object as retrieved from the data api
         """
-        with Download.bind_ctx(self.DB):
-            download = Download.get(Download.path == str(local_path.absolute()))
-            download.delete_instance()
+        try:
+            with Download.bind_ctx(self.DB):
+                download = Download.get(Download.path == str(local_path.absolute()))
+                download.delete_instance()
+        finally:
+            self.DB.close()  # on Linux this call is unnecessary. On Windows, though,
+            # for, e.g,, peewee 3.17.1, it is required to release the sqlite db file.
 
     def _file_unchanged_since(self, local_path):
         """default method for checking file integrity
@@ -380,6 +388,7 @@ class Downloader:
                         f"{str(local_path)} has been modified: timestamp changed from"
                         f"{expected} to {found}"
                     )
+        self.DB.close()
 
 
 class DownloadProgressBar(tqdm):

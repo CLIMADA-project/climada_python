@@ -26,8 +26,6 @@ import unittest
 from concurrent.futures import thread
 from pathlib import Path
 
-from isort import file
-
 from climada.hazard.io import LOGGER
 from climada.util.constants import DEMO_DIR, ENT_TEMPLATE_XLS, GLB_CENTROIDS_MAT
 from climada.util.files_handler import (
@@ -49,22 +47,11 @@ class TestDownloader(unittest.TestCase):
 
     def setUp(self):
         Downloader.MAX_WAITING_PERIOD = 0.0
-        Downloader.DOWNLOAD_TIMEOUT = 10.0
+        Downloader.DOWNLOAD_TIMEOUT = 1.0
         self.downloader = Downloader(Path(self.tmpdir, ".downloads.db"))
-
-    def tearDown(self):
-        self.downloader.DB.close()
 
     @classmethod
     def tearDownClass(cls):
-        for i in range(3):
-            try:
-                shutil.rmtree(cls.tmpdir)
-                return
-            except OSError as ose:
-                if i > -1:
-                    LOGGER.warning(f"cannot delete {cls.tmpdir} due to {ose}")
-                time.sleep(0.1)
         shutil.rmtree(cls.tmpdir)
 
     def test_failing_download(self):
