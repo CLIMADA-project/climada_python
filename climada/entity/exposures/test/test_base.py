@@ -671,13 +671,13 @@ class TestGeoDFFuncs(unittest.TestCase):
         with self.assertRaises(ValueError) as valer:
             exp.latitude
         self.assertEqual(
-            "Can only calculate latitude from Points. GeoDataFrame contains Polygon, MulitPolygon",
+            "Can only calculate latitude from Points. GeoDataFrame contains Polygon, MultiPolygon",
             str(valer.exception),
         )
         with self.assertRaises(ValueError) as valer:
             exp.longitude
         self.assertEqual(
-            "Can only calculate latitude from Points. GeoDataFrame contains Polygon, MulitPolygon",
+            "Can only calculate latitude from Points. GeoDataFrame contains Polygon, MultiPolygon",
             str(valer.exception),
         )
 
