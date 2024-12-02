@@ -161,12 +161,8 @@ class TestPlotter(unittest.TestCase):
 
     def test_ctx_osm_pass(self):
         """Test basemap function using osm images"""
-        myexp = Exposures()
-        myexp.gdf["latitude"] = np.array([30, 40, 50])
-        myexp.gdf["longitude"] = np.array([0, 0, 0])
-        myexp.gdf["value"] = np.array([1, 1, 1])
+        myexp = Exposures(lat=[30, 40, 50], lon=[0, 0, 0], value=[1, 1, 1])
         myexp.check()
-
         myexp.plot_basemap(url=ctx.providers.OpenStreetMap.Mapnik)
 
     def test_disc_rates(self):

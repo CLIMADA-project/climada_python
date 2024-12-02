@@ -107,7 +107,7 @@ class ImpactCalc:
 
         Examples
         --------
-            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
+            >>> haz = Hazard.from_hdf5(HAZ_DEMO_H5)  # Set hazard
             >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
             >>> impcalc = ImpactCal(exp, impfset, haz)
@@ -119,6 +119,7 @@ class ImpactCalc:
         apply_deductible_to_mat : apply deductible to impact matrix
         apply_cover_to_mat : apply cover to impact matrix
         """
+        # TODO: consider refactoring, making use of Exposures.hazard_impf
         # check for compatibility of exposures and hazard type
         if all(
             name not in self.exposures.gdf.columns
