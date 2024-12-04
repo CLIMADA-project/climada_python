@@ -77,7 +77,7 @@ class CalcCostBenefit(Calc):
     _metric_names : tuple(str)
         Names of the cost benefit output metrics
         ('tot_climate_risk', 'benefit', 'cost_ben_ratio',
-         'imp_meas_present', 'imp_meas_future')
+        'imp_meas_present', 'imp_meas_future')
 
     """
 

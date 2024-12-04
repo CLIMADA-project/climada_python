@@ -198,6 +198,7 @@ class TCTracks:
     ----------
     data : list(xarray.Dataset)
         List of tropical cyclone tracks. Each track contains following attributes:
+
             - time (coords)
             - lat (coords)
             - lon (coords)
@@ -216,9 +217,12 @@ class TCTracks:
             - data_provider (attrs)
             - id_no (attrs)
             - category (attrs)
+
         Computed during processing:
+
             - on_land (bool for each track position)
             - dist_since_lf (in km)
+
         Additional data variables such as "nature" (specifiying, for each track position, whether a
         system is a disturbance, tropical storm, post-transition extratropical storm etc.) might be
         included, depending on the data source and on use cases.

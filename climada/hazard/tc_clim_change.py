@@ -71,11 +71,11 @@ def get_knutson_scaling_factor(
     in Jewson et al., (2021).
 
     Related publications:
+
     -   Knutson et al., (2020): Tropical cyclones and climate
         change assessment. Part II: Projected response to anthropogenic warming.
         Bull. Amer. Meteor. Soc., 101 (3), E303–E322,
         https://doi.org/10.1175/BAMS-D-18-0194.1.
-
     -   Jewson (2021): Conversion of the Knutson et al. (2020) Tropical Cyclone
         Climate Change Projections to Risk Model Baselines,
         https://doi.org/10.1175/JAMC-D-21-0102.1
@@ -94,15 +94,15 @@ def get_knutson_scaling_factor(
         the provided percentiles are the 10th, 25th, 50th, 75th and 90th. Please refer to the
         mentioned publications for more details.
         possible percentiles:
-            '5/10' either the 5th or 10th percentile depending on variable (see text above)
-            '25' for the 25th percentile
-            '50' for the 50th percentile
-            '75' for the 75th percentile
-            '90/95' either the 90th or 95th percentile depending on variable  (see text above)
+        - '5/10' either the 5th or 10th percentile depending on variable (see text above)
+        - '25' for the 25th percentile
+        - '50' for the 50th percentile
+        - '75' for the 75th percentile
+        - '90/95' either the 90th or 95th percentile depending on variable  (see text above)
         Default: '50'
     basin : str
         region of interest, possible choices are:
-            'NA', 'WP', 'EP', 'NI', 'SI', 'SP'
+        'NA', 'WP', 'EP', 'NI', 'SI', 'SP'
     baseline : tuple of int
         the starting and ending years that define the historical
         baseline. The historical baseline period must fall within
