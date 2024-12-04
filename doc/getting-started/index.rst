@@ -20,7 +20,7 @@ You are good to go!
 
 .. seealso::
 
-    You don't have conda installed or you are looking for advaced installation instructions ? Look up our `detailed instructions <http://www.python.org>`__  on CLIMADA installation.
+   You don't have conda installed or you are looking for advanced installation instructions? Look up our :doc:`detailed instructions <install>` on CLIMADA installation.
 
 
 .. dropdown:: How does CLIMADA compute impacts ?
@@ -58,3 +58,10 @@ You are good to go!
    :icon: unlock
 
    And some content!
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   install
+   Python Introduction <0_intro_python>
