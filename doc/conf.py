@@ -130,19 +130,20 @@ html_theme = "pydata_sphinx_theme"
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-    "header_links_before_dropdown": 7,
-    "icon_links": [
-        {
-            # Label for this link
-            "name": "GitHub",
-            # URL where the link will redirect
-            "url": "https://github.com/CLIMADA-project",  # required
-            # Icon class (if "type": "fontawesome"), or path to local image (if "type": "local")
-            "icon": "fa-brands fa-square-github",
-            # The type of image to be used (see below for details)
-            "type": "fontawesome",
-        }
-    ],
+    "header_links_before_dropdown": 8,
+    "navbar_align": "left",
+    # "icon_links": [
+    #     {
+    #         # Label for this link
+    #         "name": "GitHub",
+    #         # URL where the link will redirect
+    #         "url": "https://github.com/CLIMADA-project",  # required
+    #         # Icon class (if "type": "fontawesome"), or path to local image (if "type": "local")
+    #         "icon": "fa-brands fa-square-github",
+    #         # The type of image to be used (see below for details)
+    #         "type": "fontawesome",
+    #     }
+    # ],
 }
 
 # Add any paths that contain custom themes here, relative to this directory.
