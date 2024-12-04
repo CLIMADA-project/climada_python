@@ -2,25 +2,22 @@
 Getting started
 ===================
 
-Installation
--------------------
+Quick installation
+--------------------
 
+Are you already working with mamba or conda? proceed to install CLIMADA by executing the following line in the terminal::
 
-
-Are you already working with conda ? proceed to install CLIMADA by executing the following line in the terminal::
-
-    conda create -n climada_env -c conda-forge climada
+    mamba create -n climada_env -c conda-forge climada
 
 Each time you will want to work with CLIMADA, simply activate the environnment::
 
-    conda activate climada_env
+    mamba activate climada_env
 
 You are good to go!
 
-
 .. seealso::
 
-   You don't have conda installed or you are looking for advanced installation instructions? Look up our :doc:`detailed instructions <install>` on CLIMADA installation.
+   You don't have mamba or conda installed or you are looking for advanced installation instructions? Look up our :doc:`detailed instructions <install>` on CLIMADA installation.
 
 
 .. dropdown:: How does CLIMADA compute impacts ?
