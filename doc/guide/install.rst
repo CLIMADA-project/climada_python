@@ -24,10 +24,30 @@ Prerequisites
 * Ensure a **stable internet connection** for the installation procedure.
   All dependencies will be downloaded from the internet.
   Do **not** use a metered, mobile connection!
-* Install the `Conda`_ environment management system.
-  We highly recommend you use `Miniforge`_, which includes the potent `Mamba`_ package manager.
-  Download the installer suitable for your system and follow the respective installation instructions.
-  We do **not** recommend using the ``conda`` command anymore, rather use ``mamba`` (see :ref:`conda-instead-of-mamba`).
+
+Install Conda
+^^^^^^^^^^^^^
+
+`Conda`_ is an environment management system.
+We highly recommend you use `Miniforge`_, which is a system pre-configured for using the community-led `conda-forge <https://conda-forge.org/>`_ and includes the potent `Mamba`_ package manager.
+Download the installer suitable for your system and follow the respective installation instructions.
+We do **not** recommend using the ``conda`` command anymore, rather use ``mamba`` (see :ref:`conda-instead-of-mamba`).
+
+Follow these instructions to install `Miniforge`_:
+
+* On **macOS** or **Linux** (Ubuntu/Debian), open the "Terminal" app, copy-paste the two commands below, and hit enter:
+
+  .. code-block:: shell
+
+     curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+     bash Miniforge3-$(uname)-$(uname -m).sh
+
+  Follow the instructions of the program.
+  After installation, you will be asked if Mamba should be added to your shell configuration.
+  Confirm this action.
+  After closing and reopening the Terminal, you should see ``(base)``, which means that Mamba was correctly installed and the base environment is activated.
+
+* On **Windows**, download the Windows installer from the table following this link: https://github.com/conda-forge/miniforge?tab=readme-ov-file#miniforge3. Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
 
 .. note:: When mentioning the terms "terminal" or "command line" in the following, we are referring to the "Terminal" apps on macOS or Linux and the "Miniforge Prompt" on Windows.
 
@@ -570,14 +590,15 @@ All three approaches can also be combined.
 Conda as Alternative to Mamba
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-We experienced several issues with the default ``conda`` package manager lately.
-This is likely due to the large dependency set of CLIMADA, which makes solving the environment a tedious task.
-We therefore switched to the more performant ``mamba`` and recommend using it.
+We experienced several issues with the Conda environment management system.
+CLIMADA requires packages from the conda-forge repository, which is incompatible to the default repository for Conda and Anaconda.
+We therefore switched to Miniforge and recommend using the ``mamba`` package manager.
 
 .. caution::
 
    In theory, you could also use an `Anaconda <https://docs.anaconda.com/free/anaconda/>`_ or `Miniconda <https://docs.conda.io/projects/miniconda/en/latest/>`_ distribution and replace every ``mamba`` command in this guide with ``conda``.
    In practice, however, ``conda`` is often unable to solve an environment that ``mamba`` solves without issues in few seconds.
+   This is likely due to the default repository of Anaconda being included in the package search space.
 
 Error: ``operation not permitted``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
