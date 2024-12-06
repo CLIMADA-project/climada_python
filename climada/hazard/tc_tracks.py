@@ -162,6 +162,7 @@ BASIN_ENV_PRESSURE = {
     "SI": 1005,
     "WP": 1005,
     "SP": 1004,
+    "AU": 1004,
 }
 """Basin-specific default environmental pressure"""
 
@@ -1619,6 +1620,92 @@ class TCTracks:
                 data.append(track)
         return cls(data)
 
+    @classmethod
+    def from_netcdf_fast(cls, folder_name):
+        """Create new TCTracks object from NetCDF files created with the FAST model
+        of Jonathan Lin.
+
+        GitHub Repository: https://github.com/linjonathan/tropical_cyclone_risk?
+                            tab=readme-ov-file
+        Publication: https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2023MS003686
+
+        Parameters:
+        ----------
+        folder_name : str
+            Folder name from where to read files.
+
+        Returns:
+        -------
+        tracks : TCTracks
+            TCTracks obecjt with tracks data from the given directory of NetCDF files.
+        """
+
+        file_tr = get_file_names(folder_name)
+        LOGGER.info("Reading %s files.", len(file_tr))
+        data = []
+        for file in file_tr:
+            if Path(file).suffix != ".nc":
+                continue
+            with xr.open_dataset(file) as ds:
+                for i in ds.n_trk:
+                    # Select track
+                    track = ds.sel(n_trk=i.item())
+
+                    # Define coordinates
+                    lat = track.lat_trks.data
+                    lon = track.lon_trks.data
+                    time = track.time.data
+
+                    # Define variables
+                    time_step_vector = np.full(time.shape[0], track.time.data[1])
+                    max_sustained_wind = track.v_trks.data
+                    basin_vector = np.full(time.shape[0], track.tc_basins.data.item())
+                    central_pressure = np.nan  # work in progress: get them from model
+                    radius_max_wind = np.nan  # work in progress: get them from model
+                    env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
+                    env_pressure_vect = np.full(time.shape[0], env_pressure)
+
+                    # Define hurricaine category and other attributes
+                    max_sustained_wind_kn = np.nanmax(
+                        max_sustained_wind * 1.943844
+                    )  # convert from m/s to knots
+                    category_test = np.full(
+                        len(SAFFIR_SIM_CAT), max_sustained_wind_kn
+                    ) < np.array(SAFFIR_SIM_CAT)
+                    category = np.argmax(category_test) - 1
+                    track_name = track.n_trk.item()
+                    id_no = track.n_trk.item()
+
+                    data.append(
+                        xr.Dataset(
+                            {
+                                "time_step": ("time", time_step_vector),
+                                "max_sustained_wind": ("time", max_sustained_wind),
+                                # "central_pressure": ("time", central_pressure),
+                                # "radius_max_wind": ("time", radius_max_wind),
+                                "environmental_pressure": ("time", env_pressure_vect),
+                                "basin": ("time", basin_vector),
+                            },
+                            coords={
+                                "time": ("time", time),
+                                "lat": ("time", lat),
+                                "lon": ("time", lon),
+                            },
+                            attrs={
+                                "max_sustained_wind_unit": "kn",
+                                "central_pressure_unit": "mb",
+                                "name": track_name,
+                                "sid": track_name,
+                                "orig_event_flag": False,
+                                "data_provider": "FAST",
+                                "id_no": id_no,
+                                "category": category,
+                            },
+                        )
+                    )
+
+        return cls(data)
+
     def write_hdf5(self, file_name, complevel=5):
         """Write TC tracks in NetCDF4-compliant HDF5 format.
 
@@ -2665,12 +2752,12 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
         return sm_results
 
 
-def ibtracs_track_agency(ds_sel):
+def ibtracs_track_agency(track):
     """Get preferred IBTrACS agency for each entry in the dataset.
 
     Parameters
     ----------
-    ds_sel : xarray.Dataset
+    track : xarray.Dataset
         Subselection of original IBTrACS NetCDF dataset.
 
     Returns
@@ -2678,7 +2765,7 @@ def ibtracs_track_agency(ds_sel):
     agency_pref : list of str
         Names of IBTrACS agencies in order of preference.
     track_agency_ix : xarray.DataArray of ints
-        For each entry in `ds_sel`, the agency to use, given as an index into `agency_pref`.
+        For each entry in `track`, the agency to use, given as an index into `agency_pref`.
     """
     agency_pref = ["wmo"] + IBTRACS_AGENCIES
     agency_map = {a.encode("utf-8"): i for i, a in enumerate(agency_pref)}
@@ -2687,11 +2774,11 @@ def ibtracs_track_agency(ds_sel):
     )
     agency_map[b""] = agency_map[b"wmo"]
     agency_fun = lambda x: agency_map[x]
-    if "track_agency" not in ds_sel.data_vars.keys():
-        ds_sel["track_agency"] = ds_sel["wmo_agency"].where(
-            ds_sel["wmo_agency"] != b"", ds_sel["usa_agency"]
+    if "track_agency" not in track.data_vars.keys():
+        track["track_agency"] = track["wmo_agency"].where(
+            track["wmo_agency"] != b"", track["usa_agency"]
         )
-    track_agency_ix = xr.apply_ufunc(agency_fun, ds_sel["track_agency"], vectorize=True)
+    track_agency_ix = xr.apply_ufunc(agency_fun, track["track_agency"], vectorize=True)
     return agency_pref, track_agency_ix
 
 

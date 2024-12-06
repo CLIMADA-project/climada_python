@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test tc_tracks module.
 """
 
+import os
 import unittest
 from datetime import datetime as dt
 
@@ -47,6 +48,37 @@ TEST_TRACK_CHAZ = DATA_DIR.joinpath("chaz_test_tracks.nc")
 TEST_TRACK_STORM = DATA_DIR.joinpath("storm_test_tracks.txt")
 TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath("tracks-antimeridian")
 TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath("tctracks_hdf5_legacy.nc")
+
+TEST_TRACKS_FAST_dummy = xr.Dataset(
+    data_vars={
+        "lon_trks": (("n_trk", "time"), np.random.uniform(-180, 180, size=(20, 361))),
+        "lat_trks": (("n_trk", "time"), np.random.uniform(-90, 90, size=(20, 361))),
+        "u250_trks": (("n_trk", "time"), np.random.randn(20, 361)),
+        "v250_trks": (("n_trk", "time"), np.random.randn(20, 361)),
+        "u850_trks": (("n_trk", "time"), np.random.randn(20, 361)),
+        "v850_trks": (("n_trk", "time"), np.random.randn(20, 361)),
+        "v_trks": (("n_trk", "time"), np.random.randn(20, 361)),
+        "m_trks": (("n_trk", "time"), np.random.randn(20, 361)),
+        "vmax_trks": (("n_trk", "time"), np.random.randn(20, 361)),
+        "tc_month": (("n_trk",), np.random.randint(1, 13, size=20)),
+        "tc_basins": (
+            ("n_trk",),
+            np.random.choice(["AU", "EP", "NA", "NI", "SI", "SP", "WP"], size=20),
+        ),
+        "tc_years": (("n_trk",), np.full(20, 2025)),
+        "seeds_per_month": (
+            ("year", "basin", "month"),
+            np.random.randint(0, 5, size=(1, 7, 12)),
+        ),
+    },
+    coords={
+        "n_trk": np.arange(20),
+        "time": np.linspace(0, 1.296e6, 361),
+        "year": [2025],
+        "basin": ["AU", "EP", "NA", "NI", "SI", "SP", "WP"],
+        "month": np.arange(1, 13),
+    },
+)
 
 
 class TestIbtracs(unittest.TestCase):
@@ -608,6 +640,18 @@ class TestIO(unittest.TestCase):
 
         tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM, years=[7])
         self.assertEqual(len(tc_track.data), 0)
+
+    def test_from_netcdf_fast(self):
+        """test the import of netcdf files from fast model"""
+
+        # create dummy .nc file to read, delate it in the end
+        file_path = DATA_DIR.joinpath("fast_test_tracks.nc")
+        TEST_TRACKS_FAST_dummy.to_netcdf(file_path)
+        tc_track = tc.TCTracks.from_netcdf_fast(file_path)
+        # test various instances
+
+        # remove file
+        os.remove(file_path)
 
     def test_to_geodataframe_points(self):
         """Conversion of TCTracks to GeoDataFrame using Points."""
