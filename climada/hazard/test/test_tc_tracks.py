@@ -84,7 +84,27 @@ class TestIbtracs(unittest.TestCase):
         penv_ref = np.ones(97) * 1010
         penv_ref[26:36] = [1011, 1012, 1013, 1014, 1015, 1015, 1014, 1014, 1014, 1012]
         rmax_ref = np.zeros(97)
-        rmax_ref[63:82] = [10., 10., 10.625, 11.25, 11.875, 12.5, 13.125, 13.75, 14.375, 15., 15.625, 16.25, 16.875, 17.5 , 18.125, 18.75, 19.375, 20., 20.]
+        rmax_ref[63:82] = [
+            10.0,
+            10.0,
+            10.625,
+            11.25,
+            11.875,
+            12.5,
+            13.125,
+            13.75,
+            14.375,
+            15.0,
+            15.625,
+            16.25,
+            16.875,
+            17.5,
+            18.125,
+            18.75,
+            19.375,
+            20.0,
+            20.0,
+        ]
 
         np.testing.assert_array_almost_equal(
             tc_track.get_track()["environmental_pressure"].values, penv_ref, decimal=4
@@ -705,9 +725,7 @@ class TestFuncs(unittest.TestCase):
         )
         bounds = (153.6, -23.2, 258.7, 17.5)
         bounds_buf = (153.5, -23.3, 258.8, 17.6)
-        np.testing.assert_array_almost_equal(
-            tc_track.bounds, bounds, decimal=4
-        )
+        np.testing.assert_array_almost_equal(tc_track.bounds, bounds, decimal=4)
         np.testing.assert_array_almost_equal(
             tc_track.get_bounds(deg_buffer=0.1), bounds_buf, decimal=4
         )
