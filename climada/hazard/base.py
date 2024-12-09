@@ -936,8 +936,7 @@ class Hazard(HazardIO, HazardPlot):
                 "The hazards are incompatible and cannot be concatenated."
             )
         self.haz_type = haz_types.pop()
-
-        haz_classes = {type(haz) for haz in haz_list}
+        haz_classes = {haz.__class__.__name__ for haz in haz_list}
         if len(haz_classes) > 1:
             raise TypeError(
                 f"The given hazards are of different classes: {haz_classes}. "
