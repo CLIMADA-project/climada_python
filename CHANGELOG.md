@@ -12,6 +12,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
+- `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex`with CLIMADA
 - `climada.engine.impact.Impact.local_return_period` method [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
 - `doc.tutorial.climada_util_local_exceedance_values.ipynb` tutorial explaining `Hazard.local_exceedance_intensity`, `Hazard.local_return_period`, `Impact.local_exceedance_impact`, and `Impact.local_return_period` methods [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, that all use the `climada.util.interpolation` module [#918](https://github.com/CLIMADA-project/climada_python/pull/918)
