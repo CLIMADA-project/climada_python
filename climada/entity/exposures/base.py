@@ -143,7 +143,8 @@ class Exposures:
             if nonpoints:
                 raise ValueError(
                     "Can only calculate latitude from Points."
-                    f" GeoDataFrame contains {', '.join(nonpoints)}"
+                    f" GeoDataFrame contains {', '.join(nonpoints)}."
+                    "Please see the lines_polygons module tutorial."
                 ) from valerr
             raise
 
