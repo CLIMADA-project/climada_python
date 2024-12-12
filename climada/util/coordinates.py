@@ -797,7 +797,7 @@ def get_country_geometries(
 
     # exit with Value error if no country code was recognized
     if out.size == 0:
-        raise ValueError(f"None of the given country codes were regocnized.")
+        raise ValueError(f"None of the given country codes were recognized.")
 
     if extent:
         if extent[1] - extent[0] > 360:
@@ -1765,14 +1765,12 @@ def bounds_from_cardinal_bounds(*, northern, eastern, western, southern):
             "Given northern bound is below given southern bound or out of bounds"
         )
 
-    if not (360 >= eastern >= -180) or not (360 >= western >= -180):
-        raise ValueError("Given eastern/western bounds are out of range (-180, 360).")
-    # order eastern and western coordinates
+    eastern = (eastern + 180) % 360 - 180
+    western = (western + 180) % 360 - 180
+
+    # Ensure eastern > western
     if western > eastern:
         eastern += 360
-    if eastern > 360 and western > 180:
-        eastern -= 360
-        western -= 360
 
     return (western, southern, eastern, northern)
 
