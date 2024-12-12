@@ -1,0 +1,22 @@
+:root {
+
+    .navbar-brand {
+        height: 7rem;
+        max-height: 7rem;
+    }
+
+}
+
+.bd-main .bd-content .bd-article-container {
+    max-width: 100%;  /* default is 60em */
+}
+
+.bd-page-width {
+    max-width: 100rem;
+}
+
+
+html {
+    --pst-font-size-base: 16px;
+    --pst-header-height: 7rem;
+}

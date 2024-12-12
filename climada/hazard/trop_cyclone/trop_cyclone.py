@@ -408,20 +408,25 @@ class TropCyclone(Hazard):
             are the 10th, 25th, 50th, 75th and 90th. Please refer to the mentioned publications
             for more details.
             possible percentiles:
-                '5/10' either the 5th or 10th percentile depending on variable (see text above)
-                '25' for the 25th percentile
-                '50' for the 50th percentile
-                '75' for the 75th percentile
-                '90/95' either the 90th or 95th percentile depending on variable  (see text above)
+
+                - '5/10' either the 5th or 10th percentile depending on variable (see text above)
+                - '25' for the 25th percentile
+                - '50' for the 50th percentile
+                - '75' for the 75th percentile
+                - '90/95' either the 90th or 95th percentile depending on variable  (see text above)
+
             Default: '50'
         scenario : str
             possible scenarios:
-                '2.6' for RCP 2.6
-                '4.5' for RCP 4.5
-                '6.0' for RCP 6.0
-                '8.5' for RCP 8.5
+
+                - '2.6' for RCP 2.6
+                - '4.5' for RCP 4.5
+                - '6.0' for RCP 6.0
+                - '8.5' for RCP 8.5
+
         target_year : int
             future year to be simulated, between 2000 and 2100. Default: 2050.
+
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
