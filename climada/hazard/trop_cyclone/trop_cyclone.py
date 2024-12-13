@@ -241,7 +241,8 @@ class TropCyclone(Hazard):
                 farther away from the center than according to the recorded radius of
                 maximum winds (RMW). Default: False
             cyclostrophic : bool, optional
-                If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0).
+                If True, do not apply the influence of the Coriolis force (set the Coriolis
+                terms to 0).
                 Default: True for H10 model, False otherwise.
 
         ignore_distance_to_coast : boolean, optional

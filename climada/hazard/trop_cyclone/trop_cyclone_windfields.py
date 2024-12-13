@@ -236,11 +236,11 @@ def _compute_angular_windspeeds_h10(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
     close_centr_msk: np.ndarray,
-    cyclostrophic: bool = True,
     gradient_to_surface_winds: float = DEF_GRADIENT_TO_SURFACE_WINDS,
     rho_air_const: float = DEF_RHO_AIR,
     vmax_from_cen: bool = True,
     vmax_in_brackets: bool = False,
+    **kwargs,
 ):
     """Compute (absolute) angular wind speeds according to the Holland et al. 2010 model
 
@@ -280,7 +280,7 @@ def _compute_angular_windspeeds_h10(
     ndarray of shape (npositions, ncentroids)
         containing the magnitude of the angular windspeed per track position per centroid location
     """
-    if not cyclostrophic:
+    if not kwargs.get("cyclostrophic", True):
         LOGGER.warning(
             "The function _compute_angular_windspeeds_h10 was called with parameter "
             '"cyclostrophic" equal to false. Please be aware that this setting is ignored as the'
