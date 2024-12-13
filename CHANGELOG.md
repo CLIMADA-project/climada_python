@@ -37,6 +37,9 @@ Code freeze date: YYYY-MM-DD
   - latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
   - `Exposures.gdf` has been renamed to `Exposures.data` (it still works though, as it is a property now pointing to the latter)
   - the `check` method does not add a default "IMPF_" column to the GeoDataFrame anymore
+- Updated IBTrACS version from v4.0 to v4.1 ([#976](https://github.com/CLIMADA-project/climada_python/pull/976)
+    - Fix xarray future warning in TCTracks for .dims to .sizes
+    - Fix hazard.concatenate type test for pathos pools
 
 ### Fixed
 
