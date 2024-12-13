@@ -2297,15 +2297,15 @@ class TestRasterIO(unittest.TestCase):
 class TestBoundsFromUserInput(unittest.TestCase):
     """Unit tests for the bounds_from_user_input function."""
 
-    def global_bounding_box(self):
+    def test_bounding_box_global(self):
         """Test for 'global' area selection."""
-        result = u_coord.global_bounding_box()
+        result = u_coord.bounding_box_global()
         expected = (-180, -90, 180, 90)
         np.testing.assert_almost_equal(result, expected)
 
-    def test_get_country_bounding_box(self):
+    def test_bounding_box_from_countries(self):
         """Test for a list of ISO country codes."""
-        result = u_coord.get_country_bounding_box(
+        result = u_coord.bounding_box_from_countries(
             ["ITA"], buffer=1.0
         )  # Testing with Italy (ITA)
         # Real expected bounds for Italy (calculated or manually known)
@@ -2316,34 +2316,38 @@ class TestBoundsFromUserInput(unittest.TestCase):
             48.08521494500006,
         ]  # Italy's bounding box
 
-    def test_bounds_from_cardinal_bounds(self):
+        # invalid input
+        with self.assertRaises(ValueError):
+            u_coord.bounding_box_from_countries(["invalid_ISO", "DEU"])
+
+    def test_bounding_box_from_cardinal_bounds(self):
         """Test for conversion from cardinal bounds to bounds."""
         np.testing.assert_array_almost_equal(
-            u_coord.bounds_from_cardinal_bounds(
+            u_coord.bounding_box_from_cardinal_bounds(
                 northern=90, southern=-20, eastern=30, western=20
             ),
             (20, -20, 30, 90),
         )
         np.testing.assert_array_almost_equal(
-            u_coord.bounds_from_cardinal_bounds(
+            u_coord.bounding_box_from_cardinal_bounds(
                 northern=90, southern=-20, eastern=20, western=30
             ),
             (30, -20, 380, 90),
         )
         np.testing.assert_array_almost_equal(
-            u_coord.bounds_from_cardinal_bounds(
+            u_coord.bounding_box_from_cardinal_bounds(
                 northern=90, southern=-20, eastern=170, western=-170
             ),
             (-170, -20, 170, 90),
         )
         np.testing.assert_array_almost_equal(
-            u_coord.bounds_from_cardinal_bounds(
+            u_coord.bounding_box_from_cardinal_bounds(
                 northern=90, southern=-20, eastern=-170, western=170
             ),
             (170, -20, 190, 90),
         )
         np.testing.assert_array_almost_equal(
-            u_coord.bounds_from_cardinal_bounds(
+            u_coord.bounding_box_from_cardinal_bounds(
                 northern=90, southern=-20, eastern=170, western=175
             ),
             (175, -20, 530, 90),
@@ -2351,20 +2355,17 @@ class TestBoundsFromUserInput(unittest.TestCase):
 
         # some invalid cases
         with self.assertRaises(TypeError):
-            u_coord.bounds_from_cardinal_bounds(southern=-20, eastern=30, western=20)
+            u_coord.bounding_box_from_cardinal_bounds(
+                southern=-20, eastern=30, western=20
+            )
         with self.assertRaises(TypeError):
-            u_coord.bounds_from_cardinal_bounds([90, -20, 30, 20])
+            u_coord.bounding_box_from_cardinal_bounds([90, -20, 30, 20])
         with self.assertRaises(TypeError):
-            u_coord.bounds_from_cardinal_bounds(90, -20, 30, 20)
+            u_coord.bounding_box_from_cardinal_bounds(90, -20, 30, 20)
         with self.assertRaises(TypeError):
-            u_coord.bounds_from_cardinal_bounds(
+            u_coord.bounding_box_from_cardinal_bounds(
                 northern="90", southern=-20, eastern=30, western=20
             )
-
-    def test_invalid_input_string(self):
-        """Test for invalid string input."""
-        with self.assertRaises(Exception):
-            u_coord.get_bound("invalid_ISO")
 
 
 # Execute Tests

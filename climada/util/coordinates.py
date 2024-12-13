@@ -1693,7 +1693,7 @@ def get_admin1_info(country_names):
     return admin1_info, admin1_shapes
 
 
-def global_bounding_box():
+def bounding_box_global():
     """
     Return global bounds in EPSG 4326
 
@@ -1705,7 +1705,7 @@ def global_bounding_box():
     return (-180, -90, 180, 90)
 
 
-def get_country_bounding_box(country_names, buffer=1.0):
+def bounding_box_from_countries(country_names, buffer=1.0):
     """
     Return bounding box in EPSG 4326 containing given countries.
 
@@ -1738,7 +1738,7 @@ def get_country_bounding_box(country_names, buffer=1.0):
     return latlon_bounds(np.array(latitudes), np.array(longitudes), buffer=buffer)
 
 
-def bounds_from_cardinal_bounds(*, northern, eastern, western, southern):
+def bounding_box_from_cardinal_bounds(*, northern, eastern, western, southern):
     """
     Return and normalize bounding box in EPSG 4326 from given cardinal bounds.
 
