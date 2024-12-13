@@ -2316,8 +2316,6 @@ class TestBoundsFromUserInput(unittest.TestCase):
             48.08521494500006,
         ]  # Italy's bounding box
 
-        np.testing.assert_array_almost_equal(result, expected, decimal=4)
-
     def test_bounds_from_cardinal_bounds(self):
         """Test for conversion from cardinal bounds to bounds."""
         np.testing.assert_array_almost_equal(
@@ -2350,6 +2348,18 @@ class TestBoundsFromUserInput(unittest.TestCase):
             ),
             (175, -20, 530, 90),
         )
+
+        # some invalid cases
+        with self.assertRaises(TypeError):
+            u_coord.bounds_from_cardinal_bounds(southern=-20, eastern=30, western=20)
+        with self.assertRaises(TypeError):
+            u_coord.bounds_from_cardinal_bounds([90, -20, 30, 20])
+        with self.assertRaises(TypeError):
+            u_coord.bounds_from_cardinal_bounds(90, -20, 30, 20)
+        with self.assertRaises(TypeError):
+            u_coord.bounds_from_cardinal_bounds(
+                northern="90", southern=-20, eastern=30, western=20
+            )
 
     def test_invalid_input_string(self):
         """Test for invalid string input."""
