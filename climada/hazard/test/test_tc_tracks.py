@@ -63,7 +63,7 @@ TEST_TRACKS_FAST_dummy = xr.Dataset(
         "tc_month": (("n_trk",), np.random.randint(1, 13, size=20)),
         "tc_basins": (
             ("n_trk",),
-            np.random.choice(["AU", "EP", "NA", "NI", "SI", "SP", "WP"], size=20),
+            np.full(20, "WP"),
         ),
         "tc_years": (("n_trk",), np.full(20, 2025)),
         "seeds_per_month": (
@@ -641,16 +641,42 @@ class TestIO(unittest.TestCase):
         tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM, years=[7])
         self.assertEqual(len(tc_track.data), 0)
 
+    def test_compute_central_pressure(self):
+        pass
+
     def test_from_netcdf_fast(self):
         """test the import of netcdf files from fast model"""
 
-        # create dummy .nc file to read, delate it in the end
+        # create dummy .nc file to be read
         file_path = DATA_DIR.joinpath("fast_test_tracks.nc")
         TEST_TRACKS_FAST_dummy.to_netcdf(file_path)
         tc_track = tc.TCTracks.from_netcdf_fast(file_path)
-        # test various instances
 
-        # remove file
+        expected_attributes = {
+            "max_sustained_wind_unit": "m/s",
+            "central_pressure": "hPa",
+            "data_provider": "FAST",
+            "orig_event_flag": False,
+            "id_no": 0,
+            "category": -1,
+        }
+
+        self.assertIsInstance(
+            tc_track, tc.TCTracks, "tc_track is not an instance of TCTracks"
+        )
+        self.assertIsInstance(
+            tc_track.data, list, "tc_track.data is not an instance of list"
+        )
+        self.assertIsInstance(
+            tc_track.data[0],
+            xr.Dataset,
+            "tc_track.data[0] not an instance of xarray.Dataset",
+        )
+        self.assertEqual(len(tc_track.data), 20)
+        self.assertEqual(tc_track.data[0].attrs, expected_attributes)
+        self.assertEqual(tc_track.data[0].environmental_pressure.data[0], 1005)
+        self.assertEqual(list(tc_track.data[0].coords.keys()), ["time", "lat", "lon"])
+
         os.remove(file_path)
 
     def test_to_geodataframe_points(self):

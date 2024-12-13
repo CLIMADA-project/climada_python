@@ -1620,11 +1620,44 @@ class TCTracks:
                 data.append(track)
         return cls(data)
 
+    @staticmethod
+    def compute_central_pressure(basin, v_max):
+        """Compute central pressure of tropical cyclone given the maximal
+        wind speed of the storm. Method needed to load tracks from_netcdf_fast.
+
+        Holland, Greg. (2008). A Revised Hurricane Pressure Wind Model.
+        Monthly Weather Review - MON WEATHER REV. 136. 10.1175/2008MWR2395.1.
+
+        Parameters:
+        -----------
+        basin : str
+            Basin of generation of the TC
+        v_max : np.array
+            1D vector of maximal wind speed along the track
+
+        Returns:
+        --------
+        Pc : np.array
+            1D vector of central pressure along the track
+        """
+        a = 3.4
+        Pn = np.full(len(v_max), BASIN_ENV_PRESSURE[basin])
+        Pc = Pn - (v_max ** (1000 / 644)) / a
+
+        return Pc
+
+    @staticmethod
+    def compute_radius_max_winds():
+        pass
+
+    @staticmethod
+    def define_category_storm(self):
+        pass
+
     @classmethod
     def from_netcdf_fast(cls, folder_name):
         """Create new TCTracks object from NetCDF files created with the FAST model
         of Jonathan Lin.
-
         GitHub Repository: https://github.com/linjonathan/tropical_cyclone_risk?
                             tab=readme-ov-file
         Publication: https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2023MS003686
@@ -1633,6 +1666,8 @@ class TCTracks:
         ----------
         folder_name : str
             Folder name from where to read files.
+        storm_id : int
+            Number of the simulated storm
 
         Returns:
         -------
@@ -1648,6 +1683,9 @@ class TCTracks:
                 continue
             with xr.open_dataset(file) as ds:
                 for i in ds.n_trk:
+                    # if storm_id:
+                    #     i == storm_id
+
                     # Select track
                     track = ds.sel(n_trk=i.item())
 
@@ -1660,8 +1698,6 @@ class TCTracks:
                     time_step_vector = np.full(time.shape[0], track.time.data[1])
                     max_sustained_wind = track.v_trks.data
                     basin_vector = np.full(time.shape[0], track.tc_basins.data.item())
-                    central_pressure = np.nan  # work in progress: get them from model
-                    radius_max_wind = np.nan  # work in progress: get them from model
                     env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
                     env_pressure_vect = np.full(time.shape[0], env_pressure)
 
@@ -1673,17 +1709,19 @@ class TCTracks:
                         len(SAFFIR_SIM_CAT), max_sustained_wind_kn
                     ) < np.array(SAFFIR_SIM_CAT)
                     category = np.argmax(category_test) - 1
-                    track_name = track.n_trk.item()
                     id_no = track.n_trk.item()
+                    # Define central pressure
+                    central_pressure = TCTracks.compute_central_pressure(
+                        v_max=max_sustained_wind, basin=track.tc_basins.data.item()
+                    )
 
                     data.append(
                         xr.Dataset(
                             {
                                 "time_step": ("time", time_step_vector),
                                 "max_sustained_wind": ("time", max_sustained_wind),
-                                # "central_pressure": ("time", central_pressure),
-                                # "radius_max_wind": ("time", radius_max_wind),
                                 "environmental_pressure": ("time", env_pressure_vect),
+                                "central_pressure": ("time", central_pressure),
                                 "basin": ("time", basin_vector),
                             },
                             coords={
@@ -1692,12 +1730,10 @@ class TCTracks:
                                 "lon": ("time", lon),
                             },
                             attrs={
-                                "max_sustained_wind_unit": "kn",
-                                "central_pressure_unit": "mb",
-                                "name": track_name,
-                                "sid": track_name,
-                                "orig_event_flag": False,
+                                "max_sustained_wind_unit": "m/s",
+                                "central_pressure_unit": "hPa",
                                 "data_provider": "FAST",
+                                "orig_event_flag": False,
                                 "id_no": id_no,
                                 "category": category,
                             },
