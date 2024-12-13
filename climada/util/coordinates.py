@@ -784,20 +784,16 @@ def get_country_geometries(
         if isinstance(country_names, str):
             country_names = [country_names]
 
-        # print warning if ISO code not recognized
+        # raise error if a country name is not recognized
         for country_name in country_names:
             if not country_name in nat_earth[["ISO_A3", "WB_A3", "ADM0_A3"]].values:
-                LOGGER.warning(f"ISO code {country_name} not recognized.")
+                raise ValueError(f"ISO code {country_name} not recognized.")
 
         country_mask = np.isin(
             nat_earth[["ISO_A3", "WB_A3", "ADM0_A3"]].values,
             country_names,
         ).any(axis=1)
         out = out[country_mask]
-
-    # exit with Value error if no country code was recognized
-    if out.size == 0:
-        raise ValueError(f"None of the given country codes were recognized.")
 
     if extent:
         if extent[1] - extent[0] > 360:
@@ -1729,10 +1725,15 @@ def get_country_bounding_box(country_names, buffer=1.0):
     country_geometry = get_country_geometries(country_names).geometry
     longitudes, latitudes = [], []
     for multipolygon in country_geometry:
-        for polygon in multipolygon.geoms:  # Loop through each polygon
+        if isinstance(multipolygon, Polygon):  # if entry is polygon
             for coord in polygon.exterior.coords:  # Extract exterior coordinates
                 longitudes.append(coord[0])
                 latitudes.append(coord[1])
+        else:  # if entry is multipolygon
+            for polygon in multipolygon.geoms:
+                for coord in polygon.exterior.coords:  # Extract exterior coordinates
+                    longitudes.append(coord[0])
+                    latitudes.append(coord[1])
 
     return latlon_bounds(np.array(latitudes), np.array(longitudes), buffer=buffer)
 
