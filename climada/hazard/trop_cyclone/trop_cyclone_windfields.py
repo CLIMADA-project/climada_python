@@ -20,6 +20,7 @@ Compute Tropical Cyclone windfields (see compute_windfields_sparse function).
 """
 
 import logging
+import warnings
 from typing import Optional, Tuple, Union
 
 import numpy as np
@@ -99,6 +100,7 @@ def compute_angular_windspeeds(
     d_centr: np.ndarray,
     mask_centr_close: np.ndarray,
     model: int,
+    cyclostrophic: Optional[bool] = False,
     model_kwargs: Optional[dict] = None,
 ):
     """Compute (absolute) angular wind speeds according to a parametric wind profile
@@ -116,6 +118,9 @@ def compute_angular_windspeeds(
         Wind profile model selection according to MODEL_VANG.
     model_kwargs: dict, optional
         If given, forward these kwargs to the selected model. Default: None
+    cyclostrophic: bool, optional, deprecated
+        This argument is deprecated and will be removed in a future release.
+        Include `cyclostrophic` as `model_kwargs` instead.
 
     Returns
     -------
@@ -123,6 +128,15 @@ def compute_angular_windspeeds(
         containing the magnitude of the angular windspeed per track position per centroid location
     """
     model_kwargs = {} if model_kwargs is None else model_kwargs
+
+    if cyclostrophic is not None:
+        warnings.warn(
+            "The 'cyclostrophic' argument is deprecated and will be removed in a future"
+            "release. Include it in 'model_kwargs' instead.",
+            DeprecationWarning,
+        )
+        model_kwargs["cyclostrophic"] = cyclostrophic
+
     compute_funs = {
         MODEL_VANG["H1980"]: _compute_angular_windspeeds_h1980,
         MODEL_VANG["H08"]: _compute_angular_windspeeds_h08,
