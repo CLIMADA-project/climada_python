@@ -332,7 +332,12 @@ class Centroids:
         )
 
     def append(self, centr):
-        """Append Centroids
+        """Append Centroids to the current object for batch concatenation.
+
+        This method adds the `centr.gdf` to the list of DataFrames to be concatenated
+        later with `finalize_append()`. Instead of concatenating immediately, it accumulates
+        the centroids in `_batch_gdf` to perform the concatenation all at once, which is more
+        efficient for multiple appends.
 
         Note that the result might contain duplicate points if the object to append has an overlap
         with the current object.
@@ -351,12 +356,31 @@ class Centroids:
         union : Union of Centroid objects.
         remove_duplicate_points : Remove duplicate points in a Centroids object.
         """
+
+        if not hasattr(self, "_batch_gdf"):
+            self._batch_gdf = []  # Initialize the batch
+
         if not u_coord.equal_crs(self.crs, centr.crs):
             raise ValueError(
                 f"The given centroids use different CRS: {self.crs}, {centr.crs}. "
                 "The centroids are incompatible and cannot be concatenated."
             )
-        self.gdf = pd.concat([self.gdf, centr.gdf])
+        self._batch_gdf.append(centr.gdf)
+
+    def finalize_append(self):
+        """Concatenate all batch-appended centroids into the main GeoDataFrame (gdf).
+
+        This method should be called after all `append` operations have been performed on the
+        Centroids object. It concatenates all the accumulated GeoDataFrames stored in the
+        `_batch_gdf` list into the `gdf` attribute of the Centroids object. By doing this in one
+        step, it avoids the performance overhead associated with repeated concatenations.
+
+        Once concatenation is complete, the `_batch_gdf` list is cleared to prepare for future
+        append operations.
+        """
+
+        self.gdf = pd.concat([self.gdf] + self._batch_gdf, ignore_index=True)
+        self._batch_gdf = []  # clear the batch after concatenation
 
     def union(self, *others):
         """Create the union of Centroids objects
@@ -377,6 +401,7 @@ class Centroids:
         centroids = copy.deepcopy(self)
         for cent in others:
             centroids.append(cent)
+        centroids.finalize_append()
         return centroids.remove_duplicate_points()
 
     def remove_duplicate_points(self):
