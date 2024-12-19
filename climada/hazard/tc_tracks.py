@@ -84,13 +84,13 @@ CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 IBTRACS_URL = (
     "https://www.ncei.noaa.gov/data/"
     "international-best-track-archive-for-climate-stewardship-ibtracs/"
-    "v04r00/access/netcdf"
+    "v04r01/access/netcdf"
 )
 """Site of IBTrACS netcdf file containing all tracks v4.0,
 s. https://www.ncdc.noaa.gov/ibtracs/index.php?name=ib-v4-access"""
 
-IBTRACS_FILE = "IBTrACS.ALL.v04r00.nc"
-"""IBTrACS v4.0 file all"""
+IBTRACS_FILE = "IBTrACS.ALL.v04r01.nc"
+"""IBTrACS v4.1 file all"""
 
 IBTRACS_AGENCIES = [
     "usa",
@@ -376,7 +376,7 @@ class TCTracks:
         correct_pres=False,
         discard_single_points=True,
         additional_variables=None,
-        file_name="IBTrACS.ALL.v04r00.nc",
+        file_name=IBTRACS_FILE,
     ):
         """Create new TCTracks object from IBTrACS databse.
 
@@ -485,7 +485,7 @@ class TCTracks:
             compatiblity with other functions such as `equal_timesteps`. Default: True.
         file_name : str, optional
             Name of NetCDF file to be dowloaded or located at climada/data/system.
-            Default: 'IBTrACS.ALL.v04r00.nc'
+            Default: 'IBTrACS.ALL.v04r01.nc'
         additional_variables : list of str, optional
             If specified, additional IBTrACS data variables are extracted, such as "nature" or
             "storm_speed". Only variables that are not agency-specific are supported.
@@ -731,7 +731,7 @@ class TCTracks:
                     )
                     ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
-            if ibtracs_ds.dims["storm"] == 0:
+            if ibtracs_ds.sizes["storm"] == 0:
                 LOGGER.info(
                     "After discarding IBTrACS events without valid values by the selected "
                     "reporting agencies, there are no tracks left that match the specified "
@@ -2576,7 +2576,7 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
             raise KeyError("Unknown ibtracs variable: %s" % var)
 
     # load ibtracs dataset
-    fn_nc = SYSTEM_DIR.joinpath("IBTrACS.ALL.v04r00.nc")
+    fn_nc = SYSTEM_DIR.joinpath(IBTRACS_FILE)
     with xr.open_dataset(fn_nc) as ibtracs_ds:
         # choose specified year range
         years = ibtracs_ds.sid.str.slice(0, 4).astype(int)
