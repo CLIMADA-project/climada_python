@@ -331,16 +331,16 @@ class Centroids:
             }
         )
 
-    def append(self, centr):
-        """Append Centroids to the current object for batch concatenation.
+    def append(self, *centr):
+        """Append Centroids to the current centroid object for concatenation.
 
-        This method adds the `centr.gdf` to the list of DataFrames to be concatenated
-        later with `finalize_append()`. Instead of concatenating immediately, it accumulates
-        the centroids in `_batch_gdf` to perform the concatenation all at once, which is more
-        efficient for multiple appends.
+        This method check that all centroids use the same CRS, append the list of centroids to
+        the initial Centroid object and eventually concatenate them to create a single centroid
+        object with the union of all centroids.
 
         Note that the result might contain duplicate points if the object to append has an overlap
-        with the current object.
+        with the current object. Duplicates points will be removed in `union`
+        by calling `remove_duplicate_points`.
 
         Parameters
         ----------
@@ -356,34 +356,18 @@ class Centroids:
         union : Union of Centroid objects.
         remove_duplicate_points : Remove duplicate points in a Centroids object.
         """
-
-        if not hasattr(self, "_batch_gdf"):
-            self._batch_gdf = []  # Initialize the batch
-
-        if not u_coord.equal_crs(self.crs, centr.crs):
-            raise ValueError(
-                f"The given centroids use different CRS: {self.crs}, {centr.crs}. "
-                "The centroids are incompatible and cannot be concatenated."
-            )
-        self._batch_gdf.append(centr.gdf)
-
-    def finalize_append(self):
-        """Concatenate all batch-appended centroids into the main GeoDataFrame (gdf).
-
-        This method should be called after all `append` operations have been performed on the
-        Centroids object. It concatenates all the accumulated GeoDataFrames stored in the
-        `_batch_gdf` list into the `gdf` attribute of the Centroids object. By doing this in one
-        step, it avoids the performance overhead associated with repeated concatenations.
-
-        Once concatenation is complete, the `_batch_gdf` list is cleared to prepare for future
-        append operations.
-        """
-
-        self.gdf = pd.concat([self.gdf] + self._batch_gdf, ignore_index=True)
-        self._batch_gdf = []  # clear the batch after concatenation
+        for cc in centr:
+            if not u_coord.equal_crs(self.crs, cc.crs):
+                raise ValueError(
+                    f"The given centroids use different CRS: {self.crs}, {cc.crs}. "
+                    "The centroids are incompatible and cannot be concatenated."
+                )
+        self.gdf = pd.concat([self.gdf] + [cc.gdf for cc in centr])
 
     def union(self, *others):
-        """Create the union of Centroids objects
+        """Create the union of the current Centroids object with one or more other centroids
+        objects by passing the list of centroids to `append` for concatenation and then
+        removes duplicates.
 
         All centroids must have the same CRS. Points that are contained in more than one of the
         Centroids objects will only be contained once (i.e. duplicates are removed).
@@ -399,9 +383,8 @@ class Centroids:
             Centroids object containing the union of all Centroids.
         """
         centroids = copy.deepcopy(self)
-        for cent in others:
-            centroids.append(cent)
-        centroids.finalize_append()
+        centroids.append(*others)
+
         return centroids.remove_duplicate_points()
 
     def remove_duplicate_points(self):
