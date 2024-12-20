@@ -827,14 +827,8 @@ class TestCentroidsMethods(unittest.TestCase):
 
         centr.append(*centroids_list)
 
-        self.assertEqual(centr.lat[0], 1)
-        self.assertEqual(centr.lat[1], 2)
-        self.assertEqual(centr.lat[2], 3)
-        self.assertEqual(centr.lat[3], 4)
-        self.assertEqual(centr.lon[0], 1)
-        self.assertEqual(centr.lon[1], 2)
-        self.assertEqual(centr.lon[2], 3)
-        self.assertEqual(centr.lon[3], 4)
+        np.testing.assert_array_equal(centr.lat, [1, 2, 3, 4])
+        np.testing.assert_array_equal(centr.lon, [1, 2, 3, 4])
 
     def test_remove_duplicate_pass(self):
         """Test remove_duplicate_points"""
