@@ -20,24 +20,25 @@ Define InputVar class.
 """
 
 import copy
+import logging
 from functools import partial
 from itertools import zip_longest
-import logging
 from typing import Dict
 
-import scipy as sp
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+import scipy as sp
 
-from climada.entity import Entity, DiscRates
+from climada.entity import DiscRates, Entity
 
 LOGGER = logging.getLogger(__name__)
 
-__all__ = ['InputVar']
+__all__ = ["InputVar"]
 
-FIG_W, FIG_H = 8, 5 #default figize width/heigh column/work multiplicators
+FIG_W, FIG_H = 8, 5  # default figize width/heigh column/work multiplicators
 
-class InputVar():
+
+class InputVar:
     """
     Input variable for the uncertainty analysis
 
@@ -148,12 +149,8 @@ class InputVar():
         """
 
         if not params:
-            params = {
-                param: distr.mean()
-                for param, distr in self.distr_dict.items()
-                }
+            params = {param: distr.mean() for param, distr in self.distr_dict.items()}
         return self.func(**params)
-
 
     def plot(self, figsize=None):
         """
@@ -184,28 +181,27 @@ class InputVar():
             flat_axes = axes.flatten()
         else:
             flat_axes = np.array([axes])
-        for ax, name_distr in zip_longest(flat_axes,
-                                    self.distr_dict.items(),
-                                    fillvalue=None):
+        for ax, name_distr in zip_longest(
+            flat_axes, self.distr_dict.items(), fillvalue=None
+        ):
             if name_distr is None:
                 ax.remove()
                 continue
             (param_name, distr) = name_distr
             low = distr.ppf(1e-10)
-            high = distr.ppf(1-1e-10)
+            high = distr.ppf(1 - 1e-10)
             n = 100
             try:
                 x = np.linspace(low, high, n)
                 ax.plot(x, distr.pdf(x), label=param_name)
             except AttributeError:
                 if (high - low) > n:
-                    x = np.arange(low, high, int((high-low) / n))
+                    x = np.arange(low, high, int((high - low) / n))
                 else:
-                    x = np.arange(low, high+1)
+                    x = np.arange(low, high + 1)
                 ax.vlines(x, 0, distr.pmf(x), label=param_name)
             ax.legend()
         return axes
-
 
     @staticmethod
     def var_to_inputvar(var):
@@ -228,7 +224,6 @@ class InputVar():
             return var
 
         return InputVar(func=lambda: var, distr_dict={})
-
 
     @staticmethod
     def haz(haz_list, n_ev=None, bounds_int=None, bounds_frac=None, bounds_freq=None):
@@ -282,21 +277,21 @@ class InputVar():
 
         """
         n_haz = len(haz_list)
-        kwargs = {'haz_list': haz_list, 'n_ev': n_ev}
+        kwargs = {"haz_list": haz_list, "n_ev": n_ev}
         if n_ev is None:
-            kwargs['HE'] = None
+            kwargs["HE"] = None
         if bounds_int is None:
-            kwargs['HI'] = None
+            kwargs["HI"] = None
         if bounds_frac is None:
-            kwargs['HA'] = None
+            kwargs["HA"] = None
         if bounds_freq is None:
-            kwargs['HF'] = None
+            kwargs["HF"] = None
         if n_haz == 1:
-            kwargs['HL'] = 0
+            kwargs["HL"] = 0
         return InputVar(
             partial(_haz_uncfunc, **kwargs),
-            _haz_unc_dict(n_ev, bounds_int, bounds_frac, bounds_freq, n_haz)
-            )
+            _haz_unc_dict(n_ev, bounds_int, bounds_frac, bounds_freq, n_haz),
+        )
 
     @staticmethod
     def exp(exp_list, bounds_totval=None, bounds_noise=None):
@@ -339,23 +334,28 @@ class InputVar():
 
         """
         n_exp = len(exp_list)
-        kwargs = {'exp_list': exp_list, 'bounds_noise': bounds_noise}
+        kwargs = {"exp_list": exp_list, "bounds_noise": bounds_noise}
         if bounds_noise is None:
-            kwargs['EN'] = None
+            kwargs["EN"] = None
         if bounds_totval is None:
-            kwargs['ET'] = None
+            kwargs["ET"] = None
         if n_exp == 1:
-            kwargs['EL'] = 0
+            kwargs["EL"] = 0
         return InputVar(
             partial(_exp_uncfunc, **kwargs),
-            _exp_unc_dict(bounds_totval=bounds_totval,
-                          bounds_noise=bounds_noise,
-                          n_exp=n_exp)
-            )
+            _exp_unc_dict(
+                bounds_totval=bounds_totval, bounds_noise=bounds_noise, n_exp=n_exp
+            ),
+        )
 
     @staticmethod
-    def impfset(impf_set_list, haz_id_dict= None, bounds_mdd=None, bounds_paa=None,
-                bounds_impfi=None):
+    def impfset(
+        impf_set_list,
+        haz_id_dict=None,
+        bounds_mdd=None,
+        bounds_paa=None,
+        bounds_impfi=None,
+    ):
         """
         Helper wrapper for basic impact function set uncertainty input variable.
 
@@ -411,30 +411,37 @@ class InputVar():
 
         """
         n_impf_set = len(impf_set_list)
-        kwargs = {'impf_set_list': impf_set_list}
+        kwargs = {"impf_set_list": impf_set_list}
         if bounds_mdd is None:
-            kwargs['MDD'] = None
+            kwargs["MDD"] = None
         if bounds_paa is None:
-            kwargs['PAA'] = None
+            kwargs["PAA"] = None
         if bounds_impfi is None:
-            kwargs['IFi'] = None
+            kwargs["IFi"] = None
         if haz_id_dict is None:
             haz_id_dict = impf_set_list[0].get_ids()
         if n_impf_set == 1:
-            kwargs['IL'] = 0
+            kwargs["IL"] = 0
         return InputVar(
-            partial(
-                _impfset_uncfunc, haz_id_dict=haz_id_dict,
-                **kwargs
-                ),
-            _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa, n_impf_set)
+            partial(_impfset_uncfunc, haz_id_dict=haz_id_dict, **kwargs),
+            _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa, n_impf_set),
         )
 
     @staticmethod
-    def ent(impf_set_list, disc_rate, exp_list, meas_set, haz_id_dict,
-            bounds_disc=None, bounds_cost=None, bounds_totval=None,
-            bounds_noise=None, bounds_mdd=None, bounds_paa=None,
-            bounds_impfi=None):
+    def ent(
+        impf_set_list,
+        disc_rate,
+        exp_list,
+        meas_set,
+        haz_id_dict,
+        bounds_disc=None,
+        bounds_cost=None,
+        bounds_totval=None,
+        bounds_noise=None,
+        bounds_mdd=None,
+        bounds_paa=None,
+        bounds_impfi=None,
+    ):
         """
         Helper wrapper for basic entity set uncertainty input variable.
 
@@ -532,42 +539,61 @@ class InputVar():
 
         kwargs = {}
         if bounds_mdd is None:
-            kwargs['MDD'] = None
+            kwargs["MDD"] = None
         if bounds_paa is None:
-            kwargs['PAA'] = None
+            kwargs["PAA"] = None
         if bounds_impfi is None:
-            kwargs['IFi'] = None
-        if n_impf_set== 1:
-            kwargs['IL'] = 0
+            kwargs["IFi"] = None
+        if n_impf_set == 1:
+            kwargs["IL"] = 0
         if bounds_disc is None:
-            kwargs['DR'] = None
+            kwargs["DR"] = None
         if bounds_cost is None:
-            kwargs['CO'] = None
+            kwargs["CO"] = None
         if bounds_totval is None:
-            kwargs['ET'] = None
+            kwargs["ET"] = None
         if bounds_noise is None:
-            kwargs['EN'] = None
+            kwargs["EN"] = None
         if n_exp == 1:
-            kwargs['EL'] = 0
+            kwargs["EL"] = 0
 
         return InputVar(
-            partial(_ent_unc_func,
-                    impf_set_list=impf_set_list, haz_id_dict=haz_id_dict,
-                    disc_rate=disc_rate, bounds_noise=bounds_noise,
-                    exp_list=exp_list, meas_set=meas_set, **kwargs
-                    ),
-            _ent_unc_dict(bounds_totval=bounds_totval, bounds_noise=bounds_noise,
-                          bounds_impfi=bounds_impfi, n_impf_set=n_impf_set,
-                          bounds_mdd=bounds_mdd,
-                          bounds_paa=bounds_paa, bounds_disc=bounds_disc,
-                          bounds_cost=bounds_cost, n_exp=n_exp,)
+            partial(
+                _ent_unc_func,
+                impf_set_list=impf_set_list,
+                haz_id_dict=haz_id_dict,
+                disc_rate=disc_rate,
+                bounds_noise=bounds_noise,
+                exp_list=exp_list,
+                meas_set=meas_set,
+                **kwargs
+            ),
+            _ent_unc_dict(
+                bounds_totval=bounds_totval,
+                bounds_noise=bounds_noise,
+                bounds_impfi=bounds_impfi,
+                n_impf_set=n_impf_set,
+                bounds_mdd=bounds_mdd,
+                bounds_paa=bounds_paa,
+                bounds_disc=bounds_disc,
+                bounds_cost=bounds_cost,
+                n_exp=n_exp,
+            ),
         )
 
     @staticmethod
-    def entfut(impf_set_list, exp_list, meas_set, haz_id_dict,
-               bounds_cost=None, bounds_eg=None, bounds_noise=None,
-               bounds_impfi=None, bounds_mdd=None, bounds_paa=None,
-               ):
+    def entfut(
+        impf_set_list,
+        exp_list,
+        meas_set,
+        haz_id_dict,
+        bounds_cost=None,
+        bounds_eg=None,
+        bounds_noise=None,
+        bounds_impfi=None,
+        bounds_mdd=None,
+        bounds_paa=None,
+    ):
         """
         Helper wrapper for basic future entity set uncertainty input variable.
 
@@ -656,35 +682,46 @@ class InputVar():
 
         kwargs = {}
         if bounds_mdd is None:
-            kwargs['MDD'] = None
+            kwargs["MDD"] = None
         if bounds_paa is None:
-            kwargs['PAA'] = None
+            kwargs["PAA"] = None
         if bounds_impfi is None:
-            kwargs['IFi'] = None
+            kwargs["IFi"] = None
         if n_impf_set == 1:
-            kwargs['IL'] = 0
+            kwargs["IL"] = 0
         if bounds_cost is None:
-            kwargs['CO'] = None
+            kwargs["CO"] = None
         if bounds_eg is None:
-            kwargs['EG'] = None
+            kwargs["EG"] = None
         if bounds_noise is None:
-            kwargs['EN'] = None
+            kwargs["EN"] = None
         if n_exp == 1:
-            kwargs['EL'] = 0
+            kwargs["EL"] = 0
 
         return InputVar(
-            partial(_entfut_unc_func, haz_id_dict=haz_id_dict,
-                    bounds_noise=bounds_noise, impf_set_list=impf_set_list,
-                    exp_list=exp_list, meas_set=meas_set, **kwargs),
-            _entfut_unc_dict(bounds_eg=bounds_eg, bounds_noise=bounds_noise,
-                             bounds_impfi=bounds_impfi, n_impf_set=n_impf_set,
-                             bounds_paa=bounds_paa,
-                             bounds_mdd=bounds_mdd, bounds_cost=bounds_cost,
-                             n_exp=n_exp)
+            partial(
+                _entfut_unc_func,
+                haz_id_dict=haz_id_dict,
+                bounds_noise=bounds_noise,
+                impf_set_list=impf_set_list,
+                exp_list=exp_list,
+                meas_set=meas_set,
+                **kwargs
+            ),
+            _entfut_unc_dict(
+                bounds_eg=bounds_eg,
+                bounds_noise=bounds_noise,
+                bounds_impfi=bounds_impfi,
+                n_impf_set=n_impf_set,
+                bounds_paa=bounds_paa,
+                bounds_mdd=bounds_mdd,
+                bounds_cost=bounds_cost,
+                n_exp=n_exp,
+            ),
         )
 
 
-#Hazard
+# Hazard
 def _haz_uncfunc(HE, HI, HA, HF, HL, haz_list, n_ev):
     haz_tmp = copy.deepcopy(haz_list[int(HL)])
     if HE is not None:
@@ -699,46 +736,50 @@ def _haz_uncfunc(HE, HI, HA, HF, HL, haz_list, n_ev):
         haz_tmp.frequency = np.multiply(haz_tmp.frequency, HF)
     return haz_tmp
 
+
 def _haz_unc_dict(n_ev, bounds_int, bounds_frac, bounds_freq, n_haz):
     hud = {}
     if n_ev is not None:
-        hud['HE'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
+        hud["HE"] = sp.stats.randint(0, 2**32 - 1)  # seed for rnd generator
     if bounds_int is not None:
         imin, idelta = bounds_int[0], bounds_int[1] - bounds_int[0]
-        hud['HI'] = sp.stats.uniform(imin, idelta)
+        hud["HI"] = sp.stats.uniform(imin, idelta)
     if bounds_frac is not None:
         amin, adelta = bounds_frac[0], bounds_frac[1] - bounds_frac[0]
-        hud['HA'] = sp.stats.uniform(amin, adelta)
+        hud["HA"] = sp.stats.uniform(amin, adelta)
     if bounds_freq is not None:
         fmin, fdelta = bounds_freq[0], bounds_freq[1] - bounds_freq[0]
-        hud['HF'] = sp.stats.uniform(fmin, fdelta)
+        hud["HF"] = sp.stats.uniform(fmin, fdelta)
     if n_haz > 1:
-        hud['HL'] = sp.stats.randint(0, n_haz)
+        hud["HL"] = sp.stats.randint(0, n_haz)
     return hud
 
-#Exposure
+
+# Exposure
 def _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise):
     exp_tmp = exp_list[int(EL)].copy(deep=True)
     if EN is not None:
         rng = np.random.RandomState(int(EN))
-        rnd_vals = rng.uniform(bounds_noise[0], bounds_noise[1], size = len(exp_tmp.gdf))
-        exp_tmp.gdf.value *= rnd_vals
+        rnd_vals = rng.uniform(bounds_noise[0], bounds_noise[1], size=len(exp_tmp.gdf))
+        exp_tmp.gdf["value"] *= rnd_vals
     if ET is not None:
-        exp_tmp.gdf.value *= ET
+        exp_tmp.gdf["value"] *= ET
     return exp_tmp
+
 
 def _exp_unc_dict(bounds_totval, bounds_noise, n_exp):
     eud = {}
     if bounds_totval is not None:
         tmin, tmax = bounds_totval[0], bounds_totval[1] - bounds_totval[0]
-        eud['ET'] = sp.stats.uniform(tmin, tmax)
+        eud["ET"] = sp.stats.uniform(tmin, tmax)
     if bounds_noise is not None:
-        eud['EN'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
+        eud["EN"] = sp.stats.randint(0, 2**32 - 1)  # seed for rnd generator
     if n_exp > 1:
-        eud['EL'] = sp.stats.randint(0, n_exp)
+        eud["EL"] = sp.stats.randint(0, n_exp)
     return eud
 
-#Impact function set
+
+# Impact function set
 def _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list, haz_id_dict):
     impf_set_tmp = copy.deepcopy(impf_set_list[int(IL)])
     for haz_type, fun_id_list in haz_id_dict.items():
@@ -746,50 +787,57 @@ def _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list, haz_id_dict):
             if MDD is not None:
                 new_mdd = np.minimum(
                     impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd * MDD,
-                    1.0
-                    )
+                    1.0,
+                )
                 impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).mdd = new_mdd
             if PAA is not None:
                 new_paa = np.minimum(
                     impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa * PAA,
-                    1.0
-                    )
+                    1.0,
+                )
                 impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).paa = new_paa
             if IFi is not None:
                 new_int = np.maximum(
-                    impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity + IFi,
-                    0.0
-                    )
-                impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity = new_int
+                    impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity
+                    + IFi,
+                    0.0,
+                )
+                impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity = (
+                    new_int
+                )
     return impf_set_tmp
+
 
 def _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa, n_impf_set):
     iud = {}
     if bounds_impfi is not None:
         xmin, xdelta = bounds_impfi[0], bounds_impfi[1] - bounds_impfi[0]
-        iud['IFi'] = sp.stats.uniform(xmin, xdelta)
+        iud["IFi"] = sp.stats.uniform(xmin, xdelta)
     if bounds_paa is not None:
         xmin, xdelta = bounds_paa[0], bounds_paa[1] - bounds_paa[0]
-        iud['PAA'] = sp.stats.uniform(xmin, xdelta)
+        iud["PAA"] = sp.stats.uniform(xmin, xdelta)
     if bounds_mdd is not None:
         xmin, xdelta = bounds_mdd[0], bounds_mdd[1] - bounds_mdd[0]
-        iud['MDD'] = sp.stats.uniform(xmin, xdelta)
+        iud["MDD"] = sp.stats.uniform(xmin, xdelta)
     if n_impf_set > 1:
-        iud['IL'] = sp.stats.randint(0, n_impf_set)
+        iud["IL"] = sp.stats.randint(0, n_impf_set)
     return iud
 
-#Entity
+
+# Entity
 def _disc_uncfunc(DR, disc_rate):
     disc = copy.deepcopy(disc_rate)
     if DR is not None:
         disc.rates = np.ones(disc.years.size) * DR
     return disc
 
+
 def _disc_unc_dict(bounds_disk):
     if bounds_disk is None:
         return {}
     dmin, ddelta = bounds_disk[0], bounds_disk[1] - bounds_disk[0]
-    return  {'DR': sp.stats.uniform(dmin, ddelta)}
+    return {"DR": sp.stats.uniform(dmin, ddelta)}
+
 
 def _meas_set_uncfunc(CO, meas_set):
     meas_set_tmp = copy.deepcopy(meas_set)
@@ -799,48 +847,105 @@ def _meas_set_uncfunc(CO, meas_set):
                 meas.cost *= CO
     return meas_set_tmp
 
+
 def _meas_set_unc_dict(bounds_cost):
     cmin, cdelta = bounds_cost[0], bounds_cost[1] - bounds_cost[0]
-    return {'CO': sp.stats.uniform(cmin, cdelta)}
+    return {"CO": sp.stats.uniform(cmin, cdelta)}
 
-def _ent_unc_func(EN, ET, EL, IFi, IL, MDD, PAA, CO, DR, bounds_noise,
-                 impf_set_list, haz_id_dict, disc_rate, exp_list, meas_set):
+
+def _ent_unc_func(
+    EN,
+    ET,
+    EL,
+    IFi,
+    IL,
+    MDD,
+    PAA,
+    CO,
+    DR,
+    bounds_noise,
+    impf_set_list,
+    haz_id_dict,
+    disc_rate,
+    exp_list,
+    meas_set,
+):
 
     exposures = _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise)
-    impact_func_set = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
-                                            haz_id_dict=haz_id_dict)
+    impact_func_set = _impfset_uncfunc(
+        IFi, MDD, PAA, IL, impf_set_list=impf_set_list, haz_id_dict=haz_id_dict
+    )
     measure_set = _meas_set_uncfunc(CO, meas_set=meas_set)
     disc_rates = _disc_uncfunc(DR, disc_rate)
     return Entity(exposures, disc_rates, impact_func_set, measure_set)
 
-def _ent_unc_dict(bounds_totval, bounds_noise, bounds_impfi, bounds_mdd,
-                  bounds_paa, n_impf_set, bounds_disc, bounds_cost, n_exp):
+
+def _ent_unc_dict(
+    bounds_totval,
+    bounds_noise,
+    bounds_impfi,
+    bounds_mdd,
+    bounds_paa,
+    n_impf_set,
+    bounds_disc,
+    bounds_cost,
+    n_exp,
+):
     ent_unc_dict = _exp_unc_dict(bounds_totval, bounds_noise, n_exp)
-    ent_unc_dict.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa, n_impf_set))
+    ent_unc_dict.update(
+        _impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa, n_impf_set)
+    )
     ent_unc_dict.update(_disc_unc_dict(bounds_disc))
     ent_unc_dict.update(_meas_set_unc_dict(bounds_cost))
-    return  ent_unc_dict
+    return ent_unc_dict
 
-def _entfut_unc_func(EN, EG, EL, IFi, IL, MDD, PAA, CO, bounds_noise,
-                 impf_set_list, haz_id_dict, exp_list, meas_set):
-    exposures = _exp_uncfunc(EN=EN, ET=EG, EL=EL, exp_list=exp_list, bounds_noise=bounds_noise)
-    impact_funcs = _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list=impf_set_list,
-                                            haz_id_dict=haz_id_dict)
+
+def _entfut_unc_func(
+    EN,
+    EG,
+    EL,
+    IFi,
+    IL,
+    MDD,
+    PAA,
+    CO,
+    bounds_noise,
+    impf_set_list,
+    haz_id_dict,
+    exp_list,
+    meas_set,
+):
+    exposures = _exp_uncfunc(
+        EN=EN, ET=EG, EL=EL, exp_list=exp_list, bounds_noise=bounds_noise
+    )
+    impact_funcs = _impfset_uncfunc(
+        IFi, MDD, PAA, IL, impf_set_list=impf_set_list, haz_id_dict=haz_id_dict
+    )
     measures = _meas_set_uncfunc(CO, meas_set=meas_set)
-    disc_rates = DiscRates() #Disc rate of future entity ignored in cost_benefit.calc()
+    disc_rates = (
+        DiscRates()
+    )  # Disc rate of future entity ignored in cost_benefit.calc()
     return Entity(exposures, disc_rates, impact_funcs, measures)
 
-def _entfut_unc_dict(bounds_impfi, bounds_mdd,
-                  bounds_paa, n_impf_set, bounds_eg, bounds_noise,
-                  bounds_cost, n_exp):
+
+def _entfut_unc_dict(
+    bounds_impfi,
+    bounds_mdd,
+    bounds_paa,
+    n_impf_set,
+    bounds_eg,
+    bounds_noise,
+    bounds_cost,
+    n_exp,
+):
     eud = {}
     if bounds_eg is not None:
         gmin, gmax = bounds_eg[0], bounds_eg[1] - bounds_eg[0]
-        eud['EG'] = sp.stats.uniform(gmin, gmax)
+        eud["EG"] = sp.stats.uniform(gmin, gmax)
     if bounds_noise is not None:
-        eud['EN'] = sp.stats.randint(0, 2**32 - 1) #seed for rnd generator
+        eud["EN"] = sp.stats.randint(0, 2**32 - 1)  # seed for rnd generator
     if n_exp > 1:
-        eud['EL'] = sp.stats.randint(0, n_exp)
+        eud["EL"] = sp.stats.randint(0, n_exp)
     eud.update(_impfset_unc_dict(bounds_impfi, bounds_mdd, bounds_paa, n_impf_set))
     if bounds_cost is not None:
         eud.update(_meas_set_unc_dict(bounds_cost))

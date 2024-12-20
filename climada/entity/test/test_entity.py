@@ -18,18 +18,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Entity class.
 """
+
 import unittest
+
 import numpy as np
 
 from climada import CONFIG
+from climada.entity.disc_rates.base import DiscRates
 from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
-from climada.entity.disc_rates.base import DiscRates
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.measures.measure_set import MeasureSet
 from climada.util.constants import ENT_TEMPLATE_XLS
 
-ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath('demo_today.mat')
+ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath("demo_today.mat")
 
 
 class TestReader(unittest.TestCase):
@@ -41,12 +43,12 @@ class TestReader(unittest.TestCase):
         def_entity = Entity.from_excel(ENT_TEMPLATE_XLS)
 
         # Check default demo excel file has been loaded
-        self.assertEqual(len(def_entity.exposures.gdf.deductible), 24)
-        self.assertEqual(def_entity.exposures.gdf.value[2], 12596064143.542929)
+        self.assertEqual(len(def_entity.exposures.gdf["deductible"]), 24)
+        self.assertEqual(def_entity.exposures.gdf["value"][2], 12596064143.542929)
 
-        self.assertEqual(len(def_entity.impact_funcs.get_func('TC', 1).mdd), 25)
+        self.assertEqual(len(def_entity.impact_funcs.get_func("TC", 1).mdd), 25)
 
-        self.assertIn('risk transfer', def_entity.measures.get_names('TC'))
+        self.assertIn("risk transfer", def_entity.measures.get_names("TC"))
 
         self.assertEqual(def_entity.disc_rates.years[5], 2005)
 
@@ -70,27 +72,27 @@ class TestCheck(unittest.TestCase):
     def test_wrongMeas_fail(self):
         """Wrong measures"""
         ent = Entity.from_excel(ENT_TEMPLATE_XLS)
-        actions = ent.measures.get_measure('TC')
+        actions = ent.measures.get_measure("TC")
         actions[0].color_rgb = np.array([1, 2])
         with self.assertRaises(ValueError) as cm:
             ent.check()
-        self.assertIn('Measure.color_rgb', str(cm.exception))
+        self.assertIn("Measure.color_rgb", str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
             ent.measures = Exposures()
-        self.assertIn('MeasureSet', str(cm.exception))
+        self.assertIn("MeasureSet", str(cm.exception))
 
     def test_wrongImpFun_fail(self):
         """Wrong impact functions"""
         ent = Entity.from_excel(ENT_TEMPLATE_XLS)
-        ent.impact_funcs.get_func('TC', 1).paa = np.array([1, 2])
+        ent.impact_funcs.get_func("TC", 1).paa = np.array([1, 2])
         with self.assertRaises(ValueError) as cm:
             ent.check()
-        self.assertIn('ImpactFunc.paa', str(cm.exception))
+        self.assertIn("ImpactFunc.paa", str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
             ent.impact_funcs = Exposures()
-        self.assertIn('ImpactFuncSet', str(cm.exception))
+        self.assertIn("ImpactFuncSet", str(cm.exception))
 
     def test_wrongDisc_fail(self):
         """Wrong discount rates"""
@@ -98,11 +100,11 @@ class TestCheck(unittest.TestCase):
         ent.disc_rates.rates = np.array([1, 2])
         with self.assertRaises(ValueError) as cm:
             ent.check()
-        self.assertIn('DiscRates.rates', str(cm.exception))
+        self.assertIn("DiscRates.rates", str(cm.exception))
 
         with self.assertRaises(ValueError) as cm:
             ent.disc_rates = Exposures()
-        self.assertIn('DiscRates', str(cm.exception))
+        self.assertIn("DiscRates", str(cm.exception))
 
 
 # Execute Tests
