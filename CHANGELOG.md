@@ -31,9 +31,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
-- `climada.hazard.centroids.centr.union` and `climada.hazard.centroids.centr.append`[#989](https://github.com/CLIMADA-project/climada_python/pull/989). Results: computing windfields is 10 times faster.
-  - `union` does not iterate anymore over `append` but calls directly `append` with the entire list of centroids objects.
-  - `append` concatenate centroids only once, when all centroids have been appended, instead of concatenating after every centroid is appended.
+- `Centroids.append` now takes multiple arguments and provides a performance boost when doing so [#989](https://github.com/CLIMADA-project/climada_python/pull/989)
 - `climada.util.coordinates.get_country_geometries` function: Now throwing a ValueError if unregognized ISO country code is given (before, the invalid ISO code was ignored) [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
 - Improved scaling factors implemented in `climada.hazard.trop_cyclone.apply_climate_scenario_knu` to model the impact of climate changes to tropical cyclones [#734](https://github.com/CLIMADA-project/climada_python/pull/734)
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
