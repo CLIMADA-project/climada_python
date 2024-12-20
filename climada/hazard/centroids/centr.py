@@ -356,13 +356,13 @@ class Centroids:
         union : Union of Centroid objects.
         remove_duplicate_points : Remove duplicate points in a Centroids object.
         """
-        for cc in centr:
-            if not u_coord.equal_crs(self.crs, cc.crs):
+        for other in centr:
+            if not u_coord.equal_crs(self.crs, other.crs):
                 raise ValueError(
-                    f"The given centroids use different CRS: {self.crs}, {cc.crs}. "
+                    f"The given centroids use different CRS: {self.crs}, {other.crs}. "
                     "The centroids are incompatible and cannot be concatenated."
                 )
-        self.gdf = pd.concat([self.gdf] + [cc.gdf for cc in centr])
+        self.gdf = pd.concat([self.gdf] + [other.gdf for other in centr])
 
     def union(self, *others):
         """Create the union of the current Centroids object with one or more other centroids
