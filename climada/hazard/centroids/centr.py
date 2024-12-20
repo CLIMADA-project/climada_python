@@ -339,8 +339,8 @@ class Centroids:
         object with the union of all centroids.
 
         Note that the result might contain duplicate points if the object to append has an overlap
-        with the current object. Duplicates points will be removed in `union`
-        by calling `remove_duplicate_points`.
+        with the current object. Remove duplicates by either using :py:meth:`union`
+        or calling :py:meth:`remove_duplicate_points` after appending.
 
         Parameters
         ----------
