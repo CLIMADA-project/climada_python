@@ -816,6 +816,26 @@ class TestCentroidsMethods(unittest.TestCase):
         with self.assertRaises(ValueError):
             self.centr.append(centr2)
 
+    def test_append_multiple_arguments(self):
+        """Test passing append multiple arguments in the form of a list of Centroids."""
+        # create a single centroid
+        lat, lon = np.array([1, 2]), np.array([1, 2])
+        centr = Centroids(lat=lat, lon=lon)
+        # create a list of centroids
+        coords = [(np.array([3, 4]), np.array([3, 4]))]
+        centroids_list = [Centroids(lat=lat, lon=lon) for lat, lon in coords]
+
+        centr.append(*centroids_list)
+
+        self.assertEqual(centr.lat[0], 1)
+        self.assertEqual(centr.lat[1], 2)
+        self.assertEqual(centr.lat[2], 3)
+        self.assertEqual(centr.lat[3], 4)
+        self.assertEqual(centr.lon[0], 1)
+        self.assertEqual(centr.lon[1], 2)
+        self.assertEqual(centr.lon[2], 3)
+        self.assertEqual(centr.lon[3], 4)
+
     def test_remove_duplicate_pass(self):
         """Test remove_duplicate_points"""
         centr = Centroids(

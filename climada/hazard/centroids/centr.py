@@ -344,8 +344,8 @@ class Centroids:
 
         Parameters
         ----------
-        centr : Centroids
-            Centroids to append. The centroids need to have the same CRS.
+        centr : list
+            List of Centroids to append. The centroids need to have the same CRS.
 
         Raises
         ------
@@ -366,7 +366,7 @@ class Centroids:
 
     def union(self, *others):
         """Create the union of the current Centroids object with one or more other centroids
-        objects by passing the list of centroids to `append` for concatenation and then
+        objects by passing the list of centroids to :py:meth:`append` for concatenation and then
         removes duplicates.
 
         All centroids must have the same CRS. Points that are contained in more than one of the
@@ -374,8 +374,8 @@ class Centroids:
 
         Parameters
         ----------
-        others : list of Centroids
-            Centroids contributing to the union.
+        others : list
+            List of Centroids contributing to the union.
 
         Returns
         -------
