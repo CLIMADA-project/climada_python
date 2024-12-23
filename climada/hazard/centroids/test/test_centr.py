@@ -817,7 +817,7 @@ class TestCentroidsMethods(unittest.TestCase):
             self.centr.append(centr2)
 
     def test_append_multiple_arguments(self):
-        """Test passing append multiple arguments in the form of a list of Centroids."""
+        """Test passing append() multiple arguments in the form of a list of Centroids."""
         # create a single centroid
         lat, lon = np.array([1, 2]), np.array([1, 2])
         centr = Centroids(lat=lat, lon=lon)
