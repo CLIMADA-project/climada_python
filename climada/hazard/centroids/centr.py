@@ -344,8 +344,8 @@ class Centroids:
 
         Parameters
         ----------
-        centr : list
-            List of Centroids to append. The centroids need to have the same CRS.
+        centr : Centroids
+            Centroids to append. The centroids need to have the same CRS.
 
         Raises
         ------
@@ -374,8 +374,8 @@ class Centroids:
 
         Parameters
         ----------
-        others : list
-            List of Centroids contributing to the union.
+        others : Centroids
+            Centroids contributing to the union.
 
         Returns
         -------
