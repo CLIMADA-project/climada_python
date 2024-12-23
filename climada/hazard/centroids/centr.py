@@ -334,7 +334,7 @@ class Centroids:
     def append(self, *centr):
         """Append Centroids to the current centroid object for concatenation.
 
-        This method check that all centroids use the same CRS, append the list of centroids to
+        This method checks that all centroids use the same CRS, appends the list of centroids to
         the initial Centroid object and eventually concatenates them to create a single centroid
         object with the union of all centroids.
 
