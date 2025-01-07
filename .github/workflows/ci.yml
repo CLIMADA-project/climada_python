@@ -74,6 +74,6 @@ jobs:
     needs: build-and-test
     with:
       core_branch: ${{ github.ref }}
-      petals_branch: feature/exposures_crs
+      petals_branch: develop
     permissions:
       checks: write
