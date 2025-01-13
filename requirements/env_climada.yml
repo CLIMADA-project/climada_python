@@ -25,7 +25,6 @@ dependencies:
   - pint>=0.24
   - pip
   - pycountry>=24.6
-  - pyepsg>=0.4
   - pyproj>=3.5
   - pytables>=3.7
   - pyxlsb>=1.0
@@ -34,7 +33,7 @@ dependencies:
   - salib>=1.5
   - seaborn>=0.13
   - scikit-learn>=1.5
-  - scipy>=1.13
+  - scipy>=1.13,<1.15  # 1.15 is not compatible with climada_petals, climada_petals.engine.test.test_supplychain fails with "'Series' has no attribute 'nonzero'"
   - sparse>=0.15
   - statsmodels>=0.14
   - tabulate>=0.9
