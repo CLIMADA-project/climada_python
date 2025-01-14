@@ -31,6 +31,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- `Centroids.append` now takes multiple arguments and provides a performance boost when doing so [#989](https://github.com/CLIMADA-project/climada_python/pull/989)
 - `climada.util.coordinates.get_country_geometries` function: Now throwing a ValueError if unregognized ISO country code is given (before, the invalid ISO code was ignored) [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
 - Improved scaling factors implemented in `climada.hazard.trop_cyclone.apply_climate_scenario_knu` to model the impact of climate changes to tropical cyclones [#734](https://github.com/CLIMADA-project/climada_python/pull/734)
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
@@ -47,6 +48,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- Resolved an issue where windspeed computation was much slower than in Climada v3 [#989](https://github.com/CLIMADA-project/climada_python/pull/989)
 - File handles are being closed after reading netcdf files with `climada.hazard` modules [#953](https://github.com/CLIMADA-project/climada_python/pull/953)
 - Avoids a ValueError in the impact calculation for cases with a single exposure point and MDR values of 0, by explicitly removing zeros in `climada.hazard.Hazard.get_mdr` [#933](https://github.com/CLIMADA-project/climada_python/pull/948)
 
