@@ -12,6 +12,11 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
+- `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex`with CLIMADA
+- `climada.util.coordinates.bounding_box_global` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
+- `climada.util.coordinates.bounding_box_from_countries` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
+- `climada.util.coordinates.bounding_box_from_cardinal_bounds` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
 - `climada.engine.impact.Impact.local_return_period` method [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
 - `doc.tutorial.climada_util_local_exceedance_values.ipynb` tutorial explaining `Hazard.local_exceedance_intensity`, `Hazard.local_return_period`, `Impact.local_exceedance_impact`, and `Impact.local_return_period` methods [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, that all use the `climada.util.interpolation` module [#918](https://github.com/CLIMADA-project/climada_python/pull/918)
@@ -28,6 +33,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- `Centroids.append` now takes multiple arguments and provides a performance boost when doing so [#989](https://github.com/CLIMADA-project/climada_python/pull/989)
+- `climada.util.coordinates.get_country_geometries` function: Now throwing a ValueError if unregognized ISO country code is given (before, the invalid ISO code was ignored) [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
 - Improved scaling factors implemented in `climada.hazard.trop_cyclone.apply_climate_scenario_knu` to model the impact of climate changes to tropical cyclones [#734](https://github.com/CLIMADA-project/climada_python/pull/734)
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
@@ -43,6 +50,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- Resolved an issue where windspeed computation was much slower than in Climada v3 [#989](https://github.com/CLIMADA-project/climada_python/pull/989)
 - File handles are being closed after reading netcdf files with `climada.hazard` modules [#953](https://github.com/CLIMADA-project/climada_python/pull/953)
 - Avoids a ValueError in the impact calculation for cases with a single exposure point and MDR values of 0, by explicitly removing zeros in `climada.hazard.Hazard.get_mdr` [#933](https://github.com/CLIMADA-project/climada_python/pull/948)
 
