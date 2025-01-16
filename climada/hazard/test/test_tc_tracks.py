@@ -45,40 +45,10 @@ TEST_TRACK_GETTELMAN = DATA_DIR.joinpath("gettelman_test_tracks.nc")
 TEST_TRACK_EMANUEL = DATA_DIR.joinpath("emanuel_test_tracks.mat")
 TEST_TRACK_EMANUEL_CORR = DATA_DIR.joinpath("temp_mpircp85cal_full.mat")
 TEST_TRACK_CHAZ = DATA_DIR.joinpath("chaz_test_tracks.nc")
+TEST_TRACK_FAST = DATA_DIR.joinpath("FAST_test_tracks.nc")
 TEST_TRACK_STORM = DATA_DIR.joinpath("storm_test_tracks.txt")
 TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath("tracks-antimeridian")
 TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath("tctracks_hdf5_legacy.nc")
-
-TEST_TRACKS_FAST_dummy = xr.Dataset(
-    data_vars={
-        "lon_trks": (("n_trk", "time"), np.random.uniform(-180, 180, size=(20, 361))),
-        "lat_trks": (("n_trk", "time"), np.random.uniform(-90, 90, size=(20, 361))),
-        "u250_trks": (("n_trk", "time"), np.random.randn(20, 361)),
-        "v250_trks": (("n_trk", "time"), np.random.randn(20, 361)),
-        "u850_trks": (("n_trk", "time"), np.random.randn(20, 361)),
-        "v850_trks": (("n_trk", "time"), np.random.randn(20, 361)),
-        "v_trks": (("n_trk", "time"), np.random.randn(20, 361)),
-        "m_trks": (("n_trk", "time"), np.random.randn(20, 361)),
-        "vmax_trks": (("n_trk", "time"), np.random.randn(20, 361)),
-        "tc_month": (("n_trk",), np.random.randint(1, 13, size=20)),
-        "tc_basins": (
-            ("n_trk",),
-            np.full(20, "WP"),
-        ),
-        "tc_years": (("n_trk",), np.full(20, 2025)),
-        "seeds_per_month": (
-            ("year", "basin", "month"),
-            np.random.randint(0, 5, size=(1, 7, 12)),
-        ),
-    },
-    coords={
-        "n_trk": np.arange(20),
-        "time": np.linspace(0, 1.296e6, 361),
-        "year": [2025],
-        "basin": ["AU", "EP", "NA", "NI", "SI", "SP", "WP"],
-        "month": np.arange(1, 13),
-    },
-)
 
 
 class TestIbtracs(unittest.TestCase):
@@ -663,24 +633,32 @@ class TestIO(unittest.TestCase):
         tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM, years=[7])
         self.assertEqual(len(tc_track.data), 0)
 
-    def test_compute_central_pressure(self):
-        pass
+    def test_define_tc_category_fast(self):
+        """test that the correct category is assigned to a tc."""
 
-    def test_from_netcdf_fast(self):
-        """test the import of netcdf files from fast model"""
+        max_wind = np.array([20, 72, 36, 50])  # knots
+        category1 = tc.TCTracks.define_tc_category_fast(max_wind)
+        category2 = tc.TCTracks.define_tc_category_fast(
+            max_sust_wind=max_wind, units="m/s"
+        )
+        self.assertEqual(category1, 1)
+        self.assertEqual(category2, 5)
 
-        # create dummy .nc file to be read
-        file_path = DATA_DIR.joinpath("fast_test_tracks.nc")
-        TEST_TRACKS_FAST_dummy.to_netcdf(file_path)
-        tc_track = tc.TCTracks.from_netcdf_fast(file_path)
+    def test_from_fast(self):
+        """test the correct import of netcdf files from fast model and the conversion to a
+        different xr.array structure compatible with CLIMADA."""
+
+        tc_track = tc.TCTracks.from_fast(TEST_TRACK_FAST)
 
         expected_attributes = {
             "max_sustained_wind_unit": "m/s",
-            "central_pressure": "hPa",
+            "central_pressure_unit": "hPa",
+            "name": "storm_0",
+            "sid": 0,
+            "orig_event_flag": True,
             "data_provider": "FAST",
-            "orig_event_flag": False,
             "id_no": 0,
-            "category": -1,
+            "category": 0,
         }
 
         self.assertIsInstance(
@@ -694,12 +672,10 @@ class TestIO(unittest.TestCase):
             xr.Dataset,
             "tc_track.data[0] not an instance of xarray.Dataset",
         )
-        self.assertEqual(len(tc_track.data), 20)
+        self.assertEqual(len(tc_track.data), 5)
         self.assertEqual(tc_track.data[0].attrs, expected_attributes)
-        self.assertEqual(tc_track.data[0].environmental_pressure.data[0], 1005)
+        self.assertEqual(tc_track.data[0].environmental_pressure.data[0], 1010)
         self.assertEqual(list(tc_track.data[0].coords.keys()), ["time", "lat", "lon"])
-
-        os.remove(file_path)
 
     def test_to_geodataframe_points(self):
         """Conversion of TCTracks to GeoDataFrame using Points."""
