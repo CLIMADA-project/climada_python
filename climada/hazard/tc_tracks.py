@@ -54,7 +54,7 @@ from sklearn.metrics import DistanceMetric
 
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
-from climada.hazard import Centroids, tc_tracks, tc_tracks_synth
+from climada.hazard import Centroids, tc_tracks_synth
 
 # climada dependencies
 from climada.util import ureg
