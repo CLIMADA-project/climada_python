@@ -52,9 +52,10 @@ from matplotlib.lines import Line2D
 from shapely.geometry import LineString, MultiLineString, Point
 from sklearn.metrics import DistanceMetric
 
+import climada.hazard.tc_tracks_synth
 import climada.util.coordinates as u_coord
 import climada.util.plot as u_plot
-from climada.hazard import Centroids, tc_tracks_synth
+from climada.hazard import Centroids
 
 # climada dependencies
 from climada.util import ureg
@@ -1684,11 +1685,11 @@ class TCTracks:
         for file in file_tr:
             if Path(file).suffix != ".nc":
                 continue
-            with xr.open_dataset(file) as ds:
-                for i in ds.n_trk:
+            with xr.open_dataset(file) as data:
+                for i in data.n_trk:
 
                     # Select track
-                    track = ds.sel(n_trk=i)
+                    track = data.sel(n_trk=i)
 
                     # Define coordinates
                     lat = track.lat_trks.data
@@ -1713,13 +1714,13 @@ class TCTracks:
 
                     cen_pres_missing = np.full(lat.shape, np.nan)
                     rmw_missing = np.full(lat.shape, np.nan)
-                    cen_pres = tc_tracks._estimate_pressure(
+                    cen_pres = _estimate_pressure(
                         cen_pres_missing, lat, lon, max_sustained_wind_knots
                     )
-                    rmw = tc_tracks.estimate_rmw(rmw_missing, cen_pres)
+                    rmw = estimate_rmw(rmw_missing, cen_pres)
 
                     # Define attributes
-                    category = tc_tracks.TCTracks.define_tc_category_fast(
+                    category = TCTracks.define_tc_category_fast(
                         max_sustained_wind_knots
                     )
                     id_no = track.n_trk.item()
