@@ -1679,62 +1679,60 @@ class TCTracks:
             TCTracks object with tracks data from the given directory of NetCDF files.
         """
 
-        file_tr = get_file_names(folder_name)
-        LOGGER.info("Reading %s files.", len(file_tr))
+        LOGGER.info("Reading %s files.", len(get_file_names(folder_name)))
         data = []
-        for file in file_tr:
+        for file in get_file_names(folder_name):
             if Path(file).suffix != ".nc":
                 continue
-            with xr.open_dataset(file) as data:
-                for i in data.n_trk:
+            with xr.open_dataset(file) as dataset:
+                for i in dataset.n_trk:
 
                     # Select track
-                    track = data.sel(n_trk=i)
+                    track = dataset.sel(n_trk=i)
 
                     # Define coordinates
                     lat = track.lat_trks.data
                     lon = track.lon_trks.data
-                    time = track.time.data
 
                     # Convert time to pandas Datetime "yyyy.mm.dd"
                     reference_time = (
                         f"{track.tc_years.item()}-{int(track.tc_month.item())}-01"
                     )
-                    time = pd.to_datetime(time, unit="s", origin=reference_time).astype(
-                        "datetime64[s]"
-                    )
+                    time = pd.to_datetime(
+                        track.time.data, unit="s", origin=reference_time
+                    ).astype("datetime64[s]")
 
                     # Define variables
-                    time_step_vector = np.full(time.shape[0], track.time.data[1])
-                    max_sustained_wind_ms = track.v_trks.data
-                    max_sustained_wind_knots = max_sustained_wind_ms * 1.943844
-                    basin_vector = np.full(time.shape[0], track.tc_basins.data.item())
+                    max_sustained_wind_knots = track.v_trks.data * 1.943844
                     env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
-                    env_pressure_vect = np.full(time.shape[0], env_pressure)
-
-                    cen_pres_missing = np.full(lat.shape, np.nan)
-                    rmw_missing = np.full(lat.shape, np.nan)
                     cen_pres = _estimate_pressure(
-                        cen_pres_missing, lat, lon, max_sustained_wind_knots
+                        np.full(lat.shape, np.nan), lat, lon, max_sustained_wind_knots
                     )
-                    rmw = estimate_rmw(rmw_missing, cen_pres)
+                    rmw = estimate_rmw(np.full(lat.shape, np.nan), cen_pres)
 
                     # Define attributes
                     category = TCTracks.define_tc_category_fast(
                         max_sustained_wind_knots
                     )
-                    id_no = track.n_trk.item()
-                    track_name = f"storm_{id_no}"
 
                     data.append(
                         xr.Dataset(
                             {
-                                "time_step": ("time", time_step_vector),
-                                "max_sustained_wind": ("time", max_sustained_wind_ms),
+                                "time_step": (
+                                    "time",
+                                    np.full(time.shape[0], track.time.data[1]),
+                                ),
+                                "max_sustained_wind": ("time", track.v_trks.data),
                                 "central_pressure": ("time", cen_pres),
                                 "radius_max_wind": ("time", rmw),
-                                "environmental_pressure": ("time", env_pressure_vect),
-                                "basin": ("time", basin_vector),
+                                "environmental_pressure": (
+                                    "time",
+                                    np.full(time.shape[0], env_pressure),
+                                ),
+                                "basin": (
+                                    "time",
+                                    np.full(time.shape[0], track.tc_basins.data.item()),
+                                ),
                             },
                             coords={
                                 "time": ("time", time),
@@ -1744,11 +1742,11 @@ class TCTracks:
                             attrs={
                                 "max_sustained_wind_unit": "m/s",
                                 "central_pressure_unit": "hPa",
-                                "name": track_name,
-                                "sid": id_no,
+                                "name": "storm_%s" % track.n_trk.item(),
+                                "sid": track.n_trk.item(),
                                 "orig_event_flag": True,
                                 "data_provider": "FAST",
-                                "id_no": id_no,
+                                "id_no": track.n_trk.item(),
                                 "category": category,
                             },
                         )
