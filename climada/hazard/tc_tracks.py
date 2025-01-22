@@ -1703,7 +1703,7 @@ class TCTracks:
                     ).astype("datetime64[s]")
 
                     # Define variables
-                    max_sustained_wind_knots = track.v_trks.data * 1.943844
+                    max_sustained_wind_knots = track.vmax_trks.data * 1.943844
                     env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
                     cen_pres = _estimate_pressure(
                         np.full(lat.shape, np.nan), lat, lon, max_sustained_wind_knots
@@ -1716,7 +1716,7 @@ class TCTracks:
                                     "time",
                                     np.full(time.shape[0], track.time.data[1]),
                                 ),
-                                "max_sustained_wind": ("time", track.v_trks.data),
+                                "max_sustained_wind": ("time", track.vmax_trks.data),
                                 "central_pressure": ("time", cen_pres),
                                 "radius_max_wind": (
                                     "time",

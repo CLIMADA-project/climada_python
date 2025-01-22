@@ -658,7 +658,7 @@ class TestIO(unittest.TestCase):
             "orig_event_flag": True,
             "data_provider": "FAST",
             "id_no": 0,
-            "category": 0,
+            "category": 1,
         }
 
         self.assertIsInstance(
@@ -674,8 +674,20 @@ class TestIO(unittest.TestCase):
         )
         self.assertEqual(len(tc_track.data), 5)
         self.assertEqual(tc_track.data[0].attrs, expected_attributes)
-        self.assertEqual(tc_track.data[0].environmental_pressure.data[0], 1010)
         self.assertEqual(list(tc_track.data[0].coords.keys()), ["time", "lat", "lon"])
+        self.assertEqual(
+            tc_track.data[0].time.values[0],
+            np.datetime64("2025-09-01T00:00:00.000000000"),
+        )
+        self.assertEqual(tc_track.data[0].lat.values[0], 17.863591350508266)
+        self.assertEqual(tc_track.data[0].lon.values[0], 288.2355824168037)
+        self.assertEqual(len(tc_track.data[0].time), 121)
+        self.assertEqual(tc_track.data[0].time_step[0], 10800)
+        self.assertEqual(
+            tc_track.data[0].max_sustained_wind.values[10], 24.71636959089841
+        )
+        self.assertEqual(tc_track.data[0].environmental_pressure.data[0], 1010)
+        self.assertEqual(tc_track.data[0].basin[0], "NA")
 
     def test_to_geodataframe_points(self):
         """Conversion of TCTracks to GeoDataFrame using Points."""
