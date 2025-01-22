@@ -1621,7 +1621,7 @@ class TCTracks:
         return cls(data)
 
     @staticmethod
-    def define_tc_category_fast(max_sust_wind: np.array, units: str = "kn") -> int:
+    def define_tc_category_FAST(max_sust_wind: np.array, units: str = "kn") -> int:
         """Define category of the tropical cyclone according to Saffir-Simpson scale.
 
         Parameters:
@@ -1744,7 +1744,7 @@ class TCTracks:
                                 "orig_event_flag": True,
                                 "data_provider": "FAST",
                                 "id_no": track.n_trk.item(),
-                                "category": TCTracks.define_tc_category_fast(
+                                "category": TCTracks.define_tc_category_FAST(
                                     max_sustained_wind_knots
                                 ),
                             },
