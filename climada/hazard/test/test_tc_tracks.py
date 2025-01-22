@@ -644,11 +644,11 @@ class TestIO(unittest.TestCase):
         self.assertEqual(category1, 1)
         self.assertEqual(category2, 5)
 
-    def test_from_fast(self):
+    def test_from_FAST(self):
         """test the correct import of netcdf files from fast model and the conversion to a
         different xr.array structure compatible with CLIMADA."""
 
-        tc_track = tc.TCTracks.from_fast(TEST_TRACK_FAST)
+        tc_track = tc.TCTracks.from_FAST(TEST_TRACK_FAST)
 
         expected_attributes = {
             "max_sustained_wind_unit": "m/s",
