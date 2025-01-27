@@ -1689,11 +1689,15 @@ class TCTracks:
 
                     # Select track
                     track = dataset.sel(n_trk=i)
-
-                    # Define coordinates
+                    # chunk dataset at first NaN value
+                    lon = track.lon_trks.data
+                    last_valid_index = np.where(np.isnan(lon))[0][0]
+                    track = track.isel(time=slice(0, last_valid_index))
+                    # Select lat, lon
                     lat = track.lat_trks.data
                     lon = track.lon_trks.data
-
+                    # convert lon from 0-360 to -180 - 180
+                    lon = ((lon + 180) % 360) - 180
                     # Convert time to pandas Datetime "yyyy.mm.dd"
                     reference_time = (
                         f"{track.tc_years.item()}-{int(track.tc_month.item())}-01"
