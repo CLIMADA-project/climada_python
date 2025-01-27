@@ -1146,7 +1146,7 @@ class HazardIO:
                 if var_name == "centroids":
                     continue
                 if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
-                    hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
+                    hazard_kwargs[var_name] = hf_data.get(var_name)[:]
                 elif isinstance(var_val, sparse.csr_matrix):
                     hf_csr = hf_data.get(var_name)
                     if isinstance(hf_csr, h5py.Dataset):
@@ -1166,7 +1166,7 @@ class HazardIO:
                     hazard_kwargs[var_name] = [
                         x
                         for x in map(
-                            u_hdf5.to_string, np.array(hf_data.get(var_name)).tolist()
+                            u_hdf5.to_string, hf_data.get(var_name)[:].tolist()
                         )
                     ]
                 else:

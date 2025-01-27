@@ -65,7 +65,7 @@ def read(file_name, with_refs=False):
         contents = {}
         for name, obj in list(group.items()):
             if isinstance(obj, h5py.Dataset):
-                contents[name] = np.array(obj)
+                contents[name] = obj[:]
             elif isinstance(obj, h5py.Group):
                 # it is a group, so call self recursively
                 if with_refs or name != "#refs#":

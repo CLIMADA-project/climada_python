@@ -1000,11 +1000,11 @@ class Centroids:
         if data.get("crs"):
             crs = u_coord.to_crs_user_input(data.get("crs")[0])
         if data.get("lat") and data.get("lat").size:
-            latitude = np.array(data.get("lat"))
-            longitude = np.array(data.get("lon"))
+            latitude = data.get("lat")[:]
+            longitude = data.get("lon")[:]
         elif data.get("latitude") and data.get("latitude").size:
-            latitude = np.array(data.get("latitude"))
-            longitude = np.array(data.get("longitude"))
+            latitude = data.get("latitude")[:]
+            longitude = data.get("longitude")[:]
         else:
             centr_meta = data.get("meta")
             meta = dict()
@@ -1019,7 +1019,7 @@ class Centroids:
         extra_values = {}
         for centr_name in data.keys():
             if centr_name not in ("crs", "lat", "lon", "meta", "latitude", "longitude"):
-                values = np.array(data.get(centr_name))
+                values = data.get(centr_name)[:]
                 if latitude.size != 0 and values.size != 0:
                     extra_values[centr_name] = values
 
