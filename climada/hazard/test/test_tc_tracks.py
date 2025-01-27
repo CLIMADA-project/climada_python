@@ -680,8 +680,8 @@ class TestIO(unittest.TestCase):
             np.datetime64("2025-09-01T00:00:00.000000000"),
         )
         self.assertEqual(tc_track.data[0].lat.values[0], 17.863591350508266)
-        self.assertEqual(tc_track.data[0].lon.values[0], 288.2355824168037)
-        self.assertEqual(len(tc_track.data[0].time), 121)
+        self.assertEqual(tc_track.data[0].lon.values[0], -71.76441758319629)
+        self.assertEqual(len(tc_track.data[0].time), 35)
         self.assertEqual(tc_track.data[0].time_step[0], 10800)
         self.assertEqual(
             tc_track.data[0].max_sustained_wind.values[10], 24.71636959089841

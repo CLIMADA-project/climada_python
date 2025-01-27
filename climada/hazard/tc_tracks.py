@@ -1696,7 +1696,7 @@ class TCTracks:
                     # Select lat, lon
                     lat = track.lat_trks.data
                     lon = track.lon_trks.data
-                    # convert lon from 0-360 to -180 - 180
+                    # Convert lon from 0-360 to -180 - 180
                     lon = ((lon + 180) % 360) - 180
                     # Convert time to pandas Datetime "yyyy.mm.dd"
                     reference_time = (
@@ -1705,7 +1705,6 @@ class TCTracks:
                     time = pd.to_datetime(
                         track.time.data, unit="s", origin=reference_time
                     ).astype("datetime64[s]")
-
                     # Define variables
                     max_sustained_wind_knots = track.vmax_trks.data * 1.943844
                     env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
