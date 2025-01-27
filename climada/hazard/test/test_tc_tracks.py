@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test tc_tracks module.
 """
 
-import os
 import unittest
 from datetime import datetime as dt
 
