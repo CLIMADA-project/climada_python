@@ -5,7 +5,7 @@ channels:
 dependencies:
   - bottleneck>=1.4
   - cartopy>=0.23
-  - cfgrib>=0.9.9,<0.9.10  # 0.9.10 cannot read the icon_grib files from https://opendata.dwd.de
+  - cfgrib>=0.9.9
   - contextily>=1.6
   - dask>=2024.5
   - eccodes>=2.27
