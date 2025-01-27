@@ -553,7 +553,12 @@ class StormEurope(Hazard):
 
         # Create Hazard
         haz = cls(
-            intensity=sparse.csr_matrix(stacked["gust"].T),
+            # starting with eccodes 2.28 the [gust](https://codes.ecmwf.int/grib/param-db/260065)
+            # parameter disappeared from the dwd forecast files, apparently being replaced by the
+            # more precise [i10fg](https://codes.ecmwf.int/grib/param-db/228029).
+            intensity=sparse.csr_matrix(
+                (stacked.get("gust") or stacked.get("i10fg")).T
+            ),
             centroids=cls._centroids_from_nc(nc_centroids_file),
             event_id=event_id,
             date=date,
