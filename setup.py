@@ -95,7 +95,6 @@ setup(
         "xarray",
         "xlrd",
         "xlsxwriter",
-        "xmlrunner",
     ],
     extras_require={
         "doc": DEPS_DOC,
