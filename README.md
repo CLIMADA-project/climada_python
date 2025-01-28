@@ -4,7 +4,7 @@
 
 # CLIMADA
 
-CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
+[CLIMADA](https://climada.ethz.ch/climada/) stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
 
 As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution (4x4km) via a [data API](https://climada.ethz.ch/data-api/v1/docs) For select hazards, historic and probabilistic events sets, for past, present and future climate exist at distinct time horizons.
 You will find a repository containing scientific peer-reviewed articles that explain software components implemented in CLIMADA [here](https://github.com/CLIMADA-project/climada_papers).
