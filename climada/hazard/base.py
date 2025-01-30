@@ -553,22 +553,30 @@ class Hazard(HazardIO, HazardPlot):
 
         # calculate local exceedance intensity
         test_frequency = 1 / np.array(return_periods)
-        exceedance_intensity = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    test_frequency,
-                    None,
-                    self.frequency,
-                    self.intensity.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_intensity,
-                    value_threshold=min_intensity,
-                    method=method,
-                    y_asymptotic=0.0,
-                )
-                for i_centroid in range(self.intensity.shape[1])
-            ]
+
+        exceedance_intensity = np.full(
+            (self.intensity.shape[1], test_frequency.shape[0]),
+            np.nan if method == "interpolate" else 0.0,
         )
+
+        nonzero_centroids = np.where(self.intensity.getnnz(axis=0) > 0)[0]
+        if not len(nonzero_centroids) == 0:
+            exceedance_intensity[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        test_frequency,
+                        None,
+                        self.frequency,
+                        self.intensity.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_intensity,
+                        value_threshold=min_intensity,
+                        method=method,
+                        y_asymptotic=0.0,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(
