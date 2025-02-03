@@ -62,3 +62,4 @@ You are good to go!
 
    install
    Python Introduction <0_intro_python>
+   10 minutes CLIMADA <0_10min_climada>

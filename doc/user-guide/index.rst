@@ -9,7 +9,6 @@ Landing page of the user guide
    :caption: User guides
    :hidden:
 
-   10 minutes CLIMADA <0_10min_climada>
    Overview <1_main_climada>
    Hazard <hazard>
    Exposures <exposures>
