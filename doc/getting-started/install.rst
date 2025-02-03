@@ -24,12 +24,22 @@ Prerequisites
 * Ensure a **stable internet connection** for the installation procedure.
   All dependencies will be downloaded from the internet.
   Do **not** use a metered, mobile connection!
-* Install the `Conda`_ environment management system.
-  We highly recommend you use `Miniforge`_, which includes the potent `Mamba`_ package manager.
-  Download the installer suitable for your system and follow the respective installation instructions.
-  We do **not** recommend using the ``conda`` command anymore, rather use ``mamba`` (see :ref:`conda-instead-of-mamba`).
 
 .. note:: When mentioning the terms "terminal" or "command line" in the following, we are referring to the "Terminal" apps on macOS or Linux and the "Miniforge Prompt" on Windows.
+
+Install Mamba or Conda
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If you haven't already installed an environment management system like `Mamba`_ or `Conda`_, you have to do so now.
+We recommend to use ``mamba`` (see :ref:`conda-instead-of-mamba`) which is available in the installer Miniforge.
+
+For the installation of Miniforge, plase scroll to the **Install** section of `Miniforge`_ and follow the respective installation instructions for your OS.
+
+.. attention:: After accepting the license terms and confirming the location, you are asked if you wish to update yor shell profile to automatically initialize conda. **Do not just hit ENTER but first type the choice 'yes'**.
+
+.. note:: If you later encounter ``command not found: conda``, open a new terminal window.
+
+.. note:: If you later encounter ``Run 'mamba init' to be able to run mamba activate/deactivate and start a new shell session. Or use conda to activate/deactivate.`, please run ``mamba init`` or ``mamba init zsh``.
 
 .. _install-choice:
 
