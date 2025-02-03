@@ -22,3 +22,6 @@ python:
 
 formats:
   - pdf
+
+sphinx:
+  configuration: doc/conf.py
