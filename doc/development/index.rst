@@ -6,6 +6,7 @@
    :caption: Developer Guide
    :hidden:
 
+   Developer guide <Guide_CLIMADA_Development>
    Development with Git <Guide_Git_Development>
    Guide_CLIMADA_Tutorial
    Guide_Configuration
