@@ -1,20 +1,15 @@
-.. include:: ../misc/CONTRIBUTING.md
-   :parser: commonmark
+.. include:: ../../CONTRIBUTING.md
+   :parser: myst_parser.sphinx_
 
 .. toctree::
-   :maxdepth: 1
-   :caption: Developer Guide
+   :maxdepth: 2
    :hidden:
 
    Developer guide <Guide_CLIMADA_Development>
-   Development with Git <Guide_Git_Development>
-   Guide_CLIMADA_Tutorial
-   Guide_Configuration
-   Guide_Testing
-   Guide_continuous_integration_GitHub_actions
-   Guide_Review
-   Guide_PythonDos-n-Donts
-   Guide_Exception_Logging
-   Performance and Best Practices <Guide_Py_Performance>
+   Development with Git <dev-git>
+   Coding in python <coding-in-python>
    CLIMADA Coding Conventions <Guide_CLIMADA_conventions>
-   Building the Documentation <../misc/README>
+   Documenting your code <write-documentation>
+   Writing tests for your code <Guide_Testing>
+   Guide_Review
+   Guide_Euler

@@ -129,7 +129,7 @@ specialized applications can be found in the `CLIMADA Petals
 
    Getting started <getting-started/index>
    User Guide <user-guide/index>
-   Development <development/index>
+   Developer Guide <development/index>
    API Reference <api/index>
    About <misc/AUTHORS>
    Changelog <misc/CHANGELOG>
