@@ -33,13 +33,13 @@ Install Mamba or Conda
 If you haven't already installed an environment management system like `Mamba`_ or `Conda`_, you have to do so now.
 We recommend to use ``mamba`` (see :ref:`conda-instead-of-mamba`) which is available in the installer Miniforge.
 
-For the installation of Miniforge, plase scroll to the **Install** section of `Miniforge`_ and follow the respective installation instructions for your OS.
+For the installation of Miniforge, please scroll to the **Install** section of `Miniforge`_ and follow the respective installation instructions for your OS.
 
-.. attention:: After accepting the license terms and confirming the location, you are asked if you wish to update yor shell profile to automatically initialize conda. **Do not just hit ENTER but first type the choice 'yes'**.
+.. attention:: After accepting the license terms and confirming the location, you are asked if you wish to update your shell profile to automatically initialize conda. **Do not just hit ENTER but first type the choice 'yes'**.
 
-.. note:: If you later encounter ``command not found: conda``, open a new terminal window.
+.. note:: If you encounter ``command not found: mamba``, open a new terminal window.
 
-.. note:: If you later encounter ``Run 'mamba init' to be able to run mamba activate/deactivate and start a new shell session. Or use conda to activate/deactivate.`, please run ``mamba init`` or ``mamba init zsh``.
+.. note:: If you encounter ``Run 'mamba init' to be able to run mamba activate/deactivate and start a new shell session. Or use conda to activate/deactivate.``, please run ``mamba init zsh`` or ``mamba init``.
 
 .. _install-choice:
 
