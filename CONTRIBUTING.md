@@ -12,7 +12,7 @@ For orientation, these are some categories of possible contributions we can thin
 * **New Modules and Utility Functions:** Did you create a function or an entire module you find useful for your work? Maybe you are not the only one! Feel free to simply raise a pull request for functions that improve, e.g., plotting or data handling. As an entire module has to be carefully integrated into the framework, it might help if you talk to us first so we can design the module and plan the next steps. You can do that by raising an issue or starting a [discussion](https://github.com/CLIMADA-project/climada_python/discussions) on GitHub.
 
 A good place to start a personal discussion is our monthly CLIMADA developers call.
-Please contact the [lead developers](https://wcr.ethz.ch/research/climada.html) if you want to join.
+Please contact the [lead developers](https://climada.ethz.ch/team/) if you want to join.
 
 ## Why Should You Contribute?
 
