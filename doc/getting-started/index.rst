@@ -60,6 +60,8 @@ You are good to go!
    :maxdepth: 1
    :hidden:
 
-   install
-   Python Introduction <0_intro_python>
-   10 minutes CLIMADA <0_10min_climada>
+   Introduction <Guide_Introduction>
+   Navigate this documentation <Guide_get_started>
+   In depth installation instructions <install>
+   How to cite CLIMADA <../misc/citation>
+   Python introduction <0_intro_python>
