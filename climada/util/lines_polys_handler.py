@@ -962,7 +962,7 @@ def _line_to_pnts(gdf_lines, res, to_meters):
         LOGGER.warning(
             "%d lines with a length < 10*resolution were found. "
             "Each of these lines is disaggregate to one point. "
-            "Reaggregatint values will thus likely lead to overestimattion. "
+            "Reaggregating values will thus likely lead to overestimation. "
             "Consider chosing a smaller resolution or filter out the short lines. ",
             failing_res_check_count,
         )
