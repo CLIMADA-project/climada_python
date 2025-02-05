@@ -228,7 +228,7 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
 
     col_geom = gdf_pnt.index.get_level_values(level=0)
     # Converts string multi-index level 0 to integer index
-    # col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
+    col_geom = np.sort(np.unique(col_geom, return_inverse=True)[1])
     row_pnt = np.arange(len(col_geom))
 
     if agg_met is AggMethod.SUM:
@@ -238,7 +238,7 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
             f"The available aggregation methods are {AggMethod._member_names_}"
         )  # pylint: disable=no-member, protected-access
     csr_mask = sp.sparse.csr_matrix(
-        (mask, (row_pnt, row_pnt)), shape=(len(row_pnt), len(row_pnt))
+        (mask, (row_pnt, row_pnt)), shape=(len(row_pnt), len(np.unique(row_pnt)))
     )
 
     return imp_pnt.imp_mat.dot(csr_mask)
@@ -962,7 +962,7 @@ def _line_to_pnts(gdf_lines, res, to_meters):
         LOGGER.warning(
             "%d lines with a length < 10*resolution were found. "
             "Each of these lines is disaggregate to one point. "
-            "Reaggregating values will thus likely lead to overestimation. "
+            "Reaggregatint values will thus likely lead to overestimattion. "
             "Consider chosing a smaller resolution or filter out the short lines. ",
             failing_res_check_count,
         )
