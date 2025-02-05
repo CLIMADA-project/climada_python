@@ -2867,3 +2867,46 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
     if np.issubdtype(data_var.dtype, float) or np.issubdtype(data_var.dtype, int):
         return True
     return False
+
+
+def compute_track_density(
+    tc_track: TCTracks, res: int = 5, time_step: float = 0.5
+) -> tuple[np.ndarray, tuple]:
+    """Compute normalized tropical cyclone track density.
+    Parameters:
+    ----------
+    res: int (optional)
+        resolution in degrees of the grid bins in which the density will be computed
+    time_step: float (optional)
+        temporal resolution in hours to be apllied to the tracks, to ensure that every track
+        will have the same resolution.
+
+    Returns:
+    -------
+    hist: 2D np.ndarray
+        2D matrix containing the track density
+    """
+
+    # ensure equal time step
+    tc_track.equal_timestep(time_step)
+
+    # Concatenate datasets along a new "track" dimension
+    all_tracks_ds = xr.concat(tc_track.data, dim="track")
+
+    # Extract flattened latitude and longitude arrays (all values)
+    latitudes = all_tracks_ds["lat"].values.flatten()
+    longitudes = all_tracks_ds["lon"].values.flatten()
+
+    # Define grid resolution and bounds for density computation
+    lat_bins = np.arange(-90, 90, res)  # res-degree latitude bins
+    lon_bins = np.arange(-180, 180, res)  # res-degree longitude bins
+
+    # Compute 2D density
+    hist, lat_edges, lon_edges = np.histogram2d(
+        latitudes, longitudes, bins=[lat_bins, lon_bins]
+    )
+
+    # Normalized
+    hist = hist / hist.sum()
+
+    return hist, lat_bins, lon_bins
