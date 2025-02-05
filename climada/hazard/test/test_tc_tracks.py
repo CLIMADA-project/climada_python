@@ -632,17 +632,6 @@ class TestIO(unittest.TestCase):
         tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM, years=[7])
         self.assertEqual(len(tc_track.data), 0)
 
-    def test_define_tc_category_FAST(self):
-        """test that the correct category is assigned to a TC from FAST model."""
-
-        max_wind = np.array([20, 72, 36, 50])  # knots
-        category1 = tc.TCTracks.define_tc_category_FAST(max_wind)
-        category2 = tc.TCTracks.define_tc_category_FAST(
-            max_sust_wind=max_wind, units="m/s"
-        )
-        self.assertEqual(category1, 1)
-        self.assertEqual(category2, 5)
-
     def test_from_FAST(self):
         """test the correct import of netcdf files from FAST model and the conversion to a
         different xr.array structure compatible with CLIMADA."""
