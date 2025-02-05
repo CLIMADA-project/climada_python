@@ -232,13 +232,13 @@ def _aggregate_impact_mat(imp_pnt, gdf_pnt, agg_met):
     row_pnt = np.arange(len(col_geom))
 
     if agg_met is AggMethod.SUM:
-        mask = np.ones(len(col_geom))
+        mask = np.ones(len(row_pnt))
     else:
         raise NotImplementedError(
             f"The available aggregation methods are {AggMethod._member_names_}"
         )  # pylint: disable=no-member, protected-access
     csr_mask = sp.sparse.csr_matrix(
-        (mask, (row_pnt, col_geom)), shape=(len(row_pnt), len(np.unique(col_geom)))
+        (mask, (row_pnt, row_pnt)), shape=(len(row_pnt), len(np.unique(row_pnt)))
     )
 
     return imp_pnt.imp_mat.dot(csr_mask)
