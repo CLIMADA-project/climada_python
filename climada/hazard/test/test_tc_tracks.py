@@ -1242,8 +1242,14 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(hist_abs.shape, (17, 35))
         self.assertEqual(hist_norm.shape, (17, 35))
         self.assertEqual(hist_abs.sum(), 4)
+        self.assertEqual(hist_norm.sum(), 1)
         # the track above occupy positions [0,0:4] of hist
-        np.testing.assert_array_equal(hist_abs.toarray()[0, 0:4], [1, 1, 1, 1])
+        np.testing.assert_array_equal(
+            hist_abs.toarray()[0, 0:4], [1, 1, 1, 1]
+        )  # .toarray()
+        np.testing.assert_array_equal(
+            hist_norm.toarray()[0, 0:4], [0.25, 0.25, 0.25, 0.25]
+        )  # .toarray()
 
 
 # Execute Tests

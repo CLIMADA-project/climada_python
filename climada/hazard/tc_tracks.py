@@ -2871,7 +2871,7 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
 
 
 def compute_track_density(
-    tc_track: TCTracks, res: int = 5, time_step: float = 1, density: bool = True
+    tc_track: TCTracks, res: int = 5, time_step: float = 1, density: bool = False
 ) -> tuple[np.ndarray, tuple]:
     """Compute absolute and normalized tropical cyclone track density. First, the function ensure
     the same temporal resolution of all tracks by calling :py:meth:`equal_timestep`. Second, it
@@ -2887,9 +2887,9 @@ def compute_track_density(
     time_step: float (optional) default: 1h
         temporal resolution in hours to be apllied to the tracks, to ensure that every track
         will have the same resolution.
-    mode: bool (optional) default: True
+    density: bool (optional) default: False
         If False it returns the number of samples in each bin. If True, returns the
-        probability density function at each bin computed as count_bin / tot_count * bin_area.
+        probability density function at each bin computed as count_bin / tot_count.
 
     Returns:
     -------
@@ -2912,8 +2912,18 @@ def compute_track_density(
     lon_bins = np.linspace(-180, 180, int(360 / res))
 
     # Compute 2D density
-    hist, _, _ = np.histogram2d(
-        latitudes, longitudes, bins=[lat_bins, lon_bins], density=density
-    )
+    hist_count = csr_matrix((len(lat_bins) - 1, len(lon_bins) - 1))
+    for track in tc_track.data:
 
-    return csr_matrix(hist), lat_bins, lon_bins
+        # Compute 2D density
+        hist_new, _, _ = np.histogram2d(
+            track.lat.values, track.lon.values, bins=[lat_bins, lon_bins], density=False
+        )
+        hist_new = csr_matrix(hist_new)
+        hist_new[hist_new > 1] = 1
+
+        hist_count += hist_new
+
+    hist_count = hist_count / hist_count.sum() if density else hist_count
+
+    return hist_count, lat_bins, lon_bins
