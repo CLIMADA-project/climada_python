@@ -1202,6 +1202,56 @@ class TestFuncs(unittest.TestCase):
             on_land,
         )
 
+    def test_compute_density_tracks(self):
+        """Test compute density track to ensure proper density count."""
+        # create track
+        track = xr.Dataset(
+            {
+                "time_step": ("time", np.timedelta64(1, "h") * np.arange(4)),
+                "max_sustained_wind": ("time", [3600, 3600, 3600, 3600]),
+                "central_pressure": ("time", [3600, 3600, 3600, 3600]),
+                "radius_max_wind": ("time", [3600, 3600, 3600, 3600]),
+                "environnmental_pressure": ("time", [3600, 3600, 3600, 3600]),
+                "basin": ("time", ["NA", "NA", "NA", "NA"]),
+            },
+            coords={
+                "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12H")),
+                "lat": ("time", [-90, -90, -90, -90]),
+                "lon": ("time", [-179, -169, -159, -149]),
+            },
+            attrs={
+                "max_sustained_wind_unit": "m/s",
+                "central_pressure_unit": "hPa",
+                "name": "storm_0",
+                "sid": "0",
+                "orig_event_flag": True,
+                "data_provider": "FAST",
+                "id_no": "0",
+                "category": "1",
+            },
+        )
+
+        tc_tracks = tc.TCTracks([track])
+
+        hist_abs, lat_bins, lon_bins = tc.compute_track_density(
+            tc_tracks, time_step=1, res=10, mode="absolute"
+        )
+        hist_norm, lat_bins, lon_bins = tc.compute_track_density(
+            tc_tracks, time_step=1, res=10, mode="normalized"
+        )
+
+        self.assertEqual(
+            hist_abs.shape, (18, 36)
+        )  # 18 latitude bins, 36 longitude bins
+        self.assertEqual(hist_abs.sum(), 4)  # verify the density counts
+        self.assertAlmostEqual(
+            hist_norm.sum(), 1
+        )  # sum of normalized density should be 1
+
+        # the track above occupy positions [0,0:4] of hist
+        np.testing.assert_array_equal(hist_abs[0, 0:4], [1, 1, 1, 1])
+        np.testing.assert_array_equal(hist_norm[0, 0:4], [0.25, 0.25, 0.25, 0.25])
+
 
 # Execute Tests
 if __name__ == "__main__":

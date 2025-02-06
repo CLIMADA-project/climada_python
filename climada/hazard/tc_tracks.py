@@ -2891,7 +2891,7 @@ def compute_track_density(
     """
 
     # ensure equal time step
-    tc_track.equal_timestep(time_step)
+    # tc_track.equal_timestep(time_step_h=time_step)
 
     # Concatenate datasets along a new "track" dimension
     all_tracks_ds = xr.concat(tc_track.data, dim="track")
@@ -2901,8 +2901,8 @@ def compute_track_density(
     longitudes = all_tracks_ds["lon"].values.flatten()
 
     # Define grid resolution and bounds for density computation
-    lat_bins = np.arange(-90, 90, res)  # res-degree latitude bins
-    lon_bins = np.arange(-180, 180, res)  # res-degree longitude bins
+    lat_bins = np.arange(-90, 91, res)  # 91 and not 90 for the bins (90 included)
+    lon_bins = np.arange(-180, 181, res)
 
     # Compute 2D density
     hist, lat_edges, lon_edges = np.histogram2d(
