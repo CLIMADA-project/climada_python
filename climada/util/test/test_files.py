@@ -36,7 +36,7 @@ class TestDownloadUrl(unittest.TestCase):
 
     def test_wrong_url_fail(self):
         """Error raised when wrong url."""
-        url = "https://ngdc.noaa.gov/eog/data/web_data/v4composites/F172012.v4.tar"
+        url = "https://climada.ethz.ch/F172012.v4.tar"
         try:
             with self.assertRaises(ValueError):
                 download_file(url)
