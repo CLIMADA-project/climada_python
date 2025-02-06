@@ -2870,9 +2870,10 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
 
 
 def compute_track_density(
-    tc_track: TCTracks, res: int = 5, time_step: float = 0.5
+    tc_track: TCTracks, res: int = 5, time_step: float = 0.5, mode: str = "normalized"
 ) -> tuple[np.ndarray, tuple]:
-    """Compute normalized tropical cyclone track density.
+    """Compute absolute and normalized tropical cyclone track density as the number of points per
+    grid cell.
     Parameters:
     ----------
     res: int (optional)
@@ -2880,6 +2881,8 @@ def compute_track_density(
     time_step: float (optional)
         temporal resolution in hours to be apllied to the tracks, to ensure that every track
         will have the same resolution.
+    mode: str (optional)
+        "normalized" or "absolute" density
 
     Returns:
     -------
@@ -2906,7 +2909,6 @@ def compute_track_density(
         latitudes, longitudes, bins=[lat_bins, lon_bins]
     )
 
-    # Normalized
-    hist = hist / hist.sum()
+    hist = hist / hist.sum() if mode == "normalized" else hist
 
     return hist, lat_bins, lon_bins
