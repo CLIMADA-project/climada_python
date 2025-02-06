@@ -18,6 +18,7 @@ dependencies:
   - numba>=0.60
   - numexpr>=2.10
   - openpyxl>=3.1
+  - osm-flex>=1.1
   - pandas>=2.1,<2.2  # 2.2 is not compatible with the default pytables=3.7 and yields a very high deprecation warning number through geopandas
   - pandas-datareader>=0.10
   - pathos>=0.3
