@@ -2870,18 +2870,23 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
 
 
 def compute_track_density(
-    tc_track: TCTracks, res: int = 5, time_step: float = 0.5, mode: str = "normalized"
+    tc_track: TCTracks, res: int = 5, time_step: float = 1, mode: str = "absolute"
 ) -> tuple[np.ndarray, tuple]:
-    """Compute absolute and normalized tropical cyclone track density as the number of points per
-    grid cell.
+    """Compute absolute and normalized tropical cyclone track density. First, the function ensure
+    the same temporal resolution of all tracks by calling :py:meth:`equal_timestep`. Second, it
+    creates 2D bins of the specified resolution (e.g. 1° x 1°). Third, since tracks are not lines
+    but a series of points, it counts the number of points per bin. Lastly, it returns the absolute
+    or normalized count per bin. This function works under the hood of :py:meth:`plot_track_density`
+    but can be used separtly as input data for more sophisticated track density plots.
+
     Parameters:
     ----------
-    res: int (optional)
+    res: int (optional) Default: 5°
         resolution in degrees of the grid bins in which the density will be computed
-    time_step: float (optional)
+    time_step: float (optional) default: 1h
         temporal resolution in hours to be apllied to the tracks, to ensure that every track
         will have the same resolution.
-    mode: str (optional)
+    mode: str (optional) default: absolute
         "normalized" or "absolute" density
 
     Returns:

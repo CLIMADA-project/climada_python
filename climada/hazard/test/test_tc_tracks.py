@@ -1203,7 +1203,7 @@ class TestFuncs(unittest.TestCase):
         )
 
     def test_compute_density_tracks(self):
-        """Test compute density track to ensure proper density count."""
+        """Test :py:meth:`compute_track_density` to ensure proper density count."""
         # create track
         track = xr.Dataset(
             {
