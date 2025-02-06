@@ -49,6 +49,7 @@ import xarray as xr
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
+from scipy.sparse import csr_matrix
 from shapely.geometry import LineString, MultiLineString, Point
 from sklearn.metrics import DistanceMetric
 
@@ -2870,7 +2871,7 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
 
 
 def compute_track_density(
-    tc_track: TCTracks, res: int = 5, time_step: float = 1, mode: str = "absolute"
+    tc_track: TCTracks, res: int = 5, time_step: float = 1, density: bool = True
 ) -> tuple[np.ndarray, tuple]:
     """Compute absolute and normalized tropical cyclone track density. First, the function ensure
     the same temporal resolution of all tracks by calling :py:meth:`equal_timestep`. Second, it
@@ -2886,8 +2887,9 @@ def compute_track_density(
     time_step: float (optional) default: 1h
         temporal resolution in hours to be apllied to the tracks, to ensure that every track
         will have the same resolution.
-    mode: str (optional) default: absolute
-        "normalized" or "absolute" density
+    mode: bool (optional) default: True
+        If False it returns the number of samples in each bin. If True, returns the
+        probability density function at each bin computed as count_bin / tot_count * bin_area.
 
     Returns:
     -------
@@ -2906,14 +2908,12 @@ def compute_track_density(
     longitudes = all_tracks_ds["lon"].values.flatten()
 
     # Define grid resolution and bounds for density computation
-    lat_bins = np.arange(-90, 91, res)  # 91 and not 90 for the bins (90 included)
-    lon_bins = np.arange(-180, 181, res)
+    lat_bins = np.linspace(-90, 90, int(180 / res))
+    lon_bins = np.linspace(-180, 180, int(360 / res))
 
     # Compute 2D density
-    hist, lat_edges, lon_edges = np.histogram2d(
-        latitudes, longitudes, bins=[lat_bins, lon_bins]
+    hist, _, _ = np.histogram2d(
+        latitudes, longitudes, bins=[lat_bins, lon_bins], density=density
     )
 
-    hist = hist / hist.sum() if mode == "normalized" else hist
-
-    return hist, lat_bins, lon_bins
+    return csr_matrix(hist), lat_bins, lon_bins

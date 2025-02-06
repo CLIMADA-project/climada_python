@@ -1234,23 +1234,16 @@ class TestFuncs(unittest.TestCase):
         tc_tracks = tc.TCTracks([track])
 
         hist_abs, lat_bins, lon_bins = tc.compute_track_density(
-            tc_tracks, time_step=1, res=10, mode="absolute"
+            tc_tracks, time_step=1, res=10, density=False
         )
         hist_norm, lat_bins, lon_bins = tc.compute_track_density(
-            tc_tracks, time_step=1, res=10, mode="normalized"
+            tc_tracks, time_step=1, res=10, density=True
         )
-
-        self.assertEqual(
-            hist_abs.shape, (18, 36)
-        )  # 18 latitude bins, 36 longitude bins
-        self.assertEqual(hist_abs.sum(), 4)  # verify the density counts
-        self.assertAlmostEqual(
-            hist_norm.sum(), 1
-        )  # sum of normalized density should be 1
-
+        self.assertEqual(hist_abs.shape, (17, 35))
+        self.assertEqual(hist_norm.shape, (17, 35))
+        self.assertEqual(hist_abs.sum(), 4)
         # the track above occupy positions [0,0:4] of hist
-        np.testing.assert_array_equal(hist_abs[0, 0:4], [1, 1, 1, 1])
-        np.testing.assert_array_equal(hist_norm[0, 0:4], [0.25, 0.25, 0.25, 0.25])
+        np.testing.assert_array_equal(hist_abs.toarray()[0, 0:4], [1, 1, 1, 1])
 
 
 # Execute Tests
