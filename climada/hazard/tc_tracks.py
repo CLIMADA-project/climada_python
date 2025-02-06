@@ -2871,7 +2871,11 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
 
 
 def compute_track_density(
-    tc_track: TCTracks, res: int = 5, time_step: float = 1, density: bool = False
+    tc_track: TCTracks,
+    res: int = 5,
+    time_step: float = 1,
+    density: bool = False,
+    filter_tracks: bool = True,
 ) -> tuple[np.ndarray, tuple]:
     """Compute absolute and normalized tropical cyclone track density. First, the function ensure
     the same temporal resolution of all tracks by calling :py:meth:`equal_timestep`. Second, it
@@ -2879,6 +2883,8 @@ def compute_track_density(
     but a series of points, it counts the number of points per bin. Lastly, it returns the absolute
     or normalized count per bin. This function works under the hood of :py:meth:`plot_track_density`
     but can be used separtly as input data for more sophisticated track density plots.
+    If filter track is True, only a maximum of one point is added to each grid cell for every track.
+    Hence, the resulting density will represent the number of differt tracksper grid cell.
 
     Parameters:
     ----------
@@ -2890,6 +2896,10 @@ def compute_track_density(
     density: bool (optional) default: False
         If False it returns the number of samples in each bin. If True, returns the
         probability density function at each bin computed as count_bin / tot_count.
+    filter_tracks: bool (optional) default: True
+        If True the track density is computed as the number of different tracks crossing a grid
+        cell. If False, the track density takes into account how long the track stayed in each
+        grid cell. Hence slower tracks increase the density if the parameter is set to False.
 
     Returns:
     -------
@@ -2899,13 +2909,6 @@ def compute_track_density(
 
     # ensure equal time step
     # tc_track.equal_timestep(time_step_h=time_step)
-
-    # Concatenate datasets along a new "track" dimension
-    all_tracks_ds = xr.concat(tc_track.data, dim="track")
-
-    # Extract flattened latitude and longitude arrays (all values)
-    latitudes = all_tracks_ds["lat"].values.flatten()
-    longitudes = all_tracks_ds["lon"].values.flatten()
 
     # Define grid resolution and bounds for density computation
     lat_bins = np.linspace(-90, 90, int(180 / res))
@@ -2920,8 +2923,7 @@ def compute_track_density(
             track.lat.values, track.lon.values, bins=[lat_bins, lon_bins], density=False
         )
         hist_new = csr_matrix(hist_new)
-        hist_new[hist_new > 1] = 1
-
+        hist_new[hist_new > 1] = 1 if filter_tracks else hist_new
         hist_count += hist_new
 
     hist_count = hist_count / hist_count.sum() if density else hist_count
