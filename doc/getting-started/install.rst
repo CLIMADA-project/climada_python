@@ -14,88 +14,40 @@ All following instructions should work on any operating system (OS) that is supp
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
 
-
 -------------
-Prerequisites
+Install Conda
 -------------
-
-* Make sure you are using the **latest version** of your OS. Install any outstanding **updates**.
-* Free up at least 10 GB of **free storage space** on your machine.
-  Conda and the CLIMADA dependencies will require around 5 GB of free space, and you will need at least that much additional space for storing the input and output data of CLIMADA.
-* Ensure a **stable internet connection** for the installation procedure.
-  All dependencies will be downloaded from the internet.
-  Do **not** use a metered, mobile connection!
-
-.. note:: When mentioning the terms "terminal" or "command line" in the following, we are referring to the "Terminal" apps on macOS or Linux and the "Miniforge Prompt" on Windows.
-
-Install Mamba or Conda
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 If you haven't already installed an environment management system like `Mamba`_ or `Conda`_, you have to do so now.
-We recommend to use ``mamba`` (see :ref:`conda-instead-of-mamba`) which is available in the installer Miniforge.
+We recommend to use ``mamba`` (see :ref:`conda-instead-of-mamba`) which is available in the installer Miniforge, and can be installed as follows.
 
-For the installation of Miniforge, please scroll to the **Install** section of `Miniforge`_ and follow the respective installation instructions for your OS.
+macOS and Linux
+"""""""""""
 
-.. attention:: After accepting the license terms and confirming the location, you are asked if you wish to update your shell profile to automatically initialize conda. **Do not just hit ENTER but first type the choice 'yes'**.
+* Open the "Terminal" app, copy-paste the two commands below, and hit enter:
 
-.. note:: If you encounter ``command not found: mamba``, open a new terminal window.
+  .. code-block:: shell
 
-.. note:: If you encounter ``Run 'mamba init' to be able to run mamba activate/deactivate and start a new shell session. Or use conda to activate/deactivate.``, please run ``mamba init zsh`` or ``mamba init``.
+     curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+     bash Miniforge3-$(uname)-$(uname -m).sh
 
+* Accept the license terms.
+* You can confirm the default location.
+* Answer 'yes' when asked if if you wish to update your shell profile to automatically initialize conda. **Do not just hit ENTER but first type 'yes'**
+* If at some point you encounter ``command not found: mamba``, open a new terminal window.
+* If you encounter ``Run 'mamba init' to be able to run mamba activate/deactivate ...``, please run ``mamba init zsh`` or ``mamba init``.
 
-Apps for working with CLIMADA
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Windows
+"""""""""""
 
-To work with CLIMADA, you will need an application that supports Jupyter Notebooks.
-There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend [JupyterLab](https://jupyterlab.readthedocs.io/en/stable/), [Visual Studio Code](https://code.visualstudio.com/) or [Spyder](https://www.spyder-ide.org/).
-It is easy to get confused by all the different softwares and their uses so here is an overview of which tools we use for what:
-
-.. list-table::
-   :header-rows: 1
-   :widths: auto
-
-   * - Use
-     - Tools
-     - Description
-     - Useful for
-   * - Distribution / manage virtual environment & packages
-     - **Recommended:**
-       Mamba
-       **Alternatives:**
-       Anaconda
-     - - Install climada, manage & use the climada virtual environment, install packages
-       - Anaconda includes Anaconda Navigator, which is a desktop GUI and can be used to launch applications like Jupyter Notebook, Spyder, etc.
-     - Climada Users
-       & Developers
-   * - IDE (Integrated Development Environment)
-     - **Recommended:**
-       VSCode
-       **Alternatives:**
-       Spyder, JupyterLab, PyCharm, & many more
-     - - Write and run code
-       - Useful for Developers:
-         - VSCode also has a GUI to commit changes to Git (similar to GitHub Desktop, but in the same place as your code)
-         - VSCode test explorer shows results for individual tests & any classes and files containing those tests (folders display a failure or pass icon)
-     - Climada Users
-       & Developers
-   * - Git GUI (Graphical User Interface)
-     - GitHub Desktop, GitKraken
-     - - Provides an interface which keeps track of the branch you’re working on, changes you made, etc.
-       - Allows you to commit changes, push to GitHub, etc. without having to use the command line
-       - The code itself is not written using these applications but with your IDE of choice (see above)
-     - Climada Developers
-   * - Continuous integration (CI) server
-     - Jenkins
-     - - Automatically checks code changes in GitHub repositories, e.g., when you create a pull request for the develop branch
-       - Performs static code analysis using pylint
-       - You don't need to do any installations yourself; this runs automatically when you push new code to GitHub
-       - See `Continuous Integration and GitHub Actions <../guide/Guide_continuous_integration_GitHub_actions.ipynb>`_
-     - Climada Developers
+* Download the Windows installer at the Install section from `Miniforge`_.
+* Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
 
 .. _install-choice:
-
+-------------
 Decide on Your Entry Level!
-^^^^^^^^^^^^^^^^^^^^^^^^^^^
+-------------
+
 
 Depening on your level of expertise, we provide two different approaches:
 
@@ -480,6 +432,56 @@ Therefore, we recommend installing Spyder in a *separate* environment, and then 
 
 #. Set the Python interpreter used by Spyder to the one of ``climada_env``.
    Select *Preferences* > *Python Interpreter* > *Use the following interpreter* and paste the iterpreter path you copied from the ``climada_env``.
+
+-------------
+Apps for working with CLIMADA
+-------------
+
+To work with CLIMADA, you will need an application that supports Jupyter Notebooks.
+There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend [JupyterLab](https://jupyterlab.readthedocs.io/en/stable/), [Visual Studio Code](https://code.visualstudio.com/) or [Spyder](https://www.spyder-ide.org/).
+It is easy to get confused by all the different softwares and their uses so here is an overview of which tools we use for what:
+
+.. list-table::
+   :header-rows: 1
+   :widths: auto
+
+   * - Use
+     - Tools
+     - Description
+     - Useful for
+   * - Distribution / manage virtual environment & packages
+     - **Recommended:**
+       Mamba
+       **Alternatives:**
+       Anaconda
+     - - Install climada, manage & use the climada virtual environment, install packages
+       - Anaconda includes Anaconda Navigator, which is a desktop GUI and can be used to launch applications like Jupyter Notebook, Spyder, etc.
+     - Climada Users
+       & Developers
+   * - IDE (Integrated Development Environment)
+     - **Recommended:**
+       VSCode
+       **Alternatives:**
+       Spyder, JupyterLab, PyCharm, & many more
+     - - Write and run code
+       - Useful for Developers:
+         - VSCode also has a GUI to commit changes to Git (similar to GitHub Desktop, but in the same place as your code)
+         - VSCode test explorer shows results for individual tests & any classes and files containing those tests (folders display a failure or pass icon)
+     - Climada Users
+       & Developers
+   * - Git GUI (Graphical User Interface)
+     - GitHub Desktop, GitKraken
+     - - Provides an interface which keeps track of the branch you’re working on, changes you made, etc.
+       - Allows you to commit changes, push to GitHub, etc. without having to use the command line
+       - The code itself is not written using these applications but with your IDE of choice (see above)
+     - Climada Developers
+   * - Continuous integration (CI) server
+     - Jenkins
+     - - Automatically checks code changes in GitHub repositories, e.g., when you create a pull request for the develop branch
+       - Performs static code analysis using pylint
+       - You don't need to do any installations yourself; this runs automatically when you push new code to GitHub
+       - See `Continuous Integration and GitHub Actions <../guide/Guide_continuous_integration_GitHub_actions.ipynb>`_
+     - Climada Developers
 
 ----
 FAQs
