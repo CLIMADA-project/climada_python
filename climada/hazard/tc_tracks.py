@@ -1645,9 +1645,7 @@ class TCTracks:
 
         LOGGER.info(f"Reading {len(get_file_names(folder_name))} files.")
         data = []
-        for file in get_file_names(folder_name):
-            if Path(file).suffix != ".nc":
-                continue
+        for file in Path(folder_name).glob("*.nc"):
             with xr.open_dataset(file) as dataset:
                 for year in dataset.year:
                     for i in dataset.n_trk:
