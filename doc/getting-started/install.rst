@@ -22,7 +22,7 @@ If you haven't already installed an environment management system like `Mamba`_ 
 We recommend to use ``mamba`` (see :ref:`conda-instead-of-mamba`) which is available in the installer Miniforge, and can be installed as follows.
 
 macOS and Linux
-"""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 * Open the "Terminal" app, copy-paste the two commands below, and hit enter:
 
@@ -38,16 +38,16 @@ macOS and Linux
 * If you encounter ``Run 'mamba init' to be able to run mamba activate/deactivate ...``, please run ``mamba init zsh`` or ``mamba init``.
 
 Windows
-"""""""""""
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 * Download the Windows installer at the Install section from `Miniforge`_.
 * Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
 
 .. _install-choice:
 
--------------
+---------------------------------------
 Decide on Your Entry Level!
--------------
+---------------------------------------
 
 
 Depening on your level of expertise, we provide two different approaches:
@@ -307,6 +307,10 @@ To install CLIMADA Petals, we assume you have already installed CLIMADA Core wit
       python -m pip install -e ./
 
 
+---------------------------------------
+Code Editors
+---------------------------------------
+
 JupyterLab
 ^^^^^^^^^^
 
@@ -434,9 +438,9 @@ Therefore, we recommend installing Spyder in a *separate* environment, and then 
 #. Set the Python interpreter used by Spyder to the one of ``climada_env``.
    Select *Preferences* > *Python Interpreter* > *Use the following interpreter* and paste the iterpreter path you copied from the ``climada_env``.
 
--------------
+---------------------------------------
 Apps for working with CLIMADA
--------------
+---------------------------------------
 
 To work with CLIMADA, you will need an application that supports Jupyter Notebooks.
 There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend [JupyterLab](https://jupyterlab.readthedocs.io/en/stable/), [Visual Studio Code](https://code.visualstudio.com/) or [Spyder](https://www.spyder-ide.org/).
