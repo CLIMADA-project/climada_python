@@ -1669,7 +1669,8 @@ class TCTracks:
                             track.time.data, unit="s", origin=reference_time
                         ).astype("datetime64[s]")
                         # Define variables
-                        max_wind_kn = track.vmax_trks.data * 1.943844
+                        ms_to_kn = 1.943844
+                        max_wind_kn = track.vmax_trks.data * ms_to_kn
                         env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
                         cen_pres = _estimate_pressure(
                             np.full(lat.shape, np.nan),
