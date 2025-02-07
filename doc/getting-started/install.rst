@@ -44,6 +44,7 @@ Windows
 * Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
 
 .. _install-choice:
+
 -------------
 Decide on Your Entry Level!
 -------------
