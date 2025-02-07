@@ -1643,7 +1643,7 @@ class TCTracks:
             TCTracks object with tracks data from the given directory of NetCDF files.
         """
 
-        LOGGER.info("Reading %s files.", len(get_file_names(folder_name)))
+        LOGGER.info(f"Reading {len(get_file_names(folder_name))} files.")
         data = []
         for file in get_file_names(folder_name):
             if Path(file).suffix != ".nc":
