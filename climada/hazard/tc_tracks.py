@@ -2873,26 +2873,23 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
 def compute_track_density(
     tc_track: TCTracks,
     res: int = 5,
-    time_step: float = 1,
     density: bool = False,
     filter_tracks: bool = True,
+    wind_min: float = None,
+    wind_max: float = None,
 ) -> tuple[np.ndarray, tuple]:
-    """Compute absolute and normalized tropical cyclone track density. First, the function ensure
-    the same temporal resolution of all tracks by calling :py:meth:`equal_timestep`. Second, it
-    creates 2D bins of the specified resolution (e.g. 1° x 1°). Third, since tracks are not lines
-    but a series of points, it counts the number of points per bin. Lastly, it returns the absolute
-    or normalized count per bin. This function works under the hood of :py:meth:`plot_track_density`
-    but can be used separtly as input data for more sophisticated track density plots.
-    If filter track is True, only a maximum of one point is added to each grid cell for every track.
-    Hence, the resulting density will represent the number of differt tracksper grid cell.
+    """Compute absolute and normalized tropical cyclone track density. Before using this function,
+    apply the same temporal resolution to all tracks by calling :py:meth:`equal_timestep` on the
+    TCTrack object. Due to the computational cost of the this function, it is not recommended to
+    use a grid resolution higher tha 0.1°. This function it creates 2D bins of the specified
+    resolution (e.g. 1° x 1°). Second, since tracks are not lines but a series of points, it counts
+    the number of points per bin. Lastly, it returns the absolute or normalized count per bin.
+    To plot the output of this function use :py:meth:`plot_track_density`.
 
     Parameters:
     ----------
     res: int (optional) Default: 5°
         resolution in degrees of the grid bins in which the density will be computed
-    time_step: float (optional) default: 1h
-        temporal resolution in hours to be apllied to the tracks, to ensure that every track
-        will have the same resolution.
     density: bool (optional) default: False
         If False it returns the number of samples in each bin. If True, returns the
         probability density function at each bin computed as count_bin / tot_count.
@@ -2900,27 +2897,53 @@ def compute_track_density(
         If True the track density is computed as the number of different tracks crossing a grid
         cell. If False, the track density takes into account how long the track stayed in each
         grid cell. Hence slower tracks increase the density if the parameter is set to False.
-
+    wind_min: float (optional) default: None
+        Minimum wind speed above which to select tracks.
+    wind_max: float (optional) default: None
+        Maximal wind speed below which to select tracks.
     Returns:
     -------
-    hist: 2D np.ndarray
+    hist: 2D np.ndwind_speeday
         2D matrix containing the track density
     """
 
-    # ensure equal time step
-    # tc_track.equal_timestep(time_step_h=time_step)
+    limit_ratio = 1.12 * 1.1  # record tc speed 112km/h -> 1.12°/h + 10% margin
 
-    # Define grid resolution and bounds for density computation
+    if tc_track.data[0].time_step[0].item() > res / limit_ratio:
+        warnings.warn(
+            f"The time step is too big. For the desired resolution, apply a time step \n"
+            "of {res/limit_ratio}h."
+        )
+    elif res < 0.01:
+        warnings.warn(
+            "The resolution is too high. The computation might take several minutes \n"
+            "to hours. Consider using a resolution below 0.1°."
+        )
+
+    # define grid resolution and bounds for density computation
     lat_bins = np.linspace(-90, 90, int(180 / res))
     lon_bins = np.linspace(-180, 180, int(360 / res))
-
-    # Compute 2D density
+    # compute 2D density
     hist_count = csr_matrix((len(lat_bins) - 1, len(lon_bins) - 1))
     for track in tc_track.data:
 
-        # Compute 2D density
+        # select according to wind speed
+        wind_speed = track.max_sustained_wind.values
+        if wind_min and wind_max:
+            index = np.where((wind_speed >= wind_min) & (wind_speed <= wind_max))[0]
+        elif wind_min and not wind_max:
+            index = np.where(wind_speed >= wind_min)[0]
+        elif wind_max and not wind_min:
+            index = np.where(wind_speed <= wind_max)[0]
+        else:
+            index = slice(None)  # select all the track
+
+        # compute 2D density
         hist_new, _, _ = np.histogram2d(
-            track.lat.values, track.lon.values, bins=[lat_bins, lon_bins], density=False
+            track.lat.values[index],
+            track.lon.values[index],
+            bins=[lat_bins, lon_bins],
+            density=False,
         )
         hist_new = csr_matrix(hist_new)
         hist_new[hist_new > 1] = 1 if filter_tracks else hist_new
