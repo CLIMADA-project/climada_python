@@ -38,7 +38,6 @@ import geopandas as gpd
 import matplotlib.cm as cm_mp
 import matplotlib.pyplot as plt
 import netCDF4 as nc
-import numba
 import numpy as np
 import pandas as pd
 import pathos
@@ -52,6 +51,7 @@ from matplotlib.lines import Line2D
 from scipy.sparse import csr_matrix
 from shapely.geometry import LineString, MultiLineString, Point
 from sklearn.metrics import DistanceMetric
+from tqdm import tqdm
 
 import climada.hazard.tc_tracks_synth
 import climada.util.coordinates as u_coord
@@ -2924,8 +2924,8 @@ def compute_track_density(
     lat_bins = np.linspace(-90, 90, int(180 / res))
     lon_bins = np.linspace(-180, 180, int(360 / res))
     # compute 2D density
-    hist_count = csr_matrix((len(lat_bins) - 1, len(lon_bins) - 1))
-    for track in tc_track.data:
+    hist_count = np.zeros((len(lat_bins) - 1, len(lon_bins) - 1))
+    for track in tqdm(tc_track.data, desc="Processing Tracks"):
 
         # select according to wind speed
         wind_speed = track.max_sustained_wind.values
@@ -2945,7 +2945,6 @@ def compute_track_density(
             bins=[lat_bins, lon_bins],
             density=False,
         )
-        hist_new = csr_matrix(hist_new)
         hist_new[hist_new > 1] = 1 if filter_tracks else hist_new
         hist_count += hist_new
 
