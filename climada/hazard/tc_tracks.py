@@ -2892,7 +2892,7 @@ def compute_track_density(
         resolution in degrees of the grid bins in which the density will be computed
     density: bool (optional) default: False
         If False it returns the number of samples in each bin. If True, returns the
-        probability density function at each bin computed as count_bin / tot_count.
+        probability density function at each bin computed as count_bin / grid_area.
     filter_tracks: bool (optional) default: True
         If True the track density is computed as the number of different tracks crossing a grid
         cell. If False, the track density takes into account how long the track stayed in each
@@ -2905,6 +2905,17 @@ def compute_track_density(
     -------
     hist: 2D np.ndwind_speeday
         2D matrix containing the track density
+
+    Example:
+    --------
+    >>> tc_tracks = TCTrack.from_IBTRACKS("path_to_file")
+    >>> tc_tracks.equal_timestep(time_steph_h = 1)
+    >>> hist_count = compute_track_density()
+
+    >>> print(area.shape)
+    (18, 36)
+    >>> print(area)  # Displays a 2D array of grid cell areas
+
     """
 
     limit_ratio = 1.12 * 1.1  # record tc speed 112km/h -> 1.12°/h + 10% margin
@@ -2948,6 +2959,75 @@ def compute_track_density(
         hist_new[hist_new > 1] = 1 if filter_tracks else hist_new
         hist_count += hist_new
 
-    hist_count = hist_count / hist_count.sum() if density else hist_count
+    if density:
+        grid_area, _ = compute_grid_cell_area(res=res)
+        hist_count = hist_count / grid_area
 
     return hist_count, lat_bins, lon_bins
+
+
+def compute_grid_cell_area(res) -> tuple[np.ndarray]:
+    """
+    This function computes the area of each grid cell on a sphere (Earth), using latitude and
+    longitude bins based on the given resolution. The area is computed using the spherical cap
+    approximation for each grid cell. The function return a 2D matrix with the corresponding area.
+
+    The formula used to compute the area of each grid cell is derived from the integral of the
+    surface area of a spherical cap between squared latitude and longitude bins:
+
+    A = R**2 * (Δλ) * (sin(ϕ2) - sin(ϕ1))
+
+    Where:
+    - R is the radius of the Earth (in km).
+    - Δλ is the width of the grid cell in terms of longitude (in radians).
+    - sin(ϕ2) - sin(ϕ1) is the difference in the sine of the latitudes, which
+    accounts for the varying horizontal distance between longitudinal lines at different latitudes.
+
+    This formula is the direct integration over λ and ϕ2 of:
+
+    A = R**2 * Δλ * Δϕ * cos(ϕ1)
+
+    which approximate the grid cell area as a square computed by the multiplication of two
+    arc legths, with the logitudal arc length ajdusted by latitude.
+
+    Parameters:
+    ----------
+    res: int
+        The resolution of the grid in degrees. The grid will have cells of size `res x res` in
+        terms of latitude and longitude.
+
+    Returns:
+    -------
+    grid_area: np.ndarray
+        A 2D array of shape `(len(lat_bins)-1, len(lon_bins)-1)` containing the area of each grid
+        cell, in square kilometers. Each entry in the array corresponds to the area of the
+        corresponding grid cell on Earth.
+
+    Example:
+    --------
+    >>> res = 10  #10° resolution
+    >>> area = compute_grid_cell_area(res = res)
+    >>> print(area.shape) # (180/10, 360/10)
+    (18, 36)
+    """
+
+    lat_bins = np.linspace(-90, 90, int(180 / res))  # lat bins
+    lon_bins = np.linspace(-180, 180, int(360 / res))
+
+    R = 6371  # Earth's radius [km]
+    # Convert to radians
+    lat_bin_edges = np.radians(lat_bins)
+    lon_res_rad = np.radians(res)
+
+    # Compute area
+    areas = (
+        R**2
+        * lon_res_rad
+        * np.abs(np.sin(lat_bin_edges[1:]) - np.sin(lat_bin_edges[:-1]))
+    )
+    # Broadcast to create a full 2D grid of areas
+    grid_area = np.tile(
+        areas[:, np.newaxis], (1, len(lon_bins) - 1)
+    )  # each row as same area
+
+    return grid_area, [lat_bins, lon_bins]
