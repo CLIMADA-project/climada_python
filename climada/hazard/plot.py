@@ -21,6 +21,8 @@ Define Hazard Plotting Methods.
 
 import logging
 
+import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import matplotlib.pyplot as plt
 import numpy as np
 from deprecation import deprecated
@@ -157,6 +159,117 @@ class HazardPlot:
             return self._centr_plot(centr, self.intensity, col_label, axis, **kwargs)
 
         raise ValueError("Provide one event id or one centroid id.")
+
+    def plot_track_density(
+        hist: np.ndarray,
+        ax=None,
+        projection=ccrs.Mollweide(),
+        add_features: dict = None,
+        title: str = None,
+        figsize=(12, 6),
+        cbar_kwargs: dict = {
+            "orientation": "horizontal",
+            "pad": 0.05,
+            "shrink": 0.8,
+            "label": "Track Density [n° tracks / km²]",
+        },
+        **kwargs,
+    ):
+        """
+        Plot the track density of tropical cyclone tracks on a customizable world map.
+
+        Parameters:
+        ----------
+        hist: np.ndarray
+            2D histogram of track density.
+        ax: GeoAxes, optional
+            Existing Cartopy axis.
+        projection: cartopy.crs, optional
+            Projection for the map.
+        add_features: dict
+            Dictionary of map features to add. Keys can be 'land', 'coastline', 'borders', and 'lakes'.
+            Values are Booleans indicating whether to include each feature.
+        title: str
+            Title of the plot.
+        figsize: tuple
+            Figure size when creating a new figure.
+        cbar_kwargs: dict
+            dictionary containing keyword arguments passed to cbar
+        kwargs:
+            Additional keyword arguments passed to `ax.contourf`.
+
+        Returns:
+        -------
+        ax: GeoAxes
+            The plot axis.
+
+
+        Example:
+        --------
+        >>> ax = plot_track_density(
+        ...     hist=hist,
+        ...     cmap='Spectral_r',
+        ...     cbar_kwargs={'shrink': 0.8, 'label': 'Cyclone Density [n° tracks / km²]', 'pad': 0.1},
+        ...     add_features={
+        ...         'land': True,
+        ...         'coastline': True,
+        ...         'borders': True,
+        ...         'lakes': True
+        ...     },
+        ...     title='Custom Cyclone Track Density Map',
+        ...     figsize=(10, 5),
+        ...     levels=20
+        ... )
+
+        """
+
+        # Default features
+        default_features = {
+            "land": True,
+            "coastline": True,
+            "borders": False,
+            "lakes": False,
+        }
+        add_features = add_features or default_features
+
+        # Sample data
+        x = np.linspace(-180, 180, hist.shape[1])
+        y = np.linspace(-90, 90, hist.shape[0])
+        z = hist
+
+        # Create figure and axis if not provided
+        if ax is None:
+            fig, ax = plt.subplots(
+                figsize=figsize, subplot_kw={"projection": projection}
+            )
+
+        # Add requested features
+        if add_features.get("land", False):
+            land = cfeature.NaturalEarthFeature(
+                category="physical",
+                name="land",
+                scale="50m",
+                facecolor="lightgrey",
+                alpha=0.6,
+            )
+            ax.add_feature(land)
+        if add_features.get("coastline", False):
+            ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
+        if add_features.get("borders", False):
+            ax.add_feature(cfeature.BORDERS, linestyle=":")
+        if add_features.get("lakes", False):
+            ax.add_feature(cfeature.LAKES, alpha=0.4, edgecolor="black")
+
+        # Plot density with contourf
+        contourf = ax.contourf(x, y, z, transform=ccrs.PlateCarree(), **kwargs)
+
+        # Add colorbar
+        cbar = plt.colorbar(contourf, ax=ax, **cbar_kwargs)
+        # Title setup
+        if title:
+            ax.set_title(title, fontsize=16)
+
+        return ax
 
     def plot_fraction(self, event=None, centr=None, smooth=True, axis=None, **kwargs):
         """Plot fraction values for a selected event or centroid.

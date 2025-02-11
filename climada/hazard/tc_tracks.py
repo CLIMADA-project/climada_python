@@ -2908,13 +2908,10 @@ def compute_track_density(
 
     Example:
     --------
-    >>> tc_tracks = TCTrack.from_IBTRACKS("path_to_file")
+    >>> tc_tracks = TCTrack.from_ibtracs_netcdf("path_to_file")
     >>> tc_tracks.equal_timestep(time_steph_h = 1)
-    >>> hist_count = compute_track_density()
-
-    >>> print(area.shape)
-    (18, 36)
-    >>> print(area)  # Displays a 2D array of grid cell areas
+    >>> hist_count = compute_track_density(res = 1)
+    >>> plot_track_density(hist_count)
 
     """
 
