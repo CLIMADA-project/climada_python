@@ -213,10 +213,10 @@ class HazardPlot:
         ...     add_features={
         ...         'land': True,
         ...         'coastline': True,
-        ...         'borders': True,
-        ...         'lakes': True
+        ...         'borders': False,
+        ...         'lakes': False
         ...     },
-        ...     title='Custom Cyclone Track Density Map',
+        ...     title='My Tropical Cyclone Track Density Map',
         ...     figsize=(10, 5),
         ...     levels=20
         ... )
