@@ -5,12 +5,12 @@ channels:
 dependencies:
   - bottleneck>=1.4
   - cartopy>=0.23
-  - cfgrib>=0.9.9,<0.9.10  # 0.9.10 cannot read the icon_grib files from https://opendata.dwd.de
+  - cfgrib>=0.9.9
   - contextily>=1.6
   - dask>=2024.5
-  - eccodes>=2.27,<2.28  # 2.28 changed some labels, in particular: gust -> i20fg
+  - eccodes>=2.27
   - gdal>=3.6
-  - geopandas>=0.14
+  - geopandas>=0.14,<1.0  # geopandas 1.0 does not depend on fiona anymore, hence fiona would need to be added as dependency
   - h5py>=3.8
   - haversine>=2.8
   - matplotlib-base>=3.9
