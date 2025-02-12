@@ -12,7 +12,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
-- `climada.hazard.tc_tracks.compute_track_density` function, `climada.hazard.tc_tracks.compute_grid_cell_area`
+- `climada.hazard.tc_tracks.compute_track_density` function, `climada.util.coordinates.compute_grid_cell_area`
 function, `climada.hazard.plot.plot_track_density` function  [#1003](https://github.com/CLIMADA-project/climada_python/pull/1003)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
 - `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex`with CLIMADA
