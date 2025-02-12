@@ -2918,10 +2918,10 @@ def compute_track_density(
 
     if tc_track.data[0].time_step[0].item() > res / limit_ratio:
         warnings.warn(
-            f"The time step is too big. For the desired resolution, apply a time step \n"
-            "of {res/limit_ratio}h."
+            "The time step is too big for the current resolution. For the desired resolution, \n"
+            f"apply a time step of {res/limit_ratio}h."
         )
-    elif res < 0.01:
+    elif res < 0.1:
         warnings.warn(
             "The resolution is too high. The computation might take several minutes \n"
             "to hours. Consider using a resolution below 0.1°."
