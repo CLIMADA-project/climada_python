@@ -37,6 +37,7 @@ def preprocess_and_interpolate_ev(
     value_threshold=None,
     method="interpolate",
     y_asymptotic=np.nan,
+    n_sig_dig=2,
 ):
     """Wrapper function to first preprocess (frequency, values) data and and then inter- and
     extrapolate to test frequencies or test values.
@@ -95,7 +96,7 @@ def preprocess_and_interpolate_ev(
     frequency = frequency[sorted_idxs]
 
     # group similar values together
-    frequency, values = group_frequency(frequency, values)
+    frequency, values = group_frequency(frequency, values, n_sig_dig=n_sig_dig)
 
     # transform frequencies to cummulative frequencies
     frequency = np.cumsum(frequency[::-1])[::-1]
