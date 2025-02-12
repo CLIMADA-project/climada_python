@@ -31,6 +31,7 @@ from climada.hazard import tc_tracks as tc
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.hazard.storm_europe import StormEurope
+from climada.hazard.test.test_base import dummy_hazard
 from climada.test import get_test_file
 from climada.util import coordinates as u_coord
 from climada.util.api_client import Client
@@ -363,10 +364,31 @@ class TestBase(unittest.TestCase):
         self.assertTrue(np.allclose(haz_fl.fraction.data, fract_orig.data))
 
 
+class TestRPCal(unittest.TestCase):
+    """Test local return period and exceedance frequency functionalities"""
+
+    def test_local_exceedance_frequency_largerdata(self):
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+        return_periods = np.arange(5, 100, 1)
+        exceedance_intensity = hazard.local_exceedance_intensity(
+            return_periods=return_periods
+        )[0]
+
+        # test dimensions (number of centroids, number of return periods plus 1 (geometry column))
+        np.testing.assert_equal(
+            (hazard.intensity.shape[1], return_periods.size + 1),
+            exceedance_intensity.shape,
+        )
+
+        # assert no geative values
+        np.testing.assert_array_less(-1e-10, exceedance_intensity.values[:, 1:])
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCentroids)
     TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestStormEurope))
     TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestTcTracks))
     TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestBase))
+    TESTS.addTest(unittest.TestLoader().loadTestsFromTestCase(TestRPCal))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
