@@ -46,6 +46,7 @@ import shapely.ops
 import shapely.vectorized
 import shapely.wkt
 from cartopy.io import shapereader
+from pyproj import Geod
 from shapely.geometry import MultiPolygon, Point, Polygon, box
 from sklearn.neighbors import BallTree
 
@@ -524,6 +525,59 @@ def compute_grid_cell_area(res: float) -> tuple[np.ndarray]:
     )  # each row as same area
 
     return grid_area, [lat_bins, lon_bins]
+
+
+def compute_grid_cell_area_(
+    res: float = 1.0, projection: str = "WGS84", units: str = "km^2"
+) -> np.ndarray:
+    """
+    Compute the area of each grid cell in a latitude-longitude grid.
+
+    Parameters:
+    -----------
+    res: float
+        Grid resolution in degrees (default is 1° x 1°)
+    projection: str
+        Ellipsoid or spherical projection to approximate Earth. To get the complete list of
+        projections call :py:meth:`pyproj.get_ellps_map()`. Widely used projections:
+        - "WGS84": Uses the WGS84 ellipsoid (default)
+        - "GRS80"
+        - "IAU76"
+        - "sphere": Uses a perfect sphere with Earth's mean radius (6371 km)
+    units: str (optional) Default "km^2"
+        units of the area. Either km^2 or m^2.
+
+    Returns:
+    --------
+    area: np.ndarray
+        A 2D numpy array of grid cell areas in km²
+    Example:
+    --------
+    >>> area = compute_grid_areas(res = 1, projection ="sphere", units = "m^2")
+    """
+    geod = Geod(ellps=projection)  # Use specified ellipsoid model
+
+    lat_edges = np.linspace(-90, 90, int(180 / res))  # Latitude edges
+    lon_edges = np.linspace(-180, 180, int(360 / res))  # Longitude edges
+
+    area = np.zeros((len(lat_edges) - 1, len(lon_edges) - 1))  # Create an empty grid
+
+    # Iterate over consecutive latitude and longitude edges
+    for i, (lat1, lat2) in enumerate(zip(lat_edges[:-1], lat_edges[1:])):
+        for j, (lon1, lon2) in enumerate(zip(lon_edges[:-1], lon_edges[1:])):
+
+            # 5th point to close the loop
+            poly_lons = [lon1, lon2, lon2, lon1, lon1]
+            poly_lats = [lat1, lat1, lat2, lat2, lat1]
+
+            # Compute the area of the grid cell
+            poly_area, _ = geod.polygon_area_perimeter(poly_lons, poly_lats)
+            area[i, j] = abs(poly_area)  # Convert from m² to km²
+
+    if units == "km^2":
+        area = area / 1e6
+
+    return area
 
 
 def grid_is_regular(coord):
