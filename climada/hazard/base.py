@@ -491,6 +491,7 @@ class Hazard(HazardIO, HazardPlot):
         min_intensity=None,
         log_frequency=True,
         log_intensity=True,
+        n_sig_dig=2,
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -573,6 +574,7 @@ class Hazard(HazardIO, HazardPlot):
                         value_threshold=min_intensity,
                         method=method,
                         y_asymptotic=0.0,
+                        n_sig_dig=n_sig_dig,
                     )
                     for i_centroid in nonzero_centroids
                 ]
@@ -620,6 +622,7 @@ class Hazard(HazardIO, HazardPlot):
         min_intensity=None,
         log_frequency=True,
         log_intensity=True,
+        n_sig_dig=2,
     ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -693,6 +696,7 @@ class Hazard(HazardIO, HazardPlot):
                     value_threshold=min_intensity,
                     method=method,
                     y_asymptotic=np.nan,
+                    n_sig_dig=n_sig_dig,
                 )
                 for i_centroid in range(self.intensity.shape[1])
             ]
