@@ -41,6 +41,7 @@ import numpy as np
 import pandas as pd
 import xlsxwriter
 from deprecation import deprecated
+from matplotlib.colors import Normalize
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 from scipy import sparse
@@ -1127,7 +1128,6 @@ class Impact:
         self,
         return_periods=(25, 50, 100, 250),
         log10_scale=True,
-        smooth=True,
         axis=None,
         **kwargs,
     ):
@@ -1163,42 +1163,25 @@ class Impact:
             "previous calculation, use CLIMADA v5.0.0 or less."
         )
 
-        imp_stats = (
-            self.local_exceedance_impact(np.array(return_periods))[0].values[:, 1:].T
-        )
-        imp_stats = imp_stats.astype(float)
-        if imp_stats.size == 0:
-            raise ValueError(
-                "Error: Attribute imp_mat is empty. Recalculate Impact"
-                "instance with parameter save_mat=True"
-            )
-        if log10_scale:
-            if np.min(imp_stats) < 0:
-                imp_stats_log = np.log10(abs(imp_stats) + 1)
-                colbar_name = "Log10(abs(Impact)+1) (" + self.unit + ")"
-            elif np.min(imp_stats) < 1:
-                imp_stats_log = np.log10(imp_stats + 1)
-                colbar_name = "Log10(Impact+1) (" + self.unit + ")"
-            else:
-                imp_stats_log = np.log10(imp_stats)
-                colbar_name = "Log10(Impact) (" + self.unit + ")"
-        else:
-            imp_stats_log = imp_stats
-            colbar_name = "Impact (" + self.unit + ")"
-        title = list()
-        for ret in return_periods:
-            title.append("Return period: " + str(ret) + " years")
-        axis = u_plot.geo_im_from_array(
-            imp_stats_log,
-            self.coord_exp,
-            colbar_name,
-            title,
-            smooth=smooth,
-            axes=axis,
-            **kwargs,
+        impacts_stats, title, column_labels = self.local_exceedance_impact(
+            return_periods
         )
 
-        return axis, imp_stats
+        impacts_stats_vals = impacts_stats.values[:, 1:].T.astype(float)
+        if not log10_scale:
+            min_impact, max_impact = np.nanmin(impacts_stats_vals), np.nanmax(
+                impacts_stats_vals
+            )
+            kwargs.update(
+                {
+                    "norm": Normalize(vmin=min_impact, vmax=max_impact),
+                }
+            )
+
+        axis = u_plot.plot_from_gdf(
+            impacts_stats, title, column_labels, axis=axis, **kwargs
+        )
+        return axis, impacts_stats_vals
 
     def write_csv(self, file_name):
         """Write data into csv file. imp_mat is not saved.
