@@ -683,24 +683,31 @@ class Hazard(HazardIO, HazardPlot):
         ]:
             raise ValueError(f"Unknown method: {method}")
 
-        # calculate local return periods
-        return_periods = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    None,
-                    np.array(threshold_intensities),
-                    self.frequency,
-                    self.intensity.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_intensity,
-                    value_threshold=min_intensity,
-                    method=method,
-                    y_asymptotic=np.nan,
-                    n_sig_dig=n_sig_dig,
-                )
-                for i_centroid in range(self.intensity.shape[1])
-            ]
+        return_periods = np.full(
+            (self.intensity.shape[1], threshold_intensities.shape[0]), np.nan
         )
+
+        nonzero_centroids = np.where(self.intensity.getnnz(axis=0) > 0)[0]
+
+        if not len(nonzero_centroids) == 0:
+            return_periods[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        None,
+                        np.array(threshold_intensities),
+                        self.frequency,
+                        self.intensity.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_intensity,
+                        value_threshold=min_intensity,
+                        method=method,
+                        y_asymptotic=np.nan,
+                        n_sig_dig=n_sig_dig,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
+
         return_periods = safe_divide(1.0, return_periods)
 
         # create the output GeoDataFrame

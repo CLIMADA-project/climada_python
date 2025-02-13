@@ -107,8 +107,8 @@ class Impact:
         crs=DEF_CRS,
         eai_exp=None,
         at_event=None,
-        tot_value=0.,
-        aai_agg=0.,
+        tot_value=0.0,
+        aai_agg=0.0,
         unit="",
         imp_mat=None,
         haz_type="",
@@ -564,22 +564,31 @@ class Impact:
 
         # calculate local exceedance impact
         test_frequency = 1 / np.array(return_periods)
-        exceedance_impact = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    test_frequency,
-                    None,
-                    self.frequency,
-                    self.imp_mat.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_impact,
-                    value_threshold=min_impact,
-                    method=method,
-                    y_asymptotic=0.0,
-                )
-                for i_centroid in range(self.imp_mat.shape[1])
-            ]
+
+        exceedance_impact = np.full(
+            (self.imp_mat.shape[1], test_frequency.shape[0]),
+            np.nan if method == "interpolate" else 0.0,
         )
+
+        nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
+
+        if not len(nonzero_centroids) == 0:
+            exceedance_impact[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        test_frequency,
+                        None,
+                        self.frequency,
+                        self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_impact,
+                        value_threshold=min_impact,
+                        method=method,
+                        y_asymptotic=0.0,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(
@@ -683,23 +692,28 @@ class Impact:
         ]:
             raise ValueError(f"Unknown method: {method}")
 
+        return_periods = np.full((self.imp_mat.shape[1], len(threshold_impact)), np.nan)
+
+        nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
+
         # calculate local return periods
-        return_periods = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    None,
-                    np.array(threshold_impact),
-                    self.frequency,
-                    self.imp_mat.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_impact,
-                    value_threshold=min_impact,
-                    method=method,
-                    y_asymptotic=np.nan,
-                )
-                for i_centroid in range(self.imp_mat.shape[1])
-            ]
-        )
+        if not len(nonzero_centroids) == 0:
+            return_periods[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        None,
+                        np.array(threshold_impact),
+                        self.frequency,
+                        self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_impact,
+                        value_threshold=min_impact,
+                        method=method,
+                        y_asymptotic=np.nan,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
         return_periods = safe_divide(1.0, return_periods)
 
         # create the output GeoDataFrame
