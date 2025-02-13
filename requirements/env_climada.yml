@@ -22,6 +22,7 @@ dependencies:
   - pandas>=2.1,<2.2  # 2.2 is not compatible with the default pytables=3.7 and yields a very high deprecation warning number through geopandas
   - pandas-datareader>=0.10
   - pathos>=0.3
+  - pillow>=9.5,<11.1  # 11.1 is not compatible with climada_petals, as it inhibits esmpy installation
   - pint>=0.24
   - pip
   - pycountry>=24.6
