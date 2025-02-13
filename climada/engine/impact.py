@@ -1123,10 +1123,6 @@ class Impact:
 
         return axis
 
-    @deprecated(
-        details="The use of Impact.plot_rp_imp is deprecated."
-        "Use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead."
-    )
     def plot_rp_imp(
         self,
         return_periods=(25, 50, 100, 250),
@@ -1160,6 +1156,13 @@ class Impact:
         imp_stats : np.array
             return_periods.size x num_centroids
         """
+
+        LOGGER.info(
+            "Some errors in the previous calculation of local exceedance impacts have been corrected,"
+            " see Impact.local_exceedance_impact. To reproduce data with the "
+            "previous calculation, use CLIMADA v5.0.0 or less."
+        )
+
         imp_stats = (
             self.local_exceedance_impact(np.array(return_periods))[0].values[:, 1:].T
         )
