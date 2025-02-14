@@ -586,6 +586,7 @@ class Impact:
                         value_threshold=min_impact,
                         method=method,
                         y_asymptotic=0.0,
+                        n_sig_dig=3,
                     )
                     for i_centroid in nonzero_centroids
                 ]
@@ -711,6 +712,7 @@ class Impact:
                         value_threshold=min_impact,
                         method=method,
                         y_asymptotic=np.nan,
+                        n_sig_dig=3,
                     )
                     for i_centroid in nonzero_centroids
                 ]

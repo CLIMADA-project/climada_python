@@ -71,6 +71,8 @@ def preprocess_and_interpolate_ev(
         Has no effect if method is "interpolate". Else, provides return value and if
         for test x values larger than given x values, if size < 2 or if method is set
         to "extrapolate_constant" or "stepfunction". Defaults to np.nan.
+    n_sig_dig : int, optional
+        number of significant digits to group the values (in order to avoid bad extrapolation behaviour). Defaults to 3.
 
     Returns
     -------
@@ -96,7 +98,7 @@ def preprocess_and_interpolate_ev(
     frequency = frequency[sorted_idxs]
 
     # group similar values together
-    frequency, values = group_frequency(frequency, values, n_sig_dig=n_sig_dig)
+    frequency, values = group_frequency(frequency, values, n_sig_dig)
 
     # transform frequencies to cummulative frequencies
     frequency = np.cumsum(frequency[::-1])[::-1]
@@ -368,6 +370,8 @@ def group_frequency(frequency, value, n_sig_dig):
         start_indices = np.insert(start_indices, value_unique.size, frequency.size)
         frequency = np.add.reduceat(frequency, start_indices[:-1])
         return frequency, value_unique
+    elif not all(sorted(value) == value):
+        raise ValueError("Value array must be sorted in ascending order!")
 
     return frequency, value
 

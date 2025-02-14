@@ -221,13 +221,16 @@ class TestFitMethods(unittest.TestCase):
     def test_frequency_group(self):
         """Test frequency grouping method"""
         frequency = np.ones(6)
-        intensity = np.array([1.00001, 0.999, 1.0, 2.0, 3.0, 3])
+        intensity = np.array([1.00001, 0.9998, 1.0, 2.0, 3.0, 3])
         np.testing.assert_allclose(
-            u_interp.group_frequency(frequency, intensity), ([3, 1, 2], [1, 2, 3])
+            u_interp.group_frequency(frequency, intensity, n_sig_dig=3),
+            ([3, 1, 2], [1, 2, 3]),
         )
-        np.testing.assert_allclose(u_interp.group_frequency([], []), ([], []))
+        np.testing.assert_allclose(
+            u_interp.group_frequency([], [], n_sig_dig=3), ([], [])
+        )
         with self.assertRaises(ValueError):
-            u_interp.group_frequency(frequency, intensity[::-1])
+            u_interp.group_frequency(frequency, intensity[::-1], n_sig_dig=3)
 
     def test_round_to_sig_digits(self):
         array = [0.00111, 999.0, 55.5, 0.0, -1.001, -1.08]
