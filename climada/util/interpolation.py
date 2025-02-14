@@ -37,7 +37,7 @@ def preprocess_and_interpolate_ev(
     value_threshold=None,
     method="interpolate",
     y_asymptotic=np.nan,
-    n_sig_dig=2,
+    n_sig_dig=3,
 ):
     """Wrapper function to first preprocess (frequency, values) data and and then inter- and
     extrapolate to test frequencies or test values.
@@ -334,7 +334,7 @@ def _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic):
     return y_test
 
 
-def group_frequency(frequency, value, n_sig_dig=2):
+def group_frequency(frequency, value, n_sig_dig):
     """
     Util function to aggregate (add) frequencies for equal values
 
@@ -346,7 +346,6 @@ def group_frequency(frequency, value, n_sig_dig=2):
             Value array in ascending order
         n_sig_dig : int
             number of significant digits for value when grouping frequency.
-            Defaults to 2.
 
     Returns:
     ------
@@ -388,7 +387,7 @@ def round_to_sig_digits(x, n_sig_dig):
     np.array
         rounded array
     """
-    x = np.asarray(x)
-    x_positive = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10 ** (n_sig_dig - 1))
-    mags = 10 ** (n_sig_dig - 1 - np.floor(np.log10(x_positive)))
-    return np.round(x * mags) / mags
+
+    return np.vectorize(np.format_float_positional)(
+        x, precision=n_sig_dig, unique=False, fractional=False, trim="k"
+    ).astype(float)
