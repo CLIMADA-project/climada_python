@@ -509,8 +509,10 @@ class Hazard(HazardIO, HazardPlot):
             periods larger than the Hazard object's observed local return periods will be assigned
             the largest local intensity, and return periods smaller than the Hazard object's
             observed local return periods will be assigned 0. If set to "extrapolate", local
-            exceedance intensities will be extrapolated (and interpolated).
-            Defauls to "interpolate".
+            exceedance intensities will be extrapolated (and interpolated). The extrapolation to
+            large return periods uses the two highest intensites of the centroid and their return
+            periods and extends the interpolation between these points to the given return period
+            (similar for small return periods). Defauls to "interpolate".
         min_intensity : float, optional
             Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
             will be used. Defaults to None.
@@ -640,6 +642,9 @@ class Hazard(HazardIO, HazardPlot):
             intensities will be assigned NaN, and threshold intensities smaller than the Hazard
             object's local intensities will be assigned the smallest observed local return period.
             If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            The extrapolation to large threshold intensities uses the two highest intensites of
+            the centroid and their return periods and extends the interpolation between these
+            points to the given threshold intensity (similar for small threshold intensites).
             Defaults to "interpolate".
         min_intensity : float, optional
             Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres

@@ -516,7 +516,10 @@ class Impact:
             return periods larger than the Impact object's observed local return periods will be
             assigned the largest local impact, and return periods smaller than the Impact object's
             observed local return periods will be assigned 0. If set to "extrapolate", local
-            exceedance impacts will be extrapolated (and interpolated). Defauls to "interpolate".
+            exceedance impacts will be extrapolated (and interpolated). The extrapolation to
+            large return periods uses the two highest impacts of the centroid and their return
+            periods and extends the interpolation between these points to the given return period
+            (similar for small return periods). Defauls to "interpolate".
         min_impact : float, optional
             Minimum threshold to filter the impact. Defaults to 0.
         log_frequency : bool, optional
@@ -648,6 +651,9 @@ class Impact:
             impacts will be assigned NaN, and threshold impacts smaller than the Impact
             object's local impacts will be assigned the smallest observed local return period.
             If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            The extrapolation to large threshold impacts uses the two highest impacts of
+            the centroid and their return periods and extends the interpolation between these
+            points to the given threshold imapct (similar for small large threshold impacts).
             Defaults to "interpolate".
         min_impacts : float, optional
             Minimum threshold to filter the impact. Defaults to 0.
