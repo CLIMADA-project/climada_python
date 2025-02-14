@@ -557,7 +557,7 @@ class Hazard(HazardIO, HazardPlot):
         test_frequency = 1 / np.array(return_periods)
 
         exceedance_intensity = np.full(
-            (self.intensity.shape[1], test_frequency.shape[0]),
+            (self.intensity.shape[1], len(test_frequency)),
             np.nan if method == "interpolate" else 0.0,
         )
 
@@ -687,7 +687,7 @@ class Hazard(HazardIO, HazardPlot):
             raise ValueError(f"Unknown method: {method}")
 
         return_periods = np.full(
-            (self.intensity.shape[1], threshold_intensities.shape[0]), np.nan
+            (self.intensity.shape[1], len(threshold_intensities)), np.nan
         )
 
         nonzero_centroids = np.where(self.intensity.getnnz(axis=0) > 0)[0]

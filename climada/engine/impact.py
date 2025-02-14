@@ -570,7 +570,7 @@ class Impact:
         test_frequency = 1 / np.array(return_periods)
 
         exceedance_impact = np.full(
-            (self.imp_mat.shape[1], test_frequency.shape[0]),
+            (self.imp_mat.shape[1], len(test_frequency)),
             np.nan if method == "interpolate" else 0.0,
         )
 
