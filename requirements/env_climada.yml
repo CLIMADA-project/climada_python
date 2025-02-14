@@ -5,16 +5,16 @@ channels:
 dependencies:
   - bottleneck>=1.4
   - cartopy>=0.24
-  - cfgrib>=0.9.9
+  - cfgrib>=0.9
   - contextily>=1.6
-  - dask>=2024.8
-  - eccodes>=2.27
-  - gdal>=3.6
+  - dask>=2025.2
+  - eccodes>=2.40
+  - gdal>=3.10
   - geopandas>=0.14,<1.0  # geopandas 1.0 does not depend on fiona anymore, hence fiona would need to be added as dependency
-  - h5py>=3.8
+  - h5py>=3.12
   - haversine>=2.9
   - matplotlib-base>=3.10
-  - netcdf4>=1.6
+  - netcdf4>=1.7
   - numba>=0.61
   - numexpr>=2.10
   - openpyxl>=3.1
@@ -25,8 +25,8 @@ dependencies:
   - pint>=0.24
   - pip
   - pycountry>=24.6
-  - pyproj>=3.5
-  - pytables>=3.7
+  - pyproj>=3.7
+  - pytables>=3.10
   - pyxlsb>=1.0
   - rasterio>=1.4
   - requests>=2.32
