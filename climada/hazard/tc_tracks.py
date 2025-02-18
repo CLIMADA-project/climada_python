@@ -3029,12 +3029,12 @@ def compute_track_density(
 
     limit_ratio = 1.12 * 1.1  # record tc speed 112km/h -> 1.12°/h + 10% margin
 
-    #if tc_track.data[0].time_step[0].item() > res / limit_ratio:
-     #   warnings.warn(
-      #      "The time step is too big for the current resolution. For the desired resolution, \n"
-        #    f"apply a time step of {res/limit_ratio}h."
-        #)
-    if res < 0.1:
+    if tc_track.data[0].time_step[0].values > res / limit_ratio:
+        warnings.warn(
+            "The time step is too big for the current resolution. For the desired resolution, \n"
+            f"apply a time step of {res/limit_ratio}h."
+        )
+    elif res < 0.1:
         warnings.warn(
             "The resolution is too high. The computation might take several minutes \n"
             "to hours. Consider using a resolution below 0.1°."
@@ -3069,7 +3069,31 @@ def compute_track_density(
         hist_count += hist_new
 
     if density:
-        grid_area, _ = u_coord.compute_grid_cell_area(res=res)
-        hist_count = hist_count / grid_area
+        hist_count = normalize_density()
 
     return hist_count, lat_bins, lon_bins
+
+
+def compute_genesis_index(track, lat_bins, lon_bins):
+
+    # Extract the first lat and lon from each dataset
+    first_lats = np.array([ds.lat.values[0] for ds in track])
+    first_lons = np.array([ds.lon.values[0] for ds in track])
+
+    # compute 2D density of genesis points
+    hist_count, _, _ = np.histogram2d(
+        first_lats,
+        first_lons,
+        bins=[lat_bins, lon_bins],
+        density=False,
+    )
+
+    return hist_count
+
+
+def normalize_density(res):
+
+    grid_area, _ = u_coord.compute_grid_cell_area(res=res)
+    hist_count = hist_count / grid_area
+
+    pass
