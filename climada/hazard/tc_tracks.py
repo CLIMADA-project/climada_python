@@ -3029,12 +3029,12 @@ def compute_track_density(
 
     limit_ratio = 1.12 * 1.1  # record tc speed 112km/h -> 1.12°/h + 10% margin
 
-    if float(tc_track.data[0].time_step[0].item()) > res / limit_ratio:
-        warnings.warn(
-            "The time step is too big for the current resolution. For the desired resolution, \n"
-            f"apply a time step of {res/limit_ratio}h."
-        )
-    elif res < 0.1:
+    #if tc_track.data[0].time_step[0].item() > res / limit_ratio:
+     #   warnings.warn(
+      #      "The time step is too big for the current resolution. For the desired resolution, \n"
+        #    f"apply a time step of {res/limit_ratio}h."
+        #)
+    if res < 0.1:
         warnings.warn(
             "The resolution is too high. The computation might take several minutes \n"
             "to hours. Consider using a resolution below 0.1°."
