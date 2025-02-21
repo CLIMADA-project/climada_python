@@ -2985,7 +2985,8 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
 def compute_track_density(
     tc_track: TCTracks,
     res: int = 5,
-    density: bool = False,
+    genesis: bool = False,
+    norm: str = None,
     filter_tracks: bool = True,
     wind_min: float = None,
     wind_max: float = None,
@@ -2993,43 +2994,48 @@ def compute_track_density(
     """Compute absolute and normalized tropical cyclone track density. Before using this function,
     apply the same temporal resolution to all tracks by calling :py:meth:`equal_timestep` on the
     TCTrack object. Due to the computational cost of the this function, it is not recommended to
-    use a grid resolution higher tha 0.1°. This function it creates 2D bins of the specified
+    use a grid resolution higher tha 0.1°. First, this function creates 2D bins of the specified
     resolution (e.g. 1° x 1°). Second, since tracks are not lines but a series of points, it counts
     the number of points per bin. Lastly, it returns the absolute or normalized count per bin.
     To plot the output of this function use :py:meth:`plot_track_density`.
 
     Parameters:
     ----------
-    res: int (optional) Default: 5°
+    tc_track: TCT track object
+        track object containing a list of all tracks
+    res: int (optional), default: 5°
         resolution in degrees of the grid bins in which the density will be computed
-    density: bool (optional) default: False
+    genesis: bool, Default = False
+        If true the function computes the track density of only the genesis location of tracks
+    norm: bool (optional), default = False
         If False it returns the number of samples in each bin. If True, returns the
-        probability density function at each bin computed as count_bin / grid_area.
+        specified normalization function at each bin computed as count_bin / grid_area.
     filter_tracks: bool (optional) default: True
         If True the track density is computed as the number of different tracks crossing a grid
         cell. If False, the track density takes into account how long the track stayed in each
         grid cell. Hence slower tracks increase the density if the parameter is set to False.
-    wind_min: float (optional) default: None
+    wind_min: float (optional), default: None
         Minimum wind speed above which to select tracks.
-    wind_max: float (optional) default: None
+    wind_max: float (optional), default: None
         Maximal wind speed below which to select tracks.
     Returns:
     -------
-    hist: 2D np.ndwind_speeday
-        2D matrix containing the track density
+    hist_count: np.ndarray
+        2D matrix containing the the absolute count per gridd cell of track point or the normalized
+        number of track points, depending on the norm parameter.
 
     Example:
     --------
     >>> tc_tracks = TCTrack.from_ibtracs_netcdf("path_to_file")
     >>> tc_tracks.equal_timestep(time_steph_h = 1)
-    >>> hist_count = compute_track_density(res = 1)
+    >>> hist_count, *_ = compute_track_density(res = 1)
     >>> plot_track_density(hist_count)
 
     """
 
     limit_ratio = 1.12 * 1.1  # record tc speed 112km/h -> 1.12°/h + 10% margin
 
-    if tc_track.data[0].time_step[0].values > res / limit_ratio:
+    if tc_track.data[0].time_step[0].values > (res / limit_ratio):
         warnings.warn(
             "The time step is too big for the current resolution. For the desired resolution, \n"
             f"apply a time step of {res/limit_ratio}h."
@@ -3044,41 +3050,68 @@ def compute_track_density(
     lat_bins = np.linspace(-90, 90, int(180 / res))
     lon_bins = np.linspace(-180, 180, int(360 / res))
     # compute 2D density
-    hist_count = np.zeros((len(lat_bins) - 1, len(lon_bins) - 1))
-    for track in tqdm(tc_track.data, desc="Processing Tracks"):
-
-        # select according to wind speed
-        wind_speed = track.max_sustained_wind.values
-        if wind_min and wind_max:
-            index = np.where((wind_speed >= wind_min) & (wind_speed <= wind_max))[0]
-        elif wind_min and not wind_max:
-            index = np.where(wind_speed >= wind_min)[0]
-        elif wind_max and not wind_min:
-            index = np.where(wind_speed <= wind_max)[0]
-        else:
-            index = slice(None)  # select all the track
-
-        # compute 2D density
-        hist_new, _, _ = np.histogram2d(
-            track.lat.values[index],
-            track.lon.values[index],
-            bins=[lat_bins, lon_bins],
-            density=False,
+    if genesis:
+        hist_count = compute_genesis_density(
+            tc_track=tc_track, lat_bins=lat_bins, lon_bins=lon_bins
         )
-        hist_new[hist_new > 1] = 1 if filter_tracks else hist_new
-        hist_count += hist_new
+    else:
+        hist_count = np.zeros((len(lat_bins) - 1, len(lon_bins) - 1))
+        for track in tqdm(tc_track.data, desc="Processing Tracks"):
 
-    if density:
-        hist_count = normalize_density()
+            # select according to wind speed
+            wind_speed = track.max_sustained_wind.values
+            if wind_min and wind_max:
+                index = np.where((wind_speed >= wind_min) & (wind_speed <= wind_max))[0]
+            elif wind_min and not wind_max:
+                index = np.where(wind_speed >= wind_min)[0]
+            elif wind_max and not wind_min:
+                index = np.where(wind_speed <= wind_max)[0]
+            else:
+                index = slice(None)  # select all the track
+
+            # compute 2D density
+            hist_new, _, _ = np.histogram2d(
+                track.lat.values[index],
+                track.lon.values[index],
+                bins=[lat_bins, lon_bins],
+                density=False,
+            )
+            if filter_tracks:
+                hist_new[hist_new > 1] = 1
+
+            hist_count += hist_new
+
+    if norm:
+        hist_count = normalize_hist(res=res, hist_count=hist_count, norm=norm)
 
     return hist_count, lat_bins, lon_bins
 
 
-def compute_genesis_index(track, lat_bins, lon_bins):
+def compute_genesis_density(
+    tc_track: TCTracks, lat_bins: np.ndarray, lon_bins: np.ndarray
+) -> np.ndarray:
+    """Compute the density of track genesis locations. This function works under the hood
+    of :py:meth:`compute_track_density`. If it is called with the parameter genesis = True,
+    the function return the number of genesis points per grid cell.
 
+    Parameters:
+    -----------
+
+    tc_track: TCT track object
+        track object containing a list of all tracks
+    lat_bins: 1D np.array
+        array containg the latitude bins
+    lon_bins: 1D np.array
+        array containg the longitude bins
+
+    Returns:
+    --------
+    hist_count: 2D np.array
+        array containing the number of genesis points per grid cell
+    """
     # Extract the first lat and lon from each dataset
-    first_lats = np.array([ds.lat.values[0] for ds in track])
-    first_lons = np.array([ds.lon.values[0] for ds in track])
+    first_lats = np.array([ds.lat.values[0] for ds in tc_track.data])
+    first_lons = np.array([ds.lon.values[0] for ds in tc_track.data])
 
     # compute 2D density of genesis points
     hist_count, _, _ = np.histogram2d(
@@ -3091,9 +3124,31 @@ def compute_genesis_index(track, lat_bins, lon_bins):
     return hist_count
 
 
-def normalize_density(res):
+def normalize_hist(
+    res: int,
+    hist_count: np.ndarray,
+    norm: str,
+) -> np.ndarray:
+    """Normalize the number of points per grid cell by the grid cell area or by the total sum of
+    the histogram count.
 
-    grid_area, _ = u_coord.compute_grid_cell_area(res=res)
-    hist_count = hist_count / grid_area
+    Parameters:
+    -----------
+    res: float
+        resolution of grid cells
+    hist_count: 2D np.array
+        Array containing the count of tracks or genesis locations
+    norm: str
+        if norm = area normalize by gird cell area, if norm = sum normalize by the total sum
+    Returns:
+    ---------
 
-    pass
+    """
+
+    if norm == "area":
+        grid_area, _ = u_coord.compute_grid_cell_area(res=res)
+        norm_hist = hist_count / grid_area
+    elif norm == "sum":
+        norm_hist = hist_count / hist_count.sum()
+
+    return norm_hist

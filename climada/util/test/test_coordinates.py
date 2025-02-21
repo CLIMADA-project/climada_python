@@ -565,6 +565,9 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(area2[0], 1781.5973363005)
         self.assertTrue(area2[0] <= 2500)
 
+    def test_compute_grid_area_():
+        pass
+
     def test_read_vector_pass(self):
         """Test one columns data"""
         shp_file = shapereader.natural_earth(

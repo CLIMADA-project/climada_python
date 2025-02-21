@@ -1286,29 +1286,72 @@ class TestFuncs(unittest.TestCase):
         )
         # hist_norm, *_ = tc.compute_track_density(tc_tracks, res=10, density=True)
         hist_wind_min, *_ = tc.compute_track_density(
-            tc_tracks, res=10, density=False, wind_min=11, wind_max=None
+            tc_tracks, res=10, norm=False, wind_min=11, wind_max=None
         )
         hist_wind_max, *_ = tc.compute_track_density(
-            tc_tracks, res=10, density=False, wind_min=None, wind_max=30
+            tc_tracks, res=10, norm=False, wind_min=None, wind_max=30
         )
         hist_wind_max, *_ = tc.compute_track_density(
-            tc_tracks, res=10, density=False, wind_min=None, wind_max=30
+            tc_tracks, res=10, norm=False, wind_min=None, wind_max=30
         )
         hist_wind_both, *_ = tc.compute_track_density(
-            tc_tracks, res=10, density=False, wind_min=11, wind_max=29
+            tc_tracks, res=10, norm=False, wind_min=11, wind_max=29
         )
         self.assertEqual(hist_abs.shape, (17, 35))
-        # self.assertEqual(hist_norm.shape, (17, 35))
-        # self.assertEqual(hist_norm.sum(), 1)
         self.assertEqual(hist_abs.sum(), 4)
         self.assertEqual(hist_wind_min.sum(), 3)
         self.assertEqual(hist_wind_max.sum(), 4)
         self.assertEqual(hist_wind_both.sum(), 2)
-        # the track above occupy positions [0,0:4] of hist
+        # the track defined above occupy positions 0 to 4
         np.testing.assert_array_equal(hist_abs[0, 0:4], [1, 1, 1, 1])
-        # np.testing.assert_array_equal(
-        #     hist_norm[0, 0:4], [0.25, 0.25, 0.25, 0.25]
-        # )
+
+    def test_normalize_hist(self):
+        """test the correct normalization of a 2D matrix by grid cell area and sum of
+        values of the matrix."""
+
+        M = np.ones((10, 10))
+        M_norm = tc.normalize_hist(res=10, hist_count=M, norm="sum")
+        np.testing.assert_array_equal(M, M_norm * 100)
+
+    def test_compute_genesis_density(self):
+        """Check that the correct number of grid point is computed per grid cell for the starting
+        location of cyclone tracks"""
+        # create track
+        track = xr.Dataset(
+            {
+                "time_step": ("time", np.timedelta64(1, "h") * np.arange(4)),
+                "max_sustained_wind": ("time", [10, 20, 30, 20]),
+                "central_pressure": ("time", [1, 1, 1, 1]),
+                "radius_max_wind": ("time", [1, 1, 1, 1]),
+                "environnmental_pressure": ("time", [1, 1, 1, 1]),
+                "basin": ("time", ["NA", "NA", "NA", "NA"]),
+            },
+            coords={
+                "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12H")),
+                "lat": ("time", [-90, -89, -88, -87]),
+                "lon": ("time", [-179, -169, -159, -149]),
+            },
+            attrs={
+                "max_sustained_wind_unit": "m/s",
+                "central_pressure_unit": "hPa",
+                "name": "storm_0",
+                "sid": "0",
+                "orig_event_flag": True,
+                "data_provider": "FAST",
+                "id_no": "0",
+                "category": "1",
+            },
+        )
+        res = 10
+        tc_tracks = tc.TCTracks([track])
+        lat_bins = np.linspace(-90, 90, int(180 / res))
+        lon_bins = np.linspace(-180, 180, int(360 / res))
+        hist = tc.compute_genesis_density(
+            tc_track=tc_tracks, lat_bins=lat_bins, lon_bins=lon_bins
+        )
+        self.assertEqual(hist.shape, (17, 35))
+        self.assertEqual(hist.sum(), 1)
+        self.assertEqual(hist[0, 0], 1)
 
 
 # Execute Tests
