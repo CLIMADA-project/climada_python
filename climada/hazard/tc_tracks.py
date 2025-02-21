@@ -1644,7 +1644,7 @@ class TCTracks:
         """
 
         LOGGER.info("Reading %s files.", len(get_file_names(folder_name)))
-        data: list = []
+        data = []
         for file in get_file_names(folder_name):
             if Path(file).suffix != ".nc":
                 continue
@@ -1653,32 +1653,28 @@ class TCTracks:
                     for i in dataset.n_trk:
 
                         # Select track
-                        track: xr.Dataset = dataset.sel(n_trk=i, year=year)
+                        track = dataset.sel(n_trk=i, year=year)
                         # chunk dataset at first NaN value
-                        lon: np.ndarray = track.lon_trks.data
-                        last_valid_index: int = np.where(np.isfinite(lon))[0][-1]
-                        track: xr.Dataset = track.isel(
-                            time=slice(0, last_valid_index + 1)
-                        )
+                        lon = track.lon_trks.data
+                        last_valid_index = np.where(np.isfinite(lon))[0][-1]
+                        track = track.isel(time=slice(0, last_valid_index + 1))
                         # Select lat, lon
-                        lat: np.ndarray = track.lat_trks.data
-                        lon: np.ndarray = track.lon_trks.data
+                        lat = track.lat_trks.data
+                        lon = track.lon_trks.data
                         # Convert lon from 0-360 to -180 - 180
-                        lon: np.ndarray = ((lon + 180) % 360) - 180
+                        lon = ((lon + 180) % 360) - 180
                         # Convert time to pandas Datetime "yyyy.mm.dd"
                         reference_time = (
                             f"{track.tc_years.item()}-{int(track.tc_month.item())}-01"
                         )
-                        time: np.datetime64 = pd.to_datetime(
+                        time = pd.to_datetime(
                             track.time.data, unit="s", origin=reference_time
                         ).astype("datetime64[s]")
                         # Define variables
-                        ms_to_kn: float = 1.943844
-                        max_wind_kn: np.ndarray = track.vmax_trks.data * ms_to_kn
-                        env_pressure: float = BASIN_ENV_PRESSURE[
-                            track.tc_basins.data.item()
-                        ]
-                        cen_pres: np.ndarray = _estimate_pressure(
+                        ms_to_kn = 1.943844
+                        max_wind_kn = track.vmax_trks.data * ms_to_kn
+                        env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
+                        cen_pres = _estimate_pressure(
                             np.full(lat.shape, np.nan),
                             lat,
                             lon,
