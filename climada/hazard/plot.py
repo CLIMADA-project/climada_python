@@ -44,11 +44,9 @@ class HazardPlot:
         **kwargs,
     ):
         """
-        This function is deprecated,
-        use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead.
-
         Compute and plot hazard exceedance intensity maps for different
-        return periods. Calls local_exceedance_inten.
+        return periods. Calls local_exceedance_intensity. For handling large data sets and for
+        further options, see Notes.
 
         Parameters
         ----------
@@ -63,6 +61,13 @@ class HazardPlot:
         -------
         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
             intenstats is return_periods.size x num_centroids
+
+        Notes
+        -----
+        For handling large data, and for more fleixble options in the exceedance
+        intensity computation and in the plotting, we recommend to use
+        gdf, title, labels = hazard.local_exceedance_intensity() and
+        util.plot.plot_from_gdf(gdf, title, labels) instead.
         """
         LOGGER.info(
             "Some errors in the previous calculation of local exceedance intensities have been corrected,"

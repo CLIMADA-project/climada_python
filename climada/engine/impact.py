@@ -1140,11 +1140,9 @@ class Impact:
         **kwargs,
     ):
         """
-        This function is deprecated, use Impact.local_exceedance_impact and
-        util.plot.plot_from_gdf instead.
-
         Compute and plot exceedance impact maps for different return periods.
-        Calls local_exceedance_imp.
+        Calls local_exceedance_impact. For handling large data sets and for further options,
+        see Notes.
 
         Parameters
         ----------
@@ -1163,6 +1161,13 @@ class Impact:
         axis : matplotlib.axes.Axes
         imp_stats : np.array
             return_periods.size x num_centroids
+
+        Notes
+        -----
+        For handling large data, and for more flexible options in the exceedance
+        impact computation and in the plotting, we recommend to use
+        gdf, title, labels = impact.local_exceedance_impact() and
+        util.plot.plot_from_gdf(gdf, title, labels) instead.
         """
 
         LOGGER.info(
