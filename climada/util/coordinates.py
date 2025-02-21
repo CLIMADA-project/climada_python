@@ -460,7 +460,7 @@ def get_gridcellarea(lat, resolution=0.5, unit="ha"):
     return area
 
 
-def compute_grid_cell_area(res: float) -> tuple[np.ndarray]:
+def compute_grid_cell_area_validation(res: float) -> tuple[np.ndarray]:
     """
     This function computes the area of each grid cell on a sphere (Earth), using latitude and
     longitude bins based on the given resolution. The area is computed using the spherical cap
@@ -524,10 +524,10 @@ def compute_grid_cell_area(res: float) -> tuple[np.ndarray]:
         areas[:, np.newaxis], (1, len(lon_bins) - 1)
     )  # each row as same area
 
-    return grid_area, [lat_bins, lon_bins]
+    return grid_area, lat_bins, lon_bins
 
 
-def compute_grid_cell_area_(
+def compute_grid_cell_area(
     res: float = 1.0, projection: str = "WGS84", units: str = "km^2"
 ) -> np.ndarray:
     """
@@ -556,7 +556,6 @@ def compute_grid_cell_area_(
     >>> area = compute_grid_areas(res = 1, projection ="sphere", units = "m^2")
     """
     geod = Geod(ellps=projection)  # Use specified ellipsoid model
-
     lat_edges = np.linspace(-90, 90, int(180 / res))  # Latitude edges
     lon_edges = np.linspace(-180, 180, int(360 / res))  # Longitude edges
 
