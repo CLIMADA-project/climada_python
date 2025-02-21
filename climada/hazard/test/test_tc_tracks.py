@@ -1282,20 +1282,20 @@ class TestFuncs(unittest.TestCase):
         hist_abs, *_ = tc.compute_track_density(
             tc_tracks,
             res=10,
-            density=False,
+            norm=None,
         )
         # hist_norm, *_ = tc.compute_track_density(tc_tracks, res=10, density=True)
         hist_wind_min, *_ = tc.compute_track_density(
-            tc_tracks, res=10, norm=False, wind_min=11, wind_max=None
+            tc_tracks, res=10, norm=None, wind_min=11, wind_max=None
         )
         hist_wind_max, *_ = tc.compute_track_density(
-            tc_tracks, res=10, norm=False, wind_min=None, wind_max=30
+            tc_tracks, res=10, norm=None, wind_min=None, wind_max=30
         )
         hist_wind_max, *_ = tc.compute_track_density(
-            tc_tracks, res=10, norm=False, wind_min=None, wind_max=30
+            tc_tracks, res=10, norm=None, wind_min=None, wind_max=30
         )
         hist_wind_both, *_ = tc.compute_track_density(
-            tc_tracks, res=10, norm=False, wind_min=11, wind_max=29
+            tc_tracks, res=10, norm=None, wind_min=11, wind_max=29
         )
         self.assertEqual(hist_abs.shape, (17, 35))
         self.assertEqual(hist_abs.sum(), 4)

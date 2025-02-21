@@ -1644,7 +1644,7 @@ class TCTracks:
         """
 
         LOGGER.info("Reading %s files.", len(get_file_names(folder_name)))
-        data = []
+        data: list = []
         for file in get_file_names(folder_name):
             if Path(file).suffix != ".nc":
                 continue
@@ -1653,28 +1653,32 @@ class TCTracks:
                     for i in dataset.n_trk:
 
                         # Select track
-                        track = dataset.sel(n_trk=i, year=year)
+                        track: xr.Dataset = dataset.sel(n_trk=i, year=year)
                         # chunk dataset at first NaN value
-                        lon = track.lon_trks.data
-                        last_valid_index = np.where(np.isfinite(lon))[0][-1]
-                        track = track.isel(time=slice(0, last_valid_index + 1))
+                        lon: np.ndarray = track.lon_trks.data
+                        last_valid_index: int = np.where(np.isfinite(lon))[0][-1]
+                        track: xr.Dataset = track.isel(
+                            time=slice(0, last_valid_index + 1)
+                        )
                         # Select lat, lon
-                        lat = track.lat_trks.data
-                        lon = track.lon_trks.data
+                        lat: np.ndarray = track.lat_trks.data
+                        lon: np.ndarray = track.lon_trks.data
                         # Convert lon from 0-360 to -180 - 180
-                        lon = ((lon + 180) % 360) - 180
+                        lon: np.ndarray = ((lon + 180) % 360) - 180
                         # Convert time to pandas Datetime "yyyy.mm.dd"
                         reference_time = (
                             f"{track.tc_years.item()}-{int(track.tc_month.item())}-01"
                         )
-                        time = pd.to_datetime(
+                        time: np.datetime64 = pd.to_datetime(
                             track.time.data, unit="s", origin=reference_time
                         ).astype("datetime64[s]")
                         # Define variables
-                        ms_to_kn = 1.943844
-                        max_wind_kn = track.vmax_trks.data * ms_to_kn
-                        env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
-                        cen_pres = _estimate_pressure(
+                        ms_to_kn: float = 1.943844
+                        max_wind_kn: np.ndarray = track.vmax_trks.data * ms_to_kn
+                        env_pressure: float = BASIN_ENV_PRESSURE[
+                            track.tc_basins.data.item()
+                        ]
+                        cen_pres: np.ndarray = _estimate_pressure(
                             np.full(lat.shape, np.nan),
                             lat,
                             lon,
@@ -3033,7 +3037,7 @@ def compute_track_density(
 
     """
 
-    limit_ratio = 1.12 * 1.1  # record tc speed 112km/h -> 1.12°/h + 10% margin
+    limit_ratio: float = 1.12 * 1.1  # record tc speed 112km/h -> 1.12°/h + 10% margin
     time_value: float = tc_track.data[0].time_step[0].values  # Type hint for jenkins
 
     if time_value > (res / limit_ratio):
@@ -3048,8 +3052,8 @@ def compute_track_density(
         )
 
     # define grid resolution and bounds for density computation
-    lat_bins = np.linspace(-90, 90, int(180 / res))
-    lon_bins = np.linspace(-180, 180, int(360 / res))
+    lat_bins: np.ndarray = np.linspace(-90, 90, int(180 / res))
+    lon_bins: np.ndarray = np.linspace(-180, 180, int(360 / res))
     # compute 2D density
     if genesis:
         hist_count = compute_genesis_density(
@@ -3148,8 +3152,8 @@ def normalize_hist(
 
     if norm == "area":
         grid_area, _ = u_coord.compute_grid_cell_area(res=res)
-        norm_hist = hist_count / grid_area
+        norm_hist: np.ndarray = hist_count / grid_area
     elif norm == "sum":
-        norm_hist = hist_count / hist_count.sum()
+        norm_hist: np.ndarray = hist_count / hist_count.sum()
 
     return norm_hist
