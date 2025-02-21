@@ -508,14 +508,14 @@ def compute_grid_cell_area(res: float) -> tuple[np.ndarray]:
     lat_bins = np.linspace(-90, 90, int(180 / res))  # lat bins
     lon_bins = np.linspace(-180, 180, int(360 / res))
 
-    r = 6371  # Earth's radius [km]
+    r_earth = 6371  # Earth's radius [km]
     # Convert to radians
     lat_bin_edges = np.radians(lat_bins)
     lon_res_rad = np.radians(res)
 
     # Compute area
     areas = (
-        r**2
+        r_earth**2
         * lon_res_rad
         * np.abs(np.sin(lat_bin_edges[1:]) - np.sin(lat_bin_edges[:-1]))
     )

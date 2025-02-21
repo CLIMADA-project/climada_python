@@ -160,9 +160,10 @@ class HazardPlot:
 
         raise ValueError("Provide one event id or one centroid id.")
 
+    @staticmethod
     def plot_track_density(
         hist: np.ndarray,
-        ax=None,
+        axis=None,
         projection=ccrs.Mollweide(),
         add_features: dict = None,
         title: str = None,
@@ -182,13 +183,13 @@ class HazardPlot:
         ----------
         hist: np.ndarray
             2D histogram of track density.
-        ax: GeoAxes, optional
+        axis: GeoAxes, optional
             Existing Cartopy axis.
         projection: cartopy.crs, optional
             Projection for the map.
         add_features: dict
-            Dictionary of map features to add. Keys can be 'land', 'coastline', 'borders', and 'lakes'.
-            Values are Booleans indicating whether to include each feature.
+            Dictionary of map features to add. Keys can be 'land', 'coastline', 'borders', and
+            'lakes'. Values are Booleans indicating whether to include each feature.
         title: str
             Title of the plot.
         figsize: tuple
@@ -200,16 +201,18 @@ class HazardPlot:
 
         Returns:
         -------
-        ax: GeoAxes
+        axis: GeoAxes
             The plot axis.
 
 
         Example:
         --------
-        >>> ax = plot_track_density(
+        >>> axis = plot_track_density(
         ...     hist=hist,
         ...     cmap='Spectral_r',
-        ...     cbar_kwargs={'shrink': 0.8, 'label': 'Cyclone Density [n° tracks / km²]', 'pad': 0.1},
+        ...     cbar_kwargs={'shrink': 0.8,
+                            'label': 'Cyclone Density [n° tracks / km²]',
+                            'pad': 0.1},
         ...     add_features={
         ...         'land': True,
         ...         'coastline': True,
@@ -233,13 +236,12 @@ class HazardPlot:
         add_features = add_features or default_features
 
         # Sample data
-        x = np.linspace(-180, 180, hist.shape[1])
-        y = np.linspace(-90, 90, hist.shape[0])
-        z = hist
+        lon = np.linspace(-180, 180, hist.shape[1])
+        lat = np.linspace(-90, 90, hist.shape[0])
 
         # Create figure and axis if not provided
-        if ax is None:
-            fig, ax = plt.subplots(
+        if axis is None:
+            _, axis = plt.subplots(
                 figsize=figsize, subplot_kw={"projection": projection}
             )
 
@@ -252,24 +254,24 @@ class HazardPlot:
                 facecolor="lightgrey",
                 alpha=0.6,
             )
-            ax.add_feature(land)
+            axis.add_feature(land)
         if add_features.get("coastline", False):
-            ax.add_feature(cfeature.COASTLINE, linewidth=0.5)
+            axis.add_feature(cfeature.COASTLINE, linewidth=0.5)
         if add_features.get("borders", False):
-            ax.add_feature(cfeature.BORDERS, linestyle=":")
+            axis.add_feature(cfeature.BORDERS, linestyle=":")
         if add_features.get("lakes", False):
-            ax.add_feature(cfeature.LAKES, alpha=0.4, edgecolor="black")
+            axis.add_feature(cfeature.LAKES, alpha=0.4, edgecolor="black")
 
         # Plot density with contourf
-        contourf = ax.contourf(x, y, z, transform=ccrs.PlateCarree(), **kwargs)
+        contourf = axis.contourf(lon, lat, hist, transform=ccrs.PlateCarree(), **kwargs)
 
         # Add colorbar
-        cbar = plt.colorbar(contourf, ax=ax, **cbar_kwargs)
+        plt.colorbar(contourf, ax=axis, **cbar_kwargs)
         # Title setup
         if title:
-            ax.set_title(title, fontsize=16)
+            axis.set_title(title, fontsize=16)
 
-        return ax
+        return axis
 
     def plot_fraction(self, event=None, centr=None, smooth=True, axis=None, **kwargs):
         """Plot fraction values for a selected event or centroid.
