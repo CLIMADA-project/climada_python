@@ -3034,9 +3034,7 @@ def compute_track_density(
     """
 
     limit_ratio: float = 1.12 * 1.1  # record tc speed 112km/h -> 1.12°/h + 10% margin
-    time_value: float = (
-        tc_track.data[0].time_step[0].values.astype(float)
-    )  # Type hint for jenkins
+    time_value: float = tc_track.data[0].time_step[0].values.astype(float)
 
     if time_value > (res / limit_ratio):
         warnings.warn(
