@@ -59,6 +59,7 @@ function, `climada.hazard.plot.plot_track_density` function  [#1003](https://git
 
 ### Deprecated
 
+- `climada.hazard.trop_cyclone.trop_cyclone_windfields.compute_angular_windspeeds.cyclostrophic` argument
 - `climada.entity.exposures.Exposures.meta` attribute
 - `climada.entity.exposures.Exposures.set_lat_lon` method
 - `climada.entity.exposures.Exposures.set_geometry_points` method
