@@ -27,7 +27,7 @@ import pandas as pd
 import rasterio
 import scipy as sp
 from rasterio.windows import Window
-from shapely.geometry import Point
+from shapely.geometry import MultiPolygon, Point, Polygon
 from sklearn.metrics import DistanceMetric
 
 import climada.util.coordinates as u_coord
@@ -651,6 +651,39 @@ class TestGeoDFFuncs(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             Exposures.to_crs(self, crs="GCS", epsg=26915)
         self.assertEqual("one of crs or epsg must be None", str(cm.exception))
+
+    def test_latlon_with_polygons(self):
+        """Check for proper error message if the data frame contains non-Point shapes"""
+        poly = Polygon(
+            [(10.0, 0.0), (10.0, 1.0), (11.0, 1.0), (11.0, 0.0), (10.0, 0.0)]
+        )
+        point = Point((1, -1))
+        multi = MultiPolygon(
+            [
+                (
+                    ((0.0, 0.0), (0.0, 1.0), (1.0, 1.0), (1.0, 0.0)),
+                    [((0.1, 1.1), (0.1, 1.2), (0.2, 1.2), (0.2, 1.1))],
+                )
+            ]
+        )
+        poly = Polygon()
+        exp = Exposures(geometry=[poly, point, multi, poly])
+        with self.assertRaises(ValueError) as valer:
+            exp.latitude
+        self.assertEqual(
+            "Can only calculate latitude from Points."
+            " GeoDataFrame contains Polygon, MultiPolygon."
+            " Please see the lines_polygons module tutorial.",
+            str(valer.exception),
+        )
+        with self.assertRaises(ValueError) as valer:
+            exp.longitude
+        self.assertEqual(
+            "Can only calculate longitude from Points."
+            " GeoDataFrame contains Polygon, MultiPolygon."
+            " Please see the lines_polygons module tutorial.",
+            str(valer.exception),
+        )
 
 
 class TestImpactFunctions(unittest.TestCase):
