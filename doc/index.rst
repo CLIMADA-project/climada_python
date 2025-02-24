@@ -6,7 +6,7 @@ Welcome to CLIMADA!
    :align: center
    :alt: CLIMADA Logo
 
-CLIMADA (CLIMate ADAptation) is a free and open-source software framework for
+`CLIMADA <https://climada.ethz.ch>`_ (CLIMate ADAptation) is a free and open-source software framework for
 comprehensive climate risk assessment. Designed by a large scientific community,
 CLIMADA offers a robust and flexible platform to analyse the impacts of natural
 hazards and explore adaptation strategies, and it can be used by researchers,
