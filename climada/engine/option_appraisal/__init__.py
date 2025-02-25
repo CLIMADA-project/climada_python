@@ -17,5 +17,5 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 ---
 """
 
-from .calc_impact_metrics import *
-from .impact_metrics import *
+from .calc_impact_metrics import CalcImpactMetrics
+from .impact_metrics import ImpactMetrics
