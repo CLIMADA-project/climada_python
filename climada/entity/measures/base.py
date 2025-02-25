@@ -23,14 +23,9 @@ __all__ = ["Measure"]
 
 import copy
 import logging
-from typing import Callable, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
-
-from climada.engine import ImpactCalc
-from climada.entity import ImpactFuncSet
-from climada.entity.exposures.base import Exposures
-from climada.hazard.base import Hazard
 
 from .cost_income import CostIncome
 
@@ -67,14 +62,14 @@ class Measure:
         # start_year: int,
         # end_year: int,
         haz_type: str,
-        exposures_change: Callable[[Exposures, int], Exposures] = lambda x, y: x,
-        impfset_change: Callable[[ImpactFuncSet, int], ImpactFuncSet] = lambda x, y: x,
-        hazard_change: Callable[[Hazard, int], Hazard] = lambda x, y: x,
+        exposures_change: Callable[[Any, int], Any] = lambda x, y: x,
+        impfset_change: Callable[[Any, int], Any] = lambda x, y: x,
+        hazard_change: Callable[[Any, int], Any] = lambda x, y: x,
         combo: list[
             str
         ] = None,  # list of measure names that this measure is a combination of (Probably better to stire the other measures in the measure object)
         cost_income: Optional[CostIncome] = None,
-        implenmentation_duration: int = 0,  # duration of implementation in years before the measure is fully implemented (or should this be made later ... )
+        implementation_duration: int = 0,  # duration of implementation in years before the measure is fully implemented (or should this be made later ... )
     ):
         """
         Initialize a new Measure object with specified data.
@@ -105,7 +100,7 @@ class Measure:
         self.haz_type = haz_type
         self.combo = combo
         self.cost_income = cost_income if cost_income is not None else CostIncome()
-        self.implenmentation_duration = implenmentation_duration
+        self.implementation_duration = implementation_duration
 
     # @property
     # def start_year(self):
@@ -194,6 +189,8 @@ class Measure:
         return new_exp, new_impfs, new_haz
 
     def impact(self, exposures, impfset, hazard, year=None, **kwargs):
+        from climada.engine import ImpactCalc
+
         meas_exp, meas_impfset, meas_haz = self.apply(
             exposures, impfset, hazard, year=year
         )
@@ -226,6 +223,9 @@ def hazard_intensity_rp_cutoff(cut_off_rp, hazard):
 def impact_intensity_rp_cutoff(
     cut_off_rp, exposures, impfset, hazard, exposures_region_id
 ):
+    from climada.engine import ImpactCalc
+    from climada.entity import Exposures
+
     if exposures_region_id:
         # compute impact only in selected region
         in_reg = np.logical_or.reduce(

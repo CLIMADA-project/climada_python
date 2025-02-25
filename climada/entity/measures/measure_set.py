@@ -32,6 +32,9 @@ from climada.entity.measures.base import Measure
 
 LOGGER = logging.getLogger(__name__)
 
+# TODOS:
+# Implement __contains__ method
+
 
 class MeasureSet:
     """Contains measures of type Measure.
@@ -125,7 +128,7 @@ class MeasureSet:
         return len(self._data)
 
     # def combine(self, names=None, start_year=None, end_year=None, combo_name=None):
-    def combine(self, names=None, combo_name=None):
+    def combine(self, names=None, combo_name=None) -> Measure:
         names = self.names if names is None else names
         # if start_year is None:
         #     start_year = np.min([meas.start_year for meas in self.measures(names).values()])
