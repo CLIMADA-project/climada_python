@@ -93,6 +93,17 @@ class Download(Model):
     filesize = IntegerField(null=True)
     checksum = CharField(null=True)
 
+    def check(self, timestamp=None, filesize=None, checksum=None):
+        if timestamp and timestamp != self.timestamp:
+            return None
+        if filesize and filesize != self.filesize:
+            return None
+        if checksum:
+            refsum = self.checksum or file_checksum(self.path, checksum.split(":"))
+            if checksum != refsum:
+                return None
+        return self
+
 
 class DownloadFailed(Exception):
     """The download failed for some reason."""
@@ -218,14 +229,21 @@ class Downloader:
             integrity_check = Downloader.Check.SIZE + Downloader.Check.TIMESTAMP
 
         download = self._previous_download(
-            url=url, local_path=Path(target_dir, file_name), checkflags=integrity_check
-        ) or self._actual_download(
             url=url,
-            target_dir=target_dir,
-            file_name=file_name,
-            size=size,
-            checksum=checksum,
+            local_path=Path(target_dir, file_name),
+            checkflags=integrity_check,
         )
+        if not download or not download.check(
+            filesize=size,
+            checksum=":".join([self.checksum, checksum]) if checksum else None,
+        ):
+            download = self._actual_download(
+                url=url,
+                target_dir=target_dir,
+                file_name=file_name,
+                size=size,
+                checksum=checksum,
+            )
         return Path(download.path)
 
     def _previous_download(
@@ -241,9 +259,9 @@ class Downloader:
 
         if download.url != url:
             raise DownloadFailed(
-                f"this file ({str(local_path)}) has been downloaded from another url ({download.url}) before."
-                " Please remove the file or purge the entry from data base, if this is the correct url/target combination, "
-                " then try again."
+                f"this file ({str(local_path)}) has been downloaded from another url before"
+                f" ({download.url}). Please remove the file or purge the entry from data base"
+                f" ({self.DB.database}) if this is the correct url/target combination, then try again."
             )
 
         # in case a download is already in progress, weit for MAX_WAITING_PERIOD, than raise
@@ -274,8 +292,10 @@ class Downloader:
         ):
             return download
 
-        # clean up the mess otherwise (if any)
+        # clean up the mess
+        # remove the entry: whatever the database was keeping track off - it's gone.
         self.purge_cache_db(local_path)
+        # don't remove the downloaded file though, someone apperently put work into it
         return None
 
     def _actual_download(
@@ -322,14 +342,12 @@ class Downloader:
             for _ in range(self.RETRIES):
                 local_path.unlink(missing_ok=True)
                 download = self._tracked_download(remote_url=url, local_path=local_path)
-                if not download:  # an exception occurred
+                if not download:
+                    continue
+                if not download.check(filesize=size, checksum=checksum):
                     continue
                 if not download.enddownload:
                     raise RuntimeError("unexpected state, must be caused by a bug")
-                if size is not None and size != download.file_size:
-                    continue
-                if checksum and checksum != download.checksum:
-                    continue
                 return download
         self.DB.close()
         raise DownloadFailed(

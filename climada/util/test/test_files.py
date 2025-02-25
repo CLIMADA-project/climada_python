@@ -59,7 +59,7 @@ class TestDownloader(unittest.TestCase):
         with self.assertRaises(DownloadFailed) as dfe:
             self.downloader.download(
                 url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/"
-                "OSM_features_48_8.cpg",
+                "OSM_features_48_8.cpg",  # instead of ...47_8...
                 target_dir=self.tmpdir,
             )
 
@@ -72,7 +72,7 @@ class TestDownloader(unittest.TestCase):
                 url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/"
                 "OSM_features_47_8.cpg",
                 target_dir=self.tmpdir,
-                integrity_check=always_fails,
+                size=77,
             )
 
     def test_passing_download(self):
@@ -104,13 +104,16 @@ class TestDownloader(unittest.TestCase):
         # there was nothing downloaded, file is the same as before
         self.assertEqual(timestamp, dlf.stat().st_mtime)
 
-        with self.assertRaises(RuntimeError) as rte:
+        with self.assertRaises(DownloadFailed) as rte:
             self.downloader.download(
                 url="https://data.iac.ethz.ch/climada/9ff79b46-f912-41f8-b391-3f315689d246/"
                 "OSM_features_48_8.cpg",
                 target_dir=self.tmpdir,
                 file_name="OSM_features_47_8.cpg",
             )
+        self.assertIn(
+            ") has been downloaded from another url before", str(rte.exception)
+        )
 
 
 class TestChecksum(unittest.TestCase):
