@@ -99,12 +99,28 @@ class DownloadFailed(Exception):
 
 
 class Downloader:
+    class Check:
+        """Collection of flags for checking whether a file that has been downloaded before is still valid"""
+
+        # just the flags that are used to check whether an old local file is still valid
+        SYNC = 1
+        """the local file will always be replaced"""
+        TIMESTAMP = 2
+        """the timestamps must be equal"""
+        SIZE = 4
+        """the sizes must be equal"""
+        CHECKSUM = 8
+        """the checksums must be equal"""
 
     MAX_WAITING_PERIOD = 6.0
     """Sets the limit in seconds for the downloader to wait for another download in progress to
-    finish. (The total time spent sleeping before giving up is twice as much)"""
+    finish."""
 
     DOWNLOAD_TIMEOUT = 3600
+    """How long the Downloader waits for another process to finish the download before giving up"""
+
+    RETRIES = 3
+    """The number of download attempts that are made before giving up"""
 
     def __init__(
         self,
@@ -133,12 +149,12 @@ class Downloader:
         self.DB.close()
 
     def _init_database(self):
-        """sets up the database in case it isn't already ready"""
+        """sets up the database if need be"""
         with Download.bind_ctx(self.DB):
             self.DB.create_tables([Download])
 
             # migration
-            # 1: 2024-11-29, PR #982, feature/public_tracked_download,
+            # 1: 2025-0?-??, PR #10??, feature/public_tracked_download,
             #    additional columns checksum timestamp and filesize
             present_names = [x.name for x in self.DB.get_columns("download")]
             migrator = SqliteMigrator(self.DB)
@@ -155,22 +171,36 @@ class Downloader:
             )
         self.DB.close()
 
-    def download(self, url, target_dir, file_name=None, integrity_check=None):
+    def download(
+        self,
+        url,
+        target_dir,
+        file_name=None,
+        size=None,
+        checksum=None,
+        integrity_check=None,
+    ):
         """Download a file if it is not already present at the target destination.
 
         Parameters
         ----------
         url : str
-            the url of the file to be download
+            the url of the file to be downloaded
         target_dir : str | Path
-            target destination, must be(have like) a directory
+            target destination, must be the path to a directory
         file_name : str, optional
             the target file name
             If `None`, the name will be derived from the url
-        integrity_check : function(path) -> (), optional
-            the method that is used to check the integrity of the already downloaded file.
-            expected to raise a `DownloadFailed` exception if it wasn't successfull.
-            Default: `Downloader.file_unchanged_since`.
+        size : int, optional
+            the expected file size.
+            if set, this method will fail unless the actual size matches it.
+        checksum : str, optional
+            the expected checksum.
+            if set, this method will fail unless the actual checksum matches it.
+        integrity_check : int [Check.SIZE, Check.CHECKSUM, Check.TIMESTAMP], optional
+            file properties of already downloaded files that are compared to recorded properties
+            in case they match, another download is skipped and the existing file returned
+            Default: `Check.FLAG_SIZE & Check.FLAG_TIMESTAMP`.
 
         Returns
         -------
@@ -182,18 +212,80 @@ class Downloader:
         Exception
             when number of retries was exceeded or when a download is already running
         """
+        target_dir = Path(target_dir)
+        file_name = file_name or Path(url).name
+        if integrity_check is None:
+            integrity_check = Downloader.Check.SIZE + Downloader.Check.TIMESTAMP
 
-        return self._resilient_download(
+        download = self._previous_download(
+            url=url, local_path=Path(target_dir, file_name), checkflags=integrity_check
+        ) or self._actual_download(
             url=url,
             target_dir=target_dir,
-            file_name=file_name or Path(url).name,
-            check_method=integrity_check or self._file_unchanged_since,
-            retries=3,
+            file_name=file_name,
+            size=size,
+            checksum=checksum,
         )
+        return Path(download.path)
 
-    def _resilient_download(
-        self, url, target_dir, file_name, check_method, retries
-    ) -> Path:
+    def _previous_download(
+        self, url: str, local_path: Path, checkflags: int
+    ) -> Download:
+        # look up sqlite database
+        with Download.bind_ctx(self.DB):
+            download = Download.get_or_none(Download.path == str(local_path.absolute()))
+
+        # no entry means this is the first time
+        if download is None:
+            return None
+
+        if download.url != url:
+            raise DownloadFailed(
+                f"this file ({str(local_path)}) has been downloaded from another url ({download.url}) before."
+                " Please remove the file or purge the entry from data base, if this is the correct url/target combination, "
+                " then try again."
+            )
+
+        # in case a download is already in progress, weit for MAX_WAITING_PERIOD, than raise
+        # DownloadFailed exception
+        while not download.enddownload:
+            wait = 2
+            for _ in range(self.MAX_WAITING_PERIOD / wait):
+                time.sleep(wait)
+                with Download.bind_ctx(self.DB):
+                    download = Download.get(Download.path == str(local_path.absolute()))
+                if download.enddownload:
+                    break
+            if not download.enddownload:
+                raise DownloadFailed(
+                    f"A download of {url} via the climada.util.files_handler.Downloader has"
+                    " been requested before. Either it is still in progress or the process"
+                    " got interrupted. In the former case just wait until the download has"
+                    " finished and try again, in the latter run"
+                    f" `Downloader.purge_cache_db(Path('{str(local_path)}'))` from Python."
+                    " If unsure, check your internet connection, wait for as long as it takes"
+                    " to download a file of the given size and try again."
+                    " If the problem persists, purge the cache db with said call."
+                )
+
+        # return the path if all is good
+        if self._integrity_check(
+            download=download, local_path=local_path, checkflags=checkflags
+        ):
+            return download
+
+        # clean up the mess otherwise (if any)
+        self.purge_cache_db(local_path)
+        return None
+
+    def _actual_download(
+        self,
+        url,
+        target_dir,
+        file_name,
+        size,
+        checksum,
+    ) -> Download:
         """Download a file if it is not already present at the target destination.
 
         Parameters
@@ -205,11 +297,10 @@ class Downloader:
         file_name : str
             the target file name
             If `None`, the name will be derived from the url
-        check_method : function(path) -> ()
-            the method that is used to check the integrity of the already downloaded file.
-            expected to raise a `DownloadFailed` exception if it wasn't successfull.
-        retries : int, optional
-            how many times one should retry in case of failure, by default 3
+        size : int, optional
+            if set, the downloaded file's size must eventually match it
+        checksum : int, optional
+            if set, the downloaded file's checksum must eventually match it
 
         Returns
         -------
@@ -221,45 +312,32 @@ class Downloader:
         Exception
             when number of retries was exceeded or when a download is already running
         """
-        try:
-            local_path = Path(target_dir, file_name)
-            with Download.bind_ctx(self.DB):
-                download = self._tracked_download(remote_url=url, local_path=local_path)
-                if not download.enddownload:
-                    raise DownloadFailed(
-                        f"A download of {url} via the climada.util.files_handler.Downloader has"
-                        " been requested before. Either it is still in progress or the process"
-                        " got interrupted. In the former case just wait until the download has"
-                        " finished and try again, in the latter run"
-                        f" `Downloader.purge_cache_db(Path('{local_path}'))` from Python."
-                        " If unsure, check your internet connection, wait for as long as it takes"
-                        " to download a file of the given size and try again."
-                        " If the problem persists, purge the cache db with said call."
-                    )
-            try:
-                check_method(local_path)
-            except DownloadFailed as failed:
-                local_path.unlink(missing_ok=True)
-                self.purge_cache_db(local_path)
-                raise failed
-            return local_path
-        except DownloadFailed as failed:
-            if retries < 1:
-                raise failed
-            LOGGER.warning("Download failed: %s, retrying...", failed)
-            time.sleep(self.MAX_WAITING_PERIOD / retries)
-            return self._resilient_download(
-                url=url,
-                target_dir=target_dir,
-                file_name=file_name,
-                check_method=check_method,
-                retries=retries - 1,
+        target_dir.mkdir(parents=True, exist_ok=True)
+        local_path = Path(target_dir, file_name)
+        if local_path.is_dir():
+            raise DownloadFailed(
+                f"There is a directory at the target location {str(local_path)}"
             )
-        finally:
-            self.DB.close()
+        with Download.bind_ctx(self.DB):
+            for _ in range(self.RETRIES):
+                local_path.unlink(missing_ok=True)
+                download = self._tracked_download(remote_url=url, local_path=local_path)
+                if not download:  # an exception occurred
+                    continue
+                if not download.enddownload:
+                    raise RuntimeError("unexpected state, must be caused by a bug")
+                if size is not None and size != download.file_size:
+                    continue
+                if checksum and checksum != download.checksum:
+                    continue
+                return download
+        self.DB.close()
+        raise DownloadFailed(
+            f"could not actually download {url}, giving up after {self.RETRIES} times"
+        )
 
-    def _tracked_download(self, remote_url, local_path) -> Download:
-        """Creates or looks up an entry in the download db.
+    def _tracked_download(self, remote_url, local_path: Path) -> Download:
+        """Creates or replaces an entry in the download db.
 
         Parameters
         ----------
@@ -271,39 +349,16 @@ class Downloader:
 
         Returns
         -------
-        Download
-
-        Raises
-        ------
-        DownloadFailed
-            when something went wrong with the download or the saving
-        RuntimeError
-            when the url and the path do not correspond to previous downloads
+        Download or None
         """
-        if local_path.is_dir():
-            raise ValueError(
-                "tracked download requires a path to a file not a directory"
-            )
         path_as_str = str(local_path.absolute())
-        try:
-            download = Download.create(
-                url=remote_url, path=path_as_str, startdownload=datetime.utcnow()
-            )
-        except IntegrityError as ierr:
-            download = Download.get(
-                Download.path == path_as_str
-            )  # path is the table's one unique column
-            if not Path(path_as_str).is_file():  # in case the file has been removed
-                download.delete_instance()  # delete entry from database
-                return self._tracked_download(remote_url, local_path)  # and try again
-            if download.url != remote_url:
-                raise RuntimeError(
-                    f"this file ({path_as_str}) has been downloaded from another url ({download.url}),"
-                    " possibly because it belongs to a dataset with a recent version update."
-                    " Please remove the file or purge the entry from data base before trying again"
-                ) from ierr
-            # path is a file and the urls match: all good!
-            return download
+
+        download = Download.get_or_none(Download.path == path_as_str)
+        if download:  # i.g. this means that the attempt just before failed
+            download.delete_instance()
+        download = Download.create(
+            url=remote_url, path=path_as_str, startdownload=datetime.utcnow()
+        )
         try:
             # the actual download from url, using requests.get method
             with requests.get(
@@ -320,12 +375,14 @@ class Downloader:
             if self.checksum:
                 download.checksum = file_checksum(local_path, self.checksum)
             download.save()
+
         except Exception as exc:
-            download.delete_instance()
-            raise DownloadFailed from exc
+            LOGGER.warning("Download from %s has failed with %s", remote_url, exc)
+            return None
+
         return Download.get(Download.path == path_as_str)
 
-    def purge_cache_db(self, local_path):
+    def purge_cache_db(self, local_path: Path):
         """Removes entry from the sqlite database that keeps track of files downloaded by
         `_tracked_download`. This may be necessary in case a previous attempt has failed
         in an uncontroled way (power outage or the like).
@@ -345,50 +402,82 @@ class Downloader:
             self.DB.close()  # on Linux this call is unnecessary. On Windows, though,
             # for, e.g,, peewee 3.17.1, it is required to release the sqlite db file.
 
-    def _file_unchanged_since(self, local_path):
+    def _integrity_check(self, download, local_path, checkflags):
         """default method for checking file integrity
-        basically checks whether the file has changed since the download
+        basically checks whether the file is there and hasn't changed since the download
 
         Parameters
         ----------
+        download : Download
+            record from the database
         local_path : Path
             the file whose integrity is being scrutinized
+        checkflags :
 
         Raises
         ------
         DownloadFailed
-            if the file is not there or doesn't have the same size anymore
-            or the same timestamp, or the same checksum in case checksums are recorded
+            if the file
+            - is not there
+            - actual size and recorded size differ
+            - actual timestamp and recorded timestamp differ
+            - checksum is recordedn and actual checksum and recorded checksum differ
         """
+        # downlaod anew if SYNC is flagged
+        if checkflags & Downloader.Check.SYNC:
+            return False
+
+        if not local_path.exists():
+            return False
+
+        # raise Exception if path exists but isn't a file
         if not local_path.is_file():
-            raise DownloadFailed(f"{str(local_path)} is not a file")
-        with Download.bind_ctx(self.DB):
-            download = Download.get(Download.path == str(local_path.absolute()))
+            raise ValueError(f"{local_path} must be a file")
+
+        if checkflags & Downloader.Check.SIZE:
             if local_path.stat().st_size != download.filesize:
-                raise DownloadFailed(
-                    f"{str(local_path)} has the wrong size:"
-                    f"{local_path.stat().st_size} instead of {download.filesize}"
+                LOGGER.warning(
+                    "%s has wrong size: %d instead of %d",
+                    str(local_path),
+                    local_path.stat().st_size,
+                    download.filesize,
                 )
-            if self.checksum:
+                return False
+
+        if checkflags & Downloader.Check.TIMESTAMP:
+            if int(local_path.stat().st_mtime) != download.timestamp:
+                expected = datetime.fromtimestamp(download.timestamp).isoformat()
+                found = datetime.fromtimestamp(
+                    int(local_path.stat().st_mtime)
+                ).isoformat()
+                LOGGER.warning(
+                    "%s has wrong timestamp: %s instead of %s",
+                    str(local_path),
+                    found,
+                    expected,
+                )
+                return False
+
+        if checkflags & Downloader.Check.CHECKSUM:
+            try:
                 csm, hsh = download.checksum.split(":")
-                found = file_checksum(local_path, csm)
-                if hsh != found:
-                    raise DownloadFailed(
-                        f"{str(local_path)} has changed, checksums differ: "
-                        f"{csm}:{hsh}, {csm}:{found}"
-                    )
-            else:  # if the checksum is still the same, there is no point comparing timestamps!
-                # even if it has changed, the file has _certainly_ just been touched.
-                if int(local_path.stat().st_mtime) != download.timestamp:
-                    expected = datetime.fromtimestamp(download.timestamp).isoformat()
-                    found = datetime.fromtimestamp(
-                        int(local_path.stat().st_mtime)
-                    ).isoformat()
-                    raise DownloadFailed(
-                        f"{str(local_path)} has been modified: timestamp changed from"
-                        f"{expected} to {found}"
-                    )
-        self.DB.close()
+            except ValueError as exc:
+                raise ValueError(
+                    f"cannot check integrity of {local_path} based on hash sum,"
+                    " field missing in database"
+                ) from exc
+            found = file_checksum(local_path, csm)
+            if hsh != found:
+                LOGGER.warning(
+                    "%s has wrong %s checksum: %s instead of %s",
+                    str(local_path),
+                    csm,
+                    hsh,
+                    found,
+                )
+                return False
+
+        return True
 
 
 class DownloadProgressBar(tqdm):
