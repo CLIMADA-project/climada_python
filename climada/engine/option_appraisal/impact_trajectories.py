@@ -20,43 +20,61 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 import copy
 import itertools
+import logging
 from dataclasses import dataclass
 from datetime import datetime
+from weakref import WeakValueDictionary
 
 import numpy as np
 import pandas as pd
 from scipy.sparse import lil_matrix
 
-from climada import hazard
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+from climada.entity.measures.base import Measure
+from climada.entity.measures.measure_set import MeasureSet
 from climada.hazard import Hazard
+
+LOGGER = logging.getLogger(__name__)
 
 
 ### Utils functions
-def pairwise(iterable):
-    """
-    Generate pairs of successive elements from an iterable.
+def impact_func_equal(func1: ImpactFunc, func2: ImpactFunc) -> bool:
+    """Check equality of two ImpactFunc objects."""
+    return (
+        func1.haz_type == func2.haz_type
+        and func1.id == func2.id
+        and func1.name == func2.name
+        and func1.intensity_unit == func2.intensity_unit
+        and np.array_equal(func1.intensity, func2.intensity)
+        and np.array_equal(func1.mdd, func2.mdd)
+        and np.array_equal(func1.paa, func2.paa)
+    )
 
-    Parameters
-    ----------
-    iterable : iterable
-        An iterable sequence from which successive pairs of elements are generated.
 
-    Returns
-    -------
-    zip
-        A zip object containing tuples of successive pairs from the input iterable.
+def impact_func_set_equal(set1: ImpactFuncSet, set2: ImpactFuncSet) -> bool:
+    """Check equality of two ImpactFuncSet objects."""
+    if set1._data.keys() != set2._data.keys():
+        return False
 
-    Example
-    -------
-    >>> list(pairwise([1, 2, 3, 4]))
-    [(1, 2), (2, 3), (3, 4)]
-    """
-    a, b = itertools.tee(iterable)
-    next(b, None)
-    return zip(a, b)
+    for haz_type1, id_map1 in set1._data.items():
+        id_map2 = set2._data[haz_type1]
+        if id_map1.keys() != id_map2.keys():
+            return False
+        for fid, func1 in id_map1.items():
+            if not impact_func_equal(func1, id_map2[fid]):
+                return False
+
+    return True
+
+
+def hazard_data_equal(haz1: Hazard, haz2: Hazard) -> bool:
+    intensity_eq = (haz1.intensity != haz2.intensity).nnz == 0
+    freq_eq = (haz1.frequency == haz2.frequency).all()
+    frac_eq = (haz1.fraction != haz2.fraction).nnz == 0
+    return intensity_eq and freq_eq and frac_eq
 
 
 def get_dates(haz: Hazard):
@@ -527,6 +545,96 @@ def get_eai_exp(eai_exp, group_map):
     return eai_region_id
 
 
+def bayesian_mixer_opti(
+    risk_period,
+    metrics,
+    return_periods,
+    groups=None,
+    all_groups_name=pd.NA,
+):
+    """
+    Perform Bayesian mixing of impacts across snapshots.
+
+    Parameters
+    ----------
+    start_snapshot : Snapshot
+        The starting snapshot.
+    end_snapshot : Snapshot
+        The ending snapshot.
+    metrics : list of str
+        Metrics to calculate (e.g., 'eai', 'aai', 'rp').
+    return_periods : list of int
+        Return periods for calculating impact values.
+    groups : dict, optional
+        Mapping of group names to indices for aggregating EAI values by group.
+    all_groups_name : str, optional
+        Name for all-groups aggregation in the output.
+    risk_transf_cover : float, optional
+        Coverage level for risk transfer calculations.
+    risk_transf_attach : float, optional
+        Attachment point for risk transfer calculations.
+    calc_residual : bool, optional
+        Whether to calculate residual impacts after applying risk transfer.
+
+    Returns
+    -------
+    pd.DataFrame
+        DataFrame of calculated impact values by year, group, and metric.
+    """
+    # 1. Interpolate in between years
+
+    prop_H0, prop_H1 = risk_period._prop_H0, risk_period._prop_H1
+    frequency_0 = risk_period.snapshot0.hazard.frequency
+    frequency_1 = risk_period.snapshot1.hazard.frequency
+    imp_mats_0, imp_mats_1 = risk_period.get_interp()
+    yearly_eai_exp_0, yearly_eai_exp_1 = calc_yearly_eais(
+        imp_mats_0, imp_mats_1, frequency_0, frequency_1
+    )
+    year_idx = risk_period.year_idx
+    res = []
+    if "aai" in metrics:
+        yearly_aai_0, yearly_aai_1 = calc_yearly_aais(
+            yearly_eai_exp_0, yearly_eai_exp_1
+        )
+        yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
+        aai_df = pd.DataFrame(index=year_idx, columns=["result"], data=yearly_aai)
+        aai_df["group"] = all_groups_name
+        aai_df["metric"] = "aai"
+        aai_df.reset_index(inplace=True)
+        res.append(aai_df)
+
+    if "rp" in metrics:
+        rp_0, rp_1 = calc_yearly_rps(
+            imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_periods
+        )
+        yearly_rp = np.multiply(prop_H0.reshape(-1, 1), rp_0) + np.multiply(
+            prop_H1.reshape(-1, 1), rp_1
+        )
+        rp_df = pd.DataFrame(
+            index=year_idx, columns=return_periods, data=yearly_rp
+        ).melt(value_name="result", var_name="rp", ignore_index=False)
+        rp_df.reset_index(inplace=True)
+        rp_df["group"] = all_groups_name
+        rp_df["metric"] = f"rp_" + rp_df["rp"].astype(str)
+        res.append(rp_df)
+
+    if groups is not None:
+        yearly_eai = np.multiply(
+            prop_H0.reshape(-1, 1), yearly_eai_exp_0
+        ) + np.multiply(prop_H1.reshape(-1, 1), yearly_eai_exp_1)
+        yearly_eai_group = get_eai_exp(yearly_eai, groups)
+        eai_group_df = pd.DataFrame(index=year_idx, data=yearly_eai_group).melt(
+            value_name="result", var_name="group", ignore_index=False
+        )
+        eai_group_df["metric"] = "aai"
+        eai_group_df.reset_index(inplace=True)
+        res.append(eai_group_df)
+
+    ret = pd.concat(res, axis=0)
+    ret["measure"] = risk_period.measure_name
+    return ret
+
+
 def bayesian_mixer(
     start_snapshot,
     end_snapshot,
@@ -647,7 +755,7 @@ def bayesian_mixer(
     return pd.concat(res, axis=0)
 
 
-@dataclass
+@dataclass(eq=False)
 class Snapshot:
     """
     A snapshot of exposure, hazard, and impact function set for a given year.
@@ -668,6 +776,64 @@ class Snapshot:
     hazard: Hazard
     impfset: ImpactFuncSet
     year: int
+    measure: None | Measure = None
+
+    # Class-level cache
+    _instances = WeakValueDictionary()
+
+    def __new__(cls, exposure, hazard, impfset, year, measure=None):
+        """Check if an equal instance exists before creating a new one."""
+        for existing_snapshot in cls._instances.values():
+            if (
+                existing_snapshot.exposure.gdf.equals(exposure.gdf)
+                and hazard_data_equal(existing_snapshot.hazard, hazard)
+                and impact_func_set_equal(existing_snapshot.impfset, impfset)
+                and existing_snapshot.year == year
+            ):
+                if (
+                    existing_snapshot.measure
+                    and measure
+                    and existing_snapshot.measure.name == measure.name
+                ):
+                    LOGGER.debug("Found existing instance")
+                    return existing_snapshot  # Return existing instance
+                elif existing_snapshot.measure is None and measure is None:
+                    LOGGER.debug("Found existing instance")
+                    return existing_snapshot  # Return existing instance
+
+        # Create new instance if no match is found
+        instance = super().__new__(cls)
+        return instance
+
+    def __post_init__(self):
+        """Store the instance in the cache after initialization."""
+        if id(self) not in self._instances:
+            LOGGER.debug(f"Created and stored new Snapshot {id(self)}")
+            self._instances[id(self)] = self
+
+    def __eq__(self, value, /) -> bool:
+        if not isinstance(value, Snapshot):
+            return False
+        if self is value:
+            return True
+        same_exposure = self.exposure.gdf.equals(value.exposure.gdf)
+        same_hazard = self.hazard == value.hazard
+        same_impfset = impact_func_set_equal(self.impfset, value.impfset)
+        same_year = self.year == value.year
+        same_measure = self.measure == value.measure
+        return (
+            same_exposure
+            and same_hazard
+            and same_impfset
+            and same_year
+            and same_measure
+        )
+
+    def apply_measure(self, measure: Measure):
+        exp_new, impfset_new, haz_new = measure.apply(
+            self.exposure, self.impfset, self.hazard
+        )
+        return Snapshot(exp_new, haz_new, impfset_new, self.year, measure)
 
 
 class SnapshotsCollection:
@@ -688,15 +854,71 @@ class SnapshotsCollection:
         List of Snapshot objects in the collection.
     """
 
-    def __init__(self, exposure_set, hazard_set, impfset, snapshot_years):
-        self.exposure_set = exposure_set
-        self.hazard_set = hazard_set
-        self.impfset = impfset
-        self.snapshots_years = snapshot_years
-        self.data = [
-            Snapshot(exposure_set[year], hazard_set[year], impfset, year)
-            for year in snapshot_years
-        ]
+    def __init__(self, snaplist):
+
+        self._snapshots = {snap.year: snap for snap in snaplist}
+        self._impfset = snaplist[0].impfset
+
+    @classmethod
+    def _from_dicts(
+        cls,
+        exposure_set: dict[int, Exposures],
+        hazard_set: dict[int, Hazard],
+        impfset: ImpactFuncSet,
+        snapshot_years: list[int],
+    ):
+
+        # Validate all requested years exist
+        missing_exposure = [y for y in snapshot_years if y not in exposure_set]
+        missing_hazard = [y for y in snapshot_years if y not in hazard_set]
+        if missing_exposure or missing_hazard:
+            raise ValueError(
+                f"Missing data for years - Exposure: {missing_exposure}, Hazard: {missing_hazard}"
+            )
+
+        return cls(
+            [
+                Snapshot(exposure_set[year], hazard_set[year], impfset, year)
+                for year in sorted(snapshot_years)
+            ]
+        )
+
+    @property
+    def data(self):
+        return list(self._snapshots.values())
+
+    @property
+    def snapshots_years(self):
+        return self._snapshots.keys()
+
+    @property
+    def exposure_set(self):
+        return [snap.exposure for snap in self._snapshots.values()]
+
+    @property
+    def hazard_set(self):
+        return [snap.hazard for snap in self._snapshots.values()]
+
+    @property
+    def impfset(self):
+        return self._impfset
+
+    def __len__(self):
+        """Return the number of snapshots in the collection."""
+        return len(self._snapshots)
+
+    # def __iter__(self):
+    #     """Return an iterator over the snapshots in the collection."""
+    #     return iter(self.data)
+
+    def __contains__(self, item):
+        """Check if a Snapshot or a year exists in the collection."""
+        if isinstance(item, int):
+            return item in self._snapshots
+        if isinstance(item, Snapshot):
+            return item in self._snapshots.values()  # Check object identity
+        else:
+            return False  # Invalid type
 
     # Check that at least first and last snap are complete
     # and otherwise it is ok
@@ -721,7 +943,7 @@ class SnapshotsCollection:
         snapshot_years = list(snapshots_dict.keys())
         exposure_set = {year: snapshots_dict[year][0] for year in snapshot_years}
         hazard_set = {year: snapshots_dict[year][1] for year in snapshot_years}
-        return cls(
+        return cls._from_dicts(
             exposure_set=exposure_set,
             hazard_set=hazard_set,
             impfset=impfset,
@@ -751,12 +973,178 @@ class SnapshotsCollection:
         """
         exposure_set = {year: exposure_list[i] for i, year in enumerate(snapshot_years)}
         hazard_set = {year: hazard_list[i] for i, year in enumerate(snapshot_years)}
-        return cls(
+        return cls._from_dicts(
             exposure_set=exposure_set,
             hazard_set=hazard_set,
             impfset=impfset,
             snapshot_years=snapshot_years,
         )
+
+    def add_snapshot(self, snapshot: Snapshot):
+        """Adds a snapshot to the collecton"""
+        if not isinstance(snapshot, Snapshot):
+            raise TypeError("snapshot must be an instance of Snapshot")
+
+        if snapshot in self:  # Identity check
+            LOGGER.warning("Snapshot already present.", UserWarning)
+            return  # Do nothing if it's the exact same object
+
+        if snapshot.year in self:
+            LOGGER.warning(
+                "Snapshot already exist for this year. Overwriting.", UserWarning
+            )
+
+        # Ensure the impact function set is consistent
+        if snapshot.impfset is not self.impfset:
+            raise ValueError(
+                "Snapshot impact function set does not match existing one."
+            )
+
+        self._snapshots[snapshot.year] = snapshot
+        self._snapshots = dict(sorted(self._snapshots.items()))
+
+    def pairwise(self):
+        """
+        Generate pairs of successive elements from an iterable.
+
+        Parameters
+        ----------
+        iterable : iterable
+            An iterable sequence from which successive pairs of elements are generated.
+
+        Returns
+        -------
+        zip
+            A zip object containing tuples of successive pairs from the input iterable.
+
+        Example
+        -------
+        >>> list(pairwise([1, 2, 3, 4]))
+        [(1, 2), (2, 3), (3, 4)]
+        """
+        a, b = itertools.tee(self._snapshots.values())
+        next(b, None)
+        return zip(a, b)
+
+
+class RiskPeriod:
+
+    # TODO: make lazy / delayed interpolation and impacts
+    # TODO: make MeasureRiskPeriod child class (with effective start/end)
+
+    _instances = WeakValueDictionary()
+
+    def __new__(
+        cls,
+        snapshot0,
+        snapshot1,
+        measure_name="no_measure",
+        risk_transf_cover=None,
+        risk_transf_attach=None,
+        calc_residual=True,
+    ):
+        """Ensure only one instance exists per snapshot pair."""
+        key = (id(snapshot0), id(snapshot1), measure_name)
+        if key in cls._instances:
+            LOGGER.debug("Found existing RiskPeriod")
+            return cls._instances[key]
+
+        instance = super().__new__(cls)
+        return instance
+
+    def __init__(
+        self,
+        snapshot0,
+        snapshot1,
+        measure_name="no_measure",
+        risk_transf_cover=None,
+        risk_transf_attach=None,
+        calc_residual=True,
+    ):
+        if hasattr(self, "_initialized"):
+            return  # Avoid re-initialization
+
+        LOGGER.debug(
+            f"Initializing new RiskPeriod from {snapshot0.year} to {snapshot1.year}"
+        )
+        self.snapshot0 = snapshot0
+        self.snapshot1 = snapshot1
+        self.start_year = snapshot0.year
+        self.end_year = snapshot1.year
+        self.measure_name = measure_name
+        self.impfset = snapshot0.impfset
+        assert impact_func_set_equal(
+            self.impfset, snapshot1.impfset
+        )  # Ensure same impfset
+
+        self._prop_H0, self._prop_H1 = bayesian_viktypliers(
+            snapshot0.year, snapshot1.year
+        )
+
+        self._exp_y0 = snapshot0.exposure
+        self._exp_y1 = snapshot1.exposure
+        self._haz_y0 = snapshot0.hazard
+        self._haz_y1 = snapshot1.hazard
+
+        # Compute impacts once
+        LOGGER.debug("Computing snapshots combination impacts")
+        imp_E0H0 = self._compute_impact(self._exp_y0, self._haz_y0)
+        imp_E1H0 = self._compute_impact(self._exp_y1, self._haz_y0)
+        imp_E0H1 = self._compute_impact(self._exp_y0, self._haz_y1)
+        imp_E1H1 = self._compute_impact(self._exp_y1, self._haz_y1)
+
+        # Modify the impact matrices if risk transfer is provided
+        # TODO: See where this ends up
+        imp_E0H0.imp_mat = calc_residual_or_risk_transf_imp_mat(
+            imp_E0H0.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+        )
+        imp_E1H0.imp_mat = calc_residual_or_risk_transf_imp_mat(
+            imp_E1H0.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+        )
+        imp_E0H1.imp_mat = calc_residual_or_risk_transf_imp_mat(
+            imp_E0H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+        )
+        imp_E1H1.imp_mat = calc_residual_or_risk_transf_imp_mat(
+            imp_E1H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+        )
+
+        LOGGER.debug("Interpolating impact matrices")
+        self.imp_mats_0 = interpolate_imp_mat(
+            imp_E0H0, imp_E1H0, snapshot0.year, snapshot1.year
+        )
+        self.imp_mats_1 = interpolate_imp_mat(
+            imp_E0H1, imp_E1H1, snapshot0.year, snapshot1.year
+        )
+        LOGGER.debug("Done")
+
+        self.year_idx = pd.Index(
+            list(range(snapshot0.year, snapshot1.year + 1)), name="year"
+        )
+
+        self._initialized = True
+
+        # Store the instance in the cache after initialization
+        key = (id(self.snapshot0), id(self.snapshot1), self.measure_name)
+        if key not in self._instances:
+            LOGGER.debug(f"Created and stored new RiskPeriod {key}")
+            self._instances[key] = self
+
+    def _compute_impact(self, exposure, hazard):
+        """Compute the impact once per unique exposure-hazard pair."""
+        return ImpactCalc(exposure, self.impfset, hazard).impact()
+
+    def get_interp(self):
+        return self.imp_mats_0, self.imp_mats_1
+
+    def apply_measures(self, measure_set: MeasureSet | None, measure_name_list):
+        # Apply measure on snapshot and return risk period instance
+        if measure_set is None or measure_name_list == []:
+            return self
+
+        combined_measures = measure_set.combine(names=measure_name_list)
+        snapshot0 = self.snapshot0.apply_measure(combined_measures)
+        snapshot1 = self.snapshot1.apply_measure(combined_measures)
+        return RiskPeriod(snapshot0, snapshot1, measure_name=combined_measures.name)
 
 
 class CalcImpactsSnapshots:
@@ -780,21 +1168,21 @@ class CalcImpactsSnapshots:
 
     # An init param could be the region aggregation you want
 
-    def calc_impacts_snapshots(self):
-        """
-        Calculate impacts for each snapshot year.
+    # def calc_impacts_snapshots(self):
+    #     """
+    #     Calculate impacts for each snapshot year.
 
-        Returns
-        -------
-        dict
-            Dictionary of impacts for each year, keyed by year.
-        """
-        impacts_list = {}
-        for snapshot in self.snapshots.data:
-            impacts_list[snapshot.year] = ImpactCalc(
-                snapshot.exposure, self.snapshots.impfset, snapshot.hazard
-            ).impact()
-        return impacts_list
+    #     Returns
+    #     -------
+    #     dict
+    #         Dictionary of impacts for each year, keyed by year.
+    #     """
+    #     impacts_list = {}
+    #     for snapshot in self.snapshots.data:
+    #         impacts_list[snapshot.year] = ImpactCalc(
+    #             snapshot.exposure, self.snapshots.impfset, snapshot.hazard
+    #         ).impact()
+    #     return impacts_list
 
     def calc_all_years(
         self,
@@ -804,9 +1192,8 @@ class CalcImpactsSnapshots:
         risk_transf_cover=None,
         risk_transf_attach=None,
         calc_residual=True,
-    ):
-        """
-        Calculate impacts for all years in the snapshots collection.
+    ) -> pd.DataFrame:
+        """Calculate impacts for all years in the snapshots collection.
 
         This method computes specified metrics (e.g., expected annual impact, aggregated annual impact, and return periods) for each year in the snapshot collection. The results are aggregated and returned as a DataFrame.
 
@@ -825,27 +1212,32 @@ class CalcImpactsSnapshots:
         calc_residual : bool, optional
             Whether to calculate the residual impacts after risk transfer. Default is True.
 
+
         Returns
         -------
         pd.DataFrame
             DataFrame containing the computed metrics, with columns for "group", "year", "metric", and "result".
+
         """
         results_df = []
         if compute_groups:
             groups = self.group_map_exp_dict
         else:
             groups = None
-        for start_snapshot, end_snapshot in pairwise(self.snapshots.data):
+        for start_snapshot, end_snapshot in self.snapshots.pairwise():
+            risk_period = RiskPeriod(
+                start_snapshot,
+                end_snapshot,
+                risk_transf_cover=risk_transf_cover,
+                risk_transf_attach=risk_transf_attach,
+                calc_residual=calc_residual,
+            )
             results_df.append(
-                bayesian_mixer(
-                    start_snapshot,
-                    end_snapshot,
+                bayesian_mixer_opti(
+                    risk_period,
                     metrics,
                     return_periods,
                     groups,
-                    risk_transf_cover=risk_transf_cover,
-                    risk_transf_attach=risk_transf_attach,
-                    calc_residual=calc_residual,
                 )
             )
         results_df = pd.concat(results_df, axis=0)
