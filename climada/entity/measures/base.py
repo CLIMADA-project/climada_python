@@ -261,7 +261,7 @@ def helper_impfset(
 ):
     def impfset_change(impfset, year=None):
         impfset_modified = copy.deepcopy(impfset)
-        for impf in impfset.get_func(haz_type):
+        for impf in impfset_modified.get_func(haz_type):
             if impf.id in impf_intensity_modifier.keys():
                 impf_inten = impf_intensity_modifier[impf.id]
                 impf.intensity = np.maximum(
