@@ -19,87 +19,98 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import copy
+import logging
+from typing import Iterable
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
 
 from climada.entity.measures import MeasureSet
+from climada.entity.measures.base import Measure
 
 from .impact_metrics import ImpactMetrics
-from .impact_trajectories import CalcImpactsSnapshots, SnapshotsCollection
+from .impact_trajectories import (
+    CalcImpactsSnapshots,
+    RiskPeriod,
+    SnapshotsCollection,
+    bayesian_mixer_opti,
+)
 
-# BASE_arm_df_COLUMNS = ['measure', 'group', 'year', 'metric', 'result']
+# BASE_annual_risk_metrics_df_COLUMNS = ['measure', 'group', 'year', 'metric', 'result']
+
+# __all__ = ["CalcImpactMetrics"]
+
+LOGGER = logging.getLogger(__name__)
 
 
 class CalcImpactMetrics:
-
-    def __init__(self, snapshots, group_col_str=None):
-        self.snapshots = snapshots
+    def __init__(self, risk_periods: list[RiskPeriod], group_col: str | None = None):
+        LOGGER.debug("Instantiating CalcImpactMetrics")
+        self.risk_periods = risk_periods
         # Get groups
-        self.group_map_exp_dict = (
-            create_group_map_exp_dict(snapshots, group_col_str)
-            if group_col_str
-            else None
-        )
+        self.group_map_exp_dict = None
 
-    # Calculate the annual risk metrics
-    def calc_arm_df(
+    def calc_risk_periods_metric(
         self,
-        calc_static_scenario_metrics=True,
-        previous_impact_metrics=None,
-        measure_set=None,
-    ):
-        # Calculate the risk metrics for the non-measure case
-        if previous_impact_metrics:
-            _df = previous_impact_metrics.arm_df.copy()
+        metrics=["eai", "aai", "rp"],
+        return_periods=[100, 500, 1000],
+        compute_groups=False,
+        risk_transf_cover=None,
+        risk_transf_attach=None,
+        calc_residual=True,
+    ) -> pd.DataFrame:
+        """Calculate impacts for all years in the snapshots collection.
+
+        This method computes specified metrics (e.g., expected annual impact, aggregated annual impact, and return periods) for each year in the snapshot collection. The results are aggregated and returned as a DataFrame.
+
+        Parameters
+            ----------
+            metrics : list of str, optional
+            List of metrics to compute. Options include "eai" (expected annual impact), "aai" (aggregated annual impact), and "rp" (return periods). Default is ["eai", "aai", "rp"].
+            return_periods : list of int, optional
+            List of return periods (in years) to compute for the "rp" metric. Default is [100, 500, 1000].
+            compute_groups : bool, optional
+            Whether to compute the metrics for specific groups (e.g., regions). Default is False.
+            risk_transf_cover : optional
+            Coverage values for risk transfer, used in the calculation of impacts.
+            risk_transf_attach : optional
+            Attachment points for risk transfer, used in the calculation of impacts.
+            calc_residual : bool, optional
+            Whether to calculate the residual impacts after risk transfer. Default is True.
+
+
+        Returns
+            -------
+            pd.DataFrame
+            DataFrame containing the computed metrics, with columns for "group", "year", "metric", and "result".
+        """
+        results_df = []
+        if compute_groups:
+            groups = self.group_map_exp_dict
         else:
-            _df = calc_annual_risk_metrics(
-                self.snapshots, group_map_exp_dict=self.group_map_exp_dict
+            groups = None
+        for period in self.risk_periods:
+            results_df.append(
+                bayesian_mixer_opti(
+                    period,
+                    metrics,
+                    return_periods,
+                    groups,
+                )
             )
+        results_df = pd.concat(results_df, axis=0)
 
-        # Calculate the static risk metrics (used for waterfall levels)
-        if previous_impact_metrics and previous_impact_metrics.all_arms_df is not None:
-            _all_df = previous_impact_metrics.all_arms_df.copy()
-        elif calc_static_scenario_metrics:
-            _all_df = calc_annual_risk_metrics_static(
-                self.snapshots, group_map_exp_dict=self.group_map_exp_dict
-            )
-        else:
-            _all_df = None
+        # duplicate rows arise from overlapping end and start if there's more than two snapshots
+        results_df.drop_duplicates(inplace=True)
+        return results_df  # .reset_index()#[["group", "year", "metric", "measure", "result"]]
 
-        # Calculate the risk metrics for the measure set
-        if measure_set:
-            # ADHOC!!! This should be done in a more elegant way
-            # Remove all the rows in the dataframe that have measure 'All'
-            _df = _df[_df["measure"] != "All"]
-            # Reduce the measure set if previous_impact_metrics is given
-            measure_set = (
-                reduce_meas_set(measure_set, previous_impact_metrics.measure_set)
-                if previous_impact_metrics
-                else measure_set
-            )
-            # Calculate the risk metrics for the measure set
-            _temp_df = calc_annual_risk_metrics_measure_set(
-                self.snapshots, measure_set, group_map_exp_dict=self.group_map_exp_dict
-            )
-            # Concatenate with arm_df
-            _df = pd.concat([_df, _temp_df], ignore_index=True)
-
-        return _df, _all_df
-
-    # Generate an impact metrics object
-    def generate_impact_metrics(
+    def impact_metrics(
         self,
-        measure_set=None,
-        calc_static_scenario_metrics=False,
-        previous_impact_metrics=None,
-        planner=None,
-        combine_all_measures=False,
+        planner: dict[str, tuple[int, int]] | None = None,
     ):
-
-        # Check if the measure set is given
-        if not measure_set and previous_impact_metrics.measure_set:
-            measure_set = previous_impact_metrics.measure_set
+        LOGGER.debug("Generating impacts metrics")
+        measure_times_df = None
 
         # Generate the measure times DataFrame
         # Check if measure_times_df is given
@@ -123,16 +134,16 @@ class CalcImpactMetrics:
             measure_set = generate_necessary_combo_measure_set(
                 measure_set, measure_times_df
             )
-        else:
-            measure_set = measure_set if measure_set else None
+        # else:
+        #     measure_set = measure_set if measure_set else None
 
         # Get the impact metrics
-        _df, _all_df = self.calc_arm_df(
+        _df, _all_df = self.calc_annual_risk_metrics_df(
             calc_static_scenario_metrics, previous_impact_metrics, measure_set
         )
 
         # Get the exposure value units
-        exp_value_unit = self.snapshots.data[0].exposure.value_unit
+        exp_value_unit = self.snapshots.exposure_set[0].value_unit
 
         return ImpactMetrics(
             _df, _all_df, measure_set, measure_times_df, exp_value_unit
@@ -143,7 +154,8 @@ class CalcImpactMetrics:
 
 
 # Reduce the measure set to only include the new measures
-def reduce_meas_set(new_meas_set, old_meas_set=None):
+# Probably not usefull anymore
+def reduce_meas_set(new_meas_set: MeasureSet, old_meas_set: MeasureSet | None = None):
 
     # If no old measure set is provided, return the new measure set
     if old_meas_set is None:
@@ -151,6 +163,9 @@ def reduce_meas_set(new_meas_set, old_meas_set=None):
 
     meas_list = []
     # Add to measure set list
+
+    # Use a set() difference here?
+
     for meas_name, meas in new_meas_set.measures().items():
         if meas_name in old_meas_set.measures().keys() and meas_name != "All":
             continue
@@ -159,7 +174,10 @@ def reduce_meas_set(new_meas_set, old_meas_set=None):
 
 
 # Update the measure times DataFrame based on the planner
-def update_measure_times_df(measure_times_df, planner):
+# Probably not usefull anymore
+def update_measure_times_df(
+    measure_times_df: pd.DataFrame, planner: dict[str, tuple[int, int]]
+):
     new_measure_times_df = measure_times_df.copy()
 
     for meas_name, dates in planner.items():
@@ -174,57 +192,28 @@ def update_measure_times_df(measure_times_df, planner):
     return new_measure_times_df
 
 
-def create_group_map_exp_dict(snapshots, group_col_str=None):
+# See if still usefull
+def create_group_map_exp_dict(
+    snapshots: SnapshotsCollection, group_col: str | None = None
+):
     """
     Create a dictionary that maps each group to the indices of the exposures in the gdf.
     """
 
-    if group_col_str:
+    if group_col:
         # Get the first snapshot exposures gdf
-        gdf = snapshots.data[0].exposure.gdf
+        gdf = snapshots.exposure_set[0].gdf
         # Get the unique groups
-        unique_groups = list(gdf[group_col_str].unique())
+        unique_groups = list(gdf[group_col].unique())
         # Create the dictionary
         group_map_exp_dict = {
-            i: list(np.where(gdf[group_col_str] == i)[0]) for i in unique_groups
+            i: list(np.where(gdf[group_col] == i)[0]) for i in unique_groups
         }
 
     return group_map_exp_dict
 
 
-def generate_meas_times_df(measure_set, snapshots, planner=None):
-    # Create the df
-    # TODO: improve df concatenation (list dfs and concat at the end)
-
-    cols = ["measure", "start_year", "end_year"]
-    meas_times_df = pd.DataFrame(columns=cols)
-
-    # Populate the df
-    for _, meas in measure_set.measures().items():
-
-        # Check if the measure is in the planner
-        if not planner or meas.name not in planner.keys():
-            star_year = min(snapshots.snapshots_years)
-            end_year = max(snapshots.snapshots_years)
-        else:
-            star_year = planner[meas.name][0]
-            end_year = planner[meas.name][1]
-
-        # Create a new DataFrame for the current measure
-        temp_df = pd.DataFrame(
-            {"measure": [meas.name], "start_year": [star_year], "end_year": [end_year]}
-        )
-
-        # Append to the df
-        if meas_times_df.empty:
-            meas_times_df = temp_df
-        else:
-            meas_times_df = pd.concat([meas_times_df, temp_df])
-
-    return meas_times_df
-
-
-def get_active_measure_combinations(meas_times_df):
+def get_active_measure_combinations(meas_times_df: pd.DataFrame):
 
     # Get the range of years
     min_year = meas_times_df["start_year"].min()
@@ -255,7 +244,9 @@ def get_active_measure_combinations(meas_times_df):
     return unique_combinations
 
 
-def include_combos_in_measure_set(measure_set, *other_combos, all_measures=True):
+def include_combos_in_measure_set(
+    measure_set: MeasureSet | None, *other_combos, all_measures: bool = True
+):
     """
     Generate possible combinations of measures in a measure set
 
@@ -297,7 +288,7 @@ def include_combos_in_measure_set(measure_set, *other_combos, all_measures=True)
 
 # make a function that filters out redundant combos.
 # This is consequence that if all measures may be overlapping at some point it generates a combo of this kind which is redundent to the 'all' measures included combo.
-def filter_redundant_combos(measure_set):
+def filter_redundant_combos(measure_set: MeasureSet | None):
     # Initialize lists to hold the names of initial measures, individual measures, and combo measures
     init_meas = list(measure_set.measures().keys())
     individual_measures = []
@@ -344,7 +335,9 @@ def filter_redundant_combos(measure_set):
 
 
 # make a function that generates the updated combo measure set
-def generate_necessary_combo_measure_set(measure_set, meas_times_df=None):
+def generate_necessary_combo_measure_set(
+    measure_set: MeasureSet | None, meas_times_df: pd.DataFrame | None = None
+):
     """
     Update a measure set with the unique combinations of active measures
 
@@ -373,7 +366,12 @@ def generate_necessary_combo_measure_set(measure_set, meas_times_df=None):
     return new_measure_set
 
 
-def _update_exposure_data(gdf, other_gdf, unique_exp_columns, update_cols):
+def _update_exposure_data(
+    gdf: gpd.GeoDataFrame,
+    other_gdf: gpd.GeoDataFrame,
+    unique_exp_columns: Iterable[str],
+    update_cols: Iterable[str],
+):
     """
     Updates the exposure data by merging it with the first exposure data based on unique columns.
     It updates the specified columns from the first exposure data.
@@ -394,7 +392,7 @@ def _update_exposure_data(gdf, other_gdf, unique_exp_columns, update_cols):
 
     # Merge the first exposure data with the current exposure data based on unique_exp_columns
     merged_gdf = gdf.merge(
-        other_gdf[unique_exp_columns + update_cols], on=unique_exp_columns, how="left"
+        other_gdf[["geometry"] + update_cols], on=["geometry"], how="left"
     )
 
     # Update the specified columns in the current exposure's DataFrame with those from the merged DataFrame
@@ -409,7 +407,7 @@ def _update_exposure_data(gdf, other_gdf, unique_exp_columns, update_cols):
 
 # There should ba a function that takes a snapshot and returns the risk metrics in a dataframe
 def make_static_snapshot(
-    snapshots,
+    snapshots: SnapshotsCollection,
     exp_change=True,
     impfset_change=True,
     haz_change=True,
@@ -422,7 +420,7 @@ def make_static_snapshot(
     snapshot_years = []
 
     # Get the exposure for the first snapshot year
-    first_exp = snapshots.data[0].exposure
+    first_exp = snapshots.exposure_set[0]
     impf_cols = [col for col in first_exp.gdf.columns if "impf_" in col]
     value_cols = [
         col for col in first_exp.gdf.columns if col in ["value", "deductible", "cover"]
@@ -437,20 +435,20 @@ def make_static_snapshot(
         # Determine if the exposure values change
         if not exp_change:
             # Update the exposure gdf with the first exposure gdf
-            exp.gdf = _update_exposure_data(
+            exp.data = _update_exposure_data(
                 exp.gdf, first_exp.gdf, unique_exp_columns, value_cols
             )
 
         # Determine if the impfset changes
         if not impfset_change:
             # Update the exposure gdf with the first exposure gdf
-            exp.gdf = _update_exposure_data(
+            exp.data = _update_exposure_data(
                 exp.gdf, first_exp.gdf, unique_exp_columns, impf_cols
             )
 
         # Determine if the hazard changes
         if not haz_change:
-            haz = snapshots.data[0].hazard
+            haz = snapshots.hazard_set[0]
         else:
             haz = snap.hazard
 
@@ -468,35 +466,14 @@ def make_static_snapshot(
 
 
 # Make measure snapshot
-def make_measure_snapshot(snapshots, measure):
-    _snapshots = copy.deepcopy(snapshots)
-    # Change the exposure, hazard and impfset for the affected snapshot years
-    hazard_list = []
-    exposure_list = []
-    snapshot_years = []
-
-    for snap in _snapshots.data:
-        # Apply the measure on all the snapshots
-        exp_new, impfset_new, haz_new = measure.apply(
-            snap.exposure, snap.impfset, snap.hazard
-        )
-
-        # Append the new exposure, hazar, impfset and snapshot year
-        hazard_list.append(haz_new)
-        exposure_list.append(exp_new)
-        impfset = impfset_new  # The impfset is the same for all the snapshots
-        snapshot_years.append(snap.year)
-
-    # Create a new snapshot collection for the measure case
-    meas_snapshots = SnapshotsCollection.from_lists(
-        hazard_list, exposure_list, impfset, snapshot_years
-    )
-
-    return meas_snapshots
+def make_measure_snapshot(snapshots: SnapshotsCollection, measure: Measure):
+    return SnapshotsCollection([snap.apply_measure(measure) for snap in snapshots.data])
 
 
 def calc_annual_risk_metrics(
-    snapshots, measure=None, group_map_exp_dict=None, risk_metrics=["aai", "rp", "eai"]
+    snapshots: SnapshotsCollection,
+    measure: Measure | None = None,
+    group_map_exp_dict=None,
 ):
 
     # Check if measure is applied
@@ -507,24 +484,29 @@ def calc_annual_risk_metrics(
         measure_name = "no_measure"
 
     # Calculate the risk metrics for the snapshots
-    arm_df = CalcImpactsSnapshots(snapshots, group_map_exp_dict).calc_all_years(
-        compute_groups=True
-    )
+    annual_risk_metrics_df = CalcImpactsSnapshots(
+        snapshots, group_map_exp_dict
+    ).calc_all_years(compute_groups=True)
 
     # Add the measure name to the dataframe
-    arm_df["measure"] = measure_name
+    annual_risk_metrics_df["measure"] = measure_name
     # Reorder as the first column
-    arm_df = arm_df[["measure"] + [col for col in arm_df.columns if col != "measure"]]
+    annual_risk_metrics_df = annual_risk_metrics_df[
+        ["measure"]
+        + [col for col in annual_risk_metrics_df.columns if col != "measure"]
+    ]
 
     # Remove duplicates
-    arm_df = arm_df.drop_duplicates(
+    annual_risk_metrics_df = annual_risk_metrics_df.drop_duplicates(
         subset=["measure", "group", "year", "metric"], keep="first"
     ).reset_index(drop=True)
 
-    return arm_df
+    return annual_risk_metrics_df
 
 
-def calc_annual_risk_metrics_static(snapshots, group_map_exp_dict=None):
+def calc_annual_risk_metrics_static(
+    snapshots: SnapshotsCollection, group_map_exp_dict=None
+):
 
     # Calculate the annual risk metrics for different static snapshots
     first_level_kwargs = {
@@ -540,8 +522,8 @@ def calc_annual_risk_metrics_static(snapshots, group_map_exp_dict=None):
 
     unique_exp_columns = ["latitude", "longitude"]
 
-    # Initialize an empty DataFrame to concatenate all arm_dfs
-    # all_arms_df = pd.DataFrame()
+    # Initialize an empty DataFrame to concatenate all annual_risk_metrics_dfs
+    # all_annual_risk_metrics_df = pd.DataFrame()
     # Create static snapshots for the first and second waterfall level
     tmp = []
     for idx, level in enumerate([first_level_kwargs, second_level_kwargs]):
@@ -550,26 +532,26 @@ def calc_annual_risk_metrics_static(snapshots, group_map_exp_dict=None):
             snapshots, **level, unique_exp_columns=unique_exp_columns
         )
         # Calculate the impacts
-        arm_df = calc_annual_risk_metrics(
+        annual_risk_metrics_df = calc_annual_risk_metrics(
             static_snapshots, group_map_exp_dict=group_map_exp_dict
         )
         # Add the keys from the dictionary as new columns with their respective True/False values
         for key, value in level.items():
-            arm_df[key] = value
-        # Concatenate the current arm_df to the all_arms_df
-        tmp.append(arm_df)
+            annual_risk_metrics_df[key] = value
+        # Concatenate the current annual_risk_metrics_df to the all_annual_risk_metrics_df
+        tmp.append(annual_risk_metrics_df)
 
-    all_arms_df = pd.concat(tmp, ignore_index=True)
+    all_annual_risk_metrics_df = pd.concat(tmp, ignore_index=True)
 
     # Assuming you want to see the concatenated DataFrame
-    return all_arms_df
+    return all_annual_risk_metrics_df
 
 
 def calc_annual_risk_metrics_measure_set(
-    snapshots, measure_set, group_map_exp_dict=None
+    snapshots: SnapshotsCollection, measure_set: MeasureSet, group_map_exp_dict=None
 ):
 
-    # _df = pd.DataFrame(columns=BASE_arm_df_COLUMNS)
+    # _df = pd.DataFrame(columns=BASE_annual_risk_metrics_df_COLUMNS)
     tmp = [
         calc_annual_risk_metrics(
             snapshots, measure=meas, group_map_exp_dict=group_map_exp_dict
