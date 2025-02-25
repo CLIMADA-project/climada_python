@@ -62,10 +62,7 @@ class TestDownloader(unittest.TestCase):
                 "OSM_features_48_8.cpg",  # instead of ...47_8...
                 target_dir=self.tmpdir,
             )
-
-        # fails with not passing integrity check
-        def always_fails(_local_path):
-            raise DownloadFailed("!")
+        self.assertFalse(Path(self.tmpdir, "OSM_features_48_8.cpg").exists())
 
         with self.assertRaises(DownloadFailed) as dfe:
             self.downloader.download(
@@ -74,6 +71,7 @@ class TestDownloader(unittest.TestCase):
                 target_dir=self.tmpdir,
                 size=77,
             )
+        self.assertFalse(Path(self.tmpdir, "OSM_features_47_8.cpg").exists())
 
     def test_passing_download(self):
         before_download = time.time()

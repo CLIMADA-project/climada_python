@@ -34,14 +34,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
-from peewee import (
-    CharField,
-    DateTimeField,
-    IntegerField,
-    IntegrityError,
-    Model,
-    SqliteDatabase,
-)
+from peewee import CharField, DateTimeField, IntegerField, Model, SqliteDatabase
 from playhouse.migrate import SqliteMigrator, migrate
 from tqdm import tqdm
 
@@ -93,14 +86,22 @@ class Download(Model):
     filesize = IntegerField(null=True)
     checksum = CharField(null=True)
 
-    def check(self, timestamp=None, filesize=None, checksum=None):
-        if timestamp and timestamp != self.timestamp:
-            return None
+    def check(self, filesize=None, checksum=None):
         if filesize and filesize != self.filesize:
+            LOGGER.warning(
+                "the downloaded file does not have the expected file size: %d instead of %d",
+                self.filesize,
+                filesize,
+            )
             return None
         if checksum:
             refsum = self.checksum or file_checksum(self.path, checksum.split(":"))
             if checksum != refsum:
+                LOGGER.warning(
+                    "the downloaded file does not have the expected file checksum: %s instead of %s",
+                    refsum,
+                    checksum,
+                )
                 return None
         return self
 
@@ -161,26 +162,28 @@ class Downloader:
 
     def _init_database(self):
         """sets up the database if need be"""
-        with Download.bind_ctx(self.DB):
-            self.DB.create_tables([Download])
+        try:
+            with Download.bind_ctx(self.DB):
+                self.DB.create_tables([Download])
 
-            # migration
-            # 1: 2025-0?-??, PR #10??, feature/public_tracked_download,
-            #    additional columns checksum timestamp and filesize
-            present_names = [x.name for x in self.DB.get_columns("download")]
-            migrator = SqliteMigrator(self.DB)
-            migrate(
-                *[
-                    migrator.add_column("download", col_name, col_field(null=True))
-                    for (col_name, col_field) in [
-                        ["filesize", IntegerField],
-                        ["timestamp", IntegerField],
-                        ["checksum", CharField],
+                # migration
+                # 1: 2025-0?-??, PR #10??, feature/public_tracked_download,
+                #    additional columns checksum timestamp and filesize
+                present_names = [x.name for x in self.DB.get_columns("download")]
+                migrator = SqliteMigrator(self.DB)
+                migrate(
+                    *[
+                        migrator.add_column("download", col_name, col_field(null=True))
+                        for (col_name, col_field) in [
+                            ["filesize", IntegerField],
+                            ["timestamp", IntegerField],
+                            ["checksum", CharField],
+                        ]
+                        if col_name not in present_names
                     ]
-                    if col_name not in present_names
-                ]
-            )
-        self.DB.close()
+                )
+        finally:
+            self.DB.close()
 
     def download(
         self,
@@ -246,12 +249,18 @@ class Downloader:
             )
         return Path(download.path)
 
+    def _get_download(self, local_path: Path):
+        try:
+            with Download.bind_ctx(self.DB):
+                return Download.get_or_none(Download.path == str(local_path.absolute()))
+        finally:
+            self.DB.close()
+
     def _previous_download(
         self, url: str, local_path: Path, checkflags: int
     ) -> Download:
         # look up sqlite database
-        with Download.bind_ctx(self.DB):
-            download = Download.get_or_none(Download.path == str(local_path.absolute()))
+        download = self._get_download(local_path)
 
         # no entry means this is the first time
         if download is None:
@@ -270,8 +279,7 @@ class Downloader:
             wait = 2
             for _ in range(self.MAX_WAITING_PERIOD / wait):
                 time.sleep(wait)
-                with Download.bind_ctx(self.DB):
-                    download = Download.get(Download.path == str(local_path.absolute()))
+                download = self._get_download(local_path)
                 if download.enddownload:
                     break
             if not download.enddownload:
@@ -338,18 +346,23 @@ class Downloader:
             raise DownloadFailed(
                 f"There is a directory at the target location {str(local_path)}"
             )
-        with Download.bind_ctx(self.DB):
-            for _ in range(self.RETRIES):
-                local_path.unlink(missing_ok=True)
-                download = self._tracked_download(remote_url=url, local_path=local_path)
-                if not download:
-                    continue
-                if not download.check(filesize=size, checksum=checksum):
-                    continue
-                if not download.enddownload:
-                    raise RuntimeError("unexpected state, must be caused by a bug")
-                return download
-        self.DB.close()
+        try:
+            with Download.bind_ctx(self.DB):
+                for _ in range(self.RETRIES):
+                    local_path.unlink(missing_ok=True)
+                    download = self._tracked_download(
+                        remote_url=url, local_path=local_path
+                    )
+                    if not download:
+                        continue
+                    if not download.check(filesize=size, checksum=checksum):
+                        Path(download.path).unlink()
+                        continue
+                    if not download.enddownload:
+                        raise RuntimeError("unexpected state, must be caused by a bug")
+                    return download
+        finally:
+            self.DB.close()
         raise DownloadFailed(
             f"could not actually download {url}, giving up after {self.RETRIES} times"
         )
