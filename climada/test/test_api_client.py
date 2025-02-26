@@ -26,7 +26,8 @@ from pathlib import Path
 import numpy as np
 
 from climada import CONFIG
-from climada.util.api_client import Client, DataTypeShortInfo, Download, Downloader
+from climada.util.api_client import Client, DataTypeShortInfo, Downloader
+from climada.util.files_handler import DownloadFailed
 
 DATA_DIR = CONFIG.test_data.dir()
 
@@ -126,17 +127,13 @@ class TestClient(unittest.TestCase):
             name="FAOSTAT_data_producer_prices", status="test_dataset"
         )
 
-        # test failure
-        def fail(_):
-            raise Download.Failed("on purpose")
-
         self.assertRaises(
-            Download.Failed,
+            DownloadFailed,
             Downloader().download,
             dataset.files[0].url,
             DATA_DIR,
             dataset.files[0].file_name,
-            integrity_check=fail,
+            size=77,
         )
         self.assertFalse(DATA_DIR.joinpath(dataset.files[0].file_name).is_file())
 

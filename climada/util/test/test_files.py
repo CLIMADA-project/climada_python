@@ -29,6 +29,7 @@ from pathlib import Path
 from climada.hazard.io import LOGGER
 from climada.util.constants import DEMO_DIR, ENT_TEMPLATE_XLS, GLB_CENTROIDS_MAT
 from climada.util.files_handler import (
+    Download,
     Downloader,
     DownloadFailed,
     download_file,
@@ -72,6 +73,19 @@ class TestDownloader(unittest.TestCase):
                 size=77,
             )
         self.assertFalse(Path(self.tmpdir, "OSM_features_47_8.cpg").exists())
+
+        with Download.bind_ctx(self.downloader.DB):
+            self.assertTrue(
+                Download.get(
+                    path=str(Path(self.tmpdir, "OSM_features_48_8.cpg").absolute())
+                ).failed
+            )
+            self.assertTrue(
+                Download.get(
+                    path=str(Path(self.tmpdir, "OSM_features_47_8.cpg").absolute())
+                ).failed
+            )
+        self.downloader.DB.close()
 
     def test_passing_download(self):
         before_download = time.time()

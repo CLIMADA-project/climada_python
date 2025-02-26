@@ -34,7 +34,14 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import requests
-from peewee import CharField, DateTimeField, IntegerField, Model, SqliteDatabase
+from peewee import (
+    BooleanField,
+    CharField,
+    DateTimeField,
+    IntegerField,
+    Model,
+    SqliteDatabase,
+)
 from playhouse.migrate import SqliteMigrator, migrate
 from tqdm import tqdm
 
@@ -76,17 +83,37 @@ def file_checksum(file_name, hash_method):  # pylint: disable=invalid-name
 class Download(Model):
     """Database entry keeping track of downloaded files from the CLIMADA data API"""
 
-    # If you do not specify a primary key, Peewee will automatically create an auto-incrementing
+    # Since no primary key is specified, Peewee automatically creates an auto-incrementing
     # primary key named “id”.
     url = CharField()
     path = CharField(unique=True)
     startdownload = DateTimeField()
     enddownload = DateTimeField(null=True)
+    """will be set only after the download has been successfull"""
     timestamp = IntegerField(null=True)
     filesize = IntegerField(null=True)
     checksum = CharField(null=True)
+    failed = BooleanField(default=False)
+    """this field is necessary to distinguish cases where a download is in progress and one should just wait
+    from cases where a previous download has failed. The former raises an error in `Downloader.download()`
+    the latter cleans up the database and starts another attempt"""
 
     def check(self, filesize=None, checksum=None):
+        """Returns self if the Download object meets the expected file size and/or checksum
+
+        Parameters
+        ----------
+        filesize : int, optional
+            expected file size, by default None
+        checksum : str, optional
+            expected checksum,
+            format: [md5|sha]:<checksum>, e.g., 'md5:18bd3d39c0671a8d6811fe6b99e140d2',
+            by default None
+
+        Returns
+        -------
+        Download or None
+        """
         if filesize and filesize != self.filesize:
             LOGGER.warning(
                 "the downloaded file does not have the expected file size: %d instead of %d",
@@ -98,7 +125,8 @@ class Download(Model):
             refsum = self.checksum or file_checksum(self.path, checksum.split(":"))
             if checksum != refsum:
                 LOGGER.warning(
-                    "the downloaded file does not have the expected file checksum: %s instead of %s",
+                    "the downloaded file does not have the expected file checksum:"
+                    " %s instead of %s",
                     refsum,
                     checksum,
                 )
@@ -112,7 +140,9 @@ class DownloadFailed(Exception):
 
 class Downloader:
     class Check:
-        """Collection of flags for checking whether a file that has been downloaded before is still valid"""
+        """Collection of flags for checking whether a file that has been downloaded before is
+        still valid
+        """
 
         # just the flags that are used to check whether an old local file is still valid
         SYNC = 1
@@ -175,6 +205,7 @@ class Downloader:
                     *[
                         migrator.add_column("download", col_name, col_field(null=True))
                         for (col_name, col_field) in [
+                            ["failed", BooleanField],
                             ["filesize", IntegerField],
                             ["timestamp", IntegerField],
                             ["checksum", CharField],
@@ -273,6 +304,9 @@ class Downloader:
                 f" ({self.DB.database}) if this is the correct url/target combination, then try again."
             )
 
+        if download.failed:
+            return None
+
         # in case a download is already in progress, weit for MAX_WAITING_PERIOD, than raise
         # DownloadFailed exception
         while not download.enddownload:
@@ -288,7 +322,7 @@ class Downloader:
                     " been requested before. Either it is still in progress or the process"
                     " got interrupted. In the former case just wait until the download has"
                     " finished and try again, in the latter run"
-                    f" `Downloader.purge_cache_db(Path('{str(local_path)}'))` from Python."
+                    f" `Downloader.remove_download_record(Path('{str(local_path)}'))` from Python."
                     " If unsure, check your internet connection, wait for as long as it takes"
                     " to download a file of the given size and try again."
                     " If the problem persists, purge the cache db with said call."
@@ -300,10 +334,8 @@ class Downloader:
         ):
             return download
 
-        # clean up the mess
-        # remove the entry: whatever the database was keeping track off - it's gone.
-        self.purge_cache_db(local_path)
-        # don't remove the downloaded file though, someone apperently put work into it
+        # the file must have been successfully downloaded but afterwards manipulated.
+        # the record in the data base is corrupt. it will be removed in the `_actual_download``.
         return None
 
     def _actual_download(
@@ -357,6 +389,8 @@ class Downloader:
                         continue
                     if not download.check(filesize=size, checksum=checksum):
                         Path(download.path).unlink()
+                        download.failed = True
+                        download.save()
                         continue
                     if not download.enddownload:
                         raise RuntimeError("unexpected state, must be caused by a bug")
@@ -388,7 +422,7 @@ class Downloader:
         if download:  # i.g. this means that the attempt just before failed
             download.delete_instance()
         download = Download.create(
-            url=remote_url, path=path_as_str, startdownload=datetime.utcnow()
+            url=remote_url, path=path_as_str, startdownload=datetime.now(timezone.utc)
         )
         try:
             # the actual download from url, using requests.get method
@@ -407,13 +441,15 @@ class Downloader:
                 download.checksum = file_checksum(local_path, self.checksum)
             download.save()
 
-        except Exception as exc:
+        except Exception as exc:  # pylint: disable=broad-exception-caught
             LOGGER.warning("Download from %s has failed with %s", remote_url, exc)
+            download.failed = True
+            download.save()
             return None
 
         return Download.get(Download.path == path_as_str)
 
-    def purge_cache_db(self, local_path: Path):
+    def remove_download_record(self, local_path: Path):
         """Removes entry from the sqlite database that keeps track of files downloaded by
         `_tracked_download`. This may be necessary in case a previous attempt has failed
         in an uncontroled way (power outage or the like).
@@ -432,6 +468,41 @@ class Downloader:
         finally:
             self.DB.close()  # on Linux this call is unnecessary. On Windows, though,
             # for, e.g,, peewee 3.17.1, it is required to release the sqlite db file.
+
+    def purge_cache(self, keep_urls: list = None, purge_dir: Path = None):
+        """Removes all entries from the download database and the corresponding files from the file system
+        except those in the keep_urls list
+
+        Parameters
+        ----------
+        keep_urls: list of str, optional
+            entries with matching url won't be deleted
+        purge_dir: Path, optional
+            if set to True, all empty directories beneath this path will be removed if they're affected by the purge
+        """
+        keep_urls = keep_urls or []
+
+        parents = set()
+        try:
+            with Download.bind_ctx(self.DB):
+                for download in Download.select():
+                    if download.url not in keep_urls:
+                        Path(download.path).unlink(missing_ok=True)
+                        download.delete_instance()
+                        if purge_dir and Path(purge_dir) in Path(download.path).parents:
+                            parents.add(Path(download.path).parent)
+        finally:
+            self.DB.close()
+
+        while parents:
+            ancestors = parents
+            parents = set()
+            for parent in ancestors:
+                try:
+                    parent.rmdir()
+                    parents.add(parent.parent)
+                except OSError:  # raised if the directory isn't empty
+                    pass
 
     def _integrity_check(self, download, local_path, checkflags):
         """default method for checking file integrity

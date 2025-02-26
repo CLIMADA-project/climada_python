@@ -35,7 +35,7 @@ from climada import CONFIG
 from climada.entity import Exposures
 from climada.hazard import Centroids, Hazard
 from climada.util.constants import SYSTEM_DIR
-from climada.util.files_handler import Download, Downloader, file_checksum
+from climada.util.files_handler import Download, Downloader
 
 LOGGER = logging.getLogger(__name__)
 
@@ -113,64 +113,6 @@ class DatasetInfo:
         )
         dataset.files = [FileInfo(uuid=dataset.uuid, **filo) for filo in dataset.files]
         return dataset
-
-
-def checksize(expected_size):
-    """Returns a check method that checks sanity of downloaded file simply by comparing actual
-    and expected size.
-
-    Parameters
-    ----------
-    expected_size: int
-        expected file size in bytes
-
-    Returns
-    -------
-    function(local_path: Path)->()
-        a function taking a `Path` argument, returning None and raising `Download.Failed`
-        if the file is not like it's supposed to be
-    """
-
-    def _check_method(local_path):
-        if not local_path.is_file():
-            raise Download.Failed(f"{str(local_path)} is not a file")
-        if local_path.stat().st_size != expected_size:
-            raise Download.Failed(
-                f"{str(local_path)} has the wrong size:"
-                f"{local_path.stat().st_size} instead of {expected_size}"
-            )
-
-    return _check_method
-
-
-def checkhash(expected_checksum):
-    """Returns a check method that checks sanity of downloaded file simply by comparing actual
-    and expected checksum.
-
-    Parameters
-    ----------
-    expected_checksum: int
-        expected checksum as str, e.g., sha1:
-
-    Returns
-    -------
-    function(local_path: Path)->()
-        a function taking a `Path` argument, returning None and raising `Download.Failed`
-        if the file is not like it's supposed to be
-    """
-    csm, hsh = expected_checksum.split(":")
-
-    def _check_method(local_path):
-        if not local_path.is_file():
-            raise Download.Failed(f"{str(local_path)} is not a file")
-        present_hsh = file_checksum(local_path, csm)
-        if present_hsh != hsh:
-            raise Download.Failed(
-                f"{str(local_path)} has the wrong checksum:"
-                f"{present_hsh} instead of {hsh}"
-            )
-
-    return _check_method
 
 
 class Cacher:
@@ -535,7 +477,7 @@ class Client:
             url=dsfile.url,
             target_dir=target_dir,
             file_name=dsfile.file_name,
-            integrity_check=checksize(dsfile.file_size),
+            size=dsfile.file_size,
         )
 
     def download_dataset(self, dataset, target_dir=SYSTEM_DIR, organize_path=True):
@@ -1023,31 +965,8 @@ class Client:
         )
 
         not_to_be_removed = test_urls.union(active_urls)
-
-        # make a list of downloaded files that could be removed
-        to_be_removed = [d for d in Download.select() if d.url not in not_to_be_removed]
-
-        # helper function for filtering by target_dir
-        target_dir = Path(target_dir).absolute()
-
-        # remove files and sqlite db entries
-        for obsolete in to_be_removed:
-            opath = Path(obsolete.path)
-            if opath.exists() and Path(commonprefix([target_dir, opath])) == target_dir:
-                opath.unlink()
-                obsolete.delete_instance()
-
         # clean up: remove all empty directories beneath target_dir
-        def rm_empty_dirs(directory: Path):
-            for subdir in directory.iterdir():
-                if subdir.is_dir():
-                    rm_empty_dirs(subdir)
-            try:
-                directory.rmdir()
-            except OSError:  # raised when the directory is not empty
-                pass
-
-        rm_empty_dirs(target_dir)
+        self.downloader.purge_cache(keep_urls=not_to_be_removed, purge_dir=target_dir)
 
     def get_dataset_file(self, **kwargs):
         """Convenience method. Combines ``get_dataset`` and ``download_dataset``.
