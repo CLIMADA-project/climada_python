@@ -206,7 +206,7 @@ class Downloader:
         DownloadFailed
             in case the file couldn't be downloaded
         """
-        self.DB = SqliteDatabase(
+        self.DB = SqliteDatabase(  # pylint: disable=invalid-name
             downloads_db or Path(CONFIG.data_api.cache_db.str()).expanduser()
         )
         self.chunk_size = CONFIG.data_api.chunk_size.int()
@@ -324,8 +324,12 @@ class Downloader:
         # look up sqlite database
         download = self._get_download(local_path)
 
-        # no entry means this is the first time
+        # no entry means this is the first time (or the former entry was deleted)
         if download is None:
+            return None
+
+        # there is a db entry but no file
+        if not Path(download.path).exists():
             return None
 
         if download.url != url:
