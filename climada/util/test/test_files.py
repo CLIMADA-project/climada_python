@@ -74,18 +74,20 @@ class TestDownloader(unittest.TestCase):
             )
         self.assertFalse(Path(self.tmpdir, "OSM_features_47_8.cpg").exists())
 
-        with Download.bind_ctx(self.downloader.DB):
-            self.assertTrue(
-                Download.get(
-                    path=str(Path(self.tmpdir, "OSM_features_48_8.cpg").absolute())
-                ).failed
-            )
-            self.assertTrue(
-                Download.get(
-                    path=str(Path(self.tmpdir, "OSM_features_47_8.cpg").absolute())
-                ).failed
-            )
-        self.downloader.DB.close()
+        try:
+            with Download.bind_ctx(self.downloader.DB):
+                self.assertTrue(
+                    Download.get(
+                        path=str(Path(self.tmpdir, "OSM_features_48_8.cpg").absolute())
+                    ).failed
+                )
+                self.assertTrue(
+                    Download.get(
+                        path=str(Path(self.tmpdir, "OSM_features_47_8.cpg").absolute())
+                    ).failed
+                )
+        finally:
+            self.downloader.DB.close()
 
     def test_passing_download(self):
         before_download = time.time()

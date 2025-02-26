@@ -73,9 +73,9 @@ def file_checksum(file_name, hash_method):  # pylint: disable=invalid-name
     hash_func = HASH_FUNCS[hash_method]()
     bytar = bytearray(128 * 1024)
     memv = memoryview(bytar)
-    with open(file_name, "rb", buffering=0) as fp:
-        for n in iter(lambda: fp.readinto(memv), 0):
-            hash_func.update(memv[:n])
+    with open(file_name, "rb", buffering=0) as rbf:
+        for chsize in iter(lambda: rbf.readinto(memv), 0):
+            hash_func.update(memv[:chsize])
     hashsum = hash_func.hexdigest()
     return f"{hash_method}:{hashsum}"
 
@@ -88,15 +88,18 @@ class Download(Model):
     url = CharField()
     path = CharField(unique=True)
     startdownload = DateTimeField()
+
+    # set after the download has been successfull
     enddownload = DateTimeField(null=True)
-    """will be set only after the download has been successfull"""
     timestamp = IntegerField(null=True)
     filesize = IntegerField(null=True)
     checksum = CharField(null=True)
+
+    # set after a download failed or didn't match expected size or hecksum
     failed = BooleanField(default=False)
-    """this field is necessary to distinguish cases where a download is in progress and one should just wait
-    from cases where a previous download has failed. The former raises an error in `Downloader.download()`
-    the latter cleans up the database and starts another attempt"""
+    # actually necessary to distinguish cases where a download is in progress and one should
+    # just wait from cases where a previous download has failed. The former raises an error in
+    # `Downloader.download()` the latter cleans up the database and starts another attempt
 
     def check(self, filesize=None, checksum=None):
         """Returns self if the Download object meets the expected file size and/or checksum
@@ -139,6 +142,23 @@ class DownloadFailed(Exception):
 
 
 class Downloader:
+    """Manages files that are downloaded from an url. The goal is to avoid downloading when
+    the requested file has already been downloaded before.
+    To do this, downloads are tracked in a sqlite database, where they are identified
+    by the (local) path of the downloded file.
+
+    Beside the target path and the source url, download start and end times are stored,
+    file size, timestamp of the local file, and - if requested - a hashsum.
+    Entries of failed download attempts are kept too and marked with a 'failed' flag.
+
+    Files that have changed in size or timestamp (or optionally checksum) since they were
+    downloaded first will be replaced with the next download.
+
+    If a download from the same url to the same target path hast been successful before and
+    size and timestamp are still the same, a subsequent download is skipped and the local file
+    is taken instead.
+    """
+
     class Check:
         """Collection of flags for checking whether a file that has been downloaded before is
         still valid
@@ -169,7 +189,7 @@ class Downloader:
         downloads_db: Path = None,
         checksum: str = None,
     ):
-        """Downloader
+        """Constructor
 
         Parameters
         ----------
@@ -177,8 +197,14 @@ class Downloader:
             Path to the sqlite db where the download records are stored.
             Default: the path configured as CONFIG.data_api.cache_db
         checksum : {'md5', 'sha1}, optional
-            if not None, the checksum of downloaded files are being recorded.
+            if not None, the checksum of downloaded files are being recorded,
+            otherwise the calculation of checksums is skipped and thus cpu time saved.
             Default: None
+
+        Raises
+        ------
+        DownloadFailed
+            in case the file couldn't be downloaded
         """
         self.DB = SqliteDatabase(
             downloads_db or Path(CONFIG.data_api.cache_db.str()).expanduser()
@@ -254,7 +280,8 @@ class Downloader:
 
         Raises
         ------
-        Exception
+        DownloadFailed
+            in case the file couldn't be downloaded
             when number of retries was exceeded or when a download is already running
         """
         target_dir = Path(target_dir)
@@ -281,6 +308,7 @@ class Downloader:
         return Path(download.path)
 
     def _get_download(self, local_path: Path):
+        """get download by path when the download db is not bound"""
         try:
             with Download.bind_ctx(self.DB):
                 return Download.get_or_none(Download.path == str(local_path.absolute()))
@@ -290,6 +318,9 @@ class Downloader:
     def _previous_download(
         self, url: str, local_path: Path, checkflags: int
     ) -> Download:
+        """Looks up the database for a previous download.
+        If it is found, the file is checked for changes.
+        """
         # look up sqlite database
         download = self._get_download(local_path)
 
@@ -301,7 +332,8 @@ class Downloader:
             raise DownloadFailed(
                 f"this file ({str(local_path)}) has been downloaded from another url before"
                 f" ({download.url}). Please remove the file or purge the entry from data base"
-                f" ({self.DB.database}) if this is the correct url/target combination, then try again."
+                f" ({self.DB.database}) if this is the correct url/target combination,"
+                " then try again."
             )
 
         if download.failed:
@@ -364,13 +396,13 @@ class Downloader:
 
         Returns
         -------
-        Path
-            the path to the downloaded file
+        Download
+            the database entry of a successful download
 
         Raises
         ------
-        Exception
-            when number of retries was exceeded or when a download is already running
+        DownloadFailed
+            if the download was not successful
         """
         target_dir.mkdir(parents=True, exist_ok=True)
         local_path = Path(target_dir, file_name)
@@ -470,15 +502,16 @@ class Downloader:
             # for, e.g,, peewee 3.17.1, it is required to release the sqlite db file.
 
     def purge_cache(self, keep_urls: list = None, purge_dir: Path = None):
-        """Removes all entries from the download database and the corresponding files from the file system
-        except those in the keep_urls list
+        """Removes all entries from the download database and the corresponding files from the file
+        system except those in the keep_urls list
 
         Parameters
         ----------
         keep_urls: list of str, optional
             entries with matching url won't be deleted
         purge_dir: Path, optional
-            if set to True, all empty directories beneath this path will be removed if they're affected by the purge
+            if set, all empty directories beneath this path will be removed if any of their descents
+            has been downloaded and got removed by this purge.
         """
         keep_urls = keep_urls or []
 

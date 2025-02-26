@@ -23,7 +23,6 @@ import hashlib
 import json
 import logging
 from dataclasses import dataclass
-from os.path import commonprefix
 from pathlib import Path
 from urllib.parse import quote, urlsplit, urlunsplit
 
@@ -35,7 +34,7 @@ from climada import CONFIG
 from climada.entity import Exposures
 from climada.hazard import Centroids, Hazard
 from climada.util.constants import SYSTEM_DIR
-from climada.util.files_handler import Download, Downloader
+from climada.util.files_handler import Downloader
 
 LOGGER = logging.getLogger(__name__)
 
