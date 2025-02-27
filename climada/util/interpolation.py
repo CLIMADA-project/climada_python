@@ -39,15 +39,18 @@ def preprocess_and_interpolate_ev(
     y_asymptotic=np.nan,
     n_sig_dig=3,
 ):
-    """Wrapper function to first preprocess (frequency, values) data and and then inter- and
-    extrapolate to test frequencies or test values.
+    """Function to first preprocess (frequency, values) data by binning the data according to
+    their value with the given number of significant digits (see Notes), compute the cumulative
+    frequencies, and then inter- and extrapolate either to test frequencies or to test values.
 
     Parameters
     ----------
     test_frequency : array_like
         1-D array of test frequencies for which values (e.g., intensities or impacts) should be assigned.
+        If given, test_values must be None.
     test_values : array_like
         1-D array of test values (e.g., intensities or impacts) for which frequencies should be assigned.
+        If given, test_frequency must be None.
     frequency : array_like
         1-D array of frequencies to be interpolated.
     values : array_like
@@ -72,7 +75,7 @@ def preprocess_and_interpolate_ev(
         for test x values larger than given x values, if size < 2 or if method is set
         to "extrapolate_constant" or "stepfunction". Defaults to np.nan.
     n_sig_dig : int, optional
-        number of significant digits to group the values (in order to avoid bad extrapolation behaviour). Defaults to 3.
+        Number of significant digits to group and bin the values, see Notes. Defaults to 3.
 
     Returns
     -------
@@ -84,13 +87,25 @@ def preprocess_and_interpolate_ev(
     ------
     ValueError
         If both test frequencies and test values are given or none of them.
+
+    Notes
+    -------
+    Before inter- and extrapolation, the values are binned according to their n_sig_dig
+    significant digits, and their corresponding frequencies are summed. For instance, if
+    n_sig_dig=3, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and 0.2 are
+    combined to a value 12.0 with frequency 0.3. This binning leads to a coarser (and smoother)
+    interpolation, and a more stable extrapolation. To not bin the values, you can use a large
+    n_sig_dig, e.g., n_sig_dig=7.
     """
 
     # check that only test frequencies or only test values are given
     if test_frequency is not None and test_values is not None:
-        raise ValueError("Both test frequencies and test values are given.")
+        raise ValueError(
+            "Both test frequencies and test values are given. "
+            "To use this method, please only use one of them."
+        )
     elif test_frequency is None and test_values is None:
-        raise ValueError("No test values or frequencies are given.")
+        raise ValueError("No test values or test frequencies are given.")
 
     # sort values and frequencies
     sorted_idxs = np.argsort(values)
@@ -213,7 +228,10 @@ def interpolate_ev(
         fill_value = "extrapolate"
     elif extrapolation == "extrapolate_constant":
         if not all(sorted(x_train) == x_train):
-            raise ValueError("x_train array must be sorted in ascending order.")
+            raise ValueError(
+                "x_train array must be sorted in ascending order. This might be due to floating "
+                "point errors in the rounding process of `group_frequency()`."
+            )
         fill_value = (y_train[0], np.log10(y_asymptotic) if logy else y_asymptotic)
     else:
         fill_value = np.nan
@@ -268,7 +286,10 @@ def stepfunction_ev(
 
     # find indices of x_test if sorted into x_train
     if not all(sorted(x_train) == x_train):
-        raise ValueError("Input array x_train must be sorted in ascending order.")
+        raise ValueError(
+            "Input array x_train must be sorted in ascending order. This might be due to "
+            "floating point errors in the rounding process of `group_frequency()`."
+        )
     indx = np.searchsorted(x_train, x_test)
     y_test = y_train[indx.clip(max=len(x_train) - 1)]
     y_test[indx == len(x_train)] = y_asymptotic
@@ -365,13 +386,19 @@ def group_frequency(frequency, value, n_sig_dig):
 
     if value_unique.size != frequency.size:
         if not all(sorted(start_indices) == start_indices):
-            raise ValueError("Value array must be sorted in ascending order.")
+            raise ValueError(
+                "Value array must be sorted in ascending order. This might be due to floating "
+                "point errors in the rounding process of `round_to_sig_digits()`."
+            )
         # add frequency for equal value
         start_indices = np.insert(start_indices, value_unique.size, frequency.size)
         frequency = np.add.reduceat(frequency, start_indices[:-1])
         return frequency, value_unique
     elif not all(sorted(value) == value):
-        raise ValueError("Value array must be sorted in ascending order!")
+        raise ValueError(
+            "Value array must be sorted in ascending order. This might be due to floating point "
+            "errors in the rounding process of `round_to_sig_digits()`."
+        )
 
     return frequency, value
 

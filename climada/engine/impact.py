@@ -498,10 +498,12 @@ class Impact:
         min_impact=0,
         log_frequency=True,
         log_impact=True,
+        n_sig_dig=3,
     ):
         """Compute local exceedance impact for given return periods. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
-        frequency with linear interpolation on log-log scale.
+        frequency with linear interpolation on log-log scale. Impacts are binned according
+        to their n_sig_dig significant digits, see Notes.
 
         Parameters
         ----------
@@ -530,6 +532,9 @@ class Impact:
             This parameter is only used if method is set to "extrapolate" or "interpolate". If set
             to True, impact values are converted to log scale before inter- and extrapolation.
             Defaults to True.
+        n_sig_dig : int, optional
+            Number of significant digits for the binning of the impact values, see Notes.
+            Defaults to 3.
 
         Returns
         -------
@@ -542,6 +547,14 @@ class Impact:
             GeoDataFrame label, for reporting and plotting
         column_label : function
             Column-label-generating function, for reporting and plotting
+
+        Notes
+        -------
+        Contrary to Impact.calc_freq_curve(), impacts are binned according to their n_sig_dig
+        significant digits. This results in a coarser (and smoother) interpolation, and a
+        more stable extrapolation. To not bin the values, please use, e.g., n_sig_dig=7. For more
+        information about the binning, see docstring of
+        climada.util.interpolation.preprocess_and_interpolate_ev().
         """
         LOGGER.info(
             "Computing exceedance impact map for return periods: %s", return_periods
@@ -589,7 +602,7 @@ class Impact:
                         value_threshold=min_impact,
                         method=method,
                         y_asymptotic=0.0,
-                        n_sig_dig=3,
+                        n_sig_dig=n_sig_dig,
                     )
                     for i_centroid in nonzero_centroids
                 ]
@@ -632,10 +645,12 @@ class Impact:
         min_impact=0,
         log_frequency=True,
         log_impact=True,
+        n_sig_dig=3,
     ):
         """Compute local return periods for given threshold impacts. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
-        frequency with linear interpolation on log-log scale.
+        frequency with linear interpolation on log-log scale. Impacts are binned according
+        to their n_sig_dig significant digits, see Notes.
 
         Parameters
         ----------
@@ -665,6 +680,9 @@ class Impact:
             This parameter is only used if method is set to "interpolate". If set to True,
             impact values are converted to log scale before inter- and extrapolation.
             Defaults to True.
+        n_sig_dig : int, optional
+            Number of significant digits for the binning of the impact values, see Notes.
+            Defaults to 3.
 
         Returns
         -------
@@ -677,6 +695,14 @@ class Impact:
             GeoDataFrame label, for reporting and plotting
         column_label : function
             Column-label-generating function, for reporting and plotting
+
+        Notes
+        -------
+        Contrary to Impact.calc_freq_curve(), impacts are binned according to their n_sig_dig
+        significant digits. This results in a coarser (and smoother) interpolation, and a
+        more stable extrapolation. To not bin the values, please use, e.g., n_sig_dig=7. For more
+        information about the binning, see docstring of
+        climada.util.interpolation.preprocess_and_interpolate_ev().
         """
 
         LOGGER.info("Computing return period map for impacts: %s", threshold_impact)
@@ -718,7 +744,7 @@ class Impact:
                         value_threshold=min_impact,
                         method=method,
                         y_asymptotic=np.nan,
-                        n_sig_dig=3,
+                        n_sig_dig=n_sig_dig,
                     )
                     for i_centroid in nonzero_centroids
                 ]
