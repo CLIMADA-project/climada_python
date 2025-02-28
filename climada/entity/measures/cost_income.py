@@ -41,7 +41,7 @@ class CostIncome:
         annual_cost: float = 0.0,
         annual_income: float = 0.0,
         income_growth_rate: float = 0.0,
-        custom_cash_flows_df: Optional[pd.DataFrame] = None,
+        custom_cash_flows: Optional[pd.DataFrame] = None,
     ):
 
         self.mkt_price_year = mkt_price_year
@@ -54,16 +54,16 @@ class CostIncome:
         self.income_growth_rate = income_growth_rate
         # Custom cash flows
         # Updaet the cost columns to be negative
-        if custom_cash_flows_df is not None and "cost" in custom_cash_flows_df.columns:
-            custom_cash_flows_df["cost"] = -abs(custom_cash_flows_df["cost"])
-        self.custom_cash_flows_df = custom_cash_flows_df
+        if custom_cash_flows is not None and "cost" in custom_cash_flows.columns:
+            custom_cash_flows["cost"] = -abs(custom_cash_flows["cost"])
+        self.custom_cash_flows = custom_cash_flows
 
         # Custom cash flows
-        if self.custom_cash_flows_df is not None:
-            self.custom_cash_flows_df = self.custom_cash_flows_df.groupby("year").sum()
+        if self.custom_cash_flows is not None:
+            self.custom_cash_flows = self.custom_cash_flows.groupby("year").sum()
             if (
-                "cost" not in self.custom_cash_flows_df.columns
-                and "income" not in self.custom_cash_flows_df.columns
+                "cost" not in self.custom_cash_flows.columns
+                and "income" not in self.custom_cash_flows.columns
             ):
                 raise ValueError(
                     "Custom cash flows DataFrame must contain 'cost' or 'income' column"
@@ -113,10 +113,10 @@ class CostIncome:
         return net_cash_flow, custom_cost + cost, custom_income + income
 
     def _get_custom_cash_flow(self, year, column):
-        if self.custom_cash_flows_df is not None:
-            if year in self.custom_cash_flows_df.index:
-                if column in self.custom_cash_flows_df.columns:
-                    return self.custom_cash_flows_df.loc[year, column]
+        if self.custom_cash_flows is not None:
+            if year in self.custom_cash_flows.index:
+                if column in self.custom_cash_flows.columns:
+                    return self.custom_cash_flows.loc[year, column]
                 else:
                     raise ValueError(
                         f"Column '{column}' not found in custom cash flows DataFrame"
@@ -269,7 +269,7 @@ class CostIncome:
         plt.legend()
         plt.show()
 
-    def calc_cashflows_df(self, impl_year, start_year, end_year, disc=None):
+    def calc_cashflows(self, impl_year, start_year, end_year, disc=None):
         """
         Calculate the cash flows over a given period and return them as a DataFrame
 
@@ -286,12 +286,12 @@ class CostIncome:
 
         Returns:
         --------
-        cash_flows_df: pd.DataFrame
+        cash_flows: pd.DataFrame
             the cash flows over the given period
         """
 
         # Make a DataFrame to store the cash flows
-        cash_flows_df = pd.DataFrame(columns=["year", "net", "cost", "income"])
+        cash_flows = pd.DataFrame(columns=["year", "net", "cost", "income"])
 
         # Calculate the cash flows for each year
         net_cash_flows, costs, incomes = self.calc_cash_flows(
@@ -299,9 +299,9 @@ class CostIncome:
         )
 
         # Add the cash flows to the DataFrame
-        cash_flows_df["year"] = range(start_year, end_year + 1)
-        cash_flows_df["net"] = net_cash_flows
-        cash_flows_df["cost"] = costs
-        cash_flows_df["income"] = incomes
+        cash_flows["year"] = range(start_year, end_year + 1)
+        cash_flows["net"] = net_cash_flows
+        cash_flows["cost"] = costs
+        cash_flows["income"] = incomes
 
-        return cash_flows_df
+        return cash_flows

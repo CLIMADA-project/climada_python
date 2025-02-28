@@ -103,7 +103,18 @@ class CalcImpactMetrics:
 
         # duplicate rows arise from overlapping end and start if there's more than two snapshots
         results_df.drop_duplicates(inplace=True)
-        return results_df  # .reset_index()#[["group", "year", "metric", "measure", "result"]]
+
+        # reorder the columns (but make sure not to remove possibly important ones in the future)
+        columns_to_front = ["group", "year", "metric", "measure"]
+        return results_df[
+            columns_to_front
+            + [
+                col
+                for col in results_df.columns
+                if col not in columns_to_front + ["risk", "rp"]
+            ]
+            + ["risk"]
+        ]
 
     def impact_metrics(
         self,

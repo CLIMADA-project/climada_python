@@ -387,6 +387,7 @@ def interpolate_imp_mat(imp0, imp1, start_year, end_year):
     list of np.ndarray
         List of interpolated impact matrices for each year in the specified range.
     """
+    LOGGER.debug(f"imp0: {imp0.imp_mat.data[0]}, imp1: {imp1.imp_mat.data[0]}")
     return [
         interpolate_sm(imp0.imp_mat, imp1.imp_mat, year, start_year, end_year)
         for year in range(start_year, end_year + 1)
@@ -597,7 +598,7 @@ def bayesian_mixer_opti(
             yearly_eai_exp_0, yearly_eai_exp_1
         )
         yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
-        aai_df = pd.DataFrame(index=year_idx, columns=["result"], data=yearly_aai)
+        aai_df = pd.DataFrame(index=year_idx, columns=["risk"], data=yearly_aai)
         aai_df["group"] = all_groups_name
         aai_df["metric"] = "aai"
         aai_df.reset_index(inplace=True)
@@ -612,7 +613,7 @@ def bayesian_mixer_opti(
         )
         rp_df = pd.DataFrame(
             index=year_idx, columns=return_periods, data=yearly_rp
-        ).melt(value_name="result", var_name="rp", ignore_index=False)
+        ).melt(value_name="risk", var_name="rp", ignore_index=False)
         rp_df.reset_index(inplace=True)
         rp_df["group"] = all_groups_name
         rp_df["metric"] = f"rp_" + rp_df["rp"].astype(str)
@@ -624,7 +625,7 @@ def bayesian_mixer_opti(
         ) + np.multiply(prop_H1.reshape(-1, 1), yearly_eai_exp_1)
         yearly_eai_group = get_eai_exp(yearly_eai, groups)
         eai_group_df = pd.DataFrame(index=year_idx, data=yearly_eai_group).melt(
-            value_name="result", var_name="group", ignore_index=False
+            value_name="risk", var_name="group", ignore_index=False
         )
         eai_group_df["metric"] = "aai"
         eai_group_df.reset_index(inplace=True)
@@ -719,7 +720,7 @@ def bayesian_mixer(
             yearly_eai_exp_0, yearly_eai_exp_1
         )
         yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
-        aai_df = pd.DataFrame(index=year_idx, columns=["result"], data=yearly_aai)
+        aai_df = pd.DataFrame(index=year_idx, columns=["risk"], data=yearly_aai)
         aai_df["group"] = all_groups_name
         aai_df["metric"] = "aai"
         aai_df.reset_index(inplace=True)
@@ -734,7 +735,7 @@ def bayesian_mixer(
         )
         rp_df = pd.DataFrame(
             index=year_idx, columns=return_periods, data=yearly_rp
-        ).melt(value_name="result", var_name="rp", ignore_index=False)
+        ).melt(value_name="risk", var_name="rp", ignore_index=False)
         rp_df.reset_index(inplace=True)
         rp_df["group"] = all_groups_name
         rp_df["metric"] = f"rp_" + rp_df["rp"].astype(str)
@@ -746,7 +747,7 @@ def bayesian_mixer(
         ) + np.multiply(prop_H1.reshape(-1, 1), yearly_eai_exp_1)
         yearly_eai_group = get_eai_exp(yearly_eai, groups)
         eai_group_df = pd.DataFrame(index=year_idx, data=yearly_eai_group).melt(
-            value_name="result", var_name="group", ignore_index=False
+            value_name="risk", var_name="group", ignore_index=False
         )
         eai_group_df["metric"] = "aai"
         eai_group_df.reset_index(inplace=True)
@@ -755,7 +756,8 @@ def bayesian_mixer(
     return pd.concat(res, axis=0)
 
 
-@dataclass(eq=False)
+# TODO: Better measure checking (if we change the measure object after, changes are not accounted for!!!)
+@dataclass(eq=False, frozen=True)
 class Snapshot:
     """
     A snapshot of exposure, hazard, and impact function set for a given year.
@@ -795,10 +797,14 @@ class Snapshot:
                     and measure
                     and existing_snapshot.measure.name == measure.name
                 ):
-                    LOGGER.debug("Found existing instance")
+                    LOGGER.debug(
+                        f"Found existing instance of snapshot for year {year}, measure {measure.name}, with id {id(existing_snapshot)}"
+                    )
                     return existing_snapshot  # Return existing instance
                 elif existing_snapshot.measure is None and measure is None:
-                    LOGGER.debug("Found existing instance")
+                    LOGGER.debug(
+                        f"Found existing instance of snapshot for year {year} (no measure), with id {id(existing_snapshot)}"
+                    )
                     return existing_snapshot  # Return existing instance
 
         # Create new instance if no match is found
@@ -830,8 +836,9 @@ class Snapshot:
         )
 
     def apply_measure(self, measure: Measure):
+        LOGGER.debug(f"Applying measure {measure.name} on snapshot {id(self)}")
         exp_new, impfset_new, haz_new = measure.apply(
-            self.exposure, self.impfset, self.hazard
+            self.exposure, copy.deepcopy(self.impfset), self.hazard
         )
         return Snapshot(exp_new, haz_new, impfset_new, self.year, measure)
 
@@ -1031,6 +1038,7 @@ class RiskPeriod:
 
     # TODO: make lazy / delayed interpolation and impacts
     # TODO: make MeasureRiskPeriod child class (with effective start/end)
+    # TODO: special case where hazard and exposure don't change (no need to interpolate) ?
 
     _instances = WeakValueDictionary()
 
@@ -1054,8 +1062,8 @@ class RiskPeriod:
 
     def __init__(
         self,
-        snapshot0,
-        snapshot1,
+        snapshot0: Snapshot,
+        snapshot1: Snapshot,
         measure_name="no_measure",
         risk_transf_cover=None,
         risk_transf_attach=None,
@@ -1065,7 +1073,7 @@ class RiskPeriod:
             return  # Avoid re-initialization
 
         LOGGER.debug(
-            f"Initializing new RiskPeriod from {snapshot0.year} to {snapshot1.year}"
+            f"Initializing new RiskPeriod from {snapshot0.year} to {snapshot1.year}, with snapshot0: {id(snapshot0)}, snapshot1: {id(snapshot1)}"
         )
         self.snapshot0 = snapshot0
         self.snapshot1 = snapshot1
@@ -1108,10 +1116,11 @@ class RiskPeriod:
             imp_E1H1.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
         )
 
-        LOGGER.debug("Interpolating impact matrices")
+        LOGGER.debug("Interpolating impact matrices between E0H0 and E1H0")
         self.imp_mats_0 = interpolate_imp_mat(
             imp_E0H0, imp_E1H0, snapshot0.year, snapshot1.year
         )
+        LOGGER.debug("Interpolating impact matrices between E0H1 and E1H1")
         self.imp_mats_1 = interpolate_imp_mat(
             imp_E0H1, imp_E1H1, snapshot0.year, snapshot1.year
         )
@@ -1244,7 +1253,7 @@ class CalcImpactsSnapshots:
 
         # duplicate rows arise from overlapping end and start if there's more than two snapshots
         results_df.drop_duplicates(inplace=True)
-        return results_df[["group", "year", "metric", "result"]]
+        return results_df[["group", "year", "metric", "risk"]]
 
 
 #### WIP
