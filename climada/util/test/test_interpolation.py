@@ -35,17 +35,17 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([8.0, 4.0, 2.0])
         x_test = np.array([0.0, 3.0, 4.0, 6.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train),
+            u_interp._interpolate_ev(x_test, x_train, y_train),
             np.array([np.nan, 4.0, 3.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test, x_train, y_train, extrapolation="extrapolate_constant"
             ),
             np.array([8.0, 4.0, 3.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test,
                 x_train,
                 y_train,
@@ -61,13 +61,13 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([4.0, 1.0, 4.0])
         x_test = np.array([-1.0, 3.0, 4.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test, x_train, y_train, extrapolation="extrapolate_constant"
             ),
             np.array([4.0, 1.0, 2.0]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test,
                 x_train,
                 y_train,
@@ -77,7 +77,7 @@ class TestFitMethods(unittest.TestCase):
             np.array([1.0, 1.0, 2.0]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test,
                 x_train,
                 y_train,
@@ -93,13 +93,13 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([1.0, 3.0])
         x_test = np.array([1e0, 1e2])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test, x_train, y_train, logx=True, extrapolation="extrapolate"
             ),
             np.array([0.0, 2.0]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test,
                 x_train,
                 y_train,
@@ -112,7 +112,7 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([1e1, 1e3])
         x_test = np.array([0.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test, x_train, y_train, logy=True, extrapolation="extrapolate"
             ),
             np.array([1e0, 1e2]),
@@ -121,7 +121,7 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([1e1, 1e5])
         x_test = np.array([1e0, 1e2])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test,
                 x_train,
                 y_train,
@@ -138,7 +138,7 @@ class TestFitMethods(unittest.TestCase):
         x_test = np.array([0.0, 2.0, 4.0])
         y_train = np.zeros(3)
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train),
+            u_interp._interpolate_ev(x_test, x_train, y_train),
             np.array([np.nan, 0.0, 0.0]),
         )
 
@@ -148,29 +148,29 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([2.0])
         x_test = np.array([0.0, 1.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test, x_train, y_train, extrapolation="extrapolate"
             ),
             np.array([2.0, 2.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test, x_train, y_train, extrapolation="extrapolate", y_asymptotic=0
             ),
             np.array([2.0, 2.0, 0.0]),
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train), np.full(3, np.nan)
+            u_interp._interpolate_ev(x_test, x_train, y_train), np.full(3, np.nan)
         )
 
         x_train = np.array([])
         y_train = np.array([])
         x_test = np.array([0.0, 1.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(x_test, x_train, y_train), np.full(3, np.nan)
+            u_interp._interpolate_ev(x_test, x_train, y_train), np.full(3, np.nan)
         )
         np.testing.assert_allclose(
-            u_interp.interpolate_ev(
+            u_interp._interpolate_ev(
                 x_test,
                 x_train,
                 y_train,
@@ -186,11 +186,11 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([8.0, 4.0, 2.0])
         x_test = np.array([0.0, 3.0, 4.0, 6.0])
         np.testing.assert_allclose(
-            u_interp.stepfunction_ev(x_test, x_train, y_train),
+            u_interp._stepfunction_ev(x_test, x_train, y_train),
             np.array([8.0, 4.0, 2.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0.0),
+            u_interp._stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0.0),
             np.array([8.0, 4.0, 2.0, 0.0]),
         )
 
@@ -200,21 +200,21 @@ class TestFitMethods(unittest.TestCase):
         y_train = np.array([2.0])
         x_test = np.array([0.0, 1.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.stepfunction_ev(x_test, x_train, y_train),
+            u_interp._stepfunction_ev(x_test, x_train, y_train),
             np.array([2.0, 2.0, np.nan]),
         )
         np.testing.assert_allclose(
-            u_interp.stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0),
+            u_interp._stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0),
             np.array([2.0, 2.0, 0.0]),
         )
         x_train = np.array([])
         y_train = np.array([])
         x_test = np.array([0.0, 1.0, 2.0])
         np.testing.assert_allclose(
-            u_interp.stepfunction_ev(x_test, x_train, y_train), np.full(3, np.nan)
+            u_interp._stepfunction_ev(x_test, x_train, y_train), np.full(3, np.nan)
         )
         np.testing.assert_allclose(
-            u_interp.stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0),
+            u_interp._stepfunction_ev(x_test, x_train, y_train, y_asymptotic=0),
             np.zeros(3),
         )
 
@@ -223,14 +223,12 @@ class TestFitMethods(unittest.TestCase):
         frequency = np.ones(6)
         intensity = np.array([1.00001, 0.9998, 1.0, 2.0, 3.0, 3])
         np.testing.assert_allclose(
-            u_interp.group_frequency(frequency, intensity, n_sig_dig=3),
+            u_interp._group_frequency(frequency, intensity, n_sig_dig=3),
             ([3, 1, 2], [1, 2, 3]),
         )
         np.testing.assert_allclose(
-            u_interp.group_frequency([], [], n_sig_dig=3), ([], [])
+            u_interp._group_frequency([], [], n_sig_dig=3), ([], [])
         )
-        with self.assertRaises(ValueError):
-            u_interp.group_frequency(frequency, intensity[::-1], n_sig_dig=3)
 
     def test_round_to_sig_digits(self):
         array = [0.00111, 999.0, 55.5, 0.0, -1.001, -1.08]

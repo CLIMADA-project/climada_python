@@ -556,7 +556,7 @@ class Impact:
         Notes
         -------
         Contrary to Impact.calc_freq_curve(), impacts are binned according to their n_sig_dig
-        significant digits. This results in a coarser (and smoother) interpolation, and a
+        significant digits. This results in a smoother (and coarser) interpolation, and a
         more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
         e.g., n_sig_dig=7. For more information about the binning, see
         climada.util.interpolation.preprocess_and_interpolate_ev().
@@ -709,7 +709,7 @@ class Impact:
         Notes
         -------
         Contrary to Impact.calc_freq_curve(), impacts are binned according to their n_sig_dig
-        significant digits. This results in a coarser (and smoother) interpolation, and a
+        significant digits. This results in a smoother (and coarser) interpolation, and a
         more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
         e.g., n_sig_dig=7. For more information about the binning, see
         climada.util.interpolation.preprocess_and_interpolate_ev().
