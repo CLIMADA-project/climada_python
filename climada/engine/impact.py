@@ -548,12 +548,17 @@ class Impact:
         column_label : function
             Column-label-generating function, for reporting and plotting
 
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
         Notes
         -------
         Contrary to Impact.calc_freq_curve(), impacts are binned according to their n_sig_dig
         significant digits. This results in a coarser (and smoother) interpolation, and a
-        more stable extrapolation. To not bin the values, please use, e.g., n_sig_dig=7. For more
-        information about the binning, see docstring of
+        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
+        e.g., n_sig_dig=7. For more information about the binning, see
         climada.util.interpolation.preprocess_and_interpolate_ev().
         """
         LOGGER.info(
@@ -696,12 +701,17 @@ class Impact:
         column_label : function
             Column-label-generating function, for reporting and plotting
 
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
         Notes
         -------
         Contrary to Impact.calc_freq_curve(), impacts are binned according to their n_sig_dig
         significant digits. This results in a coarser (and smoother) interpolation, and a
-        more stable extrapolation. To not bin the values, please use, e.g., n_sig_dig=7. For more
-        information about the binning, see docstring of
+        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
+        e.g., n_sig_dig=7. For more information about the binning, see
         climada.util.interpolation.preprocess_and_interpolate_ev().
         """
 

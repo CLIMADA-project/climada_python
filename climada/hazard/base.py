@@ -542,13 +542,19 @@ class Hazard(HazardIO, HazardPlot):
         column_label : function
             Column-label-generating function, for reporting and plotting
 
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
         Notes
         -------
         Contrary to Impact.calc_freq_curve(), intensities are binned according to their n_sig_dig
         significant digits. This results in a coarser (and smoother) interpolation, and a
-        more stable extrapolation. To not bin the values, please use, e.g., n_sig_dig=7. For more
-        information about the binning, see docstring of
-        climada.util.interpolation.preprocess_and_interpolate_ev().
+        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
+        e.g., n_sig_dig=7. For more information about the binning, see
+        util.interpolation.preprocess_and_interpolate_ev().
+
         """
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
@@ -688,12 +694,17 @@ class Hazard(HazardIO, HazardPlot):
         column_label : function
             Column-label-generating function, for reporting and plotting
 
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
         Notes
         -------
         Contrary to Impact.calc_freq_curve(), intensities are binned according to their n_sig_dig
         significant digits. This results in a coarser (and smoother) interpolation, and a
-        more stable extrapolation. To not bin the values, please use, e.g., n_sig_dig=7. For more
-        information about the binning, see docstring of
+        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
+        e.g., n_sig_dig=7. For more information about the binning, see
         climada.util.interpolation.preprocess_and_interpolate_ev().
         """
         if not min_intensity and min_intensity != 0:
