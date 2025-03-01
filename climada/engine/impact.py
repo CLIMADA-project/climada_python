@@ -40,6 +40,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xlsxwriter
+from deprecation import deprecated
 from pandas.api.types import is_string_dtype
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
@@ -50,7 +51,6 @@ import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 import climada.util.interpolation as u_interp
 import climada.util.plot as u_plot
-from climada import CONFIG
 from climada.entity import Exposures
 from climada.util.constants import CMAP_IMPACT, DEF_CRS, DEF_FREQ_UNIT
 from climada.util.select import get_attributes_with_matching_dimension
@@ -216,8 +216,8 @@ class Impact:
             "The use of Impact().calc() is deprecated."
             " Use ImpactCalc().impact() instead."
         )
-        from climada.engine.impact_calc import (
-            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        from climada.engine.impact_calc import (  # pylint: disable=import-outside-toplevel
+            ImpactCalc,
         )
 
         impcalc = ImpactCalc(exposures, impact_funcs, hazard)
@@ -1460,7 +1460,7 @@ class Impact:
         event_names = imp_df["event_name"][:num_ev]
         if not is_string_dtype(event_names):
             warnings.warn(
-                f"Some event names are not str will be converted to str.", UserWarning
+                "Some event names are not str will be converted to str.", UserWarning
             )
             event_names = event_names.astype(str)
         imp.event_name = event_names.values.tolist()
@@ -1485,7 +1485,7 @@ class Impact:
     def read_csv(self, *args, **kwargs):
         """This function is deprecated, use Impact.from_csv instead."""
         LOGGER.warning(
-            "The use of Impact.read_csv is deprecated." "Use Impact.from_csv instead."
+            "The use of Impact.read_csv is deprecated. Use Impact.from_csv instead."
         )
         self.__dict__ = Impact.from_csv(*args, **kwargs).__dict__
 
@@ -1514,7 +1514,7 @@ class Impact:
         event_names = imp_df["event_name"][~np.isnan(imp_df["event_id"].values)]
         if not is_string_dtype(event_names):
             warnings.warn(
-                f"Some event names are not str will be converted to str.", UserWarning
+                "Some event names are not str will be converted to str", UserWarning
             )
             event_names = event_names.astype(str)
         imp.event_name = event_names.values
@@ -1693,8 +1693,8 @@ class Impact:
         -------
         list of Impact
         """
-        from climada.engine.impact_calc import (
-            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        from climada.engine.impact_calc import (  # pylint: disable=import-outside-toplevel
+            ImpactCalc,
         )
 
         if args_exp is None:
