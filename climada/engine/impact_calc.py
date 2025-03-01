@@ -107,7 +107,7 @@ class ImpactCalc:
 
         Examples
         --------
-            >>> haz = Hazard.from_mat(HAZ_DEMO_MAT)  # Set hazard
+            >>> haz = Hazard.from_hdf5(HAZ_DEMO_H5)  # Set hazard
             >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
             >>> impcalc = ImpactCal(exp, impfset, haz)

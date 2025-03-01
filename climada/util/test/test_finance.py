@@ -107,8 +107,8 @@ class TestWBData(unittest.TestCase):
         with self.assertLogs("climada.util.finance", level="INFO") as cm:
             gdp_year, gdp_val = gdp("SXM", ref_year)
 
-        ref_val = 936089385.47486  # reference GDP value
-        ref_year = 2011  # nearest year with data available (might change)
+        ref_val = 892290502.793296  # reference GDP value
+        ref_year = 2010  # nearest year with data available (might change)
         # GDP and years with data available might change if worldbank input
         # data changes, check magnitude and adjust ref_val and/or ref_year
         # if test fails:
@@ -133,7 +133,7 @@ class TestWBData(unittest.TestCase):
         wb_year, wb_val = world_bank("ESP", ref_year, "NY.GDP.MKTP.CD")
 
         ref_year = 1960
-        ref_val = 12433394725.2159
+        ref_val = 12424514013.7604
         self.assertEqual(wb_year, ref_year)
         self.assertAlmostEqual(wb_val, ref_val)
 
