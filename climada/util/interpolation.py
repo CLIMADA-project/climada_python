@@ -16,7 +16,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define interpolation and extrapolation functions for calculating (local) exceedance frequencies and return periods
+Define interpolation and extrapolation functions for calculating
+(local) exceedance frequencies and return periods
 """
 
 import logging
@@ -46,11 +47,11 @@ def preprocess_and_interpolate_ev(
     Parameters
     ----------
     test_frequency : array_like
-        1-D array of test frequencies for which values (e.g., intensities or impacts) should be assigned.
-        If given, test_values must be None.
+        1-D array of test frequencies for which values (e.g., intensities or impacts) should be
+        assigned. If given, test_values must be None.
     test_values : array_like
-        1-D array of test values (e.g., intensities or impacts) for which frequencies should be assigned.
-        If given, test_frequency must be None.
+        1-D array of test values (e.g., intensities or impacts) for which frequencies should be
+        assigned. If given, test_frequency must be None.
     frequency : array_like
         1-D array of frequencies to be interpolated.
     values : array_like
@@ -104,7 +105,7 @@ def preprocess_and_interpolate_ev(
             "Both test frequencies and test values are given. This method only handles one of "
             "the two. To use this method, please only use one of them."
         )
-    elif test_frequency is None and test_values is None:
+    if test_frequency is None and test_values is None:
         raise ValueError("No test values or test frequencies are given.")
 
     # sort values and frequencies
@@ -128,18 +129,17 @@ def preprocess_and_interpolate_ev(
                 y_threshold=value_threshold,
                 y_asymptotic=y_asymptotic,
             )
-        else:
-            extrapolation = None if method == "interpolate" else method
-            return _interpolate_ev(
-                test_frequency,
-                frequency[::-1],
-                values[::-1],
-                logx=log_frequency,
-                logy=log_values,
-                y_threshold=value_threshold,
-                extrapolation=extrapolation,
-                y_asymptotic=y_asymptotic,
-            )
+        extrapolation = None if method == "interpolate" else method
+        return _interpolate_ev(
+            test_frequency,
+            frequency[::-1],
+            values[::-1],
+            logx=log_frequency,
+            logy=log_values,
+            y_threshold=value_threshold,
+            extrapolation=extrapolation,
+            y_asymptotic=y_asymptotic,
+        )
 
     # if test values are provided
     else:
@@ -151,17 +151,16 @@ def preprocess_and_interpolate_ev(
                 x_threshold=value_threshold,
                 y_asymptotic=y_asymptotic,
             )
-        else:
-            extrapolation = None if method == "interpolate" else method
-            return _interpolate_ev(
-                test_values,
-                values,
-                frequency,
-                logx=log_values,
-                logy=log_frequency,
-                x_threshold=value_threshold,
-                extrapolation=extrapolation,
-            )
+        extrapolation = None if method == "interpolate" else method
+        return _interpolate_ev(
+            test_values,
+            values,
+            frequency,
+            logx=log_values,
+            logy=log_frequency,
+            x_threshold=value_threshold,
+            extrapolation=extrapolation,
+        )
 
 
 def _interpolate_ev(
@@ -377,7 +376,8 @@ def _group_frequency(frequency, value, n_sig_dig):
         if not all(sorted(start_indices) == start_indices):
             LOGGER.warning(
                 "After grouping values to significant digits, the value array is not sorted."
-                f"The values are not binned. Please choose a larger value of n_sig_dig={n_sig_dig}."
+                "The values are not binned. Please choose a larger value of n_sig_dig=%s.",
+                n_sig_dig,
             )
             return frequency, value
 
@@ -389,13 +389,13 @@ def _group_frequency(frequency, value, n_sig_dig):
     return frequency, value
 
 
-def round_to_sig_digits(x, n_sig_dig):
+def round_to_sig_digits(values, n_sig_dig):
     """round each element array to a number of significant digits
 
     Parameters
     ----------
-    x : array-like
-        array to be rounded
+    values : array-like
+        values to be rounded
     n_sig_dig : int
         number of significant digits.
 
@@ -406,5 +406,5 @@ def round_to_sig_digits(x, n_sig_dig):
     """
 
     return np.vectorize(np.format_float_positional)(
-        x, precision=n_sig_dig, unique=False, fractional=False, trim="k"
+        values, precision=n_sig_dig, unique=False, fractional=False, trim="k"
     ).astype(float)
