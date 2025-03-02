@@ -491,10 +491,12 @@ class Hazard(HazardIO, HazardPlot):
         min_intensity=None,
         log_frequency=True,
         log_intensity=True,
+        n_sig_dig=3,
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with linear interpolation on log-log scale.
+        frequency with linear interpolation on log-log scale. Intensities are binned according
+        to their n_sig_dig significant digits, see Notes.
 
         Parameters
         ----------
@@ -509,8 +511,10 @@ class Hazard(HazardIO, HazardPlot):
             periods larger than the Hazard object's observed local return periods will be assigned
             the largest local intensity, and return periods smaller than the Hazard object's
             observed local return periods will be assigned 0. If set to "extrapolate", local
-            exceedance intensities will be extrapolated (and interpolated).
-            Defauls to "interpolate".
+            exceedance intensities will be extrapolated (and interpolated). The extrapolation to
+            large return periods uses the two highest intensites of the centroid and their return
+            periods and extends the interpolation between these points to the given return period
+            (similar for small return periods). Defauls to "interpolate".
         min_intensity : float, optional
             Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
             will be used. Defaults to None.
@@ -522,6 +526,9 @@ class Hazard(HazardIO, HazardPlot):
             This parameter is only used if method is set to "interpolate". If set to True,
             intensity values are converted to log scale before inter- and extrapolation.
             Defaults to True.
+        n_sig_dig : int, optional
+            Number of significant digits for the binning of the intensity values, see Notes.
+            Defaults to 3.
 
         Returns
         -------
@@ -534,6 +541,20 @@ class Hazard(HazardIO, HazardPlot):
             GeoDataFrame label, for reporting and plotting
         column_label : function
             Column-label-generating function, for reporting and plotting
+
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
+        Notes
+        -------
+        Contrary to Impact.calc_freq_curve(), intensities are binned according to their n_sig_dig
+        significant digits. This results in a smoother (and coarser) interpolation, and a
+        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
+        e.g., n_sig_dig=7. For more information about the binning, see
+        util.interpolation.preprocess_and_interpolate_ev().
+
         """
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
@@ -553,22 +574,31 @@ class Hazard(HazardIO, HazardPlot):
 
         # calculate local exceedance intensity
         test_frequency = 1 / np.array(return_periods)
-        exceedance_intensity = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    test_frequency,
-                    None,
-                    self.frequency,
-                    self.intensity.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_intensity,
-                    value_threshold=min_intensity,
-                    method=method,
-                    y_asymptotic=0.0,
-                )
-                for i_centroid in range(self.intensity.shape[1])
-            ]
+
+        exceedance_intensity = np.full(
+            (self.intensity.shape[1], len(test_frequency)),
+            np.nan if method == "interpolate" else 0.0,
         )
+
+        nonzero_centroids = np.where(self.intensity.getnnz(axis=0) > 0)[0]
+        if not len(nonzero_centroids) == 0:
+            exceedance_intensity[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        test_frequency,
+                        None,
+                        self.frequency,
+                        self.intensity.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_intensity,
+                        value_threshold=min_intensity,
+                        method=method,
+                        y_asymptotic=0.0,
+                        n_sig_dig=n_sig_dig,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(
@@ -612,10 +642,12 @@ class Hazard(HazardIO, HazardPlot):
         min_intensity=None,
         log_frequency=True,
         log_intensity=True,
+        n_sig_dig=3,
     ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with linear interpolation on log-log scale.
+        frequency with linear interpolation on log-log scale. Intensities are binned according
+        to their n_sig_dig significant digits, see Notes.
 
         Parameters
         ----------
@@ -631,6 +663,9 @@ class Hazard(HazardIO, HazardPlot):
             intensities will be assigned NaN, and threshold intensities smaller than the Hazard
             object's local intensities will be assigned the smallest observed local return period.
             If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            The extrapolation to large threshold intensities uses the two highest intensites of
+            the centroid and their return periods and extends the interpolation between these
+            points to the given threshold intensity (similar for small threshold intensites).
             Defaults to "interpolate".
         min_intensity : float, optional
             Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
@@ -643,6 +678,9 @@ class Hazard(HazardIO, HazardPlot):
             This parameter is only used if method is set to "interpolate". If set to True,
             intensity values are converted to log scale before inter- and extrapolation.
             Defaults to True.
+        n_sig_dig : int, optional
+            Number of significant digits for the binning of the intensity values, see Notes.
+            Defaults to 3.
 
         Returns
         -------
@@ -655,6 +693,19 @@ class Hazard(HazardIO, HazardPlot):
             GeoDataFrame label, for reporting and plotting
         column_label : function
             Column-label-generating function, for reporting and plotting
+
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
+        Notes
+        -------
+        Contrary to Impact.calc_freq_curve(), intensities are binned according to their n_sig_dig
+        significant digits. This results in a smoother (and coarser) interpolation, and a
+        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
+        e.g., n_sig_dig=7. For more information about the binning, see
+        climada.util.interpolation.preprocess_and_interpolate_ev().
         """
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
@@ -672,23 +723,31 @@ class Hazard(HazardIO, HazardPlot):
         ]:
             raise ValueError(f"Unknown method: {method}")
 
-        # calculate local return periods
-        return_periods = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    None,
-                    np.array(threshold_intensities),
-                    self.frequency,
-                    self.intensity.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_intensity,
-                    value_threshold=min_intensity,
-                    method=method,
-                    y_asymptotic=np.nan,
-                )
-                for i_centroid in range(self.intensity.shape[1])
-            ]
+        return_periods = np.full(
+            (self.intensity.shape[1], len(threshold_intensities)), np.nan
         )
+
+        nonzero_centroids = np.where(self.intensity.getnnz(axis=0) > 0)[0]
+
+        if not len(nonzero_centroids) == 0:
+            return_periods[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        None,
+                        np.array(threshold_intensities),
+                        self.frequency,
+                        self.intensity.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_intensity,
+                        value_threshold=min_intensity,
+                        method=method,
+                        y_asymptotic=np.nan,
+                        n_sig_dig=n_sig_dig,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
+
         return_periods = safe_divide(1.0, return_periods)
 
         # create the output GeoDataFrame

@@ -16,7 +16,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define interpolation and extrapolation functions for calculating (local) exceedance frequencies and return periods
+Define interpolation and extrapolation functions for calculating
+(local) exceedance frequencies and return periods
 """
 
 import logging
@@ -37,16 +38,20 @@ def preprocess_and_interpolate_ev(
     value_threshold=None,
     method="interpolate",
     y_asymptotic=np.nan,
+    n_sig_dig=3,
 ):
-    """Wrapper function to first preprocess (frequency, values) data and and then inter- and
-    extrapolate to test frequencies or test values.
+    """Function to first preprocess (frequency, values) data by binning the data according to
+    their value with the given number of significant digits (see Notes), compute the cumulative
+    frequencies, and then inter- and extrapolate either to test frequencies or to test values.
 
     Parameters
     ----------
     test_frequency : array_like
-        1-D array of test frequencies for which values (e.g., intensities or impacts) should be assigned.
+        1-D array of test frequencies for which values (e.g., intensities or impacts) should be
+        assigned. If given, test_values must be None.
     test_values : array_like
-        1-D array of test values (e.g., intensities or impacts) for which frequencies should be assigned.
+        1-D array of test values (e.g., intensities or impacts) for which frequencies should be
+        assigned. If given, test_frequency must be None.
     frequency : array_like
         1-D array of frequencies to be interpolated.
     values : array_like
@@ -70,6 +75,8 @@ def preprocess_and_interpolate_ev(
         Has no effect if method is "interpolate". Else, provides return value and if
         for test x values larger than given x values, if size < 2 or if method is set
         to "extrapolate_constant" or "stepfunction". Defaults to np.nan.
+    n_sig_dig : int, optional
+        Number of significant digits to group and bin the values, see Notes. Defaults to 3.
 
     Returns
     -------
@@ -81,13 +88,25 @@ def preprocess_and_interpolate_ev(
     ------
     ValueError
         If both test frequencies and test values are given or none of them.
+
+    Notes
+    -----
+    Before inter- and extrapolation, the values are binned according to their n_sig_dig
+    significant digits, and their corresponding frequencies are summed. For instance, if
+    n_sig_dig=3, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and 0.2 are
+    combined to a value 12.0 with frequency 0.3. This binning leads to a smoother (and coarser)
+    interpolation, and a more stable extrapolation. To not bin the values, you can use a large
+    n_sig_dig, e.g., n_sig_dig=7.
     """
 
     # check that only test frequencies or only test values are given
     if test_frequency is not None and test_values is not None:
-        raise ValueError("Both test frequencies and test values are given.")
-    elif test_frequency is None and test_values is None:
-        raise ValueError("No test values or frequencies are given.")
+        raise ValueError(
+            "Both test frequencies and test values are given. This method only handles one of "
+            "the two. To use this method, please only use one of them."
+        )
+    if test_frequency is None and test_values is None:
+        raise ValueError("No test values or test frequencies are given.")
 
     # sort values and frequencies
     sorted_idxs = np.argsort(values)
@@ -95,7 +114,7 @@ def preprocess_and_interpolate_ev(
     frequency = frequency[sorted_idxs]
 
     # group similar values together
-    frequency, values = group_frequency(frequency, values)
+    frequency, values = _group_frequency(frequency, values, n_sig_dig)
 
     # transform frequencies to cummulative frequencies
     frequency = np.cumsum(frequency[::-1])[::-1]
@@ -103,50 +122,48 @@ def preprocess_and_interpolate_ev(
     # if test frequencies are provided
     if test_frequency is not None:
         if method == "stepfunction":
-            return stepfunction_ev(
+            return _stepfunction_ev(
                 test_frequency,
                 frequency[::-1],
                 values[::-1],
                 y_threshold=value_threshold,
                 y_asymptotic=y_asymptotic,
             )
-        else:
-            extrapolation = None if method == "interpolate" else method
-            return interpolate_ev(
-                test_frequency,
-                frequency[::-1],
-                values[::-1],
-                logx=log_frequency,
-                logy=log_values,
-                y_threshold=value_threshold,
-                extrapolation=extrapolation,
-                y_asymptotic=y_asymptotic,
-            )
+        extrapolation = None if method == "interpolate" else method
+        return _interpolate_ev(
+            test_frequency,
+            frequency[::-1],
+            values[::-1],
+            logx=log_frequency,
+            logy=log_values,
+            y_threshold=value_threshold,
+            extrapolation=extrapolation,
+            y_asymptotic=y_asymptotic,
+        )
 
     # if test values are provided
     else:
         if method == "stepfunction":
-            return stepfunction_ev(
+            return _stepfunction_ev(
                 test_values,
                 values,
                 frequency,
                 x_threshold=value_threshold,
                 y_asymptotic=y_asymptotic,
             )
-        else:
-            extrapolation = None if method == "interpolate" else method
-            return interpolate_ev(
-                test_values,
-                values,
-                frequency,
-                logx=log_values,
-                logy=log_frequency,
-                x_threshold=value_threshold,
-                extrapolation=extrapolation,
-            )
+        extrapolation = None if method == "interpolate" else method
+        return _interpolate_ev(
+            test_values,
+            values,
+            frequency,
+            logx=log_values,
+            logy=log_frequency,
+            x_threshold=value_threshold,
+            extrapolation=extrapolation,
+        )
 
 
-def interpolate_ev(
+def _interpolate_ev(
     x_test,
     x_train,
     y_train,
@@ -166,7 +183,7 @@ def interpolate_ev(
         x_test : array_like
             1-D array of x-values for which training data should be interpolated
         x_train : array_like
-            1-D array of x-values of training data
+            1-D array of x-values of training data sorted in ascending order
         y_train : array_like
             1-D array of y-values of training data
         logx : bool, optional
@@ -209,8 +226,6 @@ def interpolate_ev(
     if extrapolation == "extrapolate":
         fill_value = "extrapolate"
     elif extrapolation == "extrapolate_constant":
-        if not all(sorted(x_train) == x_train):
-            raise ValueError("x_train array must be sorted in ascending order.")
         fill_value = (y_train[0], np.log10(y_asymptotic) if logy else y_asymptotic)
     else:
         fill_value = np.nan
@@ -226,7 +241,7 @@ def interpolate_ev(
     return y_test
 
 
-def stepfunction_ev(
+def _stepfunction_ev(
     x_test, x_train, y_train, x_threshold=None, y_threshold=None, y_asymptotic=np.nan
 ):
     """
@@ -238,7 +253,7 @@ def stepfunction_ev(
         x_test : array_like
             1-D array of x-values for which training data should be interpolated
         x_train : array_like
-            1-D array of x-values of training data
+            1-D array of x-values of training data sorted in ascending order
         y_train : array_like
             1-D array of y-values of training data
         x_threshold : float, optional
@@ -264,8 +279,6 @@ def stepfunction_ev(
         return _interpolate_small_input(x_test, x_train, y_train, None, y_asymptotic)
 
     # find indices of x_test if sorted into x_train
-    if not all(sorted(x_train) == x_train):
-        raise ValueError("Input array x_train must be sorted in ascending order.")
     indx = np.searchsorted(x_train, x_test)
     y_test = y_train[indx.clip(max=len(x_train) - 1)]
     y_test[indx == len(x_train)] = y_asymptotic
@@ -333,7 +346,7 @@ def _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic):
     return y_test
 
 
-def group_frequency(frequency, value, n_sig_dig=2):
+def _group_frequency(frequency, value, n_sig_dig):
     """
     Util function to aggregate (add) frequencies for equal values
 
@@ -345,7 +358,6 @@ def group_frequency(frequency, value, n_sig_dig=2):
             Value array in ascending order
         n_sig_dig : int
             number of significant digits for value when grouping frequency.
-            Defaults to 2.
 
     Returns:
     ------
@@ -360,10 +372,15 @@ def group_frequency(frequency, value, n_sig_dig=2):
     # round values and group them
     value = round_to_sig_digits(value, n_sig_dig)
     value_unique, start_indices = np.unique(value, return_index=True)
-
     if value_unique.size != frequency.size:
         if not all(sorted(start_indices) == start_indices):
-            raise ValueError("Value array must be sorted in ascending order.")
+            LOGGER.warning(
+                "After grouping values to significant digits, the value array is not sorted."
+                "The values are not binned. Please choose a larger value of n_sig_dig=%s.",
+                n_sig_dig,
+            )
+            return frequency, value
+
         # add frequency for equal value
         start_indices = np.insert(start_indices, value_unique.size, frequency.size)
         frequency = np.add.reduceat(frequency, start_indices[:-1])
@@ -372,13 +389,13 @@ def group_frequency(frequency, value, n_sig_dig=2):
     return frequency, value
 
 
-def round_to_sig_digits(x, n_sig_dig):
+def round_to_sig_digits(values, n_sig_dig):
     """round each element array to a number of significant digits
 
     Parameters
     ----------
-    x : array-like
-        array to be rounded
+    values : array-like
+        values to be rounded
     n_sig_dig : int
         number of significant digits.
 
@@ -387,7 +404,7 @@ def round_to_sig_digits(x, n_sig_dig):
     np.array
         rounded array
     """
-    x = np.asarray(x)
-    x_positive = np.where(np.isfinite(x) & (x != 0), np.abs(x), 10 ** (n_sig_dig - 1))
-    mags = 10 ** (n_sig_dig - 1 - np.floor(np.log10(x_positive)))
-    return np.round(x * mags) / mags
+
+    return np.vectorize(np.format_float_positional)(
+        values, precision=n_sig_dig, unique=False, fractional=False, trim="k"
+    ).astype(float)
