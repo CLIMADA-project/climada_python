@@ -10,6 +10,38 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+Added:
+
+- `osm-flex` >=1.1
+
+Updated:
+
+- `cartopy` >=0.23 &rarr; >=0.24
+- `cfgrib` >=0.9.9,<0.9.10 &rarr; >=0.9
+- `dask` >=2024.2,<2024.3 &rarr; >=2025.2
+- `eccodes` >=2.27,<2.28 &rarr; >=2.40
+- `gdal` >=3.6 &rarr; >=3.10
+- `geopandas` >=0.14 &rarr; >=0.14,<1.0
+- `h5py` >=3.8 &rarr; >=3.12
+- `haversine` >=2.8 &rarr; >=2.9
+- `matplotlib-base` >=3.9 &rarr; >=3.10
+- `netcdf4` >=1.6 &rarr; >=1.7
+- `numba` >=0.60 &rarr; >=0.61
+- `pillow` =9.4 &rarr; =11.1
+- `pyproj` >=3.5 &rarr; >=3.7
+- `pytables` >=3.7 &rarr; >=3.10
+- `python` =3.9 &rarr; =3.11
+- `rasterio` >=1.3 &rarr; >=1.4
+- `scikit-learn` >=1.5 &rarr; >=1.6
+- `scipy` >=1.13 &rarr; >=1.14,<1.15
+- `tqdm` >=4.66 &rarr; >=4.67
+- `xarray` >=2024.6 &rarr; >=2025.1
+- `xlsxwriter` >=3.1 &rarr; >=3.2
+
+Removed:
+
+- `pyepsg`
+
 ### Added
 
 - `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
