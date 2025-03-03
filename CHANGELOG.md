@@ -10,6 +10,22 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 6.0.0
+
+Release date: 2025-03-03
+
+### Dependency Changes
+
 Added:
 
 - `osm-flex` >=1.1
@@ -75,13 +91,13 @@ Removed:
 - elements of `event_name` are now explicitly converted to `str` in `from_raster`, `from_xarray_raster`, `from_excel` and `from_csv`. [#951](https://github.com/CLIMADA-project/climada_python/pull/951), [#910](https://github.com/CLIMADA-project/climada_python/issues/910)
 - `event_id` and `event_name` are now explicitly converted to respectively a `np.ndarray` (`event_id`), a `list` (`event_name`) in readers. [#951](https://github.com/CLIMADA-project/climada_python/pull/951), [#950](https://github.com/CLIMADA-project/climada_python/issues/950)
 - Exposures complete overhaul. Notably
-  - the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization
-  - latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
-  - `Exposures.gdf` has been renamed to `Exposures.data` (it still works though, as it is a property now pointing to the latter)
-  - the `check` method does not add a default "IMPF_" column to the GeoDataFrame anymore
+- the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization
+- latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
+- `Exposures.gdf` has been renamed to `Exposures.data` (it still works though, as it is a property now pointing to the latter)
+- the `check` method does not add a default "IMPF_" column to the GeoDataFrame anymore
 - Updated IBTrACS version from v4.0 to v4.1 ([#976](https://github.com/CLIMADA-project/climada_python/pull/976)
-    - Fix xarray future warning in TCTracks for .dims to .sizes
-    - Fix hazard.concatenate type test for pathos pools
+- Fix xarray future warning in TCTracks for .dims to .sizes
+- Fix hazard.concatenate type test for pathos pools
 
 ### Fixed
 
@@ -99,8 +115,6 @@ Removed:
 - `climada.hazard.Hazard.plot_rp_intensity` method
 - `climada.engine.impact.Impact.local_exceedance_imp` method
 - `climada.engine.impact.Impact.plot_rp_imp` method
-
-### Removed
 
 ## 5.0.0
 
