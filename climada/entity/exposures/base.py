@@ -549,10 +549,10 @@ class Exposures:
         str
             a column name, the first of the following that is present in the exposures' dataframe:
 
-            - ``impf_[haz_type]``
-            - ``if_[haz_type]``
-            - ``impf_``
-            - ``if_``
+            * ``impf_[haz_type]``
+            * ``if_[haz_type]``
+            * ``impf_``
+            * ``if_``
 
         Raises
         ------

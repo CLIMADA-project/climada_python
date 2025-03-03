@@ -176,9 +176,10 @@ def get_file_names(file_name):
     file_name : str or list(str)
         Either a single string or a list of
         strings that are either
-        - a file path
-        - or the path of the folder containing the files
-        - or a globbing pattern.
+
+        * a file path
+        * or the path of the folder containing the files
+        * or a globbing pattern.
 
     Returns
     -------

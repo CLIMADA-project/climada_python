@@ -398,6 +398,7 @@ class HazardIO:
             * ``event_name``: String representation of the event date or empty strings
               if that fails (which will issue a warning).
             * ``event_id``: Consecutive integers starting at 1 and increasing with time
+
         crs : str, optional
             Identifier for the coordinate reference system of the coordinates. Defaults
             to ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
