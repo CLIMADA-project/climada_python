@@ -1,65 +1,11 @@
 {
     "creators": [
       {
-        "name": "David N. Bresch",
-        "affiliation": "ETH Z\u00fcrich"
-      },
-      {
         "name": "Gabriela Aznar Siguan",
         "affiliation": "MeteoSwiss"
       },
       {
-        "name": "Chahan M. Kropf",
-        "affiliation": "ETH Z\u00fcrich"
-      },
-      {
-        "name": "Lukas Riedel",
-        "affiliation": "ETH Z\u00fcrich"
-      },
-      {
-        "name": "Emanuel Schmid",
-        "affiliation": "ETH Z\u00fcrich"
-      },
-      {
-        "name": "Valentin Gebhart"
-      },
-      {
-        "name": "Sarah H\u00fclsen ",
-        "affiliation": "ETH Z\u00fcrich"
-      },
-      {
-        "name": "Samuel Juhel ",
-        "affiliation": "ETH Z\u00fcrich"
-      },
-      {
-        "name": "Thomas Vogt",
-        "affiliation": "Potsdam Institute for Climate Impact Research"
-      },
-      {
-        "name": "Igor Detring ",
-        "affiliation": "German Weather Service"
-      },
-      {
-        "name": "Luca Severin"
-      },
-      {
-        "name": "Thomas R\u00f6\u00f6sli"
-      },
-      {
-        "name": "Dahyann Araya"
-      },
-      {
-        "name": "Pui Man (Mannie) Kam",
-        "affiliation": "ETH Z\u00fcrich"
-      },
-      {
-        "name": "Timo Schmid "
-      },
-      {
-        "name": "Leonie Villiger"
-      },
-      {
-        "name": "Nicolas Colombi",
+        "name": "David N. Bresch",
         "affiliation": "ETH Z\u00fcrich"
       },
       {
@@ -67,29 +13,41 @@
         "affiliation": "ETH Z\u00fcrich"
       },
       {
-        "name": "Yue Yu"
+        "name": "Jan Hartman",
+        "affiliation": "CelsiusPro"
+      },
+      {
+        "name": "Marine Perus",
+        "affiliation": "CelsiusPro"
+      },
+      {
+        "name": "Thomas R\u00f6\u00f6sli"
+      },
+      {
+        "name": "Dario Stocker"
+      },
+      {
+        "name": "Veronica Bozzini"
+      },
+      {
+        "name": "Carmen B. Steinmann"
+      },
+      {
+        "name": "Evelyn M\u00fchlhofer",
+        "affiliation": "MeteoSwiss"
+      },
+      {
+        "name": "Rachel Bungerer"
+      },
+      {
+        "name": "Inga J. Sauer"
       },
       {
         "name": "Samuel L\u00fcthi",
         "affiliation": "ETH Z\u00fcrich"
       },
       {
-        "name": "Jan Hartman",
-        "affiliation": "CelsiusPro"
-      },
-      {
-        "name": "Benoit P. Guillod",
-        "affiliation": "CLIMADA Technologies"
-      },
-      {
-        "name": "Z\u00e9lie Stalhandske",
-        "affiliation": "ETH Z\u00fcrich"
-      },
-      {
-        "name": "Inga J. Sauer"
-      },
-      {
-        "name": "Alessio Ciullo",
+        "name": "Pui Man (Mannie) Kam",
         "affiliation": "ETH Z\u00fcrich"
       },
       {
@@ -97,22 +55,66 @@
         "affiliation": "ETH Z\u00fcrich"
       },
       {
-        "name": "Raphael Portmann",
-        "affiliation": "Agroscope"
+        "name": "Alessio Ciullo",
+        "affiliation": "ETH Z\u00fcrich"
       },
       {
-        "name": "Dario Stocker"
+        "name": "Thomas Vogt",
+        "affiliation": "Potsdam Institute for Climate Impact Research"
+      },
+      {
+        "name": "Benoit P. Guillod",
+        "affiliation": "CLIMADA Technologies"
+      },
+      {
+        "name": "Chahan M. Kropf",
+        "affiliation": "ETH Z\u00fcrich"
+      },
+      {
+        "name": "Emanuel Schmid",
+        "affiliation": "ETH Z\u00fcrich"
       },
       {
         "name": "Chris Fairless",
         "affiliation": "CelsiusPro"
       },
       {
-        "name": "Victor Wattin H\u00e5kansson"
+        "name": "Jan W\u00fcthrich"
       },
       {
-        "name": "Evelyn M\u00fchlhofer",
-        "affiliation": "MeteoSwiss"
+        "name": "Z\u00e9lie Stalhandske",
+        "affiliation": "ETH Z\u00fcrich"
+      },
+      {
+        "name": "Yue Yu"
+      },
+      {
+        "name": "Lukas Riedel",
+        "affiliation": "ETH Z\u00fcrich"
+      },
+      {
+        "name": "Raphael Portmann",
+        "affiliation": "Agroscope"
+      },
+      {
+        "name": "Nicolas Colombi",
+        "affiliation": "ETH Z\u00fcrich"
+      },
+      {
+        "name": "Leonie Villiger"
+      },
+      {
+        "name": "Timo Schmid"
+      },
+      {
+        "name": "Luca Severino"
+      },
+      {
+        "name": "Samuel Juhel",
+        "affiliation": "ETH Z\u00fcrich"
+      },
+      {
+        "name": "Valentin Gebhart"
       }
     ]
   }
