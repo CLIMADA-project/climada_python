@@ -72,6 +72,8 @@ Removed:
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - `Hazard.local_exceedance_inten`, `Hazard.local_return_period`, and `Impact.local_exceedance_imp` call the corresponding new functions and a deprecation warning is added [#918](https://github.com/CLIMADA-project/climada_python/pull/918). Some inconsistencies in the previous versions are removed and the default method is changed. To reconstruct results from the previous versions, use CLIMADA v5.0.0 or less.
+- elements of `event_name` are now explicitly converted to `str` in `from_raster`, `from_xarray_raster`, `from_excel` and `from_csv`. [#951](https://github.com/CLIMADA-project/climada_python/pull/951), [#910](https://github.com/CLIMADA-project/climada_python/issues/910)
+- `event_id` and `event_name` are now explicitly converted to respectively a `np.ndarray` (`event_id`), a `list` (`event_name`) in readers. [#951](https://github.com/CLIMADA-project/climada_python/pull/951), [#950](https://github.com/CLIMADA-project/climada_python/issues/950)
 - Exposures complete overhaul. Notably
   - the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization
   - latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
