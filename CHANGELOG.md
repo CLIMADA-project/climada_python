@@ -10,8 +10,41 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+Added:
+
+- `osm-flex` >=1.1
+
+Updated:
+
+- `cartopy` >=0.23 &rarr; >=0.24
+- `cfgrib` >=0.9.9,<0.9.10 &rarr; >=0.9
+- `dask` >=2024.2,<2024.3 &rarr; >=2025.2
+- `eccodes` >=2.27,<2.28 &rarr; >=2.40
+- `gdal` >=3.6 &rarr; >=3.10
+- `geopandas` >=0.14 &rarr; >=0.14,<1.0
+- `h5py` >=3.8 &rarr; >=3.12
+- `haversine` >=2.8 &rarr; >=2.9
+- `matplotlib-base` >=3.9 &rarr; >=3.10
+- `netcdf4` >=1.6 &rarr; >=1.7
+- `numba` >=0.60 &rarr; >=0.61
+- `pillow` =9.4 &rarr; =11.1
+- `pyproj` >=3.5 &rarr; >=3.7
+- `pytables` >=3.7 &rarr; >=3.10
+- `python` =3.9 &rarr; =3.11
+- `rasterio` >=1.3 &rarr; >=1.4
+- `scikit-learn` >=1.5 &rarr; >=1.6
+- `scipy` >=1.13 &rarr; >=1.14,<1.15
+- `tqdm` >=4.66 &rarr; >=4.67
+- `xarray` >=2024.6 &rarr; >=2025.1
+- `xlsxwriter` >=3.1 &rarr; >=3.2
+
+Removed:
+
+- `pyepsg`
+
 ### Added
 
+- `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
 - `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex`with CLIMADA
 - `climada.util.coordinates.bounding_box_global` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
@@ -39,6 +72,8 @@ Code freeze date: YYYY-MM-DD
 - In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
 - `Hazard.local_exceedance_inten`, `Hazard.local_return_period`, and `Impact.local_exceedance_imp` call the corresponding new functions and a deprecation warning is added [#918](https://github.com/CLIMADA-project/climada_python/pull/918). Some inconsistencies in the previous versions are removed and the default method is changed. To reconstruct results from the previous versions, use CLIMADA v5.0.0 or less.
+- elements of `event_name` are now explicitly converted to `str` in `from_raster`, `from_xarray_raster`, `from_excel` and `from_csv`. [#951](https://github.com/CLIMADA-project/climada_python/pull/951), [#910](https://github.com/CLIMADA-project/climada_python/issues/910)
+- `event_id` and `event_name` are now explicitly converted to respectively a `np.ndarray` (`event_id`), a `list` (`event_name`) in readers. [#951](https://github.com/CLIMADA-project/climada_python/pull/951), [#950](https://github.com/CLIMADA-project/climada_python/issues/950)
 - Exposures complete overhaul. Notably
   - the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization
   - latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
@@ -56,6 +91,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Deprecated
 
+- `climada.hazard.trop_cyclone.trop_cyclone_windfields.compute_angular_windspeeds.cyclostrophic` argument
 - `climada.entity.exposures.Exposures.meta` attribute
 - `climada.entity.exposures.Exposures.set_lat_lon` method
 - `climada.entity.exposures.Exposures.set_geometry_points` method

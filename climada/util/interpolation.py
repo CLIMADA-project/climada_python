@@ -161,8 +161,8 @@ def interpolate_ev(
     Util function to interpolate (and extrapolate) training data (x_train, y_train)
     to new points x_test with several options (log scale, thresholds)
 
-    Parameters:
-    -------
+    Parameters
+    ----------
         x_test : array_like
             1-D array of x-values for which training data should be interpolated
         x_train : array_like
@@ -233,8 +233,8 @@ def stepfunction_ev(
     Util function to interpolate and extrapolate training data (x_train, y_train)
     to new points x_test using a step function
 
-    Parameters:
-    -------
+    Parameters
+    ----------
         x_test : array_like
             1-D array of x-values for which training data should be interpolated
         x_train : array_like
@@ -337,8 +337,8 @@ def group_frequency(frequency, value, n_sig_dig=2):
     """
     Util function to aggregate (add) frequencies for equal values
 
-    Parameters:
-    ------
+    Parameters
+    ----------
         frequency : array_like
             Frequency array
         value : array_like
@@ -347,8 +347,8 @@ def group_frequency(frequency, value, n_sig_dig=2):
             number of significant digits for value when grouping frequency.
             Defaults to 2.
 
-    Returns:
-    ------
+    Returns
+    -------
         tuple
             (frequency array after aggregation,
             unique value array in ascending order)

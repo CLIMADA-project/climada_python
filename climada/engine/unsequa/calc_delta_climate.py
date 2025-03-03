@@ -81,7 +81,7 @@ class CalcDeltaImpact(Calc):
     _input_var_names : tuple(str)
         Names of the required uncertainty input variables
         ('exp_initial_input_var', 'impf_initial_input_var', 'haz_initial_input_var',
-         'exp_final_input_var', 'impf_final_input_var', 'haz_final_input_var'')
+        'exp_final_input_var', 'impf_final_input_var', 'haz_final_input_var'')
     _metric_names : tuple(str)
         Names of the impact output metrics
         ('aai_agg', 'freq_curve', 'at_event', 'eai_exp')
