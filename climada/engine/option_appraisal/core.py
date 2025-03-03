@@ -40,16 +40,14 @@ from climada.entity.measures.measure_set import MeasureSet
 LOGGER = logging.getLogger(__name__)
 
 
-class OptionAppraiser:
+class YearlyRiskAppraiser:
+
+    _grouper = ["group", "metric"]
 
     def __init__(
         self,
         snapshots: SnapshotsCollection,
-        cost_disc: DiscRates | None = None,
         risk_disc: DiscRates | None = None,
-        measure_set: MeasureSet | None = None,
-        combo_all: bool = False,
-        planner: dict[str, tuple[int, int]] | None = None,
         metrics: list[str] = ["aai", "eai", "rp"],
         return_periods: list[int] = [100, 500, 1000],
     ):
@@ -59,67 +57,44 @@ class OptionAppraiser:
         self.return_periods = return_periods
         self.start_year = min(snapshots.snapshots_years)
         self.end_year = max(snapshots.snapshots_years)
-        self.measure_set = copy.deepcopy(measure_set)
-        self.planner = planner if planner else {}
         self.risk_disc = risk_disc
-        self.cost_disc = cost_disc
-        self._planning = None
         LOGGER.debug("Computing risk periods")
-        self.risk_periods = [
+        self.risk_periods = self._calc_risk_periods(snapshots)
+        self._impact_metrics_calculator = CalcImpactMetrics(self.risk_periods)
+        # Here we can do some change in the future to include groups and risk transfer
+        self._update_risk_metrics(
+            compute_groups=False, risk_transf_cover=None, risk_transf_attach=None
+        )
+
+    def _calc_risk_periods(self, snapshots):
+        return [
             RiskPeriod(start_snapshot, end_snapshot)
             for start_snapshot, end_snapshot in snapshots.pairwise()
         ]
-        self.measure_periods = []
-        if self.measure_set:
-            LOGGER.debug("Computing risk periods with measures")
-            if combo_all:
-                self.measure_set.append(self.measure_set.combine())
 
-            if planner:
-                self._calc_planning_measures()
-            else:
-                for name, measure in self.measure_set.measures().items():
-                    LOGGER.debug(
-                        f"Creating measures snapshots for measure {measure.name}"
-                    )
-                    meas_snapshots = make_measure_snapshot(snapshots, measure)
-                    LOGGER.debug(
-                        f"Creating measures riskperiods for measure {measure.name}"
-                    )
-                    meas_risk_period = [
-                        RiskPeriod(start_snapshot, end_snapshot, name)
-                        for start_snapshot, end_snapshot in meas_snapshots.pairwise()
-                    ]
-                    self.measure_periods += meas_risk_period
-
-        self._impact_metrics_calculator = CalcImpactMetrics(
-            self.risk_periods + self.measure_periods
+    def _update_risk_metrics(
+        self, compute_groups=False, risk_transf_cover=None, risk_transf_attach=None
+    ):
+        self._annual_risk_metrics = (
+            self._impact_metrics_calculator.calc_risk_periods_metric(
+                metrics=self.metrics,
+                return_periods=self.return_periods,
+                compute_groups=compute_groups,
+                risk_transf_cover=risk_transf_cover,
+                risk_transf_attach=risk_transf_attach,
+            )
         )
-        # self.impact_metrics = self._impact_metrics_calculator.generate_impact_metrics(measure_set, planner=self.planner)
+        self._metrics_up_to_date = True
 
-    def _calc_planning_measures(self):
-        if not self.planner:
-            raise ValueError("No planner set.")
-
-        self._planning = _get_unique_measure_periods(_planner_to_planning(self.planner))
-        # For each planned period, find correponding risk periods and create the periods with measure from planning
-        for measure_name_list, start_year, end_year in self._planning:
-            # Not sure this works as intended (pbly could be simplified anyway)
-            periods = self._get_risk_periods(start_year, end_year)
-            meas_periods = [
-                period.apply_measures(self.measure_set, measure_name_list)
-                for period in periods
-            ]
-            self.measure_periods += meas_periods
-
-    def _get_risk_periods(self, start_year: int, end_year: int):
+    @staticmethod
+    def _get_risk_periods(risk_periods, start_year: int, end_year: int):
         return [
             period
-            for period in self.risk_periods
+            for period in risk_periods
             if (start_year >= period.start_year or end_year <= period.end_year)
         ]
 
-    def _calc_annual_risk_metrics(self, npv=True, planned=True):
+    def _calc_annual_risk_metrics(self, npv=True):
         def npv_transform(group):
             start_year = group.index.get_level_values("year").min()
             end_year = group.index.get_level_values("year").max()
@@ -136,99 +111,17 @@ class OptionAppraiser:
         if npv:
             df = df.set_index("year")
             df["risk"] = df.groupby(
-                ["measure", "metric", "group"],
+                self._grouper,
                 dropna=False,
                 as_index=False,
                 group_keys=False,
             )["risk"].transform(npv_transform)
             df = df.reset_index()
 
-        if planned:
-            if not self._planning:
-                raise ValueError("No planner set. Use `.set_planner()`.")
-
-            df = df.set_index(["measure", "year"]).sort_index()
-            mask = pd.Series(False, index=df.index)
-            # for each measure set mask to true at corresponding year (bitwise or)
-            for measure_combo, start, end in self._planning:
-                mask |= (
-                    (df.index.get_level_values("measure") == "_".join(measure_combo))
-                    & (df.index.get_level_values("year") >= start)
-                    & (df.index.get_level_values("year") <= end)
-                )
-
-            # for the no_measure case, set mask to true at corresponding year,
-            # only for those years that have no active measures
-            no_measure_mask = mask.groupby("year").sum() == 0
-            mask.loc[
-                pd.IndexSlice["no_measure"], no_measure_mask[no_measure_mask].index
-            ] = True
-
-            columns_to_front = ["group", "year", "metric", "measure"]
-            return (
-                df[mask]
-                .reset_index()
-                .sort_values("year")[
-                    columns_to_front
-                    + [
-                        col
-                        for col in df.columns
-                        if col not in columns_to_front + ["risk", "rp"]
-                    ]
-                    + ["risk"]
-                ]
-            )
-
         return df
 
-    def _update_risk_metrics(
-        self, compute_groups=False, risk_transf_cover=None, risk_transf_attach=None
-    ):
-        self._annual_risk_metrics = (
-            self._impact_metrics_calculator.calc_risk_periods_metric(
-                metrics=self.metrics,
-                return_periods=self.return_periods,
-                compute_groups=compute_groups,
-                risk_transf_cover=risk_transf_cover,
-                risk_transf_attach=risk_transf_attach,
-            )
-        )
-        self._metrics_up_to_date = True
-
-    def single_measure_risk_metrics(self, measure_name):
-        year_start, year_end = self.planner.get(
-            measure_name, (self.start_year, self.end_year)
-        )
-        ret = self._calc_annual_risk_metrics().copy()
-        ret = ret.set_index(["measure", "year"]).sort_index()
-        ret = ret.loc[pd.IndexSlice[measure_name, year_start:year_end],].reset_index()
-        return ret
-
-    def calc_averted_risk(self, total=False, npv=True, planned=True):
-        df = self._calc_per_measure_annual_averted_risk(npv, planned)
-        if total:
-            return self._calc_periods_risk(df, colname="averted risk")
-        else:
-            return df
-
-    def calc_risk_metrics(self, total=False, npv=True, planned=True):
-        df = self._calc_annual_risk_metrics(npv=npv, planned=planned)
-        if total:
-            return self._calc_periods_risk(df)
-        else:
-            return df
-
-    def calc_cash_flow(self, total=False, planned=True):
-        df = self._calc_per_measure_annual_cash_flows(
-            planned=planned, disc=self.cost_disc
-        )
-        if total:
-            return self._calc_periods_cashflow(df)
-        else:
-            return df
-
-    @staticmethod
-    def _calc_periods_risk(df: pd.DataFrame, colname="risk"):
+    @classmethod
+    def _calc_periods_risk(cls, df: pd.DataFrame, colname="risk"):
         def identify_continuous_periods(group):
             # Calculate the difference between consecutive years
             group["year_diff"] = group["year"].diff()
@@ -236,17 +129,15 @@ class OptionAppraiser:
             group["period_id"] = (group["year_diff"] != 1).cumsum()
             return group
 
-        df_sorted = df.sort_values(by=["group", "measure", "metric", "year"])
+        df_sorted = df.sort_values(by=cls._grouper + ["year"])
         # Apply the function to identify continuous periods
         df_periods = df_sorted.groupby(
-            ["group", "metric", "measure"], dropna=False, group_keys=False
+            cls._grouper, dropna=False, group_keys=False
         ).apply(identify_continuous_periods)
 
         # Group by the identified periods and calculate start and end years
         df_periods = (
-            df_periods.groupby(
-                ["group", "measure", "metric", "period_id"], dropna=False
-            )
+            df_periods.groupby(cls._grouper + ["period_id"], dropna=False)
             .agg(
                 start_year=pd.NamedAgg(column="year", aggfunc="min"),
                 end_year=pd.NamedAgg(column="year", aggfunc="max"),
@@ -262,6 +153,91 @@ class OptionAppraiser:
         )
         df_periods = df_periods.rename(columns={"total": f"{colname}"})
         return df_periods.drop(["period_id", "start_year", "end_year"], axis=1)
+
+    def calc_risk_metrics(self, total=False, npv=True):
+        df = self._calc_annual_risk_metrics(npv=npv)
+        if total:
+            return self._calc_periods_risk(df)
+        else:
+            return df
+
+
+class MeasuresAppraiser(YearlyRiskAppraiser):
+    # TODO: To reflect on:
+    # - Do we want "_planned", "_npv", "_total", "_single_measure" as parameter attributes instead of arguments?
+    # - Do we keep "combo_all" ?
+    _grouper = ["measure", "group", "metric"]
+
+    def __init__(
+        self,
+        snapshots: SnapshotsCollection,
+        measure_set: MeasureSet,
+        cost_disc: DiscRates | None = None,
+        risk_disc: DiscRates | None = None,
+        metrics: list[str] = ["aai", "eai", "rp"],
+        return_periods: list[int] = [100, 500, 1000],
+    ):
+        "docstring"
+        self.cost_disc = cost_disc
+        self.measure_set = copy.deepcopy(measure_set)
+        super().__init__(snapshots, risk_disc, metrics, return_periods)
+
+    def _calc_risk_periods(self, snapshots):
+        risk_periods = super()._calc_risk_periods(snapshots)
+        risk_periods += self._calc_measure_periods(risk_periods)
+        return risk_periods
+
+    def _calc_measure_periods(self, risk_periods):
+        res = []
+        for _, measure in self.measure_set.measures().items():
+            LOGGER.debug(f"Creating measures risk_period for measure {measure.name}")
+            meas_p = [
+                risk_period.apply_measure(measure) for risk_period in risk_periods
+            ]
+            res += meas_p
+        return res
+
+    def _single_measure_risk_metrics(self, measure_name):
+        """Not currently used"""
+        ret = self._calc_annual_risk_metrics().copy()
+        ret = ret.set_index(["measure", "year"]).sort_index()
+        ret = ret.loc[pd.IndexSlice[measure_name, :],].reset_index()
+        return ret
+
+    def _calc_per_measure_annual_averted_risk(self, npv=True):
+        # We want super() because we want all years not just planning
+        no_measure = super()._calc_annual_risk_metrics(npv=npv)
+        no_measure = no_measure[no_measure["measure"] == "no_measure"].copy()
+
+        def subtract_no_measure(group):
+            # Merge with no_measure to get the corresponding "no_measure" value
+            merged = group.merge(
+                no_measure, on=["group", "metric", "year"], suffixes=("", "_no_measure")
+            )
+            # Subtract the "no_measure" risk from the current risk
+            merged["risk"] = merged["risk_no_measure"] - merged["risk"]
+            return merged[group.columns]
+
+        averted = self._calc_annual_risk_metrics(npv=npv).copy()
+        averted = averted.groupby(
+            ["group", "metric", "year"], group_keys=False, dropna=False
+        ).apply(subtract_no_measure)
+        averted = averted.rename(columns={"risk": "averted risk"})
+        return averted
+
+    def calc_averted_risk(self, total=False, npv=True):
+        df = self._calc_per_measure_annual_averted_risk(npv=npv)
+        if total:
+            return self._calc_periods_risk(df, colname="averted risk")
+        else:
+            return df
+
+    def calc_cash_flow(self, total=False):
+        df = self._calc_per_measure_annual_cash_flows()
+        if total:
+            return self._calc_periods_cashflow(df)
+        else:
+            return df
 
     @staticmethod
     def _calc_periods_cashflow(df: pd.DataFrame):
@@ -297,61 +273,25 @@ class OptionAppraiser:
         )
         return df_periods.drop(["period_id", "start_year", "end_year"], axis=1)
 
-    def _calc_per_measure_annual_cash_flows(self, planned=True, disc=None):
-        if planned and not self._planning:
-            raise ValueError("No planner set. Use `.set_planner()`.")
-
+    def _calc_per_measure_annual_cash_flows(self):
         res = []
-        if planned:
-            for measure, (start, end) in self.planner.items():
-                df = self.measure_set.measures()[measure].cost_income.calc_cashflows(
-                    impl_year=start, start_year=start, end_year=end, disc=disc
-                )
-                df["measure"] = measure
-                res.append(df)
-
-            df = pd.concat(res)
-            df = df.groupby("year", as_index=False).agg(
-                {
-                    col: "sum" if is_numeric_dtype(df[col]) else lambda x: "_".join(x)
-                    for col in df.columns
-                    if col != "year"
-                }
+        for meas_name, measure in self.measure_set.measures().items():
+            df = measure.cost_income.calc_cashflows(
+                impl_year=self.start_year,
+                start_year=self.start_year,
+                end_year=self.end_year,
+                disc=self.cost_disc,
             )
-        else:
-            for meas_name, measure in self.measure_set.measures().items():
-                df = measure.cost_income.calc_cashflows(
-                    impl_year=self.start_year,
-                    start_year=self.start_year,
-                    end_year=self.end_year,
-                    disc=disc,
-                )
-                df["measure"] = meas_name
-                res.append(df)
-            df = pd.concat(res)
+            df["measure"] = meas_name
+            res.append(df)
+        df = pd.concat(res)
         return df
 
-    def _calc_per_measure_annual_averted_risk(self, npv=True, planned=True):
-        no_measure = self._calc_annual_risk_metrics(npv=npv, planned=False)
-        no_measure = no_measure[no_measure["measure"] == "no_measure"].copy()
-
-        def subtract_no_measure(group):
-            # Merge with no_measure to get the corresponding "no_measure" value
-            merged = group.merge(
-                no_measure, on=["metric", "group", "year"], suffixes=("", "_no_measure")
-            )
-            # Subtract the "no_measure" risk from the current risk
-            merged["risk"] = merged["risk"] - merged["risk_no_measure"]
-            return merged[group.columns]
-
-        averted = self._calc_annual_risk_metrics(npv=npv, planned=planned).copy()
-        averted = averted.groupby(
-            ["metric", "group", "year"], group_keys=False, dropna=False
-        ).apply(subtract_no_measure)
-        averted = averted.rename(columns={"risk": "averted risk"})
-        return averted
-
-    def calc_CB(self, consider_planning=True, net_present_value=True, yearly=False):
+    def calc_CB(
+        self,
+        net_present_value=True,
+        yearly=False,
+    ):
         """
         This function calculates the cost-benefit analysis (CB) for a set of measures.
 
@@ -385,11 +325,13 @@ class OptionAppraiser:
         time_grouper = "year" if yearly else "period"
 
         res = self.calc_risk_metrics(
-            total=(not yearly), planned=consider_planning, npv=net_present_value
+            total=(not yearly),
+            npv=net_present_value,
         )
         res = res.merge(
             self.calc_averted_risk(
-                total=(not yearly), planned=consider_planning, npv=net_present_value
+                total=(not yearly),
+                npv=net_present_value,
             ),
             on=["measure", time_grouper, "group", "metric"],
             how="left",
@@ -397,13 +339,14 @@ class OptionAppraiser:
         res["residual risk"] = res["risk"] - res["averted risk"]
 
         res = res.merge(
-            self.calc_cash_flow(total=(not yearly), planned=consider_planning)[
-                ["measure", time_grouper, "net"]
-            ],
+            self.calc_cash_flow(
+                total=(not yearly),
+            )[["measure", time_grouper, "net"]],
             on=["measure", time_grouper],
             how="left",
         )
 
+        res["net"] *= -1
         res["net"] = res["net"].fillna(0.0)
         res = res.rename(columns={"net": "cost (net)", "risk": "base risk"})
         res["group"] = res["group"].fillna("No Group")
@@ -411,9 +354,11 @@ class OptionAppraiser:
             period_extracted = res["period"].str.extract(r"(\d{4})-(\d{4})").astype(int)
             start_year = period_extracted[0]
             end_year = period_extracted[1]
-            res["average annual base risk"] = res["base risk"] / (
-                end_year - start_year + 1
-            )
+            years_span = end_year - start_year + 1
+            res["average annual base risk"] = res["base risk"] / years_span
+            res["average annual residual risk"] = res["residual risk"] / years_span
+            res["average annual averted risk"] = res["averted risk"] / years_span
+            res["average annual cost"] = res["cost (net)"] / years_span
 
         res["B/C ratio"] = (res["averted risk"] / res["cost (net)"]).fillna(0.0)
         first_cols = [
@@ -426,6 +371,157 @@ class OptionAppraiser:
             first_cols + [col for col in res.columns if col not in first_cols]
         ]
         return res
+
+
+class PlannedMeasuresAppraiser(MeasuresAppraiser):
+
+    def __init__(
+        self,
+        snapshots: SnapshotsCollection,
+        measure_set: MeasureSet,
+        planner: dict[str, tuple[int, int]],
+        cost_disc: DiscRates | None = None,
+        risk_disc: DiscRates | None = None,
+        metrics: list[str] = ["aai", "eai", "rp"],
+        return_periods: list[int] = [100, 500, 1000],
+    ):
+        self.planner = planner
+        self._planning = _get_unique_measure_periods(_planner_to_planning(self.planner))
+        super().__init__(
+            snapshots,
+            measure_set,
+            cost_disc,
+            risk_disc,
+            metrics,
+            return_periods,
+        )
+
+    def _single_measure_risk_metrics(self, measure_name):
+        """Not currently used"""
+        year_start, year_end = self.planner.get(
+            measure_name, (self.start_year, self.end_year)
+        )
+        ret = self._calc_annual_risk_metrics().copy()
+        ret = ret.set_index(["measure", "year"]).sort_index()
+        ret = ret.loc[pd.IndexSlice[measure_name, year_start:year_end],].reset_index()
+        return ret
+
+    def _calc_measure_periods(self, risk_periods):
+        # For each planned period, find correponding risk periods and create the periods with measure from planning
+        res = []
+        for measure_name_list, start_year, end_year in self._planning:
+            # Not sure this works as intended (pbly could be simplified anyway)
+            measure = self.measure_set.combine(names=measure_name_list)
+            periods = self._get_risk_periods(risk_periods, start_year, end_year)
+            meas_periods = [period.apply_measure(measure) for period in periods]
+            res += meas_periods
+        return res
+
+    def _calc_annual_risk_metrics(self, npv=True):
+        df = super()._calc_annual_risk_metrics(npv)
+        df = df.set_index(["measure", "year"]).sort_index()
+        mask = pd.Series(False, index=df.index)
+        # for each measure set mask to true at corresponding year (bitwise or)
+        for measure_combo, start, end in self._planning:
+            mask |= (
+                (df.index.get_level_values("measure") == "_".join(measure_combo))
+                & (df.index.get_level_values("year") >= start)
+                & (df.index.get_level_values("year") <= end)
+            )
+
+        # for the no_measure case, set mask to true at corresponding year,
+        # only for those years that have no active measures
+        no_measure_mask = mask.groupby("year").sum() == 0
+        mask.loc[
+            pd.IndexSlice["no_measure"], no_measure_mask[no_measure_mask].index
+        ] = True
+
+        columns_to_front = ["measure", "group", "year", "metric"]
+        return (
+            df[mask]
+            .reset_index()
+            .sort_values("year")[
+                columns_to_front
+                + [
+                    col
+                    for col in df.columns
+                    if col not in columns_to_front + ["risk", "rp"]
+                ]
+                + ["risk"]
+            ]
+        )
+
+    def _calc_per_measure_annual_cash_flows(self, disc=None):
+        res = []
+        for measure, (start, end) in self.planner.items():
+            df = self.measure_set.measures()[measure].cost_income.calc_cashflows(
+                impl_year=start, start_year=start, end_year=end, disc=disc
+            )
+            df["measure"] = measure
+            res.append(df)
+
+        df = pd.concat(res)
+        df = df.groupby("year", as_index=False).agg(
+            {
+                col: ("sum" if is_numeric_dtype(df[col]) else lambda x: "_".join(x))
+                for col in df.columns
+                if col != "year"
+            }
+        )
+        return df
+
+
+class AdaptationPlansAppraiser:
+    def __init__(
+        self,
+        snapshots: SnapshotsCollection,
+        measure_set: MeasureSet,
+        plans: list[dict[str, tuple[int, int]]],
+        use_net_present_value: bool = True,
+        cost_disc: DiscRates | None = None,
+        risk_disc: DiscRates | None = None,
+        metrics: list[str] = ["aai", "eai", "rp"],
+        return_periods: list[int] = [100, 500, 1000],
+    ):
+        self._use_npv = use_net_present_value
+        self.plans = [
+            PlannedMeasuresAppraiser(
+                snapshots=snapshots,
+                measure_set=measure_set,
+                planner=plan,
+                cost_disc=cost_disc,
+                risk_disc=risk_disc,
+                metrics=metrics,
+                return_periods=return_periods,
+            )
+            for plan in plans
+        ]
+
+    def calc_CB(
+        self,
+    ):
+        res = []
+        for plan in self.plans:
+            planner = plan.planner
+            df = plan.calc_CB(net_present_value=self._use_npv, yearly=True)
+            df = df.drop("year", axis=1)
+            df = df.groupby(["group", "metric"], as_index=False).sum(numeric_only=True)
+            df["plan"] = format_periods_dict(planner)
+            res.append(df)
+
+        return (
+            pd.concat(res)
+            .set_index(["plan", "group", "metric"])
+            .reset_index()
+            .sort_values(["metric", "plan"])
+        )
+
+
+def format_periods_dict(periods_dict):
+    formatted_string = ""
+    for measure, (start_year, end_year) in periods_dict.items():
+        formatted_string += f"{measure}: {start_year} - {end_year} ; "
+    return formatted_string.strip()
 
 
 def _planner_to_planning(planner: dict[str, tuple[int, int]]) -> dict[int, list[str]]:

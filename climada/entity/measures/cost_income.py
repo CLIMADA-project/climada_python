@@ -53,7 +53,7 @@ class CostIncome:
         self.annual_income = annual_income
         self.income_growth_rate = income_growth_rate
         # Custom cash flows
-        # Updaet the cost columns to be negative
+        # Update the cost columns to be negative
         if custom_cash_flows is not None and "cost" in custom_cash_flows.columns:
             custom_cash_flows["cost"] = -abs(custom_cash_flows["cost"])
         self.custom_cash_flows = custom_cash_flows

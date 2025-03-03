@@ -1145,15 +1145,11 @@ class RiskPeriod:
     def get_interp(self):
         return self.imp_mats_0, self.imp_mats_1
 
-    def apply_measures(self, measure_set: MeasureSet | None, measure_name_list):
+    def apply_measure(self, measure: Measure):
         # Apply measure on snapshot and return risk period instance
-        if measure_set is None or measure_name_list == []:
-            return self
-
-        combined_measures = measure_set.combine(names=measure_name_list)
-        snapshot0 = self.snapshot0.apply_measure(combined_measures)
-        snapshot1 = self.snapshot1.apply_measure(combined_measures)
-        return RiskPeriod(snapshot0, snapshot1, measure_name=combined_measures.name)
+        snapshot0 = self.snapshot0.apply_measure(measure)
+        snapshot1 = self.snapshot1.apply_measure(measure)
+        return RiskPeriod(snapshot0, snapshot1, measure_name=measure.name)
 
 
 class CalcImpactsSnapshots:
