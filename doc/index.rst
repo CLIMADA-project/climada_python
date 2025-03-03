@@ -69,7 +69,7 @@ Jump right in:
 .. toctree::
    :caption: API Reference
    :hidden:
-   
+
    Python Modules <climada/climada>
 
 

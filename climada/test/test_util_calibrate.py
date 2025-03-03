@@ -20,25 +20,23 @@ Integration tests for calibration module
 
 import unittest
 
-import pandas as pd
 import numpy as np
 import numpy.testing as npt
+import pandas as pd
+from matplotlib.axes import Axes
 from scipy.optimize import NonlinearConstraint
 from sklearn.metrics import mean_squared_error
-from matplotlib.axes import Axes
 
-from climada.entity import ImpactFuncSet, ImpactFunc
-
+from climada.entity import ImpactFunc, ImpactFuncSet
 from climada.util.calibrate import (
-    Input,
-    ScipyMinimizeOptimizer,
     BayesianOptimizer,
-    OutputEvaluator,
-    BayesianOptimizerOutputEvaluator,
     BayesianOptimizerController,
+    BayesianOptimizerOutputEvaluator,
+    Input,
+    OutputEvaluator,
+    ScipyMinimizeOptimizer,
 )
-
-from climada.util.calibrate.test.test_base import hazard, exposure
+from climada.util.calibrate.test.test_base import exposure, hazard
 
 
 class TestScipyMinimizeOptimizer(unittest.TestCase):

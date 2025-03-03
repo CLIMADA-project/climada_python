@@ -19,12 +19,12 @@ Calibration with scipy.minimize
 """
 
 from dataclasses import dataclass
-from typing import Mapping, Any, Dict, List
+from typing import Any, Dict, List, Mapping
 
 import numpy as np
-from scipy.optimize import minimize, OptimizeResult
+from scipy.optimize import OptimizeResult, minimize
 
-from .base import Output, Optimizer
+from .base import Optimizer, Output
 
 
 @dataclass

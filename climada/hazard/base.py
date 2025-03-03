@@ -19,28 +19,30 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Hazard.
 """
 
-__all__ = ['Hazard']
+__all__ = ["Hazard"]
 
 import copy
 import datetime as dt
 import logging
-from typing import Optional,List
 import warnings
+from typing import List, Optional
 
 import geopandas as gpd
 import numpy as np
+from deprecation import deprecated
 from pathos.pools import ProcessPool as Pool
 from scipy import sparse
 
-from climada import CONFIG
-from climada.hazard.plot import HazardPlot
-from climada.hazard.io import HazardIO
-from climada.hazard.centroids.centr import Centroids
 import climada.util.checker as u_check
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
-
+import climada.util.interpolation as u_interp
+from climada import CONFIG
+from climada.hazard.centroids.centr import Centroids
+from climada.hazard.io import HazardIO
+from climada.hazard.plot import HazardPlot
+from climada.util.value_representation import safe_divide
 
 LOGGER = logging.getLogger(__name__)
 
@@ -98,26 +100,24 @@ class Hazard(HazardIO, HazardPlot):
         If empty (all 0), it is ignored in the impact computations
         (i.e., is equivalent to fraction is 1 everywhere).
     """
+
     intensity_thres = 10
     """Intensity threshold per hazard used to filter lower intensities. To be
     set for every hazard type"""
 
-    vars_oblig = {'units',
-                  'centroids',
-                  'event_id',
-                  'frequency',
-                  'intensity',
-                  'fraction'
-                  }
+    vars_oblig = {
+        "units",
+        "centroids",
+        "event_id",
+        "frequency",
+        "intensity",
+        "fraction",
+    }
     """Name of the variables needed to compute the impact. Types: scalar, str,
     list, 1dim np.array of size num_events, scipy.sparse matrix of shape
     num_events x num_centroids, Centroids."""
 
-    vars_def = {'date',
-                'orig',
-                'event_name',
-                'frequency_unit'
-                }
+    vars_def = {"date", "orig", "event_name", "frequency_unit"}
     """Name of the variables used in impact calculation whose value is
     descriptive and can therefore be set with default values. Types: scalar,
     string, list, 1dim np.array of size num_events.
@@ -127,19 +127,21 @@ class Hazard(HazardIO, HazardPlot):
     """Name of the variables that aren't need to compute the impact. Types:
     scalar, string, list, 1dim np.array of size num_events."""
 
-    def __init__(self,
-                 haz_type: str = "",
-                 pool: Optional[Pool] = None,
-                 units: str = "",
-                 centroids: Optional[Centroids] = None,
-                 event_id: Optional[np.ndarray] = None,
-                 frequency: Optional[np.ndarray] = None,
-                 frequency_unit: str = u_const.DEF_FREQ_UNIT,
-                 event_name: Optional[List[str]] = None,
-                 date: Optional[np.ndarray] = None,
-                 orig: Optional[np.ndarray] = None,
-                 intensity: Optional[sparse.csr_matrix] = None,
-                 fraction: Optional[sparse.csr_matrix] = None):
+    def __init__(
+        self,
+        haz_type: str = "",
+        pool: Optional[Pool] = None,
+        units: str = "",
+        centroids: Optional[Centroids] = None,
+        event_id: Optional[np.ndarray] = None,
+        frequency: Optional[np.ndarray] = None,
+        frequency_unit: str = u_const.DEF_FREQ_UNIT,
+        event_name: Optional[List[str]] = None,
+        date: Optional[np.ndarray] = None,
+        orig: Optional[np.ndarray] = None,
+        intensity: Optional[sparse.csr_matrix] = None,
+        fraction: Optional[sparse.csr_matrix] = None,
+    ):
         """
         Initialize values.
 
@@ -182,30 +184,36 @@ class Hazard(HazardIO, HazardPlot):
 
         Take hazard values from file:
 
-        >>> haz = Hazard.from_mat(HAZ_DEMO_MAT, 'demo')
+        >>> haz = Hazard.from_hdf5(HAZ_DEMO_H5)
 
         """
         self.haz_type = haz_type
         self.units = units
-        self.centroids = centroids if centroids is not None else Centroids(
-            lat=np.empty(0), lon=np.empty(0))
+        self.centroids = (
+            centroids
+            if centroids is not None
+            else Centroids(lat=np.empty(0), lon=np.empty(0))
+        )
         # following values are defined for each event
         self.event_id = event_id if event_id is not None else np.array([], int)
-        self.frequency = frequency if frequency is not None else np.array(
-            [], float)
+        self.frequency = frequency if frequency is not None else np.array([], float)
         self.frequency_unit = frequency_unit
         self.event_name = event_name if event_name is not None else list()
         self.date = date if date is not None else np.array([], int)
         self.orig = orig if orig is not None else np.array([], bool)
         # following values are defined for each event and centroid
-        self.intensity = intensity if intensity is not None else sparse.csr_matrix(
-            np.empty((0, 0)))  # events x centroids
-        self.fraction = fraction if fraction is not None else sparse.csr_matrix(
-            self.intensity.shape)  # events x centroids
+        self.intensity = (
+            intensity if intensity is not None else sparse.csr_matrix(np.empty((0, 0)))
+        )  # events x centroids
+        self.fraction = (
+            fraction
+            if fraction is not None
+            else sparse.csr_matrix(self.intensity.shape)
+        )  # events x centroids
 
         self.pool = pool
         if self.pool:
-            LOGGER.info('Using %s CPUs.', self.pool.ncpus)
+            LOGGER.info("Using %s CPUs.", self.pool.ncpus)
 
     def check_matrices(self):
         """Ensure that matrices are consistently shaped and stored
@@ -248,7 +256,7 @@ class Hazard(HazardIO, HazardPlot):
         Any
         """
         return {
-            'frequency_unit': u_const.DEF_FREQ_UNIT,
+            "frequency_unit": u_const.DEF_FREQ_UNIT,
         }.get(attribute)
 
     def check(self):
@@ -271,8 +279,16 @@ class Hazard(HazardIO, HazardPlot):
         self.centroids.gdf.to_crs(dst_crs, inplace=True)
         self.check()
 
-    def select(self, event_names=None, event_id=None, date=None, orig=None,
-               reg_id=None, extent=None, reset_frequency=False):
+    def select(
+        self,
+        event_names=None,
+        event_id=None,
+        date=None,
+        orig=None,
+        reg_id=None,
+        extent=None,
+        reset_frequency=False,
+    ):
         """Select events matching provided criteria
 
         The frequency of events may need to be recomputed (see `reset_frequency`)!
@@ -308,7 +324,7 @@ class Hazard(HazardIO, HazardPlot):
         else:
             haz = self.__class__()
 
-        #filter events
+        # filter events
         sel_ev = np.ones(self.event_id.size, dtype=bool)
 
         # filter events by date
@@ -319,14 +335,14 @@ class Hazard(HazardIO, HazardPlot):
                 date_end = u_dt.str_to_date(date[1])
             sel_ev &= (date_ini <= self.date) & (self.date <= date_end)
             if not np.any(sel_ev):
-                LOGGER.info('No hazard in date range %s.', date)
+                LOGGER.info("No hazard in date range %s.", date)
                 return None
 
         # filter events hist/synthetic
         if orig is not None:
-            sel_ev &= (self.orig.astype(bool) == orig)
+            sel_ev &= self.orig.astype(bool) == orig
             if not np.any(sel_ev):
-                LOGGER.info('No hazard with %s original events.', str(orig))
+                LOGGER.info("No hazard with %s original events.", str(orig))
                 return None
 
         # filter events based on name
@@ -337,38 +353,43 @@ class Hazard(HazardIO, HazardPlot):
                 new_sel = [filtered_events.index(n) for n in event_names]
             except ValueError as err:
                 name = str(err).replace(" is not in list", "")
-                LOGGER.info('No hazard with name %s', name)
+                LOGGER.info("No hazard with name %s", name)
                 return None
             sel_ev = sel_ev[new_sel]
 
         # filter events based on id
         if event_id is not None:
             # preserves order of event_id
-            sel_ev = np.array([
-                np.argwhere(self.event_id == n)[0,0]
-                for n in event_id
-                if n in self.event_id[sel_ev]
-                ])
+            sel_ev = np.array(
+                [
+                    np.argwhere(self.event_id == n)[0, 0]
+                    for n in event_id
+                    if n in self.event_id[sel_ev]
+                ]
+            )
 
         # filter centroids
         sel_cen = self.centroids.select_mask(reg_id=reg_id, extent=extent)
         if not np.any(sel_cen):
-            LOGGER.info('No hazard centroids within extent and region')
+            LOGGER.info("No hazard centroids within extent and region")
             return None
 
         # Sanitize fraction, because we check non-zero entries later
         self.fraction.eliminate_zeros()
 
         # Perform attribute selection
-        for (var_name, var_val) in self.__dict__.items():
-            if isinstance(var_val, np.ndarray) and var_val.ndim == 1 \
-                    and var_val.size > 0:
+        for var_name, var_val in self.__dict__.items():
+            if (
+                isinstance(var_val, np.ndarray)
+                and var_val.ndim == 1
+                and var_val.size > 0
+            ):
                 setattr(haz, var_name, var_val[sel_ev])
             elif isinstance(var_val, sparse.csr_matrix):
                 setattr(haz, var_name, var_val[sel_ev, :][:, sel_cen])
             elif isinstance(var_val, list) and var_val:
                 setattr(haz, var_name, [var_val[idx] for idx in sel_ev])
-            elif var_name == 'centroids':
+            elif var_name == "centroids":
                 if reg_id is None and extent is None:
                     new_cent = var_val
                 else:
@@ -379,15 +400,28 @@ class Hazard(HazardIO, HazardPlot):
 
         # reset frequency if date span has changed (optional):
         if reset_frequency:
-            if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
-                LOGGER.warning("Resetting the frequency is based on the calendar year of given"
+            if self.frequency_unit not in ["1/year", "annual", "1/y", "1/a"]:
+                LOGGER.warning(
+                    "Resetting the frequency is based on the calendar year of given"
                     " dates but the frequency unit here is %s. Consider setting the frequency"
                     " manually for the selection or changing the frequency unit to %s.",
-                    self.frequency_unit, u_const.DEF_FREQ_UNIT)
-            year_span_old = np.abs(dt.datetime.fromordinal(self.date.max()).year -
-                                   dt.datetime.fromordinal(self.date.min()).year) + 1
-            year_span_new = np.abs(dt.datetime.fromordinal(haz.date.max()).year -
-                                   dt.datetime.fromordinal(haz.date.min()).year) + 1
+                    self.frequency_unit,
+                    u_const.DEF_FREQ_UNIT,
+                )
+            year_span_old = (
+                np.abs(
+                    dt.datetime.fromordinal(self.date.max()).year
+                    - dt.datetime.fromordinal(self.date.min()).year
+                )
+                + 1
+            )
+            year_span_new = (
+                np.abs(
+                    dt.datetime.fromordinal(haz.date.max()).year
+                    - dt.datetime.fromordinal(haz.date.min()).year
+                )
+                + 1
+            )
             haz.frequency = haz.frequency * year_span_old / year_span_new
 
         # Check if new fraction is zero everywhere
@@ -405,8 +439,11 @@ class Hazard(HazardIO, HazardPlot):
         haz.sanitize_event_ids()
         return haz
 
-    def select_tight(self, buffer=u_coord.NEAREST_NEIGHBOR_THRESHOLD / u_const.ONE_LAT_KM,
-                     val='intensity'):
+    def select_tight(
+        self,
+        buffer=u_coord.NEAREST_NEIGHBOR_THRESHOLD / u_const.ONE_LAT_KM,
+        val="intensity",
+    ):
         """
         Reduce hazard to those centroids spanning a minimal box which
         contains all non-zero intensity or fraction points.
@@ -435,74 +472,177 @@ class Hazard(HazardIO, HazardPlot):
 
         """
 
-        if val == 'intensity':
+        if val == "intensity":
             cent_nz = (self.intensity != 0).sum(axis=0).nonzero()[1]
-        if val == 'fraction':
+        if val == "fraction":
             cent_nz = (self.fraction != 0).sum(axis=0).nonzero()[1]
         lon_nz = self.centroids.lon[cent_nz]
         lat_nz = self.centroids.lat[cent_nz]
-        return self.select(extent=u_coord.toggle_extent_bounds(
-            u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
-        ))
+        return self.select(
+            extent=u_coord.toggle_extent_bounds(
+                u_coord.latlon_bounds(lat=lat_nz, lon=lon_nz, buffer=buffer)
+            )
+        )
 
-    def local_exceedance_inten(self, return_periods=(25, 50, 100, 250)):
-        """Compute exceedance intensity map for given return periods.
+    def local_exceedance_intensity(
+        self,
+        return_periods=(25, 50, 100, 250),
+        method="interpolate",
+        min_intensity=None,
+        log_frequency=True,
+        log_intensity=True,
+    ):
+        """Compute local exceedance intensity for given return periods. The default method
+        is fitting the ordered intensitites per centroid to the corresponding cummulated
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
-        return_periods : np.array
-            return periods to consider
+        return_periods : array_like
+            User-specified return periods for which the exceedance intensity should be calculated
+            locally (at each centroid). Defaults to (25, 50, 100, 250).
+        method : str
+            Method to interpolate to new return periods. Currently available are "interpolate",
+            "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
+            return periods outside the range of the Hazard object's observed local return periods
+            will be assigned NaN. If set to "extrapolate_constant" or "stepfunction", return
+            periods larger than the Hazard object's observed local return periods will be assigned
+            the largest local intensity, and return periods smaller than the Hazard object's
+            observed local return periods will be assigned 0. If set to "extrapolate", local
+            exceedance intensities will be extrapolated (and interpolated).
+            Defauls to "interpolate".
+        min_intensity : float, optional
+            Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
+            will be used. Defaults to None.
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_intensity : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            intensity values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
 
         Returns
         -------
-        inten_stats: np.array
+        gdf : gpd.GeoDataFrame
+            GeoDataFrame containing exeedance intensities for given return periods. Each column
+            corresponds to a return period, each row corresponds to a centroid. Values
+            in the gdf correspond to the exceedance intensity for the given centroid and
+            return period
+        label : str
+            GeoDataFrame label, for reporting and plotting
+        column_label : function
+            Column-label-generating function, for reporting and plotting
         """
-        # warn if return period is above return period of rarest event:
-        for period in return_periods:
-            if period > 1 / self.frequency.min():
-                LOGGER.warning('Return period %1.1f exceeds max. event return period.', period)
-        LOGGER.info('Computing exceedance intenstiy map for return periods: %s',
-                    return_periods)
-        num_cen = self.intensity.shape[1]
-        inten_stats = np.zeros((len(return_periods), num_cen))
-        cen_step = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-        if not cen_step:
-            raise ValueError('Increase max_matrix_size configuration parameter to >'
-                             f' {self.intensity.shape[0]}')
-        # separte in chunks
-        chk = -1
-        for chk in range(int(num_cen / cen_step)):
-            self._loc_return_inten(
-                np.array(return_periods),
-                self.intensity[:, chk * cen_step:(chk + 1) * cen_step].toarray(),
-                inten_stats[:, chk * cen_step:(chk + 1) * cen_step])
-        self._loc_return_inten(
-            np.array(return_periods),
-            self.intensity[:, (chk + 1) * cen_step:].toarray(),
-            inten_stats[:, (chk + 1) * cen_step:])
-        # set values below 0 to zero if minimum of hazard.intensity >= 0:
-        if np.min(inten_stats) < 0 <= self.intensity.min():
-            LOGGER.warning('Exceedance intenstiy values below 0 are set to 0. \
-                   Reason: no negative intensity values were found in hazard.')
-            inten_stats[inten_stats < 0] = 0
-        return inten_stats
+        if not min_intensity and min_intensity != 0:
+            min_intensity = self.intensity_thres
+        # check frequency unit
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
+            self.frequency_unit
+        )
+
+        # check method
+        if method not in [
+            "interpolate",
+            "extrapolate",
+            "extrapolate_constant",
+            "stepfunction",
+        ]:
+            raise ValueError(f"Unknown method: {method}")
+
+        # calculate local exceedance intensity
+        test_frequency = 1 / np.array(return_periods)
+        exceedance_intensity = np.array(
+            [
+                u_interp.preprocess_and_interpolate_ev(
+                    test_frequency,
+                    None,
+                    self.frequency,
+                    self.intensity.getcol(i_centroid).toarray().flatten(),
+                    log_frequency=log_frequency,
+                    log_values=log_intensity,
+                    value_threshold=min_intensity,
+                    method=method,
+                    y_asymptotic=0.0,
+                )
+                for i_centroid in range(self.intensity.shape[1])
+            ]
+        )
+
+        # create the output GeoDataFrame
+        gdf = gpd.GeoDataFrame(
+            geometry=self.centroids.gdf["geometry"], crs=self.centroids.gdf.crs
+        )
+        column_names = [f"{rp}" for rp in return_periods]
+        gdf[column_names] = exceedance_intensity
+
+        # create label and column_label
+        label = f"Intensity ({self.units})"
+        column_label = lambda column_names: [
+            f"Return Period: {col} {return_period_unit}" for col in column_names
+        ]
+
+        return gdf, label, column_label
+
+    @deprecated(
+        details="The use of Hazard.local_exceedance_inten is deprecated. Use "
+        "Hazard.local_exceedance_intensity instead. Some errors in the previous calculation "
+        "in Hazard.local_exceedance_inten have been corrected. To reproduce data with the "
+        "previous calculation, use CLIMADA v5.0.0 or less."
+    )
+    def local_exceedance_inten(self, return_period=(25, 50, 100, 250)):
+        """This function is deprecated, use Hazard.local_exceedance_intensity instead."""
+        return (
+            self.local_exceedance_intensity(return_period)[0]
+            .values[:, 1:]
+            .T.astype(float)
+        )
 
     def sanitize_event_ids(self):
         """Make sure that event ids are unique"""
         if np.unique(self.event_id).size != self.event_id.size:
-            LOGGER.debug('Resetting event_id.')
+            LOGGER.debug("Resetting event_id.")
             self.event_id = np.arange(1, self.event_id.size + 1)
 
-    def local_return_period(self, threshold_intensities=(5., 10., 20.)):
-        """Compute local return periods for given hazard intensities. The used method
+    def local_return_period(
+        self,
+        threshold_intensities=(10.0, 20.0),
+        method="interpolate",
+        min_intensity=None,
+        log_frequency=True,
+        log_intensity=True,
+    ):
+        """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with a step function.
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
-        threshold_intensities : np.array
+        threshold_intensities : array_like
             User-specified hazard intensities for which the return period should be calculated
-            locally (at each centroid). Defaults to (5, 10, 20)
+            locally (at each centroid). Defaults to (10, 20)
+        method : str
+            Method to interpolate to new threshold intensities. Currently available are
+            "interpolate", "extrapolate", "extrapolate_constant" and "stepfunction". If set to
+            "interpolate", threshold intensities outside the range of the Hazard object's local
+            intensities will be assigned NaN. If set to "extrapolate_constant" or
+            "stepfunction", threshold intensities larger than the Hazard object's local
+            intensities will be assigned NaN, and threshold intensities smaller than the Hazard
+            object's local intensities will be assigned the smallest observed local return period.
+            If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            Defaults to "interpolate".
+        min_intensity : float, optional
+            Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
+            will be used. Defaults to None.
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_intensity : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            intensity values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
 
         Returns
         -------
@@ -516,49 +656,53 @@ class Hazard(HazardIO, HazardPlot):
         column_label : function
             Column-label-generating function, for reporting and plotting
         """
-        #check frequency unit
-        if self.frequency_unit in ['1/year', 'annual', '1/y', '1/a']:
-            rp_unit = 'Years'
-        elif self.frequency_unit in ['1/month', 'monthly', '1/m']:
-            rp_unit = 'Months'
-        elif self.frequency_unit in ['1/week', 'weekly', '1/w']:
-            rp_unit = 'Weeks'
-        else:
-            LOGGER.warning("Hazard's frequency unit %s is not known, "
-                           "years will be used as return period unit.", self.frequency_unit)
-            rp_unit = 'Years'
+        if not min_intensity and min_intensity != 0:
+            min_intensity = self.intensity_thres
+        # check frequency unit
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
+            self.frequency_unit
+        )
 
-        # Ensure threshold_intensities is a numpy array
-        threshold_intensities = np.array(threshold_intensities)
+        # check method
+        if method not in [
+            "interpolate",
+            "extrapolate",
+            "extrapolate_constant",
+            "stepfunction",
+        ]:
+            raise ValueError(f"Unknown method: {method}")
 
-        num_cen = self.intensity.shape[1]
-        return_periods = np.zeros((len(threshold_intensities), num_cen))
-
-        # batch_centroids = number of centroids that are handled in parallel: 
-        # batch_centroids = maximal matrix size // number of events
-        batch_centroids = CONFIG.max_matrix_size.int() // self.intensity.shape[0]
-        if batch_centroids < 1:
-            raise ValueError('Increase max_matrix_size configuration parameter to >'
-                             f'{self.intensity.shape[0]}')
-
-        # Process the intensities in chunks of centroids
-        for start_col in range(0, num_cen, batch_centroids):
-            end_col = min(start_col + batch_centroids, num_cen)
-            return_periods[:, start_col:end_col] = self._loc_return_period(
-                threshold_intensities,
-                self.intensity[:, start_col:end_col].toarray()
+        # calculate local return periods
+        return_periods = np.array(
+            [
+                u_interp.preprocess_and_interpolate_ev(
+                    None,
+                    np.array(threshold_intensities),
+                    self.frequency,
+                    self.intensity.getcol(i_centroid).toarray().flatten(),
+                    log_frequency=log_frequency,
+                    log_values=log_intensity,
+                    value_threshold=min_intensity,
+                    method=method,
+                    y_asymptotic=np.nan,
                 )
+                for i_centroid in range(self.intensity.shape[1])
+            ]
+        )
+        return_periods = safe_divide(1.0, return_periods)
 
         # create the output GeoDataFrame
-        gdf = gpd.GeoDataFrame(geometry = self.centroids.gdf['geometry'],
-                               crs = self.centroids.gdf.crs)
-        col_names = [f'{tresh_inten}' for tresh_inten in threshold_intensities]
-        gdf[col_names] = return_periods.T
+        gdf = gpd.GeoDataFrame(
+            geometry=self.centroids.gdf["geometry"], crs=self.centroids.gdf.crs
+        )
+        col_names = [f"{tresh_inten}" for tresh_inten in threshold_intensities]
+        gdf[col_names] = return_periods
 
         # create label and column_label
-        label = f'Return Periods ({rp_unit})'
-        column_label = lambda column_names: [f'Threshold Intensity: {col} {self.units}'
-                                             for col in column_names]
+        label = f"Return Periods ({return_period_unit})"
+        column_label = lambda column_names: [
+            f"Threshold Intensity: {col} {self.units}" for col in column_names
+        ]
 
         return gdf, label, column_label
 
@@ -575,8 +719,13 @@ class Hazard(HazardIO, HazardPlot):
         -------
         list_id: np.array(int)
         """
-        list_id = self.event_id[[i_name for i_name, val_name in enumerate(self.event_name)
-                                 if val_name == event_name]]
+        list_id = self.event_id[
+            [
+                i_name
+                for i_name, val_name in enumerate(self.event_name)
+                if val_name == event_name
+            ]
+        ]
         if list_id.size == 0:
             raise ValueError(f"No event with name: {event_name}")
         return list_id
@@ -598,8 +747,7 @@ class Hazard(HazardIO, HazardPlot):
             ValueError
         """
         try:
-            return self.event_name[np.argwhere(
-                self.event_id == event_id)[0][0]]
+            return self.event_name[np.argwhere(self.event_id == event_id)[0][0]]
         except IndexError as err:
             raise ValueError(f"No event with id: {event_id}") from err
 
@@ -622,7 +770,8 @@ class Hazard(HazardIO, HazardPlot):
             ev_ids = self.get_event_id(event)
             l_dates = [
                 u_dt.date_to_str(self.date[np.argwhere(self.event_id == ev_id)[0][0]])
-                for ev_id in ev_ids]
+                for ev_id in ev_ids
+            ]
         else:
             ev_idx = np.argwhere(self.event_id == event)[0][0]
             l_dates = [u_dt.date_to_str(self.date[ev_idx])]
@@ -637,8 +786,9 @@ class Hazard(HazardIO, HazardPlot):
             key are years, values array with event_ids of that year
 
         """
-        orig_year = np.array([dt.datetime.fromordinal(date).year
-                              for date in self.date[self.orig]])
+        orig_year = np.array(
+            [dt.datetime.fromordinal(date).year for date in self.date[self.orig]]
+        )
         orig_yearset = {}
         for year in np.unique(orig_year):
             orig_yearset[year] = self.event_id[self.orig][orig_year == year]
@@ -669,13 +819,19 @@ class Hazard(HazardIO, HazardPlot):
             per event. If yearrange is not given (None), the year range is
             derived from self.date
         """
-        if self.frequency_unit not in ['1/year', 'annual', '1/y', '1/a']:
-            LOGGER.warning("setting the frequency on a hazard object who's frequency unit"
+        if self.frequency_unit not in ["1/year", "annual", "1/y", "1/a"]:
+            LOGGER.warning(
+                "setting the frequency on a hazard object who's frequency unit"
                 "is %s and not %s will most likely lead to unexpected results",
-                self.frequency_unit, u_const.DEF_FREQ_UNIT)
+                self.frequency_unit,
+                u_const.DEF_FREQ_UNIT,
+            )
         if not yearrange:
-            delta_time = dt.datetime.fromordinal(int(np.max(self.date))).year - \
-                         dt.datetime.fromordinal(int(np.min(self.date))).year + 1
+            delta_time = (
+                dt.datetime.fromordinal(int(np.max(self.date))).year
+                - dt.datetime.fromordinal(int(np.min(self.date))).year
+                + 1
+            )
         else:
             delta_time = max(yearrange) - min(yearrange) + 1
         num_orig = self.orig.nonzero()[0].size
@@ -697,81 +853,6 @@ class Hazard(HazardIO, HazardPlot):
             ev_set.add((ev_name, ev_date))
         return ev_set
 
-    def _loc_return_inten(self, return_periods, inten, exc_inten):
-        """Compute local exceedence intensity for given return period.
-
-        Parameters
-        ----------
-        return_periods: np.array
-            return periods to consider
-        cen_pos: int
-            centroid position
-
-        Returns
-        -------
-            np.array
-        """
-        # sorted intensity
-        sort_pos = np.argsort(inten, axis=0)[::-1, :]
-        columns = np.ones(inten.shape, int)
-        # pylint: disable=unsubscriptable-object  # pylint/issues/3139
-        columns *= np.arange(columns.shape[1])
-        inten_sort = inten[sort_pos, columns]
-        # cummulative frequency at sorted intensity
-        freq_sort = self.frequency[sort_pos]
-        np.cumsum(freq_sort, axis=0, out=freq_sort)
-
-        for cen_idx in range(inten.shape[1]):
-            exc_inten[:, cen_idx] = self._cen_return_inten(
-                inten_sort[:, cen_idx], freq_sort[:, cen_idx],
-                self.intensity_thres, return_periods)
-
-    def _loc_return_period(self, threshold_intensities, inten):
-        """Compute local return periods for user-specified threshold intensities
-         for a subset of hazard centroids
-
-        Parameters
-        ----------
-        threshold_intensities: np.array
-            User-specified hazard intensities for which the return period should be calculated
-            locally (at each centroid).
-        inten: np.array
-            subarray of full hazard intensities corresponding to a subset of the centroids
-            (rows corresponds to events, columns correspond to centroids)
-
-        Returns
-        -------
-            np.array
-            (rows corresponds to threshold_intensities, columns correspond to centroids)
-        """
-        # Assuming inten is sorted and calculating cumulative frequency
-        sort_pos = np.argsort(inten, axis=0)[::-1, :]
-        inten_sort = inten[sort_pos, np.arange(inten.shape[1])]
-        freq_sort = self.frequency[sort_pos]
-        freq_sort = np.cumsum(freq_sort, axis=0)
-        return_periods = np.zeros((len(threshold_intensities), inten.shape[1]))
-
-        for cen_idx in range(inten.shape[1]):
-            sorted_inten_cen = inten_sort[:, cen_idx]
-            cum_freq_cen = freq_sort[:, cen_idx]
-
-            for i, intensity in enumerate(threshold_intensities):
-                # Find the first occurrence where the intensity is less than the sorted intensities
-                exceedance_index = np.searchsorted(sorted_inten_cen[::-1], intensity, side='left')
-
-                # Calculate exceedance probability
-                if exceedance_index < len(cum_freq_cen):
-                    exceedance_probability = cum_freq_cen[-exceedance_index - 1]
-                else:
-                    exceedance_probability = 0  # Or set a default minimal probability
-
-                # Calculate and store return period
-                if exceedance_probability > 0:
-                    return_periods[i, cen_idx] = 1 / exceedance_probability
-                else:
-                    return_periods[i, cen_idx] = np.nan
-        return return_periods
-
     def _check_events(self):
         """Check that all attributes but centroids contain consistent data.
         Put default date, event_name and orig if not provided. Check not
@@ -786,54 +867,21 @@ class Hazard(HazardIO, HazardPlot):
         if np.unique(self.event_id).size != num_ev:
             raise ValueError("There are events with the same identifier.")
 
-        u_check.check_obligatories(self.__dict__, self.vars_oblig, 'Hazard.',
-                                  num_ev, num_ev, num_cen)
-        u_check.check_optionals(self.__dict__, self.vars_opt, 'Hazard.', num_ev)
-        self.event_name = u_check.array_default(num_ev, self.event_name,
-                                                'Hazard.event_name', list(self.event_id))
-        self.date = u_check.array_default(num_ev, self.date, 'Hazard.date',
-                                          np.ones(self.event_id.shape, dtype=int))
-        self.orig = u_check.array_default(num_ev, self.orig, 'Hazard.orig',
-                                          np.zeros(self.event_id.shape, dtype=bool))
+        u_check.check_obligatories(
+            self.__dict__, self.vars_oblig, "Hazard.", num_ev, num_ev, num_cen
+        )
+        u_check.check_optionals(self.__dict__, self.vars_opt, "Hazard.", num_ev)
+        self.event_name = u_check.array_default(
+            num_ev, self.event_name, "Hazard.event_name", list(self.event_id)
+        )
+        self.date = u_check.array_default(
+            num_ev, self.date, "Hazard.date", np.ones(self.event_id.shape, dtype=int)
+        )
+        self.orig = u_check.array_default(
+            num_ev, self.orig, "Hazard.orig", np.zeros(self.event_id.shape, dtype=bool)
+        )
         if len(self._events_set()) != num_ev:
             raise ValueError("There are events with same date and name.")
-
-    @staticmethod
-    def _cen_return_inten(inten, freq, inten_th, return_periods):
-        """From ordered intensity and cummulative frequency at centroid, get
-        exceedance intensity at input return periods.
-
-        Parameters
-        ----------
-        inten: np.array
-            sorted intensity at centroid
-        freq: np.array
-            cummulative frequency at centroid
-        inten_th: float
-            intensity threshold
-        return_periods: np.array
-            return periods
-
-        Returns
-        -------
-            np.array
-        """
-        inten_th = np.asarray(inten > inten_th).squeeze()
-        inten_cen = inten[inten_th]
-        freq_cen = freq[inten_th]
-        if not inten_cen.size:
-            return np.zeros((return_periods.size,))
-        try:
-            with warnings.catch_warnings():
-                warnings.simplefilter("ignore")
-                pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=1)
-        except ValueError:
-            pol_coef = np.polyfit(np.log(freq_cen), inten_cen, deg=0)
-        inten_fit = np.polyval(pol_coef, np.log(1 / return_periods))
-        wrong_inten = (return_periods > np.max(1 / freq_cen)) & np.isnan(inten_fit)
-        inten_fit[wrong_inten] = 0.
-
-        return inten_fit
 
     def append(self, *others):
         """Append the events and centroids to this hazard object.
@@ -881,36 +929,45 @@ class Hazard(HazardIO, HazardPlot):
             haz._check_events()
 
         # check type, unit, and attribute consistency among hazards
-        haz_types = {haz.haz_type for haz in haz_list if haz.haz_type != ''}
+        haz_types = {haz.haz_type for haz in haz_list if haz.haz_type != ""}
         if len(haz_types) > 1:
-            raise ValueError(f"The given hazards are of different types: {haz_types}. "
-                             "The hazards are incompatible and cannot be concatenated.")
+            raise ValueError(
+                f"The given hazards are of different types: {haz_types}. "
+                "The hazards are incompatible and cannot be concatenated."
+            )
         self.haz_type = haz_types.pop()
-
-        haz_classes = {type(haz) for haz in haz_list}
+        haz_classes = {haz.__class__.__name__ for haz in haz_list}
         if len(haz_classes) > 1:
-            raise TypeError(f"The given hazards are of different classes: {haz_classes}. "
-                            "The hazards are incompatible and cannot be concatenated.")
+            raise TypeError(
+                f"The given hazards are of different classes: {haz_classes}. "
+                "The hazards are incompatible and cannot be concatenated."
+            )
 
         freq_units = {haz.frequency_unit for haz in haz_list}
         if len(freq_units) > 1:
-            raise ValueError(f"The given hazards have different frequency units: {freq_units}. "
-                             "The hazards are incompatible and cannot be concatenated.")
+            raise ValueError(
+                f"The given hazards have different frequency units: {freq_units}. "
+                "The hazards are incompatible and cannot be concatenated."
+            )
         self.frequency_unit = freq_units.pop()
 
-        units = {haz.units for haz in haz_list if haz.units != ''}
+        units = {haz.units for haz in haz_list if haz.units != ""}
         if len(units) > 1:
-            raise ValueError(f"The given hazards use different units: {units}. "
-                             "The hazards are incompatible and cannot be concatenated.")
+            raise ValueError(
+                f"The given hazards use different units: {units}. "
+                "The hazards are incompatible and cannot be concatenated."
+            )
         if len(units) == 0:
-            units = {''}
+            units = {""}
         self.units = units.pop()
 
         attributes = sorted(set.union(*[set(vars(haz).keys()) for haz in haz_list]))
         for attr_name in attributes:
             if not all(hasattr(haz, attr_name) for haz in haz_list_nonempty):
-                raise ValueError(f"Attribute {attr_name} is not shared by all hazards. "
-                                 "The hazards are incompatible and cannot be concatenated.")
+                raise ValueError(
+                    f"Attribute {attr_name} is not shared by all hazards. "
+                    "The hazards are incompatible and cannot be concatenated."
+                )
 
         # map individual centroids objects to union
         centroids = Centroids.union(*[haz.centroids for haz in haz_list])
@@ -924,14 +981,25 @@ class Hazard(HazardIO, HazardPlot):
             attr_val_list = [getattr(haz, attr_name) for haz in haz_list_nonempty]
             if isinstance(attr_val_list[0], sparse.csr_matrix):
                 # map sparse matrix onto centroids
-                setattr(self, attr_name, sparse.vstack([
-                    sparse.csr_matrix(
-                        (matrix.data, cent_idx[matrix.indices], matrix.indptr),
-                        shape=(matrix.shape[0], centroids.size)
-                    )
-                    for matrix, cent_idx in zip(attr_val_list, hazcent_in_cent_idx_list)
-                ], format='csr'))
-            elif isinstance(attr_val_list[0], np.ndarray) and attr_val_list[0].ndim == 1:
+                setattr(
+                    self,
+                    attr_name,
+                    sparse.vstack(
+                        [
+                            sparse.csr_matrix(
+                                (matrix.data, cent_idx[matrix.indices], matrix.indptr),
+                                shape=(matrix.shape[0], centroids.size),
+                            )
+                            for matrix, cent_idx in zip(
+                                attr_val_list, hazcent_in_cent_idx_list
+                            )
+                        ],
+                        format="csr",
+                    ),
+                )
+            elif (
+                isinstance(attr_val_list[0], np.ndarray) and attr_val_list[0].ndim == 1
+            ):
                 setattr(self, attr_name, np.hstack(attr_val_list))
             elif isinstance(attr_val_list[0], list):
                 setattr(self, attr_name, sum(attr_val_list, []))
@@ -974,13 +1042,16 @@ class Hazard(HazardIO, HazardPlot):
         """
         if len(haz_list) == 0:
             return cls()
-        haz_concat = haz_list[0].__class__(centroids=Centroids(lat=[], lon=[],
-                                                               crs=haz_list[0].centroids.crs))
+        haz_concat = haz_list[0].__class__(
+            centroids=Centroids(lat=[], lon=[], crs=haz_list[0].centroids.crs)
+        )
         for attr_name, attr_val in vars(haz_list[0]).items():
             # to save memory, only copy simple attributes like
             # "units" that are not explicitly handled by Hazard.append
-            if not (isinstance(attr_val, (list, np.ndarray, sparse.csr_matrix))
-                    or attr_name in ["centroids"]):
+            if not (
+                isinstance(attr_val, (list, np.ndarray, sparse.csr_matrix))
+                or attr_name in ["centroids"]
+            ):
                 setattr(haz_concat, attr_name, copy.deepcopy(attr_val))
         haz_concat.append(*haz_list)
         return haz_concat
@@ -1025,7 +1096,6 @@ class Hazard(HazardIO, HazardPlot):
         haz_new_cent = copy.deepcopy(self)
         haz_new_cent.centroids = centroids
 
-
         new_cent_idx = u_coord.match_coordinates(
             self.centroids.coord, centroids.coord, threshold=threshold
         )
@@ -1046,11 +1116,14 @@ class Hazard(HazardIO, HazardPlot):
         # re-assign attributes intensity and fraction
         for attr_name in ["intensity", "fraction"]:
             matrix = getattr(self, attr_name)
-            setattr(haz_new_cent, attr_name,
-                    sparse.csr_matrix(
-                        (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
-                        shape=(matrix.shape[0], centroids.size)
-                    ))
+            setattr(
+                haz_new_cent,
+                attr_name,
+                sparse.csr_matrix(
+                    (matrix.data, new_cent_idx[matrix.indices], matrix.indptr),
+                    shape=(matrix.shape[0], centroids.size),
+                ),
+            )
 
         return haz_new_cent
 
@@ -1066,7 +1139,10 @@ class Hazard(HazardIO, HazardPlot):
             in an exposures gdf. E.g. "centr_TC"
 
         """
-        from climada.entity.exposures import INDICATOR_CENTR  # pylint: disable=import-outside-toplevel
+        from climada.entity.exposures import (
+            INDICATOR_CENTR,  # pylint: disable=import-outside-toplevel
+        )
+
         # import outside toplevel is necessary for it not being circular
         return INDICATOR_CENTR + self.haz_type
 
@@ -1097,13 +1173,17 @@ class Hazard(HazardIO, HazardPlot):
         if impf.calc_mdr(0) == 0:
             mdr.data = impf.calc_mdr(mdr.data)
         else:
-            LOGGER.warning("Impact function id=%d has mdr(0) != 0."
+            LOGGER.warning(
+                "Impact function id=%d has mdr(0) != 0."
                 "The mean damage ratio must thus be computed for all values of"
                 "hazard intensity including 0 which can be very time consuming.",
-            impf.id)
+                impf.id,
+            )
             mdr_array = impf.calc_mdr(mdr.toarray().ravel()).reshape(mdr.shape)
             mdr = sparse.csr_matrix(mdr_array)
-        return mdr[:, indices]
+        mdr_out = mdr[:, indices]
+        mdr_out.eliminate_zeros()
+        return mdr_out
 
     def get_paa(self, cent_idx, impf):
         """

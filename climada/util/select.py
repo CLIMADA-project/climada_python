@@ -19,12 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 module containing functions to support various select methods.
 """
 
-
-
 import logging
+
 import numpy as np
 
 LOGGER = logging.getLogger(__name__)
+
 
 def get_attributes_with_matching_dimension(obj, dims):
     """

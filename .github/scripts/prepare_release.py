@@ -5,7 +5,7 @@ The following preparation steps are executed:
 
 - update version numbers in _version.py and setup.py
 - purge the "Unreleased" section of CHANGELOG.md and rename it to the new version number
-- copy the README.md file to doc/misc/README.md, 
+- copy the README.md file to doc/misc/README.md,
   but without the badges as they interfere with the sphinx doc builder
 
 All changes are immediately commited to the repository.
@@ -38,28 +38,28 @@ def bump_version_number(version_number: str, level: str) -> str:
     """Return a copy of `version_number` with one level number incremented."""
     major, minor, patch = version_number.split(".")
     if level == "major":
-        major = str(int(major)+1)
+        major = str(int(major) + 1)
         minor = "0"
         patch = "0"
     elif level == "minor":
-        minor = str(int(minor)+1)
+        minor = str(int(minor) + 1)
         patch = "0"
     elif level == "patch":
-        patch = str(int(patch)+1)
+        patch = str(int(patch) + 1)
     else:
         raise ValueError(f"level should be 'major', 'minor' or 'patch', not {level}")
     return ".".join([major, minor, patch])
 
 
 def update_readme(_nvn):
-    """align doc/misc/README.md with ./README.md but remove the non-markdown header lines from """
-    with open("README.md", 'r', encoding="UTF-8") as rmin:
-        lines = [line for line in rmin.readlines() if not line.startswith('[![')]
+    """align doc/misc/README.md with ./README.md but remove the non-markdown header lines from"""
+    with open("README.md", "r", encoding="UTF-8") as rmin:
+        lines = [line for line in rmin.readlines() if not line.startswith("[![")]
     while not lines[0].strip():
         lines = lines[1:]
-    with open("doc/misc/README.md", 'w', encoding="UTF-8") as rmout:
+    with open("doc/misc/README.md", "w", encoding="UTF-8") as rmout:
         rmout.writelines(lines)
-    return GitFile('doc/misc/README.md')
+    return GitFile("doc/misc/README.md")
 
 
 def update_changelog(nvn):
@@ -70,16 +70,16 @@ def update_changelog(nvn):
     release = []
     section_name = None
     section = []
-    with open("CHANGELOG.md", 'r', encoding="UTF-8") as changelog:
+    with open("CHANGELOG.md", "r", encoding="UTF-8") as changelog:
         for line in changelog.readlines():
-            if line.startswith('#'):
-                if line.startswith('### '):
+            if line.startswith("#"):
+                if line.startswith("### "):
                     if section:
                         release.append((section_name, section))
                     section_name = line[4:].strip()
                     section = []
-                    #print("tag:", section_name)
-                elif line.startswith('## '):
+                    # print("tag:", section_name)
+                elif line.startswith("## "):
                     if section:
                         release.append((section_name, section))
                     if release:
@@ -88,7 +88,7 @@ def update_changelog(nvn):
                     release = []
                     section_name = None
                     section = []
-                    #print("release:", release_name)
+                    # print("release:", release_name)
             else:
                 section.append(line)
         if section:
@@ -96,7 +96,7 @@ def update_changelog(nvn):
         if release:
             releases.append((release_name, release))
 
-    with open("CHANGELOG.md", 'w', encoding="UTF-8") as changelog:
+    with open("CHANGELOG.md", "w", encoding="UTF-8") as changelog:
         changelog.write("# Changelog\n\n")
         for release_name, release in releases:
             if release_name:
@@ -107,7 +107,11 @@ def update_changelog(nvn):
                 if any(ln.strip() for ln in section):
                     if section_name:
                         changelog.write(f"### {section_name}\n")
-                    lines = [ln.strip() for ln in section if "code freeze date: " not in ln.lower()]
+                    lines = [
+                        ln.strip()
+                        for ln in section
+                        if "code freeze date: " not in ln.lower()
+                    ]
                     if not section_name and release_name.lower() == nvn:
                         print("setting date")
                         for i, line in enumerate(lines):
@@ -116,26 +120,26 @@ def update_changelog(nvn):
                                 lines[i] = f"Release date: {today}"
                     changelog.write(re.sub("\n+$", "\n", "\n".join(lines)))
                     changelog.write("\n")
-    return GitFile('CHANGELOG.md')
+    return GitFile("CHANGELOG.md")
 
 
 def update_version(nvn):
     """Update the _version.py file"""
     [file_with_version] = glob.glob("climada*/_version.py")
-    regex = r'(^__version__\s*=\s*[\'\"]).*([\'\"]\s*$)'
+    regex = r"(^__version__\s*=\s*[\'\"]).*([\'\"]\s*$)"
     return update_file(file_with_version, regex, nvn)
 
 
 def update_setup(new_version_number):
     """Update the setup.py file"""
     file_with_version = "setup.py"
-    regex = r'(^\s+version\s*=\s*[\'\"]).*([\'\"]\s*,\s*$)'
+    regex = r"(^\s+version\s*=\s*[\'\"]).*([\'\"]\s*,\s*$)"
     return update_file(file_with_version, regex, new_version_number)
 
 
 def update_file(file_with_version, regex, new_version_number):
     """Replace the version number(s) in a file, based on a rgular expression."""
-    with open(file_with_version, 'r', encoding="UTF-8") as curf:
+    with open(file_with_version, "r", encoding="UTF-8") as curf:
         lines = curf.readlines()
     successfully_updated = False
     for i, line in enumerate(lines):
@@ -145,14 +149,15 @@ def update_file(file_with_version, regex, new_version_number):
             successfully_updated = True
     if not successfully_updated:
         raise RuntimeError(f"cannot determine version of {file_with_version}")
-    with open(file_with_version, 'w', encoding="UTF-8") as newf:
+    with open(file_with_version, "w", encoding="UTF-8") as newf:
         for line in lines:
             newf.write(line)
     return GitFile(file_with_version)
 
 
-class GitFile():
+class GitFile:
     """Helper class for `git add`."""
+
     def __init__(self, path):
         self.path = path
 
@@ -166,8 +171,9 @@ class GitFile():
         ).stdout.decode("utf8")
 
 
-class Git():
+class Git:
     """Helper class for `git commit`."""
+
     def __init__(self):
         _gitname = subprocess.run(
             ["git", "config", "--global", "user.name", "'climada'"],
@@ -228,6 +234,7 @@ def prepare_new_release(level):
 
 if __name__ == "__main__":
     from sys import argv
+
     try:
         LEVEL = argv[1]
     except IndexError:

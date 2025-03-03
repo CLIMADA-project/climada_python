@@ -16,4 +16,3 @@ climada\.hazard\.trop\_cyclone\.trop\_cyclone\_windfields module
     :members:
     :undoc-members:
     :show-inheritance:
-

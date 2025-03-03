@@ -19,26 +19,27 @@ Test engine.
 
 """
 
-import unittest
-import numpy as np
 import copy
 import time
-import scipy as sp
+import unittest
 
-from climada.engine import impact_data as im_d
-from climada.engine.unsequa import InputVar, CalcCostBenefit
-from climada.entity.entity_def import Entity
-from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
-from climada.hazard import Hazard
+import numpy as np
+import scipy as sp
+from tables.exceptions import HDF5ExtError
+
 from climada import CONFIG
+from climada.engine import impact_data as im_d
+from climada.engine.test.test_impact import dummy_impact
+from climada.engine.unsequa import CalcCostBenefit, InputVar
+from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
+from climada.entity.entity_def import Entity
+from climada.hazard import Hazard
 from climada.util.constants import (
+    ENT_DEMO_FUTURE,
+    ENT_DEMO_TODAY,
     EXP_DEMO_H5,
     HAZ_DEMO_H5,
-    ENT_DEMO_TODAY,
-    ENT_DEMO_FUTURE,
 )
-
-from tables.exceptions import HDF5ExtError
 
 DATA_DIR = CONFIG.engine.test_data.dir()
 EMDAT_TEST_CSV = DATA_DIR.joinpath("emdat_testdata_BGD_USA_1970-2017.csv")
@@ -66,7 +67,7 @@ def exp_dem(x_exp=1, exp=None):
         except HDF5ExtError:
             time.sleep(0.1)
     exp_tmp = exp.copy(deep=True)
-    exp_tmp.gdf.value *= x_exp
+    exp_tmp.gdf["value"] *= x_exp
     return exp_tmp
 
 
@@ -152,8 +153,8 @@ class TestEmdatProcessing(unittest.TestCase):
         )
 
         self.assertEqual(36, df.size)
-        self.assertAlmostEqual(df.impact.max(), 15150000000.0)
-        self.assertAlmostEqual(df.impact_scaled.min(), 10939000.0)
+        self.assertAlmostEqual(df["impact"].max(), 15150000000.0)
+        self.assertAlmostEqual(df["impact_scaled"].min(), 10939000.0)
         self.assertEqual(df["year"][5], 2017)
         self.assertEqual(df["reference_year"].max(), 2000)
         self.assertIn("USA", list(df["ISO"]))

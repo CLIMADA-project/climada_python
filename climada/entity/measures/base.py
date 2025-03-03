@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Measure class.
 """
 
-__all__ = ['Measure']
+__all__ = ["Measure"]
 
 import copy
 import logging
@@ -30,20 +30,21 @@ import numpy as np
 import pandas as pd
 from geopandas import GeoDataFrame
 
-from climada.entity.exposures.base import Exposures, INDICATOR_IMPF, INDICATOR_CENTR
-from climada.hazard.base import Hazard
 import climada.util.checker as u_check
+from climada.entity.exposures.base import INDICATOR_CENTR, INDICATOR_IMPF, Exposures
+from climada.hazard.base import Hazard
 
 LOGGER = logging.getLogger(__name__)
 
 IMPF_ID_FACT = 1000
 """Factor internally used as id for impact functions when region selected."""
 
-NULL_STR = 'nil'
+NULL_STR = "nil"
 """String considered as no path in measures exposures_set and hazard_set or
 no string in imp_fun_map"""
 
-class Measure():
+
+class Measure:
     """
     Contains the definition of one measure.
 
@@ -99,7 +100,7 @@ class Measure():
         risk_transf_attach: float = 0,
         risk_transf_cover: float = 0,
         risk_transf_cost_factor: float = 1,
-        color_rgb: Optional[np.ndarray] = None
+        color_rgb: Optional[np.ndarray] = None,
     ):
         """Initialize a Measure object with given values.
 
@@ -173,10 +174,10 @@ class Measure():
         ------
         ValueError
         """
-        u_check.size([3, 4], self.color_rgb, 'Measure.color_rgb')
-        u_check.size(2, self.hazard_inten_imp, 'Measure.hazard_inten_imp')
-        u_check.size(2, self.mdd_impact, 'Measure.mdd_impact')
-        u_check.size(2, self.paa_impact, 'Measure.paa_impact')
+        u_check.size([3, 4], self.color_rgb, "Measure.color_rgb")
+        u_check.size(2, self.hazard_inten_imp, "Measure.hazard_inten_imp")
+        u_check.size(2, self.mdd_impact, "Measure.mdd_impact")
+        u_check.size(2, self.paa_impact, "Measure.paa_impact")
 
     def calc_impact(self, exposures, imp_fun_set, hazard, assign_centroids=True):
         """
@@ -240,7 +241,8 @@ class Measure():
         new_haz = self._cutoff_hazard_damage(new_exp, new_impfs, new_haz)
         # apply all previous changes only to the selected exposures
         new_exp, new_impfs, new_haz = self._filter_exposures(
-            exposures, imp_fun_set, hazard, new_exp, new_impfs, new_haz)
+            exposures, imp_fun_set, hazard, new_exp, new_impfs, new_haz
+        )
 
         return new_exp, new_impfs, new_haz
 
@@ -260,9 +262,13 @@ class Measure():
         -------
         climada.engine.Impact
         """
-        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
-        imp = ImpactCalc(new_exp, new_impfs, new_haz)\
-              .impact(save_mat=False, assign_centroids=assign_centroids)
+        from climada.engine.impact_calc import (
+            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        )
+
+        imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
+            save_mat=False, assign_centroids=assign_centroids
+        )
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
     def _change_all_hazard(self, hazard):
@@ -282,7 +288,7 @@ class Measure():
         if self.hazard_set == NULL_STR:
             return hazard
 
-        LOGGER.debug('Setting new hazard %s', self.hazard_set)
+        LOGGER.debug("Setting new hazard %s", self.hazard_set)
         new_haz = Hazard.from_hdf5(self.hazard_set)
         new_haz.check()
         return new_haz
@@ -305,21 +311,24 @@ class Measure():
             return exposures
 
         if isinstance(self.exposures_set, (str, Path)):
-            LOGGER.debug('Setting new exposures %s', self.exposures_set)
+            LOGGER.debug("Setting new exposures %s", self.exposures_set)
             new_exp = Exposures.from_hdf5(self.exposures_set)
             new_exp.check()
         elif isinstance(self.exposures_set, Exposures):
-            LOGGER.debug('Setting new exposures. ')
+            LOGGER.debug("Setting new exposures. ")
             new_exp = self.exposures_set.copy(deep=True)
             new_exp.check()
         else:
-            raise ValueError(f'{self.exposures_set} is neither a string nor an Exposures object')
+            raise ValueError(
+                f"{self.exposures_set} is neither a string nor an Exposures object"
+            )
 
-        if not np.array_equal(np.unique(exposures.gdf.latitude.values),
-                              np.unique(new_exp.gdf.latitude.values)) or \
-        not np.array_equal(np.unique(exposures.gdf.longitude.values),
-                           np.unique(new_exp.gdf.longitude.values)):
-            LOGGER.warning('Exposures locations have changed.')
+        if not np.array_equal(
+            np.unique(exposures.latitude), np.unique(new_exp.latitude)
+        ) or not np.array_equal(
+            np.unique(exposures.longitude), np.unique(new_exp.longitude)
+        ):
+            LOGGER.warning("Exposures locations have changed.")
 
         return new_exp
 
@@ -340,10 +349,10 @@ class Measure():
         if self.imp_fun_map == NULL_STR:
             return exposures
 
-        LOGGER.debug('Setting new exposures impact functions%s', self.imp_fun_map)
+        LOGGER.debug("Setting new exposures impact functions%s", self.imp_fun_map)
         new_exp = exposures.copy(deep=True)
-        from_id = int(self.imp_fun_map[0:self.imp_fun_map.find('to')])
-        to_id = int(self.imp_fun_map[self.imp_fun_map.find('to') + 2:])
+        from_id = int(self.imp_fun_map[0 : self.imp_fun_map.find("to")])
+        to_id = int(self.imp_fun_map[self.imp_fun_map.find("to") + 2 :])
         try:
             exp_change = np.argwhere(
                 new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id
@@ -371,22 +380,29 @@ class Measure():
             ImpactFuncSet with measure applied to each impact function
             according to the defined hazard type
         """
-        if self.hazard_inten_imp == (1, 0) and self.mdd_impact == (1, 0)\
-        and self.paa_impact == (1, 0):
+        if (
+            self.hazard_inten_imp == (1, 0)
+            and self.mdd_impact == (1, 0)
+            and self.paa_impact == (1, 0)
+        ):
             return imp_set
 
         new_imp_set = copy.deepcopy(imp_set)
         for imp_fun in new_imp_set.get_func(self.haz_type):
-            LOGGER.debug('Transforming impact functions.')
+            LOGGER.debug("Transforming impact functions.")
             imp_fun.intensity = np.maximum(
-                imp_fun.intensity * self.hazard_inten_imp[0] - self.hazard_inten_imp[1], 0.0)
+                imp_fun.intensity * self.hazard_inten_imp[0] - self.hazard_inten_imp[1],
+                0.0,
+            )
             imp_fun.mdd = np.maximum(
-                imp_fun.mdd * self.mdd_impact[0] + self.mdd_impact[1], 0.0)
+                imp_fun.mdd * self.mdd_impact[0] + self.mdd_impact[1], 0.0
+            )
             imp_fun.paa = np.maximum(
-                imp_fun.paa * self.paa_impact[0] + self.paa_impact[1], 0.0)
+                imp_fun.paa * self.paa_impact[0] + self.paa_impact[1], 0.0
+            )
 
         if not new_imp_set.size():
-            LOGGER.info('No impact function of hazard %s found.', self.haz_type)
+            LOGGER.info("No impact function of hazard %s found.", self.haz_type)
 
         return new_imp_set
 
@@ -415,31 +431,39 @@ class Measure():
         if self.exp_region_id:
             # compute impact only in selected region
             in_reg = np.logical_or.reduce(
-                [exposures.gdf.region_id.values == reg for reg in self.exp_region_id]
+                [exposures.region_id == reg for reg in self.exp_region_id]
             )
             exp_imp = Exposures(exposures.gdf[in_reg], crs=exposures.crs)
         else:
             exp_imp = exposures
 
-        from climada.engine.impact_calc import ImpactCalc  # pylint: disable=import-outside-toplevel
-        imp = ImpactCalc(exp_imp, impf_set, hazard)\
-              .impact(assign_centroids=hazard.centr_exp_col not in exp_imp.gdf)
+        from climada.engine.impact_calc import (
+            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        )
 
-        LOGGER.debug('Cutting events whose damage have a frequency > %s.',
-                     self.hazard_freq_cutoff)
+        imp = ImpactCalc(exp_imp, impf_set, hazard).impact(
+            assign_centroids=hazard.centr_exp_col not in exp_imp.gdf
+        )
+
+        LOGGER.debug(
+            "Cutting events whose damage have a frequency > %s.",
+            self.hazard_freq_cutoff,
+        )
         new_haz = copy.deepcopy(hazard)
         sort_idxs = np.argsort(imp.at_event)[::-1]
         exceed_freq = np.cumsum(imp.frequency[sort_idxs])
         cutoff = exceed_freq > self.hazard_freq_cutoff
         sel_haz = sort_idxs[cutoff]
         for row in sel_haz:
-            new_haz.intensity.data[new_haz.intensity.indptr[row]:
-                                   new_haz.intensity.indptr[row + 1]] = 0
+            new_haz.intensity.data[
+                new_haz.intensity.indptr[row] : new_haz.intensity.indptr[row + 1]
+            ] = 0
         new_haz.intensity.eliminate_zeros()
         return new_haz
 
-    def _filter_exposures(self, exposures, imp_set, hazard, new_exp, new_impfs,
-                          new_haz):
+    def _filter_exposures(
+        self, exposures, imp_set, hazard, new_exp, new_impfs, new_haz
+    ):
         """
         Incorporate changes of new elements to previous ones only for the
         selected exp_region_id. If exp_region_id is [], all new changes
@@ -479,38 +503,49 @@ class Measure():
             fun_ids = list(new_impfs.get_func()[self.haz_type].keys())
             for key in fun_ids:
                 new_impfs.get_func()[self.haz_type][key].id = key + IMPF_ID_FACT
-                new_impfs.get_func()[self.haz_type][key + IMPF_ID_FACT] = \
-                    new_impfs.get_func()[self.haz_type][key]
+                new_impfs.get_func()[self.haz_type][
+                    key + IMPF_ID_FACT
+                ] = new_impfs.get_func()[self.haz_type][key]
             try:
                 new_exp.gdf[INDICATOR_IMPF + self.haz_type] += IMPF_ID_FACT
             except KeyError:
                 new_exp.gdf[INDICATOR_IMPF] += IMPF_ID_FACT
             # collect old impact functions as well (used by exposures)
-            new_impfs.get_func()[self.haz_type].update(imp_set.get_func()[self.haz_type])
+            new_impfs.get_func()[self.haz_type].update(
+                imp_set.get_func()[self.haz_type]
+            )
 
         # get the indices for changing and inert regions
-        chg_reg = exposures.gdf.region_id.isin(self.exp_region_id)
+        chg_reg = exposures.gdf["region_id"].isin(self.exp_region_id)
         no_chg_reg = ~chg_reg
 
-        LOGGER.debug('Number of changed exposures: %s', chg_reg.sum())
+        LOGGER.debug("Number of changed exposures: %s", chg_reg.sum())
 
         # concatenate previous and new exposures
         new_exp.set_gdf(
             GeoDataFrame(
-                pd.concat([
-                    exposures.gdf[no_chg_reg],  # old values for inert regions
-                    new_exp.gdf[chg_reg]        # new values for changing regions
-                ]).loc[exposures.gdf.index,:],  # re-establish old order
+                pd.concat(
+                    [
+                        exposures.gdf[no_chg_reg],  # old values for inert regions
+                        new_exp.gdf[chg_reg],  # new values for changing regions
+                    ]
+                ).loc[
+                    exposures.gdf.index, :
+                ],  # re-establish old order
             ),
-            crs=exposures.crs
+            crs=exposures.crs,
         )
 
         # set missing values of centr_
-        if INDICATOR_CENTR + self.haz_type in new_exp.gdf.columns \
-            and np.isnan(new_exp.gdf[INDICATOR_CENTR + self.haz_type].values).any():
+        if (
+            INDICATOR_CENTR + self.haz_type in new_exp.gdf.columns
+            and np.isnan(new_exp.gdf[INDICATOR_CENTR + self.haz_type].values).any()
+        ):
             new_exp.gdf.drop(columns=INDICATOR_CENTR + self.haz_type, inplace=True)
-        elif INDICATOR_CENTR in new_exp.gdf.columns \
-            and np.isnan(new_exp.gdf[INDICATOR_CENTR].values).any():
+        elif (
+            INDICATOR_CENTR in new_exp.gdf.columns
+            and np.isnan(new_exp.gdf[INDICATOR_CENTR].values).any()
+        ):
             new_exp.gdf.drop(columns=INDICATOR_CENTR, inplace=True)
 
         # put hazard intensities outside region to previous intensities

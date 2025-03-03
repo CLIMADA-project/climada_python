@@ -18,27 +18,28 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define nightlight reader and cutting functions.
 """
+
 import glob
+import gzip
+import logging
+import pickle
 import shutil
 import tarfile
-import gzip
-import pickle
-import logging
 from pathlib import Path
-import rasterio
 
-import numpy as np
-import scipy.sparse as sparse
 import matplotlib.pyplot as plt
+import numpy as np
+import rasterio
+import scipy.sparse as sparse
 from osgeo import gdal
 from PIL import Image
 from shapefile import Shape
 
+from climada import CONFIG
 from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
 from climada.util.save import save
-from climada import CONFIG
 
 Image.MAX_IMAGE_PIXELS = 1e9
 
@@ -56,18 +57,20 @@ NASA_TILE_SIZE = (21600, 21600)
 NOAA_BORDER = (-180, -65, 180, 75)
 """NOAA nightlights border (min_lon, min_lat, max_lon, max_lat)"""
 
-BM_FILENAMES = ['BlackMarble_%i_A1_geo_gray.tif',
-                'BlackMarble_%i_A2_geo_gray.tif',
-                'BlackMarble_%i_B1_geo_gray.tif',
-                'BlackMarble_%i_B2_geo_gray.tif',
-                'BlackMarble_%i_C1_geo_gray.tif',
-                'BlackMarble_%i_C2_geo_gray.tif',
-                'BlackMarble_%i_D1_geo_gray.tif',
-                'BlackMarble_%i_D2_geo_gray.tif'
-               ]
+BM_FILENAMES = [
+    "BlackMarble_%i_A1_geo_gray.tif",
+    "BlackMarble_%i_A2_geo_gray.tif",
+    "BlackMarble_%i_B1_geo_gray.tif",
+    "BlackMarble_%i_B2_geo_gray.tif",
+    "BlackMarble_%i_C1_geo_gray.tif",
+    "BlackMarble_%i_C2_geo_gray.tif",
+    "BlackMarble_%i_D1_geo_gray.tif",
+    "BlackMarble_%i_D2_geo_gray.tif",
+]
 """Nightlight NASA files which generate the whole earth when put together."""
 
-def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
+
+def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype="float32"):
     """Read nightlight data from NASA BlackMarble tiles
     cropped to given shape(s) and combine arrays from each tile.
 
@@ -107,62 +110,73 @@ def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype='float32'):
         bounds = geometry.bounds
 
     # get years available in BlackMarble data from CONFIG and convert to array:
-    years_available = [year.int() for year in \
-                       CONFIG.exposures.litpop.nightlights.blackmarble_years.list()
-                       ]
+    years_available = [
+        year.int()
+        for year in CONFIG.exposures.litpop.nightlights.blackmarble_years.list()
+    ]
     # get year closest to year with BlackMarble data available:
     year = min(years_available, key=lambda x: abs(x - year))
     # determin black marble tiles with coordinates containing the bounds:
     req_files = get_required_nl_files(bounds)
     # check wether required files exist locally:
-    files_exist = check_nl_local_file_exists(required_files=req_files,
-                                             check_path=data_dir, year=year)
+    files_exist = check_nl_local_file_exists(
+        required_files=req_files, check_path=data_dir, year=year
+    )
     # download data that is missing:
     download_nl_files(req_files, files_exist, data_dir, year)
     # convert `req_files` to sorted list of indices:
-    req_files = np.where(req_files ==1)[0]
+    req_files = np.where(req_files == 1)[0]
     # init empty lists for tiles depending on position in global grid:
-    results_array_north = list() # tiles A1, B1, C1, D1 (Nothern Hemisphere)
-    results_array_south = list() # tiles A2, B2, C2, D2 (Southern Hemisphere)
+    results_array_north = list()  # tiles A1, B1, C1, D1 (Nothern Hemisphere)
+    results_array_south = list()  # tiles A2, B2, C2, D2 (Southern Hemisphere)
 
     # loop through required files, load and crop data for each:
     for idx, i_file in enumerate(req_files):
         # read cropped data from  source file (src) to np.ndarray:
-        out_image, meta_tmp = load_nasa_nl_shape_single_tile(geometry,
-                                        data_dir / (BM_FILENAMES[i_file] %(year)))
+        out_image, meta_tmp = load_nasa_nl_shape_single_tile(
+            geometry, data_dir / (BM_FILENAMES[i_file] % (year))
+        )
         # sort indicies to northenr and southern hemisphere:
-        if i_file in [0,2,4,6]: # indicies of northern hemisphere files
+        if i_file in [0, 2, 4, 6]:  # indicies of northern hemisphere files
             results_array_north.append(out_image)
-        elif i_file in [1,3,5,7]: # indicies of southern hemisphere files
+        elif i_file in [1, 3, 5, 7]:  # indicies of southern hemisphere files
             results_array_south.append(out_image)
 
         # from first (top left) of tiles, meta is initiated, incl. origin:
         if idx == 0:
             meta = meta_tmp
             # set correct CRS from local tile's CRS to global WGS 84:
-            meta.update({"crs": rasterio.crs.CRS.from_epsg(4326),
-                         "dtype": dtype})
-            if len(req_files) == 1: # only one tile required:
+            meta.update({"crs": rasterio.crs.CRS.from_epsg(4326), "dtype": dtype})
+            if len(req_files) == 1:  # only one tile required:
                 return np.array(out_image, dtype=dtype), meta
     # Else, combine data from multiple input files (BlackMarble tiles) -
     # concatenate arrays from west to east and from north to south:
     del out_image
-    if results_array_north: # northern hemisphere west to east
+    if results_array_north:  # northern hemisphere west to east
         results_array_north = np.concatenate(results_array_north, axis=1)
-    if results_array_south: # southern hemisphere west to east
+    if results_array_south:  # southern hemisphere west to east
         results_array_south = np.concatenate(results_array_south, axis=1)
-    if isinstance(results_array_north, np.ndarray) and isinstance(results_array_south, np.ndarray):
+    if isinstance(results_array_north, np.ndarray) and isinstance(
+        results_array_south, np.ndarray
+    ):
         # north to south if both hemispheres are involved
-        results_array_north = np.concatenate([results_array_north, results_array_south], axis=0)
-    elif isinstance(results_array_south, np.ndarray): # only southern hemisphere
+        results_array_north = np.concatenate(
+            [results_array_north, results_array_south], axis=0
+        )
+    elif isinstance(results_array_south, np.ndarray):  # only southern hemisphere
         results_array_north = results_array_south
     del results_array_south
 
     # update number of elements per axis in meta dictionary:
-    meta.update({"height": results_array_north.shape[0],
-                 "width": results_array_north.shape[1],
-                 "dtype": dtype})
+    meta.update(
+        {
+            "height": results_array_north.shape[0],
+            "width": results_array_north.shape[1],
+            "dtype": dtype,
+        }
+    )
     return np.array(results_array_north, dtype=dtype), meta
+
 
 def get_required_nl_files(bounds):
     """Determines which of the satellite pictures are necessary for
@@ -186,16 +200,22 @@ def get_required_nl_files(bounds):
     """
     # check if bounds are valid:
     if (np.size(bounds) != 4) or (bounds[0] > bounds[2]) or (bounds[1] > bounds[3]):
-        raise ValueError('Invalid bounds supplied. `bounds` must be tuple'+
-                         ' with (min_lon, min_lat, max_lon, max_lat).')
+        raise ValueError(
+            "Invalid bounds supplied. `bounds` must be tuple"
+            + " with (min_lon, min_lat, max_lon, max_lat)."
+        )
     min_lon, min_lat, max_lon, max_lat = bounds
 
     # longitude first. The width of all tiles is 90 degrees
     tile_width = 90
-    req_files = np.zeros(np.count_nonzero(BM_FILENAMES),)
+    req_files = np.zeros(
+        np.count_nonzero(BM_FILENAMES),
+    )
 
     # determine the staring tile
-    first_tile_lon = min(np.floor((min_lon - (-180)) / tile_width), 3)  # "normalise" to zero
+    first_tile_lon = min(
+        np.floor((min_lon - (-180)) / tile_width), 3
+    )  # "normalise" to zero
     last_tile_lon = min(np.floor((max_lon - (-180)) / tile_width), 3)
 
     # Now latitude. The height of all tiles is the same as the height.
@@ -213,8 +233,8 @@ def get_required_nl_files(bounds):
             continue
     return req_files
 
-def check_nl_local_file_exists(required_files=None, check_path=SYSTEM_DIR,
-                               year=2016):
+
+def check_nl_local_file_exists(required_files=None, check_path=SYSTEM_DIR, year=2016):
     """Checks if BM Satellite files are avaialbe and returns a vector
     denoting the missing files.
 
@@ -237,38 +257,60 @@ def check_nl_local_file_exists(required_files=None, check_path=SYSTEM_DIR,
         Boolean array that denotes if the required files exist.
     """
     if required_files is None:
-        required_files = np.ones(len(BM_FILENAMES),)
+        required_files = np.ones(
+            len(BM_FILENAMES),
+        )
     if np.size(required_files) < np.count_nonzero(BM_FILENAMES):
-        required_files = np.ones(np.count_nonzero(BM_FILENAMES),)
-        LOGGER.warning('The parameter \'required_files\' was too short and '
-                       'is ignored.')
+        required_files = np.ones(
+            np.count_nonzero(BM_FILENAMES),
+        )
+        LOGGER.warning(
+            "The parameter 'required_files' was too short and " "is ignored."
+        )
     if isinstance(check_path, str):
         check_path = Path(check_path)
     if not check_path.is_dir():
-        raise ValueError(f'The given path does not exist: {check_path}')
-    files_exist = np.zeros(np.count_nonzero(BM_FILENAMES),)
+        raise ValueError(f"The given path does not exist: {check_path}")
+    files_exist = np.zeros(
+        np.count_nonzero(BM_FILENAMES),
+    )
     for num_check, name_check in enumerate(BM_FILENAMES):
         if required_files[num_check] == 0:
             continue
-        curr_file = check_path.joinpath(name_check %(year))
+        curr_file = check_path.joinpath(name_check % (year))
         if curr_file.is_file():
             files_exist[num_check] = 1
 
     if sum(files_exist) == sum(required_files):
-        LOGGER.debug('Found all required satellite data (%s files) in folder %s',
-                     int(sum(required_files)), check_path)
+        LOGGER.debug(
+            "Found all required satellite data (%s files) in folder %s",
+            int(sum(required_files)),
+            check_path,
+        )
     elif sum(files_exist) == 0:
-        LOGGER.info('No satellite files found locally in %s', check_path)
+        LOGGER.info("No satellite files found locally in %s", check_path)
     else:
-        LOGGER.debug('Not all satellite files available. '
-                     'Found %d out of %d required files in %s',
-                     int(sum(files_exist)), int(sum(required_files)), check_path)
+        LOGGER.debug(
+            "Not all satellite files available. "
+            "Found %d out of %d required files in %s",
+            int(sum(files_exist)),
+            int(sum(required_files)),
+            check_path,
+        )
 
     return files_exist
 
-def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
-                      files_exist=np.zeros(len(BM_FILENAMES),),
-                      dwnl_path=SYSTEM_DIR, year=2016):
+
+def download_nl_files(
+    req_files=np.ones(
+        len(BM_FILENAMES),
+    ),
+    files_exist=np.zeros(
+        len(BM_FILENAMES),
+    ),
+    dwnl_path=SYSTEM_DIR,
+    year=2016,
+):
     """Attempts to download nightlight files from NASA webpage.
 
     Parameters
@@ -297,42 +339,51 @@ def download_nl_files(req_files=np.ones(len(BM_FILENAMES),),
     """
 
     if (len(req_files) != len(files_exist)) or (len(req_files) != len(BM_FILENAMES)):
-        raise ValueError('The given arguments are invalid. req_files and '
-                         'files_exist must both be as long as there are files to download'
-                         ' (' + str(len(BM_FILENAMES)) + ').')
+        raise ValueError(
+            "The given arguments are invalid. req_files and "
+            "files_exist must both be as long as there are files to download"
+            " (" + str(len(BM_FILENAMES)) + ")."
+        )
     if not Path(dwnl_path).is_dir():
-        raise ValueError(f'The folder {dwnl_path} does not exist. Operation aborted.')
+        raise ValueError(f"The folder {dwnl_path} does not exist. Operation aborted.")
     if np.all(req_files == files_exist):
-        LOGGER.debug('All required files already exist. No downloads necessary.')
+        LOGGER.debug("All required files already exist. No downloads necessary.")
         return dwnl_path
     try:
         for num_files in range(0, np.count_nonzero(BM_FILENAMES)):
             if req_files[num_files] == 0 or files_exist[num_files] == 1:
-                continue # file already available or not required
+                continue  # file already available or not required
             path_check = False
             # loop through different possible URLs defined in CONFIG:
             value_err = None
             for url in CONFIG.exposures.litpop.nightlights.nasa_sites.list():
-                try: # control for ValueError due to wrong URL
-                    curr_file = url.str() + BM_FILENAMES[num_files] %(year)
-                    LOGGER.info('Attempting to download file from %s', curr_file)
+                try:  # control for ValueError due to wrong URL
+                    curr_file = url.str() + BM_FILENAMES[num_files] % (year)
+                    LOGGER.info("Attempting to download file from %s", curr_file)
                     path_check = download_file(curr_file, download_dir=dwnl_path)
-                    break # leave loop if sucessful
+                    break  # leave loop if sucessful
                 except ValueError as err:
                     value_err = err
-            if path_check: # download succesful
+            if path_check:  # download succesful
                 continue
             if value_err:
-                raise ValueError("Download failed,"
-                                 " check URLs inCONFIG.exposures.litpop.nightlights.nasa_sites!\n"
-                                 f" Last error message:\n {value_err.args[0]}")
+                raise ValueError(
+                    "Download failed,"
+                    " check URLs inCONFIG.exposures.litpop.nightlights.nasa_sites!\n"
+                    f" Last error message:\n {value_err.args[0]}"
+                )
             else:
-                raise ValueError("Download failed, file not found and no nasa sites configured,"
-                                 " check URLs in CONFIG.exposures.litpop.nightlights.nasa_sites!")
+                raise ValueError(
+                    "Download failed, file not found and no nasa sites configured,"
+                    " check URLs in CONFIG.exposures.litpop.nightlights.nasa_sites!"
+                )
     except Exception as exc:
-        raise RuntimeError('Download failed. Please check the network '
-            'connection and whether filenames are still valid.') from exc
+        raise RuntimeError(
+            "Download failed. Please check the network "
+            "connection and whether filenames are still valid."
+        ) from exc
     return dwnl_path
+
 
 def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
     """Read nightlight data from single NASA BlackMarble tile and crop to given shape.
@@ -356,19 +407,26 @@ def load_nasa_nl_shape_single_tile(geometry, path, layer=0):
         rasterio meta
     """
     # open tif source file with raterio:
-    with rasterio.open(path, 'r') as src:
+    with rasterio.open(path, "r") as src:
         # read cropped data from  source file (src) to np.ndarray:
         out_image, transform = rasterio.mask.mask(src, [geometry], crop=True)
-        LOGGER.debug('Read cropped %s as np.ndarray.', path.name)
+        LOGGER.debug("Read cropped %s as np.ndarray.", path.name)
         if out_image.shape[0] < layer:
-            raise IndexError(f"{path.name} has only {out_image.shape[0]} layers,"
-                             f" layer {layer} can't be accessed.")
+            raise IndexError(
+                f"{path.name} has only {out_image.shape[0]} layers,"
+                f" layer {layer} can't be accessed."
+            )
         meta = src.meta
-        meta.update({"driver": "GTiff",
-                    "height": out_image.shape[1],
-                    "width": out_image.shape[2],
-                    "transform": transform})
-    return out_image[layer,:,:], meta
+        meta.update(
+            {
+                "driver": "GTiff",
+                "height": out_image.shape[1],
+                "width": out_image.shape[2],
+                "transform": transform,
+            }
+        )
+    return out_image[layer, :, :], meta
+
 
 def load_nightlight_nasa(bounds, req_files, year):
     """Get nightlight from NASA repository that contain input boundary.
@@ -410,16 +468,16 @@ def load_nightlight_nasa(bounds, req_files, year):
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
         # pylint: disable=unsubscriptable-object
-        im_nl, _ = read_bm_file(SYSTEM_DIR, fname %(year))
+        im_nl, _ = read_bm_file(SYSTEM_DIR, fname % (year))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
-        im_nl = im_nl[extent[0, 0]:extent[1, 0] + 1, extent[0, 1]:extent[1, 1] + 1]
+        im_nl = im_nl[extent[0, 0] : extent[1, 0] + 1, extent[0, 1] : extent[1, 1] + 1]
         nightlight.append((tile_coord, im_nl))
 
     tile_coords = np.array([n[0] for n in nightlight])
     shape = tile_coords.max(axis=0) - tile_coords.min(axis=0) + 1
-    nightlight = np.array([n[1] for n in nightlight]).reshape(shape, order='F')
-    nightlight = sparse.bmat(np.flipud(nightlight), format='csr')
+    nightlight = np.array([n[1] for n in nightlight]).reshape(shape, order="F")
+    nightlight = sparse.bmat(np.flipud(nightlight), format="csr")
 
     coord_nl = np.vstack([coord_min, coord_h]).T
     coord_nl[:, 0] += global_idx[0, :] * coord_h[:]
@@ -447,12 +505,15 @@ def read_bm_file(bm_path, filename):
         Additional info from which coordinates can be calculated.
     """
     path = Path(bm_path, filename)
-    LOGGER.debug('Importing%s.', path)
+    LOGGER.debug("Importing%s.", path)
     if not path.exists():
-        raise FileNotFoundError('Invalid path: check that the path to BlackMarble file is correct.')
+        raise FileNotFoundError(
+            "Invalid path: check that the path to BlackMarble file is correct."
+        )
     curr_file = gdal.Open(str(path))
     arr1 = curr_file.GetRasterBand(1).ReadAsArray()
     return arr1, curr_file
+
 
 def unzip_tif_to_py(file_gz):
     """Unzip image file, read it, flip the x axis, save values as pickle
@@ -471,8 +532,8 @@ def unzip_tif_to_py(file_gz):
     """
     LOGGER.info("Unzipping file %s.", file_gz)
     file_name = Path(Path(file_gz).stem)
-    with gzip.open(file_gz, 'rb') as f_in:
-        with file_name.open('wb') as f_out:
+    with gzip.open(file_gz, "rb") as f_in:
+        with file_name.open("wb") as f_out:
             shutil.copyfileobj(f_in, f_out)
     nightlight = sparse.csc_matrix(plt.imread(file_name))
     # flip X axis
@@ -483,6 +544,7 @@ def unzip_tif_to_py(file_gz):
     save(file_path, nightlight)
 
     return file_name, nightlight
+
 
 def untar_noaa_stable_nightlight(f_tar_ini):
     """Move input tar file to SYSTEM_DIR and extract stable light file.
@@ -503,14 +565,22 @@ def untar_noaa_stable_nightlight(f_tar_ini):
     shutil.move(f_tar_ini, f_tar_dest)
     # extract stable_lights.avg_vis.tif
     with tarfile.open(f_tar_ini) as tar_file:
-        extract_name = [name for name in tar_file.getnames()
-                        if name.endswith('stable_lights.avg_vis.tif.gz')]
+        extract_name = [
+            name
+            for name in tar_file.getnames()
+            if name.endswith("stable_lights.avg_vis.tif.gz")
+        ]
         if len(extract_name) == 0:
-            raise ValueError('No stable light intensities for selected year and satellite '
-                            f'in file {f_tar_ini}')
+            raise ValueError(
+                "No stable light intensities for selected year and satellite "
+                f"in file {f_tar_ini}"
+            )
         if len(extract_name) > 1:
-            LOGGER.warning('found more than one potential intensity file in %s %s',
-                           f_tar_ini, extract_name)
+            LOGGER.warning(
+                "found more than one potential intensity file in %s %s",
+                f_tar_ini,
+                extract_name,
+            )
         tar_file.extract(extract_name[0], SYSTEM_DIR)
     return SYSTEM_DIR.joinpath(extract_name[0])
 
@@ -536,15 +606,17 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
     # NOAA's URL used to retrieve nightlight satellite images:
     noaa_url = CONFIG.exposures.litpop.nightlights.noaa_url.str()
     if sat_name is None:
-        fn_light = str(SYSTEM_DIR.joinpath('*' +
-                             str(ref_year) + '*.stable_lights.avg_vis'))
+        fn_light = str(
+            SYSTEM_DIR.joinpath("*" + str(ref_year) + "*.stable_lights.avg_vis")
+        )
     else:
-        fn_light = str(SYSTEM_DIR.joinpath(sat_name +
-                             str(ref_year) + '*.stable_lights.avg_vis'))
+        fn_light = str(
+            SYSTEM_DIR.joinpath(sat_name + str(ref_year) + "*.stable_lights.avg_vis")
+        )
     # check if file exists in SYSTEM_DIR, download if not
     if glob.glob(fn_light + ".p"):
         fn_light = sorted(glob.glob(fn_light + ".p"))[0]
-        with open(fn_light, 'rb') as f_nl:
+        with open(fn_light, "rb") as f_nl:
             nightlight = pickle.load(f_nl)
     elif glob.glob(fn_light + ".tif.gz"):
         fn_light = sorted(glob.glob(fn_light + ".tif.gz"))[0]
@@ -554,22 +626,26 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
         if sat_name is None:
             ini_pre, end_pre = 18, 9
             for pre_i in np.arange(ini_pre, end_pre, -1):
-                url = noaa_url + 'F' + str(pre_i) + str(ref_year) + '.v4.tar'
+                url = noaa_url + "F" + str(pre_i) + str(ref_year) + ".v4.tar"
                 try:
                     file_down = download_file(url, download_dir=SYSTEM_DIR)
                     break
                 except ValueError:
                     pass
-            if 'file_down' not in locals():
-                raise ValueError(f'Nightlight for reference year {ref_year} not available. '
-                                 'Try a different year.')
+            if "file_down" not in locals():
+                raise ValueError(
+                    f"Nightlight for reference year {ref_year} not available. "
+                    "Try a different year."
+                )
         else:
-            url = noaa_url + sat_name + str(ref_year) + '.v4.tar'
+            url = noaa_url + sat_name + str(ref_year) + ".v4.tar"
             try:
                 file_down = download_file(url, download_dir=SYSTEM_DIR)
             except ValueError as err:
-                raise ValueError(f'Nightlight intensities for year {ref_year} and satellite'
-                                 f' {sat_name} do not exist.') from err
+                raise ValueError(
+                    f"Nightlight intensities for year {ref_year} and satellite"
+                    f" {sat_name} do not exist."
+                ) from err
         fn_light = untar_noaa_stable_nightlight(file_down)
         fn_light, nightlight = unzip_tif_to_py(fn_light)
 

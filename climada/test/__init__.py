@@ -19,8 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 init test
 """
 
-from climada.util.api_client import Client
 from climada._version import __version__ as climada_version
+from climada.util.api_client import Client
 
 
 def get_test_file(ds_name, file_format=None):
@@ -46,13 +46,25 @@ def get_test_file(ds_name, file_format=None):
     # get the dataset with the highest version below (or equal to) the current climada version
     # in this way a test dataset can be updated without breaking tests on former versions
     # just make sure that the new dataset has a higher version than any previous version
-    test_ds = [ds for ds in sorted(
-        client.list_dataset_infos(name=ds_name, status='test_dataset', version='ANY'),
-        key=lambda ds: ds.version
-    ) if ds.version.strip('v') <= climada_version.strip('v')][-1]
+    test_ds = [
+        ds
+        for ds in sorted(
+            client.list_dataset_infos(
+                name=ds_name, status="test_dataset", version="ANY"
+            ),
+            key=lambda ds: ds.version,
+        )
+        if ds.version.strip("v") <= climada_version.strip("v")
+    ][-1]
     _, files = client.download_dataset(test_ds)
-    [test_file] = [fil for fil in files if fil.name in [
-        dsf.file_name
-        for dsf in test_ds.files
-        if file_format is None or dsf.file_format == file_format]]
+    [test_file] = [
+        fil
+        for fil in files
+        if fil.name
+        in [
+            dsf.file_name
+            for dsf in test_ds.files
+            if file_format is None or dsf.file_format == file_format
+        ]
+    ]
     return test_file

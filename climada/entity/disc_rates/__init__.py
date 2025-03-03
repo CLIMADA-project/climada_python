@@ -18,4 +18,5 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 init disc_rates
 """
+
 from .base import *

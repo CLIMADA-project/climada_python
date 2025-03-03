@@ -20,14 +20,15 @@ module containing functions to check variables properties.
 """
 
 __all__ = [
-    'size',
-    'shape',
-    'array_optional',
-    'array_default',
-    'prune_csr_matrix',
+    "size",
+    "shape",
+    "array_optional",
+    "array_default",
+    "prune_csr_matrix",
 ]
 
 import logging
+
 import numpy as np
 import scipy.sparse as sparse
 
@@ -58,12 +59,16 @@ def check_obligatories(var_dict, var_obl, name_prefix, n_size, n_row, n_col):
     """
     for var_name, var_val in var_dict.items():
         if var_name in var_obl:
-            if (isinstance(var_val, np.ndarray) and var_val.ndim == 1) \
-               or isinstance(var_val, list):
+            if (isinstance(var_val, np.ndarray) and var_val.ndim == 1) or isinstance(
+                var_val, list
+            ):
                 size(n_size, var_val, name_prefix + var_name)
-            elif (isinstance(var_val, np.ndarray) and var_val.ndim == 2):
+            elif isinstance(var_val, np.ndarray) and var_val.ndim == 2:
                 shape(n_row, n_col, var_val, name_prefix + var_name)
-            elif isinstance(var_val, (np.ndarray, sparse.csr_matrix)) and var_val.ndim == 2:
+            elif (
+                isinstance(var_val, (np.ndarray, sparse.csr_matrix))
+                and var_val.ndim == 2
+            ):
                 shape(n_row, n_col, var_val, name_prefix + var_name)
 
 
@@ -107,9 +112,13 @@ def size(exp_len, var, var_name):
     try:
         if isinstance(exp_len, int):
             if exp_len != len(var):
-                raise ValueError(f"Invalid {var_name} size: {str(exp_len)} != {len(var)}.")
+                raise ValueError(
+                    f"Invalid {var_name} size: {str(exp_len)} != {len(var)}."
+                )
         elif len(var) not in exp_len:
-            raise ValueError(f"Invalid {var_name} size: {len(var)} not in {str(exp_len)}.")
+            raise ValueError(
+                f"Invalid {var_name} size: {len(var)} not in {str(exp_len)}."
+            )
     except TypeError as err:
         raise ValueError(f"{var_name} has wrong size.") from err
 
@@ -123,9 +132,13 @@ def shape(exp_row, exp_col, var, var_name):
     """
     try:
         if exp_row != var.shape[0]:
-            raise ValueError(f"Invalid {var_name} row size: {exp_row} != {var.shape[0]}.")
+            raise ValueError(
+                f"Invalid {var_name} row size: {exp_row} != {var.shape[0]}."
+            )
         if exp_col != var.shape[1]:
-            raise ValueError(f"Invalid {var_name} column size: {exp_col} != {var.shape[1]}.")
+            raise ValueError(
+                f"Invalid {var_name} column size: {exp_col} != {var.shape[1]}."
+            )
     except TypeError as err:
         raise ValueError("%s has wrong dimensions." % var_name) from err
 
@@ -181,6 +194,7 @@ def array_default(exp_len, var, var_name, def_val):
     else:
         size(exp_len, var, var_name)
     return res
+
 
 def prune_csr_matrix(matrix: sparse.csr_matrix):
     """Ensure that the matrix is in the "canonical format".

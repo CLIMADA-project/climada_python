@@ -5,7 +5,8 @@ mamba env update -n climada_env -f ~/jobs/petals_install_env/workspace/requireme
 source activate climada_env
 
 REGTESTENV=~/jobs/petals_compatibility/petals_env
-BRANCH=`git name-rev --name-only HEAD | cut -f 3- -d /`
+BRANCH=$1
+echo ::: $REGTESTENV/$BRANCH
 PETALS_DIR=`test -e $REGTESTENV/$BRANCH && cat $REGTESTENV/$BRANCH || echo ~/jobs/petals_branches/branches/develop/workspace`
 
 python -m venv --system-site-packages tvenv

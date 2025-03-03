@@ -1,6 +1,6 @@
 Changes proposed in this PR:
-- 
-- 
+-
+-
 
 This PR fixes #
 
@@ -14,15 +14,15 @@ This PR fixes #
 - [ ] [Tests][testing] updated
 - [ ] [Tests][testing] passing
 - [ ] No new [linter issues][linter]
-- [ ] [Changelog](https://github.com/CLIMADA-project/climada_python/blob/develop/CHANGELOG.md) updated
+- [ ] [Changelog](https://github.com/CLIMADA-project/climada_python/blob/main/CHANGELOG.md) updated
 
 ### PR Reviewer Checklist
 
 - [ ] Read the [Contribution Guide][contrib]
-- [ ] [CLIMADA Reviewer Checklist](https://climada-python.readthedocs.io/en/latest/guide/Guide_Review.html#reviewer-checklist) passed
+- [ ] [CLIMADA Reviewer Checklist](https://climada-python.readthedocs.io/en/latest/guide/Guide_Reviewer_Checklist.html) passed
 - [ ] [Tests][testing] passing
 - [ ] No new [linter issues][linter]
 
-[contrib]: https://github.com/CLIMADA-project/climada_python/blob/develop/CONTRIBUTING.md
-[testing]: https://climada-python.readthedocs.io/en/latest/guide/Guide_Testing.html
-[linter]: https://climada-python.readthedocs.io/en/latest/guide/Guide_continuous_integration_GitHub_actions.html#static-code-analysis
+[contrib]: https://github.com/CLIMADA-project/climada_python/blob/main/CONTRIBUTING.md
+[testing]: https://climada-python.readthedocs.io/en/latest/guide/Guide_Continuous_Integration_and_Testing.html
+[linter]: https://climada-python.readthedocs.io/en/stable/guide/Guide_Continuous_Integration_and_Testing.html#3.C.--Static-Code-Analysis

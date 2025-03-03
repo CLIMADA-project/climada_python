@@ -16,4 +16,3 @@ climada\.entity\.measures\.measure\_set module
     :members:
     :undoc-members:
     :show-inheritance:
-

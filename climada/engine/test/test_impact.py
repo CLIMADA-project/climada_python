@@ -18,30 +18,30 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Test Impact class.
 """
+
+import datetime as dt
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+
+import h5py
 import numpy as np
 import numpy.testing as npt
-from scipy import sparse
-import h5py
 from pyproj import CRS
 from rasterio.crs import CRS as rCRS
-import datetime as dt
+from scipy import sparse
 
+import climada.util.coordinates as u_coord
+from climada.engine import Impact, ImpactCalc
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
-from climada.engine import Impact, ImpactCalc
-from climada.util.constants import ENT_DEMO_TODAY, DEF_CRS, DEMO_DIR, DEF_FREQ_UNIT
-import climada.util.coordinates as u_coord
-
 from climada.hazard.test.test_base import HAZ_TEST_TC
+from climada.util.constants import DEF_CRS, DEF_FREQ_UNIT, DEMO_DIR, ENT_DEMO_TODAY
 
+ENT: Entity = Entity.from_excel(ENT_DEMO_TODAY)
+HAZ: Hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
-ENT :Entity = Entity.from_excel(ENT_DEMO_TODAY)
-HAZ :Hazard = Hazard.from_hdf5(HAZ_TEST_TC)
-
-DATA_FOLDER :Path = DEMO_DIR / 'test-results'
+DATA_FOLDER: Path = DEMO_DIR / "test-results"
 DATA_FOLDER.mkdir(exist_ok=True)
 
 STR_DT = h5py.special_dtype(vlen=str)
@@ -68,16 +68,17 @@ def dummy_impact():
         haz_type="TC",
     )
 
+
 def dummy_impact_yearly():
     """Return an impact containing events in multiple years"""
     imp = dummy_impact()
 
-    years = np.arange(2010,2010+len(imp.date))
+    years = np.arange(2010, 2010 + len(imp.date))
 
     # Edit the date and frequency
-    imp.date = np.array([dt.date(year,1,1).toordinal() for year in years])
+    imp.date = np.array([dt.date(year, 1, 1).toordinal() for year in years])
     imp.frequency_unit = "1/year"
-    imp.frequency = np.ones(len(years))/len(years)
+    imp.frequency = np.ones(len(years)) / len(years)
 
     # Calculate the correct expected annual impact
     freq_mat = imp.frequency.reshape(len(imp.frequency), 1)
@@ -88,7 +89,8 @@ def dummy_impact_yearly():
 
 
 class TestImpact(unittest.TestCase):
-    """"Test initialization and more"""
+    """ "Test initialization and more"""
+
     def test_from_eih_pass(self):
         exp = ENT.exposures
         exp.assign_centroids(HAZ)
@@ -104,15 +106,14 @@ class TestImpact(unittest.TestCase):
         self.assertEqual(imp.frequency_unit, HAZ.frequency_unit)
         self.assertEqual(imp.tot_value, tot_value)
         np.testing.assert_array_almost_equal(imp.event_id, HAZ.event_id)
-        np.testing.assert_array_almost_equal(imp.event_name, HAZ.event_name)
+        np.testing.assert_array_equal(imp.event_name, HAZ.event_name)
         np.testing.assert_array_almost_equal(imp.date, HAZ.date)
         np.testing.assert_array_almost_equal(imp.frequency, HAZ.frequency)
         np.testing.assert_array_almost_equal(imp.eai_exp, fake_eai_exp)
         np.testing.assert_array_almost_equal(imp.at_event, fake_at_event)
         np.testing.assert_array_almost_equal(
-            imp.coord_exp,
-            np.stack([exp.gdf.latitude.values, exp.gdf.longitude.values], axis=1)
-            )
+            imp.coord_exp, np.stack([exp.latitude, exp.longitude], axis=1)
+        )
 
     def test_pyproj_crs(self):
         """Check if initializing with a pyproj.CRS transforms it into a string"""
@@ -125,6 +126,7 @@ class TestImpact(unittest.TestCase):
         crs = rCRS.from_epsg(4326)
         impact = Impact(crs=crs)
         self.assertEqual(impact.crs, crs.to_wkt())
+
 
 class TestImpactConcat(unittest.TestCase):
     """test Impact.concat"""
@@ -242,6 +244,7 @@ class TestImpactConcat(unittest.TestCase):
 
 class TestFreqCurve(unittest.TestCase):
     """Test exceedence frequency curve computation"""
+
     def test_ref_value_pass(self):
         """Test result against reference value"""
         imp = Impact()
@@ -257,8 +260,8 @@ class TestFreqCurve(unittest.TestCase):
         imp.at_event[7] = 0.381063674256423e9
         imp.at_event[8] = 0.569142464157450e9
         imp.at_event[9] = 0.467572545849132e9
-        imp.unit = 'USD'
-        imp.frequency_unit = '1/day'
+        imp.unit = "USD"
+        imp.frequency_unit = "1/day"
 
         ifc = imp.calc_freq_curve()
         self.assertEqual(10, len(ifc.return_per))
@@ -283,9 +286,9 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual(0.400665463736549e9, ifc.impact[2])
         self.assertEqual(0.381063674256423e9, ifc.impact[1])
         self.assertEqual(0, ifc.impact[0])
-        self.assertEqual('Exceedance frequency curve', ifc.label)
-        self.assertEqual('USD', ifc.unit)
-        self.assertEqual('1/day', ifc.frequency_unit)
+        self.assertEqual("Exceedance frequency curve", ifc.label)
+        self.assertEqual("USD", ifc.unit)
+        self.assertEqual("1/day", ifc.frequency_unit)
 
     def test_ref_value_rp_pass(self):
         """Test result against reference value with given return periods"""
@@ -302,8 +305,8 @@ class TestFreqCurve(unittest.TestCase):
         imp.at_event[7] = 0.381063674256423e9
         imp.at_event[8] = 0.569142464157450e9
         imp.at_event[9] = 0.467572545849132e9
-        imp.unit = 'USD'
-        imp.frequency_unit = '1/week'
+        imp.unit = "USD"
+        imp.frequency_unit = "1/week"
 
         ifc = imp.calc_freq_curve(np.array([100, 500, 1000]))
         self.assertEqual(3, len(ifc.return_per))
@@ -314,9 +317,10 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual(0, ifc.impact[0])
         self.assertEqual(2320408028.5695677, ifc.impact[1])
         self.assertEqual(3287314329.129928, ifc.impact[2])
-        self.assertEqual('Exceedance frequency curve', ifc.label)
-        self.assertEqual('USD', ifc.unit)
-        self.assertEqual('1/week', ifc.frequency_unit)
+        self.assertEqual("Exceedance frequency curve", ifc.label)
+        self.assertEqual("USD", ifc.unit)
+        self.assertEqual("1/week", ifc.frequency_unit)
+
 
 class TestImpactPerYear(unittest.TestCase):
     """Test calc_impact_year_set method"""
@@ -336,18 +340,32 @@ class TestImpactPerYear(unittest.TestCase):
         imp.at_event[7] = 0.381063674256423e9
         imp.at_event[8] = 0.569142464157450e9
         imp.at_event[9] = 0.467572545849132e9
-        imp.date = np.array([732801, 716160, 718313, 712468, 732802,
-                             729285, 732931, 715419, 722404, 718351])
+        imp.date = np.array(
+            [
+                732801,
+                716160,
+                718313,
+                712468,
+                732802,
+                729285,
+                732931,
+                715419,
+                722404,
+                718351,
+            ]
+        )
 
         iys_all = imp.impact_per_year()
         iys = imp.impact_per_year(all_years=False)
         iys_all_yr = imp.impact_per_year(year_range=(1975, 2000))
         iys_yr = imp.impact_per_year(all_years=False, year_range=[1975, 2000])
         iys_all_yr_1940 = imp.impact_per_year(all_years=True, year_range=[1940, 2000])
-        self.assertEqual(np.around(sum([iys[year] for year in iys])),
-                         np.around(sum(imp.at_event)))
-        self.assertEqual(sum([iys[year] for year in iys]),
-                         sum([iys_all[year] for year in iys_all]))
+        self.assertEqual(
+            np.around(sum([iys[year] for year in iys])), np.around(sum(imp.at_event))
+        )
+        self.assertEqual(
+            sum([iys[year] for year in iys]), sum([iys_all[year] for year in iys_all])
+        )
         self.assertEqual(len(iys), 7)
         self.assertEqual(len(iys_all), 57)
         self.assertIn(1951 and 1959 and 2007, iys_all)
@@ -358,8 +376,10 @@ class TestImpactPerYear(unittest.TestCase):
         # year range (yr):
         self.assertEqual(len(iys_yr), 2)
         self.assertEqual(len(iys_all_yr), 26)
-        self.assertEqual(sum([iys_yr[year] for year in iys_yr]),
-                         sum([iys_all_yr[year] for year in iys_all_yr]))
+        self.assertEqual(
+            sum([iys_yr[year] for year in iys_yr]),
+            sum([iys_all_yr[year] for year in iys_all_yr]),
+        )
         self.assertIn(1997 and 1978, iys_yr)
         self.assertFalse(2007 in iys_yr)
         self.assertFalse(1959 in iys_yr)
@@ -373,6 +393,7 @@ class TestImpactPerYear(unittest.TestCase):
         self.assertEqual(len(iys), 0)
         self.assertEqual(len(iys_all), 0)
 
+
 class TestIO(unittest.TestCase):
     """Test impact input/output methods."""
 
@@ -381,9 +402,9 @@ class TestIO(unittest.TestCase):
         # Create impact object
         num_ev = 10
         num_exp = 5
-        imp_write = Impact(haz_type='TC')
+        imp_write = Impact(haz_type="TC")
         imp_write.event_id = np.arange(num_ev)
-        imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
+        imp_write.event_name = ["event_" + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)
         imp_write.coord_exp = np.zeros((num_exp, 2))
         imp_write.coord_exp[:, 0] = 1.5
@@ -393,10 +414,10 @@ class TestIO(unittest.TestCase):
         imp_write.frequency = np.ones(num_ev) * 0.1
         imp_write.tot_value = 1000
         imp_write.aai_agg = 1001
-        imp_write.unit = 'USD'
-        imp_write.frequency_unit = '1/month'
+        imp_write.unit = "USD"
+        imp_write.frequency_unit = "1/month"
 
-        file_name = DATA_FOLDER.joinpath('test.csv')
+        file_name = DATA_FOLDER.joinpath("test.csv")
         imp_write.write_csv(file_name)
 
         imp_read = Impact.from_csv(file_name)
@@ -411,16 +432,20 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(imp_write.frequency_unit, imp_read.frequency_unit)
         self.assertEqual(
-            0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
+            0,
+            len(
+                [i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]
+            ),
+        )
 
     def test_write_read_exp_test(self):
         """Test result against reference value"""
         # Create impact object
         num_ev = 5
         num_exp = 10
-        imp_write = Impact(haz_type='TC')
+        imp_write = Impact(haz_type="TC")
         imp_write.event_id = np.arange(num_ev)
-        imp_write.event_name = ['event_' + str(num) for num in imp_write.event_id]
+        imp_write.event_name = ["event_" + str(num) for num in imp_write.event_id]
         imp_write.date = np.ones(num_ev)
         imp_write.coord_exp = np.zeros((num_exp, 2))
         imp_write.coord_exp[:, 0] = 1.5
@@ -430,10 +455,10 @@ class TestIO(unittest.TestCase):
         imp_write.frequency = np.ones(num_ev) * 0.1
         imp_write.tot_value = 1000
         imp_write.aai_agg = 1001
-        imp_write.unit = 'USD'
-        imp_write.frequency_unit = '1/month'
+        imp_write.unit = "USD"
+        imp_write.frequency_unit = "1/month"
 
-        file_name = DATA_FOLDER.joinpath('test.csv')
+        file_name = DATA_FOLDER.joinpath("test.csv")
         imp_write.write_csv(file_name)
 
         imp_read = Impact.from_csv(file_name)
@@ -448,7 +473,11 @@ class TestIO(unittest.TestCase):
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(imp_write.frequency_unit, imp_read.frequency_unit)
         self.assertEqual(
-            0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
+            0,
+            len(
+                [i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]
+            ),
+        )
         self.assertIsInstance(imp_read.crs, str)
 
     def test_excel_io(self):
@@ -459,7 +488,7 @@ class TestIO(unittest.TestCase):
         hazard = Hazard.from_hdf5(HAZ_TEST_TC)
 
         imp_write = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact()
-        file_name = DATA_FOLDER.joinpath('test.xlsx')
+        file_name = DATA_FOLDER.joinpath("test.xlsx")
         imp_write.write_excel(file_name)
 
         imp_read = Impact.from_excel(file_name)
@@ -467,15 +496,23 @@ class TestIO(unittest.TestCase):
         np.testing.assert_array_equal(imp_write.event_id, imp_read.event_id)
         np.testing.assert_array_equal(imp_write.date, imp_read.date)
         np.testing.assert_array_equal(imp_write.coord_exp, imp_read.coord_exp)
-        np.testing.assert_array_almost_equal_nulp(imp_write.eai_exp, imp_read.eai_exp, nulp=5)
-        np.testing.assert_array_almost_equal_nulp(imp_write.at_event, imp_read.at_event, nulp=5)
+        np.testing.assert_array_almost_equal_nulp(
+            imp_write.eai_exp, imp_read.eai_exp, nulp=5
+        )
+        np.testing.assert_array_almost_equal_nulp(
+            imp_write.at_event, imp_read.at_event, nulp=5
+        )
         np.testing.assert_array_equal(imp_write.frequency, imp_read.frequency)
         self.assertEqual(imp_write.tot_value, imp_read.tot_value)
         self.assertEqual(imp_write.aai_agg, imp_read.aai_agg)
         self.assertEqual(imp_write.unit, imp_read.unit)
         self.assertEqual(imp_write.frequency_unit, imp_read.frequency_unit)
         self.assertEqual(
-            0, len([i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]))
+            0,
+            len(
+                [i for i, j in zip(imp_write.event_name, imp_read.event_name) if i != j]
+            ),
+        )
         self.assertIsInstance(imp_read.crs, str)
 
     def test_write_imp_mat(self):
@@ -489,33 +526,235 @@ class TestIO(unittest.TestCase):
         impact.imp_mat[4, :] = np.arange(4) * 5
         impact.imp_mat = sparse.csr_matrix(impact.imp_mat)
 
-        file_name = DATA_FOLDER.joinpath('test_imp_mat')
+        file_name = DATA_FOLDER.joinpath("test_imp_mat")
         impact.write_sparse_csr(file_name)
-        read_imp_mat = Impact().read_sparse_csr(f'{file_name}.npz')
+        read_imp_mat = Impact().read_sparse_csr(f"{file_name}.npz")
         for irow in range(5):
             np.testing.assert_array_equal(
-                read_imp_mat[irow, :].toarray(), impact.imp_mat[irow, :].toarray())
+                read_imp_mat[irow, :].toarray(), impact.imp_mat[irow, :].toarray()
+            )
+
 
 class TestRPmatrix(unittest.TestCase):
     """Test computation of impact per return period for whole exposure"""
-    def test_local_exceedance_imp_pass(self):
-        """Test calc local impacts per return period"""
-        # Read default entity values
-        ent = Entity.from_excel(ENT_DEMO_TODAY)
-        ent.check()
 
-        # Read default hazard file
-        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+    def test_local_exceedance_impact(self):
+        """Test calc local impacts per return period lin lin interpolation"""
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 1, 2], [0, 0, 4, 4], [0, 0, 1, 1], [0, 1, 1, 3]])
+        )
+        impact.frequency = np.ones(4)
+        # first centroid has intensities None with cum frequencies None
+        # second centroid has intensities 1 with cum frequencies 1
+        # third centroid has intensities 1, 4 with cum frequencies 4, 1
+        # fourth centroid has intensities 1,2,3,4 with cum frequencies 4,3,2,1
+        # testing at frequencies 5, 2, 1, 0.5
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(0.2, 0.5, 1, 2),
+            method="extrapolate",
+            log_frequency=False,
+            log_impact=False,
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [0.0, 0.0, 0.0, 0.0],
+                    [0.0, 0.0, 1.0, 1.0],
+                    [0.0, 3.0, 4.0, 4.5],
+                    [0.0, 3.0, 4.0, 4.5],
+                ]
+            ),
+        )
 
-        # Compute the impact over the whole exposures
-        impact = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(save_mat=True)
-        # Compute the impact per return period over the whole exposures
-        impact_rp = impact.local_exceedance_imp(return_periods=(10, 40))
+    def test_local_exceedance_impact_methods(self):
+        """Test local exceedance impacts per return period with different methods"""
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 0, 1e1], [0, 0, 1e1, 1e2], [0, 1e3, 1e3, 1e3]])
+        )
+        impact.frequency = np.array([1.0, 0.1, 0.01])
+        # first centroid has impacts None with cum frequencies None
+        # second centroid has impacts 1e3 with frequencies .01, cum freq .01
+        # third centroid has impacts 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # fourth centroid has impacts 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at frequencies .001, .033, 10.
 
-        self.assertIsInstance(impact_rp, np.ndarray)
-        self.assertEqual(impact_rp.size, 2 * ent.exposures.gdf.value.size)
-        self.assertAlmostEqual(np.max(impact_rp), 2916964966.388219, places=5)
-        self.assertAlmostEqual(np.min(impact_rp), 444457580.131494, places=5)
+        # test stepfunction
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1), method="stepfunction"
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array([[0, 0, 0], [1e3, 0, 0], [1e3, 1e1, 0], [1e3, 1e2, 0]]),
+        )
+
+        # test log log extrapolation
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1), method="extrapolate"
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array([[0, 0, 0], [1e3, 0, 0], [1e5, 1e2, 1e-3], [1e4, 300, 1]]),
+            rtol=0.8,
+        )
+
+        # test log log interpolation and extrapolation with constant
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1), method="extrapolate_constant"
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array([[0, 0, 0], [1e3, 0, 0], [1e3, 1e2, 0], [1e3, 300, 0]]),
+            rtol=0.8,
+        )
+
+        # test log log interpolation and no extrapolation
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1)
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [np.nan, np.nan, np.nan],
+                    [np.nan, 1e2, np.nan],
+                    [np.nan, 300, np.nan],
+                ]
+            ),
+            rtol=0.8,
+        )
+
+        # test lin lin interpolation with no extrapolation
+        impact_stats, _, _ = impact.local_exceedance_impact(
+            return_periods=(1000, 30, 0.1),
+            method="extrapolate_constant",
+            log_frequency=False,
+            log_impact=False,
+        )
+        np.testing.assert_allclose(
+            impact_stats.values[:, 1:].astype(float),
+            np.array([[0, 0, 0], [1e3, 0, 0], [1e3, 750, 0], [1e3, 750, 0]]),
+            rtol=0.8,
+        )
+
+    def test_local_return_period(self):
+        """Test local return periods with lin lin interpolation"""
+
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 1, 2], [0, 0, 4, 4], [0, 0, 1, 1], [0, 1, 1, 3]])
+        )
+        impact.frequency = np.ones(4)
+        # first centroid has impacts None with cum frequencies None
+        # second centroid has impacts 1 with cum frequencies 1
+        # third centroid has impacts 1, 4 with cum frequencies 4, 1
+        # fourth centroid has impacts 1,2,3,4 with cum frequencies 4,3,2,1
+        # testing at threshold impacts (0.5, 2.5, 5)
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.5, 2.5, 5),
+            method="extrapolate",
+            log_frequency=False,
+            log_impact=False,
+        )
+
+        np.testing.assert_allclose(
+            return_stats[return_stats.columns[1:]].values,
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [1.0, np.nan, np.nan],
+                    [1 / 4.5, 1 / 2.5, np.nan],
+                    [1 / 4.5, 1 / 2.5, np.nan],
+                ]
+            ),
+        )
+
+    def test_local_return_period_methods(self):
+        """Test local return periods different methods"""
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 0, 1e1], [0, 0, 1e1, 1e2], [0, 1e3, 1e3, 1e3]])
+        )
+        impact.frequency = np.array([1.0, 0.1, 0.01])
+        # first centroid has impacts None with cum frequencies None
+        # second centroid has impacts 1e3 with frequencies .01, cum freq .01
+        # third centroid has impacts 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # fourth centroid has impacts 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at threshold impacts .1, 300, 1e5
+
+        # test stepfunction
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.1, 300, 1e5), method="stepfunction"
+        )
+        np.testing.assert_allclose(
+            return_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [100, 100, np.nan],
+                    [1 / 0.11, 100, np.nan],
+                    [1 / 1.11, 100, np.nan],
+                ]
+            ),
+        )
+
+        # test log log extrapolation
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.1, 300, 1e5), method="extrapolate"
+        )
+        np.testing.assert_allclose(
+            return_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [100, 100, np.nan],
+                    [1.0, 30, 1e3],
+                    [0.01, 30, 1e4],
+                ]
+            ),
+            rtol=0.8,
+        )
+
+        # test log log interpolation and extrapolation with constant
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.1, 300, 1e5), method="extrapolate_constant"
+        )
+        np.testing.assert_allclose(
+            return_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [100, 100, np.nan],
+                    [1 / 0.11, 30, np.nan],
+                    [1 / 1.11, 30, np.nan],
+                ]
+            ),
+            rtol=0.8,
+        )
+
+        # test log log interpolation and no extrapolation
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.1, 300, 1e5)
+        )
+        np.testing.assert_allclose(
+            return_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [np.nan, np.nan, np.nan],
+                    [np.nan, 30, np.nan],
+                    [np.nan, 30, np.nan],
+                ]
+            ),
+            rtol=0.8,
+        )
 
 
 class TestImpactReg(unittest.TestCase):
@@ -595,6 +834,7 @@ class TestImpactReg(unittest.TestCase):
 
 class TestRiskTrans(unittest.TestCase):
     """Test risk transfer methods"""
+
     def test_risk_trans_pass(self):
         """Test calc_risk_transfer"""
         # Create impact object
@@ -609,8 +849,8 @@ class TestRiskTrans(unittest.TestCase):
         imp.frequency = np.ones(10) / 5
         imp.tot_value = 10
         imp.aai_agg = 100
-        imp.unit = 'USD'
-        imp.frequency_unit = '1/month'
+        imp.unit = "USD"
+        imp.frequency_unit = "1/month"
         imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
 
         new_imp, imp_rt = imp.calc_risk_transfer(2, 10)
@@ -624,7 +864,9 @@ class TestRiskTrans(unittest.TestCase):
         np.testing.assert_array_almost_equal_nulp(new_imp.frequency, imp.frequency)
         np.testing.assert_array_almost_equal_nulp(new_imp.coord_exp, [])
         np.testing.assert_array_almost_equal_nulp(new_imp.eai_exp, [])
-        np.testing.assert_array_almost_equal_nulp(new_imp.at_event, [0, 1, 2, 2, 2, 2, 2, 2, 2, 5])
+        np.testing.assert_array_almost_equal_nulp(
+            new_imp.at_event, [0, 1, 2, 2, 2, 2, 2, 2, 2, 5]
+        )
         self.assertAlmostEqual(new_imp.aai_agg, 4.0)
 
         self.assertEqual(imp_rt.unit, imp.unit)
@@ -637,7 +879,9 @@ class TestRiskTrans(unittest.TestCase):
         np.testing.assert_array_almost_equal_nulp(imp_rt.frequency, imp.frequency)
         np.testing.assert_array_almost_equal_nulp(imp_rt.coord_exp, [])
         np.testing.assert_array_almost_equal_nulp(imp_rt.eai_exp, [])
-        np.testing.assert_array_almost_equal_nulp(imp_rt.at_event, [0, 0, 0, 1, 2, 3, 4, 5, 6, 10])
+        np.testing.assert_array_almost_equal_nulp(
+            imp_rt.at_event, [0, 0, 0, 1, 2, 3, 4, 5, 6, 10]
+        )
         self.assertAlmostEqual(imp_rt.aai_agg, 6.2)
 
     def test_transfer_risk_pass(self):
@@ -661,6 +905,7 @@ class TestRiskTrans(unittest.TestCase):
 
 class TestSelect(unittest.TestCase):
     """Test select method"""
+
     def test_select_event_id_pass(self):
         """Test select by event id"""
 
@@ -672,14 +917,18 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.frequency_unit, imp.frequency_unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
-        self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
+        self.assertEqual(sel_imp.event_name, [0, 1, "two"])
         np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1 / 6, 1 / 6, 1])
 
         np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
-        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
-        self.assertEqual(sel_imp.aai_agg, 4+2/6)
+        np.testing.assert_array_equal(
+            sel_imp.imp_mat.todense(), [[0, 0], [1, 1], [2, 2]]
+        )
+        np.testing.assert_array_almost_equal_nulp(
+            sel_imp.eai_exp, [1 / 6 + 2, 1 / 6 + 2]
+        )
+        self.assertEqual(sel_imp.aai_agg, 4 + 2 / 6)
 
         self.assertEqual(sel_imp.tot_value, 7)
         np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
@@ -691,21 +940,25 @@ class TestSelect(unittest.TestCase):
         """Test select by event name"""
 
         imp = dummy_impact()
-        sel_imp = imp.select(event_names=[0, 1, 'two'])
+        sel_imp = imp.select(event_names=[0, 1, "two"])
 
         self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
         self.assertEqual(sel_imp.frequency_unit, imp.frequency_unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
-        self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
+        self.assertEqual(sel_imp.event_name, [0, 1, "two"])
         np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1 / 6, 1 / 6, 1])
 
         np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
-        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
-        self.assertEqual(sel_imp.aai_agg, 4+2/6)
+        np.testing.assert_array_equal(
+            sel_imp.imp_mat.todense(), [[0, 0], [1, 1], [2, 2]]
+        )
+        np.testing.assert_array_almost_equal_nulp(
+            sel_imp.eai_exp, [1 / 6 + 2, 1 / 6 + 2]
+        )
+        self.assertEqual(sel_imp.aai_agg, 4 + 2 / 6)
 
         self.assertEqual(sel_imp.tot_value, 7)
         np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
@@ -724,14 +977,18 @@ class TestSelect(unittest.TestCase):
         self.assertEqual(sel_imp.frequency_unit, imp.frequency_unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
-        self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
+        self.assertEqual(sel_imp.event_name, [0, 1, "two"])
         np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1 / 6, 1 / 6, 1])
 
         np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
-        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
-        self.assertEqual(sel_imp.aai_agg, 4+2/6)
+        np.testing.assert_array_equal(
+            sel_imp.imp_mat.todense(), [[0, 0], [1, 1], [2, 2]]
+        )
+        np.testing.assert_array_almost_equal_nulp(
+            sel_imp.eai_exp, [1 / 6 + 2, 1 / 6 + 2]
+        )
+        self.assertEqual(sel_imp.aai_agg, 4 + 2 / 6)
 
         self.assertEqual(sel_imp.tot_value, 7)
         np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
@@ -740,10 +997,10 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
 
     def test_select_coord_exp_pass(self):
-        """ test select by exp coordinates """
+        """test select by exp coordinates"""
 
         imp = dummy_impact()
-        sel_imp = imp.select(coord_exp=np.array([1,2]))
+        sel_imp = imp.select(coord_exp=np.array([1, 2]))
 
         self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
@@ -755,9 +1012,13 @@ class TestSelect(unittest.TestCase):
         np.testing.assert_array_equal(sel_imp.frequency, imp.frequency)
 
         np.testing.assert_array_equal(sel_imp.at_event, [0, 1, 2, 3, 30, 31])
-        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0], [1], [2], [3], [30], [31]])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2+3+1+31/30])
-        self.assertEqual(sel_imp.aai_agg, 1/6+2+3+1+31/30)
+        np.testing.assert_array_equal(
+            sel_imp.imp_mat.todense(), [[0], [1], [2], [3], [30], [31]]
+        )
+        np.testing.assert_array_almost_equal_nulp(
+            sel_imp.eai_exp, [1 / 6 + 2 + 3 + 1 + 31 / 30]
+        )
+        self.assertEqual(sel_imp.aai_agg, 1 / 6 + 2 + 3 + 1 + 31 / 30)
 
         self.assertEqual(sel_imp.tot_value, None)
         np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2]])
@@ -766,7 +1027,7 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
 
     def test_select_event_identity_pass(self):
-        """ test select same impact with event name, id and date """
+        """test select same impact with event name, id and date"""
 
         # Read default entity values
         ent = Entity.from_excel(ENT_DEMO_TODAY)
@@ -780,12 +1041,14 @@ class TestSelect(unittest.TestCase):
 
         # Compute the impact over the whole exposures
         imp = ImpactCalc(ent.exposures, ent.impact_funcs, hazard).impact(
-            save_mat=True, assign_centroids=False)
+            save_mat=True, assign_centroids=False
+        )
 
-        sel_imp = imp.select(event_ids=imp.event_id,
-                             event_names=imp.event_name,
-                             dates=(min(imp.date), max(imp.date))
-                             )
+        sel_imp = imp.select(
+            event_ids=imp.event_id,
+            event_names=imp.event_name,
+            dates=(min(imp.date), max(imp.date)),
+        )
 
         self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
@@ -799,7 +1062,7 @@ class TestSelect(unittest.TestCase):
         np.testing.assert_array_equal(sel_imp.at_event, imp.at_event)
         np.testing.assert_array_equal(sel_imp.imp_mat.todense(), imp.imp_mat.todense())
         np.testing.assert_array_equal(sel_imp.eai_exp, imp.eai_exp)
-        self.assertAlmostEqual(round(sel_imp.aai_agg,5), round(imp.aai_agg,5))
+        self.assertAlmostEqual(round(sel_imp.aai_agg, 5), round(imp.aai_agg, 5))
 
         self.assertEqual(sel_imp.tot_value, imp.tot_value)
         np.testing.assert_array_equal(sel_imp.coord_exp, imp.coord_exp)
@@ -807,29 +1070,32 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_imp, Impact)
         self.assertIsInstance(sel_imp.imp_mat, sparse.csr_matrix)
 
-
     def test_select_new_attributes(self):
-        """Test if impact has new attributes """
+        """Test if impact has new attributes"""
 
         imp = dummy_impact()
-        imp.new_per_ev =  ['a', 'b', 'c', 'd', 'e', 'f']
-        sel_imp = imp.select(event_names=[0, 1, 'two'])
+        imp.new_per_ev = ["a", "b", "c", "d", "e", "f"]
+        sel_imp = imp.select(event_names=[0, 1, "two"])
 
-        self.assertEqual(sel_imp.new_per_ev, ['a', 'b', 'c'])
+        self.assertEqual(sel_imp.new_per_ev, ["a", "b", "c"])
 
         self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
         self.assertEqual(sel_imp.frequency_unit, imp.frequency_unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
-        self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
+        self.assertEqual(sel_imp.event_name, [0, 1, "two"])
         np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1 / 6, 1 / 6, 1])
 
         np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
-        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
-        self.assertEqual(sel_imp.aai_agg, 4+2/6)
+        np.testing.assert_array_equal(
+            sel_imp.imp_mat.todense(), [[0, 0], [1, 1], [2, 2]]
+        )
+        np.testing.assert_array_almost_equal_nulp(
+            sel_imp.eai_exp, [1 / 6 + 2, 1 / 6 + 2]
+        )
+        self.assertEqual(sel_imp.aai_agg, 4 + 2 / 6)
 
         self.assertEqual(sel_imp.tot_value, 7)
         np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
@@ -858,21 +1124,25 @@ class TestSelect(unittest.TestCase):
         """Test select by event ids, names, and dates"""
 
         imp = dummy_impact()
-        sel_imp = imp.select(event_ids=[0], event_names=[1, 'two'], dates=(0, 2))
+        sel_imp = imp.select(event_ids=[0], event_names=[1, "two"], dates=(0, 2))
 
         self.assertTrue(u_coord.equal_crs(sel_imp.crs, imp.crs))
         self.assertEqual(sel_imp.unit, imp.unit)
         self.assertEqual(sel_imp.frequency_unit, imp.frequency_unit)
 
         np.testing.assert_array_equal(sel_imp.event_id, [10, 11, 12])
-        self.assertEqual(sel_imp.event_name, [0, 1, 'two'])
+        self.assertEqual(sel_imp.event_name, [0, 1, "two"])
         np.testing.assert_array_equal(sel_imp.date, [0, 1, 2])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1/6, 1/6, 1])
+        np.testing.assert_array_almost_equal_nulp(sel_imp.frequency, [1 / 6, 1 / 6, 1])
 
         np.testing.assert_array_equal(sel_imp.at_event, [0, 2, 4])
-        np.testing.assert_array_equal(sel_imp.imp_mat.todense(), [[0,0], [1,1], [2,2]])
-        np.testing.assert_array_almost_equal_nulp(sel_imp.eai_exp, [1/6+2, 1/6+2])
-        self.assertEqual(sel_imp.aai_agg, 4+2/6)
+        np.testing.assert_array_equal(
+            sel_imp.imp_mat.todense(), [[0, 0], [1, 1], [2, 2]]
+        )
+        np.testing.assert_array_almost_equal_nulp(
+            sel_imp.eai_exp, [1 / 6 + 2, 1 / 6 + 2]
+        )
+        self.assertEqual(sel_imp.aai_agg, 4 + 2 / 6)
 
         self.assertEqual(sel_imp.tot_value, 7)
         np.testing.assert_array_equal(sel_imp.coord_exp, [[1, 2], [1.5, 2.5]])
@@ -886,22 +1156,25 @@ class TestSelect(unittest.TestCase):
         imp = dummy_impact()
         imp.imp_mat = sparse.csr_matrix(np.empty((0, 0)))
         with self.assertRaises(ValueError):
-            imp.select(event_ids=[0], event_names=[1, 'two'], dates=(0, 2))
+            imp.select(event_ids=[0], event_names=[1, "two"], dates=(0, 2))
 
     def test_select_reset_frequency(self):
         """Test that reset_frequency option works correctly"""
 
-        imp = dummy_impact_yearly() # 6 events, 1 per year
+        imp = dummy_impact_yearly()  # 6 events, 1 per year
 
         # select first 4 events
         n_yr = 4
-        sel_imp = imp.select(dates=(imp.date[0],imp.date[n_yr-1]), reset_frequency=True)
+        sel_imp = imp.select(
+            dates=(imp.date[0], imp.date[n_yr - 1]), reset_frequency=True
+        )
 
         # check frequency-related attributes
-        np.testing.assert_array_equal(sel_imp.frequency, [1/n_yr]*n_yr)
-        self.assertEqual(sel_imp.aai_agg,imp.at_event[0:n_yr].sum()/n_yr)
-        np.testing.assert_array_equal(sel_imp.eai_exp,
-                                      imp.imp_mat[0:n_yr,:].todense().sum(axis=0).A1/n_yr)
+        np.testing.assert_array_equal(sel_imp.frequency, [1 / n_yr] * n_yr)
+        self.assertEqual(sel_imp.aai_agg, imp.at_event[0:n_yr].sum() / n_yr)
+        np.testing.assert_array_equal(
+            sel_imp.eai_exp, imp.imp_mat[0:n_yr, :].todense().sum(axis=0).A1 / n_yr
+        )
 
 
 class TestConvertExp(unittest.TestCase):
@@ -910,9 +1183,9 @@ class TestConvertExp(unittest.TestCase):
 
         imp = dummy_impact()
         exp = imp._build_exp()
-        np.testing.assert_array_equal(imp.eai_exp, exp.gdf['value'])
-        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.gdf['latitude'])
-        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.gdf['longitude'])
+        np.testing.assert_array_equal(imp.eai_exp, exp.value)
+        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.latitude)
+        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.longitude)
         self.assertTrue(u_coord.equal_crs(exp.crs, imp.crs))
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)
@@ -923,12 +1196,13 @@ class TestConvertExp(unittest.TestCase):
         imp = dummy_impact()
         event_id = imp.event_id[1]
         exp = imp._build_exp_event(event_id=event_id)
-        np.testing.assert_array_equal(imp.imp_mat[1].todense().A1, exp.gdf['value'])
-        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.gdf['latitude'])
-        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.gdf['longitude'])
+        np.testing.assert_array_equal(imp.imp_mat[1].todense().A1, exp.value)
+        np.testing.assert_array_equal(imp.coord_exp[:, 0], exp.latitude)
+        np.testing.assert_array_equal(imp.coord_exp[:, 1], exp.longitude)
         self.assertTrue(u_coord.equal_crs(exp.crs, imp.crs))
         self.assertEqual(exp.value_unit, imp.unit)
         self.assertEqual(exp.ref_year, 0)
+
 
 class TestMatchCentroids(unittest.TestCase):
 
@@ -941,7 +1215,7 @@ class TestMatchCentroids(unittest.TestCase):
         fake_aai_agg = np.sum(fake_eai_exp)
         imp = Impact.from_eih(exp, HAZ, fake_at_event, fake_eai_exp, fake_aai_agg)
         imp_centr = imp.match_centroids(HAZ)
-        np.testing.assert_array_equal(imp_centr, exp.gdf.centr_TC)
+        np.testing.assert_array_equal(imp_centr, exp.gdf["centr_TC"])
 
 
 class TestImpactH5IO(unittest.TestCase):
@@ -1072,7 +1346,7 @@ class TestImpactH5IO(unittest.TestCase):
         tot_value = 100
         aai_agg = 200
         unit = "unit"
-        haz_type="haz_type"
+        haz_type = "haz_type"
 
         # Write the data
         with h5py.File(self.filepath, "w") as file:
@@ -1131,6 +1405,7 @@ class TestImpactH5IO(unittest.TestCase):
             impact = Impact.from_hdf5(self.filepath)
         self.assertIn("'event_name' is not stored as strings", cm.output[0])
         self.assertListEqual(impact.event_name, ["1.2", "2.0"])
+
 
 # Execute Tests
 if __name__ == "__main__":

@@ -161,7 +161,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
 
    .. code-block:: shell
 
-      mamba create -n climada_env "python=3.9.*"
+      mamba create -n climada_env "python=3.11.*"
 
    .. hint::
 
@@ -177,9 +177,9 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
          :width: 60%
 
          * - **Supported Version**
-           - ``3.9``
+           - ``3.11``
          * - Allowed Versions
-           - ``3.9``, ``3.10``, ``3.11``
+           - ``3.10``, ``3.11``
 
 #. Use the default environment specs in ``env_climada.yml`` to install all dependencies.
    Then activate the environment:
@@ -218,7 +218,7 @@ Install Developer Dependencies (Optional)
 
 Building the documentation and running the entire test suite of CLIMADA requires additional dependencies which are not installed by default.
 They are also not needed for using CLIMADA.
-However, if you want to develop CLIMADA, we recommend you install them.
+However, if you want to develop CLIMADA, we strongly recommend you install them.
 
 With the ``climada_env`` activated, enter the workspace directory and then the CLIMADA repository as above.
 Then, add the ``dev`` extra specification to the ``pip install`` command (**mind the quotation marks**, and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
@@ -240,7 +240,17 @@ The CLIMADA Python package defines the following `extras <https://peps.python.or
    * - ``test``
      - for running and evaluating tests
    * - ``dev``
-     - combination of ``doc`` and ``test``
+     - combination of ``doc`` and ``test``, and additional tools for development
+
+The developer dependencies also include `pre-commit <https://pre-commit.com/#intro>`_, which is used to install and run automated, so-called pre-commit hooks before a new commit.
+In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install the hooks first.
+With the ``climada_env`` activated, execute
+
+.. code-block:: shell
+
+   pre-commit install
+
+Please refer to the :ref:`guide on pre-commit hooks <guide-pre-commit-hooks>` for information on how to use this tool.
 
 For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
 On macOS and on Linux it is pre-installed. On Windows, it can easily be installed with Conda:

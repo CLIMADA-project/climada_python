@@ -19,24 +19,34 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test of dates_times module
 """
 
-import unittest
-import numpy as np
 import collections
+import unittest
 
+import numpy as np
+
+import climada.util.dates_times as u_dt
 import climada.util.yearsets as yearsets
 from climada.engine import Impact
-import climada.util.dates_times as u_dt
-
 
 IMP = Impact()
-IMP.at_event = np.arange(10,110,10)
-IMP.frequency = np.array(np.ones(10)*0.2)
+IMP.at_event = np.arange(10, 110, 10)
+IMP.frequency = np.array(np.ones(10) * 0.2)
 
-SAMPLING_VECT = [np.array([0]), np.array([4]), np.array([1]), np.array([2, 5, 7, 9, 6]),
-                 np.array([8]), np.array([3]), np.array([2, 6]), np.array([1]),
-                 np.array([3,5]), np.array([])]
+SAMPLING_VECT = [
+    np.array([0]),
+    np.array([4]),
+    np.array([1]),
+    np.array([2, 5, 7, 9, 6]),
+    np.array([8]),
+    np.array([3]),
+    np.array([2, 6]),
+    np.array([1]),
+    np.array([3, 5]),
+    np.array([]),
+]
 
 YEAR_LIST = list(range(2000, 2010))
+
 
 class TestYearSets(unittest.TestCase):
     """Test yearset functions"""
@@ -44,17 +54,21 @@ class TestYearSets(unittest.TestCase):
     def test_impact_yearset(self):
         """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
         from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
-        yimp, sampling_vect = yearsets.impact_yearset(IMP, YEAR_LIST, correction_fac=False)
+        yimp, sampling_vect = yearsets.impact_yearset(
+            IMP, YEAR_LIST, correction_fac=False
+        )
 
         self.assertAlmostEqual(len(sampling_vect), len(YEAR_LIST))
 
     def test_impact_yearset_sampling_vect(self):
         """Test computing a yearly impact (yimp) for a given list of years (YEAR_LIST)
         from an impact (IMP) and a sampling vector (SAMPLING_VECT)"""
-        yimp = yearsets.impact_yearset_from_sampling_vect(IMP, YEAR_LIST, SAMPLING_VECT, False)
+        yimp = yearsets.impact_yearset_from_sampling_vect(
+            IMP, YEAR_LIST, SAMPLING_VECT, False
+        )
 
         self.assertAlmostEqual(yimp.at_event[3], 340)
-        self.assertEqual(u_dt.date_to_str(yimp.date)[0], '2000-01-01')
+        self.assertEqual(u_dt.date_to_str(yimp.date)[0], "2000-01-01")
         self.assertAlmostEqual(np.sum(yimp.at_event), 770)
 
     def test_sample_from_poisson(self):
@@ -71,14 +85,29 @@ class TestYearSets(unittest.TestCase):
 
     def test_sample_events(self):
         """Test the sampling of 34 events out of a pool of 20 events."""
-        events_per_year = np.array([0, 2, 2, 2, 1, 2, 3, 2, 2, 0, 2, 1, 2, 2, 2, 3, 5, 0, 1, 0])
-        frequencies = np.array(np.ones(20)*0.2)
+        events_per_year = np.array(
+            [0, 2, 2, 2, 1, 2, 3, 2, 2, 0, 2, 1, 2, 2, 2, 3, 5, 0, 1, 0]
+        )
+        frequencies = np.array(np.ones(20) * 0.2)
 
         sampling_vect = yearsets.sample_events(events_per_year, frequencies)
 
         self.assertEqual(len(sampling_vect), len(events_per_year))
-        self.assertEqual(len(np.concatenate(sampling_vect).ravel()), np.sum(events_per_year))
-        self.assertEqual(len(np.unique(list(collections.Counter(np.concatenate(sampling_vect).ravel()).values()))), 2)
+        self.assertEqual(
+            len(np.concatenate(sampling_vect).ravel()), np.sum(events_per_year)
+        )
+        self.assertEqual(
+            len(
+                np.unique(
+                    list(
+                        collections.Counter(
+                            np.concatenate(sampling_vect).ravel()
+                        ).values()
+                    )
+                )
+            ),
+            2,
+        )
 
     def test_computing_imp_per_year(self):
         """Test the calculation of impacts per year from a given sampling dictionary."""
@@ -92,6 +121,7 @@ class TestYearSets(unittest.TestCase):
         correction_factor = yearsets.calculate_correction_fac(imp_per_year, IMP)
 
         self.assertAlmostEqual(correction_factor, 1.42857143)
+
 
 # Execute Tests
 if __name__ == "__main__":
