@@ -628,8 +628,8 @@ def _calc_land_decay(hist_tracks, land_geom, s_rel=True, check_plot=False, pool=
 
     Decay is calculated for every TC category according to the formulas:
 
-        - wind decay = exp(-x*A)
-        - pressure decay = S-(S-1)*exp(-x*B)
+        * wind decay = exp(-x*A)
+        * pressure decay = S-(S-1)*exp(-x*B)
 
     Parameters
     ----------

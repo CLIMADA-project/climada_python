@@ -836,10 +836,10 @@ class StormEurope(Hazard):
         levels are shifted by n raster pixels into each direction (N/S/E/W).
 
         Caveats:
-            - Memory safety is an issue; trial with the entire dataset resulted
+            * Memory safety is an issue; trial with the entire dataset resulted
               in 60GB of swap memory being used...
-            - Can only use numeric region_id for country selection
-            - Drops event names as provided by WISC
+            * Can only use numeric region_id for country selection
+            * Drops event names as provided by WISC
 
         Parameters
         ----------
