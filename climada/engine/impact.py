@@ -41,6 +41,7 @@ import numpy as np
 import pandas as pd
 import xlsxwriter
 from deprecation import deprecated
+from pandas.api.types import is_string_dtype
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 from scipy import sparse
@@ -50,7 +51,6 @@ import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 import climada.util.interpolation as u_interp
 import climada.util.plot as u_plot
-from climada import CONFIG
 from climada.entity import Exposures
 from climada.util.constants import CMAP_IMPACT, DEF_CRS, DEF_FREQ_UNIT
 from climada.util.select import get_attributes_with_matching_dimension
@@ -107,8 +107,8 @@ class Impact:
         crs=DEF_CRS,
         eai_exp=None,
         at_event=None,
-        tot_value=0.,
-        aai_agg=0.,
+        tot_value=0.0,
+        aai_agg=0.0,
         unit="",
         imp_mat=None,
         haz_type="",
@@ -216,8 +216,8 @@ class Impact:
             "The use of Impact().calc() is deprecated."
             " Use ImpactCalc().impact() instead."
         )
-        from climada.engine.impact_calc import (
-            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        from climada.engine.impact_calc import (  # pylint: disable=import-outside-toplevel
+            ImpactCalc,
         )
 
         impcalc = ImpactCalc(exposures, impact_funcs, hazard)
@@ -1191,6 +1191,8 @@ class Impact:
         file_name : str
             absolute path of the file
         """
+        if not all((isinstance(val, str) for val in self.event_name)):
+            raise TypeError("'event_name' must be a list of strings")
         LOGGER.info("Writing %s", file_name)
         with open(file_name, "w", encoding="utf-8") as imp_file:
             imp_wr = csv.writer(imp_file)
@@ -1239,6 +1241,8 @@ class Impact:
         file_name : str
             absolute path of the file
         """
+        if not all((isinstance(val, str) for val in self.event_name)):
+            raise TypeError("'event_name' must be a list of strings")
         LOGGER.info("Writing %s", file_name)
 
         def write_col(i_col, imp_ws, xls_data):
@@ -1453,7 +1457,13 @@ class Impact:
         imp.aai_agg = imp_df["aai_agg"][0]
         imp.event_id = imp_df["event_id"][~np.isnan(imp_df["event_id"])].values
         num_ev = imp.event_id.size
-        imp.event_name = imp_df["event_name"][:num_ev].values.tolist()
+        event_names = imp_df["event_name"][:num_ev]
+        if not is_string_dtype(event_names):
+            warnings.warn(
+                "Some event names are not str will be converted to str.", UserWarning
+            )
+            event_names = event_names.astype(str)
+        imp.event_name = event_names.values.tolist()
         imp.date = imp_df["event_date"][:num_ev].values
         imp.at_event = imp_df["at_event"][:num_ev].values
         imp.frequency = imp_df["event_frequency"][:num_ev].values
@@ -1475,7 +1485,7 @@ class Impact:
     def read_csv(self, *args, **kwargs):
         """This function is deprecated, use Impact.from_csv instead."""
         LOGGER.warning(
-            "The use of Impact.read_csv is deprecated." "Use Impact.from_csv instead."
+            "The use of Impact.read_csv is deprecated. Use Impact.from_csv instead."
         )
         self.__dict__ = Impact.from_csv(*args, **kwargs).__dict__
 
@@ -1494,28 +1504,32 @@ class Impact:
             Impact from excel file
         """
         LOGGER.info("Reading %s", file_name)
-        dfr = pd.read_excel(file_name)
-        imp = cls(haz_type=str(dfr["haz_type"][0]))
+        imp_df = pd.read_excel(file_name)
+        imp = cls(haz_type=str(imp_df["haz_type"][0]))
 
-        imp.unit = dfr["unit"][0]
-        imp.tot_value = dfr["tot_value"][0]
-        imp.aai_agg = dfr["aai_agg"][0]
-
-        imp.event_id = dfr["event_id"][~np.isnan(dfr["event_id"].values)].values
-        imp.event_name = dfr["event_name"][: imp.event_id.size].values
-        imp.date = dfr["event_date"][: imp.event_id.size].values
-        imp.frequency = dfr["event_frequency"][: imp.event_id.size].values
+        imp.unit = imp_df["unit"][0]
+        imp.tot_value = imp_df["tot_value"][0]
+        imp.aai_agg = imp_df["aai_agg"][0]
+        imp.event_id = imp_df["event_id"][~np.isnan(imp_df["event_id"].values)].values
+        event_names = imp_df["event_name"][~np.isnan(imp_df["event_id"].values)]
+        if not is_string_dtype(event_names):
+            warnings.warn(
+                "Some event names are not str will be converted to str", UserWarning
+            )
+            event_names = event_names.astype(str)
+        imp.event_name = event_names.values
+        imp.date = imp_df["event_date"][: imp.event_id.size].values
+        imp.frequency = imp_df["event_frequency"][: imp.event_id.size].values
         imp.frequency_unit = (
-            dfr["frequency_unit"][0] if "frequency_unit" in dfr else DEF_FREQ_UNIT
+            imp_df["frequency_unit"][0] if "frequency_unit" in imp_df else DEF_FREQ_UNIT
         )
-        imp.at_event = dfr["at_event"][: imp.event_id.size].values
-
-        imp.eai_exp = dfr["eai_exp"][~np.isnan(dfr["eai_exp"].values)].values
+        imp.at_event = imp_df["at_event"][: imp.event_id.size].values
+        imp.eai_exp = imp_df["eai_exp"][~np.isnan(imp_df["eai_exp"].values)].values
         imp.coord_exp = np.zeros((imp.eai_exp.size, 2))
-        imp.coord_exp[:, 0] = dfr["exp_lat"].values[: imp.eai_exp.size]
-        imp.coord_exp[:, 1] = dfr["exp_lon"].values[: imp.eai_exp.size]
+        imp.coord_exp[:, 0] = imp_df["exp_lat"].values[: imp.eai_exp.size]
+        imp.coord_exp[:, 1] = imp_df["exp_lon"].values[: imp.eai_exp.size]
         try:
-            imp.crs = u_coord.to_csr_user_input(dfr["exp_crs"].values[0])
+            imp.crs = u_coord.to_csr_user_input(imp_df["exp_crs"].values[0])
         except AttributeError:
             imp.crs = DEF_CRS
 
@@ -1679,8 +1693,8 @@ class Impact:
         -------
         list of Impact
         """
-        from climada.engine.impact_calc import (
-            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        from climada.engine.impact_calc import (  # pylint: disable=import-outside-toplevel
+            ImpactCalc,
         )
 
         if args_exp is None:
