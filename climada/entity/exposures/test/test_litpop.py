@@ -24,7 +24,7 @@ import unittest
 import numpy as np
 from rasterio import Affine
 from rasterio.crs import CRS
-
+import copy
 from climada.entity.exposures.litpop import litpop as lp
 
 
@@ -114,6 +114,47 @@ def data_arrays_resampling_demo():
     ]
     return data_arrays, meta_list
 
+def create_target_grid(meta, res_arcsec=None):
+    """Create a properly cropped target grid with the right resolution.
+
+    Parameters
+    ----------
+    meta : dict
+        Metadata dictionary from an original raster grid.
+    res_arcsec : int, optional
+        Desired resolution in arcseconds. If None, uses the original resolution.
+
+    Returns
+    -------
+    target_grid : dict
+        Dictionary containing the correctly aligned target grid metadata.
+    """
+    import copy
+
+    # Make a copy of the original metadata
+    target_grid = copy.deepcopy(meta)
+
+    if res_arcsec is not None:
+        res_deg = res_arcsec / 3600  # Convert arcseconds to degrees
+
+        # Ensure it aligns with the original grid
+        aligned_lon_min = -180 + (round((meta["transform"][2] - (-180)) / res_deg) * res_deg)
+        aligned_lat_max = 90 - (round((90 - meta["transform"][5]) / res_deg) * res_deg)
+
+        # Define new affine transform
+        target_grid["transform"] = Affine(
+            res_deg, 0, aligned_lon_min,
+            0, -res_deg, aligned_lat_max
+        )
+
+        # Compute width and height
+        width = int(round(meta["width"] * (meta["transform"].a / res_deg)))
+        height = int(round(meta["height"] * (abs(meta["transform"].e) / res_deg)))
+
+        target_grid["width"] = width
+        target_grid["height"] = height
+
+    return target_grid
 
 class TestLitPop(unittest.TestCase):
     """Test LitPop Class methods and functions"""
@@ -126,9 +167,7 @@ class TestLitPop(unittest.TestCase):
         data_out, meta_out = lp.reproject_input_data(
             data_in,
             meta_list,
-            i_align=0,
-            target_res_arcsec=None,
-            global_origins=(-180, 90),
+            target_grid=meta_list[0]
         )
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[0], data_out[0])
@@ -144,13 +183,10 @@ class TestLitPop(unittest.TestCase):
     def test_reproject_input_data_downsample_conserve_sum(self):
         """test function reproject_input_data downsampling with conservation of sum"""
         data_in, meta_list = data_arrays_resampling_demo()
-        #
         data_out, meta_out = lp.reproject_input_data(
             data_in,
             meta_list,
-            i_align=0,
-            target_res_arcsec=None,
-            global_origins=(-180, 90),
+            target_grid = meta_list[0],
             conserve="sum",
         )
         # test reference data unchanged:
@@ -162,13 +198,10 @@ class TestLitPop(unittest.TestCase):
     def test_reproject_input_data_downsample_conserve_mean(self):
         """test function reproject_input_data downsampling with conservation of sum"""
         data_in, meta_list = data_arrays_resampling_demo()
-        #
         data_out, meta_out = lp.reproject_input_data(
             data_in,
             meta_list,
-            i_align=1,
-            target_res_arcsec=None,
-            global_origins=(-180, 90),
+            target_grid=meta_list[1],
             conserve="mean",
         )
         # test reference data unchanged:
@@ -181,13 +214,10 @@ class TestLitPop(unittest.TestCase):
         """test function reproject_input_data with upsampling
         (usually not required for LitPop)"""
         data_in, meta_list = data_arrays_resampling_demo()
-        #
         data_out, meta_out = lp.reproject_input_data(
             data_in,
             meta_list,
-            i_align=2,  # high res data as reference
-            target_res_arcsec=None,
-            global_origins=(-180, 90),
+            target_grid=meta_list[2],
         )
         # test reference data unchanged:
         np.testing.assert_array_equal(data_in[2], data_out[2])
@@ -209,13 +239,29 @@ class TestLitPop(unittest.TestCase):
     def test_reproject_input_data_odd_downsample(self):
         """test function reproject_input_data with odd downsampling"""
         data_in, meta_list = data_arrays_resampling_demo()
-        #
+        
+        # Define resolution in degrees (6120 arcsec = 1.7°)
+        res_deg = 6120 / 3600  # Convert arcseconds to degrees (1.7°)
+
+        # Manually define the correct target grid
+        target_grid = {
+        "driver": "GTiff",
+        "dtype": "float32",
+        "nodata": meta_list[0]["nodata"],
+        "width": 2,
+        "height": 2,
+        "count": 1,
+        "crs": meta_list[0]["crs"],
+        "transform": Affine(
+            1.7, 0, meta_list[0]["transform"][2],  # Keep origin fixed
+            0, -1.7, meta_list[0]["transform"][5]  # Keep lat origin fixed
+        ),
+        }   
+        
         data_out, meta_out = lp.reproject_input_data(
             data_in,
             meta_list,
-            i_align=0,  # high res data as reference
-            target_res_arcsec=6120,  # 1.7 degree
-            global_origins=(-180, 90),
+            target_grid=target_grid
         )
         self.assertEqual(1.7, meta_out["transform"][0])  # check resolution
         reference_array = np.array(
