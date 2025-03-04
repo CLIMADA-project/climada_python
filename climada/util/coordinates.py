@@ -1726,7 +1726,7 @@ def bounding_box_from_countries(country_names, buffer=1.0):
     longitudes, latitudes = [], []
     for multipolygon in country_geometry:
         if isinstance(multipolygon, Polygon):  # if entry is polygon
-            for coord in polygon.exterior.coords:  # Extract exterior coordinates
+            for coord in multipolygon.exterior.coords:  # Extract exterior coordinates
                 longitudes.append(coord[0])
                 latitudes.append(coord[1])
         else:  # if entry is multipolygon
