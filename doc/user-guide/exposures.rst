@@ -2,6 +2,10 @@
 Exposures Tutorials
 ===================
 
+These guides present the `Exposures` class, as the main object to handle exposure data,
+as well as the `LitPop` subclass which allows to estimate exposure using nightlight intensity and
+population count data. We also show how to handle polygons or lines with CLIMADA.
+
 .. toctree::
     :maxdepth: 1
 
