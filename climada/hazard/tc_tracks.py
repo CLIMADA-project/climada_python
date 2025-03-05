@@ -199,27 +199,31 @@ class TCTracks:
     ----------
     data : list(xarray.Dataset)
         List of tropical cyclone tracks. Each track contains following attributes:
-            - time (coords)
-            - lat (coords)
-            - lon (coords)
-            - time_step (in hours)
-            - radius_max_wind (in nautical miles)
-            - radius_oci (in nautical miles)
-            - max_sustained_wind (in knots)
-            - central_pressure (in hPa/mbar)
-            - environmental_pressure (in hPa/mbar)
-            - basin (for each track position)
-            - max_sustained_wind_unit (attrs)
-            - central_pressure_unit (attrs)
-            - name (attrs)
-            - sid (attrs)
-            - orig_event_flag (attrs)
-            - data_provider (attrs)
-            - id_no (attrs)
-            - category (attrs)
+
+            * time (coords)
+            * lat (coords)
+            * lon (coords)
+            * time_step (in hours)
+            * radius_max_wind (in nautical miles)
+            * radius_oci (in nautical miles)
+            * max_sustained_wind (in knots)
+            * central_pressure (in hPa/mbar)
+            * environmental_pressure (in hPa/mbar)
+            * basin (for each track position)
+            * max_sustained_wind_unit (attrs)
+            * central_pressure_unit (attrs)
+            * name (attrs)
+            * sid (attrs)
+            * orig_event_flag (attrs)
+            * data_provider (attrs)
+            * id_no (attrs)
+            * category (attrs)
+
         Computed during processing:
-            - on_land (bool for each track position)
-            - dist_since_lf (in km)
+
+            * on_land (bool for each track position)
+            * dist_since_lf (in km)
+
         Additional data variables such as "nature" (specifiying, for each track position, whether a
         system is a disturbance, tropical storm, post-transition extratropical storm etc.) might be
         included, depending on the data source and on use cases.
@@ -1626,18 +1630,20 @@ class TCTracks:
         the xr.array structure to ensure compatibility with CLIMADA, and calculating the central
         pressure and radius of maximum wind.
 
-        Model GitHub Repository: https://github.com/linjonathan/tropical_cyclone_risk?
-                            tab=readme-ov-file
-        Model Publication: https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2023MS003686
+        Model GitHub Repository:
+            https://github.com/linjonathan/tropical_cyclone_risk?tab=readme-ov-file
 
-        Parameters:
+        Model Publication:
+            https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2023MS003686
+
+        Parameters
         ----------
         folder_name : str
             Folder name from where to read files.
         storm_id : int
             Number of the simulated storm
 
-        Returns:
+        Returns
         -------
         tracks : TCTracks
             TCTracks object with tracks data from the given directory of NetCDF files.
@@ -2947,13 +2953,15 @@ def set_category(max_sus_wind, wind_unit="kn", saffir_scale=None):
     -------
     category : int
         Intensity of given track according to the Saffir-Simpson hurricane scale:
-          * -1 : tropical depression
-          *  0 : tropical storm
-          *  1 : Hurricane category 1
-          *  2 : Hurricane category 2
-          *  3 : Hurricane category 3
-          *  4 : Hurricane category 4
-          *  5 : Hurricane category 5
+
+        * -1 : tropical depression
+        *  0 : tropical storm
+        *  1 : Hurricane category 1
+        *  2 : Hurricane category 2
+        *  3 : Hurricane category 3
+        *  4 : Hurricane category 4
+        *  5 : Hurricane category 5
+
     """
     if saffir_scale is None:
         saffir_scale = SAFFIR_SIM_CAT

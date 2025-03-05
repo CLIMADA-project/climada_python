@@ -359,10 +359,12 @@ def world_bank_wealth_account(
         ISO3-code of country, i.e. "CHN" for China
     ref_year : int
         reference year
-        - available in data: 1995, 2000, 2005, 2010, 2014
-        - other years between 1995 and 2014 are interpolated
-        - for years outside range, indicator is scaled
+
+        * available in data: 1995, 2000, 2005, 2010, 2014
+        * other years between 1995 and 2014 are interpolated
+        * for years outside range, indicator is scaled
           proportionally to GDP
+
     variable_name : str
         select one variable, i.e.:
         'NW.PCA.TO': Produced capital stock of country
