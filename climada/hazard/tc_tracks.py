@@ -2991,7 +2991,7 @@ def compute_track_density(
     filter_tracks: bool = True,
     wind_min: float = None,
     wind_max: float = None,
-) -> tuple[np.ndarray, tuple]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Compute absolute and normalized tropical cyclone track density. Before using this function,
     apply the same temporal resolution to all tracks by calling :py:meth:`equal_timestep` on the
     TCTrack object. Due to the computational cost of the this function, it is not recommended to
@@ -3006,11 +3006,11 @@ def compute_track_density(
         track object containing a list of all tracks
     res: int (optional), default: 5°
         resolution in degrees of the grid bins in which the density will be computed
-    bounds: tuple, dafault: None
-        (lat_min,lat_max,lon_min,lon_max) latitude and longitude bounds to compute track density.
-    genesis: bool, Default = False
+    bounds: tuple, (optional) dafault: None
+        (lat_min,lat_max,lon_min,lon_max) latitude and longitude bounds.
+    genesis: bool, (optional) default = False
         If true the function computes the track density of only the genesis location of tracks
-    norm: str (optional), default = None
+    norm: str (optional), default: None
         If None the function returns the number of samples in each bin. If True, it normalize the
         bin count as specified: if norm = area -> normalize by gird cell area. If norm = sum ->
         normalize by the total sum of each bin.
@@ -3028,13 +3028,17 @@ def compute_track_density(
     hist_count: np.ndarray
         2D matrix containing the the absolute count per gridd cell of track point or the normalized
         number of track points, depending on the norm parameter.
+    lat_bins: np.ndarray
+        latitude bins in which the point where counted
+    lon_bins: np.ndarray
+        laongitude bins in which the point where counted
 
     Example:
     --------
     >>> tc_tracks = TCTrack.from_ibtracs_netcdf("path_to_file")
     >>> tc_tracks.equal_timestep(time_steph_h = 1)
-    >>> hist_count, *_ = compute_track_density(res = 1)
-    >>> plot_track_density(hist_count)
+    >>> hist_count, *_ = compute_track_density(tc_track = tc_tracks, res = 1)
+    >>> ax = plot_track_density(hist_count)
 
     """
 
@@ -3110,11 +3114,11 @@ def compute_genesis_density(
     -----------
 
     tc_track: TCT track object
-        track object containing a list of all tracks
+        TC track object containing a list of all tracks.
     lat_bins: 1D np.array
-        array containg the latitude bins
+        array containg the latitude bins.
     lon_bins: 1D np.array
-        array containg the longitude bins
+        array containg the longitude bins.
 
     Returns:
     --------
