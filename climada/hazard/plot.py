@@ -23,6 +23,7 @@ import logging
 
 import cartopy.crs as ccrs
 import cartopy.feature as cfeature
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 from deprecation import deprecated
@@ -168,11 +169,13 @@ class HazardPlot:
         add_features: dict = None,
         title: str = None,
         figsize=(12, 6),
+        div_cmap=False,
+        cbar=True,
         cbar_kwargs: dict = {
             "orientation": "horizontal",
             "pad": 0.05,
             "shrink": 0.8,
-            "label": "Track Density [n° tracks / km²]",
+            "label": "n° tracks per 1° x 1° grid cell",
         },
         **kwargs,
     ):
@@ -194,6 +197,10 @@ class HazardPlot:
             Title of the plot.
         figsize: tuple
             Figure size when creating a new figure.
+        div_cmap: bool, default = False
+            If True, the colormap will be centered to 0.
+        cbar: bool, Default = True
+            If True, the color bar is added
         cbar_kwargs: dict
             dictionary containing keyword arguments passed to cbar
         kwargs:
@@ -262,12 +269,23 @@ class HazardPlot:
         if add_features.get("lakes", False):
             axis.add_feature(cfeature.LAKES, alpha=0.4, edgecolor="black")
 
-        # Plot density with contourf
-        contourf = axis.contourf(lon, lat, hist, transform=ccrs.PlateCarree(), **kwargs)
+        if div_cmap:
+            norm = mcolors.TwoSlopeNorm(
+                vmin=np.nanmin(hist), vcenter=0, vmax=np.nanmax(hist)
+            )
+            kwargs["norm"] = norm
 
-        # Add colorbar
-        plt.colorbar(contourf, ax=axis, **cbar_kwargs)
-        # Title setup
+        # contourf = axis.contourf(lon, lat, hist, transform=ccrs.PlateCarree(), **kwargs)
+        contourf = axis.imshow(
+            hist,
+            extent=[lon.min(), lon.max(), lat.min(), lat.max()],
+            transform=ccrs.PlateCarree(),
+            origin="lower",
+            **kwargs,
+        )
+
+        if cbar:
+            plt.colorbar(contourf, ax=axis, **cbar_kwargs)
         if title:
             axis.set_title(title, fontsize=16)
 

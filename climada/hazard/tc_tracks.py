@@ -2985,6 +2985,7 @@ def _zlib_from_dataarray(data_var: xr.DataArray) -> bool:
 def compute_track_density(
     tc_track: TCTracks,
     res: int = 5,
+    bounds: tuple = None,
     genesis: bool = False,
     norm: str = None,
     filter_tracks: bool = True,
@@ -3005,19 +3006,23 @@ def compute_track_density(
         track object containing a list of all tracks
     res: int (optional), default: 5°
         resolution in degrees of the grid bins in which the density will be computed
+    bounds: tuple, dafault: None
+        (lat_min,lat_max,lon_min,lon_max) latitude and longitude bounds to compute track density.
     genesis: bool, Default = False
         If true the function computes the track density of only the genesis location of tracks
-    norm: bool (optional), default = False
-        If False it returns the number of samples in each bin. If True, returns the
-        specified normalization function at each bin computed as count_bin / grid_area.
+    norm: str (optional), default = None
+        If None the function returns the number of samples in each bin. If True, it normalize the
+        bin count as specified: if norm = area -> normalize by gird cell area. If norm = sum ->
+        normalize by the total sum of each bin.
     filter_tracks: bool (optional) default: True
         If True the track density is computed as the number of different tracks crossing a grid
         cell. If False, the track density takes into account how long the track stayed in each
         grid cell. Hence slower tracks increase the density if the parameter is set to False.
     wind_min: float (optional), default: None
-        Minimum wind speed above which to select tracks.
+        Minimum wind speed above which to select tracks (inclusive).
     wind_max: float (optional), default: None
-        Maximal wind speed below which to select tracks.
+        Maximal wind speed below which to select tracks (exclusive if wind_min is also provided,
+        otherwise inclusive).
     Returns:
     -------
     hist_count: np.ndarray
@@ -3048,8 +3053,14 @@ def compute_track_density(
         )
 
     # define grid resolution and bounds for density computation
-    lat_bins: np.ndarray = np.linspace(-90, 90, int(180 / res))
-    lon_bins: np.ndarray = np.linspace(-180, 180, int(360 / res))
+    if not bounds:
+        lat_min, lat_max, lon_min, lon_max = -90, 90, -180, 180
+    else:
+        lat_min, lat_max, lon_min, lon_max = bounds[0], bounds[1], bounds[2], bounds[3]
+
+    lat_bins: np.ndarray = np.linspace(lat_min, lat_max, int(180 / res))
+    lon_bins: np.ndarray = np.linspace(lon_min, lon_max, int(360 / res))
+
     # compute 2D density
     if genesis:
         hist_count = compute_genesis_density(
@@ -3062,7 +3073,7 @@ def compute_track_density(
             # select according to wind speed
             wind_speed = track.max_sustained_wind.values
             if wind_min and wind_max:
-                index = np.where((wind_speed >= wind_min) & (wind_speed <= wind_max))[0]
+                index = np.where((wind_speed >= wind_min) & (wind_speed < wind_max))[0]
             elif wind_min and not wind_max:
                 index = np.where(wind_speed >= wind_min)[0]
             elif wind_max and not wind_min:
@@ -3147,9 +3158,14 @@ def normalize_hist(
     """
 
     if norm == "area":
-        grid_area, _ = u_coord.compute_grid_cell_area(res=res)
+        grid_area = u_coord.compute_grid_cell_area(res=res)
         norm_hist: np.ndarray = hist_count / grid_area
     elif norm == "sum":
         norm_hist: np.ndarray = hist_count / hist_count.sum()
+    else:
+        raise ValueError(
+            "Invalid value for input parameter 'norm':\n"
+            "it should be either 'area' or 'sum'"
+        )
 
     return norm_hist
