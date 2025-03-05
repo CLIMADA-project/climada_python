@@ -44,6 +44,7 @@ TEST_TRACK_GETTELMAN = DATA_DIR.joinpath("gettelman_test_tracks.nc")
 TEST_TRACK_EMANUEL = DATA_DIR.joinpath("emanuel_test_tracks.mat")
 TEST_TRACK_EMANUEL_CORR = DATA_DIR.joinpath("temp_mpircp85cal_full.mat")
 TEST_TRACK_CHAZ = DATA_DIR.joinpath("chaz_test_tracks.nc")
+TEST_TRACK_FAST = DATA_DIR.joinpath("FAST_test_tracks.nc")
 TEST_TRACK_STORM = DATA_DIR.joinpath("storm_test_tracks.txt")
 TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath("tracks-antimeridian")
 TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath("tctracks_hdf5_legacy.nc")
@@ -630,6 +631,51 @@ class TestIO(unittest.TestCase):
 
         tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM, years=[7])
         self.assertEqual(len(tc_track.data), 0)
+
+    def test_from_FAST(self):
+        """test the correct import of netcdf files from FAST model and the conversion to a
+        different xr.array structure compatible with CLIMADA."""
+
+        tc_track = tc.TCTracks.from_FAST(TEST_TRACK_FAST)
+
+        expected_attributes = {
+            "max_sustained_wind_unit": "m/s",
+            "central_pressure_unit": "hPa",
+            "name": "storm_0",
+            "sid": 0,
+            "orig_event_flag": True,
+            "data_provider": "FAST",
+            "id_no": 0,
+            "category": 1,
+        }
+
+        self.assertIsInstance(
+            tc_track, tc.TCTracks, "tc_track is not an instance of TCTracks"
+        )
+        self.assertIsInstance(
+            tc_track.data, list, "tc_track.data is not an instance of list"
+        )
+        self.assertIsInstance(
+            tc_track.data[0],
+            xr.Dataset,
+            "tc_track.data[0] not an instance of xarray.Dataset",
+        )
+        self.assertEqual(len(tc_track.data), 5)
+        self.assertEqual(tc_track.data[0].attrs, expected_attributes)
+        self.assertEqual(list(tc_track.data[0].coords.keys()), ["time", "lat", "lon"])
+        self.assertEqual(
+            tc_track.data[0].time.values[0],
+            np.datetime64("2025-09-01T00:00:00.000000000"),
+        )
+        self.assertEqual(tc_track.data[0].lat.values[0], 17.863591350508266)
+        self.assertEqual(tc_track.data[0].lon.values[0], -71.76441758319629)
+        self.assertEqual(len(tc_track.data[0].time), 35)
+        self.assertEqual(tc_track.data[0].time_step[0], 10800)
+        self.assertEqual(
+            tc_track.data[0].max_sustained_wind.values[10], 24.71636959089841
+        )
+        self.assertEqual(tc_track.data[0].environmental_pressure.data[0], 1010)
+        self.assertEqual(tc_track.data[0].basin[0], "NA")
 
     def test_to_geodataframe_points(self):
         """Conversion of TCTracks to GeoDataFrame using Points."""

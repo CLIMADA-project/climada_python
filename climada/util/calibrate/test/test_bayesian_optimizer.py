@@ -94,13 +94,9 @@ class TestBayesianOptimizerController(unittest.TestCase):
         )
         result = contr.optimizer_params()
 
-        self.assertDictContainsSubset(
-            {
-                "init_points": 1,
-                "n_iter": 2,
-            },
-            result,
-        )
+        self.assertEqual(result.get("init_points"), 1)
+        self.assertEqual(result.get("n_iter"), 2)
+
         util_func = result["acquisition_function"]
         self.assertEqual(util_func.kappa, 3)
         self.assertEqual(util_func._kappa_decay, contr._calc_kappa_decay())

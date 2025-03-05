@@ -20,6 +20,7 @@ Compute Tropical Cyclone windfields (see compute_windfields_sparse function).
 """
 
 import logging
+import warnings
 from typing import Optional, Tuple, Union
 
 import numpy as np
@@ -99,8 +100,8 @@ def compute_angular_windspeeds(
     d_centr: np.ndarray,
     mask_centr_close: np.ndarray,
     model: int,
+    cyclostrophic: Optional[bool] = False,
     model_kwargs: Optional[dict] = None,
-    cyclostrophic: bool = False,
 ):
     """Compute (absolute) angular wind speeds according to a parametric wind profile
 
@@ -117,9 +118,9 @@ def compute_angular_windspeeds(
         Wind profile model selection according to MODEL_VANG.
     model_kwargs: dict, optional
         If given, forward these kwargs to the selected model. Default: None
-    cyclostrophic : bool, optional
-        If True, do not apply the influence of the Coriolis force (set the Coriolis terms to 0).
-        Default: False
+    cyclostrophic: bool, optional, deprecated
+        This argument is deprecated and will be removed in a future release.
+        Include `cyclostrophic` as `model_kwargs` instead.
 
     Returns
     -------
@@ -127,6 +128,15 @@ def compute_angular_windspeeds(
         containing the magnitude of the angular windspeed per track position per centroid location
     """
     model_kwargs = {} if model_kwargs is None else model_kwargs
+
+    if cyclostrophic is not None:
+        warnings.warn(
+            "The 'cyclostrophic' argument is deprecated and will be removed in a future"
+            "release. Include it in 'model_kwargs' instead.",
+            DeprecationWarning,
+        )
+        model_kwargs["cyclostrophic"] = cyclostrophic
+
     compute_funs = {
         MODEL_VANG["H1980"]: _compute_angular_windspeeds_h1980,
         MODEL_VANG["H08"]: _compute_angular_windspeeds_h08,
@@ -139,7 +149,6 @@ def compute_angular_windspeeds(
         si_track,
         d_centr,
         mask_centr_close,
-        cyclostrophic=cyclostrophic,
         **model_kwargs,
     )
     result[0, :] *= 0
@@ -241,11 +250,11 @@ def _compute_angular_windspeeds_h10(
     si_track: xr.Dataset,
     d_centr: np.ndarray,
     close_centr_msk: np.ndarray,
-    cyclostrophic: bool = True,
     gradient_to_surface_winds: float = DEF_GRADIENT_TO_SURFACE_WINDS,
     rho_air_const: float = DEF_RHO_AIR,
     vmax_from_cen: bool = True,
     vmax_in_brackets: bool = False,
+    **kwargs,
 ):
     """Compute (absolute) angular wind speeds according to the Holland et al. 2010 model
 
@@ -285,8 +294,8 @@ def _compute_angular_windspeeds_h10(
     ndarray of shape (npositions, ncentroids)
         containing the magnitude of the angular windspeed per track position per centroid location
     """
-    if not cyclostrophic:
-        LOGGER.debug(
+    if not kwargs.get("cyclostrophic", True):
+        LOGGER.warning(
             "The function _compute_angular_windspeeds_h10 was called with parameter "
             '"cyclostrophic" equal to false. Please be aware that this setting is ignored as the'
             " Holland et al. 2010 model is always cyclostrophic."
@@ -1203,7 +1212,6 @@ def _compute_windfields(
         mask_centr_close,
         model,
         model_kwargs=model_kwargs,
-        cyclostrophic=False,
     )
 
     # Influence of translational speed decreases with distance from eye.
