@@ -62,6 +62,6 @@ You are good to go!
 
    Introduction <Guide_Introduction>
    Navigate this documentation <Guide_get_started>
-   In depth installation instructions <install>
+   Installation instructions <install>
    How to cite CLIMADA <../misc/citation>
    Python introduction <0_intro_python>
