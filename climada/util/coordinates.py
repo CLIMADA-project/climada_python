@@ -1624,6 +1624,12 @@ def get_country_code(lat, lon, gridded=False):
         return np.empty((0,), dtype=int)
     LOGGER.info("Setting region_id %s points.", str(lat.size))
     if gridded:
+        # first check that input lat lon are geographic
+        if not check_if_geo_coords(lat, lon):
+            raise ValueError(
+                "Input lat and lon coordinates are not geographic "
+                "or have total extents > 180° for lat or  > 360° for lon."
+            )
         base_file = u_hdf5.read(NATEARTH_CENTROIDS[150])
         meta, region_id = base_file["meta"], base_file["region_id"]
         transform = rasterio.Affine(*meta["transform"])
