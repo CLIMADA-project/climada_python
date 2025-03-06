@@ -527,6 +527,11 @@ def convert_wgs_to_utm(lon, lat):
     epsg_code : int
         EPSG code of UTM projection.
     """
+    if not check_if_geo_coords(lat, lon):
+        raise ValueError(
+            "Input lat and lon coordinates are not geographic "
+            "or have total extents > 180° for lat or  > 360° for lon."
+        )
     epsg_utm_base = 32601 + (0 if lat >= 0 else 100)
     return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
 
