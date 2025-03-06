@@ -710,7 +710,10 @@ def coord_on_land(lat, lon, land_geom=None):
     if lat.size == 0:
         return np.empty((0,), dtype=bool)
     if not check_if_geo_coords(lat, lon):
-        raise ValueError("Input lat and lon coordinates are not geographic.")
+        raise ValueError(
+            "Input lat and lon coordinates are not geographic "
+            "or have total extents > 180° for lat or > 360° for lon."
+        )
     delta_deg = 1
     lons = lon.copy()
     if land_geom is None:
