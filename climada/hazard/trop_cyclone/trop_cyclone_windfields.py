@@ -902,6 +902,11 @@ def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     cp : np.ndarray of same shape as input
         Coriolis parameter.
     """
+    if not u_coord.check_if_geo_coords(lat, 0):
+        raise ValueError(
+            "Input lat and lon coordinates are not geographic "
+            "or have total extents > 180° for lat or > 360° for lon."
+        )
     return 2 * V_ANG_EARTH * np.sin(np.radians(np.abs(lat)))
 
 
