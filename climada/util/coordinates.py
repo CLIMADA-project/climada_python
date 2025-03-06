@@ -833,8 +833,8 @@ def get_country_geometries(
     if extent:
         if not check_if_geo_coords(extent[2:], extent[:2]):
             raise ValueError(
-                "Coordinates are not geographic (i.e. in degrees). "
-                "Please convert to a geographical coordinate system first."
+                "Input lat and lon coordinates are not geographic "
+                "or have total extents > 180° for lat or > 360° for lon."
             )
 
         if extent[1] < extent[0]:
