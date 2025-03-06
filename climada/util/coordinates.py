@@ -468,7 +468,12 @@ def get_gridcellarea(lat, resolution=0.5, unit="ha"):
     unit: string, optional
         unit of the output area (default: ha, alternatives: m2, km2)
     """
-
+    # first check that lat is in geographic coordinates
+    if not check_if_geo_coords(lat, 0):
+        raise ValueError(
+            "Input lat and lon coordinates are not geographic "
+            "or have total extents > 180° for lat or > 360° for lon."
+        )
     if unit == "m2":
         area = (ONE_LAT_KM * resolution) ** 2 * np.cos(np.deg2rad(lat)) * 1000000
     elif unit == "km2":
