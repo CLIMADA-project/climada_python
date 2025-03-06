@@ -88,20 +88,17 @@ are not considered."""
 def check_if_geo_coords(lat, lon):
     """
     Check if latitude and longitude arrays are likely in geographic coordinates,
-    testing if min/max values are within -180 to 180 for latitude and -360 to 360
+    testing if min/max values are within -90 to 90 for latitude and -180 to 540
     for longitude.
     Returns True if lat/lon ranges are in the geographic coordinates range, otherwise False.
     """
     lat = np.array(lat)
     lon = np.array(lon)
 
-    # Check if latitude is within -180 to 180 and longitude is within -360 to 360
+    # Check if latitude is within -90 to 90 and longitude is within -180 to 540
     # and extent are smaller than 180 and 360 respectively
     if (
-        lat.min() >= -180
-        and lat.max() <= 180
-        and lon.min() >= -360
-        and lon.max() <= 360
+        lat.min() >= -90 and lat.max() <= 90 and lon.min() >= -180 and lon.max() <= 540
     ) and ((lat.max() - lat.min()) <= 180 and (lon.max() - lon.min()) <= 360):
         return True
     else:
@@ -823,9 +820,10 @@ def get_country_geometries(
         out = out[country_mask]
 
     if extent:
-        if extent[1] - extent[0] > 360:
+        if not check_if_geo_coords(extent[2:], extent[:2]):
             raise ValueError(
-                f"longitude extent range is greater than 360: {extent[0]} to {extent[1]}"
+                "Coordinates are not geographic (i.e. in degrees). "
+                "Please convert to a geographical coordinate system first."
             )
 
         if extent[1] < extent[0]:
