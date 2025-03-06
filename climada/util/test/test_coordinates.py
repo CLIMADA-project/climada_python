@@ -342,6 +342,23 @@ def data_arrays_resampling_demo():
 class TestFunc(unittest.TestCase):
     """Test auxiliary functions"""
 
+    def test_check_geo_coords(self):
+        """Test the check_if_geo_coords function"""
+        # test correct geographical coords
+        lat, lon = np.array([0, -2, 5]), np.array([-179, 175, 178])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), True)
+        # test wrong lat
+        lat, lon = np.array([0, 200, 5]), np.array([-179, 175, 178])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+        # test wrong lon
+        lat, lon = np.array([0, -2, 5]), np.array([-400, 175, 176])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+        lat, lon = np.array([0, -2, 5]), np.array([700, 1000, 800])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+        # test wrong extent
+        lat, lon = np.array([0, -2, 5]), np.array([-179, 175, 370])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+
     def test_lon_normalize(self):
         """Test the longitude normalization function"""
         data = np.array([-180, 20.1, -30, 190, -350])
