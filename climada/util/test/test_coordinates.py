@@ -1460,12 +1460,14 @@ class TestGetGeodata(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             u_coord.get_country_geometries(extent=(-20, 350, 0, 0))
         self.assertIn(
-            "longitude extent range is greater than 360: -20 to 350", str(cm.exception)
+            "Input lat and lon coordinates are not geographic "
+            "or have total extents > 180° for lat or > 360° for lon.",
+            str(cm.exception),
         )
         with self.assertRaises(ValueError) as cm:
-            u_coord.get_country_geometries(extent=(350, -20, 0, 0))
+            u_coord.get_country_geometries(extent=(340, -20, 0, 0))
         self.assertIn(
-            "longitude extent at the left (350) is larger "
+            "longitude extent at the left (340) is larger "
             "than longitude extent at the right (-20)",
             str(cm.exception),
         )
