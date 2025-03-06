@@ -97,12 +97,10 @@ def check_if_geo_coords(lat, lon):
 
     # Check if latitude is within -90 to 90 and longitude is within -180 to 540
     # and extent are smaller than 180 and 360 respectively
-    if (
-        lat.min() >= -90 and lat.max() <= 90 and lon.min() >= -180 and lon.max() <= 540
-    ) and ((lat.max() - lat.min()) <= 180 and (lon.max() - lon.min()) <= 360):
-        return True
-    else:
-        return False
+    test = (
+        lat.min() >= -91 and lat.max() <= 91 and lon.min() >= -181 and lon.max() <= 541
+    ) and ((lat.max() - lat.min()) <= 181 and (lon.max() - lon.min()) <= 361)
+    return bool(test)
 
 
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
