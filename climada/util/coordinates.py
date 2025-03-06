@@ -1125,6 +1125,15 @@ def match_coordinates(
 
         # assign remaining coordinates to their geographically nearest neighbor
         if threshold > 0 and exact_assign_idx.size != coords_view.size:
+            # check that coords are geographic before proceeding to nearest neighbor search
+            if not (
+                check_if_geo_coords(coords[:, 0], coords[:, 1])
+                and check_if_geo_coords(coords_to_assign[:, 0], coords_to_assign[:, 1])
+            ):
+                raise ValueError(
+                    "Input lat and lon coordinates are not geographic "
+                    "or have total extents > 180° for lat or  > 360° for lon."
+                )
             not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
                 coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs
