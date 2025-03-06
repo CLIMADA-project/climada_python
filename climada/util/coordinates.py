@@ -46,7 +46,7 @@ import shapely.ops
 import shapely.vectorized
 import shapely.wkt
 from cartopy.io import shapereader
-from shapely.geometry import MultiPolygon, Point, Polygon, box
+from shapely.geometry import MultiPolygon, Point, box
 from sklearn.neighbors import BallTree
 
 import climada.util.hdf5_handler as u_hdf5
@@ -1757,12 +1757,13 @@ def bounding_box_from_cardinal_bounds(*, northern, eastern, western, southern):
     Returns
     -------
     tuple
-        The resulting normalized bounding box (min_lon, min_lat, max_lon, max_lat) with -180 <= min_lon < max_lon < 540
+        The resulting normalized bounding box (min_lon, min_lat, max_lon, max_lat)
+        with -180 <= min_lon < max_lon < 540
 
     """
 
     # latitude bounds check
-    if not ((90 >= northern > southern >= -90)):
+    if not 90 >= northern > southern >= -90:
         raise ValueError(
             "Given northern bound is below given southern bound or out of bounds"
         )
