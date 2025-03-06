@@ -585,7 +585,10 @@ def dist_to_coast(coord_lat, lon=None, highres=False, signed=False):
                 f"Mismatching input coordinates size: {lat.size} != {lon.size}"
             )
     if not check_if_geo_coords(lat, lon):
-        raise ValueError("Input lat and lon coordinates are not geographic.")
+        raise ValueError(
+            "Input lat and lon coordinates are not geographic "
+            "or have total extents > 180° for lat or  > 360° for lon."
+        )
     return dist_to_coast_nasa(lat, lon, highres=highres, signed=signed)
 
 
