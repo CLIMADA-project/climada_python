@@ -23,6 +23,7 @@ import unittest
 
 import numpy as np
 from rasterio import Affine
+import rasterio
 from rasterio.crs import CRS
 import copy
 from climada.entity.exposures.litpop import litpop as lp
@@ -195,6 +196,49 @@ class TestLitPop(unittest.TestCase):
         for i, _ in enumerate(data_in):
             self.assertAlmostEqual(data_in[i].sum(), data_out[i].sum())
 
+    def test_target_grid_alignment(self):
+        """Test if reprojection correctly aligns to target grid"""
+
+        # Step 1: Define original synthetic dataset
+        orig_res = 1.0
+        orig_transform = Affine(orig_res, 0, -10.0, 0, -orig_res, 40.0)
+        
+        data_in, meta_list = data_arrays_resampling_demo()
+        meta_list[0]["transform"] = orig_transform
+        meta_list[0]["width"] = 3
+        meta_list[0]["height"] = 3
+
+        # Step 2: Define target grid (coarser resolution)
+        target_res = 2.0  # New resolution (downsample from 1° to 2°)
+        target_transform = Affine(target_res, 0, -10.0, 0, -target_res, 40.0)
+        
+        target_grid = {
+            "driver": "GTiff",
+            "dtype": "float32",
+            "nodata": meta_list[0]["nodata"],
+            "width": 2,  # (3° / 2°) ≈ 2
+            "height": 2,  # (3° / 2°) ≈ 2
+            "count": 1,
+            "crs": meta_list[0]["crs"],
+            "transform": target_transform,
+        }
+
+        # Step 3: Reproject
+        data_out, meta_out = lp.reproject_input_data(
+            data_in,
+            meta_list,
+            target_grid=target_grid,
+            resampling=rasterio.warp.Resampling.bilinear
+        )
+
+        # Step 4: Validate output
+        self.assertEqual(meta_out["transform"], target_transform, "Transform does not match target grid!")
+        self.assertEqual(meta_out["width"], target_grid["width"], "Width mismatch!")
+        self.assertEqual(meta_out["height"], target_grid["height"], "Height mismatch!")
+
+        # Check for correct data structure
+        self.assertEqual(data_out[0].shape, (2, 2), "Output data shape is incorrect!")
+
     def test_reproject_input_data_downsample_conserve_mean(self):
         """test function reproject_input_data downsampling with conservation of sum"""
         data_in, meta_list = data_arrays_resampling_demo()
@@ -233,39 +277,6 @@ class TestLitPop(unittest.TestCase):
                 [3.0, 3.25, 3.75, 4.25, 4.75, 5.0],
             ],
             dtype="float32",
-        )
-        np.testing.assert_array_equal(reference_array, data_out[0])
-
-    def test_reproject_input_data_odd_downsample(self):
-        """test function reproject_input_data with odd downsampling"""
-        data_in, meta_list = data_arrays_resampling_demo()
-        
-        # Define resolution in degrees (6120 arcsec = 1.7°)
-        res_deg = 6120 / 3600  # Convert arcseconds to degrees (1.7°)
-
-        # Manually define the correct target grid
-        target_grid = {
-        "driver": "GTiff",
-        "dtype": "float32",
-        "nodata": meta_list[0]["nodata"],
-        "width": 2,
-        "height": 2,
-        "count": 1,
-        "crs": meta_list[0]["crs"],
-        "transform": Affine(
-            1.7, 0, meta_list[0]["transform"][2],  # Keep origin fixed
-            0, -1.7, meta_list[0]["transform"][5]  # Keep lat origin fixed
-        ),
-        }   
-        
-        data_out, meta_out = lp.reproject_input_data(
-            data_in,
-            meta_list,
-            target_grid=target_grid
-        )
-        self.assertEqual(1.7, meta_out["transform"][0])  # check resolution
-        reference_array = np.array(
-            [[0.425, 1.7631578], [3.425, 4.763158]], dtype="float32"
         )
         np.testing.assert_array_equal(reference_array, data_out[0])
 

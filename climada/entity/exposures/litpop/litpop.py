@@ -197,6 +197,7 @@ class LitPop(Exposures):
                     reference_year,
                     gpw_version,
                     data_dir,
+                    target_grid
                 )
                 for tot_value, country in zip(total_values, countries)
             ]
@@ -293,6 +294,7 @@ class LitPop(Exposures):
         res_arcsec=15,
         reference_year=DEF_REF_YEAR,
         data_dir=SYSTEM_DIR,
+        target_grid=None
     ):
         """
         Wrapper around `from_countries` / `from_shape`.
@@ -340,6 +342,7 @@ class LitPop(Exposures):
                 reference_year=reference_year,
                 gpw_version=GPW_VERSION,
                 data_dir=data_dir,
+                target_grid=target_grid
             )
         else:
             exp = cls.from_shape(
@@ -351,6 +354,7 @@ class LitPop(Exposures):
                 reference_year=reference_year,
                 gpw_version=GPW_VERSION,
                 data_dir=SYSTEM_DIR,
+                target_grid=target_grid
             )
         LOGGER.warning(
             "Note: set_nightlight_intensity sets values to raw nightlight intensity, "
@@ -377,6 +381,7 @@ class LitPop(Exposures):
         reference_year=DEF_REF_YEAR,
         gpw_version=GPW_VERSION,
         data_dir=SYSTEM_DIR,
+        target_grid=None
     ):
         """
         Wrapper around `from_countries` / `from_shape`.
@@ -426,6 +431,7 @@ class LitPop(Exposures):
                 reference_year=reference_year,
                 gpw_version=gpw_version,
                 data_dir=data_dir,
+                target_grid=target_grid
             )
         else:
             exp = cls.from_shape(
@@ -437,6 +443,7 @@ class LitPop(Exposures):
                 reference_year=reference_year,
                 gpw_version=gpw_version,
                 data_dir=data_dir,
+                target_grid=target_grid
             )
         return exp
 
@@ -460,6 +467,7 @@ class LitPop(Exposures):
         reference_year=DEF_REF_YEAR,
         gpw_version=GPW_VERSION,
         data_dir=SYSTEM_DIR,
+        target_grid=None
     ):
         """
         create LitPop exposure for `country` and then crop to given shape.
@@ -524,6 +532,7 @@ class LitPop(Exposures):
             reference_year=reference_year,
             gpw_version=gpw_version,
             data_dir=data_dir,
+            target_grid=target_grid
         )
 
         if isinstance(shape, Shape):
@@ -535,6 +544,7 @@ class LitPop(Exposures):
                 data_dir,
                 gpw_version,
                 exponents,
+                target_grid=target_grid
             )
             shape_gdf = shape_gdf.drop(
                 columns=shape_gdf.columns[shape_gdf.columns != "geometry"]
@@ -613,6 +623,7 @@ class LitPop(Exposures):
         reference_year=DEF_REF_YEAR,
         gpw_version=GPW_VERSION,
         data_dir=SYSTEM_DIR,
+        target_grid=None
     ):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding the total value to be disaggregated.
@@ -679,6 +690,7 @@ class LitPop(Exposures):
             gpw_version,
             exponents,
             region_id,
+            target_grid=target_grid
         )
 
         # disaggregate total value proportional to LitPop values:
@@ -1442,6 +1454,7 @@ def _calc_admin1_one_country(
     reference_year,
     gpw_version,
     data_dir,
+    target_grid
 ):
     """
     Calculates the LitPop on admin1 level for provinces/states where such information are
@@ -1518,11 +1531,9 @@ def _calc_admin1_one_country(
                 reference_year=reference_year,
                 gpw_version=gpw_version,
                 data_dir=data_dir,
+                target_grid=target_grid
             )
         )
         exp_list[-1].gdf["admin1"] = record["name"]
 
     return Exposures.concat(exp_list)
-
-lp = LitPop.from_countries(['FRA'], res_arcsec=150)
-lp
