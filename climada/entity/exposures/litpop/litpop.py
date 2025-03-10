@@ -180,6 +180,15 @@ class LitPop(Exposures):
             raise ValueError(
                 "'countries' and 'total_values' must be lists of same length"
             )
+        
+        if target_grid is None:
+                LOGGER.info(f"Creating target grid at {res_arcsec} arcsec resolution...")
+                target_grid = cls._define_target_grid(
+                    reference_year=reference_year,
+                    gpw_version=gpw_version,
+                    data_dir=data_dir,
+                    res_arcsec=res_arcsec
+                )
 
         # litpop_list is initiated, a list containing one Exposure instance per
         # country and None for countries that could not be identified:
@@ -537,7 +546,7 @@ class LitPop(Exposures):
 
         if isinstance(shape, Shape):
             # get gdf with geometries of points within shape:
-            shape_gdf, _ = _get_litpop_single_polygon(
+            shape_gdf = _get_litpop_single_polygon(
                 shape,
                 reference_year,
                 res_arcsec,
@@ -748,7 +757,8 @@ class LitPop(Exposures):
             exp.meta = {"crs": exp.crs}
         return exp
 
-    def _define_target_grid(country_geometry, reference_year, gpw_version, data_dir, res_arcsec):
+    @staticmethod
+    def _define_target_grid(reference_year, gpw_version, data_dir, res_arcsec):
         """
         Defines the target grid based on population or nightlight metadata.
 
@@ -770,34 +780,52 @@ class LitPop(Exposures):
         target_grid : dict
             A dictionary containing metadata for the global target grid.
         """
-        # Define the base target grid
+        res_deg = res_arcsec / 3600  # Convert arcseconds to degrees
+
         if res_arcsec == 15:
-            _, meta_nl = nl_util.load_nasa_nl_shape(
-            country_geometry, reference_year, data_dir=data_dir, dtype=float
-        )
-            target_grid = copy.deepcopy(meta_nl)  # Align to nightlight grid
-        else:
-            _, meta_pop, _ = pop_util.load_gpw_pop_shape(
-            country_geometry, reference_year, gpw_version, data_dir, verbose=False
-        )
-            target_grid = copy.deepcopy(meta_pop)
+        # **Use Nightlight grid (NASA Black Marble)**
+            file_path = nl_util.get_nasa_nl_file_path(reference_year, data_dir=data_dir, verbose=False)
 
-            if res_arcsec is not None:
-                res_deg = res_arcsec / 3600  # Convert arcseconds to degrees
+            # Load metadata
+            with rasterio.open(file_path, "r") as src:
+                global_transform = src.transform
+                global_crs = src.crs
+                global_width = src.width
+                global_height = src.height
 
-                # Ensure the grid aligns to `meta_pop`
-                aligned_lon_min = -180 + (round((meta_pop["transform"][2] - (-180)) / res_deg) * res_deg)
-                aligned_lat_max = 90 - (round((90 - meta_pop["transform"][5]) / res_deg) * res_deg)
+        elif res_arcsec:
+            # **Use GPW grid (Population)**
+            LOGGER.info(f"Loading global GPW metadata for {reference_year} at {res_arcsec} arcsec...")
+            file_path = pop_util.get_gpw_file_path(gpw_version, reference_year, data_dir=data_dir, verbose=False)
 
-                # Create a new affine transform with the updated resolution
-                target_grid["transform"] = Affine(
-                    res_deg, 0, aligned_lon_min,
-                    0, -res_deg, aligned_lat_max
-                )
+            # Load metadata
+            with rasterio.open(file_path, "r") as src:
+                global_crs = src.crs  # Keep CRS from GPW dataset
+                gpw_transform = src.transform  # Original GPW grid transform
 
-                # Compute width & height based on new snapped bounds
-                target_grid["width"] = round((360) / res_deg)
-                target_grid["height"] = round((180) / res_deg)
+            # **Align the resolution to GPW grid**
+            aligned_lon_min = -180 + (round((gpw_transform[2] - (-180)) / res_deg) * res_deg)
+            aligned_lat_max = 90 - (round((90 - gpw_transform[5]) / res_deg) * res_deg)
+
+            global_transform = Affine(
+                res_deg, 0, aligned_lon_min,  # Adjust longitude alignment
+                0, -res_deg, aligned_lat_max  # Adjust latitude alignment
+            )
+
+            # Compute width & height for the new grid
+            global_width = round(360 / res_deg)
+            global_height = round(180 / res_deg)
+
+        # 🌍 **Create the global target grid**
+        target_grid = {
+            "driver": "GTiff",
+            "dtype": "float32",
+            "nodata": None,
+            "crs": global_crs,
+            "width": global_width,
+            "height": global_height,
+            "transform": global_transform,
+        }
 
         return target_grid
     
@@ -853,12 +881,6 @@ class LitPop(Exposures):
         LOGGER.info("\n LitPop: Init Exposure for country: %s (%i)...\n", iso3a, iso3n)
         litpop_gdf = geopandas.GeoDataFrame()
         total_population = 0
-
-
-        if target_grid is None:
-            target_grid = LitPop._define_target_grid(country_geometry, reference_year, gpw_version, data_dir, res_arcsec)
-
-        # Align to population grid
         # for countries with multiple sperated shapes (e.g., islands), data
         # is initiated for each shape separately and 0 values (e.g. on sea)
         # removed before combination, to save memory.
@@ -999,8 +1021,7 @@ def _get_litpop_single_polygon(
     # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
     offsets = (0, 0) if exponents[1] == 0 else (1, 0)
     # import population data (2d array), meta data, and global grid info,
-    # global_transform defines the origin (corner points) of the global traget grid:
-    pop, meta_pop, global_transform = pop_util.load_gpw_pop_shape(
+    pop, meta_pop, _ = pop_util.load_gpw_pop_shape(
         polygon,
         reference_year,
         gpw_version=gpw_version,
@@ -1231,10 +1252,7 @@ def reproject_input_data(
         "height": dst_height,
     }
 
-    for idx, data in enumerate(data_array_list):
-        # if target resolution corresponds to reference data resolution,
-        # the reference data is not transformed:
-        src_meta = meta_list[idx]
+    for idx, _ in enumerate(data_array_list):
         # reproject data grid:
         dst_bounds = rasterio.transform.array_bounds(
             dst_height, dst_width, dst_transform

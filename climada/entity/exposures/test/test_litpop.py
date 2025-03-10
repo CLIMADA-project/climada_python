@@ -20,12 +20,11 @@ Unit Tests for LitPop class.
 """
 
 import unittest
-
+import copy
 import numpy as np
 from rasterio import Affine
 import rasterio
 from rasterio.crs import CRS
-import copy
 from climada.entity.exposures.litpop import litpop as lp
 
 
@@ -190,16 +189,13 @@ class TestLitPop(unittest.TestCase):
             target_grid = meta_list[0],
             conserve="sum",
         )
-        # test reference data unchanged:
         np.testing.assert_array_equal(data_in[0], data_out[0])
-        # test conserve sum:
         for i, _ in enumerate(data_in):
             self.assertAlmostEqual(data_in[i].sum(), data_out[i].sum())
 
     def test_target_grid_alignment(self):
         """Test if reprojection correctly aligns to target grid"""
 
-        # Step 1: Define original synthetic dataset
         orig_res = 1.0
         orig_transform = Affine(orig_res, 0, -10.0, 0, -orig_res, 40.0)
         
@@ -208,8 +204,7 @@ class TestLitPop(unittest.TestCase):
         meta_list[0]["width"] = 3
         meta_list[0]["height"] = 3
 
-        # Step 2: Define target grid (coarser resolution)
-        target_res = 2.0  # New resolution (downsample from 1° to 2°)
+        target_res = 2.0  # 
         target_transform = Affine(target_res, 0, -10.0, 0, -target_res, 40.0)
         
         target_grid = {
@@ -223,7 +218,6 @@ class TestLitPop(unittest.TestCase):
             "transform": target_transform,
         }
 
-        # Step 3: Reproject
         data_out, meta_out = lp.reproject_input_data(
             data_in,
             meta_list,
@@ -231,12 +225,10 @@ class TestLitPop(unittest.TestCase):
             resampling=rasterio.warp.Resampling.bilinear
         )
 
-        # Step 4: Validate output
         self.assertEqual(meta_out["transform"], target_transform, "Transform does not match target grid!")
         self.assertEqual(meta_out["width"], target_grid["width"], "Width mismatch!")
         self.assertEqual(meta_out["height"], target_grid["height"], "Height mismatch!")
 
-        # Check for correct data structure
         self.assertEqual(data_out[0].shape, (2, 2), "Output data shape is incorrect!")
 
     def test_reproject_input_data_downsample_conserve_mean(self):
