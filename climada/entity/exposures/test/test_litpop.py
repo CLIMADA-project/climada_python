@@ -114,48 +114,6 @@ def data_arrays_resampling_demo():
     ]
     return data_arrays, meta_list
 
-def create_target_grid(meta, res_arcsec=None):
-    """Create a properly cropped target grid with the right resolution.
-
-    Parameters
-    ----------
-    meta : dict
-        Metadata dictionary from an original raster grid.
-    res_arcsec : int, optional
-        Desired resolution in arcseconds. If None, uses the original resolution.
-
-    Returns
-    -------
-    target_grid : dict
-        Dictionary containing the correctly aligned target grid metadata.
-    """
-    import copy
-
-    # Make a copy of the original metadata
-    target_grid = copy.deepcopy(meta)
-
-    if res_arcsec is not None:
-        res_deg = res_arcsec / 3600  # Convert arcseconds to degrees
-
-        # Ensure it aligns with the original grid
-        aligned_lon_min = -180 + (round((meta["transform"][2] - (-180)) / res_deg) * res_deg)
-        aligned_lat_max = 90 - (round((90 - meta["transform"][5]) / res_deg) * res_deg)
-
-        # Define new affine transform
-        target_grid["transform"] = Affine(
-            res_deg, 0, aligned_lon_min,
-            0, -res_deg, aligned_lat_max
-        )
-
-        # Compute width and height
-        width = int(round(meta["width"] * (meta["transform"].a / res_deg)))
-        height = int(round(meta["height"] * (abs(meta["transform"].e) / res_deg)))
-
-        target_grid["width"] = width
-        target_grid["height"] = height
-
-    return target_grid
-
 class TestLitPop(unittest.TestCase):
     """Test LitPop Class methods and functions"""
 
@@ -204,7 +162,7 @@ class TestLitPop(unittest.TestCase):
         meta_list[0]["width"] = 3
         meta_list[0]["height"] = 3
 
-        target_res = 2.0  # 
+        target_res = 2.0  
         target_transform = Affine(target_res, 0, -10.0, 0, -target_res, 40.0)
         
         target_grid = {
@@ -234,7 +192,7 @@ class TestLitPop(unittest.TestCase):
     def test_reproject_input_data_downsample_conserve_mean(self):
         """test function reproject_input_data downsampling with conservation of sum"""
         data_in, meta_list = data_arrays_resampling_demo()
-        data_out, meta_out = lp.reproject_input_data(
+        data_out, _ = lp.reproject_input_data(
             data_in,
             meta_list,
             target_grid=meta_list[1],
