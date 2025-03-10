@@ -27,7 +27,6 @@ import pandas as pd
 import rasterio
 import shapely
 from shapefile import Shape
-import copy
 from affine import Affine
 
 import climada.util.coordinates as u_coord
@@ -178,18 +177,14 @@ class LitPop(Exposures):
             total_values = [None] * len(countries)
         elif len(total_values) != len(countries):
             raise ValueError(
-                "'countries' and 'total_values' must be lists of same length"
-            )
-        
+                "'countries' and 'total_values' must be lists of same length")        
         if target_grid is None:
-                LOGGER.info(f"Creating target grid at {res_arcsec} arcsec resolution...")
-                target_grid = cls._define_target_grid(
-                    reference_year=reference_year,
-                    gpw_version=gpw_version,
-                    data_dir=data_dir,
-                    res_arcsec=res_arcsec
-                )
-
+            target_grid = cls._define_target_grid(
+                reference_year=reference_year,
+                gpw_version=gpw_version,
+                data_dir=data_dir,
+                res_arcsec=res_arcsec
+            )
         # litpop_list is initiated, a list containing one Exposure instance per
         # country and None for countries that could not be identified:
         if admin1_calc:  # each admin 1 region is initiated separately,
@@ -342,6 +337,13 @@ class LitPop(Exposures):
             raise ValueError(
                 "Not allowed to set both `countries` and `shape`. Aborting."
             )
+        if target_grid is None:
+            target_grid = cls._define_target_grid(
+            reference_year=reference_year,
+            gpw_version=GPW_VERSION,
+            data_dir=data_dir,
+            res_arcsec=res_arcsec
+    )
         if countries is not None:
             exp = cls.from_countries(
                 countries,
@@ -431,6 +433,13 @@ class LitPop(Exposures):
             raise ValueError(
                 "Not allowed to set both `countries` and `shape`. Aborting."
             )
+        if target_grid is None:
+            target_grid = cls._define_target_grid(
+            reference_year=reference_year,
+            gpw_version=gpw_version,
+            data_dir=data_dir,
+            res_arcsec=res_arcsec
+    )
         if countries is not None:
             exp = cls.from_countries(
                 countries,
@@ -549,7 +558,6 @@ class LitPop(Exposures):
             shape_gdf = _get_litpop_single_polygon(
                 shape,
                 reference_year,
-                res_arcsec,
                 data_dir,
                 gpw_version,
                 exponents,
@@ -694,7 +702,6 @@ class LitPop(Exposures):
         litpop_gdf, _ = _get_litpop_single_polygon(
             shape,
             reference_year,
-            res_arcsec,
             data_dir,
             gpw_version,
             exponents,
@@ -780,43 +787,34 @@ class LitPop(Exposures):
         target_grid : dict
             A dictionary containing metadata for the global target grid.
         """
-        res_deg = res_arcsec / 3600  # Convert arcseconds to degrees
-
+        res_deg = res_arcsec / 3600  
         if res_arcsec == 15:
-        # **Use Nightlight grid (NASA Black Marble)**
-            file_path = nl_util.get_nasa_nl_file_path(reference_year, data_dir=data_dir, verbose=False)
-
-            # Load metadata
-            with rasterio.open(file_path, "r") as src:
-                global_transform = src.transform
-                global_crs = src.crs
-                global_width = src.width
-                global_height = src.height
-
-        elif res_arcsec:
-            # **Use GPW grid (Population)**
-            LOGGER.info(f"Loading global GPW metadata for {reference_year} at {res_arcsec} arcsec...")
-            file_path = pop_util.get_gpw_file_path(gpw_version, reference_year, data_dir=data_dir, verbose=False)
-
-            # Load metadata
-            with rasterio.open(file_path, "r") as src:
-                global_crs = src.crs  # Keep CRS from GPW dataset
-                gpw_transform = src.transform  # Original GPW grid transform
-
-            # **Align the resolution to GPW grid**
-            aligned_lon_min = -180 + (round((gpw_transform[2] - (-180)) / res_deg) * res_deg)
-            aligned_lat_max = 90 - (round((90 - gpw_transform[5]) / res_deg) * res_deg)
-
+            # Black Marble Nightlights Grid
+            global_crs = rasterio.crs.CRS.from_epsg(4326)  # WGS84 projection
             global_transform = Affine(
-                res_deg, 0, aligned_lon_min,  # Adjust longitude alignment
-                0, -res_deg, aligned_lat_max  # Adjust latitude alignment
+                res_deg, 0, -180,  
+                0, -res_deg, 90    
             )
-
-            # Compute width & height for the new grid
             global_width = round(360 / res_deg)
             global_height = round(180 / res_deg)
-
-        # 🌍 **Create the global target grid**
+        else:
+            # GPW Population Grid
+            file_path = pop_util.get_gpw_file_path(gpw_version, 
+                                                   reference_year, 
+                                                   data_dir=data_dir, 
+                                                   verbose=False)
+            with rasterio.open(file_path, "r") as src:
+                global_crs = src.crs  
+                gpw_transform = src.transform  
+            # Align grid resolution with GPW dataset
+            aligned_lon_min = -180 + (round((gpw_transform[2] - (-180)) / res_deg) * res_deg)
+            aligned_lat_max = 90 - (round((90 - gpw_transform[5]) / res_deg) * res_deg)
+            global_transform = Affine(
+                res_deg, 0, aligned_lon_min, 
+                0, -res_deg, aligned_lat_max)
+            global_width = round(360 / res_deg)
+            global_height = round(180 / res_deg)
+        # Define the target grid using the computed values
         target_grid = {
             "driver": "GTiff",
             "dtype": "float32",
@@ -826,7 +824,6 @@ class LitPop(Exposures):
             "height": global_height,
             "transform": global_transform,
         }
-
         return target_grid
     
     @staticmethod
@@ -893,7 +890,6 @@ class LitPop(Exposures):
             ) = _get_litpop_single_polygon(
                 polygon,
                 reference_year,
-                res_arcsec,
                 data_dir,
                 gpw_version,
                 exponents,
@@ -965,7 +961,6 @@ def _crop_target_grid(target_grid, polygon):
 def _get_litpop_single_polygon(
     polygon,
     reference_year,
-    res_arcsec,
     data_dir,
     gpw_version,
     exponents,
