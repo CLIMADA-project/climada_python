@@ -2,25 +2,24 @@
 Getting started
 ===================
 
-Installation
--------------------
+Quick Installation
+--------------------
 
 
 
-Are you already working with conda ? proceed to install CLIMADA by executing the following line in the terminal::
+Are you already working with mamba or conda? proceed to install CLIMADA by executing the following line in the terminal::
 
-    conda create -n climada_env -c conda-forge climada
+    mamba create -n climada_env -c conda-forge climada
 
 Each time you will want to work with CLIMADA, simply activate the environnment::
 
-    conda activate climada_env
+    mamba activate climada_env
 
 You are good to go!
 
-
 .. seealso::
 
-    You don't have conda installed or you are looking for advaced installation instructions ? Look up our `detailed instructions <http://www.python.org>`__  on CLIMADA installation.
+   You don't have mamba or conda installed or you are looking for advanced installation instructions? Look up our :doc:`detailed instructions <install>` on CLIMADA installation.
 
 
 .. dropdown:: How does CLIMADA compute impacts ?
@@ -79,3 +78,13 @@ You are good to go!
    Is there an adaptation measure that will decrease the impact? Does the cost needed to implement such
    measure outweight the gains? All these questions can be asnwered using the cost-benefit module (link adaptation).
    With this module, users can define and compare adaptation measures to establish their cost-effectiveness.
+
+.. toctree::
+   :maxdepth: 1
+   :hidden:
+
+   Introduction <Guide_Introduction>
+   Navigate this documentation <Guide_get_started>
+   Installation instructions <install>
+   How to cite CLIMADA <../misc/citation>
+   Python introduction <0_intro_python>
