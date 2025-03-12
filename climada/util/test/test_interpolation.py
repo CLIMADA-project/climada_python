@@ -223,7 +223,7 @@ class TestFitMethods(unittest.TestCase):
         frequency = np.ones(6)
         intensity = np.array([1.00001, 0.9998, 1.0, 2.0, 3.0, 3])
         np.testing.assert_allclose(
-            u_interp._group_frequency(frequency, intensity),
+            u_interp._group_frequency(frequency, intensity, bin_decimals=6),
             (frequency, intensity),
         )
         np.testing.assert_allclose(
