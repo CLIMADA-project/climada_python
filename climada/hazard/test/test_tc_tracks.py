@@ -22,6 +22,7 @@ Test tc_tracks module.
 import unittest
 from datetime import datetime as dt
 
+import cftime
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -762,6 +763,54 @@ class TestFuncs(unittest.TestCase):
         storms = ["1988169N14259", "2002073S16161", "2002143S07157"]
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storms)
         self.assertEqual(tc_track.subset({"basin": "SP"}).size, 2)
+
+    def test_subset_years(self):
+        """Test that subset_years correctly select tracks between year min and year max."""
+
+        tc_test = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL)
+        for i in range(5):
+            date = cftime.DatetimeProlepticGregorian(
+                2000 + i, 2, 20, 0, 0, 0, 0, has_year_zero=True
+            )
+            tc_test.data[i]["time"] = np.full(tc_test.data[i].time.shape[0], date)
+
+        tc_subset = tc_test.subset_year(start_year=2001, end_year=2003)
+
+        self.assertEqual(len(tc_subset.data), 3)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[1].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[2].time[0].item().year, 2003)
+
+        # Invalid input: non-integer start_year
+        with self.assertRaisesRegex(
+            TypeError, "Both start_year and end_year must be integers."
+        ):
+            tc_test.subset_year(start_year="2000", end_year=2003)
+
+        # Invalid input: non-integer end_year
+        with self.assertRaisesRegex(
+            TypeError, "Both start_year and end_year must be integers."
+        ):
+            tc_test.subset_year(start_year=2000, end_year=None)
+
+        # Invalid range: start_year greater than end_year
+        with self.assertRaisesRegex(
+            ValueError, r"start_year \(2005\) cannot be greater than end_year \(2000\)."
+        ):
+            tc_test.subset_year(start_year=2005, end_year=2000)
+
+        # No tracks match the year range
+        with self.assertRaisesRegex(
+            ValueError, "No tracks found for the years between 2050 and 2060."
+        ):
+            tc_test.subset_year(start_year=2050, end_year=2060)
+
+        # Empty data case
+        empty_tc = tc.TCTracks()
+        with self.assertRaisesRegex(
+            TypeError, "self.data should be a non-empty list of tracks."
+        ):
+            empty_tc.subset_year(start_year=2000, end_year=2010)
 
     def test_get_extent(self):
         """Test extent/bounds attributes."""

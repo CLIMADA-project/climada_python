@@ -28,6 +28,7 @@ import logging
 import re
 import shutil
 import warnings
+from operator import itemgetter
 from pathlib import Path
 from typing import List, Optional
 
@@ -320,6 +321,74 @@ class TCTracks:
                 out.data = [ds for ds in out.data if ds.attrs[key] == pattern]
 
         return out
+
+    def subset_year(self, start_year: int = None, end_year: int = None):
+        """Subset TCTracks between start and end years, both included.
+
+        Parameters:
+        ----------
+        start_year: int
+            First year to include in the selection
+        end_year: int
+            Last year to include in the selection
+
+        Returns:
+        --------
+        subset: TCTracks
+            TCTtracks object containing the subset of tracks
+        Raises:
+        -------
+        TypeError
+            - If either `start_year` or `end_year` is not an integer.
+            - If `self` is not a `TCTracks` object.
+            - If `self.data` is empty (i.e., no tracks are available).
+        ValueError
+            - If `start_year` is greater than `end_year`.
+            - If the date format in a track is invalid and the year cannot be extracted.
+            - If no tracks are found within the specified year range.
+
+        """
+
+        subset = self.__class__()
+
+        if not isinstance(start_year, int) or not isinstance(end_year, int):
+            raise TypeError("Both start_year and end_year must be integers.")
+
+        if start_year > end_year:
+            raise ValueError(
+                f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
+            )
+
+        if not isinstance(self, TCTracks):
+            raise TypeError(
+                f"self should be a TCTtracks object and not {self.__class__()}."
+            )
+
+        if len(self.data) == 0:
+            raise TypeError("self.data should be a non-empty list of tracks.")
+
+        # Find indices corresponding to the years
+        index: list = []
+        for i, track in enumerate(self.data):
+            try:
+                date_array = track.time[0].to_numpy()
+                year = date_array.astype("datetime64[Y]").item().year
+            except AttributeError:
+                raise ValueError(
+                    f"Invalid date format in track {i}, could not extract year."
+                )
+
+            if start_year <= year <= end_year:
+                index.append(i)
+
+        if not index:
+            raise ValueError(
+                f"No tracks found for the years between {start_year} and {end_year}."
+            )
+
+        subset.data = itemgetter(*index)(self.data)
+
+        return subset
 
     def tracks_in_exp(self, exposure, buffer=1.0):
         """Select only the tracks that are in the vicinity (buffer) of an exposure.
