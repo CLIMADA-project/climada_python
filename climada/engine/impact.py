@@ -498,7 +498,7 @@ class Impact:
         min_impact=0,
         log_frequency=True,
         log_impact=True,
-        n_sig_dig=3,
+        bin_decimals=None,
     ):
         """Compute local exceedance impact for given return periods. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
@@ -607,7 +607,7 @@ class Impact:
                         value_threshold=min_impact,
                         method=method,
                         y_asymptotic=0.0,
-                        n_sig_dig=n_sig_dig,
+                        bin_decimals=bin_decimals,
                     )
                     for i_centroid in nonzero_centroids
                 ]
@@ -622,9 +622,11 @@ class Impact:
         gdf[col_names] = exceedance_impact
         # create label and column_label
         label = f"Impact ({self.unit})"
-        column_label = lambda column_names: [
-            f"Return Period: {col} {return_period_unit}" for col in column_names
-        ]
+
+        def column_label(column_names):
+            return [
+                f"Return Period: {col} {return_period_unit}" for col in column_names
+            ]
 
         return gdf, label, column_label
 
@@ -650,7 +652,7 @@ class Impact:
         min_impact=0,
         log_frequency=True,
         log_impact=True,
-        n_sig_dig=3,
+        bin_decimals=None,
     ):
         """Compute local return periods for given threshold impacts. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
@@ -754,7 +756,7 @@ class Impact:
                         value_threshold=min_impact,
                         method=method,
                         y_asymptotic=np.nan,
-                        n_sig_dig=n_sig_dig,
+                        bin_decimals=bin_decimals,
                     )
                     for i_centroid in nonzero_centroids
                 ]
@@ -771,9 +773,11 @@ class Impact:
 
         # create label and column_label
         label = f"Return Periods ({return_period_unit})"
-        column_label = lambda column_names: [
-            f"Impact: {col} {self.unit}" for col in column_names
-        ]
+
+        def column_label(column_names):
+            return [
+                f"Return Period: {col} {return_period_unit}" for col in column_names
+            ]
 
         return gdf, label, column_label
 
@@ -1207,8 +1211,8 @@ class Impact:
         """
 
         LOGGER.info(
-            "Some errors in the previous calculation of local exceedance impacts have been corrected,"
-            " see Impact.local_exceedance_impact. To reproduce data with the "
+            "Some errors in the previous calculation of local exceedance impacts have been "
+            "corrected, see Impact.local_exceedance_impact. To reproduce data with the "
             "previous calculation, use CLIMADA v5.0.0 or less."
         )
 

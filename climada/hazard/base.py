@@ -491,7 +491,7 @@ class Hazard(HazardIO, HazardPlot):
         min_intensity=None,
         log_frequency=True,
         log_intensity=True,
-        n_sig_dig=3,
+        bin_decimals=None,
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -594,7 +594,7 @@ class Hazard(HazardIO, HazardPlot):
                         value_threshold=min_intensity,
                         method=method,
                         y_asymptotic=0.0,
-                        n_sig_dig=n_sig_dig,
+                        bin_decimals=bin_decimals,
                     )
                     for i_centroid in nonzero_centroids
                 ]
@@ -609,9 +609,11 @@ class Hazard(HazardIO, HazardPlot):
 
         # create label and column_label
         label = f"Intensity ({self.units})"
-        column_label = lambda column_names: [
-            f"Return Period: {col} {return_period_unit}" for col in column_names
-        ]
+
+        def column_label(column_names):
+            return [
+                f"Return Period: {col} {return_period_unit}" for col in column_names
+            ]
 
         return gdf, label, column_label
 
@@ -642,7 +644,7 @@ class Hazard(HazardIO, HazardPlot):
         min_intensity=None,
         log_frequency=True,
         log_intensity=True,
-        n_sig_dig=3,
+        bin_decimals=None,
     ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -742,7 +744,7 @@ class Hazard(HazardIO, HazardPlot):
                         value_threshold=min_intensity,
                         method=method,
                         y_asymptotic=np.nan,
-                        n_sig_dig=n_sig_dig,
+                        bin_decimals=bin_decimals,
                     )
                     for i_centroid in nonzero_centroids
                 ]
@@ -759,9 +761,11 @@ class Hazard(HazardIO, HazardPlot):
 
         # create label and column_label
         label = f"Return Periods ({return_period_unit})"
-        column_label = lambda column_names: [
-            f"Threshold Intensity: {col} {self.units}" for col in column_names
-        ]
+
+        def column_label(column_names):
+            return [
+                f"Return Period: {col} {return_period_unit}" for col in column_names
+            ]
 
         return gdf, label, column_label
 

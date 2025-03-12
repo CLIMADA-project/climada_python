@@ -223,18 +223,15 @@ class TestFitMethods(unittest.TestCase):
         frequency = np.ones(6)
         intensity = np.array([1.00001, 0.9998, 1.0, 2.0, 3.0, 3])
         np.testing.assert_allclose(
-            u_interp._group_frequency(frequency, intensity, n_sig_dig=3),
+            u_interp._group_frequency(frequency, intensity),
+            (frequency, intensity),
+        )
+        np.testing.assert_allclose(
+            u_interp._group_frequency(frequency, intensity, bin_decimals=3),
             ([3, 1, 2], [1, 2, 3]),
         )
         np.testing.assert_allclose(
-            u_interp._group_frequency([], [], n_sig_dig=3), ([], [])
-        )
-
-    def test_round_to_sig_digits(self):
-        array = [0.00111, 999.0, 55.5, 0.0, -1.001, -1.08]
-        np.testing.assert_allclose(
-            u_interp.round_to_sig_digits(array, n_sig_dig=2),
-            [0.0011, 1000.0, 56, 0.0, -1.0, -1.1],
+            u_interp._group_frequency([], [], bin_decimals=3), ([], [])
         )
 
     def test_preprocess_and_interpolate_ev(self):

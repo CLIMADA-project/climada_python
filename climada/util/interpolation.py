@@ -38,7 +38,7 @@ def preprocess_and_interpolate_ev(
     value_threshold=None,
     method="interpolate",
     y_asymptotic=np.nan,
-    n_sig_dig=3,
+    bin_decimals=None,
 ):
     """Function to first preprocess (frequency, values) data by binning the data according to
     their value with the given number of significant digits (see Notes), compute the cumulative
@@ -114,7 +114,8 @@ def preprocess_and_interpolate_ev(
     frequency = frequency[sorted_idxs]
 
     # group similar values together
-    frequency, values = _group_frequency(frequency, values, n_sig_dig)
+    if method == "extrapolate" and isinstance(bin_decimals, int):
+        frequency, values = _group_frequency(frequency, values, bin_decimals)
 
     # transform frequencies to cummulative frequencies
     frequency = np.cumsum(frequency[::-1])[::-1]
@@ -142,25 +143,24 @@ def preprocess_and_interpolate_ev(
         )
 
     # if test values are provided
-    else:
-        if method == "stepfunction":
-            return _stepfunction_ev(
-                test_values,
-                values,
-                frequency,
-                x_threshold=value_threshold,
-                y_asymptotic=y_asymptotic,
-            )
-        extrapolation = None if method == "interpolate" else method
-        return _interpolate_ev(
+    if method == "stepfunction":
+        return _stepfunction_ev(
             test_values,
             values,
             frequency,
-            logx=log_values,
-            logy=log_frequency,
             x_threshold=value_threshold,
-            extrapolation=extrapolation,
+            y_asymptotic=y_asymptotic,
         )
+    extrapolation = None if method == "interpolate" else method
+    return _interpolate_ev(
+        test_values,
+        values,
+        frequency,
+        logx=log_values,
+        logy=log_frequency,
+        x_threshold=value_threshold,
+        extrapolation=extrapolation,
+    )
 
 
 def _interpolate_ev(
@@ -346,7 +346,7 @@ def _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic):
     return y_test
 
 
-def _group_frequency(frequency, value, n_sig_dig):
+def _group_frequency(frequency, value, bin_decimals):
     """
     Util function to aggregate (add) frequencies for equal values
 
@@ -370,14 +370,15 @@ def _group_frequency(frequency, value, n_sig_dig):
         return ([], [])
 
     # round values and group them
-    value = round_to_sig_digits(value, n_sig_dig)
+    value = np.around(value, decimals=bin_decimals)
     value_unique, start_indices = np.unique(value, return_index=True)
     if value_unique.size != frequency.size:
         if not all(sorted(start_indices) == start_indices):
             LOGGER.warning(
                 "After grouping values to significant digits, the value array is not sorted."
-                "The values are not binned. Please choose a larger value of n_sig_dig=%s.",
-                n_sig_dig,
+                "The values are not binned. This might be due to floating point error while "
+                "binning. Please choose a larger value of bin_decimals=%s.",
+                bin_decimals,
             )
             return frequency, value
 
@@ -387,24 +388,3 @@ def _group_frequency(frequency, value, n_sig_dig):
         return frequency, value_unique
 
     return frequency, value
-
-
-def round_to_sig_digits(values, n_sig_dig):
-    """round each element array to a number of significant digits
-
-    Parameters
-    ----------
-    values : array-like
-        values to be rounded
-    n_sig_dig : int
-        number of significant digits.
-
-    Returns
-    -------
-    np.array
-        rounded array
-    """
-
-    return np.vectorize(np.format_float_positional)(
-        values, precision=n_sig_dig, unique=False, fractional=False, trim="k"
-    ).astype(float)
