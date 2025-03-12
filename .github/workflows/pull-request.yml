@@ -1,0 +1,50 @@
+name: GitHub CI
+
+# Execute this for every pull request (opened, reopened, and synchronized)
+on: [pull_request]
+
+jobs:
+  pre-commit-checks:
+    name: 'Core / Pre-Commit Checks'
+    runs-on: ubuntu-latest
+
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+      -
+        name: Checkout target commit
+        run: git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=1 origin ${{ github.event.pull_request.base.ref }}
+      -
+        name: Set up Python 3.11
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      -
+        # Store the current date to use it as cache key
+        name: Get current date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
+      -
+        name: Cache dependencies
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cache/pip
+            ~/.cache/pre-commit
+          key: ${{ github.event.pull_request.head.ref }}-${{ steps.date.outputs.date }}
+          restore-keys: |
+            ${{ github.event.pull_request.head.ref }}
+            ${{ github.event.pull_request.base.ref }}
+            develop
+            main
+      -
+        name: Install pre-commit and hooks
+        run: |
+          pip install pre-commit
+          pre-commit install --install-hooks
+      -
+        name: Run pre-commit checks
+        run: pre-commit run --show-diff-on-failure --from-ref ${{ github.event.pull_request.base.sha }} --to-ref ${{ github.event.pull_request.head.sha }}

@@ -14,13 +14,216 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
-- Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
-
 ### Fixed
 
 ### Deprecated
 
 ### Removed
+
+## 6.0.0
+
+Release date: 2025-03-03
+
+### Dependency Changes
+
+Added:
+
+- `osm-flex` >=1.1
+
+Updated:
+
+- `cartopy` >=0.23 &rarr; >=0.24
+- `cfgrib` >=0.9.9,<0.9.10 &rarr; >=0.9
+- `dask` >=2024.2,<2024.3 &rarr; >=2025.2
+- `eccodes` >=2.27,<2.28 &rarr; >=2.40
+- `gdal` >=3.6 &rarr; >=3.10
+- `geopandas` >=0.14 &rarr; >=0.14,<1.0
+- `h5py` >=3.8 &rarr; >=3.12
+- `haversine` >=2.8 &rarr; >=2.9
+- `matplotlib-base` >=3.9 &rarr; >=3.10
+- `netcdf4` >=1.6 &rarr; >=1.7
+- `numba` >=0.60 &rarr; >=0.61
+- `pillow` =9.4 &rarr; =11.1
+- `pyproj` >=3.5 &rarr; >=3.7
+- `pytables` >=3.7 &rarr; >=3.10
+- `python` =3.9 &rarr; =3.11
+- `rasterio` >=1.3 &rarr; >=1.4
+- `scikit-learn` >=1.5 &rarr; >=1.6
+- `scipy` >=1.13 &rarr; >=1.14,<1.15
+- `tqdm` >=4.66 &rarr; >=4.67
+- `xarray` >=2024.6 &rarr; >=2025.1
+- `xlsxwriter` >=3.1 &rarr; >=3.2
+
+Removed:
+
+- `pyepsg`
+
+### Added
+
+- `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
+- Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
+- `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex`with CLIMADA
+- `climada.util.coordinates.bounding_box_global` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
+- `climada.util.coordinates.bounding_box_from_countries` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
+- `climada.util.coordinates.bounding_box_from_cardinal_bounds` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
+- `climada.engine.impact.Impact.local_return_period` method [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
+- `doc.tutorial.climada_util_local_exceedance_values.ipynb` tutorial explaining `Hazard.local_exceedance_intensity`, `Hazard.local_return_period`, `Impact.local_exceedance_impact`, and `Impact.local_return_period` methods [#971](https://github.com/CLIMADA-project/climada_python/pull/971)
+- `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, that all use the `climada.util.interpolation` module [#918](https://github.com/CLIMADA-project/climada_python/pull/918)
+- `climada.util.interpolation` module for inter- and extrapolation util functions used in local exceedance intensity and return period functions [#930](https://github.com/CLIMADA-project/climada_python/pull/930)
+- `climada.exposures.exposures.Exposures.geometry` property
+- `climada.exposures.exposures.Exposures.latitude` property
+- `climada.exposures.exposures.Exposures.longitude` property
+- `climada.exposures.exposures.Exposures.value` property
+- `climada.exposures.exposures.Exposures.region_id` property
+- `climada.exposures.exposures.Exposures.category_id` property
+- `climada.exposures.exposures.Exposures.cover` property
+- `climada.exposures.exposures.Exposures.hazard_impf` method
+- `climada.exposures.exposures.Exposures.hazard_centroids` method
+
+### Changed
+
+- `Centroids.append` now takes multiple arguments and provides a performance boost when doing so [#989](https://github.com/CLIMADA-project/climada_python/pull/989)
+- `climada.util.coordinates.get_country_geometries` function: Now throwing a ValueError if unregognized ISO country code is given (before, the invalid ISO code was ignored) [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
+- Improved scaling factors implemented in `climada.hazard.trop_cyclone.apply_climate_scenario_knu` to model the impact of climate changes to tropical cyclones [#734](https://github.com/CLIMADA-project/climada_python/pull/734)
+- In `climada.util.plot.geo_im_from_array`, NaNs are plotted in gray while cells with no centroid are not plotted [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+- Renamed `climada.util.plot.subplots_from_gdf` to `climada.util.plot.plot_from_gdf` [#929](https://github.com/CLIMADA-project/climada_python/pull/929)
+- `Hazard.local_exceedance_inten`, `Hazard.local_return_period`, and `Impact.local_exceedance_imp` call the corresponding new functions and a deprecation warning is added [#918](https://github.com/CLIMADA-project/climada_python/pull/918). Some inconsistencies in the previous versions are removed and the default method is changed. To reconstruct results from the previous versions, use CLIMADA v5.0.0 or less.
+- elements of `event_name` are now explicitly converted to `str` in `from_raster`, `from_xarray_raster`, `from_excel` and `from_csv`. [#951](https://github.com/CLIMADA-project/climada_python/pull/951), [#910](https://github.com/CLIMADA-project/climada_python/issues/910)
+- `event_id` and `event_name` are now explicitly converted to respectively a `np.ndarray` (`event_id`), a `list` (`event_name`) in readers. [#951](https://github.com/CLIMADA-project/climada_python/pull/951), [#950](https://github.com/CLIMADA-project/climada_python/issues/950)
+- Exposures complete overhaul. Notably
+- the _geometry_ column of the inherent `GeoDataFrame` is set up at initialization
+- latitude and longitude column are no longer present there (the according arrays can be retrieved as properties of the Exposures object: `exp.latitude` instead of `exp.gdf.latitude.values`).
+- `Exposures.gdf` has been renamed to `Exposures.data` (it still works though, as it is a property now pointing to the latter)
+- the `check` method does not add a default "IMPF_" column to the GeoDataFrame anymore
+- Updated IBTrACS version from v4.0 to v4.1 ([#976](https://github.com/CLIMADA-project/climada_python/pull/976)
+- Fix xarray future warning in TCTracks for .dims to .sizes
+- Fix hazard.concatenate type test for pathos pools
+
+### Fixed
+
+- Resolved an issue where windspeed computation was much slower than in Climada v3 [#989](https://github.com/CLIMADA-project/climada_python/pull/989)
+- File handles are being closed after reading netcdf files with `climada.hazard` modules [#953](https://github.com/CLIMADA-project/climada_python/pull/953)
+- Avoids a ValueError in the impact calculation for cases with a single exposure point and MDR values of 0, by explicitly removing zeros in `climada.hazard.Hazard.get_mdr` [#933](https://github.com/CLIMADA-project/climada_python/pull/948)
+
+### Deprecated
+
+- `climada.hazard.trop_cyclone.trop_cyclone_windfields.compute_angular_windspeeds.cyclostrophic` argument
+- `climada.entity.exposures.Exposures.meta` attribute
+- `climada.entity.exposures.Exposures.set_lat_lon` method
+- `climada.entity.exposures.Exposures.set_geometry_points` method
+- `climada.hazard.Hazard.local_exceedance_inten` method
+- `climada.hazard.Hazard.plot_rp_intensity` method
+- `climada.engine.impact.Impact.local_exceedance_imp` method
+- `climada.engine.impact.Impact.plot_rp_imp` method
+
+## 5.0.0
+
+Release date: 2024-07-19
+
+### Dependency Changes
+
+Added:
+
+- `bayesian-optimization`
+- `seaborn` >=0.13
+
+Updated:
+
+- `bottleneck` >=1.3 &rarr; >=1.4
+- `cartopy` >=0.22 &rarr; >=0.23
+- `contextily` >=1.5 &rarr; >=1.6
+- `dask` >=2024.1,<2024.3 &rarr; >=2024.2,<2024.3
+- `matplotlib-base` >=3.8 &rarr; >=3.9
+- `numba` >=0.59 &rarr; >=0.60
+- `numexpr` >=2.9 &rarr; >=2.10
+- `pint` >=0.23 &rarr; >=0.24
+- `pycountry` >=22.3 &rarr; >=24.6
+- `requests` >=2.31 &rarr; >=2.32
+- `salib` >=1.4 &rarr; >=1.5
+- `scikit-learn` >=1.4 &rarr; >=1.5
+- `scipy` >=1.12 &rarr; >=1.13
+- `xarray` >=2024.2 &rarr; >=2024.6
+
+### Added
+
+- GitHub actions workflow for CLIMADA Petals compatibility tests [#855](https://github.com/CLIMADA-project/climada_python/pull/855)
+- `climada.util.calibrate` module for calibrating impact functions [#692](https://github.com/CLIMADA-project/climada_python/pull/692)
+- Method `Hazard.check_matrices` for bringing the stored CSR matrices into "canonical format" [#893](https://github.com/CLIMADA-project/climada_python/pull/893)
+- Generic s-shaped impact function via `ImpactFunc.from_poly_s_shape` [#878](https://github.com/CLIMADA-project/climada_python/pull/878)
+- climada.hazard.centroids.centr.Centroids.get_area_pixel
+- climada.hazard.centroids.centr.Centroids.get_dist_coast
+- climada.hazard.centroids.centr.Centroids.get_elevation
+- climada.hazard.centroids.centr.Centroids.get_meta
+- climada.hazard.centroids.centr.Centroids.get_pixel_shapes
+- climada.hazard.centroids.centr.Centroids.to_crs
+- climada.hazard.centroids.centr.Centroids.to_default_crs
+- climada.hazard.centroids.centr.Centroids.write_csv
+- climada.hazard.centroids.centr.Centroids.write_excel
+- climada.hazard.local_return_period [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
+- climada.util.plot.subplots_from_gdf [#898](https://github.com/CLIMADA-project/climada_python/pull/898)
+
+### Changed
+
+- Use Geopandas GeoDataFrame.plot() for centroids plotting function [896](https://github.com/CLIMADA-project/climada_python/pull/896)
+- Update SALib sensitivity and sampling methods from newest version (SALib 1.4.7) [#828](https://github.com/CLIMADA-project/climada_python/issues/828)
+- Allow for computation of relative and absolute delta impacts in `CalcDeltaClimate`
+- Remove content tables and make minor improvements (fix typos and readability) in
+CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull/872)
+- Centroids complete overhaul. Most function should be backward compatible. Internal data is stored in a geodataframe attribute. Raster are now stored as points, and the meta attribute is removed. Several methds were deprecated or removed. [#787](https://github.com/CLIMADA-project/climada_python/pull/787)
+- Improved error messages produced by `ImpactCalc.impact()` in case impact function in the exposures is not found in impf_set [#863](https://github.com/CLIMADA-project/climada_python/pull/863)
+- Update the Holland et al. 2010 TC windfield model and introduce `model_kwargs` parameter to adjust model parameters [#846](https://github.com/CLIMADA-project/climada_python/pull/846)
+- Changed module structure: `climada.hazard.Hazard` has been split into the modules `base`, `io` and `plot` [#871](https://github.com/CLIMADA-project/climada_python/pull/871)
+- Ensure `csr_matrix` stored in `climada.hazard.Hazard` have consistent data format and store no explicit zeros when initializing `ImpactCalc` [#893](https://github.com/CLIMADA-project/climada_python/pull/893)
+- `Impact.from_hdf5` now calls `str` on `event_name` data that is not strings, and issue a warning then [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
+- `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
+- Split `climada.hazard.trop_cyclone` module into smaller submodules without affecting module usage [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
+
+### Fixed
+
+- Avoid an issue where a Hazard subselection would have a fraction matrix with only zeros as entries by throwing an error [#866](https://github.com/CLIMADA-project/climada_python/pull/866)
+- Allow downgrading the Python bugfix version to improve environment compatibility [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
+- Fix broken links in `CONTRIBUTING.md` [#900](https://github.com/CLIMADA-project/climada_python/pull/900)
+- When writing `TCTracks` to NetCDF, only apply compression to `float` or `int` data types. This fixes a downstream issue, see [climada_petals#135](https://github.com/CLIMADA-project/climada_petals/issues/135) [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
+
+### Deprecated
+
+- climada.hazard.centroids.centr.Centroids.from_lat_lon
+- climada.hazard.centroids.centr.Centroids.def set_area_pixel
+- climada.hazard.centroids.centr.Centroids.def set_area_approx
+- climada.hazard.centroids.centr.Centroids.set_dist_coast
+- climada.hazard.centroids.centr.Centroids.empty_geometry_points
+- climada.hazard.centroids.centr.Centroids.set_meta_to_lat_lon
+- climada.hazard.centroids.centr.Centroids.set_lat_lon_to_meta
+- `scheduler` parameter in `climada.util.coordinates.set_df_geometry_points`, as dask is not used anymore, leaving all calculation to shapely [#912](https://github.com/CLIMADA-project/climada_python/pull/912)
+
+### Removed
+
+- climada.hazard.base.Hazard.clear
+- climada.hazard.base.Hazard.from_mat
+- climada.hazard.base.Hazard.raster_to_vector
+- climada.hazard.base.Hazard.read_mat
+- climada.hazard.base.Hazard.reproject_raster
+- climada.hazard.base.Hazard.set_vector
+- climada.hazard.base.Hazard.vector_to_raster
+- climada.hazard.centroids.centr.Centroids.calc_pixels_polygons
+- climada.hazard.centroids.centr.Centroids.check
+- climada.hazard.centroids.centr.Centroids.clear
+- climada.hazard.centroids.centr.Centroids.equal
+- climada.hazard.centroids.centr.Centroids.from_mat
+- climada.hazard.centroids.centr.Centroids.from_base_grid
+- climada.hazard.centroids.centr.Centroids.read_excel
+- climada.hazard.centroids.centr.Centroids.read_hdf5
+- climada.hazard.centroids.centr.Centroids.read_mat
+- climada.hazard.centroids.centr.Centroids.set_elevation
+- climada.hazard.centroids.centr.Centroids.set_geometry_points
+- climada.hazard.centroids.centr.Centroids.set_lat_lon
+- climada.hazard.centroids.centr.Centroids.set_raster_file
+- climada.hazard.centroids.centr.Centroids.set_raster_from_pnt_bounds
+- climada.hazard.centroids.centr.Centroids.set_vector_file
+- climada.hazard.centroids.centr.Centroids.values_from_raster_files
+- climada.hazard.centroids.centr.Centroids.values_from_vector_files
+- climada.hazard.centroids.centr.generate_nat_earth_centroids
+- `requirements/env_docs.yml`. The regular environment specs are now used to build the online documentation [#687](https://github.com/CLIMADA-project/climada_python/pull/687)
 
 ## 4.1.1
 
@@ -103,6 +306,7 @@ Changed:
 
 - `geopandas` >=0.13 &rarr; >=0.14
 - `pandas` >=1.5,<2.0 &rarr; >=2.1
+- `salib` >=1.3.0 &rarr; >=1.4.7
 
 Removed:
 
@@ -357,4 +561,3 @@ updated:
 
 - `climada.enginge.impact.Impact.calc()` and `climada.enginge.impact.Impact.calc_impact_yearset()`
 [#436](https://github.com/CLIMADA-project/climada_python/pull/436).
-

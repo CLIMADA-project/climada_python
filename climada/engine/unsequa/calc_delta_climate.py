@@ -21,29 +21,31 @@ Define Uncertainty class for Impact differences between two climates.
 
 __all__ = ["CalcDeltaImpact"]
 
+import itertools
 import logging
 import time
 from typing import Union
-import itertools
 
-import pandas as pd
 import numpy as np
+import pandas as pd
 import pathos.multiprocessing as mp
 
-# use pathos.multiprocess fork of multiprocessing for compatibility
-# wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
-
 from climada.engine import ImpactCalc
-from climada.engine.unsequa import Calc, InputVar, UncImpactOutput
 from climada.engine.unsequa.calc_base import (
-    _sample_parallel_iterator,
+    Calc,
     _multiprocess_chunksize,
+    _sample_parallel_iterator,
     _transpose_chunked_data,
 )
+from climada.engine.unsequa.input_var import InputVar
+from climada.engine.unsequa.unc_output import UncImpactOutput
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
 from climada.util.value_representation import safe_divide
+
+# use pathos.multiprocess fork of multiprocessing for compatibility
+# wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
 
 LOGGER = logging.getLogger(__name__)
@@ -79,7 +81,7 @@ class CalcDeltaImpact(Calc):
     _input_var_names : tuple(str)
         Names of the required uncertainty input variables
         ('exp_initial_input_var', 'impf_initial_input_var', 'haz_initial_input_var',
-         'exp_final_input_var', 'impf_final_input_var', 'haz_final_input_var'')
+        'exp_final_input_var', 'impf_final_input_var', 'haz_final_input_var'')
     _metric_names : tuple(str)
         Names of the impact output metrics
         ('aai_agg', 'freq_curve', 'at_event', 'eai_exp')
@@ -154,6 +156,7 @@ class CalcDeltaImpact(Calc):
         rp=None,
         calc_eai_exp=False,
         calc_at_event=False,
+        relative_delta=True,
         processes=1,
         chunksize=None,
     ):
@@ -195,6 +198,9 @@ class CalcDeltaImpact(Calc):
         calc_at_event : boolean, optional
             Toggle computation of the impact for each event.
             The default is False.
+        relative_delta : bool, optional
+            Normalize delta impacts by past impacts or not.
+            The default is True.
         processes : int, optional
             Number of CPUs to use for parralel computations.
             The default is 1 (not parallel)
@@ -248,6 +254,7 @@ class CalcDeltaImpact(Calc):
         self.rp = rp
         self.calc_eai_exp = calc_eai_exp
         self.calc_at_event = calc_at_event
+        self.relative_delta = relative_delta
 
         one_sample = samples_df.iloc[0:1]
         start = time.time()
@@ -319,6 +326,7 @@ class CalcDeltaImpact(Calc):
                 rp=self.rp,
                 calc_eai_exp=self.calc_eai_exp,
                 calc_at_event=self.calc_at_event,
+                relative_delta=self.relative_delta,
             )
             if processes > 1:
                 with mp.Pool(processes=processes) as pool:
@@ -343,6 +351,7 @@ def _map_impact_calc(
     rp,
     calc_eai_exp,
     calc_at_event,
+    relative_delta,
 ):
     """
     Map to compute impact for all parameter samples in parallel
@@ -363,6 +372,8 @@ def _map_impact_calc(
         Compute eai_exp or not
     calc_at_event : bool
         Compute at_event or not
+    relative_delta : bool
+        Normalize delta impacts by past impacts or not
 
     Returns
     -------
@@ -416,22 +427,21 @@ def _map_impact_calc(
             at_event_initial = np.array([])
             at_event_final = np.array([])
 
-        delta_aai_agg = safe_divide(
-            imp_final.aai_agg - imp_initial.aai_agg, imp_initial.aai_agg
-        )
+        if relative_delta:
+            delta_func = lambda x, y: safe_divide(x - y, y)
+        else:
+            delta_func = lambda x, y: x - y
 
-        delta_freq_curve = safe_divide(
-            freq_curve_final - freq_curve_initial, freq_curve_initial
-        )
+        delta_aai_agg = delta_func(imp_final.aai_agg, imp_initial.aai_agg)
+
+        delta_freq_curve = delta_func(freq_curve_final, freq_curve_initial)
 
         delta_eai_exp = (
-            safe_divide(eai_exp_final - eai_exp_initial, eai_exp_initial)
-            if calc_eai_exp
-            else np.array([])
+            delta_func(eai_exp_final, eai_exp_initial) if calc_eai_exp else np.array([])
         )
 
         delta_at_event = (
-            safe_divide(at_event_final - at_event_initial, at_event_initial)
+            delta_func(at_event_final, at_event_initial)
             if calc_at_event
             else np.array([])
         )

@@ -29,15 +29,18 @@ Next, execute `make` (this might take a while when executed for the first time)
 make html
 ```
 
-The documentation will be placed in `doc/_html`. Simply open the page `doc/_html/index.html` with your browser.
+The documentation will be placed in `doc/_build/html`. Simply open the page `doc/_build/html/index.html` with your browser.
 
 ## Updating the Documentation Environment for Readthedocs.org
 
 The online documentation is built by [`readthedocs.org`](https://readthedocs.org/).
-Their servers have a limited capacity, which is typically exceeded by Anaconda when it tries to resolve all dependencies for CLIMADA.
-We therefore provide a dedicated environment with *fixed* package versions in `requirements/env_docs.yml`.
+Their servers have a limited capacity.
+In the past, this capacity was exceeded by Anaconda when it tried to resolve all dependencies for CLIMADA.
+We therefore provided a dedicated environment with *fixed* package versions in `requirements/env_docs.yml`.
+As of commit `8c66d8e4a4c93225e3a337d8ad69ab09b48278e3`, this environment was removed and the online documentation environment is built using the specs in `requirements/env_climada.yml`.
+If this should fail in the future, revert the changes by `8c66d8e4a4c93225e3a337d8ad69ab09b48278e3` and update the environment specs in `requirements/env_docs.yml` with the following instructions.
 
-For re-creating this environment, we provide a Dockerfile.
+For re-creating the documentation environment, we provide a Dockerfile.
 You can use it to build a new environment and extract the exact versions from it.
 This might be necessary when we upgrade to a new version of Python, or when dependencies are updated.
 **NOTE:** Your machine must be able to run/virtualize an AMD64 OS.

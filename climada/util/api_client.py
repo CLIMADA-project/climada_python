@@ -18,24 +18,25 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Data API client
 """
-from dataclasses import dataclass
-from datetime import datetime
+
 import hashlib
 import json
 import logging
+import time
+from dataclasses import dataclass
+from datetime import datetime
 from os.path import commonprefix
 from pathlib import Path
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
-import time
 
 import pandas as pd
-from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
-import requests
 import pycountry
+import requests
+from peewee import CharField, DateTimeField, IntegrityError, Model, SqliteDatabase
 
 from climada import CONFIG
 from climada.entity import Exposures
-from climada.hazard import Hazard, Centroids
+from climada.hazard import Centroids, Hazard
 from climada.util.constants import SYSTEM_DIR
 
 LOGGER = logging.getLogger(__name__)
@@ -739,7 +740,7 @@ class Client:
     def _multi_version(datasets):
         ddf = pd.DataFrame(datasets)
         gdf = ddf.groupby("name").agg({"version": "nunique"})
-        return list(gdf[gdf.version > 1].index)
+        return list(gdf[gdf["version"] > 1].index)
 
     def get_hazard(
         self,
@@ -1101,7 +1102,7 @@ class Client:
         """
         dsdf = pd.DataFrame(dataset_infos)
         ppdf = pd.DataFrame([ds.properties for ds in dataset_infos])
-        dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf.data_type])
+        dtdf = pd.DataFrame([pd.Series(dt) for dt in dsdf["data_type"]])
 
         return (
             dtdf.loc[
@@ -1142,9 +1143,10 @@ class Client:
         """Removes downloaded dataset files from the given directory if they have been downloaded
         with the API client, if they are beneath the given directory and if one of the following
         is the case:
-        - there status is neither 'active' nor 'test_dataset'
-        - their status is 'test_dataset' and keep_testfiles is set to False
-        - their status is 'active' and they are outdated, i.e., there is a dataset with the same
+
+        * there status is neither 'active' nor 'test_dataset'
+        * their status is 'test_dataset' and keep_testfiles is set to False
+        * their status is 'active' and they are outdated, i.e., there is a dataset with the same
           data_type and name but a newer version.
 
         Parameters

@@ -1,7 +1,7 @@
 #!/bin/bash -e
 
 mamba remove --name climada_env --all
-mamba create -n climada_env python=3.9
+mamba create -n climada_env python=3.11
 mamba env update -n climada_env -f requirements/env_climada.yml
 
 source activate climada_env

@@ -5,8 +5,8 @@
 PYTEST_JUNIT_ARGS = --junitxml=tests_xml/tests.xml
 
 PYTEST_COV_ARGS = \
-	--cov --cov-config=.coveragerc --cov-report html --cov-report xml \
-	--cov-report term:skip-covered
+	--cov --cov-config=.coveragerc --cov-report html:coverage \
+	--cov-report xml:coverage.xml --cov-report term:skip-covered
 
 PYTEST_ARGS = $(PYTEST_JUNIT_ARGS) $(PYTEST_COV_ARGS)
 
@@ -29,11 +29,11 @@ install_test : ## Test installation was successful
 
 .PHONY : data_test
 data_test : ## Test data APIs
-	python script/jenkins/test_data_api.py
+	pytest $(PYTEST_JUNIT_ARGS) script/jenkins/test_data_api.py
 
 .PHONY : notebook_test
 notebook_test : ## Test notebooks in doc/tutorial
-	python script/jenkins/test_notebooks.py report
+	pytest $(PYTEST_JUNIT_ARGS) script/jenkins/test_notebooks.py
 
 .PHONY : integ_test
 integ_test : ## Integration tests execution with xml reports

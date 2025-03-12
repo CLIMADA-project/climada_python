@@ -24,14 +24,13 @@ import unittest
 
 import numpy as np
 
-from climada.entity import Exposures
 import climada.util.lines_polys_handler as u_lp
 from climada.engine import Impact
-
+from climada.entity import Exposures
 from climada.util.test.test_lines_polys_handler import (
-    HAZ,
     EXP_POLY,
     GDF_POLY,
+    HAZ,
     IMPF_SET,
     check_impact,
 )

@@ -12,4 +12,3 @@ climada\.entity\.exposures\.base module
     :members:
     :undoc-members:
     :show-inheritance:
-
