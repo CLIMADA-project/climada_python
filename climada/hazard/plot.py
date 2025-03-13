@@ -41,6 +41,7 @@ class HazardPlot:
         self,
         return_periods=(25, 50, 100, 250),
         axis=None,
+        kwargs_local_exceedance_intensity={},
         **kwargs,
     ):
         """
@@ -54,6 +55,8 @@ class HazardPlot:
             return periods to consider
         axis: matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+            kwargs_local_exceedance_intensity: dict
+                 Dictionary of keyword arguments for the method hazard.local_exceedance_intensity
         kwargs: optional
             arguments for pcolormesh matplotlib function used in event plots
 
@@ -61,6 +64,9 @@ class HazardPlot:
         -------
         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
             intenstats is return_periods.size x num_centroids
+       See Also
+       ---------
+       hazard.local_exceedance_intensity: method to calculate local exceedance frequencies.
 
         Notes
         -----
@@ -76,7 +82,7 @@ class HazardPlot:
         )
 
         inten_stats, title, column_labels = self.local_exceedance_intensity(
-            return_periods
+            return_periods, **kwargs_local_exceedance_intensity
         )
 
         axis = u_plot.plot_from_gdf(

@@ -1180,6 +1180,7 @@ class Impact:
         return_periods=(25, 50, 100, 250),
         log10_scale=True,
         axis=None,
+        kwargs_local_exceedance_impact={},
         **kwargs,
     ):
         """
@@ -1204,7 +1205,10 @@ class Impact:
         axis : matplotlib.axes.Axes
         imp_stats : np.array
             return_periods.size x num_centroids
-
+        See Also
+        --------
+        engine.impact.local_exceedance_impact :
+            inter- and extrapolation method
         Notes
         -----
         For handling large data, and for more flexible options in the exceedance
@@ -1221,6 +1225,7 @@ class Impact:
 
         impacts_stats, title, column_labels = self.local_exceedance_impact(
             return_periods
+        **kwargs_local_exceedance_impact
         )
 
         impacts_stats_vals = impacts_stats.values[:, 1:].T.astype(float)
