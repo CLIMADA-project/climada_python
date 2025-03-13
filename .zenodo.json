@@ -1,4 +1,8 @@
 {
+  "title": "CLIMADA Core Python Package",
+
+  "description": "CLIMADA (CLIMate ADAptation) is a free and open-source software framework for climate risk assessment and adaptation option appraisal. Designed by a large scientific community, it helps reasearchers, policymakers, and businesses analyse the impacts of natural hazards and explore adaptation strategies.",
+
   "creators": [
     {
       "name": "Gabriela Aznar Siguan",
