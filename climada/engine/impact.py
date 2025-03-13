@@ -530,10 +530,9 @@ class Impact:
             If set to True, impact values are converted to log scale before
             inter- and extrapolation. Defaults to True.
         bin_decimals : int, optional
-            This parameter is only used if method is set to "extrapolate". Number of decimals
-            for the binning of the impact values, see Notes. If None,
-            impact values are not binned. Defaults to None.
-
+            Number of decimals to group and bin impact values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
         Returns
         -------
         gdf : gpd.GeoDataFrame
@@ -553,11 +552,15 @@ class Impact:
 
         Notes
         -------
-        If method = "extrapolate" and an integer bin_decimals is provided, impacts are binned
-        according to their bin_decimals decimal places. This results in a smoother (and coarser)
-        interpolation, and a more stable extrapolation. The default bin_decimals=None results in
-        not binning the values. For more information about the binning, see
-        climada.util.interpolation.preprocess_and_interpolate_ev().
+        If an integer bin_decimals is given, the impact values are binned according to their
+        bin_decimals decimals, and their corresponding frequencies are summed. This binning leads
+        to a smoother (and coarser) interpolation, and a more stable extrapolation. For instance,
+        if bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and
+        0.2 are combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results
+        in not binning the values.
+        E.g., if your impact range from 1 to 100, you could use bin_decimals=1, if your
+        impact range from 1e6 to 1e9, you could use bin_decimals=-5, if your impact
+        range from 0.0001 to .01, you could use bin_decimals=5.
         """
         LOGGER.info(
             "Computing exceedance impact map for return periods: %s", return_periods
@@ -683,9 +686,9 @@ class Impact:
             If set to True, impact values are converted to log scale before
             inter- and extrapolation. Defaults to True.
         bin_decimals : int, optional
-            This parameter is only used if method is set to "extrapolate". Number of decimals
-            for the binning of the impact values, see Notes. If None,
-            impact values are not binned. Defaults to None.
+            Number of decimals to group and bin impact values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
 
         Returns
         -------
@@ -706,11 +709,15 @@ class Impact:
 
         Notes
         -------
-        If method = "extrapolate" and an integer bin_decimals is provided, impacts are binned
-        according to their bin_decimals decimal places. This results in a smoother (and coarser)
-        interpolation, and a more stable extrapolation. The default bin_decimals=None results in
-        not binning the values. For more information about the binning, see
-        climada.util.interpolation.preprocess_and_interpolate_ev().
+        If an integer bin_decimals is given, the impact values are binned according to their
+        bin_decimals decimals, and their corresponding frequencies are summed. This binning leads
+        to a smoother (and coarser) interpolation, and a more stable extrapolation. For instance,
+        if bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and
+        0.2 are combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results
+        in not binning the values.
+        E.g., if your impact range from 1 to 100, you could use bin_decimals=1, if your
+        impact range from 1e6 to 1e9, you could use bin_decimals=-5, if your impact
+        range from 0.0001 to .01, you could use bin_decimals=5.
         """
 
         LOGGER.info("Computing return period map for impacts: %s", threshold_impact)

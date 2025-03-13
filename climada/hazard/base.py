@@ -521,9 +521,9 @@ class Hazard(HazardIO, HazardPlot):
             If set to True, intensity values are converted to log scale before
             inter- and extrapolation. Defaults to True.
         bin_decimals : int, optional
-            This parameter is only used if method is set to "extrapolate". Number of decimals
-            for the binning of the intensity values, see Notes. If None,
-            intensity values are not binned. Defaults to None.
+            Number of decimals to group and bin intensity values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
 
         Returns
         -------
@@ -544,11 +544,15 @@ class Hazard(HazardIO, HazardPlot):
 
         Notes
         -------
-        If method = "extrapolate" and an integer bin_decimals is provided, intensites are binned
-        according to their bin_decimals decimal places. This results in a smoother (and coarser)
-        interpolation, and a more stable extrapolation. The default bin_decimals=None results in
-        not binning the values. For more information about the binning, see
-        climada.util.interpolation.preprocess_and_interpolate_ev().
+        If an integer bin_decimals is given, the intensity values are binned according to their
+        bin_decimals decimals, and their corresponding frequencies are summed. This binning leads
+        to a smoother (and coarser) interpolation, and a more stable extrapolation. For instance,
+        if bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and
+        0.2 are combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results
+        in not binning the values.
+        E.g., if your intensities range from 1 to 100, you could use bin_decimals=1, if your
+        intensities range from 1e6 to 1e9, you could use bin_decimals=-5, if your intensities
+        range from 0.0001 to .01, you could use bin_decimals=5.
         """
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
@@ -672,9 +676,9 @@ class Hazard(HazardIO, HazardPlot):
             If set to True, intensity values are converted to log scale before
             inter- and extrapolation. Defaults to True.
         bin_decimals : int, optional
-            This parameter is only used if method is set to "extrapolate". Number of decimals
-            for the binning of the intensity values, see Notes. If None,
-            intensity values are not binned. Defaults to None.
+            Number of decimals to group and bin intensity values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
 
 
         Returns
@@ -696,11 +700,15 @@ class Hazard(HazardIO, HazardPlot):
 
         Notes
         -------
-        If method = "extrapolate" and an integer bin_decimals is provided, intensites are binned
-        according to their bin_decimals decimal places. This results in a smoother (and coarser)
-        interpolation, and a more stable extrapolation. The default bin_decimals=None results in
-        not binning the values. For more information about the binning, see
-        climada.util.interpolation.preprocess_and_interpolate_ev().
+        If an integer bin_decimals is given, the intensity values are binned according to their
+        bin_decimals decimals, and their corresponding frequencies are summed. This binning leads
+        to a smoother (and coarser) interpolation, and a more stable extrapolation. For instance,
+        if bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and
+        0.2 are combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results
+        in not binning the values.
+        E.g., if your intensities range from 1 to 100, you could use bin_decimals=1, if your
+        intensities range from 1e6 to 1e9, you could use bin_decimals=-5, if your intensities
+        range from 0.0001 to .01, you could use bin_decimals=5.
         """
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres

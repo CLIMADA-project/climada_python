@@ -77,9 +77,10 @@ def preprocess_and_interpolate_ev(
         Has no effect if method is "interpolate". Else, provides return value and if
         for test x values larger than given x values, if size < 2 or if method is set
         to "extrapolate_constant" or "stepfunction". Defaults to np.nan.
-    bin_decimals : int or None, optional
-        Number of decimals to group and bin the values, see Notes. If None, values are not binned.
-        Defaults to None.
+    bin_decimals : int, optional
+        Number of decimals to group and bin the values. Binning results in smoother (and coarser)
+        interpolation and more stable extrapolation. For more details and sensible values for
+        bin_decimals, see Notes. If None, values are not binned. Defaults to None.
 
     Returns
     -------
@@ -94,12 +95,15 @@ def preprocess_and_interpolate_ev(
 
     Notes
     -----
-    Before extrapolation, if an integer bin_decimals is given, the values are binned according to
-    their bin_decimals decimals, and their corresponding frequencies are summed. For instance, if
+    If an integer bin_decimals is given, the values are binned according to their
+    bin_decimals decimals, and their corresponding frequencies are summed. This binning leads to
+    a smoother (and coarser) interpolation, and a more stable extrapolation. For instance, if
     bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and 0.2 are
-    combined to a value 12.0 with frequency 0.3. This binning leads to a smoother (and coarser)
-    interpolation, and a more stable extrapolation. The default bin_decimals=None results in not
+    combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results in not
     binning the values.
+    E.g., if your values range from 1 to 100, you could use bin_decimals=1, if your values range
+    from 1e6 to 1e9, you could use bin_decimals=-5, if your values range from 0.0001 to .01, you
+    could use bin_decimals=5.
     """
 
     # check that only test frequencies or only test values are given
@@ -117,7 +121,7 @@ def preprocess_and_interpolate_ev(
     frequency = frequency[sorted_idxs]
 
     # group similar values together
-    if method == "extrapolate" and isinstance(bin_decimals, int):
+    if isinstance(bin_decimals, int):
         frequency, values = _group_frequency(frequency, values, bin_decimals)
 
     # transform frequencies to cummulative frequencies
