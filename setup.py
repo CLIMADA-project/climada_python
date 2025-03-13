@@ -42,7 +42,7 @@ DEPS_DEV = (
 
 setup(
     name="climada",
-    version="6.0.0",
+    version="6.0.1-dev",
     description="CLIMADA in Python",
     long_description=long_description,
     long_description_content_type="text/markdown",
