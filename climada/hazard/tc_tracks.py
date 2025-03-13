@@ -330,7 +330,7 @@ class TCTracks:
         start_year: int
             First year to include in the selection
         end_year: int
-            Last year to include in the selection
+            Last year to include in the selection, same as start_year when selecting only one year 
 
         Returns:
         --------
