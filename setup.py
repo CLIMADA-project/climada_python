@@ -19,6 +19,7 @@ DEPS_DOC = [
     "sphinx",
     "sphinx-book-theme",
     "sphinx-markdown-tables",
+    "sphinx-mdinclude",
 ]
 
 # Requirements for testing
