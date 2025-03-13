@@ -2305,6 +2305,7 @@ class TestBoundsFromUserInput(unittest.TestCase):
 
     def test_bounding_box_from_countries(self):
         """Test for a list of ISO country codes."""
+        # Italy is a multipolygon geometry
         result = u_coord.bounding_box_from_countries(
             ["ITA"], buffer=1.0
         )  # Testing with Italy (ITA)
@@ -2314,7 +2315,21 @@ class TestBoundsFromUserInput(unittest.TestCase):
             34.48924388200004,
             19.517425977000073,
             48.08521494500006,
-        ]  # Italy's bounding box
+        ]  # Italy's bounding box with 1 degree buffer
+        np.testing.assert_array_almost_equal(result, expected)
+
+        # Switzerland is a polygon geometry
+        result = u_coord.bounding_box_from_countries(
+            ["CHE"], buffer=0.0
+        )  # Testing with Switzerland (CHE)
+        # Real expected bounds for Switzerland (calculated or manually known)
+        expected = [
+            5.954809204000128,
+            45.82071848599999,
+            10.466626831000013,
+            47.801166077000076,
+        ]  # CHE's bounding box with 0 degree buffer
+        np.testing.assert_array_almost_equal(result, expected)
 
         # invalid input
         with self.assertRaises(ValueError):
