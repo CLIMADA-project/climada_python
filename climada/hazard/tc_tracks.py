@@ -322,71 +322,122 @@ class TCTracks:
 
         return out
 
-    def subset_year(self, start_year: int = None, end_year: int = None):
-        """Subset TCTracks between start and end years, both included.
+    def subset_year(
+        self,
+        start_date: tuple = (False, False, False),
+        end_date: tuple = (False, False, False),
+    ):
+        """Subset TCTracks between start and end dates, both included.
 
         Parameters:
         ----------
-        start_year: int
-            First year to include in the selection
-        end_year: int
-            Last year to include in the selection, same as start_year when selecting only one year 
+        start_date: tuple
+            First date to include in the selection (YYYY, MM, DD). Each element can either
+            be an integer or `False`. If an element is `False`, it is ignored during the filter.
+        end_date: tuple of int
+            Last date to include in the selection, same as start_date for the corresponding field.
 
         Returns:
         --------
         subset: TCTracks
-            TCTtracks object containing the subset of tracks
+            TCTracks object containing the subset of tracks
+
         Raises:
         -------
-        TypeError
-            - If either `start_year` or `end_year` is not an integer.
-            - If `self` is not a `TCTracks` object.
-            - If `self.data` is empty (i.e., no tracks are available).
         ValueError
-            - If `start_year` is greater than `end_year`.
-            - If the date format in a track is invalid and the year cannot be extracted.
-            - If no tracks are found within the specified year range.
+            - If there's a mismatch between `start_*` and `end_*` values (e.g., one is set to `True` while the other is `False`).
+            - If no tracks are found within the specified date range.
+        TypeError
+            - If `start_date` or `end_date` are incorrectly ordered (start > end).
 
+        Example 1 (Filter by Year Only):
+        ---------------------------------
+        >>> start_date = (2022, False, False)
+        >>> end_date = (2022, False, False)
+        >>> # This will filter all tracks from the year 2022, regardless of month or day.
+
+        Example 2 (Filter by Year and Month):
+        --------------------------------------
+        >>> start_date = (2022, 5, False)
+        >>> end_date = (2022, 5, False)
+        >>> # This will filter all tracks from May 2022, regardless of the day.
+
+        Example 3 (Filter by Year, Month, and Day):
+        --------------------------------------------
+        >>> start_date = (2022, 5, 10)
+        >>> end_date = (2022, 5, 20)
+        >>> # This will filter all tracks from May 10th to May 20th, 2022.
+
+        Example 4 (Invalid: Only one of day is specified):
+        ---------------------------------------------------
+        >>> start_date = (2022, False, 10)
+        >>> end_date = (2022, 5, 20)
+        >>> # Raises a ValueError since the day is specified in the start_date but not in end_date.
         """
 
         subset = self.__class__()
 
-        if not isinstance(start_year, int) or not isinstance(end_year, int):
-            raise TypeError("Both start_year and end_year must be integers.")
+        # Extract date components
+        start_year, end_year = start_date[0], end_date[0]
+        start_month, end_month = start_date[1], end_date[1]
+        start_day, end_day = start_date[2], end_date[2]
 
-        if start_year > end_year:
+        # Check if only one of start_* or end_* is set (True and False)
+        # if not start_day and not (1 <= start_day <= 31) or not end_day and not (1 <= end_day <= 31):
+        #     raise TypeError("Day values should be between 1 and 31.")
+        # if not start_month and not (1 <= start_month <= 12) or not end_month and not(1 <= end_month <= 12):
+        #     raise TypeError("Day values should be between 1 and 31.")
+        if (start_day and not end_day) or (not start_day and end_day):
             raise ValueError(
-                f"start_year ({start_year}) cannot be greater than end_year ({end_year})."
+                "Mismatch between start_day and end_day: Both must be either True or False."
             )
-
-        if not isinstance(self, TCTracks):
-            raise TypeError(
-                f"self should be a TCTtracks object and not {self.__class__()}."
+        elif (start_month and not end_month) or (not start_month and end_month):
+            raise ValueError(
+                "Mismatch between start_month and end_month: Both must be either True or False."
             )
+        elif (start_year and not end_year) or (not start_year and end_year):
+            raise ValueError(
+                "Mismatch between start_year and end_year: Both must be either True or False."
+            )
+        elif start_year and end_year and start_year > end_year:
+            raise TypeError("Start year is after end year, control your entry.")
 
-        if len(self.data) == 0:
-            raise TypeError("self.data should be a non-empty list of tracks.")
-
-        # Find indices corresponding to the years
+        # Find indices corresponding to the date range
         index: list = []
         for i, track in enumerate(self.data):
             try:
                 date_array = track.time[0].to_numpy()
                 year = date_array.astype("datetime64[Y]").item().year
+                month = date_array.astype("datetime64[M]").item().month
+                day = date_array.astype("datetime64[D]").item().day
             except AttributeError:
                 raise ValueError(
-                    f"Invalid date format in track {i}, could not extract year."
+                    f"Invalid date format in track {i}, could not extract date."
                 )
 
-            if start_year <= year <= end_year:
+            condition_year = start_year <= year <= end_year
+            condition_month = start_month <= month <= end_month
+            condition_day = start_day <= day <= end_day
+
+            if not start_day and not end_day:
+                condition_day = True
+            if not start_month and not end_month:
+                condition_month = True
+            if not start_year and not end_year:
+                condition_year = True
+
+            if condition_year and condition_month and condition_day:
                 index.append(i)
 
+        # Raise error if no tracks found
         if not index:
             raise ValueError(
-                f"No tracks found for the years between {start_year} and {end_year}."
+                f"No tracks found for the specified date range: {start_date} to \n"
+                "{end_date}."
             )
 
-        subset.data = itemgetter(*index)(self.data)
+        # Create subset with filtered tracks
+        subset.data = [self.data[i] for i in index]
 
         return subset
 

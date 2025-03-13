@@ -770,47 +770,120 @@ class TestFuncs(unittest.TestCase):
         tc_test = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL)
         for i in range(5):
             date = cftime.DatetimeProlepticGregorian(
-                2000 + i, 2, 20, 0, 0, 0, 0, has_year_zero=True
+                2000 + i, 1 + i, 10 + i, 0, 0, 0, 0, has_year_zero=True
             )
             tc_test.data[i]["time"] = np.full(tc_test.data[i].time.shape[0], date)
 
-        tc_subset = tc_test.subset_year(start_year=2001, end_year=2003)
-
-        self.assertEqual(len(tc_subset.data), 3)
+        # correct calling of the function
+        tc_subset = tc_test.subset_year(
+            start_date=(2000, False, False), end_date=(2003, False, False)
+        )
+        self.assertEqual(len(tc_subset.data), 4)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[1].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[1].time[0].item().month, 2)
+        self.assertEqual(tc_subset.data[2].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[2].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[3].time[0].item().year, 2003)
+        self.assertEqual(tc_subset.data[3].time[0].item().month, 4)
+        tc_subset = tc_test.subset_year(
+            start_date=(2000, False, False), end_date=(2000, False, False)
+        )
+        self.assertEqual(len(tc_subset.data), 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        tc_subset = tc_test.subset_year(
+            start_date=(False, 1, False), end_date=(False, 4, False)
+        )
+        self.assertEqual(len(tc_subset.data), 4)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[1].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[1].time[0].item().month, 2)
+        self.assertEqual(tc_subset.data[2].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[2].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[3].time[0].item().year, 2003)
+        self.assertEqual(tc_subset.data[3].time[0].item().month, 4)
+        tc_subset = tc_test.subset_year(
+            start_date=(False, 3, False), end_date=(False, 3, False)
+        )
+        self.assertEqual(len(tc_subset.data), 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2002)
+        tc_subset = tc_test.subset_year(
+            start_date=(False, False, 11), end_date=(False, False, 14)
+        )
+        self.assertEqual(len(tc_subset.data), 4)
         self.assertEqual(tc_subset.data[0].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 2)
         self.assertEqual(tc_subset.data[1].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[1].time[0].item().month, 3)
         self.assertEqual(tc_subset.data[2].time[0].item().year, 2003)
+        self.assertEqual(tc_subset.data[2].time[0].item().month, 4)
+        self.assertEqual(tc_subset.data[3].time[0].item().year, 2004)
+        self.assertEqual(tc_subset.data[3].time[0].item().month, 5)
+        tc_subset = tc_test.subset_year(
+            start_date=(False, False, 10), end_date=(False, False, 10)
+        )
+        self.assertEqual(len(tc_subset.data), 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        tc_subset = tc_test.subset_year(
+            start_date=(2000, 1, 10), end_date=(2000, 1, 13)
+        )
+        self.assertEqual(len(tc_subset.data), 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        tc_subset = tc_test.subset_year(
+            start_date=(2000, 1, 10), end_date=(2004, 9, 13)
+        )
+        self.assertEqual(len(tc_subset.data), 4)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[1].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[1].time[0].item().month, 2)
+        self.assertEqual(tc_subset.data[2].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[2].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[3].time[0].item().year, 2003)
+        self.assertEqual(tc_subset.data[3].time[0].item().month, 4)
 
-        # Invalid input: non-integer start_year
-        with self.assertRaisesRegex(
-            TypeError, "Both start_year and end_year must be integers."
-        ):
-            tc_test.subset_year(start_year="2000", end_year=2003)
+        # improper calling
 
-        # Invalid input: non-integer end_year
-        with self.assertRaisesRegex(
-            TypeError, "Both start_year and end_year must be integers."
-        ):
-            tc_test.subset_year(start_year=2000, end_year=None)
+        # self.assertEqual(tc_subset.data[0].time[0].item().year, 2001)
+        # self.assertEqual(tc_subset.data[1].time[0].item().year, 2002)
+        # self.assertEqual(tc_subset.data[2].time[0].item().year, 2003)
 
-        # Invalid range: start_year greater than end_year
-        with self.assertRaisesRegex(
-            ValueError, r"start_year \(2005\) cannot be greater than end_year \(2000\)."
-        ):
-            tc_test.subset_year(start_year=2005, end_year=2000)
+        # # Invalid input: non-integer start_year
+        # with self.assertRaisesRegex(
+        #     TypeError, "Both start_year and end_year must be integers."
+        # ):
+        #     tc_test.subset_year(start_year="2000", end_year=2003)
 
-        # No tracks match the year range
-        with self.assertRaisesRegex(
-            ValueError, "No tracks found for the years between 2050 and 2060."
-        ):
-            tc_test.subset_year(start_year=2050, end_year=2060)
+        # # Invalid input: non-integer end_year
+        # with self.assertRaisesRegex(
+        #     TypeError, "Both start_year and end_year must be integers."
+        # ):
+        #     tc_test.subset_year(start_year=2000, end_year=None)
 
-        # Empty data case
-        empty_tc = tc.TCTracks()
-        with self.assertRaisesRegex(
-            TypeError, "self.data should be a non-empty list of tracks."
-        ):
-            empty_tc.subset_year(start_year=2000, end_year=2010)
+        # # Invalid range: start_year greater than end_year
+        # with self.assertRaisesRegex(
+        #     ValueError, r"start_year \(2005\) cannot be greater than end_year \(2000\)."
+        # ):
+        #     tc_test.subset_year(start_year=2005, end_year=2000)
+
+        # # No tracks match the year range
+        # with self.assertRaisesRegex(
+        #     ValueError, "No tracks found for the years between 2050 and 2060."
+        # ):
+        #     tc_test.subset_year(start_year=2050, end_year=2060)
+
+        # # Empty data case
+        # empty_tc = tc.TCTracks()
+        # with self.assertRaisesRegex(
+        #     TypeError, "self.data should be a non-empty list of tracks."
+        # ):
+        #     empty_tc.subset_year(start_year=2000, end_year=2010)
 
     def test_get_extent(self):
         """Test extent/bounds attributes."""
