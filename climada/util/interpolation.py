@@ -40,9 +40,9 @@ def preprocess_and_interpolate_ev(
     y_asymptotic=np.nan,
     bin_decimals=None,
 ):
-    """Function to first preprocess (frequency, values) data by binning the data according to
-    their value with the given number of significant digits (see Notes), compute the cumulative
-    frequencies, and then inter- and extrapolate either to test frequencies or to test values.
+    """Function to first preprocess (frequency, values) data (if extrapolating, one can bin the
+    data according to their value, see Notes), compute the cumulative frequencies, and then
+    inter- and extrapolate either to test frequencies or to test values.
 
     Parameters
     ----------
@@ -70,13 +70,16 @@ def preprocess_and_interpolate_ev(
         If set to "extrapolate_constant" or "stepfunction", test x values larger than given
         x values will be assigned largest given y value, and test x values smaller than the given
         x values will be assigned y_asymtotic. If set to "extrapolate", values will be extrapolated
-        (and interpolated). Defaults to "interpolate".
+        (and interpolated). The extrapolation to test frequencies or test values outside of the
+        data range extends the two interpolations at the edges of the data to outside of
+        the data. Defaults to "interpolate".
     y_asymptotic : float, optional
         Has no effect if method is "interpolate". Else, provides return value and if
         for test x values larger than given x values, if size < 2 or if method is set
         to "extrapolate_constant" or "stepfunction". Defaults to np.nan.
-    n_sig_dig : int, optional
-        Number of significant digits to group and bin the values, see Notes. Defaults to 3.
+    bin_decimals : int or None, optional
+        Number of decimals to group and bin the values, see Notes. If None, values are not binned.
+        Defaults to None.
 
     Returns
     -------
@@ -91,12 +94,12 @@ def preprocess_and_interpolate_ev(
 
     Notes
     -----
-    Before inter- and extrapolation, the values are binned according to their n_sig_dig
-    significant digits, and their corresponding frequencies are summed. For instance, if
-    n_sig_dig=3, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and 0.2 are
+    Before extrapolation, if an integer bin_decimals is given, the values are binned according to
+    their bin_decimals decimals, and their corresponding frequencies are summed. For instance, if
+    bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and 0.2 are
     combined to a value 12.0 with frequency 0.3. This binning leads to a smoother (and coarser)
-    interpolation, and a more stable extrapolation. To not bin the values, you can use a large
-    n_sig_dig, e.g., n_sig_dig=7.
+    interpolation, and a more stable extrapolation. The default bin_decimals=None results in not
+    binning the values.
     """
 
     # check that only test frequencies or only test values are given
@@ -356,8 +359,9 @@ def _group_frequency(frequency, value, bin_decimals):
             Frequency array
         value : array_like
             Value array in ascending order
-        n_sig_dig : int
-            number of significant digits for value when grouping frequency.
+        bin_decimals : int
+            decimals according to which values are binned and their corresponding frequency are
+            grouped.
 
     Returns:
     ------

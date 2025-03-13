@@ -502,8 +502,7 @@ class Impact:
     ):
         """Compute local exceedance impact for given return periods. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
-        frequency with linear interpolation on log-log scale. Impacts are binned according
-        to their n_sig_dig significant digits, see Notes.
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
@@ -525,16 +524,15 @@ class Impact:
         min_impact : float, optional
             Minimum threshold to filter the impact. Defaults to 0.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "extrapolate" or "interpolate". If set
-            to True, (cummulative) frequency values are converted to log scale before inter- and
-            extrapolation. Defaults to True.
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
         log_impact : bool, optional
-            This parameter is only used if method is set to "extrapolate" or "interpolate". If set
-            to True, impact values are converted to log scale before inter- and extrapolation.
-            Defaults to True.
-        n_sig_dig : int, optional
-            Number of significant digits for the binning of the impact values, see Notes.
-            Defaults to 3.
+            If set to True, impact values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            This parameter is only used if method is set to "extrapolate". Number of decimals
+            for the binning of the impact values, see Notes. If None,
+            impact values are not binned. Defaults to None.
 
         Returns
         -------
@@ -555,10 +553,10 @@ class Impact:
 
         Notes
         -------
-        Contrary to Impact.calc_freq_curve(), impacts are binned according to their n_sig_dig
-        significant digits. This results in a smoother (and coarser) interpolation, and a
-        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
-        e.g., n_sig_dig=7. For more information about the binning, see
+        If method = "extrapolate" and an integer bin_decimals is provided, impacts are binned
+        according to their bin_decimals decimal places. This results in a smoother (and coarser)
+        interpolation, and a more stable extrapolation. The default bin_decimals=None results in
+        not binning the values. For more information about the binning, see
         climada.util.interpolation.preprocess_and_interpolate_ev().
         """
         LOGGER.info(
@@ -656,8 +654,7 @@ class Impact:
     ):
         """Compute local return periods for given threshold impacts. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
-        frequency with linear interpolation on log-log scale. Impacts are binned according
-        to their n_sig_dig significant digits, see Notes.
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
@@ -680,16 +677,15 @@ class Impact:
         min_impacts : float, optional
             Minimum threshold to filter the impact. Defaults to 0.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            (cummulative) frequency values are converted to log scale before inter- and
-            extrapolation. Defaults to True.
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
         log_impact : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            impact values are converted to log scale before inter- and extrapolation.
-            Defaults to True.
-        n_sig_dig : int, optional
-            Number of significant digits for the binning of the impact values, see Notes.
-            Defaults to 3.
+            If set to True, impact values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            This parameter is only used if method is set to "extrapolate". Number of decimals
+            for the binning of the impact values, see Notes. If None,
+            impact values are not binned. Defaults to None.
 
         Returns
         -------
@@ -710,10 +706,10 @@ class Impact:
 
         Notes
         -------
-        Contrary to Impact.calc_freq_curve(), impacts are binned according to their n_sig_dig
-        significant digits. This results in a smoother (and coarser) interpolation, and a
-        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
-        e.g., n_sig_dig=7. For more information about the binning, see
+        If method = "extrapolate" and an integer bin_decimals is provided, impacts are binned
+        according to their bin_decimals decimal places. This results in a smoother (and coarser)
+        interpolation, and a more stable extrapolation. The default bin_decimals=None results in
+        not binning the values. For more information about the binning, see
         climada.util.interpolation.preprocess_and_interpolate_ev().
         """
 

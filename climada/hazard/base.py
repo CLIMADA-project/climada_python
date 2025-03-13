@@ -495,8 +495,7 @@ class Hazard(HazardIO, HazardPlot):
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with linear interpolation on log-log scale. Intensities are binned according
-        to their n_sig_dig significant digits, see Notes.
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
@@ -519,16 +518,15 @@ class Hazard(HazardIO, HazardPlot):
             Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
             will be used. Defaults to None.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            (cummulative) frequency values are converted to log scale before inter- and
-            extrapolation. Defaults to True.
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
         log_intensity : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            intensity values are converted to log scale before inter- and extrapolation.
-            Defaults to True.
-        n_sig_dig : int, optional
-            Number of significant digits for the binning of the intensity values, see Notes.
-            Defaults to 3.
+            If set to True, intensity values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            This parameter is only used if method is set to "extrapolate". Number of decimals
+            for the binning of the intensity values, see Notes. If None,
+            intensity values are not binned. Defaults to None.
 
         Returns
         -------
@@ -549,12 +547,11 @@ class Hazard(HazardIO, HazardPlot):
 
         Notes
         -------
-        Contrary to Impact.calc_freq_curve(), intensities are binned according to their n_sig_dig
-        significant digits. This results in a smoother (and coarser) interpolation, and a
-        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
-        e.g., n_sig_dig=7. For more information about the binning, see
-        util.interpolation.preprocess_and_interpolate_ev().
-
+        If method = "extrapolate" and an integer bin_decimals is provided, intensites are binned
+        according to their bin_decimals decimal places. This results in a smoother (and coarser)
+        interpolation, and a more stable extrapolation. The default bin_decimals=None results in
+        not binning the values. For more information about the binning, see
+        climada.util.interpolation.preprocess_and_interpolate_ev().
         """
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
@@ -648,8 +645,7 @@ class Hazard(HazardIO, HazardPlot):
     ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with linear interpolation on log-log scale. Intensities are binned according
-        to their n_sig_dig significant digits, see Notes.
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
@@ -673,16 +669,16 @@ class Hazard(HazardIO, HazardPlot):
             Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
             will be used. Defaults to None.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            (cummulative) frequency values are converted to log scale before inter- and
-            extrapolation. Defaults to True.
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
         log_intensity : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            intensity values are converted to log scale before inter- and extrapolation.
-            Defaults to True.
-        n_sig_dig : int, optional
-            Number of significant digits for the binning of the intensity values, see Notes.
-            Defaults to 3.
+            If set to True, intensity values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            This parameter is only used if method is set to "extrapolate". Number of decimals
+            for the binning of the intensity values, see Notes. If None,
+            intensity values are not binned. Defaults to None.
+
 
         Returns
         -------
@@ -703,10 +699,10 @@ class Hazard(HazardIO, HazardPlot):
 
         Notes
         -------
-        Contrary to Impact.calc_freq_curve(), intensities are binned according to their n_sig_dig
-        significant digits. This results in a smoother (and coarser) interpolation, and a
-        more stable extrapolation. To not bin the values, please use a large value for n_sig_dig,
-        e.g., n_sig_dig=7. For more information about the binning, see
+        If method = "extrapolate" and an integer bin_decimals is provided, intensites are binned
+        according to their bin_decimals decimal places. This results in a smoother (and coarser)
+        interpolation, and a more stable extrapolation. The default bin_decimals=None results in
+        not binning the values. For more information about the binning, see
         climada.util.interpolation.preprocess_and_interpolate_ev().
         """
         if not min_intensity and min_intensity != 0:
