@@ -24,6 +24,8 @@ import datetime as dt
 import itertools
 import logging
 import pathlib
+import warnings
+from collections.abc import Collection
 from typing import Any, Callable, Dict, Optional, Union
 
 import h5py
@@ -177,6 +179,8 @@ class HazardIO:
             files_fraction = [files_fraction]
         if not attrs:
             attrs = {}
+        else:
+            attrs = cls._check_and_cast_attrs(attrs)
         if not band:
             band = [1]
         if files_fraction is not None and len(files_intensity) != len(files_fraction):
@@ -394,6 +398,7 @@ class HazardIO:
             * ``event_name``: String representation of the event date or empty strings
               if that fails (which will issue a warning).
             * ``event_id``: Consecutive integers starting at 1 and increasing with time
+
         crs : str, optional
             Identifier for the coordinate reference system of the coordinates. Defaults
             to ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
@@ -889,9 +894,134 @@ class HazardIO:
                 **ident
             )
 
+        hazard_kwargs = cls._check_and_cast_attrs(hazard_kwargs)
+
         # Done!
         LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)
         return cls(centroids=centroids, intensity=intensity_matrix, **hazard_kwargs)
+
+    @staticmethod
+    def _check_and_cast_attrs(attrs: Dict[str, Any]) -> Dict[str, Any]:
+        """Check the validity of the hazard attributes given and cast to correct type if required and possible.
+
+        The current purpose is to check that event_name is a list of string
+        (and convert to string otherwise), although other checks and casting could be included here in the future.
+
+        Parameters
+        ----------
+
+        attrs : dict
+            Attributes for a new Hazard object
+
+        Returns
+        -------
+
+        attrs : dict
+            Attributes checked for type validity and casted otherwise (only event_name at the moment).
+
+        Warns
+        -----
+
+        UserWarning
+            Warns the user if any value casting happens.
+        """
+
+        def _check_and_cast_container(
+            attr_value: Any, expected_container: Collection
+        ) -> Any:
+            """Check if the attribute is of the expected container type and cast if necessary.
+
+            Parameters
+            ----------
+            attr_value : any
+                The current value of the attribute.
+
+            expected_container : type
+                The expected type of the container (e.g., list, np.ndarray).
+
+            Returns
+            -------
+            attr_value : any
+                The value cast to the expected container type, if needed.
+            """
+            if not isinstance(attr_value, expected_container):
+                warnings.warn(
+                    f"Value should be of type {expected_container}. Casting it.",
+                    UserWarning,
+                )
+                # Attempt to cast to the expected container type
+                if expected_container is list:
+                    return list(attr_value)
+                elif expected_container is np.ndarray:
+                    return np.array(attr_value)
+                else:
+                    raise TypeError(f"Unsupported container type: {expected_container}")
+            return attr_value
+
+        def _check_and_cast_elements(
+            attr_value: Any, expected_dtype: Union[Any, None]
+        ) -> Any:
+            """Check if the elements of the container are of the expected dtype and cast if necessary,
+            while preserving the original container type.
+
+            Parameters
+            ----------
+            attr_value : any
+                The current value of the attribute (a container).
+
+            expected_dtype : type or None
+                The expected type of the elements within the container. If None, no casting is done.
+
+            Returns
+            -------
+            attr_value : any
+                The value with elements cast to the expected type, preserving the original container type.
+            """
+            if expected_dtype is None:
+                # No dtype enforcement required
+                return attr_value
+
+            container_type = type(attr_value)  # Preserve the original container type
+
+            # Perform type checking and casting of elements
+            if isinstance(attr_value, (list, np.ndarray)):
+                if not all(isinstance(val, expected_dtype) for val in attr_value):
+                    warnings.warn(
+                        f"Not all values are of type {expected_dtype}. Casting values.",
+                        UserWarning,
+                    )
+                    casted_values = [expected_dtype(val) for val in attr_value]
+                    # Return the casted values in the same container type
+                    if container_type is list:
+                        return casted_values
+                    elif container_type is np.ndarray:
+                        return np.array(casted_values)
+                    else:
+                        raise TypeError(f"Unsupported container type: {container_type}")
+            else:
+                raise TypeError(
+                    f"Expected a container (e.g., list or ndarray), got {type(attr_value)} instead."
+                )
+
+            return attr_value
+
+        ## This should probably be defined as a CONSTANT?
+        attrs_to_check = {"event_name": (list, str), "event_id": (np.ndarray, None)}
+
+        for attr_name, (expected_container, expected_dtype) in attrs_to_check.items():
+            attr_value = attrs.get(attr_name)
+
+            if attr_value is not None:
+                # Check and cast the container type
+                attr_value = _check_and_cast_container(attr_value, expected_container)
+
+                # Check and cast the element types (if applicable)
+                attr_value = _check_and_cast_elements(attr_value, expected_dtype)
+
+                # Update the attrs dictionary with the modified value
+                attrs[attr_name] = attr_value
+
+        return attrs
 
     @staticmethod
     def _attrs_to_kwargs(attrs: Dict[str, Any], num_events: int) -> Dict[str, Any]:
@@ -986,7 +1116,9 @@ class HazardIO:
             centroids = Centroids._legacy_from_excel(
                 file_name, var_names=var_names["col_centroids"]
             )
-            hazard_kwargs.update(cls._read_att_excel(file_name, var_names, centroids))
+            attrs = cls._read_att_excel(file_name, var_names, centroids)
+            attrs = cls._check_and_cast_attrs(attrs)
+            hazard_kwargs.update(attrs)
         except KeyError as var_err:
             raise KeyError("Variable not in Excel file: " + str(var_err)) from var_err
 
@@ -1071,6 +1203,9 @@ class HazardIO:
         with h5py.File(file_name, "w") as hf_data:
             str_dt = h5py.special_dtype(vlen=str)
             for var_name, var_val in self.__dict__.items():
+                if var_name == "event_name":
+                    if not all((isinstance(val, str) for val in var_val)):
+                        raise TypeError("'event_name' must be a list of strings")
                 if var_name == "centroids":
                     # Centroids have their own write_hdf5 method,
                     # which is invoked at the end of this method (s.b.)
@@ -1172,6 +1307,7 @@ class HazardIO:
                 else:
                     hazard_kwargs[var_name] = hf_data.get(var_name)
         hazard_kwargs["centroids"] = Centroids.from_hdf5(file_name)
+        hazard_kwargs = cls._check_and_cast_attrs(hazard_kwargs)
         # Now create the actual object we want to return!
         return cls(**hazard_kwargs)
 

@@ -179,7 +179,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
          * - **Supported Version**
            - ``3.11``
          * - Allowed Versions
-           - ``3.9``, ``3.10``, ``3.11``
+           - ``3.10``, ``3.11``
 
 #. Use the default environment specs in ``env_climada.yml`` to install all dependencies.
    Then activate the environment:

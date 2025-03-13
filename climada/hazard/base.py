@@ -225,15 +225,12 @@ class Hazard(HazardIO, HazardPlot):
         --------
         :py:func:`climada.util.checker.prune_csr_matrix`
 
-        Todo
-        -----
-        * Check consistency with centroids
-
         Raises
         ------
         ValueError
             If matrices are ill-formed or ill-shaped in relation to each other
         """
+        # TODO:  Check consistency with centroids
         u_check.prune_csr_matrix(self.intensity)
         u_check.prune_csr_matrix(self.fraction)
         if self.fraction.nnz > 0:

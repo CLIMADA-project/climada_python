@@ -42,7 +42,7 @@ DEPS_DEV = (
 
 setup(
     name="climada",
-    version="5.0.1-dev",
+    version="6.0.1-dev",
     description="CLIMADA in Python",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -58,7 +58,7 @@ setup(
         "Topic :: Scientific/Engineering :: Mathematics",
     ],
     keywords="climate adaptation",
-    python_requires=">=3.9,<3.12",
+    python_requires=">=3.10,<3.12",
     install_requires=[
         "bayesian-optimization<2.0",
         "bottleneck",
