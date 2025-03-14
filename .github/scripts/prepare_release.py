@@ -95,7 +95,7 @@ def update_changelog(nvn):
                     if section_name:
                         changelog.write(f"### {section_name}\n")
                     lines = [
-                        ln.strip()
+                        ln.rstrip()
                         for ln in section
                         if "code freeze date: " not in ln.lower()
                     ]

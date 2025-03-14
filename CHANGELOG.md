@@ -16,12 +16,18 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
-- bug in `climada.util.coordinates.bounding_box_from_countries` occurring if the country is a polygon and not a multipolygon
-  [#1018](https://github.com/CLIMADA-project/climada_python/pull/1018)
-
 ### Deprecated
 
 ### Removed
+
+## 6.0.1
+
+Release date: 2025-03-13
+
+### Fixed
+
+- bug in `climada.util.coordinates.bounding_box_from_countries` occurring if the country is a polygon and not a multipolygon
+  [#1018](https://github.com/CLIMADA-project/climada_python/pull/1018)
 
 ## 6.0.0
 
@@ -63,6 +69,7 @@ Removed:
 
 ### Added
 
+- `climada.hazard.tc_tracks.TCTracks.subset_years` function [#1023](https://github.com/CLIMADA-project/climada_python/pull/1023)
 -`climada.hazard.tc_tracks.compute_track_density` function, `climada.hazard.tc_tracks.compute_genesis_density` function,
  `climada.util.coordinates.compute_grid_cell_area` function, `climada.util.coordinates.compute_grid_cell_area_validation` function,
  `climada.hazard.tc_tracks.normalize_hist` function, `climada.hazard.plot.plot_track_density` function
