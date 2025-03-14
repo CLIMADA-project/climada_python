@@ -16,6 +16,9 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- bug in `climada.util.coordinates.bounding_box_from_countries` occurring if the country is a polygon and not a multipolygon
+  [#1018](https://github.com/CLIMADA-project/climada_python/pull/1018)
+
 ### Deprecated
 
 ### Removed
