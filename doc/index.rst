@@ -88,6 +88,7 @@ Jump right in:
    tutorial/climada_util_calibrate
    Google Earth Engine <tutorial/climada_util_earth_engine>
    tutorial/climada_util_api_client
+   Local exceedance frequency and return period <tutorial/climada_util_local_exceedance_values>
 
 
 .. toctree::
