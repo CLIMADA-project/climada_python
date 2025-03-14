@@ -764,9 +764,7 @@ class Hazard(HazardIO, HazardPlot):
         label = f"Return Periods ({return_period_unit})"
 
         def column_label(column_names):
-            return [
-                f"Return Period: {col} {return_period_unit}" for col in column_names
-            ]
+            return [f"Threshold Intensity: {col} {self.units}" for col in column_names]
 
         return gdf, label, column_label
 

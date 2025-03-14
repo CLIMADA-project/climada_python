@@ -41,45 +41,48 @@ class HazardPlot:
         self,
         return_periods=(25, 50, 100, 250),
         axis=None,
-        kwargs_local_exceedance_intensity={},
+        kwargs_local_exceedance_intensity=None,
         **kwargs,
     ):
         """
-        Compute and plot hazard exceedance intensity maps for different
-        return periods. Calls local_exceedance_intensity. For handling large data sets and for
-        further options, see Notes.
+         Compute and plot hazard exceedance intensity maps for different
+         return periods. Calls local_exceedance_intensity. For handling large data sets and for
+         further options, see Notes.
 
-        Parameters
-        ----------
-        return_periods: tuple(int), optional
-            return periods to consider
-        axis: matplotlib.axes._subplots.AxesSubplot, optional
-            axis to use
-            kwargs_local_exceedance_intensity: dict
-                 Dictionary of keyword arguments for the method hazard.local_exceedance_intensity
-        kwargs: optional
-            arguments for pcolormesh matplotlib function used in event plots
+         Parameters
+         ----------
+         return_periods: tuple(int), optional
+             return periods to consider
+         axis: matplotlib.axes._subplots.AxesSubplot, optional
+             axis to use
+         kwargs_local_exceedance_intensity: dict
+             Dictionary of keyword arguments for the method hazard.local_exceedance_intensity.
+         kwargs: optional
+             arguments for pcolormesh matplotlib function used in event plots
 
-        Returns
-        -------
-        axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
-            intenstats is return_periods.size x num_centroids
-       See Also
-       ---------
-       hazard.local_exceedance_intensity: method to calculate local exceedance frequencies.
+         Returns
+         -------
+         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
+             intenstats is return_periods.size x num_centroids
+        See Also
+        ---------
+        hazard.local_exceedance_intensity: method to calculate local exceedance frequencies.
 
-        Notes
-        -----
-        For handling large data, and for more fleixble options in the exceedance
-        intensity computation and in the plotting, we recommend to use
-        gdf, title, labels = hazard.local_exceedance_intensity() and
-        util.plot.plot_from_gdf(gdf, title, labels) instead.
+         Notes
+         -----
+         For handling large data, and for more fleixble options in the exceedance
+         intensity computation and in the plotting, we recommend to use
+         gdf, title, labels = hazard.local_exceedance_intensity() and
+         util.plot.plot_from_gdf(gdf, title, labels) instead.
         """
         LOGGER.info(
             "Some errors in the previous calculation of local exceedance intensities have been corrected,"
             " see Hazard.local_exceedance_intensity. To reproduce data with the "
             "previous calculation, use CLIMADA v5.0.0 or less."
         )
+
+        if kwargs_local_exceedance_intensity is None:
+            kwargs_local_exceedance_intensity = {}
 
         inten_stats, title, column_labels = self.local_exceedance_intensity(
             return_periods, **kwargs_local_exceedance_intensity

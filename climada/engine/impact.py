@@ -778,9 +778,7 @@ class Impact:
         label = f"Return Periods ({return_period_unit})"
 
         def column_label(column_names):
-            return [
-                f"Return Period: {col} {return_period_unit}" for col in column_names
-            ]
+            return [f"Impact: {col} {self.unit}" for col in column_names]
 
         return gdf, label, column_label
 
@@ -1180,7 +1178,7 @@ class Impact:
         return_periods=(25, 50, 100, 250),
         log10_scale=True,
         axis=None,
-        kwargs_local_exceedance_impact={},
+        kwargs_local_exceedance_impact=None,
         **kwargs,
     ):
         """
@@ -1196,6 +1194,8 @@ class Impact:
             plot impact as log10(impact). Default: True
         smooth : bool, optional
             smooth plot to plot.RESOLUTIONxplot.RESOLUTION. Default: True
+        kwargs_local_exceedance_impact: dict
+            Dictionary of keyword arguments for the method impact.local_exceedance_impact.
         kwargs : dict, optional
             arguments for pcolormesh matplotlib function
             used in event plots
@@ -1223,9 +1223,11 @@ class Impact:
             "previous calculation, use CLIMADA v5.0.0 or less."
         )
 
+        if kwargs_local_exceedance_impact is None:
+            kwargs_local_exceedance_impact = {}
+
         impacts_stats, title, column_labels = self.local_exceedance_impact(
-            return_periods
-        **kwargs_local_exceedance_impact
+            return_periods, **kwargs_local_exceedance_impact
         )
 
         impacts_stats_vals = impacts_stats.values[:, 1:].T.astype(float)

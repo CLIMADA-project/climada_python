@@ -383,7 +383,7 @@ def _group_frequency(frequency, value, bin_decimals):
     if value_unique.size != frequency.size:
         if not all(sorted(start_indices) == start_indices):
             LOGGER.warning(
-                "After grouping values to significant digits, the value array is not sorted."
+                "After grouping values using to their decimals, the value array is not sorted."
                 "The values are not binned. This might be due to floating point error while "
                 "binning. Please choose a larger value of bin_decimals=%s.",
                 bin_decimals,

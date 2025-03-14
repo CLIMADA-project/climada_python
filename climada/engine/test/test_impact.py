@@ -595,7 +595,7 @@ class TestRPmatrix(unittest.TestCase):
 
         # test log log extrapolation
         impact_stats, _, _ = impact.local_exceedance_impact(
-            return_periods=(1000, 30, 0.1), method="extrapolate", bin_decimals=2
+            return_periods=(1000, 30, 0.1), method="extrapolate", bin_decimals=-1
         )
         np.testing.assert_allclose(
             impact_stats.values[:, 1:].astype(float),
