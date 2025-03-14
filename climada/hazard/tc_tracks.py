@@ -3010,7 +3010,7 @@ def compute_track_density(
 
     Parameters:
     ----------
-    tc_track: TCT track object
+    tc_track: TCTracks object
         track object containing a list of all tracks
     res: int (optional), default: 5°
         resolution in degrees of the grid bins in which the density will be computed
@@ -3021,7 +3021,7 @@ def compute_track_density(
     norm: str (optional), default: None
         If None the function returns the number of samples in each bin. If True, it normalize the
         bin count as specified: if norm = area -> normalize by gird cell area. If norm = sum ->
-        normalize by the total sum of each bin.
+        normalize by the total sum across all bins.
     filter_tracks: bool (optional) default: True
         If True the track density is computed as the number of different tracks crossing a grid
         cell. If False, the track density takes into account how long the track stayed in each
@@ -3034,17 +3034,17 @@ def compute_track_density(
     Returns:
     -------
     hist_count: np.ndarray
-        2D matrix containing the the absolute count per gridd cell of track point or the normalized
+        2D matrix containing the the absolute count per grid cell of track point or the normalized
         number of track points, depending on the norm parameter.
     lat_bins: np.ndarray
-        latitude bins in which the point where counted
+        latitude bins in which the point were counted
     lon_bins: np.ndarray
-        laongitude bins in which the point where counted
+        longitude bins in which the point were counted
 
     Example:
     --------
     >>> tc_tracks = TCTrack.from_ibtracs_netcdf("path_to_file")
-    >>> tc_tracks.equal_timestep(time_steph_h = 1)
+    >>> tc_tracks.equal_timestep(time_step_h = 1)
     >>> hist_count, *_ = compute_track_density(tc_track = tc_tracks, res = 1)
     >>> ax = plot_track_density(hist_count)
 
