@@ -541,7 +541,7 @@ def compute_grid_cell_area(
     res: float
         Grid resolution in degrees
     bounds: tuple, dafault: None
-        (lat_min,lat_max,lon_min,lon_max) latitude and longitude bounds to compute grid cell area
+        (lon_min, lat_min, lon_max, lat_max) latitude and longitude bounds to compute grid cell area
     projection: str
         Ellipsoid or spherical projection to approximate Earth. To get the complete list of
         projections call :py:meth:`pyproj.get_ellps_map()`. Widely used projections:
@@ -560,17 +560,17 @@ def compute_grid_cell_area(
     --------
     >>> area = compute_grid_areas(res = 1, projection ="sphere", units = "m^2")
     """
-    geod = Geod(ellps=projection)  # Use specified ellipsoid model
+    geod = Geod(ellps=projection)
 
     if not bounds:
-        lat_min, lat_max, lon_min, lon_max = -90, 90, -180, 180
+        lon_min, lat_min, lon_max, lat_max = -180, -90, 180, 90
     else:
-        lat_min, lat_max, lon_min, lon_max = bounds[0], bounds[1], bounds[2], bounds[3]
+        lon_min, lat_min, lon_max, lat_max = bounds[0], bounds[1], bounds[2], bounds[3]
 
     lat_edges: np.ndarray = np.linspace(lat_min, lat_max, int(180 / res))
     lon_edges: np.ndarray = np.linspace(lon_min, lon_max, int(360 / res))
 
-    area = np.zeros((len(lat_edges) - 1, len(lon_edges) - 1))  # Create an empty grid
+    area = np.zeros((len(lat_edges) - 1, len(lon_edges) - 1))
 
     # Iterate over consecutive latitude and longitude edges
     for i, (lat1, lat2) in enumerate(zip(lat_edges[:-1], lat_edges[1:])):

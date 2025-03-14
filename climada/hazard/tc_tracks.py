@@ -3015,7 +3015,7 @@ def compute_track_density(
     res: int (optional), default: 5°
         resolution in degrees of the grid bins in which the density will be computed
     bounds: tuple, (optional) dafault: None
-        (lat_min,lat_max,lon_min,lon_max) latitude and longitude bounds.
+        (lon_min, lat_min, lon_max, lat_max) latitude and longitude bounds.
     genesis: bool, (optional) default = False
         If true the function computes the track density of only the genesis location of tracks
     norm: str (optional), default: None
@@ -3066,9 +3066,9 @@ def compute_track_density(
 
     # define grid resolution and bounds for density computation
     if not bounds:
-        lat_min, lat_max, lon_min, lon_max = -90, 90, -180, 180
+        lon_min, lat_min, lon_max, lat_max = -180, -90, 180, 90
     else:
-        lat_min, lat_max, lon_min, lon_max = bounds[0], bounds[1], bounds[2], bounds[3]
+        lon_min, lat_min, lon_max, lat_max = bounds[0], bounds[1], bounds[2], bounds[3]
 
     lat_bins: np.ndarray = np.linspace(lat_min, lat_max, int(180 / res))
     lon_bins: np.ndarray = np.linspace(lon_min, lon_max, int(360 / res))
