@@ -848,42 +848,31 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(tc_subset.data[3].time[0].item().year, 2003)
         self.assertEqual(tc_subset.data[3].time[0].item().month, 4)
 
-        # improper calling
-
-        # self.assertEqual(tc_subset.data[0].time[0].item().year, 2001)
-        # self.assertEqual(tc_subset.data[1].time[0].item().year, 2002)
-        # self.assertEqual(tc_subset.data[2].time[0].item().year, 2003)
-
-        # # Invalid input: non-integer start_year
-        # with self.assertRaisesRegex(
-        #     TypeError, "Both start_year and end_year must be integers."
-        # ):
-        #     tc_test.subset_year(start_year="2000", end_year=2003)
-
-        # # Invalid input: non-integer end_year
-        # with self.assertRaisesRegex(
-        #     TypeError, "Both start_year and end_year must be integers."
-        # ):
-        #     tc_test.subset_year(start_year=2000, end_year=None)
-
-        # # Invalid range: start_year greater than end_year
-        # with self.assertRaisesRegex(
-        #     ValueError, r"start_year \(2005\) cannot be greater than end_year \(2000\)."
-        # ):
-        #     tc_test.subset_year(start_year=2005, end_year=2000)
-
-        # # No tracks match the year range
-        # with self.assertRaisesRegex(
-        #     ValueError, "No tracks found for the years between 2050 and 2060."
-        # ):
-        #     tc_test.subset_year(start_year=2050, end_year=2060)
-
-        # # Empty data case
-        # empty_tc = tc.TCTracks()
-        # with self.assertRaisesRegex(
-        #     TypeError, "self.data should be a non-empty list of tracks."
-        # ):
-        #     empty_tc.subset_year(start_year=2000, end_year=2010)
+        # Invalid input: Mismatch between start_day and end_day
+        with self.assertRaisesRegex(
+            ValueError,
+            "Mismatch between start_year and end_year: "
+            "Both must be either True or False.",
+        ):
+            tc_test.subset_year((2000, False, False), (False, False, False))
+        with self.assertRaisesRegex(
+            ValueError,
+            "Mismatch between start_month and end_month: "
+            "Both must be either True or False.",
+        ):
+            tc_test.subset_year((2000, False, False), (2000, 5, False))
+        with self.assertRaisesRegex(
+            ValueError,
+            "Mismatch between start_day and end_day: "
+            "Both must be either True or False.",
+        ):
+            tc_test.subset_year((False, False, False), (False, False, 3))
+        with self.assertRaisesRegex(ValueError, "Start year is after end year."):
+            tc_test.subset_year((2007, False, False), (2000, False, False))
+        with self.assertRaisesRegex(
+            ValueError, "No tracks found for the specified date range"
+        ):
+            tc_test.subset_year((2100, False, False), (2150, False, False))
 
     def test_get_extent(self):
         """Test extent/bounds attributes."""
