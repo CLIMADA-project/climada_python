@@ -3039,7 +3039,7 @@ def compute_track_density(
     lat_bins: np.ndarray
         latitude bins in which the point were counted
     lon_bins: np.ndarray
-        laongitude bins in which the point where counted
+        longitude bins in which the point were counted
 
     Example:
     --------
