@@ -3010,7 +3010,7 @@ def compute_track_density(
 
     Parameters:
     ----------
-    tc_track: TCT track object
+    tc_track: TCTracks object
         track object containing a list of all tracks
     res: int (optional), default: 5°
         resolution in degrees of the grid bins in which the density will be computed
