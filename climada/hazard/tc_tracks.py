@@ -3044,7 +3044,7 @@ def compute_track_density(
     Example:
     --------
     >>> tc_tracks = TCTrack.from_ibtracs_netcdf("path_to_file")
-    >>> tc_tracks.equal_timestep(time_steph_h = 1)
+    >>> tc_tracks.equal_timestep(time_step_h = 1)
     >>> hist_count, *_ = compute_track_density(tc_track = tc_tracks, res = 1)
     >>> ax = plot_track_density(hist_count)
 
