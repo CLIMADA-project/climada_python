@@ -3021,7 +3021,7 @@ def compute_track_density(
     norm: str (optional), default: None
         If None the function returns the number of samples in each bin. If True, it normalize the
         bin count as specified: if norm = area -> normalize by gird cell area. If norm = sum ->
-        normalize by the total sum of each bin.
+        normalize by the total sum across all bins.
     filter_tracks: bool (optional) default: True
         If True the track density is computed as the number of different tracks crossing a grid
         cell. If False, the track density takes into account how long the track stayed in each
