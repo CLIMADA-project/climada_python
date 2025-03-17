@@ -64,14 +64,14 @@ Notes on the CLIMADA Petals Package
 
 CLIMADA is divided into two packages, CLIMADA Core (`climada_python <https://github.com/CLIMADA-project/climada_python>`_) and CLIMADA Petals (`climada_petals <https://github.com/CLIMADA-project/climada_petals>`_).
 The Core contains all the modules necessary for probabilistic impact, averted damage, uncertainty and forecast calculations.
-Data for hazard, exposures and impact functions can be obtained from the :doc:`CLIMADA Data API </tutorial/climada_util_api_client>`.
+Data for hazard, exposures and impact functions can be obtained from the :doc:`CLIMADA Data API </user-guide/climada_util_api_client>`.
 Hazard and Exposures subclasses are included as demonstrators only.
 
 .. attention:: CLIMADA Petals is **not** a standalone module and requires CLIMADA Core to be installed!
 
 CLIMADA Petals contains all the modules for generating data (e.g., ``TC_Surge``, ``WildFire``, ``OpenStreeMap``, ...).
 New modules are developed and tested here.
-Some data created with modules from Petals is available to download from the :doc:`Data API </tutorial/climada_util_api_client>`.
+Some data created with modules from Petals is available to download from the :doc:`Data API </user-guide/climada_util_api_client>`.
 This works with just CLIMADA Core installed.
 CLIMADA Petals can be used to generate additional data of this type, or to have a look at the tutorials for all data types available from the API.
 
@@ -263,7 +263,7 @@ With the ``climada_env`` activated, execute
 
    pre-commit install
 
-Please refer to the :ref:`guide on pre-commit hooks <guide-pre-commit-hooks>` for information on how to use this tool.
+Please refer to the :ref:`pre-commit-hooks` for information on how to use this tool.
 
 For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
 On macOS and on Linux it is pre-installed. On Windows, it can easily be installed with Conda:
