@@ -263,7 +263,7 @@ With the ``climada_env`` activated, execute
 
    pre-commit install
 
-Please refer to the :ref:`pre-commit-hooks` for information on how to use this tool.
+Please refer to the `guide on pre-commit hooks <../development/Guide_CLIMADA_Development.html#pre-commit-hooks>`_ for information on how to use this tool.
 
 For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
 On macOS and on Linux it is pre-installed. On Windows, it can easily be installed with Conda:
@@ -272,7 +272,7 @@ On macOS and on Linux it is pre-installed. On Windows, it can easily be installe
 
    mamba install -n climada_env make
 
-Instructions for running the test scripts can be found in the :doc:`Testing Guide <Guide_Testing>`.
+Instructions for running the test scripts can be found in the `Testing Guide <../development/Guide_Testing.html>`_.
 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -373,7 +373,7 @@ Test Explorer Setup
 
 After you set up a workspace, you might want to configure the test explorer for easily running the CLIMADA test suite within VSCode.
 
-.. note:: Please install the additional :ref:`test dependencies <install-dev>` before proceeding.
+.. note:: Please install the additional :ref:`test dependencies <devdeps>` before proceeding.
 
 #. In the left sidebar, select the "Testing" symbol, and click on *Configure Python Tests*.
 

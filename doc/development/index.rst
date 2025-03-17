@@ -1,4 +1,4 @@
-.. include:: ../../CONTRIBUTING.md
+.. include:: ../misc/CONTRIBUTING.md
    :parser: myst_parser.sphinx_
 
 .. toctree::
@@ -14,3 +14,4 @@
    Writing tests for your code <Guide_Testing>
    Guide_Review
    Guide_Euler
+   Authors <../misc/AUTHORS>

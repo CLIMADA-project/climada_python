@@ -1,16 +1,20 @@
+:html_theme.sidebar_secondary.remove: true
+
 ===================
 Welcome to CLIMADA!
 ===================
 
-.. image:: guide/img/CLIMADA_logo_QR.png
-   :align: center
-   :alt: CLIMADA Logo
+.. raw:: html
 
-`CLIMADA <https://climada.ethz.ch>`_ (CLIMate ADAptation) is a free and open-source software framework for
-comprehensive climate risk assessment. Designed by a large scientific community,
-CLIMADA offers a robust and flexible platform to analyse the impacts of natural
-hazards and explore adaptation strategies, and it can be used by researchers,
-policy and decision-makers.
+    <div class="hero">
+      <b style="font-size: 1.5rem; display: block;">CLIMADA (CLIMate ADAptation)</b>
+      <p style="font-size: 1.5rem; display: block;">
+        is a free and open-source software framework for climate risk assessment and
+        adaptation option appraisal. Designed by a large scientific community, it
+        helps reasearchers, policymakers, and businesses analyse the impacts of
+        natural hazards and explore adaptation strategies.
+      </p>
+    </div>
 
 CLIMADA is primarily developed and maintained by the `Weather and Climate Risks
 Group <https://wcr.ethz.ch/>`_ at `ETH Zürich <https://ethz.ch/en.html>`_.

@@ -20,3 +20,20 @@ html {
     --pst-font-size-base: 16px;
     --pst-header-height: 7rem;
 }
+
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center; /* Center-align text */
+  background: linear-gradient(to right, #f39c12, #1abc9c, #bdc3c7); /* Orange, teal, gray gradient */
+  color: white; /* Ensure text stands out */
+  padding: 10px;
+  border-radius: 10px; /* Soft rounded corners */
+  margin: 10px auto; /* Center the hero section horizontally */
+  max-width: 980px; /* Restrict width to ensure readability */
+  font-size: 1.1em; /* Slightly smaller text size */
+  line-height: 1.8; /* Better line spacing for readability */
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1); /* Subtle shadow for depth */
+  overflow-wrap: break-word; /* Ensure text doesn't overflow borders */
+}
