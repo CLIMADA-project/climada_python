@@ -33,7 +33,11 @@ from climada.engine.option_appraisal.calc_impact_metrics import (
 from climada.engine.option_appraisal.impact_trajectories import (
     RiskPeriod,
     SnapshotsCollection,
+    bayesian_viktypliers,
+    calc_yearly_aais,
+    calc_yearly_eais,
 )
+from climada.engine.option_appraisal.plot import plot_CB_summary, plot_yearly
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
 
@@ -160,6 +164,103 @@ class YearlyRiskAppraiser:
             return self._calc_periods_risk(df)
         else:
             return df
+
+    def calc_waterfall_plot(self, yearly=False, start_year=None, end_year=None):
+
+        start_year = self.start_year if start_year is None else start_year
+        end_year = self.end_year if end_year is None else end_year
+        considered_risk_periods = self._get_risk_periods(
+            self.risk_periods, start_year=start_year, end_year=end_year
+        )
+
+        risk_component = {
+            str(period.start_year)
+            + "-"
+            + str(period.end_year): self._calc_risk_component(period)
+            for period in considered_risk_periods
+        }
+        risk_component = pd.concat(
+            risk_component.values(), keys=risk_component.keys(), names=["Period"]
+        ).reset_index()
+        risk_component = risk_component.loc[
+            (risk_component["Year"] >= start_year)
+            & (risk_component["Year"] <= end_year)
+        ]
+        risk_component["Base risk"] = risk_component["Base risk"].min()
+        risk_component[["Change in Exposure", "Change in Hazard (with Exposure)"]] = (
+            risk_component[["Change in Exposure", "Change in Hazard (with Exposure)"]]
+            .replace(0, None)
+            .ffill()
+            .fillna(0.0)
+        )
+        if yearly:
+            return risk_component.plot(kind="bar", x="Year", stacked=True)
+        else:
+            import matplotlib.pyplot as plt
+
+            fig, ax = plt.subplots(figsize=(12, 8))
+            risk_component = risk_component.loc[
+                (risk_component["Year"] == end_year)
+            ].squeeze()
+
+            labels = [
+                f"Risk {start_year}",
+                "Change in Exposure",
+                "Change in Hazard (with Exposure)",
+                f"Future Risk {end_year}",
+            ]
+            values = [
+                risk_component["Base risk"],
+                risk_component["Change in Exposure"],
+                risk_component["Change in Hazard (with Exposure)"],
+                risk_component["Base risk"]
+                + risk_component["Change in Exposure"]
+                + risk_component["Change in Hazard (with Exposure)"],
+            ]
+            bottoms = [
+                0.0,
+                risk_component["Base risk"],
+                risk_component["Base risk"] + risk_component["Change in Exposure"],
+                0.0,
+            ]
+
+            for i in range(len(values)):
+                ax.bar(labels[i], values[i], bottom=bottoms[i], edgecolor="black")
+                ax.text(
+                    labels[i],
+                    values[i] + bottoms[i],
+                    f"{values[i]:.0e}",
+                    ha="center",
+                    va="bottom",
+                    color="black",
+                )
+
+    def _calc_risk_component(self, period: RiskPeriod):
+        imp_mats_H0 = period.imp_mats_0
+        imp_mats_H1 = period.imp_mats_1
+        freq_H0 = period.snapshot0.hazard.frequency
+        freq_H1 = period.snapshot1.hazard.frequency
+        yearly_eai_H0, yearly_eai_H1 = calc_yearly_eais(
+            imp_mats_H0, imp_mats_H1, freq_H0, freq_H1
+        )
+        yearly_aai_H0, yearly_aai_H1 = calc_yearly_aais(yearly_eai_H0, yearly_eai_H1)
+        prop_H0, prop_H1 = bayesian_viktypliers(period.start_year, period.end_year)
+        yearly_aai = prop_H0 * yearly_aai_H0 + prop_H1 * yearly_aai_H1
+
+        risk_dev_0 = yearly_aai_H0 - yearly_aai[0]
+        risk_cc_0 = yearly_aai - (risk_dev_0 + yearly_aai[0])
+        df = pd.DataFrame(
+            {
+                "Base risk": yearly_aai - (risk_dev_0 + risk_cc_0),
+                "Change in Exposure": risk_dev_0,
+                "Change in Hazard (with Exposure)": risk_cc_0,
+            },
+            index=pd.Index(
+                [year for year in range(period.start_year, period.end_year + 1)],
+                name="Year",
+            ),
+        )
+        return df.round(1)
 
 
 class MeasuresAppraiser(YearlyRiskAppraiser):
@@ -336,7 +437,6 @@ class MeasuresAppraiser(YearlyRiskAppraiser):
             on=["measure", time_grouper, "group", "metric"],
             how="left",
         )
-        res["residual risk"] = res["risk"] - res["averted risk"]
 
         res = res.merge(
             self.calc_cash_flow(
@@ -348,8 +448,10 @@ class MeasuresAppraiser(YearlyRiskAppraiser):
 
         res["net"] *= -1
         res["net"] = res["net"].fillna(0.0)
-        res = res.rename(columns={"net": "cost (net)", "risk": "base risk"})
+        res = res.rename(columns={"net": "cost (net)", "risk": "residual risk"})
         res["group"] = res["group"].fillna("No Group")
+        res["base risk"] = res["residual risk"] + res["averted risk"]
+
         if not yearly:
             period_extracted = res["period"].str.extract(r"(\d{4})-(\d{4})").astype(int)
             start_year = period_extracted[0]
@@ -371,6 +473,42 @@ class MeasuresAppraiser(YearlyRiskAppraiser):
             first_cols + [col for col in res.columns if col not in first_cols]
         ]
         return res
+
+    def plot_CB_summary(
+        self,
+        metric="aai",
+        measure_colors=None,
+        y_label="Risk",
+        title="Benefit and Benefit/Cost Ratio by Measure",
+    ):
+        plot_CB_summary(
+            self.calc_CB(),
+            metric="aai",
+            measure_colors=None,
+            y_label="Risk",
+            title="Benefit and Benefit/Cost Ratio by Measure",
+        )
+
+    def plot_yearly(
+        self,
+        to_plot="residual risk",
+        metric="aai",
+        y_label=None,
+        title=None,
+        with_measure=True,
+        plot_type="line",
+        measure_colors=None,
+    ):
+        plot_yearly(
+            self.calc_CB(yearly=True),
+            to_plot=to_plot,
+            with_measure=with_measure,
+            metric=metric,
+            y_label=y_label,
+            title=title,
+            plot_type=plot_type,
+            measure_colors=measure_colors,
+        )
 
 
 class PlannedMeasuresAppraiser(MeasuresAppraiser):

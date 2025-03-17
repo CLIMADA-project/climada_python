@@ -25,57 +25,125 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 
+from climada.util.value_representation import (
+    convert_monetary_value,
+    value_to_monetary_unit,
+)
+
+
+def plot_yearly(
+    yearly_df,
+    to_plot,
+    with_measure,
+    metric,
+    y_label,
+    title,
+    plot_type="line",
+    measure_colors=None,
+):
+    def def_title(to_plot):
+        if len(to_plot) > 1:
+            return (
+                "Yearly values for " + ", ".join(to_plot[:-1]) + f" and {to_plot[-1]}"
+            )
+        else:
+            return f"Yearly values for {to_plot[0]}"
+
+    # Calculate the Benefit/Cost Ratio
+    if isinstance(to_plot, str):
+        to_plot = [to_plot]
+
+    measure = ["measure"] if with_measure else []
+    y_label = "Risk" if y_label is None else y_label
+    title = def_title(to_plot) if title is None else title
+
+    yearly_df = yearly_df.loc[
+        (yearly_df["metric"] == metric), ["year"] + measure + to_plot
+    ]
+    yearly_df = yearly_df.sort_values("year")
+    yearly_df = yearly_df.melt(
+        id_vars=["measure", "year"], value_name=y_label, var_name="Variable"
+    )
+    yearly_df.columns = yearly_df.columns.str.title()
+    yearly_df["Variable"] = yearly_df["Variable"].str.title()
+    yearly_df[y_label], risk_unit = value_to_monetary_unit(yearly_df[y_label])
+    colors = (
+        sns.color_palette("colorblind", len(yearly_df["Measure"].unique()))
+        if measure_colors is None
+        else measure_colors
+    )
+
+    if plot_type == "line":
+        _, ax = plt.subplots(figsize=(12, 8))
+        g = sns.lineplot(
+            yearly_df, ax=ax, x="Year", y=y_label, hue="Measure", style="Variable"
+        )
+        y_label = y_label + f" ({risk_unit})"
+        ax.set_ylabel(y_label, fontsize=18, fontweight="bold", color="black")
+        plt.title(title, fontsize=16)
+        plt.tight_layout()
+
+    elif plot_type == "bar":
+        g = sns.catplot(
+            yearly_df,
+            kind="bar",
+            x="Year",
+            y=y_label,
+            hue="Measure",
+            row="Variable",
+            height=8.0,
+            aspect=1.7,
+        )
+        g.tick_params(rotation=45)
+    else:
+        raise ValueError("Graph type unknown")
+
+    # Show plot
+    plt.show()
+    return g
+
 
 def plot_CB_summary(
-    measure_summary_df,
-    total_summary_dict,
+    cb_df,
     measure_colors=None,
-    y_label="Risk (Bn)",
+    metric="aai",
+    y_label="Risk",
     title="Benefit and Benefit/Cost Ratio by Measure",
 ):
     # Calculate the Benefit/Cost Ratio
-    measure_summary_df["Benefit/Cost Ratio"] = measure_summary_df["Benefit"] / abs(
-        measure_summary_df["Cost"]
+    cb_df = cb_df.loc[(cb_df["metric"] == metric) & (cb_df["measure"] != "no_measure")]
+    cb_df = cb_df.rename(columns={"B/C ratio": "Benefit/Cost Ratio"})
+    cb_df = cb_df.sort_values("averted risk")
+    cb_df.columns = cb_df.columns.str.title()
+    cb_df["Averted Risk"], risk_unit = value_to_monetary_unit(cb_df["Averted Risk"])
+    cb_df["Base Risk"] = convert_monetary_value(cb_df["Base Risk"], risk_unit)
+    cb_df["Residual Risk"] = convert_monetary_value(cb_df["Residual Risk"], risk_unit)
+
+    colors = (
+        sns.color_palette("colorblind", len(cb_df["Measure"].unique()))
+        if measure_colors is None
+        else measure_colors
     )
 
-    # Sort the DataFrame by 'Benefit' column
-    measure_summary_df = measure_summary_df.sort_values(by="Benefit", ascending=True)
+    y_label = y_label + f" ({risk_unit})"
+    total_climate_risk = cb_df["Base Risk"].max()
+    highest_benefit = cb_df["Averted Risk"].max()
+    residual_risk = cb_df["Residual Risk"].min()
 
-    # Retrieve total_climate_risk and residual_risk from the total_summary_dict
-    total_climate_risk = total_summary_dict["Total climate risk:"]
-    residual_risk = total_summary_dict["Residual risk:"]
+    _, ax1 = plt.subplots(figsize=(12, 8))
 
-    # Calculate the highest benefit
-    highest_benefit = measure_summary_df["Benefit"].max()
-
-    # Generate a color palette dynamically if not provided
-    if measure_colors is None:
-        colors = sns.color_palette("hsv", len(measure_summary_df))
-        measure_colors = {
-            measure: color
-            for measure, color in zip(measure_summary_df["Measure"], colors)
-        }
-
-    # Plotting
-    fig, ax1 = plt.subplots(figsize=(12, 8))
-
-    # Plotting the Benefit as bars with specific colors
     bars = sns.barplot(
+        cb_df,
         x="Measure",
-        y="Benefit",
+        y="Averted Risk",
         hue="Measure",
-        data=measure_summary_df,
         ax=ax1,
-        palette=measure_colors,
+        palette=colors,
         dodge=False,
         legend=False,
     )
     ax1.set_ylabel(y_label, fontsize=18, fontweight="bold", color="black")
     ax1.set_xlabel("Measure", fontsize=14)
-
-    # Adding color to the bars
-    for bar, measure in zip(bars.patches, measure_summary_df["Measure"]):
-        bar.set_color(measure_colors[measure])
 
     # Placing the benefit values on top of the bars
     for bar in bars.patches:
@@ -94,7 +162,7 @@ def plot_CB_summary(
     line = sns.lineplot(
         x="Measure",
         y="Benefit/Cost Ratio",
-        data=measure_summary_df,
+        data=cb_df,
         ax=ax2,
         marker="o",
         color="red",
@@ -103,7 +171,7 @@ def plot_CB_summary(
     ax2.set_ylabel("Benefit/Cost Ratio", color="red", fontsize=10)
 
     # Setting higher y-limit for the benefit/cost ratio axis
-    ax2.set_ylim(0, max(measure_summary_df["Benefit/Cost Ratio"]) * 1.5)
+    ax2.set_ylim(0, max(cb_df["Benefit/Cost Ratio"]) * 1.5)
 
     # Change the color of the right y-axis line, ticks, and labels
     ax2.spines["right"].set_color("red")
@@ -131,7 +199,7 @@ def plot_CB_summary(
     )
 
     # Adding a grey arrow to indicate the residual risk, pointing upwards and moved to the right
-    arrow_x = len(measure_summary_df) - 0.6  # Adjust x position for arrow
+    arrow_x = len(cb_df) - 0.6  # Adjust x position for arrow
     arrow_y_end = total_climate_risk
     arrow_y_start = highest_benefit
 
