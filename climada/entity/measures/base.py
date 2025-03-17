@@ -140,7 +140,8 @@ class Measure:
         new_impfset : climada.entity.ImpactFuncSet
             Impact function set with implemented measure with all defined parameters
         """
-        return self.impfset_map(impfset, year)
+        impfset_modified = copy.deepcopy(impfset)
+        return self.impfset_map(impfset_modified, year)
 
     def apply_to_hazard(self, hazard, year=None):
         """
@@ -183,7 +184,9 @@ class Measure:
         # change exposures
         new_exp = self.exp_map(exposures, year)
         # change impact functions
-        new_impfs = self.impfset_map(impfset, year)
+        # For some reason we NEED a deepcopy here!
+        new_impfs = copy.deepcopy(impfset)
+        new_impfs = self.impfset_map(new_impfs, year)
         # change hazard
         new_haz = self.haz_map(hazard, year)
         return new_exp, new_impfs, new_haz
@@ -260,8 +263,7 @@ def helper_impfset(
     impf_intensity_modifier={1: (1, 0)},
 ):
     def impfset_change(impfset, year=None):
-        impfset_modified = copy.deepcopy(impfset)
-        for impf in impfset_modified.get_func(haz_type):
+        for impf in impfset.get_func(haz_type):
             if impf.id in impf_intensity_modifier.keys():
                 impf_inten = impf_intensity_modifier[impf.id]
                 impf.intensity = np.maximum(
@@ -273,7 +275,7 @@ def helper_impfset(
             if impf.id in impf_paa_modifier.keys():
                 impf_paa = impf_paa_modifier[impf.id]
                 impf.paa = np.maximum(impf.paa * impf_paa[0] + impf_paa[1], 0.0)
-        return impfset_modified
+        return impfset
 
     return impfset_change
 

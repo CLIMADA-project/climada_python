@@ -838,7 +838,7 @@ class Snapshot:
     def apply_measure(self, measure: Measure):
         LOGGER.debug(f"Applying measure {measure.name} on snapshot {id(self)}")
         exp_new, impfset_new, haz_new = measure.apply(
-            self.exposure, copy.deepcopy(self.impfset), self.hazard
+            self.exposure, self.impfset, self.hazard
         )
         return Snapshot(exp_new, haz_new, impfset_new, self.year, measure)
 
@@ -1150,6 +1150,10 @@ class RiskPeriod:
         snapshot0 = self.snapshot0.apply_measure(measure)
         snapshot1 = self.snapshot1.apply_measure(measure)
         return RiskPeriod(snapshot0, snapshot1, measure_name=measure.name)
+
+    def calc_waterfall_plot(self):
+
+        pass
 
 
 class CalcImpactsSnapshots:
