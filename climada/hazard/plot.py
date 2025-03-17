@@ -45,25 +45,26 @@ class HazardPlot:
         **kwargs,
     ):
         """
-         Compute and plot hazard exceedance intensity maps for different
-         return periods. Calls local_exceedance_intensity. For handling large data sets and for
-         further options, see Notes.
+        Compute and plot hazard exceedance intensity maps for different
+        return periods. Calls local_exceedance_intensity. For handling large data sets and for
+        further options, see Notes.
 
-         Parameters
-         ----------
-         return_periods: tuple(int), optional
-             return periods to consider
-         axis: matplotlib.axes._subplots.AxesSubplot, optional
-             axis to use
-         kwargs_local_exceedance_intensity: dict
-             Dictionary of keyword arguments for the method hazard.local_exceedance_intensity.
-         kwargs: optional
-             arguments for pcolormesh matplotlib function used in event plots
+        Parameters
+        ----------
+        return_periods: tuple(int), optional
+            return periods to consider
+        axis: matplotlib.axes._subplots.AxesSubplot, optional
+            axis to use
+        kwargs_local_exceedance_intensity: dict
+            Dictionary of keyword arguments for the method hazard.local_exceedance_intensity.
+        kwargs: optional
+            arguments for pcolormesh matplotlib function used in event plots
 
-         Returns
-         -------
-         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
-             intenstats is return_periods.size x num_centroids
+        Returns
+        -------
+        axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
+            intenstats is return_periods.size x num_centroids
+
         See Also
         ---------
         hazard.local_exceedance_intensity: method to calculate local exceedance frequencies.
