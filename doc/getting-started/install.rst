@@ -8,18 +8,18 @@ The following sections will guide you through the installation of CLIMADA and it
 
     CLIMADA has a complicated set of dependencies that cannot be installed with ``pip`` alone.
     Please follow the installation instructions carefully!
-    We recommend to use `Conda`_ for creating a suitable software environment to execute CLIMADA.
+    We recommend to use a ``conda``-based python environment manager such as `Mamba`_ or `Conda`_ for creating a suitable software environment to execute CLIMADA.
 
-All following instructions should work on any operating system (OS) that is supported by `Conda`_, including in particular: **Windows**, **macOS**, and **Linux**.
+All following instructions should work on any operating system (OS) that is supported by ``conda``, including in particular: **Windows**, **macOS**, and **Linux**.
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
 
--------------
-Install Conda
--------------
+---------------------------
+Install environment manager
+---------------------------
 
 If you haven't already installed an environment management system like `Mamba`_ or `Conda`_, you have to do so now.
-We recommend to use ``mamba`` (see :ref:`conda-instead-of-mamba`) which is available in the installer Miniforge, and can be installed as follows.
+We recommend to use ``mamba`` (see :ref:`conda-instead-of-mamba`) which is available in the installer Miniforge (see below).
 
 macOS and Linux
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -48,7 +48,6 @@ Windows
 ---------------------------------------
 Decide on Your Entry Level!
 ---------------------------------------
-
 
 Depening on your level of expertise, we provide two different approaches:
 
@@ -130,7 +129,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
 
 .. warning::
 
-   If you followed the :ref:`install-simple` before, make sure you **either** remove the environment with
+   If you followed the :ref:`install-simple` before, make sure you **either** remove the environment with:
 
    .. code-block:: shell
 
@@ -443,7 +442,7 @@ Apps for working with CLIMADA
 ---------------------------------------
 
 To work with CLIMADA, you will need an application that supports Jupyter Notebooks.
-There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend [JupyterLab](https://jupyterlab.readthedocs.io/en/stable/), [Visual Studio Code](https://code.visualstudio.com/) or [Spyder](https://www.spyder-ide.org/).
+There are plugins available for nearly every code editor or IDE, but if you are unsure about which to choose, we recommend `JupyterLab <https://jupyterlab.readthedocs.io/en/stable/>`_, `Visual Studio Code <https://code.visualstudio.com/>`_ or `Spyder <https://www.spyder-ide.org/>`_.
 It is easy to get confused by all the different softwares and their uses so here is an overview of which tools we use for what:
 
 .. list-table::
@@ -485,7 +484,7 @@ It is easy to get confused by all the different softwares and their uses so here
      - - Automatically checks code changes in GitHub repositories, e.g., when you create a pull request for the develop branch
        - Performs static code analysis using pylint
        - You don't need to do any installations yourself; this runs automatically when you push new code to GitHub
-       - See `Continuous Integration and GitHub Actions <../guide/Guide_continuous_integration_GitHub_actions.ipynb>`_
+       - See `Continuous Integration and GitHub Actions <../development/Guide_continuous_integration_GitHub_actions.ipynb>`_
      - Climada Developers
 
 ----
@@ -604,12 +603,12 @@ the level set to ``WARNING``.
 
 If you prefer another logging configuration, e.g., for using Climada embedded in another application,
 you can opt out of the default pre-configuration by setting the config value for
-``logging.climada_style`` to ``false`` in the :doc:`configuration file <Guide_Configuration>`
+``logging.climada_style`` to ``false`` in the :doc:`configuration file <../development/Guide_Configuration>`
 ``climada.conf``.
 
 Changing the logging level can be done in multiple ways:
 
-* Adjust the :doc:`configuration file <Guide_Configuration>` ``climada.conf`` by setting a the value of the ``global.log_level`` property.
+* Adjust the :doc:`configuration file <../development/Guide_Configuration>` ``climada.conf`` by setting a the value of the ``global.log_level`` property.
   This only has an effect if the ``logging.climada_style`` is set to ``true`` though.
 
 * Set a global logging level in your Python script:
@@ -708,6 +707,6 @@ IDE
 
 
 .. _Conda: https://docs.conda.io/en/latest/
-.. _Mamba: https://mamba.readthedocs.io/en/latest/
+.. _Mamba: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html
 .. _Miniforge: https://github.com/conda-forge/miniforge
 .. _CLIMADA Petals: https://climada-petals.readthedocs.io/en/latest/
