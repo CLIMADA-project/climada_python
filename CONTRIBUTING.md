@@ -16,7 +16,7 @@ Please contact the [lead developers](https://climada.ethz.ch/team/) if you want 
 
 ## Why Should You Contribute?
 
-* You will be listed as author of the CLIMADA repository in the [AUTHORS](authors) file.
+* You will be listed as author of the CLIMADA repository in the [AUTHORS][authors] file.
 * You will improve the quality of the CLIMADA software for you and for everybody else using it.
 * You will gain insights into scientific software development.
 
@@ -40,7 +40,7 @@ To contribute follow these steps:
     ```bash
     pylint
     ```
-6. Add your name to the [AUTHORS](authors) file.
+6. Add your name to the [AUTHORS][authors] file.
 7. Push your updates to the remote repository:
 
     ```bash
