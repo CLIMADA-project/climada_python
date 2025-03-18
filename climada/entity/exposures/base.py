@@ -132,12 +132,40 @@ class Exposures:
     @property
     def latitude(self):
         """Latitude array of exposures"""
-        return self.data.geometry.y.values
+        try:
+            return self.data.geometry.y.values
+        except ValueError as valerr:
+            nonpoints = list(
+                self.data[
+                    self.data.geometry.type != "Point"
+                ].geometry.type.drop_duplicates()
+            )
+            if nonpoints:
+                raise ValueError(
+                    "Can only calculate latitude from Points."
+                    f" GeoDataFrame contains {', '.join(nonpoints)}."
+                    " Please see the lines_polygons module tutorial."
+                ) from valerr
+            raise
 
     @property
     def longitude(self):
         """Longitude array of exposures"""
-        return self.data.geometry.x.values
+        try:
+            return self.data.geometry.x.values
+        except ValueError as valerr:
+            nonpoints = list(
+                self.data[
+                    self.data.geometry.type != "Point"
+                ].geometry.type.drop_duplicates()
+            )
+            if nonpoints:
+                raise ValueError(
+                    "Can only calculate longitude from Points."
+                    f" GeoDataFrame contains {', '.join(nonpoints)}."
+                    " Please see the lines_polygons module tutorial."
+                ) from valerr
+            raise
 
     @property
     def geometry(self):
@@ -521,10 +549,10 @@ class Exposures:
         str
             a column name, the first of the following that is present in the exposures' dataframe:
 
-            - ``impf_[haz_type]``
-            - ``if_[haz_type]``
-            - ``impf_``
-            - ``if_``
+            * ``impf_[haz_type]``
+            * ``if_[haz_type]``
+            * ``impf_``
+            * ``if_``
 
         Raises
         ------
