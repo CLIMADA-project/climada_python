@@ -36,44 +36,6 @@ from climada.engine.option_appraisal.plot import (
 from climada.entity.measures import MeasureSet
 from climada.util.value_representation import ABBREV, value_to_monetary_unit
 
-from .impact_trajectories import SnapshotsCollection
-
-
-class ImpactMetrics:
-
-    def __init__(
-        self,
-        annual_risk_metrics_df: pd.DataFrame,
-        measure_set: Optional[MeasureSet] = None,
-        measure_times_df: Optional[pd.DataFrame] = None,
-        planner: dict[str, tuple[int, int]] | None = None,
-        value_unit: str = "USD",
-    ):
-        self.annual_risk_metrics_df = annual_risk_metrics_df.copy()
-        self.measure_set = copy.deepcopy(measure_set)
-        self.measure_times_df = measure_times_df.copy()
-        self.value_unit = value_unit
-        self.planner = planner
-
-    def calc_CB(
-        self,
-        start_year=None,
-        end_year=None,
-        consider_measure_times=True,
-        risk_disc=None,
-        cost_disc=None,
-    ):
-        return calc_CB_df(
-            self.annual_risk_metrics_df,
-            self.measure_set,
-            self.measure_times_df,
-            start_year,
-            end_year,
-            consider_measure_times,
-            risk_disc,
-            cost_disc,
-        )
-
 
 class ImpactMetrics2:
 
