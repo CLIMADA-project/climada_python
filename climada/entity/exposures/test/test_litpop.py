@@ -20,7 +20,6 @@ Unit Tests for LitPop class.
 """
 
 import unittest
-import copy
 import numpy as np
 from rasterio import Affine
 import rasterio
