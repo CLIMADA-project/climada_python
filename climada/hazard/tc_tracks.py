@@ -28,6 +28,7 @@ import logging
 import re
 import shutil
 import warnings
+from operator import itemgetter
 from pathlib import Path
 from typing import List, Optional
 
@@ -84,13 +85,13 @@ CAT_COLORS = cm_mp.rainbow(np.linspace(0, 1, len(SAFFIR_SIM_CAT)))
 IBTRACS_URL = (
     "https://www.ncei.noaa.gov/data/"
     "international-best-track-archive-for-climate-stewardship-ibtracs/"
-    "v04r00/access/netcdf"
+    "v04r01/access/netcdf"
 )
 """Site of IBTrACS netcdf file containing all tracks v4.0,
 s. https://www.ncdc.noaa.gov/ibtracs/index.php?name=ib-v4-access"""
 
-IBTRACS_FILE = "IBTrACS.ALL.v04r00.nc"
-"""IBTrACS v4.0 file all"""
+IBTRACS_FILE = "IBTrACS.ALL.v04r01.nc"
+"""IBTrACS v4.1 file all"""
 
 IBTRACS_AGENCIES = [
     "usa",
@@ -162,6 +163,7 @@ BASIN_ENV_PRESSURE = {
     "SI": 1005,
     "WP": 1005,
     "SP": 1004,
+    "AU": 1004,
 }
 """Basin-specific default environmental pressure"""
 
@@ -199,29 +201,29 @@ class TCTracks:
     data : list(xarray.Dataset)
         List of tropical cyclone tracks. Each track contains following attributes:
 
-            - time (coords)
-            - lat (coords)
-            - lon (coords)
-            - time_step (in hours)
-            - radius_max_wind (in nautical miles)
-            - radius_oci (in nautical miles)
-            - max_sustained_wind (in knots)
-            - central_pressure (in hPa/mbar)
-            - environmental_pressure (in hPa/mbar)
-            - basin (for each track position)
-            - max_sustained_wind_unit (attrs)
-            - central_pressure_unit (attrs)
-            - name (attrs)
-            - sid (attrs)
-            - orig_event_flag (attrs)
-            - data_provider (attrs)
-            - id_no (attrs)
-            - category (attrs)
+            * time (coords)
+            * lat (coords)
+            * lon (coords)
+            * time_step (in hours)
+            * radius_max_wind (in nautical miles)
+            * radius_oci (in nautical miles)
+            * max_sustained_wind (in knots)
+            * central_pressure (in hPa/mbar)
+            * environmental_pressure (in hPa/mbar)
+            * basin (for each track position)
+            * max_sustained_wind_unit (attrs)
+            * central_pressure_unit (attrs)
+            * name (attrs)
+            * sid (attrs)
+            * orig_event_flag (attrs)
+            * data_provider (attrs)
+            * id_no (attrs)
+            * category (attrs)
 
         Computed during processing:
 
-            - on_land (bool for each track position)
-            - dist_since_lf (in km)
+            * on_land (bool for each track position)
+            * dist_since_lf (in km)
 
         Additional data variables such as "nature" (specifiying, for each track position, whether a
         system is a disturbance, tropical storm, post-transition extratropical storm etc.) might be
@@ -320,6 +322,111 @@ class TCTracks:
 
         return out
 
+    def subset_year(
+        self,
+        start_date: tuple = (False, False, False),
+        end_date: tuple = (False, False, False),
+    ):
+        """Subset TCTracks between start and end dates, both included.
+
+        Parameters:
+        ----------
+        start_date: tuple
+            First date to include in the selection (YYYY, MM, DD). Each element can either
+            be an integer or `False`. If an element is `False`, it is ignored during the filter.
+        end_date: tuple
+            Last date to include in the selection, same as start_date if selecting only one day.
+
+        Returns:
+        --------
+        subset: TCTracks
+            TCTracks object containing the subset of tracks
+
+        Raises:
+        -------
+        ValueError
+            - If there's a mismatch between `start_*` and `end_*` values (e.g., one is set to `True` while the other is `False`).
+            - If no tracks are found within the specified date range.
+            - If `start_date` or `end_date` are incorrectly ordered (start > end).
+
+        Example 1 (Filter by Year Only):
+        ---------------------------------
+        >>> start_date = (2022, False, False)
+        >>> end_date = (2022, False, False)
+        >>> # This will filter all tracks from the year 2022, regardless of month or day.
+
+        Example 2 (Filter by Year and Month):
+        --------------------------------------
+        >>> start_date = (2022, 5, False)
+        >>> end_date = (2022, 5, False)
+        >>> # This will filter all tracks from May 2022, regardless of the day.
+
+        Example 3 (Filter by Year, Month, and Day):
+        --------------------------------------------
+        >>> start_date = (2022, 5, 10)
+        >>> end_date = (2022, 5, 20)
+        >>> # This will filter all tracks from May 10th to May 20th, 2022.
+
+        Example 4 (Invalid: Only one of day is specified):
+        ---------------------------------------------------
+        >>> start_date = (2022, False, 10)
+        >>> end_date = (2022, 5, 20)
+        >>> # Raises a ValueError since the day is specified in the start_date but not in end_date.
+        """
+
+        subset = self.__class__()
+
+        # Extract date components
+        start_year, end_year = start_date[0], end_date[0]
+        start_month, end_month = start_date[1], end_date[1]
+        start_day, end_day = start_date[2], end_date[2]
+
+        if (start_day and not end_day) or (not start_day and end_day):
+            raise ValueError(
+                "Mismatch between start_day and end_day: Both must be either True or False."
+            )
+        elif (start_month and not end_month) or (not start_month and end_month):
+            raise ValueError(
+                "Mismatch between start_month and end_month: Both must be either True or False."
+            )
+        elif (start_year and not end_year) or (not start_year and end_year):
+            raise ValueError(
+                "Mismatch between start_year and end_year: Both must be either True or False."
+            )
+        elif start_year and end_year and start_year > end_year:
+            raise ValueError("Start year is after end year.")
+
+        # Find indices corresponding to the date range
+        index: list = []
+        for i, track in enumerate(self.data):
+
+            date_array = track.time[0].to_numpy()
+            year = date_array.astype("datetime64[Y]").item().year
+            month = date_array.astype("datetime64[M]").item().month
+            day = date_array.astype("datetime64[D]").item().day
+
+            condition_year = start_year <= year <= end_year
+            condition_month = start_month <= month <= end_month
+            condition_day = start_day <= day <= end_day
+
+            if not start_day and not end_day:
+                condition_day = True
+            if not start_month and not end_month:
+                condition_month = True
+            if not start_year and not end_year:
+                condition_year = True
+
+            if condition_year and condition_month and condition_day:
+                index.append(i)
+
+        # Raise error if no tracks found
+        if not index:
+            raise ValueError("No tracks found for the specified date range")
+        # Create subset with filtered tracks
+        subset.data = [self.data[i] for i in index]
+
+        return subset
+
     def tracks_in_exp(self, exposure, buffer=1.0):
         """Select only the tracks that are in the vicinity (buffer) of an exposure.
 
@@ -380,7 +487,7 @@ class TCTracks:
         correct_pres=False,
         discard_single_points=True,
         additional_variables=None,
-        file_name="IBTrACS.ALL.v04r00.nc",
+        file_name=IBTRACS_FILE,
     ):
         """Create new TCTracks object from IBTrACS databse.
 
@@ -489,7 +596,7 @@ class TCTracks:
             compatiblity with other functions such as `equal_timesteps`. Default: True.
         file_name : str, optional
             Name of NetCDF file to be dowloaded or located at climada/data/system.
-            Default: 'IBTrACS.ALL.v04r00.nc'
+            Default: 'IBTrACS.ALL.v04r01.nc'
         additional_variables : list of str, optional
             If specified, additional IBTrACS data variables are extracted, such as "nature" or
             "storm_speed". Only variables that are not agency-specific are supported.
@@ -735,7 +842,7 @@ class TCTracks:
                     )
                     ibtracs_ds = ibtracs_ds.sel(storm=valid_storms_mask)
 
-            if ibtracs_ds.dims["storm"] == 0:
+            if ibtracs_ds.sizes["storm"] == 0:
                 LOGGER.info(
                     "After discarding IBTrACS events without valid values by the selected "
                     "reporting agencies, there are no tracks left that match the specified "
@@ -1621,6 +1728,120 @@ class TCTracks:
                         np.full(track["time"].size, basin, dtype="<U2"),
                     )
                 data.append(track)
+        return cls(data)
+
+    @classmethod
+    def from_FAST(cls, folder_name: str):
+        """Create a new TCTracks object from NetCDF files generated by the FAST model, modifying
+        the xr.array structure to ensure compatibility with CLIMADA, and calculating the central
+        pressure and radius of maximum wind.
+
+        Model GitHub Repository:
+            https://github.com/linjonathan/tropical_cyclone_risk?tab=readme-ov-file
+
+        Model Publication:
+            https://agupubs.onlinelibrary.wiley.com/doi/epdf/10.1029/2023MS003686
+
+        Parameters
+        ----------
+        folder_name : str
+            Folder name from where to read files.
+        storm_id : int
+            Number of the simulated storm
+
+        Returns
+        -------
+        tracks : TCTracks
+            TCTracks object with tracks data from the given directory of NetCDF files.
+        """
+
+        LOGGER.info("Reading %s files.", len(get_file_names(folder_name)))
+        data = []
+        for file in get_file_names(folder_name):
+            if Path(file).suffix != ".nc":
+                continue
+            with xr.open_dataset(file) as dataset:
+                for year in dataset.year:
+                    for i in dataset.n_trk:
+
+                        # Select track
+                        track = dataset.sel(n_trk=i, year=year)
+                        # chunk dataset at first NaN value
+                        lon = track.lon_trks.data
+                        last_valid_index = np.where(np.isfinite(lon))[0][-1]
+                        track = track.isel(time=slice(0, last_valid_index + 1))
+                        # Select lat, lon
+                        lat = track.lat_trks.data
+                        lon = track.lon_trks.data
+                        # Convert lon from 0-360 to -180 - 180
+                        lon = ((lon + 180) % 360) - 180
+                        # Convert time to pandas Datetime "yyyy.mm.dd"
+                        reference_time = (
+                            f"{track.tc_years.item()}-{int(track.tc_month.item())}-01"
+                        )
+                        time = pd.to_datetime(
+                            track.time.data, unit="s", origin=reference_time
+                        ).astype("datetime64[s]")
+                        # Define variables
+                        ms_to_kn = 1.943844
+                        max_wind_kn = track.vmax_trks.data * ms_to_kn
+                        env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
+                        cen_pres = _estimate_pressure(
+                            np.full(lat.shape, np.nan),
+                            lat,
+                            lon,
+                            max_wind_kn,
+                        )
+
+                        data.append(
+                            xr.Dataset(
+                                {
+                                    "time_step": (
+                                        "time",
+                                        np.full(time.shape[0], track.time.data[1]),
+                                    ),
+                                    "max_sustained_wind": (
+                                        "time",
+                                        track.vmax_trks.data,
+                                    ),
+                                    "central_pressure": ("time", cen_pres),
+                                    "radius_max_wind": (
+                                        "time",
+                                        estimate_rmw(
+                                            np.full(lat.shape, np.nan), cen_pres
+                                        ),
+                                    ),
+                                    "environmental_pressure": (
+                                        "time",
+                                        np.full(time.shape[0], env_pressure),
+                                    ),
+                                    "basin": (
+                                        "time",
+                                        np.full(
+                                            time.shape[0], track.tc_basins.data.item()
+                                        ),
+                                    ),
+                                },
+                                coords={
+                                    "time": ("time", time),
+                                    "lat": ("time", lat),
+                                    "lon": ("time", lon),
+                                },
+                                attrs={
+                                    "max_sustained_wind_unit": "m/s",
+                                    "central_pressure_unit": "hPa",
+                                    "name": f"storm_{track.n_trk.item()}",
+                                    "sid": track.n_trk.item(),
+                                    "orig_event_flag": True,
+                                    "data_provider": "FAST",
+                                    "id_no": track.n_trk.item(),
+                                    "category": set_category(
+                                        max_wind_kn, wind_unit="kn", saffir_scale=None
+                                    ),
+                                },
+                            )
+                        )
+
         return cls(data)
 
     def write_hdf5(self, file_name, complevel=5):
@@ -2580,7 +2801,7 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
             raise KeyError("Unknown ibtracs variable: %s" % var)
 
     # load ibtracs dataset
-    fn_nc = SYSTEM_DIR.joinpath("IBTrACS.ALL.v04r00.nc")
+    fn_nc = SYSTEM_DIR.joinpath(IBTRACS_FILE)
     with xr.open_dataset(fn_nc) as ibtracs_ds:
         # choose specified year range
         years = ibtracs_ds.sid.str.slice(0, 4).astype(int)
@@ -2669,12 +2890,12 @@ def ibtracs_fit_param(explained, explanatory, year_range=(1980, 2019), order=1):
         return sm_results
 
 
-def ibtracs_track_agency(ds_sel):
+def ibtracs_track_agency(track):
     """Get preferred IBTrACS agency for each entry in the dataset.
 
     Parameters
     ----------
-    ds_sel : xarray.Dataset
+    track : xarray.Dataset
         Subselection of original IBTrACS NetCDF dataset.
 
     Returns
@@ -2682,7 +2903,7 @@ def ibtracs_track_agency(ds_sel):
     agency_pref : list of str
         Names of IBTrACS agencies in order of preference.
     track_agency_ix : xarray.DataArray of ints
-        For each entry in `ds_sel`, the agency to use, given as an index into `agency_pref`.
+        For each entry in `track`, the agency to use, given as an index into `agency_pref`.
     """
     agency_pref = ["wmo"] + IBTRACS_AGENCIES
     agency_map = {a.encode("utf-8"): i for i, a in enumerate(agency_pref)}
@@ -2691,11 +2912,11 @@ def ibtracs_track_agency(ds_sel):
     )
     agency_map[b""] = agency_map[b"wmo"]
     agency_fun = lambda x: agency_map[x]
-    if "track_agency" not in ds_sel.data_vars.keys():
-        ds_sel["track_agency"] = ds_sel["wmo_agency"].where(
-            ds_sel["wmo_agency"] != b"", ds_sel["usa_agency"]
+    if "track_agency" not in track.data_vars.keys():
+        track["track_agency"] = track["wmo_agency"].where(
+            track["wmo_agency"] != b"", track["usa_agency"]
         )
-    track_agency_ix = xr.apply_ufunc(agency_fun, ds_sel["track_agency"], vectorize=True)
+    track_agency_ix = xr.apply_ufunc(agency_fun, track["track_agency"], vectorize=True)
     return agency_pref, track_agency_ix
 
 
@@ -2838,13 +3059,15 @@ def set_category(max_sus_wind, wind_unit="kn", saffir_scale=None):
     -------
     category : int
         Intensity of given track according to the Saffir-Simpson hurricane scale:
-          * -1 : tropical depression
-          *  0 : tropical storm
-          *  1 : Hurricane category 1
-          *  2 : Hurricane category 2
-          *  3 : Hurricane category 3
-          *  4 : Hurricane category 4
-          *  5 : Hurricane category 5
+
+        * -1 : tropical depression
+        *  0 : tropical storm
+        *  1 : Hurricane category 1
+        *  2 : Hurricane category 2
+        *  3 : Hurricane category 3
+        *  4 : Hurricane category 4
+        *  5 : Hurricane category 5
+
     """
     if saffir_scale is None:
         saffir_scale = SAFFIR_SIM_CAT

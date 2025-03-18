@@ -72,13 +72,14 @@ def get_knutson_scaling_factor(
 
     Related publications:
 
-    -   Knutson et al., (2020): Tropical cyclones and climate
-        change assessment. Part II: Projected response to anthropogenic warming.
-        Bull. Amer. Meteor. Soc., 101 (3), E303–E322,
-        https://doi.org/10.1175/BAMS-D-18-0194.1.
-    -   Jewson (2021): Conversion of the Knutson et al. (2020) Tropical Cyclone
-        Climate Change Projections to Risk Model Baselines,
-        https://doi.org/10.1175/JAMC-D-21-0102.1
+    - Knutson et al., (2020): Tropical cyclones and climate
+      change assessment. Part II: Projected response to anthropogenic warming.
+      Bull. Amer. Meteor. Soc., 101 (3), E303–E322,
+      https://doi.org/10.1175/BAMS-D-18-0194.1.
+
+    - Jewson (2021): Conversion of the Knutson et al. (2020) Tropical Cyclone
+      Climate Change Projections to Risk Model Baselines,
+      https://doi.org/10.1175/JAMC-D-21-0102.1
 
     Parameters
     ----------
@@ -94,11 +95,13 @@ def get_knutson_scaling_factor(
         the provided percentiles are the 10th, 25th, 50th, 75th and 90th. Please refer to the
         mentioned publications for more details.
         possible percentiles:
-        - '5/10' either the 5th or 10th percentile depending on variable (see text above)
-        - '25' for the 25th percentile
-        - '50' for the 50th percentile
-        - '75' for the 75th percentile
-        - '90/95' either the 90th or 95th percentile depending on variable  (see text above)
+
+        * '5/10' either the 5th or 10th percentile depending on variable (see text above)
+        * '25' for the 25th percentile
+        * '50' for the 50th percentile
+        * '75' for the 75th percentile
+        * '90/95' either the 90th or 95th percentile depending on variable  (see text above)
+
         Default: '50'
     basin : str
         region of interest, possible choices are:
@@ -109,6 +112,7 @@ def get_knutson_scaling_factor(
         the GSMT data period, i.e., 1880-2100. Default is 1982-2022.
     yearly_steps : int
         yearly resolution at which projections are provided. Default is 5 years.
+
     Returns
     -------
     future_change_variable : pd.DataFrame
@@ -207,10 +211,11 @@ def get_gmst_info():
     -------
     gmst_info : dict
         dictionary with four keys, which are:
-        - rcps: list of strings referring to RCPs 2.6, 4.5, 6.0 and 8.5
-        - gmst_start_year: integer with the GMST data starting year, 1880
-        - gmst_end_year: integer with the GMST data ending year, 2100
-        - gmst_data: array with GMST data across RCPs (first dim) and years (second dim)
+
+        * rcps: list of strings referring to RCPs 2.6, 4.5, 6.0 and 8.5
+        * gmst_start_year: integer with the GMST data starting year, 1880
+        * gmst_end_year: integer with the GMST data ending year, 2100
+        * gmst_data: array with GMST data across RCPs (first dim) and years (second dim)
     """
 
     gmst_data = np.array(

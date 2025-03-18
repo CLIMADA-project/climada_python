@@ -1,7 +1,7 @@
 # This workflow will create a new release from main
 
 # the new version number is the old one increased by 1 in the given level [major, minor, patch]
-# first, some files are modified (_version.py, setup.py, CHANGELOG.md and doc/misc/README.md)
+# first, some files are modified (_version.py, setup.py and CHANGELOG.md
 # then, a new release is created on GitHub, tagged with v[new version number]
 
 name: Create a new release

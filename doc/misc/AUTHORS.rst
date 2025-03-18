@@ -1,2 +1,5 @@
-.. include:: ../../AUTHORS.md
-   :parser: myst_parser.sphinx_
+CLIMADA List of Authors
+=======================
+
+.. mdinclude:: ../../AUTHORS.md
+   :start-line: 1

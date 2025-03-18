@@ -228,7 +228,6 @@ class Calc:
         requirement. Please refer to https://salib.readthedocs.io/en/latest/api.html
         for more details.
 
-
         See Also
         --------
         SALib.sample: sampling methods from SALib SALib.sample

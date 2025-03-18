@@ -106,7 +106,7 @@ class TestImpact(unittest.TestCase):
         self.assertEqual(imp.frequency_unit, HAZ.frequency_unit)
         self.assertEqual(imp.tot_value, tot_value)
         np.testing.assert_array_almost_equal(imp.event_id, HAZ.event_id)
-        np.testing.assert_array_almost_equal(imp.event_name, HAZ.event_name)
+        np.testing.assert_array_equal(imp.event_name, HAZ.event_name)
         np.testing.assert_array_almost_equal(imp.date, HAZ.date)
         np.testing.assert_array_almost_equal(imp.frequency, HAZ.frequency)
         np.testing.assert_array_almost_equal(imp.eai_exp, fake_eai_exp)
@@ -556,6 +556,7 @@ class TestRPmatrix(unittest.TestCase):
             method="extrapolate",
             log_frequency=False,
             log_impact=False,
+            bin_decimals=2,
         )
         np.testing.assert_allclose(
             impact_stats.values[:, 1:].astype(float),
@@ -594,7 +595,7 @@ class TestRPmatrix(unittest.TestCase):
 
         # test log log extrapolation
         impact_stats, _, _ = impact.local_exceedance_impact(
-            return_periods=(1000, 30, 0.1), method="extrapolate"
+            return_periods=(1000, 30, 0.1), method="extrapolate", bin_decimals=-1
         )
         np.testing.assert_allclose(
             impact_stats.values[:, 1:].astype(float),
@@ -661,6 +662,7 @@ class TestRPmatrix(unittest.TestCase):
             method="extrapolate",
             log_frequency=False,
             log_impact=False,
+            bin_decimals=2,
         )
 
         np.testing.assert_allclose(
@@ -707,7 +709,7 @@ class TestRPmatrix(unittest.TestCase):
 
         # test log log extrapolation
         return_stats, _, _ = impact.local_return_period(
-            threshold_impact=(0.1, 300, 1e5), method="extrapolate"
+            threshold_impact=(0.1, 300, 1e5), method="extrapolate", bin_decimals=2
         )
         np.testing.assert_allclose(
             return_stats.values[:, 1:].astype(float),

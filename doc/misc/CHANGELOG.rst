@@ -1,2 +1,5 @@
-.. include:: ../../CHANGELOG.md
-   :parser: myst_parser.sphinx_
+Changelog
+=========
+
+.. mdinclude:: ../../CHANGELOG.md
+   :start-line: 1

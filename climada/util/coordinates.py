@@ -46,7 +46,7 @@ import shapely.ops
 import shapely.vectorized
 import shapely.wkt
 from cartopy.io import shapereader
-from shapely.geometry import MultiPolygon, Point, Polygon, box
+from shapely.geometry import MultiPolygon, Point, box
 from sklearn.neighbors import BallTree
 
 import climada.util.hdf5_handler as u_hdf5
@@ -783,6 +783,12 @@ def get_country_geometries(
     if country_names:
         if isinstance(country_names, str):
             country_names = [country_names]
+
+        # raise error if a country name is not recognized
+        for country_name in country_names:
+            if not country_name in nat_earth[["ISO_A3", "WB_A3", "ADM0_A3"]].values:
+                raise ValueError(f"ISO code {country_name} not recognized.")
+
         country_mask = np.isin(
             nat_earth[["ISO_A3", "WB_A3", "ADM0_A3"]].values,
             country_names,
@@ -1685,6 +1691,91 @@ def get_admin1_info(country_names):
         if len(admin1_info[country]) == 0:
             raise LookupError(f"natural_earth records are empty for country {country}")
     return admin1_info, admin1_shapes
+
+
+def bounding_box_global():
+    """
+    Return global bounds in EPSG 4326
+
+    Returns
+    -------
+    tuple:
+        The global bounding box as (min_lon, min_lat, max_lon, max_lat)
+    """
+    return (-180, -90, 180, 90)
+
+
+def bounding_box_from_countries(country_names, buffer=1.0):
+    """
+    Return bounding box in EPSG 4326 containing given countries.
+
+    Parameters
+    ----------
+    country_names : list or str
+        list with ISO 3166 alpha-3 codes of countries, e.g ['ZWE', 'GBR', 'VNM', 'UZB']
+    buffer : float, optional
+        Buffer to add to both sides of the bounding box. Default: 1.0.
+
+    Returns
+    -------
+    tuple
+        The bounding box containing all given coutries as (min_lon, min_lat, max_lon, max_lat)
+    """
+
+    country_geometry = get_country_geometries(country_names).geometry
+    generator_country_geometry = (
+        poly if isinstance(poly, MultiPolygon) else MultiPolygon([poly])
+        for poly in country_geometry
+    )
+    lon, lat = np.concatenate(
+        [
+            np.array(pg.exterior.coords).T
+            for poly in generator_country_geometry
+            for pg in poly.geoms
+        ],
+        axis=1,
+    )
+
+    return latlon_bounds(lat, lon, buffer=buffer)
+
+
+def bounding_box_from_cardinal_bounds(*, northern, eastern, western, southern):
+    """
+    Return and normalize bounding box in EPSG 4326 from given cardinal bounds.
+
+    Parameters
+    ----------
+    northern : (int, float)
+        Northern boundary of bounding box
+    eastern : (int, float)
+        Eastern boundary of bounding box
+    western : (int, float)
+        Western boundary of bounding box
+    southern : (int, float)
+        Southern boundary of bounding box
+
+    Returns
+    -------
+    tuple
+        The resulting normalized bounding box (min_lon, min_lat, max_lon, max_lat)
+        with -180 <= min_lon < max_lon < 540
+
+    """
+
+    # latitude bounds check
+    if not 90 >= northern > southern >= -90:
+        raise ValueError(
+            "Given northern bound is below given southern bound or out of bounds"
+        )
+
+    eastern = (eastern + 180) % 360 - 180
+    western = (western + 180) % 360 - 180
+
+    # Ensure eastern > western
+    if western > eastern:
+        eastern += 360
+
+    return (western, southern, eastern, northern)
 
 
 def get_admin1_geometries(countries):

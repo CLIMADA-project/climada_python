@@ -317,11 +317,16 @@ class Centroids:
             }
         )
 
-    def append(self, centr):
-        """Append Centroids
+    def append(self, *centr):
+        """Append Centroids to the current centroid object for concatenation.
+
+        This method checks that all centroids use the same CRS, appends the list of centroids to
+        the initial Centroid object and eventually concatenates them to create a single centroid
+        object with the union of all centroids.
 
         Note that the result might contain duplicate points if the object to append has an overlap
-        with the current object.
+        with the current object. Remove duplicates by either using :py:meth:`union`
+        or calling :py:meth:`remove_duplicate_points` after appending.
 
         Parameters
         ----------
@@ -337,22 +342,25 @@ class Centroids:
         union : Union of Centroid objects.
         remove_duplicate_points : Remove duplicate points in a Centroids object.
         """
-        if not u_coord.equal_crs(self.crs, centr.crs):
-            raise ValueError(
-                f"The given centroids use different CRS: {self.crs}, {centr.crs}. "
-                "The centroids are incompatible and cannot be concatenated."
-            )
-        self.gdf = pd.concat([self.gdf, centr.gdf])
+        for other in centr:
+            if not u_coord.equal_crs(self.crs, other.crs):
+                raise ValueError(
+                    f"The given centroids use different CRS: {self.crs}, {other.crs}. "
+                    "The centroids are incompatible and cannot be concatenated."
+                )
+        self.gdf = pd.concat([self.gdf] + [other.gdf for other in centr])
 
     def union(self, *others):
-        """Create the union of Centroids objects
+        """Create the union of the current Centroids object with one or more other centroids
+        objects by passing the list of centroids to :py:meth:`append` for concatenation and then
+        removes duplicates.
 
         All centroids must have the same CRS. Points that are contained in more than one of the
         Centroids objects will only be contained once (i.e. duplicates are removed).
 
         Parameters
         ----------
-        others : list of Centroids
+        others : Centroids
             Centroids contributing to the union.
 
         Returns
@@ -361,8 +369,8 @@ class Centroids:
             Centroids object containing the union of all Centroids.
         """
         centroids = copy.deepcopy(self)
-        for cent in others:
-            centroids.append(cent)
+        centroids.append(*others)
+
         return centroids.remove_duplicate_points()
 
     def remove_duplicate_points(self):

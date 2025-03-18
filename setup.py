@@ -20,6 +20,7 @@ DEPS_DOC = [
     "sphinx-book-theme",
     "sphinx-markdown-tables",
     "sphinx-design",
+    "sphinx-mdinclude",
 ]
 
 # Requirements for testing
@@ -43,7 +44,7 @@ DEPS_DEV = (
 
 setup(
     name="climada",
-    version="5.0.1-dev",
+    version="6.0.2-dev",
     description="CLIMADA in Python",
     long_description=long_description,
     long_description_content_type="text/markdown",
@@ -59,7 +60,7 @@ setup(
         "Topic :: Scientific/Engineering :: Mathematics",
     ],
     keywords="climate adaptation",
-    python_requires=">=3.9,<3.12",
+    python_requires=">=3.10,<3.12",
     install_requires=[
         "bayesian-optimization<2.0",
         "bottleneck",
@@ -96,7 +97,6 @@ setup(
         "xarray",
         "xlrd",
         "xlsxwriter",
-        "xmlrunner",
     ],
     extras_require={
         "doc": DEPS_DOC,
