@@ -4,7 +4,9 @@
 
 # CLIMADA
 
-CLIMADA stands for **CLIM**ate **ADA**ptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
+[CLIMADA](https://climada.ethz.ch/climada/) (CLIMate ADAptation) is a free and open-source software framework for climate risk assessment and adaptation
+option appraisal. Designed by a large scientific community, it helps reasearchers, policymakers, and businesses analyse the impacts of natural hazards and
+explore adaptation strategies.
 
 As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution (4x4km) via a [data API](https://climada.ethz.ch/data-api/v1/docs) For select hazards, historic and probabilistic events sets, for past, present and future climate exist at distinct time horizons.
 You will find a repository containing scientific peer-reviewed articles that explain software components implemented in CLIMADA [here](https://github.com/CLIMADA-project/climada_papers).
@@ -37,18 +39,17 @@ Follow the [tutorials](https://climada-python.readthedocs.io/en/stable/tutorial/
 
 The online documentation is available on [Read the Docs](https://climada-python.readthedocs.io/en/stable/).The documentation of each release version of CLIMADA can be accessed separately through the drop-down menu at the bottom of the left sidebar. Additionally, the version 'stable' refers to the most recent release (installed via `conda`), and 'latest' refers to the latest unstable development version (the `develop` branch).
 
-
 CLIMADA python:
 
-* [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
-* [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
-* [core Tutorials on GitHub](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial)
+- [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
+- [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
+- [core Tutorials on GitHub](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial)
 
 CLIMADA petals:
 
-* [online (recommended)](https://climada-petals.readthedocs.io/en/latest/)
-* [PDF file](https://climada-petals.readthedocs.io/_/downloads/en/stable/pdf/)
-* [petals Tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
+- [online (recommended)](https://climada-petals.readthedocs.io/en/latest/)
+- [PDF file](https://climada-petals.readthedocs.io/_/downloads/en/stable/pdf/)
+- [petals Tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
 
 The documentation can also be [built locally](https://climada-python.readthedocs.io/en/latest/README.html).
 
@@ -74,6 +75,6 @@ We use [SemVer](http://semver.org/) for versioning. For the versions available, 
 
 Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
-CLIMADA is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License Version 3, 29 June 2007 as published by the Free Software Foundation, https://www.gnu.org/licenses/gpl-3.0.html
+CLIMADA is free software: you can redistribute it and/or modify it under the terms of the GNU General Public License Version 3, 29 June 2007 as published by the Free Software Foundation, <https://www.gnu.org/licenses/gpl-3.0.html>
 
-CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details: https://www.gnu.org/licenses/gpl-3.0.html
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for more details: <https://www.gnu.org/licenses/gpl-3.0.html>

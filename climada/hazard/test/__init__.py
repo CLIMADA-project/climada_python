@@ -28,7 +28,7 @@ from climada.util.files_handler import download_ftp
 
 
 def download_ibtracs():
-    """This makes sure a IBTrACS.ALL.v04r00.nc file is present in SYSTEM_DIR
+    """This makes sure a IBTrACS.ALL.v04r01.nc file is present in SYSTEM_DIR
     First, downloading from the original sources is attempted. If that fails an old version
     is downloaded from the CLIMADA Data API
     """
@@ -44,9 +44,9 @@ def download_ibtracs():
     ):  # plan b: download an old version of that file from the climada api
         client = Client()
         dsinfo = client.get_dataset_info(
-            name="IBTrACS", version="v04r00", status="external"
+            name="IBTrACS", version="v04r01", status="external"
         )
         [fileinfo] = [
-            fi for fi in dsinfo.files if fi.file_name == "IBTrACS.ALL.v04r00.nc"
+            fi for fi in dsinfo.files if fi.file_name == "IBTrACS.ALL.v04r01.nc"
         ]
         client._download_file(local_path=SYSTEM_DIR, fileinfo=fileinfo)
