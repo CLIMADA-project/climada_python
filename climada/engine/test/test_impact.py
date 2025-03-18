@@ -642,6 +642,120 @@ class TestRPmatrix(unittest.TestCase):
             rtol=0.8,
         )
 
+    def test_local_return_period(self):
+        """Test local return periods with lin lin interpolation"""
+
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 1, 2], [0, 0, 4, 4], [0, 0, 1, 1], [0, 1, 1, 3]])
+        )
+        impact.frequency = np.ones(4)
+        # first centroid has impacts None with cum frequencies None
+        # second centroid has impacts 1 with cum frequencies 1
+        # third centroid has impacts 1, 4 with cum frequencies 4, 1
+        # fourth centroid has impacts 1,2,3,4 with cum frequencies 4,3,2,1
+        # testing at threshold impacts (0.5, 2.5, 5)
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.5, 2.5, 5),
+            method="extrapolate",
+            log_frequency=False,
+            log_impact=False,
+        )
+
+        np.testing.assert_allclose(
+            return_stats[return_stats.columns[1:]].values,
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [1.0, np.nan, np.nan],
+                    [1 / 4.5, 1 / 2.5, np.nan],
+                    [1 / 4.5, 1 / 2.5, np.nan],
+                ]
+            ),
+        )
+
+    def test_local_return_period_methods(self):
+        """Test local return periods different methods"""
+        impact = dummy_impact()
+        impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 0, 1e1], [0, 0, 1e1, 1e2], [0, 1e3, 1e3, 1e3]])
+        )
+        impact.frequency = np.array([1.0, 0.1, 0.01])
+        # first centroid has impacts None with cum frequencies None
+        # second centroid has impacts 1e3 with frequencies .01, cum freq .01
+        # third centroid has impacts 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
+        # fourth centroid has impacts 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
+        # testing at threshold impacts .1, 300, 1e5
+
+        # test stepfunction
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.1, 300, 1e5), method="stepfunction"
+        )
+        np.testing.assert_allclose(
+            return_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [100, 100, np.nan],
+                    [1 / 0.11, 100, np.nan],
+                    [1 / 1.11, 100, np.nan],
+                ]
+            ),
+        )
+
+        # test log log extrapolation
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.1, 300, 1e5), method="extrapolate"
+        )
+        np.testing.assert_allclose(
+            return_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [100, 100, np.nan],
+                    [1.0, 30, 1e3],
+                    [0.01, 30, 1e4],
+                ]
+            ),
+            rtol=0.8,
+        )
+
+        # test log log interpolation and extrapolation with constant
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.1, 300, 1e5), method="extrapolate_constant"
+        )
+        np.testing.assert_allclose(
+            return_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [100, 100, np.nan],
+                    [1 / 0.11, 30, np.nan],
+                    [1 / 1.11, 30, np.nan],
+                ]
+            ),
+            rtol=0.8,
+        )
+
+        # test log log interpolation and no extrapolation
+        return_stats, _, _ = impact.local_return_period(
+            threshold_impact=(0.1, 300, 1e5)
+        )
+        np.testing.assert_allclose(
+            return_stats.values[:, 1:].astype(float),
+            np.array(
+                [
+                    [np.nan, np.nan, np.nan],
+                    [np.nan, np.nan, np.nan],
+                    [np.nan, 30, np.nan],
+                    [np.nan, 30, np.nan],
+                ]
+            ),
+            rtol=0.8,
+        )
+
 
 class TestImpactReg(unittest.TestCase):
     """Test impact aggregation per aggregation region or admin 0"""

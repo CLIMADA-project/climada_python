@@ -54,6 +54,7 @@ from climada import CONFIG
 from climada.entity import Exposures
 from climada.util.constants import CMAP_IMPACT, DEF_CRS, DEF_FREQ_UNIT
 from climada.util.select import get_attributes_with_matching_dimension
+from climada.util.value_representation import safe_divide
 
 LOGGER = logging.getLogger(__name__)
 
@@ -106,8 +107,8 @@ class Impact:
         crs=DEF_CRS,
         eai_exp=None,
         at_event=None,
-        tot_value=0,
-        aai_agg=0,
+        tot_value=0.,
+        aai_agg=0.,
         unit="",
         imp_mat=None,
         haz_type="",
@@ -499,7 +500,7 @@ class Impact:
     ):
         """Compute local exceedance impact for given return periods. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
-        frequency with by linear interpolation on log-log scale.
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
@@ -609,6 +610,113 @@ class Impact:
             .values[:, 1:]
             .T.astype(float)
         )
+
+    def local_return_period(
+        self,
+        threshold_impact=(1000.0, 10000.0),
+        method="interpolate",
+        min_impact=0,
+        log_frequency=True,
+        log_impact=True,
+    ):
+        """Compute local return periods for given threshold impacts. The default method
+        is fitting the ordered impacts per centroid to the corresponding cummulated
+        frequency with linear interpolation on log-log scale.
+
+        Parameters
+        ----------
+        threshold_impact : array_like
+            User-specified impact values for which the return period should be calculated
+            locally (at each centroid). Defaults to (1000, 10000)
+        method : str
+            Method to interpolate to new threshold impacts. Currently available are
+            "interpolate", "extrapolate", "extrapolate_constant" and "stepfunction". If set to
+            "interpolate", threshold impacts outside the range of the Impact object's local
+            impacts will be assigned NaN. If set to "extrapolate_constant" or
+            "stepfunction", threshold impacts larger than the Impacts object's local
+            impacts will be assigned NaN, and threshold impacts smaller than the Impact
+            object's local impacts will be assigned the smallest observed local return period.
+            If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            Defaults to "interpolate".
+        min_impacts : float, optional
+            Minimum threshold to filter the impact. Defaults to 0.
+        log_frequency : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            (cummulative) frequency values are converted to log scale before inter- and
+            extrapolation. Defaults to True.
+        log_impact : bool, optional
+            This parameter is only used if method is set to "interpolate". If set to True,
+            impact values are converted to log scale before inter- and extrapolation.
+            Defaults to True.
+
+        Returns
+        -------
+        gdf : gpd.GeoDataFrame
+            GeoDataFrame containing return periods for given threshold impacts. Each column
+            corresponds to a threshold_impact value, each row corresponds to a centroid. Values
+            in the gdf correspond to the return period for the given centroid and
+            threshold_impact value
+        label : str
+            GeoDataFrame label, for reporting and plotting
+        column_label : function
+            Column-label-generating function, for reporting and plotting
+        """
+
+        LOGGER.info("Computing return period map for impacts: %s", threshold_impact)
+        if self.imp_mat.size == 0:
+            raise ValueError(
+                "Attribute imp_mat is empty. Recalculate Impact"
+                "instance with parameter save_mat=True"
+            )
+
+        # check frequency unit
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
+            self.frequency_unit
+        )
+
+        # check method
+        if method not in [
+            "interpolate",
+            "extrapolate",
+            "extrapolate_constant",
+            "stepfunction",
+        ]:
+            raise ValueError(f"Unknown method: {method}")
+
+        # calculate local return periods
+        return_periods = np.array(
+            [
+                u_interp.preprocess_and_interpolate_ev(
+                    None,
+                    np.array(threshold_impact),
+                    self.frequency,
+                    self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                    log_frequency=log_frequency,
+                    log_values=log_impact,
+                    value_threshold=min_impact,
+                    method=method,
+                    y_asymptotic=np.nan,
+                )
+                for i_centroid in range(self.imp_mat.shape[1])
+            ]
+        )
+        return_periods = safe_divide(1.0, return_periods)
+
+        # create the output GeoDataFrame
+        gdf = gpd.GeoDataFrame(
+            geometry=gpd.points_from_xy(self.coord_exp[:, 1], self.coord_exp[:, 0]),
+            crs=self.crs,
+        )
+        col_names = [f"{thresh_impact}" for thresh_impact in threshold_impact]
+        gdf[col_names] = return_periods
+
+        # create label and column_label
+        label = f"Return Periods ({return_period_unit})"
+        column_label = lambda column_names: [
+            f"Impact: {col} {self.unit}" for col in column_names
+        ]
+
+        return gdf, label, column_label
 
     def calc_freq_curve(self, return_per=None):
         """Compute impact exceedance frequency curve.

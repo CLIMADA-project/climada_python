@@ -495,7 +495,7 @@ class Hazard(HazardIO, HazardPlot):
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with by linear interpolation on log-log scale.
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
@@ -616,7 +616,7 @@ class Hazard(HazardIO, HazardPlot):
     ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
-        frequency with by linear interpolation on log-log scale.
+        frequency with linear interpolation on log-log scale.
 
         Parameters
         ----------
