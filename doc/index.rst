@@ -135,7 +135,6 @@ specialized applications can be found in the `CLIMADA Petals
    User Guide <user-guide/index>
    Developer Guide <development/index>
    API Reference <api/index>
-   About <misc/AUTHORS>
    Changelog <misc/CHANGELOG>
    CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>
    WCR Group <https://wcr.ethz.ch/>

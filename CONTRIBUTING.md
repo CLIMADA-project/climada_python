@@ -83,4 +83,4 @@ It also contains a checklist for both pull request authors and reviewers to guid
 
 [docs]: https://climada-python.readthedocs.io/en/latest/
 [devguide]: https://climada-python.readthedocs.io/en/latest/#developer-guide
-[testing]: https://climada-python.readthedocs.io/en/latest/guide/Guide_Testing.html
+[testing]: https://climada-python.readthedocs.io/en/latest/development/Guide_Testing.html
