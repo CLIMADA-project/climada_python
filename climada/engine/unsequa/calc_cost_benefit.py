@@ -53,8 +53,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class CalcCostBenefit(Calc):
-    """
-    Cost Benefit uncertainty analysis class
+    """Cost Benefit uncertainty analysis class
 
     This is the base class to perform uncertainty analysis on the outputs of
     climada.engine.costbenefit.CostBenefit().

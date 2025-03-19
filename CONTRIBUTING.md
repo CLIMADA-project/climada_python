@@ -12,11 +12,11 @@ For orientation, these are some categories of possible contributions we can thin
 * **New Modules and Utility Functions:** Did you create a function or an entire module you find useful for your work? Maybe you are not the only one! Feel free to simply raise a pull request for functions that improve, e.g., plotting or data handling. As an entire module has to be carefully integrated into the framework, it might help if you talk to us first so we can design the module and plan the next steps. You can do that by raising an issue or starting a [discussion](https://github.com/CLIMADA-project/climada_python/discussions) on GitHub.
 
 A good place to start a personal discussion is our monthly CLIMADA developers call.
-Please contact the [lead developers](https://wcr.ethz.ch/research/climada.html) if you want to join.
+Please contact the [lead developers](https://climada.ethz.ch/team/) if you want to join.
 
 ## Why Should You Contribute?
 
-* You will be listed as author of the CLIMADA repository in the [AUTHORS](AUTHORS.md) file.
+* You will be listed as author of the CLIMADA repository in the [AUTHORS][authors] file.
 * You will improve the quality of the CLIMADA software for you and for everybody else using it.
 * You will gain insights into scientific software development.
 
@@ -40,7 +40,7 @@ To contribute follow these steps:
     ```bash
     pylint
     ```
-6. Add your name to the [AUTHORS](AUTHORS.md) file.
+6. Add your name to the [AUTHORS][authors] file.
 7. Push your updates to the remote repository:
 
     ```bash
@@ -83,4 +83,5 @@ It also contains a checklist for both pull request authors and reviewers to guid
 
 [docs]: https://climada-python.readthedocs.io/en/latest/
 [devguide]: https://climada-python.readthedocs.io/en/latest/#developer-guide
-[testing]: https://climada-python.readthedocs.io/en/latest/guide/Guide_Testing.html
+[testing]: https://climada-python.readthedocs.io/en/latest/development/Guide_Testing.html
+[authors]: https://github.com/CLIMADA-project/climada_python/blob/main/AUTHORS.md
