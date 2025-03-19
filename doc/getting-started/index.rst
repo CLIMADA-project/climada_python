@@ -84,9 +84,9 @@ You are good to go!
    This module allows you to define a range of input parameters and evaluate their influence on the output,
    helping you quantify the sensitivity of the modeling chain as well as the uncertainties in your results.
 
-      .. image:: /user-guide/img/sensitivity.png
-         :width: 500
-         :align: center
+   .. image:: /user-guide/img/sensitivity.png
+      :width: 500
+      :align: center
 
 .. dropdown:: Compare adaptation measures and assess their cost-effectiveness
    :color: primary
