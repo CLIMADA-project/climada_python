@@ -23,7 +23,6 @@ import logging
 
 import matplotlib.pyplot as plt
 import numpy as np
-from deprecation import deprecated
 
 import climada.util.plot as u_plot
 
@@ -77,8 +76,8 @@ class HazardPlot:
          util.plot.plot_from_gdf(gdf, title, labels) instead.
         """
         LOGGER.info(
-            "Some errors in the previous calculation of local exceedance intensities have been corrected,"
-            " see Hazard.local_exceedance_intensity. To reproduce data with the "
+            "Some errors in the previous calculation of local exceedance intensities have been "
+            "corrected, see Hazard.local_exceedance_intensity. To reproduce data with the "
             "previous calculation, use CLIMADA v5.0.0 or less."
         )
 
