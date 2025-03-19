@@ -12,3 +12,4 @@ population count data. We also show how to handle polygons or lines with CLIMADA
     climada_entity_Exposures
     LitPop <climada_entity_LitPop>
     Polygons or Lines as Exposures <climada_entity_Exposures_polygons_lines>
+    OpenStreetMap data as Exposures <climada_entity_Exposures_osm>
