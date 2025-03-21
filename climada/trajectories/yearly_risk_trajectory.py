@@ -20,6 +20,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 import logging
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
@@ -178,8 +179,7 @@ class YearlyRiskTrajectory:
         else:
             return df
 
-    def calc_waterfall_plot(self, yearly=False, start_year=None, end_year=None):
-
+    def calc_waterfall_plot_data(self, start_year=None, end_year=None):
         start_year = self.start_year if start_year is None else start_year
         end_year = self.end_year if end_year is None else end_year
         considered_risk_periods = self._get_risk_periods(
@@ -206,47 +206,7 @@ class YearlyRiskTrajectory:
             .ffill()
             .fillna(0.0)
         )
-        if yearly:
-            return risk_component.plot(kind="bar", x="Year", stacked=True)
-        else:
-            import matplotlib.pyplot as plt
-
-            _, ax = plt.subplots(figsize=(12, 8))
-            risk_component = risk_component.loc[
-                (risk_component["Year"] == end_year)
-            ].squeeze()
-
-            labels = [
-                f"Risk {start_year}",
-                "Change in Exposure",
-                "Change in Hazard (with Exposure)",
-                f"Future Risk {end_year}",
-            ]
-            values = [
-                risk_component["Base risk"],
-                risk_component["Change in Exposure"],
-                risk_component["Change in Hazard (with Exposure)"],
-                risk_component["Base risk"]
-                + risk_component["Change in Exposure"]
-                + risk_component["Change in Hazard (with Exposure)"],
-            ]
-            bottoms = [
-                0.0,
-                risk_component["Base risk"],
-                risk_component["Base risk"] + risk_component["Change in Exposure"],
-                0.0,
-            ]
-
-            for i in range(len(values)):
-                ax.bar(labels[i], values[i], bottom=bottoms[i], edgecolor="black")
-                ax.text(
-                    labels[i],
-                    values[i] + bottoms[i],
-                    f"{values[i]:.0e}",
-                    ha="center",
-                    va="bottom",
-                    color="black",
-                )
+        return risk_component
 
     def _calc_risk_component(self, period: RiskPeriod):
         imp_mats_H0 = period.imp_mats_0
@@ -274,6 +234,89 @@ class YearlyRiskTrajectory:
             ),
         )
         return df.round(1)
+
+    def plot_yearly_waterfall(self, ax=None, start_year=None, end_year=None):
+        if ax is None:
+            _, ax = plt.subplots()
+        start_year = self.start_year if start_year is None else start_year
+        end_year = self.end_year if end_year is None else end_year
+        risk_component = self.calc_waterfall_plot_data(
+            start_year=start_year, end_year=end_year
+        )
+        risk_component.plot(ax=ax, kind="bar", x="Year", stacked=True)
+        # Construct y-axis label and title based on parameters
+        value_label = "USD"
+        title_label = (
+            f"Risk between {start_year} and {end_year} (Annual Average impact)"
+        )
+
+        ax.set_title(title_label)
+        ax.set_ylabel(value_label)
+        return ax
+
+    def plot_waterfall(self, ax=None, start_year=None, end_year=None):
+        start_year = self.start_year if start_year is None else start_year
+        end_year = self.end_year if end_year is None else end_year
+        risk_component = self.calc_waterfall_plot_data(
+            start_year=start_year, end_year=end_year
+        )
+        if ax is None:
+            _, ax = plt.subplots()
+
+        risk_component = risk_component.loc[
+            (risk_component["Year"] == end_year)
+        ].squeeze()
+
+        labels = [
+            f"Risk {start_year}",
+            f"Exposure {end_year}",
+            f"Hazard {end_year}¹",
+            f"Total Risk {end_year}",
+        ]
+        values = [
+            risk_component["Base risk"],
+            risk_component["Change in Exposure"],
+            risk_component["Change in Hazard (with Exposure)"],
+            risk_component["Base risk"]
+            + risk_component["Change in Exposure"]
+            + risk_component["Change in Hazard (with Exposure)"],
+        ]
+        bottoms = [
+            0.0,
+            risk_component["Base risk"],
+            risk_component["Base risk"] + risk_component["Change in Exposure"],
+            0.0,
+        ]
+
+        for i in range(len(values)):
+            ax.bar(labels[i], values[i], bottom=bottoms[i], edgecolor="black")
+            ax.text(
+                labels[i],
+                values[i] + bottoms[i],
+                f"{values[i]:.0e}",
+                ha="center",
+                va="bottom",
+                color="black",
+            )
+
+        # Construct y-axis label and title based on parameters
+        value_label = "USD"
+        title_label = f"Risk at {start_year} and {end_year} (Annual Average impact)"
+
+        ax.set_title(title_label)
+        ax.set_ylabel(value_label)
+        # ax.tick_params(axis='x', labelrotation=90,)
+        ax.annotate(
+            "¹: The increase in risk due to Hazard denotes the difference in risk with future exposure and hazard compared to risk with future exposure and present hazard.",
+            xy=(0.1, -0.2),
+            xycoords="axes fraction",
+            ha="right",
+            va="center",
+            fontsize=8,
+            wrap=True,
+        )
+
+        return ax
 
 
 def calc_npv_cash_flows(cash_flows, start_year, end_year=None, disc=None):

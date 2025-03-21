@@ -284,6 +284,49 @@ class MeasuresAppraiser(YearlyRiskTrajectory):
             measure_colors=measure_colors,
         )
 
+    def plot_waterfall(self, start_year=None, end_year=None, metric="aai"):
+        df = self.calc_CB(yearly=True)
+        averted = df.loc[
+            (df["year"] == 2080)
+            & (df["metric"] == metric)
+            & (df["measure"] != "no_measure")
+        ]
+        ax = super().plot_waterfall(start_year, end_year)
+        ax.text(
+            x=ax.get_xticks()[-1] - ax.patches[-1].get_width() / 2 + 0.02,
+            y=ax.patches[-1].get_height() * 0.97,
+            ha="left",
+            s="Averted risk",
+            size=12,
+        )
+        averted = averted.sort_values("averted risk")
+        for i, meas in enumerate(averted["measure"].unique()):
+            measure_risk = averted.loc[
+                (averted["measure"] == meas), "averted risk"
+            ].values[0]
+            x_arrow = (
+                ax.get_xticks()[-1] - ax.patches[-1].get_width() / 2 + 0.1 + 0.12 * i
+            )
+            top_arrow = ax.patches[-1].get_height() * 0.96
+            bottom_arrow = top_arrow - measure_risk
+            ax.annotate(
+                "",
+                xy=(x_arrow, bottom_arrow),
+                xytext=(x_arrow, top_arrow),
+                arrowprops=dict(
+                    facecolor="tab:green", width=12, headwidth=20, headlength=10
+                ),
+            )
+            ax.text(
+                x=x_arrow - 0.04,
+                y=top_arrow - (top_arrow - bottom_arrow) / 2,
+                va="center",
+                s=meas,
+                rotation=-90,
+            )
+
+        return ax
+
 
 class PlannedMeasuresAppraiser(MeasuresAppraiser):
 
