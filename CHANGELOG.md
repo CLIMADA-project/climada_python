@@ -70,6 +70,7 @@ Removed:
 
 ### Added
 
+- `climada.hazard.tc_tracks.BASINS_BOUNDS` dictionary [#1031](https://github.com/CLIMADA-project/climada_python/pull/1031)
 - `climada.hazard.tc_tracks.TCTracks.subset_years` function [#1023](https://github.com/CLIMADA-project/climada_python/pull/1023)
 - `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
