@@ -28,9 +28,11 @@ import logging
 import re
 import shutil
 import warnings
+from collections import defaultdict
+from dataclasses import dataclass
 from operator import itemgetter
 from pathlib import Path
-from typing import List, Optional
+from typing import Dict, List, Optional
 
 # additional libraries
 import cartopy.crs as ccrs
@@ -167,60 +169,6 @@ BASIN_ENV_PRESSURE = {
 }
 """Basin-specific default environmental pressure"""
 
-BASINS_BOUNDS = {
-    "NA": Polygon(
-        [
-            (-100, 19),
-            (-94.21951983987083, 17.039584804350312),
-            (-88.75211790888072, 14.837521327451947),
-            (-84.96610530622198, 12.214318798718033),
-            (-84.89823142225451, 12.181148019885352),
-            (-82.59052306410497, 8.777858931465238),
-            (-81.09730008320902, 8.358383265470449),
-            (-79.50226644452471, 9.196860922133856),
-            (-78.58597052442947, 9.213610839871123),
-            (-77.02487377167459, 7.299350879751048),
-            (-77.02487377167459, 5),
-            (0, 5.0),
-            (0, 60.0),
-            (-100.0, 60.0),
-            (-100, 19),
-        ]
-    ),
-    "EP": Polygon(
-        [
-            (-180.0, 5.0),
-            (-77.02487377167459, 5),
-            (-77.02487377167459, 7.299350879751048),
-            (-78.58597052442947, 9.213610839871123),
-            (-79.50226644452471, 9.196860922133856),
-            (-81.09730008320902, 8.358383265470449),
-            (-82.59052306410497, 8.777858931465238),
-            (-84.89823142225451, 12.181148019885352),
-            (-84.96610530622198, 12.214318798718033),
-            (-88.75211790888072, 14.837521327451947),
-            (-94.21951983987083, 17.039584804350312),
-            (-100, 19),
-            (-100.0, 60.0),
-            (-180.0, 60.0),
-            (-180.0, 5.0),
-        ]
-    ),
-    "WP": Polygon(
-        [(100.0, 5.0), (180.0, 5.0), (180.0, 60.0), (100.0, 60.0), (100.0, 5.0)]
-    ),
-    "NI": Polygon(
-        [(30.0, 5.0), (100.0, 5.0), (100.0, 60.0), (30.0, 60.0), (30.0, 5.0)]
-    ),
-    "SI": Polygon(
-        [(10.0, -60.0), (135.0, -60.0), (135.0, -5.0), (10.0, -5.0), (10.0, -60.0)]
-    ),
-    "SP": Polygon(
-        [(135.0, -60.0), (240.0, -60.0), (240.0, -5.0), (135.0, -5.0), (135.0, -60.0)]
-    ),
-}
-""" Basins latitude and longitude bounds. """
-
 EMANUEL_RMW_CORR_FILES = [
     "temp_ccsm420thcal.mat",
     "temp_ccsm4rcp85_full.mat",
@@ -245,6 +193,126 @@ STORM_1MIN_WIND_FACTOR = 0.88
 
 Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone hazard
 dataset using STORM. Scientific Data 7(1): 40."""
+
+
+@dataclass
+class Basin:
+    """
+    Store tropical cyclones basin geographical extent.
+
+    The boundaries of the basin are represented as a polygon (using the `shapely` Polygon object)
+    and follows the definition of the STORM dataset.
+    This class allows checking if a given geographical point (latitude, longitude)
+    lies inside the basin (e.g. the orgin location of a track)
+
+    Attributes:
+    ----------
+        *name : str
+            The name of the tropical cyclone basin (e.g., "NA" for North Atlantic).
+        *polygon : Polygon
+            A shapely Polygon object that represents the geographical boundary of the basin.
+
+    Methods:
+    -------
+    contains()
+        Returns `True` if the given point (latitude and longitude) is inside the basin's boundary,
+        otherwise returns `False`.
+    """
+
+    name: str
+    polygon: Polygon
+
+    def contains(self, point: Point) -> bool:
+        """
+        Checks if a given point is inside the basin.
+
+        Parameters
+        ----------
+        point : Point
+            A shapely Point object representing the geographical location (longitude, latitude).
+
+        Returns
+        -------
+        bool
+            `True` if the point is inside the basin, `False` otherwise.
+        """
+        return self.polygon.contains(point)
+
+
+BASINS: Dict[str, Basin] = {
+    "NA": Basin(
+        "NA",
+        Polygon(
+            [
+                (-100, 19),
+                (-94.21951983987083, 17.039584804350312),
+                (-88.75211790888072, 14.837521327451947),
+                (-84.96610530622198, 12.214318798718033),
+                (-84.89823142225451, 12.181148019885352),
+                (-82.59052306410497, 8.777858931465238),
+                (-81.09730008320902, 8.358383265470449),
+                (-79.50226644452471, 9.196860922133856),
+                (-78.58597052442947, 9.213610839871123),
+                (-77.02487377167459, 7.299350879751048),
+                (-77.02487377167459, 5),
+                (0, 5.0),
+                (0, 60.0),
+                (-100.0, 60.0),
+                (-100, 19),
+            ]
+        ),
+    ),
+    "EP": Basin(
+        "EP",
+        Polygon(
+            [
+                (-180.0, 5.0),
+                (-77.02487377167459, 5),
+                (-77.02487377167459, 7.299350879751048),
+                (-78.58597052442947, 9.213610839871123),
+                (-79.50226644452471, 9.196860922133856),
+                (-81.09730008320902, 8.358383265470449),
+                (-82.59052306410497, 8.777858931465238),
+                (-84.89823142225451, 12.181148019885352),
+                (-84.96610530622198, 12.214318798718033),
+                (-88.75211790888072, 14.837521327451947),
+                (-94.21951983987083, 17.039584804350312),
+                (-100, 19),
+                (-100.0, 60.0),
+                (-180.0, 60.0),
+                (-180.0, 5.0),
+            ]
+        ),
+    ),
+    "WP": Basin(
+        "WP",
+        Polygon(
+            [(100.0, 5.0), (180.0, 5.0), (180.0, 60.0), (100.0, 60.0), (100.0, 5.0)]
+        ),
+    ),
+    "NI": Basin(
+        "NI",
+        Polygon([(30.0, 5.0), (100.0, 5.0), (100.0, 60.0), (30.0, 60.0), (30.0, 5.0)]),
+    ),
+    "SI": Basin(
+        "SI",
+        Polygon(
+            [(10.0, -60.0), (135.0, -60.0), (135.0, -5.0), (10.0, -5.0), (10.0, -60.0)]
+        ),
+    ),
+    "SP": Basin(
+        "SP",
+        Polygon(
+            [
+                (135.0, -60.0),
+                (240.0, -60.0),
+                (240.0, -5.0),
+                (135.0, -5.0),
+                (135.0, -60.0),
+            ]
+        ),
+    ),
+}
 
 
 class TCTracks:
@@ -375,6 +443,55 @@ class TCTracks:
                 out.data = [ds for ds in out.data if ds.attrs[key] == pattern]
 
         return out
+
+    def split_by_basin(self):
+        """Subset all tropical cyclones tracks by basin.
+
+        This function iterates through the tropical cyclones in the dataset and assigns each cyclone
+        to a basin based on its geographical location. It checks whether the cyclone's position (latitude
+        and longitude) lies within the boundaries of any of the predefined basins and then groups the cyclones
+        into separate categories for each basin. The resulting dictionary maps each basin's name to a list of
+        tropical cyclones that fall within it.
+
+        Parameters
+        ----------
+        self : TCTtracks object
+            The object instance containing the tropical cyclone data (`self.data`) to be processed.
+
+        Returns
+        -------
+        dict_tc_basins : dict
+            A dictionary where the keys are basin names (e.g., "NA", "EP", "WP", etc.) and the values are instances
+            of the `TCTracks` class containing the tropical cyclones that belong to each basin.
+
+        Example:
+        --------
+        >>> tc = TCTracks.from_ibtracks("")
+        >>> tc_basins = tc.split_by_basin()
+        >>> tc_basins["NA"] # to access tracks in the North Atlantic
+
+        """
+
+        # Initialize a defaultdict to store lists for each basin
+        basins_dict = defaultdict(list)
+
+        # Iterate over each tropical cyclone
+        for tc in self.data:
+            lat, lon = tc.lat.values[0], tc.lon.values[0]
+            origin_point = Point(lon, lat)
+
+            # Find the basin that contains the point
+            for basin in BASINS.values():
+                if basin.contains(origin_point):
+                    basins_dict[basin.name].append(tc)
+                    break
+
+        # Now create a dictionary with TCTracks for each basin
+        dict_tc_basins = {
+            basin_name: TCTracks(tc_list) for basin_name, tc_list in basins_dict.items()
+        }
+
+        return dict_tc_basins
 
     def subset_year(
         self,
