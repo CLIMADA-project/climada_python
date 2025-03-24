@@ -108,8 +108,7 @@ class ImpactFunc:
                 and np.array_equal(self.mdd, value.mdd)
                 and np.array_equal(self.paa, value.paa)
             )
-        else:
-            return False
+        return False
 
     def calc_mdr(self, inten: Union[float, np.ndarray]) -> np.ndarray:
         """Interpolate impact function to a given intensity.
