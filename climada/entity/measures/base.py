@@ -65,9 +65,9 @@ class Measure:
         exposures_change: Callable[[Any, int], Any] = lambda x, y: x,
         impfset_change: Callable[[Any, int], Any] = lambda x, y: x,
         hazard_change: Callable[[Any, int], Any] = lambda x, y: x,
-        combo: list[
-            str
-        ] = None,  # list of measure names that this measure is a combination of (Probably better to stire the other measures in the measure object)
+        combo: (
+            list[str] | None
+        ) = None,  # list of measure names that this measure is a combination of (Probably better to stire the other measures in the measure object)
         cost_income: Optional[CostIncome] = None,
         implementation_duration: int = 0,  # duration of implementation in years before the measure is fully implemented (or should this be made later ... )
     ):
