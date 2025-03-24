@@ -199,7 +199,7 @@ class MeasuresAppraiser(YearlyRiskTrajectory):
         # Aggregate the results
         time_grouper = "year" if yearly else "period"
 
-        res = self.calc_risk_metrics(
+        res = self._calc_risk_metrics(
             total=(not yearly),
             npv=net_present_value,
         )
@@ -270,44 +270,46 @@ class MeasuresAppraiser(YearlyRiskTrajectory):
         y_label=None,
         title=None,
         with_measure=True,
-        plot_type="line",
         measure_colors=None,
     ):
         plot_yearly(
-            self.calc_CB(yearly=True),
+            self.calc_CB(yearly=True).sort_values("residual risk"),
             to_plot=to_plot,
             with_measure=with_measure,
             metric=metric,
             y_label=y_label,
             title=title,
-            plot_type=plot_type,
             measure_colors=measure_colors,
         )
 
-    def plot_waterfall(self, start_year=None, end_year=None, metric="aai"):
+    def plot_waterfall(self, ax=None, start_year=None, end_year=None):
         df = self.calc_CB(yearly=True)
         averted = df.loc[
             (df["year"] == 2080)
-            & (df["metric"] == metric)
+            & (df["metric"] == "aai")
             & (df["measure"] != "no_measure")
         ]
-        ax = super().plot_waterfall(start_year, end_year)
-        ax.text(
-            x=ax.get_xticks()[-1] - ax.patches[-1].get_width() / 2 + 0.02,
-            y=ax.patches[-1].get_height() * 0.97,
-            ha="left",
-            s="Averted risk",
-            size=12,
-        )
+        ax = super().plot_waterfall(ax=ax, start_year=start_year, end_year=end_year)
+        ax.bar("Averted risk", ax.patches[-1].get_height(), width=1, visible=False)
+        # ax.text(
+        #     x=ax.get_xticks()[-1] - ax.patches[-1].get_width() / 2 + 0.02,
+        #     y=ax.patches[-1].get_height() * 0.96,
+        #     ha="left",
+        #     s="Averted risk",
+        #     size=12,
+        # )
         averted = averted.sort_values("averted risk")
         for i, meas in enumerate(averted["measure"].unique()):
             measure_risk = averted.loc[
                 (averted["measure"] == meas), "averted risk"
             ].values[0]
             x_arrow = (
-                ax.get_xticks()[-1] - ax.patches[-1].get_width() / 2 + 0.1 + 0.12 * i
+                ax.get_xticks()[-1]
+                - ax.patches[-1].get_width() / 2
+                + 0.1
+                + (ax.patches[-1].get_width() / averted["measure"].nunique()) * i
             )
-            top_arrow = ax.patches[-1].get_height() * 0.96
+            top_arrow = ax.patches[-1].get_height()
             bottom_arrow = top_arrow - measure_risk
             ax.annotate(
                 "",
@@ -318,17 +320,19 @@ class MeasuresAppraiser(YearlyRiskTrajectory):
                 ),
             )
             ax.text(
-                x=x_arrow - 0.04,
+                x=x_arrow,
                 y=top_arrow - (top_arrow - bottom_arrow) / 2,
                 va="center",
+                ha="center",
                 s=meas,
                 rotation=-90,
+                size="x-small",
             )
 
         return ax
 
 
-class PlannedMeasuresAppraiser(MeasuresAppraiser):
+class _PlannedMeasuresAppraiser(MeasuresAppraiser):
 
     def __init__(
         self,
@@ -368,6 +372,7 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
             # Not sure this works as intended (pbly could be simplified anyway)
             measure = self.measure_set.combine(names=measure_name_list)
             periods = self._get_risk_periods(risk_periods, start_year, end_year)
+            LOGGER.debug(f"Creating measures risk_period for measure {measure.name}")
             meas_periods = [period.apply_measure(measure) for period in periods]
             res += meas_periods
         return res
@@ -391,20 +396,7 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
             pd.IndexSlice["no_measure"], no_measure_mask[no_measure_mask].index
         ] = True
 
-        columns_to_front = ["measure", "group", "year", "metric"]
-        return (
-            df[mask]
-            .reset_index()
-            .sort_values("year")[
-                columns_to_front
-                + [
-                    col
-                    for col in df.columns
-                    if col not in columns_to_front + ["risk", "rp"]
-                ]
-                + ["risk"]
-            ]
-        )
+        return df[mask].reset_index().sort_values("year")
 
     def _calc_per_measure_annual_cash_flows(self, disc=None):
         res = []
@@ -425,6 +417,102 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
         )
         return df
 
+    def plot_CB_summary(
+        self,
+        metric="aai",
+        measure_colors=None,
+        y_label="Risk",
+        title="Benefit and Benefit/Cost Ratio by Measure",
+    ):
+        raise NotImplementedError("Not Implemented for that class")
+        df = self.calc_CB(yearly=True)
+        df_plan = df.groupby(["group", "metric"], as_index=False).agg(
+            start_year=pd.NamedAgg(column="year", aggfunc="min"),
+            end_year=pd.NamedAgg(column="year", aggfunc="max"),
+            base_risk=pd.NamedAgg(column="base risk", aggfunc="sum"),
+            residual_risk=pd.NamedAgg(column="residual risk", aggfunc="sum"),
+            averted_risk=pd.NamedAgg(column="averted risk", aggfunc="sum"),
+            cost_net=pd.NamedAgg(column="cost (net)", aggfunc="sum"),
+        )
+        df_plan["measure"] = "Whole risk period"
+        df.columns = df.columns.str.replace("_", " ")
+        df["B/C ratio"] = (df["averted risk"] / df["cost net"]).fillna(0.0)
+        plot_CB_summary(
+            df,
+            metric=metric,
+            measure_colors=measure_colors,
+            y_label=y_label,
+            title=title,
+        )
+
+    def plot_yearly(
+        self,
+        to_plot="residual risk",
+        metric="aai",
+        y_label=None,
+        title=None,
+        with_measure=True,
+        measure_colors=None,
+    ):
+        plot_yearly(
+            self.calc_CB(yearly=True).sort_values("residual risk"),
+            to_plot=to_plot,
+            with_measure=with_measure,
+            metric=metric,
+            y_label=y_label,
+            title=title,
+            measure_colors=measure_colors,
+        )
+
+    def plot_waterfall(self, ax=None, start_year=None, end_year=None):
+        df = self.calc_CB(yearly=True)
+        averted = df.loc[
+            (df["year"] == 2080)
+            & (df["metric"] == "aai")
+            & (df["measure"] != "no_measure")
+        ]
+        ax = super().plot_waterfall(ax=ax, start_year=start_year, end_year=end_year)
+        ax.bar("Averted risk", ax.patches[-1].get_height(), width=1, visible=False)
+        # ax.text(
+        #     x=ax.get_xticks()[-1] - ax.patches[-1].get_width() / 2 + 0.02,
+        #     y=ax.patches[-1].get_height() * 0.96,
+        #     ha="left",
+        #     s="Averted risk",
+        #     size=12,
+        # )
+        averted = averted.sort_values("averted risk")
+        for i, meas in enumerate(averted["measure"].unique()):
+            measure_risk = averted.loc[
+                (averted["measure"] == meas), "averted risk"
+            ].values[0]
+            x_arrow = (
+                ax.get_xticks()[-1]
+                - ax.patches[-1].get_width() / 2
+                + 0.1
+                + (ax.patches[-1].get_width() / averted["measure"].nunique()) * i
+            )
+            top_arrow = ax.patches[-1].get_height()
+            bottom_arrow = top_arrow - measure_risk
+            ax.annotate(
+                "",
+                xy=(x_arrow, bottom_arrow),
+                xytext=(x_arrow, top_arrow),
+                arrowprops=dict(
+                    facecolor="tab:green", width=12, headwidth=20, headlength=10
+                ),
+            )
+            ax.text(
+                x=x_arrow,
+                y=top_arrow - (top_arrow - bottom_arrow) / 2,
+                va="center",
+                ha="center",
+                s=meas,
+                rotation=-90,
+                size="x-small",
+            )
+
+        return ax
+
 
 class AdaptationPlansAppraiser:
     def __init__(
@@ -440,7 +528,7 @@ class AdaptationPlansAppraiser:
     ):
         self._use_npv = use_net_present_value
         self.plans = [
-            PlannedMeasuresAppraiser(
+            _PlannedMeasuresAppraiser(
                 snapshots=snapshots,
                 measure_set=measure_set,
                 planner=plan,

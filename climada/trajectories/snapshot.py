@@ -175,13 +175,21 @@ class SnapshotsCollection:
             ]
         )
 
+    def __getitem__(self, arg):
+        if arg in self._snapshots.keys():
+            return self._snapshots[arg]
+        elif isinstance(arg, int):
+            return self.data[arg]
+        else:
+            raise IndexError(f"{arg} not a valid index.")
+
     @property
     def data(self):
         return list(self._snapshots.values())
 
     @property
     def snapshots_years(self):
-        return self._snapshots.keys()
+        return list(self._snapshots.keys())
 
     @property
     def exposure_set(self):
@@ -199,10 +207,6 @@ class SnapshotsCollection:
         """Return the number of snapshots in the collection."""
         return len(self._snapshots)
 
-    # def __iter__(self):
-    #     """Return an iterator over the snapshots in the collection."""
-    #     return iter(self.data)
-
     def __contains__(self, item):
         """Check if a Snapshot or a year exists in the collection."""
         if isinstance(item, int):
@@ -211,9 +215,6 @@ class SnapshotsCollection:
             return item in self._snapshots.values()  # Check object identity
         else:
             return False  # Invalid type
-
-    # Check that at least first and last snap are complete
-    # and otherwise it is ok
 
     @classmethod
     def from_dict(cls, snapshots_dict, impfset):
@@ -317,3 +318,22 @@ class SnapshotsCollection:
         a, b = itertools.tee(self._snapshots.values())
         next(b, None)
         return zip(a, b)
+
+
+def create_group_map_exp_dict(
+    snapshots: SnapshotsCollection, group_col: str | None = None
+):
+    """
+    Create a dictionary that maps each group to the indices of the exposures in the gdf.
+    """
+
+    # Get the first snapshot exposures gdf
+    gdf = snapshots.exposure_set[0].gdf
+    # Get the unique groups
+    unique_groups = list(gdf[group_col].unique())
+    # Create the dictionary
+    group_map_exp_dict = {
+        i: list(np.where(gdf[group_col] == i)[0]) for i in unique_groups
+    }
+
+    return group_map_exp_dict

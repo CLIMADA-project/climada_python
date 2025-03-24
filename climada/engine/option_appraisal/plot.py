@@ -38,7 +38,6 @@ def plot_yearly(
     metric,
     y_label,
     title,
-    plot_type="line",
     measure_colors=None,
 ):
     def def_title(to_plot):
@@ -73,30 +72,20 @@ def plot_yearly(
         else measure_colors
     )
 
-    if plot_type == "line":
-        _, ax = plt.subplots(figsize=(12, 8))
-        g = sns.lineplot(
-            yearly_df, ax=ax, x="Year", y=y_label, hue="Measure", style="Variable"
-        )
-        y_label = y_label + f" ({risk_unit})"
-        ax.set_ylabel(y_label, fontsize=18, fontweight="bold", color="black")
-        plt.title(title, fontsize=16)
-        plt.tight_layout()
-
-    elif plot_type == "bar":
-        g = sns.catplot(
-            yearly_df,
-            kind="bar",
-            x="Year",
-            y=y_label,
-            hue="Measure",
-            row="Variable",
-            height=8.0,
-            aspect=1.7,
-        )
-        g.tick_params(rotation=45)
-    else:
-        raise ValueError("Graph type unknown")
+    _, ax = plt.subplots(figsize=(12, 8))
+    g = sns.lineplot(
+        yearly_df,
+        ax=ax,
+        x="Year",
+        y=y_label,
+        hue="Measure",
+        style="Variable",
+        palette=colors,
+    )
+    y_label = y_label + f" ({risk_unit})"
+    ax.set_ylabel(y_label, fontsize=18, fontweight="bold", color="black")
+    plt.title(title, fontsize=16)
+    plt.tight_layout()
 
     # Show plot
     plt.show()

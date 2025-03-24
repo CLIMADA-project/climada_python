@@ -34,7 +34,7 @@ LOGGER = logging.getLogger(__name__)
 
 class YearlyRiskTrajectory:
 
-    _grouper = ["group", "metric"]
+    _grouper = ["measure", "metric"]
 
     def __init__(
         self,
@@ -53,17 +53,11 @@ class YearlyRiskTrajectory:
         self.start_year = min(snapshots.snapshots_years)
         self.end_year = max(snapshots.snapshots_years)
         self.risk_disc = risk_disc
-        self.groups = None  # TODO self_init_groups()
         self.risk_transf_cover = risk_transf_cover
         self.risk_transf_attach = risk_transf_attach
         LOGGER.debug("Computing risk periods")
         self.risk_periods = self._calc_risk_periods(snapshots)
-        self._impact_metrics_calculator = self._update_risk_metrics(
-            compute_groups=compute_groups
-        )
-
-        # Here we can do some change in the future to include groups and risk transfer
-        self._update_risk_metrics(compute_groups=False)
+        self._update_risk_metrics(compute_groups=compute_groups)
 
     def _calc_risk_periods(self, snapshots):
         return [
@@ -73,17 +67,14 @@ class YearlyRiskTrajectory:
 
     def _update_risk_metrics(self, compute_groups=False):
         results_df = []
-        if compute_groups:
-            groups = self.groups  # TODO
-        else:
-            groups = None
         for period in self.risk_periods:
             results_df.append(
                 bayesian_mixer_opti(
                     period,
                     self.metrics,
                     self.return_periods,
-                    groups,
+                    compute_groups,
+                    all_groups_name="All",
                 )
             )
         results_df = pd.concat(results_df, axis=0)
@@ -92,13 +83,15 @@ class YearlyRiskTrajectory:
         results_df.drop_duplicates(inplace=True)
 
         # reorder the columns (but make sure not to remove possibly important ones in the future)
-        columns_to_front = ["group", "year", "metric", "measure"]
+        columns_to_front = ["year", "measure", "metric"]
+        if compute_groups:
+            columns_to_front = ["group"] + columns_to_front
         self._annual_risk_metrics = results_df[
             columns_to_front
             + [
                 col
                 for col in results_df.columns
-                if col not in columns_to_front + ["risk", "rp"]
+                if col not in columns_to_front + ["group", "risk", "rp"]
             ]
             + ["risk"]
         ]
@@ -128,8 +121,12 @@ class YearlyRiskTrajectory:
 
         if npv:
             df = df.set_index("year")
+            grouper = self._grouper
+            if "group" in df.columns:
+                grouper = ["group"] + grouper
+
             df["risk"] = df.groupby(
-                self._grouper,
+                grouper,
                 dropna=False,
                 as_index=False,
                 group_keys=False,
@@ -147,15 +144,19 @@ class YearlyRiskTrajectory:
             group["period_id"] = (group["year_diff"] != 1).cumsum()
             return group
 
+        grouper = cls._grouper
+        if "group" in df.columns:
+            grouper = ["group"] + grouper
+
         df_sorted = df.sort_values(by=cls._grouper + ["year"])
         # Apply the function to identify continuous periods
-        df_periods = df_sorted.groupby(
-            cls._grouper, dropna=False, group_keys=False
-        ).apply(identify_continuous_periods)
+        df_periods = df_sorted.groupby(grouper, dropna=False, group_keys=False).apply(
+            identify_continuous_periods
+        )
 
         # Group by the identified periods and calculate start and end years
         df_periods = (
-            df_periods.groupby(cls._grouper + ["period_id"], dropna=False)
+            df_periods.groupby(grouper + ["period_id"], dropna=False)
             .agg(
                 start_year=pd.NamedAgg(column="year", aggfunc="min"),
                 end_year=pd.NamedAgg(column="year", aggfunc="max"),
@@ -170,16 +171,27 @@ class YearlyRiskTrajectory:
             + df_periods["end_year"].astype(str)
         )
         df_periods = df_periods.rename(columns={"total": f"{colname}"})
-        return df_periods.drop(["period_id", "start_year", "end_year"], axis=1)
+        df_periods = df_periods.drop(["period_id", "start_year", "end_year"], axis=1)
+        return df_periods[
+            ["period"] + [col for col in df_periods.columns if col != "period"]
+        ]
 
-    def calc_risk_metrics(self, total=False, npv=True):
+    @property
+    def yearly_risk_metrics(self):
+        return self._calc_risk_metrics(total=False, npv=True)
+
+    @property
+    def total_risk_metrics(self):
+        return self._calc_risk_metrics(total=True, npv=True)
+
+    def _calc_risk_metrics(self, total=False, npv=True):
         df = self._calc_annual_risk_metrics(npv=npv)
         if total:
             return self._calc_periods_risk(df)
-        else:
-            return df
 
-    def calc_waterfall_plot_data(self, start_year=None, end_year=None):
+        return df
+
+    def _calc_waterfall_plot_data(self, start_year=None, end_year=None):
         start_year = self.start_year if start_year is None else start_year
         end_year = self.end_year if end_year is None else end_year
         considered_risk_periods = self._get_risk_periods(
@@ -237,10 +249,10 @@ class YearlyRiskTrajectory:
 
     def plot_yearly_waterfall(self, ax=None, start_year=None, end_year=None):
         if ax is None:
-            _, ax = plt.subplots()
+            _, ax = plt.subplots(figsize=(12, 6))
         start_year = self.start_year if start_year is None else start_year
         end_year = self.end_year if end_year is None else end_year
-        risk_component = self.calc_waterfall_plot_data(
+        risk_component = self._calc_waterfall_plot_data(
             start_year=start_year, end_year=end_year
         )
         risk_component.plot(ax=ax, kind="bar", x="Year", stacked=True)
@@ -257,11 +269,11 @@ class YearlyRiskTrajectory:
     def plot_waterfall(self, ax=None, start_year=None, end_year=None):
         start_year = self.start_year if start_year is None else start_year
         end_year = self.end_year if end_year is None else end_year
-        risk_component = self.calc_waterfall_plot_data(
+        risk_component = self._calc_waterfall_plot_data(
             start_year=start_year, end_year=end_year
         )
         if ax is None:
-            _, ax = plt.subplots()
+            _, ax = plt.subplots(figsize=(8, 5))
 
         risk_component = risk_component.loc[
             (risk_component["Year"] == end_year)
@@ -288,8 +300,14 @@ class YearlyRiskTrajectory:
             0.0,
         ]
 
+        ax.bar(
+            labels,
+            values,
+            bottom=bottoms,
+            edgecolor="black",
+            color=["tab:blue", "tab:orange", "tab:green", "tab:red"],
+        )
         for i in range(len(values)):
-            ax.bar(labels[i], values[i], bottom=bottoms[i], edgecolor="black")
             ax.text(
                 labels[i],
                 values[i] + bottoms[i],
@@ -307,13 +325,13 @@ class YearlyRiskTrajectory:
         ax.set_ylabel(value_label)
         # ax.tick_params(axis='x', labelrotation=90,)
         ax.annotate(
-            "¹: The increase in risk due to Hazard denotes the difference in risk with future exposure and hazard compared to risk with future exposure and present hazard.",
-            xy=(0.1, -0.2),
+            """¹: The increase in risk due to hazard denotes the difference in risk with future exposure
+and hazard compared to risk with future exposure and present hazard.""",
+            xy=(0.0, -0.15),
             xycoords="axes fraction",
-            ha="right",
+            ha="left",
             va="center",
             fontsize=8,
-            wrap=True,
         )
 
         return ax
@@ -499,7 +517,7 @@ def bayesian_mixer_opti(
     risk_period,
     metrics,
     return_periods,
-    groups=None,
+    compute_groups=False,
     all_groups_name=pd.NA,
 ):
     """
@@ -568,16 +586,20 @@ def bayesian_mixer_opti(
         rp_df["metric"] = "rp_" + rp_df["rp"].astype(str)
         res.append(rp_df)
 
-    if groups is not None:
+    if compute_groups:
         yearly_eai = np.multiply(
             prop_H0.reshape(-1, 1), yearly_eai_exp_0
         ) + np.multiply(prop_H1.reshape(-1, 1), yearly_eai_exp_1)
-        yearly_eai_group = get_eai_exp(yearly_eai, groups)
-        eai_group_df = pd.DataFrame(index=year_idx, data=yearly_eai_group).melt(
-            value_name="risk", var_name="group", ignore_index=False
+        eai_group_df = pd.DataFrame(
+            data=yearly_eai.T,
+            index=risk_period.snapshot1.exposure.gdf["group_id"],
+            columns=risk_period.year_idx,
         )
+        eai_group_df = eai_group_df.groupby(eai_group_df.index).sum()
+        eai_group_df = eai_group_df.melt(
+            ignore_index=False, value_name="risk"
+        ).reset_index(names="group")
         eai_group_df["metric"] = "aai"
-        eai_group_df.reset_index(inplace=True)
         res.append(eai_group_df)
 
     ret = pd.concat(res, axis=0)
