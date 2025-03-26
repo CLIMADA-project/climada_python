@@ -21,6 +21,7 @@ Finance functionalities.
 
 __all__ = ["net_present_value", "income_group", "gdp"]
 
+import json
 import logging
 import shutil
 import warnings
@@ -31,7 +32,6 @@ import numpy as np
 import pandas as pd
 import requests
 from cartopy.io import shapereader
-from pandas_datareader import wb
 
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
@@ -181,6 +181,68 @@ def gdp(cntry_iso, ref_year, shp_file=None, per_capita=False):
     return close_year, close_val
 
 
+def download_world_bank_indicator(
+    country_code: str, indicator: str, parse_dates: bool = False
+):
+    """Download indicator data from the World Bank API for all years or dates on record
+
+    Parameters
+    ----------
+    country_code : str
+        The country code in ISO alpha 3
+    indicator : str
+        The ID of the indicator in the World Bank API
+    parse_dates : bool
+        Whether the dates of the indicator data should be parsed as datetime objects.
+        If ``False`` (default), they will be parsed as ``int`` (this only works for
+        yearly data).
+
+    Returns
+    -------
+    pd.Series
+        A series with the values of the indicator for all dates (years) on record
+    """
+    # Download data from API
+    raw_data = []
+    pages = np.inf
+    page = 1
+    while page <= pages:
+        response = requests.get(
+            f"https://api.worldbank.org/v2/countries/{country_code}/indicators/"
+            f"{indicator}?format=json&page={page}"
+        )
+        json_data = json.loads(response.text)
+        print(json_data)
+
+        # Check if we received an error message
+        try:
+            if json_data[0]["message"][0]["id"] == "120":
+                raise RuntimeError(
+                    "Error requesting data from the World Bank API. Did you use the "
+                    "correct country code and indicator ID?"
+                )
+        # If no, we should be fine
+        except KeyError:
+            pass
+
+        # Update the data
+        pages = json_data[0]["pages"]
+        page = page + 1
+        raw_data.append(json_data[1])
+
+    # Create dataframe
+    data = pd.concat([pd.DataFrame.from_records(rec) for rec in raw_data])
+
+    # Parse dates and rename value column
+    if parse_dates:
+        data["date"] = pd.DatetimeIndex(data["date"])
+    else:
+        data["date"] = data["date"].astype("int")
+
+    # Only return indicator data (with a proper name)
+    return data.set_index("date")["value"].rename(data["indicator"].iloc[0]["value"])
+
+
 def world_bank(cntry_iso, ref_year, info_ind):
     """Get country's GDP from World Bank's data at a given year, or
     closest year value. If no data, get the natural earth's approximation.
@@ -204,18 +266,14 @@ def world_bank(cntry_iso, ref_year, info_ind):
     IOError, KeyError, IndexError
     """
     if info_ind != "INC_GRP":
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            cntry_gdp = wb.download(
-                indicator=info_ind, country=cntry_iso, start=1960, end=2030
-            )
-        years = np.array(
-            [int(year) for year in cntry_gdp.index.get_level_values("year")]
+        cntry_gdp = download_world_bank_indicator(
+            indicator=info_ind, country_code=cntry_iso, parse_dates=False
         )
+        years = cntry_gdp.index
         sort_years = np.abs(years - ref_year).argsort()
         close_val = cntry_gdp.iloc[sort_years].dropna()
-        close_year = int(close_val.iloc[0].name[1])
-        close_val = float(close_val.iloc[0].values)
+        close_year = close_val.index[0]
+        close_val = float(close_val.iloc[0])
     else:  # income group level
         fn_ig = SYSTEM_DIR.joinpath("OGHIST.xls")
         dfr_wb = pd.DataFrame()
