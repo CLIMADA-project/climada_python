@@ -532,9 +532,7 @@ class TestLitPopGridAlignment(unittest.TestCase):
                             msg="Dataset lengths differ significantly between resolution and target grid.")
 
 if __name__ == "__main__":
-    # TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure)
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAdmin1))
-    # unittest.TextTestRunner(verbosity=2).run(TESTS)
-
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAdmin1))
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopGridAlignment)
     unittest.TextTestRunner(verbosity=2).run(TESTS)
