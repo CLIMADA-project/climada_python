@@ -35,7 +35,7 @@ from climada.util.constants import SYSTEM_DIR
 LOGGER = logging.getLogger(__name__)
 
 
-class country_code(Enum):
+class CountryCode(Enum):
     """
     Enum class that links ISO country codes (both iso3a and iso3n) to specific regions and
     associated impact function IDs.
@@ -48,7 +48,7 @@ class country_code(Enum):
     """
 
     # fmt: off
-    iso3n = {
+    ISO3N = {
         "NA1": [
             660, 28, 32, 533, 44, 52, 84, 60, 68, 132,
             136, 152, 170, 188, 192, 212, 214, 218, 222, 238,
@@ -88,7 +88,7 @@ class country_code(Enum):
             581, 732, 894, 248,
         ],
     }
-    iso3a = {
+    ISO3A = {
         "NA1": [
             "AIA", "ATG", "ARG", "ABW", "BHS", "BRB", "BLZ", "BMU", "BOL", "CPV",
             "CYM", "CHL", "COL", "CRI", "CUB", "DMA", "DOM", "ECU", "SLV", "FLK",
@@ -132,7 +132,7 @@ class country_code(Enum):
         ],
     }
     # fmt: on
-    impf_id = {
+    IMPF_ID = {
         "NA1": 1,
         "NA2": 2,
         "NI": 3,
@@ -145,7 +145,7 @@ class country_code(Enum):
         "ROW": 10,
     }
 
-    region_name = {
+    REGION_NAME = {
         "NA1": "Caribbean and Mexico",
         "NA2": "USA and Canada",
         "NI": "North Indian",
@@ -439,22 +439,22 @@ class ImpfSetTropCyclone(ImpactFuncSet):
 
         if region == "all":
             return (
-                country_code.region_name,
-                country_code.impf_id,
-                country_code.iso3n,
-                country_code.iso3a,
+                CountryCode.REGION_NAME,
+                CountryCode.IMPF_ID,
+                CountryCode.ISO3N,
+                CountryCode.ISO3A,
             )
 
         return (
-            country_code.region_name[region],
-            country_code.impf_id[region],
-            country_code.iso3n[region],
-            country_code.iso3a[region],
+            CountryCode.REGION_NAME[region],
+            CountryCode.IMPF_ID[region],
+            CountryCode.ISO3N[region],
+            CountryCode.ISO3A[region],
         )
 
     @staticmethod
     def get_regions_per_countries(
-        countries: list = None, code_type: str = "iso3a"
+        countries: list = None, code_type: str = "ISO3A"
     ) -> tuple:
         """Return the impact function id and the region corresponding to a list of countries,
         or a single country.
@@ -463,10 +463,10 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         -----------
         countries : list
             List containing the ISO code of the country, which should be either
-            a string if the code is iso3a or an integer if iso3n. For example, for Switzerland:
-            the iso3a code is "CHE" and the iso3n is 756.
+            a string if the code is iso3a or an integer if ISO3N. For example, for Switzerland:
+            the ISO3A code is "CHE" and the ISO3N is 756.
         code_type : str
-            Either "iso3a" or "iso3n".
+            Either "ISO3A" or "ISO3N".
 
         Returns:
         --------
@@ -478,10 +478,10 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             List of the regions that match the countries.
         """
 
-        if code_type not in {"iso3a", "iso3n"}:
+        if code_type not in {"ISO3A", "ISO3N"}:
             raise ValueError("code_type must be either 'iso3a' or 'iso3n'")
 
-        country_dict = getattr(country_code, code_type).value
+        country_dict = getattr(CountryCode, code_type).value
         # Find region
         regions_ids = [
             key
@@ -490,10 +490,8 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             if country in value
         ]
         # Find impact function id
-        impf_ids = [country_code.impf_id.value[region] for region in regions_ids]
-        regions_name = [
-            country_code.region_name.value[region] for region in regions_ids
-        ]
+        impf_ids = [CountryCode.IMPF_ID.value[region] for region in regions_ids]
+        regions_name = [CountryCode.REGION_NAME.value[region] for region in regions_ids]
 
         return impf_ids, regions_ids, regions_name
 
