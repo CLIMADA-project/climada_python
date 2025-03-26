@@ -480,6 +480,12 @@ class ImpfSetTropCyclone(ImpactFuncSet):
 
         if code_type not in {"ISO3A", "ISO3N"}:
             raise ValueError("code_type must be either 'iso3a' or 'iso3n'")
+        elif not all(isinstance(country, type(countries[0])) for country in countries):
+            raise ValueError("All elements in the list must be of the same type.")
+        elif code_type == "ISO3A" and isinstance((countries[0]), int):
+            raise ValueError("ISO3A code type cannot have integer values.")
+        elif code_type == "ISO3N" and isinstance((countries[0]), str):
+            raise ValueError("ISO3N code type cannot have string values.")
 
         country_dict = getattr(CountryCode, code_type).value
         # Find region
