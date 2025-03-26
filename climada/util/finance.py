@@ -212,7 +212,6 @@ def download_world_bank_indicator(
             f"{indicator}?format=json&page={page}"
         )
         json_data = json.loads(response.text)
-        print(json_data)
 
         # Check if we received an error message
         try:
@@ -233,7 +232,7 @@ def download_world_bank_indicator(
     # Create dataframe
     data = pd.concat([pd.DataFrame.from_records(rec) for rec in raw_data])
 
-    # Parse dates and rename value column
+    # Parse dates
     if parse_dates:
         data["date"] = pd.DatetimeIndex(data["date"])
     else:
