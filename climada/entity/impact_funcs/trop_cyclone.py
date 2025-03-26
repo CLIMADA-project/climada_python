@@ -439,17 +439,17 @@ class ImpfSetTropCyclone(ImpactFuncSet):
 
         if region == "all":
             return (
-                CountryCode.REGION_NAME,
-                CountryCode.IMPF_ID,
-                CountryCode.ISO3N,
-                CountryCode.ISO3A,
+                CountryCode.REGION_NAME.value,
+                CountryCode.IMPF_ID.value,
+                CountryCode.ISO3N.value,
+                CountryCode.ISO3A.value,
             )
 
         return (
-            CountryCode.REGION_NAME[region],
-            CountryCode.IMPF_ID[region],
-            CountryCode.ISO3N[region],
-            CountryCode.ISO3A[region],
+            CountryCode.REGION_NAME.value[region],
+            CountryCode.IMPF_ID.value[region],
+            CountryCode.ISO3N.value[region],
+            CountryCode.ISO3A.value[region],
         )
 
     @staticmethod
