@@ -35,9 +35,13 @@ LOGGER = logging.getLogger(__name__)
 
 # TODO: Improve and make it an __eq__ function within Hazard?
 def hazard_data_equal(haz1: Hazard, haz2: Hazard) -> bool:
-    intensity_eq = (haz1.intensity != haz2.intensity).nnz == 0
+    intensity_eq = (
+        haz1.intensity != haz2.intensity
+    ).nnz == 0  # type:ignore (__neq__ type hint is bool)
     freq_eq = (haz1.frequency == haz2.frequency).all()
-    frac_eq = (haz1.fraction != haz2.fraction).nnz == 0
+    frac_eq = (
+        haz1.fraction != haz2.fraction
+    ).nnz == 0  # type:ignore (__neq__ type hint is bool)
     return intensity_eq and freq_eq and frac_eq
 
 
@@ -57,6 +61,8 @@ class Snapshot:
         Impact function set associated with the snapshot.
     year : int
         Year of the snapshot.
+    measure : None | Measure
+        An (optional) adaptation measure associated with the snapshot.
     """
 
     exposure: Exposures
@@ -146,7 +152,7 @@ class SnapshotsCollection:
         List of Snapshot objects in the collection.
     """
 
-    def __init__(self, snaplist):
+    def __init__(self, snaplist: list[Snapshot]):
 
         self._snapshots = {snap.year: snap for snap in snaplist}
         self._impfset = snaplist[0].impfset
@@ -175,7 +181,7 @@ class SnapshotsCollection:
             ]
         )
 
-    def __getitem__(self, arg):
+    def __getitem__(self, arg: int):
         if arg in self._snapshots.keys():
             return self._snapshots[arg]
         elif isinstance(arg, int):
@@ -184,30 +190,30 @@ class SnapshotsCollection:
             raise IndexError(f"{arg} not a valid index.")
 
     @property
-    def data(self):
+    def data(self) -> list[Snapshot]:
         return list(self._snapshots.values())
 
     @property
-    def snapshots_years(self):
+    def snapshots_years(self) -> list[int]:
         return list(self._snapshots.keys())
 
     @property
-    def exposure_set(self):
+    def exposure_set(self) -> list[Exposures]:
         return [snap.exposure for snap in self._snapshots.values()]
 
     @property
-    def hazard_set(self):
+    def hazard_set(self) -> list[Hazard]:
         return [snap.hazard for snap in self._snapshots.values()]
 
     @property
-    def impfset(self):
+    def impfset(self) -> ImpactFuncSet:
         return self._impfset
 
-    def __len__(self):
+    def __len__(self) -> int:
         """Return the number of snapshots in the collection."""
         return len(self._snapshots)
 
-    def __contains__(self, item):
+    def __contains__(self, item) -> bool:
         """Check if a Snapshot or a year exists in the collection."""
         if isinstance(item, int):
             return item in self._snapshots
@@ -217,14 +223,14 @@ class SnapshotsCollection:
             return False  # Invalid type
 
     @classmethod
-    def from_dict(cls, snapshots_dict, impfset):
+    def from_dict(cls, snapshots_dict: dict[int, tuple[Exposures, Hazard]], impfset):
         """
         Create a SnapshotsCollection from a dictionary of snapshots.
 
         Parameters
         ----------
         snapshots_dict : dict
-            Dictionary of snapshots data by year.
+            Dictionary of snapshots data by year, given as tuple of Exposures and Hazard.
         impfset : ImpactFuncSet
             Impact function set shared across snapshots.
 
@@ -318,22 +324,3 @@ class SnapshotsCollection:
         a, b = itertools.tee(self._snapshots.values())
         next(b, None)
         return zip(a, b)
-
-
-def create_group_map_exp_dict(
-    snapshots: SnapshotsCollection, group_col: str | None = None
-):
-    """
-    Create a dictionary that maps each group to the indices of the exposures in the gdf.
-    """
-
-    # Get the first snapshot exposures gdf
-    gdf = snapshots.exposure_set[0].gdf
-    # Get the unique groups
-    unique_groups = list(gdf[group_col].unique())
-    # Create the dictionary
-    group_map_exp_dict = {
-        i: list(np.where(gdf[group_col] == i)[0]) for i in unique_groups
-    }
-
-    return group_map_exp_dict

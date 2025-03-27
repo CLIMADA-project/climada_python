@@ -122,15 +122,17 @@ class TBRTrajectories:
     @classmethod
     def create_exposure_set(cls, snapshot_years, exp1, exp2=None, growth=None):
         exp_set = {}
+        year_0 = snapshot_years.min()
         if exp2 is None:
             if growth is None:
                 raise ValueError("Need to specify either final exposure or growth.")
             else:
-                year_0 = snapshot_years.min()
                 exp_set = {
-                    year: grow_exp(exp1, year - year_0) for year in snapshot_years
+                    year: grow_exp(exp1, growth, year - year_0)
+                    for year in snapshot_years
                 }
         else:
             exp_set = {
-                year: interp(exp1, exp2, year - year_0) for year in snapshot_years
+                year: np.interp(exp1, exp2, year - year_0) for year in snapshot_years
             }
+        return exp_set

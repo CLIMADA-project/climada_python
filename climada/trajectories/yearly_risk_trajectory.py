@@ -518,7 +518,7 @@ def bayesian_mixer_opti(
     metrics,
     return_periods,
     compute_groups=False,
-    all_groups_name=pd.NA,
+    all_groups_name: str | None = None,
 ):
     """
     Perform Bayesian mixing of impacts across snapshots.
@@ -551,6 +551,8 @@ def bayesian_mixer_opti(
     """
     # 1. Interpolate in between years
 
+    all_groups_n = pd.NA if all_groups_name is None else all_groups_name
+
     prop_H0, prop_H1 = risk_period._prop_H0, risk_period._prop_H1
     frequency_0 = risk_period.snapshot0.hazard.frequency
     frequency_1 = risk_period.snapshot1.hazard.frequency
@@ -566,7 +568,7 @@ def bayesian_mixer_opti(
         )
         yearly_aai = prop_H0 * yearly_aai_0 + prop_H1 * yearly_aai_1
         aai_df = pd.DataFrame(index=year_idx, columns=["risk"], data=yearly_aai)
-        aai_df["group"] = all_groups_name
+        aai_df["group"] = all_groups_n
         aai_df["metric"] = "aai"
         aai_df.reset_index(inplace=True)
         res.append(aai_df)
@@ -582,7 +584,7 @@ def bayesian_mixer_opti(
             index=year_idx, columns=return_periods, data=yearly_rp
         ).melt(value_name="risk", var_name="rp", ignore_index=False)
         rp_df.reset_index(inplace=True)
-        rp_df["group"] = all_groups_name
+        rp_df["group"] = all_groups_n
         rp_df["metric"] = "rp_" + rp_df["rp"].astype(str)
         res.append(rp_df)
 
