@@ -487,13 +487,13 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         elif code_type == "ISO3N" and isinstance((countries[0]), str):
             raise ValueError("ISO3N code type cannot have string values.")
 
-        country_dict = getattr(CountryCode, code_type).value
+        region_country_dict = getattr(CountryCode, code_type).value
         # Find region
         regions_ids = [
-            key
+            region_id
             for country in countries
-            for key, value in country_dict.items()
-            if country in value
+            for region_id, countr_in_region_id in region_country_dict.items()
+            if country in countr_in_region_id
         ]
         # Find impact function id
         impf_ids = [CountryCode.IMPF_ID.value[region] for region in regions_ids]
