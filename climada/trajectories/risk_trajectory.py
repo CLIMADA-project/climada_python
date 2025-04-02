@@ -535,9 +535,9 @@ def calc_per_date_eais(imp_mats_0, imp_mats_1, frequency_0, frequency_1):
     tuple
         Tuple containing:
         - per_date_eai_exp_0 : list of float
-            Per_Date expected annual impacts for scenario 0.
+            per date expected annual impacts for scenario 0.
         - per_date_eai_exp_1 : list of float
-            Per_Date expected annual impacts for scenario 1.
+            per date expected annual impacts for scenario 1.
     """
     per_date_eai_exp_0 = [
         ImpactCalc.eai_exp_from_mat(imp_mat, frequency_0) for imp_mat in imp_mats_0
