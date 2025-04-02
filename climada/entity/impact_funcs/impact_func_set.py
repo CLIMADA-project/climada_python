@@ -110,21 +110,10 @@ class ImpactFuncSet:
                 self.append(impf)
 
     def __eq__(self, value: object, /) -> bool:
-        if not isinstance(value, ImpactFuncSet):
-            return False
+        if isinstance(value, ImpactFuncSet):
+            return self._data == value._data
 
-        if self._data.keys() != value._data.keys():
-            return False
-
-        for haz_type1, id_map1 in self._data.items():
-            id_map2 = value._data[haz_type1]
-            if id_map1.keys() != id_map2.keys():
-                return False
-            for fid, func1 in id_map1.items():
-                if not func1 == id_map2[fid]:
-                    return False
-
-        return True
+        return False
 
     def clear(self):
         """Reinitialize attributes."""

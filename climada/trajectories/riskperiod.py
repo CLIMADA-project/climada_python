@@ -22,13 +22,13 @@ This modules implements the Snapshot and SnapshotsCollection classes.
 
 import copy
 import logging
-from weakref import WeakValueDictionary
 
 import numpy as np
 import pandas as pd
 from scipy.sparse import lil_matrix
 
 from climada.engine.impact_calc import ImpactCalc
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.measures.base import Measure
 from climada.trajectories.snapshot import Snapshot
 
@@ -41,52 +41,32 @@ class RiskPeriod:
     # TODO: make MeasureRiskPeriod child class (with effective start/end)
     # TODO: special case where hazard and exposure don't change (no need to interpolate) ?
 
-    _instances = WeakValueDictionary()
-
-    def __new__(
-        cls,
-        snapshot0,
-        snapshot1,
-        measure_name="no_measure",
-        risk_transf_cover=None,
-        risk_transf_attach=None,
-        calc_residual=True,
-    ):
-        """Ensure only one instance exists per snapshot pair."""
-        key = (id(snapshot0), id(snapshot1), measure_name)
-        if key in cls._instances:
-            LOGGER.debug("Found existing RiskPeriod")
-            return cls._instances[key]
-
-        instance = super().__new__(cls)
-        return instance
-
     def __init__(
         self,
         snapshot0: Snapshot,
         snapshot1: Snapshot,
         measure_name="no_measure",
+        time_freq="YS",
         risk_transf_cover=None,
         risk_transf_attach=None,
         calc_residual=True,
     ):
-        if hasattr(self, "_initialized"):
-            return  # Avoid re-initialization
-
         LOGGER.debug(
-            f"Initializing new RiskPeriod from {snapshot0.year} to {snapshot1.year}, with snapshot0: {id(snapshot0)}, snapshot1: {id(snapshot1)}"
+            f"Initializing new RiskPeriod from {snapshot0.date} to {snapshot1.date}, with snapshot0: {id(snapshot0)}, snapshot1: {id(snapshot1)}"
         )
         self.snapshot0 = snapshot0
         self.snapshot1 = snapshot1
-        self.start_year = snapshot0.year
-        self.end_year = snapshot1.year
-        self.measure_name = measure_name
-        self.impfset = snapshot0.impfset
-
-        self._prop_H0, self._prop_H1 = bayesian_viktypliers(
-            snapshot0.year, snapshot1.year
+        self.start_date = snapshot0.date
+        self.end_date = snapshot1.date
+        self.time_frequency = time_freq
+        self.date_idx = pd.date_range(
+            snapshot0.date, snapshot1.date, freq=time_freq, name="date"
         )
+        self.measure_name = measure_name
+        self.impfset = self._merge_impfset(snapshot0.impfset, snapshot1.impfset)
 
+        self._prop_H1 = np.linspace(0, 1, num=len(self.date_idx))
+        self._prop_H0 = 1 - self._prop_H1
         self._exp_y0 = snapshot0.exposure
         self._exp_y1 = snapshot1.exposure
         self._haz_y0 = snapshot0.hazard
@@ -115,26 +95,24 @@ class RiskPeriod:
         )
 
         LOGGER.debug("Interpolating impact matrices between E0H0 and E1H0")
-        self.imp_mats_0 = interpolate_imp_mat(
-            imp_E0H0, imp_E1H0, snapshot0.year, snapshot1.year
-        )
+        time_points = len(self.date_idx)
+        self.imp_mats_0 = interpolate_imp_mat(imp_E0H0, imp_E1H0, time_points)
         LOGGER.debug("Interpolating impact matrices between E0H1 and E1H1")
-        self.imp_mats_1 = interpolate_imp_mat(
-            imp_E0H1, imp_E1H1, snapshot0.year, snapshot1.year
-        )
+        self.imp_mats_1 = interpolate_imp_mat(imp_E0H1, imp_E1H1, time_points)
         LOGGER.debug("Done")
-
-        self.year_idx = pd.Index(
-            list(range(snapshot0.year, snapshot1.year + 1)), name="year"
-        )
 
         self._initialized = True
 
-        # Store the instance in the cache after initialization
-        key = (id(self.snapshot0), id(self.snapshot1), self.measure_name)
-        if key not in self._instances:
-            LOGGER.debug(f"Created and stored new RiskPeriod {key}")
-            self._instances[key] = self
+    @staticmethod
+    def _merge_impfset(impfs1: ImpactFuncSet, impfs2: ImpactFuncSet):
+        if impfs1 == impfs2:
+            return impfs1
+        else:
+            LOGGER.warning(
+                "Impact function sets differ. Will update the first one with the second."
+            )
+            impfs1._data |= impfs2._data  # Merges dictionaries (priority to impfs2)
+            return impfs1
 
     def _compute_impact(self, exposure, hazard):
         """Compute the impact once per unique exposure-hazard pair."""
@@ -148,10 +126,6 @@ class RiskPeriod:
         snapshot0 = self.snapshot0.apply_measure(measure)
         snapshot1 = self.snapshot1.apply_measure(measure)
         return RiskPeriod(snapshot0, snapshot1, measure_name=measure.name)
-
-    def calc_waterfall_plot(self):
-
-        pass
 
     @classmethod
     def calc_residual_or_risk_transf_imp_mat(
@@ -228,80 +202,31 @@ class RiskPeriod:
             return imp_mat
 
 
-def interpolate_years(year_start, year_end):
+def interpolate_imp_mat(imp0, imp1, time_points):
     """
-    Generate an array of interpolated values between 0 and 1 for a range of years.
-
-    Parameters
-    ----------
-    year_start : int
-        The starting year of interpolation.
-    year_end : int
-        The ending year of interpolation.
-
-    Returns
-    -------
-    np.ndarray
-        Array of interpolated values between 0 and 1 for each year in the range.
-    """
-    values = np.linspace(0, 1, num=year_end - year_start + 1)
-    return values
-
-
-def bayesian_viktypliers(year0, year1):
-    """
-    Calculate the Bayesian interpolation proportions for a given year range.
-
-    Parameters
-    ----------
-    year0 : int
-        Starting year.
-    year1 : int
-        Ending year.
-
-    Returns
-    -------
-    tuple of np.ndarray
-        Tuple containing:
-        - prop_H0 : np.ndarray
-            Array of proportions for the H0 hypothesis.
-        - prop_H1 : np.ndarray
-            Array of proportions for the H1 hypothesis.
-    """
-    prop_H1 = interpolate_years(year0, year1)
-    prop_H0 = 1 - prop_H1
-    return prop_H0, prop_H1
-
-
-def interpolate_imp_mat(imp0, imp1, start_year, end_year):
-    """
-    Interpolate between two impact matrices over a specified year range.
+    Interpolate between two impact matrices over a specified time range.
 
     Parameters
     ----------
     imp0 : ImpactCalc
-        The impact calculation for the starting year.
+        The impact calculation for the starting time.
     imp1 : ImpactCalc
-        The impact calculation for the ending year.
-    start_year : int
-        The starting year for interpolation.
-    end_year : int
-        The ending year for interpolation.
+        The impact calculation for the ending time.
+    time_points:
+        The number of points to interpolate.
 
     Returns
     -------
     list of np.ndarray
-        List of interpolated impact matrices for each year in the specified range.
+        List of interpolated impact matrices for each time points in the specified range.
     """
 
-    def interpolate_sm(mat_start, mat_end, year, year_start, year_end):
-        """Perform linear interpolation between two matrices for a specified year."""
-        if year < year_start or year > year_end:
-            raise ValueError("Year must be within the start and end years")
+    def interpolate_sm(mat_start, mat_end, time, time_points):
+        """Perform linear interpolation between two matrices for a specified time point."""
+        if time > time_points:
+            raise ValueError("time point must be within the range")
 
-        # Calculate the ratio of the difference between the target year and the start year
-        # to the total number of years between the start and end years
-        ratio = (year - year_start) / (year_end - year_start)
+        ratio = time / (time_points - 1)
 
         # Convert the input matrices to a format that allows efficient modification of its elements
         mat_start = lil_matrix(mat_start)
@@ -314,6 +239,6 @@ def interpolate_imp_mat(imp0, imp1, start_year, end_year):
 
     LOGGER.debug(f"imp0: {imp0.imp_mat.data[0]}, imp1: {imp1.imp_mat.data[0]}")
     return [
-        interpolate_sm(imp0.imp_mat, imp1.imp_mat, year, start_year, end_year)
-        for year in range(start_year, end_year + 1)
+        interpolate_sm(imp0.imp_mat, imp1.imp_mat, time, time_points)
+        for time in range(time_points)
     ]
