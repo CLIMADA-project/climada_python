@@ -24,7 +24,6 @@ __all__ = ["net_present_value", "income_group", "gdp"]
 import json
 import logging
 import shutil
-import warnings
 import zipfile
 from pathlib import Path
 
@@ -209,7 +208,8 @@ def download_world_bank_indicator(
     while page <= pages:
         response = requests.get(
             f"https://api.worldbank.org/v2/countries/{country_code}/indicators/"
-            f"{indicator}?format=json&page={page}"
+            f"{indicator}?format=json&page={page}",
+            timeout=30,
         )
         json_data = json.loads(response.text)
 
