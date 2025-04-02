@@ -36,10 +36,36 @@ LOGGER = logging.getLogger(__name__)
 
 
 class RiskPeriod:
+    """Interpolated impacts between two snapshots.
 
-    # TODO: make lazy / delayed interpolation and impacts
-    # TODO: make MeasureRiskPeriod child class (with effective start/end)
-    # TODO: special case where hazard and exposure don't change (no need to interpolate) ?
+    This class calculates the interpolated impacts between two snapshots over a specified
+    time period. It supports risk transfer modifications and can compute residual impacts.
+
+    Attributes
+    ----------
+    snapshot0 : Snapshot
+        The snapshot starting the period.
+    snapshot1 : Snapshot
+        The snapshot ending the period.
+    start_date : datetime
+        The start date of the risk period.
+    end_date : datetime
+        The end date of the risk period.
+    time_frequency : str
+        The frequency of the time intervals (e.g., 'YS' for yearly).
+        See `pandas freq string documentation <https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#offset-aliases>`_.
+    date_idx : pd.DatetimeIndex
+        The date range index between the start and end dates.
+    measure_name : str
+        The name of the measure applied to the period. "no_measure" if no measure is applied.
+    impfset : object
+        The impact function set for the period. If both snapshots do not share the same ImpactFuncSet object,
+        they are merged together. Note that if impact functions with the same hazard type and id differ,
+        the one from the ending Snapshot takes precedence.
+    """
+
+    # Future TODO: make lazy / delayed interpolation and impacts
+    # Future TODO: special case where hazard and exposure don't change (no need to interpolate) ?
 
     def __init__(
         self,
@@ -65,8 +91,12 @@ class RiskPeriod:
         self.measure_name = measure_name
         self.impfset = self._merge_impfset(snapshot0.impfset, snapshot1.impfset)
 
+        # Posterity comment: The following attributes
+        # were refered as Victypliers in homage to Victor
+        # Watkinsson, the conceptual father of this module
         self._prop_H1 = np.linspace(0, 1, num=len(self.date_idx))
         self._prop_H0 = 1 - self._prop_H1
+
         self._exp_y0 = snapshot0.exposure
         self._exp_y1 = snapshot1.exposure
         self._haz_y0 = snapshot0.hazard
@@ -74,10 +104,10 @@ class RiskPeriod:
 
         # Compute impacts once
         LOGGER.debug("Computing snapshots combination impacts")
-        imp_E0H0 = self._compute_impact(self._exp_y0, self._haz_y0)
-        imp_E1H0 = self._compute_impact(self._exp_y1, self._haz_y0)
-        imp_E0H1 = self._compute_impact(self._exp_y0, self._haz_y1)
-        imp_E1H1 = self._compute_impact(self._exp_y1, self._haz_y1)
+        imp_E0H0 = ImpactCalc(self._exp_y0, self.impfset, self._haz_y0).impact()
+        imp_E1H0 = ImpactCalc(self._exp_y1, self.impfset, self._haz_y0).impact()
+        imp_E0H1 = ImpactCalc(self._exp_y0, self.impfset, self._haz_y1).impact()
+        imp_E1H1 = ImpactCalc(self._exp_y1, self.impfset, self._haz_y1).impact()
 
         # Modify the impact matrices if risk transfer is provided
         # TODO: See where this ends up
@@ -96,12 +126,10 @@ class RiskPeriod:
 
         LOGGER.debug("Interpolating impact matrices between E0H0 and E1H0")
         time_points = len(self.date_idx)
-        self.imp_mats_0 = interpolate_imp_mat(imp_E0H0, imp_E1H0, time_points)
+        self._imp_mats_0 = interpolate_imp_mat(imp_E0H0, imp_E1H0, time_points)
         LOGGER.debug("Interpolating impact matrices between E0H1 and E1H1")
-        self.imp_mats_1 = interpolate_imp_mat(imp_E0H1, imp_E1H1, time_points)
+        self._imp_mats_1 = interpolate_imp_mat(imp_E0H1, imp_E1H1, time_points)
         LOGGER.debug("Done")
-
-        self._initialized = True
 
     @staticmethod
     def _merge_impfset(impfs1: ImpactFuncSet, impfs2: ImpactFuncSet):
@@ -114,15 +142,21 @@ class RiskPeriod:
             impfs1._data |= impfs2._data  # Merges dictionaries (priority to impfs2)
             return impfs1
 
-    def _compute_impact(self, exposure, hazard):
-        """Compute the impact once per unique exposure-hazard pair."""
-        return ImpactCalc(exposure, self.impfset, hazard).impact()
-
     def get_interp(self):
-        return self.imp_mats_0, self.imp_mats_1
+        """Return two lists of interpolated impacts matrices with varying exposure, for starting and ending hazard.
+
+        Returns
+        -------
+
+        _imp_mats_0 : np.ndarray
+            Interpolated impact matrices varying Exposure from starting snapshot to ending one, using Hazard from starting snapshot.
+        _imp_mats_1 : np.ndarray
+            Interpolated impact matrices varying Exposure from starting snapshot to ending one, using Hazard from ending snapshot.
+        """
+        return self._imp_mats_0, self._imp_mats_1
 
     def apply_measure(self, measure: Measure):
-        # Apply measure on snapshot and return risk period instance
+        """Applies measure to RiskPeriod, returns a new object"""
         snapshot0 = self.snapshot0.apply_measure(measure)
         snapshot1 = self.snapshot1.apply_measure(measure)
         return RiskPeriod(snapshot0, snapshot1, measure_name=measure.name)

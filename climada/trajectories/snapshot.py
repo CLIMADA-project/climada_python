@@ -24,8 +24,6 @@ import copy
 import datetime
 import itertools
 import logging
-from dataclasses import InitVar, dataclass, field
-from weakref import WeakValueDictionary
 
 from climada.entity.exposures import Exposures
 from climada.entity.impact_funcs import ImpactFuncSet
@@ -33,51 +31,6 @@ from climada.entity.measures.base import Measure
 from climada.hazard import Hazard
 
 LOGGER = logging.getLogger(__name__)
-
-
-# TODO: Improve and make it an __eq__ function within Hazard?
-def hazard_data_equal(haz1: Hazard, haz2: Hazard) -> bool:
-    intensity_eq = (
-        haz1.intensity != haz2.intensity
-    ).nnz == 0  # type:ignore (__neq__ type hint is bool)
-    freq_eq = (haz1.frequency == haz2.frequency).all()
-    frac_eq = (
-        haz1.fraction != haz2.fraction
-    ).nnz == 0  # type:ignore (__neq__ type hint is bool)
-    return intensity_eq and freq_eq and frac_eq
-
-
-class _SnapData:
-    """
-    A snapshot of exposure, hazard, and impact function.
-
-    Attributes
-    ----------
-    exposure : Exposures
-        Exposure data for the snapshot.
-    hazard : Hazard
-        Hazard data for the snapshot.
-    impfset : ImpactFuncSet
-        Impact function set associated with the snapshot.
-    """
-
-    # Class-level cache
-    def __init__(
-        self, exposure: Exposures, hazard: Hazard, impfset: ImpactFuncSet
-    ) -> None:
-        self.exposure = copy.deepcopy(exposure)
-        self.hazard = copy.deepcopy(hazard)
-        self.impfset = copy.deepcopy(impfset)
-
-    def __eq__(self, value, /) -> bool:
-        if not isinstance(value, _SnapData):
-            return False
-        if self is value:
-            return True
-        same_exposure = self.exposure.gdf.equals(value.exposure.gdf)
-        same_hazard = hazard_data_equal(self.hazard, value.hazard)
-        same_impfset = self.impfset == value.impfset
-        return same_exposure and same_hazard and same_impfset
 
 
 class Snapshot:
@@ -88,11 +41,15 @@ class Snapshot:
     ----------
     date : datetime
         Date of the snapshot.
+    measure: Measure | None
+        The possible measure applied to the snapshot.
 
     Notes
     -----
 
     The object creates copies of the exposure hazard and impact function set.
+
+    To create a snapshot with a measure use Snapshot.apply_measure(measure).
     """
 
     def __init__(
@@ -102,24 +59,26 @@ class Snapshot:
         impfset: ImpactFuncSet,
         date: int | datetime.date | str,
     ) -> None:
-        self._data = _SnapData(exposure, hazard, impfset)
+        self._exposure = copy.deepcopy(exposure)
+        self._hazard = copy.deepcopy(hazard)
+        self._impfset = copy.deepcopy(impfset)
         self.measure = None
         self.date = self._convert_to_date(date)
 
     @property
     def exposure(self) -> Exposures:
         """Exposure data for the snapshot."""
-        return self._data.exposure
+        return self._exposure
 
     @property
     def hazard(self) -> Hazard:
         """Hazard data for the snapshot."""
-        return self._data.hazard
+        return self._hazard
 
     @property
     def impfset(self) -> ImpactFuncSet:
         """Impact function set data for the snapshot."""
-        return self._data.impfset
+        return self._impfset
 
     @staticmethod
     def _convert_to_date(date_arg) -> datetime.date:
@@ -146,27 +105,3 @@ class Snapshot:
         snap = Snapshot(exp_new, haz_new, impfset_new, self.date)
         snap.measure = measure
         return snap
-
-
-def pairwise(container: list):
-    """
-    Generate pairs of successive elements from an iterable.
-
-    Parameters
-    ----------
-    iterable : iterable
-        An iterable sequence from which successive pairs of elements are generated.
-
-    Returns
-    -------
-    zip
-        A zip object containing tuples of successive pairs from the input iterable.
-
-    Example
-    -------
-    >>> list(pairwise([1, 2, 3, 4]))
-    [(1, 2), (2, 3), (3, 4)]
-    """
-    a, b = itertools.tee(container)
-    next(b, None)
-    return zip(a, b)
