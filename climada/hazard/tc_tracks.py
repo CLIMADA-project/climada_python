@@ -28,7 +28,8 @@ import logging
 import re
 import shutil
 import warnings
-from operator import itemgetter
+from collections import defaultdict
+from enum import Enum
 from pathlib import Path
 from typing import List, Optional
 
@@ -50,7 +51,8 @@ import xarray as xr
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
-from shapely.geometry import LineString, MultiLineString, Point
+from shapely.geometry import LineString, MultiLineString, Point, Polygon
+from shapely.ops import unary_union
 from sklearn.metrics import DistanceMetric
 
 import climada.hazard.tc_tracks_synth
@@ -193,6 +195,97 @@ Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone haz
 dataset using STORM. Scientific Data 7(1): 40."""
 
 
+class Basin(Enum):
+    """
+    Store tropical cyclones basin geographical extent.
+    The boundaries of the basin are represented as a polygon (using the `shapely` Polygon object)
+    and follows the definition of the STORM dataset. Important note: tropical cyclone boundaries
+    may vary bewteen datasets. The following boundaries follows the STORM definition:
+    https://www.nature.com/articles/s41597-020-0381-2
+
+    Attributes:
+    ----------
+        *name : str
+            The name of the tropical cyclone basin (e.g., "NA" for North Atlantic).
+        *polygon : Polygon
+            A shapely Polygon object that represents the geographical boundary of the basin.
+
+    """
+
+    NA = Polygon(
+        [
+            (-100, 19),
+            (-94.21951983987083, 17.039584804350312),
+            (-88.75211790888072, 14.837521327451947),
+            (-84.96610530622198, 12.214318798718033),
+            (-84.89823142225451, 12.181148019885352),
+            (-82.59052306410497, 8.777858931465238),
+            (-81.09730008320902, 8.358383265470449),
+            (-79.50226644452471, 9.196860922133856),
+            (-78.58597052442947, 9.213610839871123),
+            (-77.02487377167459, 7.299350879751048),
+            (-77.02487377167459, 5),
+            (0.0, 5.0),
+            (0.0, 60.0),
+            (-100.0, 60.0),
+            (-100, 19),
+        ]
+    )
+
+    EP = Polygon(
+        [
+            (-180.0, 5.0),
+            (-77.02487377167459, 5),
+            (-77.02487377167459, 7.299350879751048),
+            (-78.58597052442947, 9.213610839871123),
+            (-79.50226644452471, 9.196860922133856),
+            (-81.09730008320902, 8.358383265470449),
+            (-82.59052306410497, 8.777858931465238),
+            (-84.89823142225451, 12.181148019885352),
+            (-84.96610530622198, 12.214318798718033),
+            (-88.75211790888072, 14.837521327451947),
+            (-94.21951983987083, 17.039584804350312),
+            (-100, 19),
+            (-100.0, 60.0),
+            (-180.0, 60.0),
+            (-180.0, 5.0),
+        ]
+    )
+
+    WP = Polygon(
+        [(100.0, 5.0), (180.0, 5.0), (180.0, 60.0), (100.0, 60.0), (100.0, 5.0)]
+    )
+
+    NI = Polygon([(30.0, 5.0), (100.0, 5.0), (100.0, 60.0), (30.0, 60.0), (30.0, 5.0)])
+
+    SI = Polygon(
+        [(10.0, -60.0), (135.0, -60.0), (135.0, -5.0), (10.0, -5.0), (10.0, -60.0)]
+    )
+
+    SP = unary_union(
+        [
+            Polygon(  # west side of antimeridian
+                [
+                    (135.0, -60.0),
+                    (180.0, -60.0),
+                    (180.0, -5.0),
+                    (135.0, -5.0),
+                    (135.0, -60.0),
+                ]
+            ),
+            Polygon(  # east side
+                [
+                    (-180.0, -60.0),
+                    (-120.0, -60.0),
+                    (-120.0, -5.0),
+                    (-180.0, -5.0),
+                    (-180.0, -60.0),
+                ]
+            ),
+        ]
+    )
+
+
 class TCTracks:
     """Contains tropical cyclone tracks.
 
@@ -321,6 +414,67 @@ class TCTracks:
                 out.data = [ds for ds in out.data if ds.attrs[key] == pattern]
 
         return out
+
+    def subset_by_basin(self):
+        """Subset all tropical cyclones tracks by basin.
+
+        This function iterates through the tropical cyclones in the dataset and assigns each cyclone
+        to a basin based on its geographical location. It checks whether the cyclone's position
+        (latitude and longitude) lies within the boundaries of any of the predefined basins and
+        then groups the cyclones into separate categories for each basin. The resulting dictionary
+        maps each basin's name to a list of tropical cyclones that fall within it.
+
+        Parameters
+        ----------
+        self : TCTtracks object
+            The object instance containing the tropical cyclone data (`self.data`) to be processed.
+
+        Returns
+        -------
+        dict_tc_basins : dict
+            A dictionary where the keys are basin names (e.g., "NA", "EP", "WP", etc.) and the values are instances
+            of the `TCTracks` class containing the tropical cyclones that belong to each basin.
+
+        Example:
+        --------
+        >>> tc = TCTracks.from_ibtracks("")
+        >>> tc_basins = tc.split_by_basin()
+        >>> tc_basins["NA"] # to access tracks in the North Atlantic
+
+        """
+
+        # Initialize a defaultdict to store lists for each basin
+        basins_dict = defaultdict(list)
+        tracks_outside_basin: list = []
+        # Iterate over each tropical cyclone
+        for tc in self.data:
+            lat, lon = tc.lat.values[0], tc.lon.values[0]
+            origin_point = Point(lon, lat)
+            point_in_basin = False
+
+            # Find the basin that contains the point
+            for basin in Basin:
+                if basin.value.contains(origin_point):
+                    basins_dict[basin.name].append(tc)
+                    point_in_basin = True
+                    break
+
+            if not point_in_basin:
+                tracks_outside_basin.append(tc.id_no)
+
+        if tracks_outside_basin:
+            warnings.warn(
+                f"A total of {len(tracks_outside_basin)} tracks did not originate in any of the "
+                f"defined basins. IDs of the tracks outside the basins: {tracks_outside_basin}",
+                UserWarning,
+            )
+
+        # Create a dictionary with TCTracks for each basin
+        dict_tc_basins = {
+            basin_name: TCTracks(tc_list) for basin_name, tc_list in basins_dict.items()
+        }
+
+        return dict_tc_basins
 
     def subset_year(
         self,
