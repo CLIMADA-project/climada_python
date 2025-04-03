@@ -375,6 +375,11 @@ def geo_im_from_array(
     -------
     cartopy.mpl.geoaxes.GeoAxesSubplot
 
+    Notes
+    -----
+    Data points with NaN or inf are plotted in gray. White regions correspond to
+    regions outside the convex hull of the given coordinates.
+
     Raises
     ------
     ValueError
@@ -472,7 +477,7 @@ def geo_im_from_array(
         )
         # handle NaNs in griddata
         color_nan = "gainsboro"
-        if np.any(np.isnan(grid_im)):
+        if np.any(np.isnan(x) for x in grid_im):
             no_data_patch = mpatches.Patch(
                 facecolor=color_nan, edgecolor="black", label="NaN"
             )
