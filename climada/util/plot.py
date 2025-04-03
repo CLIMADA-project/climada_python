@@ -473,7 +473,9 @@ def geo_im_from_array(
         # handle NaNs in griddata
         color_nan = "gainsboro"
         if np.any(np.isnan(grid_im)):
-            no_data_patch = mpatches.Patch(color=color_nan, label="NaN")
+            no_data_patch = mpatches.Patch(
+                facecolor=color_nan, edgecolor="black", label="NaN"
+            )
             axis.legend(
                 handles=[no_data_patch] + axis.get_legend_handles_labels()[0],
                 loc="lower right",
