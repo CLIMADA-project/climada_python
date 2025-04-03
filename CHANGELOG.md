@@ -16,6 +16,7 @@ Code freeze date: YYYY-MM-DD
 ### Changed
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, `Impact.local_return_period`, using the `climada.util.interpolation` module: New default (no binning), binning on decimals, and faster implementation [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
 ### Fixed
+- NaN plotting issues in `geo_im_from_array`[#1038](https://github.com/CLIMADA-project/climada_python/pull/1038)
 
 ### Deprecated
 
