@@ -72,7 +72,11 @@ Removed:
 ### Added
 
 - `climada.hazard.tc_tracks.TCTracks.subset_years` function [#1023](https://github.com/CLIMADA-project/climada_python/pull/1023)
-- `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
+-`climada.hazard.tc_tracks.compute_track_density` function, `climada.hazard.tc_tracks.compute_genesis_density` function,
+ `climada.util.coordinates.compute_grid_cell_area` function, `climada.util.coordinates.compute_grid_cell_area_validation` function,
+ `climada.hazard.tc_tracks.normalize_hist` function, `climada.hazard.plot.plot_track_density` function
+ [#1003](https://github.com/CLIMADA-project/climada_python/pull/1003)
+-`climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
 - `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex`with CLIMADA
 - `climada.util.coordinates.bounding_box_global` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
