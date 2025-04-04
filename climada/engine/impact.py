@@ -41,6 +41,8 @@ import numpy as np
 import pandas as pd
 import xlsxwriter
 from deprecation import deprecated
+from matplotlib.colors import Normalize
+from pandas.api.types import is_string_dtype
 from pyproj import CRS as pyprojCRS
 from rasterio.crs import CRS as rasterioCRS  # pylint: disable=no-name-in-module
 from scipy import sparse
@@ -50,7 +52,6 @@ import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 import climada.util.interpolation as u_interp
 import climada.util.plot as u_plot
-from climada import CONFIG
 from climada.entity import Exposures
 from climada.util.constants import CMAP_IMPACT, DEF_CRS, DEF_FREQ_UNIT
 from climada.util.select import get_attributes_with_matching_dimension
@@ -107,8 +108,8 @@ class Impact:
         crs=DEF_CRS,
         eai_exp=None,
         at_event=None,
-        tot_value=0.,
-        aai_agg=0.,
+        tot_value=0.0,
+        aai_agg=0.0,
         unit="",
         imp_mat=None,
         haz_type="",
@@ -216,8 +217,8 @@ class Impact:
             "The use of Impact().calc() is deprecated."
             " Use ImpactCalc().impact() instead."
         )
-        from climada.engine.impact_calc import (
-            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        from climada.engine.impact_calc import (  # pylint: disable=import-outside-toplevel
+            ImpactCalc,
         )
 
         impcalc = ImpactCalc(exposures, impact_funcs, hazard)
@@ -497,6 +498,7 @@ class Impact:
         min_impact=0,
         log_frequency=True,
         log_impact=True,
+        bin_decimals=None,
     ):
         """Compute local exceedance impact for given return periods. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
@@ -515,18 +517,22 @@ class Impact:
             return periods larger than the Impact object's observed local return periods will be
             assigned the largest local impact, and return periods smaller than the Impact object's
             observed local return periods will be assigned 0. If set to "extrapolate", local
-            exceedance impacts will be extrapolated (and interpolated). Defauls to "interpolate".
+            exceedance impacts will be extrapolated (and interpolated). The extrapolation to
+            large return periods uses the two highest impacts of the centroid and their return
+            periods and extends the interpolation between these points to the given return period
+            (similar for small return periods). Defauls to "interpolate".
         min_impact : float, optional
             Minimum threshold to filter the impact. Defaults to 0.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "extrapolate" or "interpolate". If set
-            to True, (cummulative) frequency values are converted to log scale before inter- and
-            extrapolation. Defaults to True.
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
         log_impact : bool, optional
-            This parameter is only used if method is set to "extrapolate" or "interpolate". If set
-            to True, impact values are converted to log scale before inter- and extrapolation.
-            Defaults to True.
-
+            If set to True, impact values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            Number of decimals to group and bin impact values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
         Returns
         -------
         gdf : gpd.GeoDataFrame
@@ -538,6 +544,23 @@ class Impact:
             GeoDataFrame label, for reporting and plotting
         column_label : function
             Column-label-generating function, for reporting and plotting
+
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
+        Notes
+        -------
+        If an integer bin_decimals is given, the impact values are binned according to their
+        bin_decimals decimals, and their corresponding frequencies are summed. This binning leads
+        to a smoother (and coarser) interpolation, and a more stable extrapolation. For instance,
+        if bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and
+        0.2 are combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results
+        in not binning the values.
+        E.g., if your impact range from 1 to 100, you could use bin_decimals=1, if your
+        impact range from 1e6 to 1e9, you could use bin_decimals=-5, if your impact
+        range from 0.0001 to .01, you could use bin_decimals=5.
         """
         LOGGER.info(
             "Computing exceedance impact map for return periods: %s", return_periods
@@ -564,22 +587,32 @@ class Impact:
 
         # calculate local exceedance impact
         test_frequency = 1 / np.array(return_periods)
-        exceedance_impact = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    test_frequency,
-                    None,
-                    self.frequency,
-                    self.imp_mat.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_impact,
-                    value_threshold=min_impact,
-                    method=method,
-                    y_asymptotic=0.0,
-                )
-                for i_centroid in range(self.imp_mat.shape[1])
-            ]
+
+        exceedance_impact = np.full(
+            (self.imp_mat.shape[1], len(test_frequency)),
+            np.nan if method == "interpolate" else 0.0,
         )
+
+        nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
+
+        if not len(nonzero_centroids) == 0:
+            exceedance_impact[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        test_frequency,
+                        None,
+                        self.frequency,
+                        self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_impact,
+                        value_threshold=min_impact,
+                        method=method,
+                        y_asymptotic=0.0,
+                        bin_decimals=bin_decimals,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(
@@ -590,9 +623,11 @@ class Impact:
         gdf[col_names] = exceedance_impact
         # create label and column_label
         label = f"Impact ({self.unit})"
-        column_label = lambda column_names: [
-            f"Return Period: {col} {return_period_unit}" for col in column_names
-        ]
+
+        def column_label(column_names):
+            return [
+                f"Return Period: {col} {return_period_unit}" for col in column_names
+            ]
 
         return gdf, label, column_label
 
@@ -618,6 +653,7 @@ class Impact:
         min_impact=0,
         log_frequency=True,
         log_impact=True,
+        bin_decimals=None,
     ):
         """Compute local return periods for given threshold impacts. The default method
         is fitting the ordered impacts per centroid to the corresponding cummulated
@@ -637,17 +673,22 @@ class Impact:
             impacts will be assigned NaN, and threshold impacts smaller than the Impact
             object's local impacts will be assigned the smallest observed local return period.
             If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            The extrapolation to large threshold impacts uses the two highest impacts of
+            the centroid and their return periods and extends the interpolation between these
+            points to the given threshold imapct (similar for small large threshold impacts).
             Defaults to "interpolate".
         min_impacts : float, optional
             Minimum threshold to filter the impact. Defaults to 0.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            (cummulative) frequency values are converted to log scale before inter- and
-            extrapolation. Defaults to True.
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
         log_impact : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            impact values are converted to log scale before inter- and extrapolation.
-            Defaults to True.
+            If set to True, impact values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            Number of decimals to group and bin impact values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
 
         Returns
         -------
@@ -660,6 +701,23 @@ class Impact:
             GeoDataFrame label, for reporting and plotting
         column_label : function
             Column-label-generating function, for reporting and plotting
+
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
+        Notes
+        -------
+        If an integer bin_decimals is given, the impact values are binned according to their
+        bin_decimals decimals, and their corresponding frequencies are summed. This binning leads
+        to a smoother (and coarser) interpolation, and a more stable extrapolation. For instance,
+        if bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and
+        0.2 are combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results
+        in not binning the values.
+        E.g., if your impact range from 1 to 100, you could use bin_decimals=1, if your
+        impact range from 1e6 to 1e9, you could use bin_decimals=-5, if your impact
+        range from 0.0001 to .01, you could use bin_decimals=5.
         """
 
         LOGGER.info("Computing return period map for impacts: %s", threshold_impact)
@@ -683,23 +741,29 @@ class Impact:
         ]:
             raise ValueError(f"Unknown method: {method}")
 
+        return_periods = np.full((self.imp_mat.shape[1], len(threshold_impact)), np.nan)
+
+        nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
+
         # calculate local return periods
-        return_periods = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    None,
-                    np.array(threshold_impact),
-                    self.frequency,
-                    self.imp_mat.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_impact,
-                    value_threshold=min_impact,
-                    method=method,
-                    y_asymptotic=np.nan,
-                )
-                for i_centroid in range(self.imp_mat.shape[1])
-            ]
-        )
+        if not len(nonzero_centroids) == 0:
+            return_periods[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        None,
+                        np.array(threshold_impact),
+                        self.frequency,
+                        self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_impact,
+                        value_threshold=min_impact,
+                        method=method,
+                        y_asymptotic=np.nan,
+                        bin_decimals=bin_decimals,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
         return_periods = safe_divide(1.0, return_periods)
 
         # create the output GeoDataFrame
@@ -712,9 +776,9 @@ class Impact:
 
         # create label and column_label
         label = f"Return Periods ({return_period_unit})"
-        column_label = lambda column_names: [
-            f"Impact: {col} {self.unit}" for col in column_names
-        ]
+
+        def column_label(column_names):
+            return [f"Impact: {col} {self.unit}" for col in column_names]
 
         return gdf, label, column_label
 
@@ -1109,24 +1173,18 @@ class Impact:
 
         return axis
 
-    @deprecated(
-        details="The use of Impact.plot_rp_imp is deprecated."
-        "Use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead."
-    )
     def plot_rp_imp(
         self,
         return_periods=(25, 50, 100, 250),
         log10_scale=True,
-        smooth=True,
         axis=None,
+        kwargs_local_exceedance_impact=None,
         **kwargs,
     ):
         """
-        This function is deprecated, use Impact.local_exceedance_impact and
-        util.plot.plot_from_gdf instead.
-
         Compute and plot exceedance impact maps for different return periods.
-        Calls local_exceedance_imp.
+        Calls local_exceedance_impact. For handling large data sets and for further options,
+        see Notes.
 
         Parameters
         ----------
@@ -1136,6 +1194,8 @@ class Impact:
             plot impact as log10(impact). Default: True
         smooth : bool, optional
             smooth plot to plot.RESOLUTIONxplot.RESOLUTION. Default: True
+        kwargs_local_exceedance_impact: dict
+            Dictionary of keyword arguments for the method impact.local_exceedance_impact.
         kwargs : dict, optional
             arguments for pcolormesh matplotlib function
             used in event plots
@@ -1145,43 +1205,46 @@ class Impact:
         axis : matplotlib.axes.Axes
         imp_stats : np.array
             return_periods.size x num_centroids
+        See Also
+        --------
+        engine.impact.local_exceedance_impact :
+            inter- and extrapolation method
+        Notes
+        -----
+        For handling large data, and for more flexible options in the exceedance
+        impact computation and in the plotting, we recommend to use
+        gdf, title, labels = impact.local_exceedance_impact() and
+        util.plot.plot_from_gdf(gdf, title, labels) instead.
         """
-        imp_stats = (
-            self.local_exceedance_impact(np.array(return_periods))[0].values[:, 1:].T
-        )
-        imp_stats = imp_stats.astype(float)
-        if imp_stats.size == 0:
-            raise ValueError(
-                "Error: Attribute imp_mat is empty. Recalculate Impact"
-                "instance with parameter save_mat=True"
-            )
-        if log10_scale:
-            if np.min(imp_stats) < 0:
-                imp_stats_log = np.log10(abs(imp_stats) + 1)
-                colbar_name = "Log10(abs(Impact)+1) (" + self.unit + ")"
-            elif np.min(imp_stats) < 1:
-                imp_stats_log = np.log10(imp_stats + 1)
-                colbar_name = "Log10(Impact+1) (" + self.unit + ")"
-            else:
-                imp_stats_log = np.log10(imp_stats)
-                colbar_name = "Log10(Impact) (" + self.unit + ")"
-        else:
-            imp_stats_log = imp_stats
-            colbar_name = "Impact (" + self.unit + ")"
-        title = list()
-        for ret in return_periods:
-            title.append("Return period: " + str(ret) + " years")
-        axis = u_plot.geo_im_from_array(
-            imp_stats_log,
-            self.coord_exp,
-            colbar_name,
-            title,
-            smooth=smooth,
-            axes=axis,
-            **kwargs,
+
+        LOGGER.info(
+            "Some errors in the previous calculation of local exceedance impacts have been "
+            "corrected, see Impact.local_exceedance_impact. To reproduce data with the "
+            "previous calculation, use CLIMADA v5.0.0 or less."
         )
 
-        return axis, imp_stats
+        if kwargs_local_exceedance_impact is None:
+            kwargs_local_exceedance_impact = {}
+
+        impacts_stats, title, column_labels = self.local_exceedance_impact(
+            return_periods, **kwargs_local_exceedance_impact
+        )
+
+        impacts_stats_vals = impacts_stats.values[:, 1:].T.astype(float)
+        if not log10_scale:
+            min_impact, max_impact = np.nanmin(impacts_stats_vals), np.nanmax(
+                impacts_stats_vals
+            )
+            kwargs.update(
+                {
+                    "norm": Normalize(vmin=min_impact, vmax=max_impact),
+                }
+            )
+
+        axis = u_plot.plot_from_gdf(
+            impacts_stats, title, column_labels, axis=axis, **kwargs
+        )
+        return axis, impacts_stats_vals
 
     def write_csv(self, file_name):
         """Write data into csv file. imp_mat is not saved.
@@ -1191,6 +1254,8 @@ class Impact:
         file_name : str
             absolute path of the file
         """
+        if not all((isinstance(val, str) for val in self.event_name)):
+            raise TypeError("'event_name' must be a list of strings")
         LOGGER.info("Writing %s", file_name)
         with open(file_name, "w", encoding="utf-8") as imp_file:
             imp_wr = csv.writer(imp_file)
@@ -1239,6 +1304,8 @@ class Impact:
         file_name : str
             absolute path of the file
         """
+        if not all((isinstance(val, str) for val in self.event_name)):
+            raise TypeError("'event_name' must be a list of strings")
         LOGGER.info("Writing %s", file_name)
 
         def write_col(i_col, imp_ws, xls_data):
@@ -1453,7 +1520,13 @@ class Impact:
         imp.aai_agg = imp_df["aai_agg"][0]
         imp.event_id = imp_df["event_id"][~np.isnan(imp_df["event_id"])].values
         num_ev = imp.event_id.size
-        imp.event_name = imp_df["event_name"][:num_ev].values.tolist()
+        event_names = imp_df["event_name"][:num_ev]
+        if not is_string_dtype(event_names):
+            warnings.warn(
+                "Some event names are not str will be converted to str.", UserWarning
+            )
+            event_names = event_names.astype(str)
+        imp.event_name = event_names.values.tolist()
         imp.date = imp_df["event_date"][:num_ev].values
         imp.at_event = imp_df["at_event"][:num_ev].values
         imp.frequency = imp_df["event_frequency"][:num_ev].values
@@ -1475,7 +1548,7 @@ class Impact:
     def read_csv(self, *args, **kwargs):
         """This function is deprecated, use Impact.from_csv instead."""
         LOGGER.warning(
-            "The use of Impact.read_csv is deprecated." "Use Impact.from_csv instead."
+            "The use of Impact.read_csv is deprecated. Use Impact.from_csv instead."
         )
         self.__dict__ = Impact.from_csv(*args, **kwargs).__dict__
 
@@ -1494,28 +1567,32 @@ class Impact:
             Impact from excel file
         """
         LOGGER.info("Reading %s", file_name)
-        dfr = pd.read_excel(file_name)
-        imp = cls(haz_type=str(dfr["haz_type"][0]))
+        imp_df = pd.read_excel(file_name)
+        imp = cls(haz_type=str(imp_df["haz_type"][0]))
 
-        imp.unit = dfr["unit"][0]
-        imp.tot_value = dfr["tot_value"][0]
-        imp.aai_agg = dfr["aai_agg"][0]
-
-        imp.event_id = dfr["event_id"][~np.isnan(dfr["event_id"].values)].values
-        imp.event_name = dfr["event_name"][: imp.event_id.size].values
-        imp.date = dfr["event_date"][: imp.event_id.size].values
-        imp.frequency = dfr["event_frequency"][: imp.event_id.size].values
+        imp.unit = imp_df["unit"][0]
+        imp.tot_value = imp_df["tot_value"][0]
+        imp.aai_agg = imp_df["aai_agg"][0]
+        imp.event_id = imp_df["event_id"][~np.isnan(imp_df["event_id"].values)].values
+        event_names = imp_df["event_name"][~np.isnan(imp_df["event_id"].values)]
+        if not is_string_dtype(event_names):
+            warnings.warn(
+                "Some event names are not str will be converted to str", UserWarning
+            )
+            event_names = event_names.astype(str)
+        imp.event_name = event_names.values
+        imp.date = imp_df["event_date"][: imp.event_id.size].values
+        imp.frequency = imp_df["event_frequency"][: imp.event_id.size].values
         imp.frequency_unit = (
-            dfr["frequency_unit"][0] if "frequency_unit" in dfr else DEF_FREQ_UNIT
+            imp_df["frequency_unit"][0] if "frequency_unit" in imp_df else DEF_FREQ_UNIT
         )
-        imp.at_event = dfr["at_event"][: imp.event_id.size].values
-
-        imp.eai_exp = dfr["eai_exp"][~np.isnan(dfr["eai_exp"].values)].values
+        imp.at_event = imp_df["at_event"][: imp.event_id.size].values
+        imp.eai_exp = imp_df["eai_exp"][~np.isnan(imp_df["eai_exp"].values)].values
         imp.coord_exp = np.zeros((imp.eai_exp.size, 2))
-        imp.coord_exp[:, 0] = dfr["exp_lat"].values[: imp.eai_exp.size]
-        imp.coord_exp[:, 1] = dfr["exp_lon"].values[: imp.eai_exp.size]
+        imp.coord_exp[:, 0] = imp_df["exp_lat"].values[: imp.eai_exp.size]
+        imp.coord_exp[:, 1] = imp_df["exp_lon"].values[: imp.eai_exp.size]
         try:
-            imp.crs = u_coord.to_csr_user_input(dfr["exp_crs"].values[0])
+            imp.crs = u_coord.to_csr_user_input(imp_df["exp_crs"].values[0])
         except AttributeError:
             imp.crs = DEF_CRS
 
@@ -1679,8 +1756,8 @@ class Impact:
         -------
         list of Impact
         """
-        from climada.engine.impact_calc import (
-            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        from climada.engine.impact_calc import (  # pylint: disable=import-outside-toplevel
+            ImpactCalc,
         )
 
         if args_exp is None:
