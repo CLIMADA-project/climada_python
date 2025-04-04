@@ -190,6 +190,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - `Impact.from_hdf5` now calls `str` on `event_name` data that is not strings, and issue a warning then [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - Split `climada.hazard.trop_cyclone` module into smaller submodules without affecting module usage [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
+- `yearly_steps` parameter of `TropCyclone.apply_climate_scenario_knu` has been made explicit [#991](https://github.com/CLIMADA-project/climada_python/pull/991)
 
 ### Fixed
 
