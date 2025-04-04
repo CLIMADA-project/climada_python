@@ -77,7 +77,6 @@ setup(
         "openpyxl",
         "overpy",
         "pandas",
-        "pandas-datareader",
         "pathos",
         "peewee",
         "pillow",
