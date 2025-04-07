@@ -227,10 +227,10 @@ def download_world_bank_indicator(
         # Update the data
         pages = json_data[0]["pages"]
         page = page + 1
-        raw_data.append(json_data[1])
+        raw_data.extend(json_data[1])
 
     # Create dataframe
-    data = pd.concat([pd.DataFrame.from_records(rec) for rec in raw_data])
+    data = pd.DataFrame.from_records(raw_data)
 
     # Parse dates
     if parse_dates:
