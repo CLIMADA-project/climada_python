@@ -22,7 +22,7 @@ jobs:
       # Do not abort other tests if only a single one fails
       fail-fast: false
       matrix:
-        python-version: ["3.9", "3.10", "3.11"]
+        python-version: ["3.10", "3.11", "3.12"]
 
     steps:
       -
@@ -74,6 +74,6 @@ jobs:
     needs: build-and-test
     with:
       core_branch: ${{ github.ref }}
-      petals_branch: feature/exposures_crs
+      petals_branch: develop
     permissions:
       checks: write

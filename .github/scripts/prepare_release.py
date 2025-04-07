@@ -5,8 +5,6 @@ The following preparation steps are executed:
 
 - update version numbers in _version.py and setup.py
 - purge the "Unreleased" section of CHANGELOG.md and rename it to the new version number
-- copy the README.md file to doc/misc/README.md,
-  but without the badges as they interfere with the sphinx doc builder
 
 All changes are immediately commited to the repository.
 """
@@ -49,17 +47,6 @@ def bump_version_number(version_number: str, level: str) -> str:
     else:
         raise ValueError(f"level should be 'major', 'minor' or 'patch', not {level}")
     return ".".join([major, minor, patch])
-
-
-def update_readme(_nvn):
-    """align doc/misc/README.md with ./README.md but remove the non-markdown header lines from"""
-    with open("README.md", "r", encoding="UTF-8") as rmin:
-        lines = [line for line in rmin.readlines() if not line.startswith("[![")]
-    while not lines[0].strip():
-        lines = lines[1:]
-    with open("doc/misc/README.md", "w", encoding="UTF-8") as rmout:
-        rmout.writelines(lines)
-    return GitFile("doc/misc/README.md")
 
 
 def update_changelog(nvn):
@@ -108,7 +95,7 @@ def update_changelog(nvn):
                     if section_name:
                         changelog.write(f"### {section_name}\n")
                     lines = [
-                        ln.strip()
+                        ln.rstrip()
                         for ln in section
                         if "code freeze date: " not in ln.lower()
                     ]
@@ -227,7 +214,6 @@ def prepare_new_release(level):
     update_setup(new_version_number).gitadd()
     update_version(new_version_number).gitadd()
     update_changelog(new_version_number).gitadd()
-    update_readme(new_version_number).gitadd()
 
     Git().commit(new_version_number)
 

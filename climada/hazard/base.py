@@ -225,15 +225,12 @@ class Hazard(HazardIO, HazardPlot):
         --------
         :py:func:`climada.util.checker.prune_csr_matrix`
 
-        Todo
-        -----
-        * Check consistency with centroids
-
         Raises
         ------
         ValueError
             If matrices are ill-formed or ill-shaped in relation to each other
         """
+        # TODO:  Check consistency with centroids
         u_check.prune_csr_matrix(self.intensity)
         u_check.prune_csr_matrix(self.fraction)
         if self.fraction.nnz > 0:
@@ -491,6 +488,7 @@ class Hazard(HazardIO, HazardPlot):
         min_intensity=None,
         log_frequency=True,
         log_intensity=True,
+        bin_decimals=None,
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -509,19 +507,23 @@ class Hazard(HazardIO, HazardPlot):
             periods larger than the Hazard object's observed local return periods will be assigned
             the largest local intensity, and return periods smaller than the Hazard object's
             observed local return periods will be assigned 0. If set to "extrapolate", local
-            exceedance intensities will be extrapolated (and interpolated).
-            Defauls to "interpolate".
+            exceedance intensities will be extrapolated (and interpolated). The extrapolation to
+            large return periods uses the two highest intensites of the centroid and their return
+            periods and extends the interpolation between these points to the given return period
+            (similar for small return periods). Defauls to "interpolate".
         min_intensity : float, optional
             Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
             will be used. Defaults to None.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            (cummulative) frequency values are converted to log scale before inter- and
-            extrapolation. Defaults to True.
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
         log_intensity : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            intensity values are converted to log scale before inter- and extrapolation.
-            Defaults to True.
+            If set to True, intensity values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            Number of decimals to group and bin intensity values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
 
         Returns
         -------
@@ -534,6 +536,23 @@ class Hazard(HazardIO, HazardPlot):
             GeoDataFrame label, for reporting and plotting
         column_label : function
             Column-label-generating function, for reporting and plotting
+
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
+        Notes
+        -------
+        If an integer bin_decimals is given, the intensity values are binned according to their
+        bin_decimals decimals, and their corresponding frequencies are summed. This binning leads
+        to a smoother (and coarser) interpolation, and a more stable extrapolation. For instance,
+        if bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and
+        0.2 are combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results
+        in not binning the values.
+        E.g., if your intensities range from 1 to 100, you could use bin_decimals=1, if your
+        intensities range from 1e6 to 1e9, you could use bin_decimals=-5, if your intensities
+        range from 0.0001 to .01, you could use bin_decimals=5.
         """
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
@@ -553,22 +572,31 @@ class Hazard(HazardIO, HazardPlot):
 
         # calculate local exceedance intensity
         test_frequency = 1 / np.array(return_periods)
-        exceedance_intensity = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    test_frequency,
-                    None,
-                    self.frequency,
-                    self.intensity.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_intensity,
-                    value_threshold=min_intensity,
-                    method=method,
-                    y_asymptotic=0.0,
-                )
-                for i_centroid in range(self.intensity.shape[1])
-            ]
+
+        exceedance_intensity = np.full(
+            (self.intensity.shape[1], len(test_frequency)),
+            np.nan if method == "interpolate" else 0.0,
         )
+
+        nonzero_centroids = np.where(self.intensity.getnnz(axis=0) > 0)[0]
+        if not len(nonzero_centroids) == 0:
+            exceedance_intensity[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        test_frequency,
+                        None,
+                        self.frequency,
+                        self.intensity.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_intensity,
+                        value_threshold=min_intensity,
+                        method=method,
+                        y_asymptotic=0.0,
+                        bin_decimals=bin_decimals,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(
@@ -579,9 +607,11 @@ class Hazard(HazardIO, HazardPlot):
 
         # create label and column_label
         label = f"Intensity ({self.units})"
-        column_label = lambda column_names: [
-            f"Return Period: {col} {return_period_unit}" for col in column_names
-        ]
+
+        def column_label(column_names):
+            return [
+                f"Return Period: {col} {return_period_unit}" for col in column_names
+            ]
 
         return gdf, label, column_label
 
@@ -612,6 +642,7 @@ class Hazard(HazardIO, HazardPlot):
         min_intensity=None,
         log_frequency=True,
         log_intensity=True,
+        bin_decimals=None,
     ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -631,18 +662,24 @@ class Hazard(HazardIO, HazardPlot):
             intensities will be assigned NaN, and threshold intensities smaller than the Hazard
             object's local intensities will be assigned the smallest observed local return period.
             If set to "extrapolate", local return periods will be extrapolated (and interpolated).
+            The extrapolation to large threshold intensities uses the two highest intensites of
+            the centroid and their return periods and extends the interpolation between these
+            points to the given threshold intensity (similar for small threshold intensites).
             Defaults to "interpolate".
         min_intensity : float, optional
             Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
             will be used. Defaults to None.
         log_frequency : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            (cummulative) frequency values are converted to log scale before inter- and
-            extrapolation. Defaults to True.
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
         log_intensity : bool, optional
-            This parameter is only used if method is set to "interpolate". If set to True,
-            intensity values are converted to log scale before inter- and extrapolation.
-            Defaults to True.
+            If set to True, intensity values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            Number of decimals to group and bin intensity values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
+
 
         Returns
         -------
@@ -655,6 +692,23 @@ class Hazard(HazardIO, HazardPlot):
             GeoDataFrame label, for reporting and plotting
         column_label : function
             Column-label-generating function, for reporting and plotting
+
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+
+        Notes
+        -------
+        If an integer bin_decimals is given, the intensity values are binned according to their
+        bin_decimals decimals, and their corresponding frequencies are summed. This binning leads
+        to a smoother (and coarser) interpolation, and a more stable extrapolation. For instance,
+        if bin_decimals=1, the two values 12.01 and 11.97 with corresponding frequencies 0.1 and
+        0.2 are combined to a value 12.0 with frequency 0.3. The default bin_decimals=None results
+        in not binning the values.
+        E.g., if your intensities range from 1 to 100, you could use bin_decimals=1, if your
+        intensities range from 1e6 to 1e9, you could use bin_decimals=-5, if your intensities
+        range from 0.0001 to .01, you could use bin_decimals=5.
         """
         if not min_intensity and min_intensity != 0:
             min_intensity = self.intensity_thres
@@ -672,23 +726,31 @@ class Hazard(HazardIO, HazardPlot):
         ]:
             raise ValueError(f"Unknown method: {method}")
 
-        # calculate local return periods
-        return_periods = np.array(
-            [
-                u_interp.preprocess_and_interpolate_ev(
-                    None,
-                    np.array(threshold_intensities),
-                    self.frequency,
-                    self.intensity.getcol(i_centroid).toarray().flatten(),
-                    log_frequency=log_frequency,
-                    log_values=log_intensity,
-                    value_threshold=min_intensity,
-                    method=method,
-                    y_asymptotic=np.nan,
-                )
-                for i_centroid in range(self.intensity.shape[1])
-            ]
+        return_periods = np.full(
+            (self.intensity.shape[1], len(threshold_intensities)), np.nan
         )
+
+        nonzero_centroids = np.where(self.intensity.getnnz(axis=0) > 0)[0]
+
+        if not len(nonzero_centroids) == 0:
+            return_periods[nonzero_centroids, :] = np.array(
+                [
+                    u_interp.preprocess_and_interpolate_ev(
+                        None,
+                        np.array(threshold_intensities),
+                        self.frequency,
+                        self.intensity.getcol(i_centroid).toarray().flatten(),
+                        log_frequency=log_frequency,
+                        log_values=log_intensity,
+                        value_threshold=min_intensity,
+                        method=method,
+                        y_asymptotic=np.nan,
+                        bin_decimals=bin_decimals,
+                    )
+                    for i_centroid in nonzero_centroids
+                ]
+            )
+
         return_periods = safe_divide(1.0, return_periods)
 
         # create the output GeoDataFrame
@@ -700,9 +762,9 @@ class Hazard(HazardIO, HazardPlot):
 
         # create label and column_label
         label = f"Return Periods ({return_period_unit})"
-        column_label = lambda column_names: [
-            f"Threshold Intensity: {col} {self.units}" for col in column_names
-        ]
+
+        def column_label(column_names):
+            return [f"Threshold Intensity: {col} {self.units}" for col in column_names]
 
         return gdf, label, column_label
 
@@ -936,8 +998,7 @@ class Hazard(HazardIO, HazardPlot):
                 "The hazards are incompatible and cannot be concatenated."
             )
         self.haz_type = haz_types.pop()
-
-        haz_classes = {type(haz) for haz in haz_list}
+        haz_classes = {haz.__class__.__name__ for haz in haz_list}
         if len(haz_classes) > 1:
             raise TypeError(
                 f"The given hazards are of different classes: {haz_classes}. "
