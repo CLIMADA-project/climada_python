@@ -28,6 +28,7 @@ __all__ = [
 
 import datetime as dt
 import logging
+from abc import ABC, abstractmethod
 from itertools import zip_longest
 from pathlib import Path
 
@@ -71,7 +72,7 @@ SALIB_COMPATIBILITY = {
 }
 
 
-class UncOutput:
+class UncOutput(ABC):
     """
     Class to store and plot uncertainty and sensitivity analysis output data
 
@@ -107,6 +108,7 @@ class UncOutput:
         "sensitivity_kwargs",
     ]
 
+    @abstractmethod
     def __init__(self, samples_df, unit=None):
         """
         Initialize Uncertainty Data object.
