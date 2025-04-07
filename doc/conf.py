@@ -40,6 +40,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx.ext.napoleon",
     "sphinx.ext.ifconfig",
+    "sphinx_mdinclude",
     "myst_nb",
     "sphinx_markdown_tables",
     "readthedocs_ext.readthedocs",

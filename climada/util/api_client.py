@@ -1143,9 +1143,10 @@ class Client:
         """Removes downloaded dataset files from the given directory if they have been downloaded
         with the API client, if they are beneath the given directory and if one of the following
         is the case:
-        - there status is neither 'active' nor 'test_dataset'
-        - their status is 'test_dataset' and keep_testfiles is set to False
-        - their status is 'active' and they are outdated, i.e., there is a dataset with the same
+
+        * there status is neither 'active' nor 'test_dataset'
+        * their status is 'test_dataset' and keep_testfiles is set to False
+        * their status is 'active' and they are outdated, i.e., there is a dataset with the same
           data_type and name but a newer version.
 
         Parameters

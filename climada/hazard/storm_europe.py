@@ -551,9 +551,15 @@ class StormEurope(Hazard):
                 + run_datetime.strftime("%Y%m%d%H")
             )
 
+        # Starting with eccodes 2.28 the name of the data variable in `stacked` is
+        # [i10fg](https://codes.ecmwf.int/grib/param-db/228029).
+        # Before, it used to be the less precise
+        # [gust](https://codes.ecmwf.int/grib/param-db/260065)
+        [data_variable] = list(stacked)
+
         # Create Hazard
         haz = cls(
-            intensity=sparse.csr_matrix(stacked["gust"].T),
+            intensity=sparse.csr_matrix(stacked[data_variable].T),
             centroids=cls._centroids_from_nc(nc_centroids_file),
             event_id=event_id,
             date=date,
@@ -830,10 +836,10 @@ class StormEurope(Hazard):
         levels are shifted by n raster pixels into each direction (N/S/E/W).
 
         Caveats:
-            - Memory safety is an issue; trial with the entire dataset resulted
+            * Memory safety is an issue; trial with the entire dataset resulted
               in 60GB of swap memory being used...
-            - Can only use numeric region_id for country selection
-            - Drops event names as provided by WISC
+            * Can only use numeric region_id for country selection
+            * Drops event names as provided by WISC
 
         Parameters
         ----------
@@ -1069,7 +1075,7 @@ def generate_WS_forecast_hazard(
         if haz_model == "cosmo1e_file":
             haz_model = "C1E"
             full_model_name_temp = "COSMO-1E"
-        if haz_model == "cosmo2e_file":
+        else:  # if haz_model == "cosmo2e_file":
             haz_model = "C2E"
             full_model_name_temp = "COSMO-2E"
         haz_file_name = (

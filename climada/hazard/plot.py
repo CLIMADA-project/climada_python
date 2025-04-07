@@ -19,10 +19,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Hazard Plotting Methods.
 """
 
+import logging
+
 import matplotlib.pyplot as plt
 import numpy as np
 
 import climada.util.plot as u_plot
+
+LOGGER = logging.getLogger(__name__)
 
 # pylint: disable=no-member
 
@@ -35,25 +39,23 @@ class HazardPlot:
     def plot_rp_intensity(
         self,
         return_periods=(25, 50, 100, 250),
-        smooth=True,
         axis=None,
-        figsize=(9, 13),
-        adapt_fontsize=True,
+        kwargs_local_exceedance_intensity=None,
         **kwargs,
     ):
-        """Compute and plot hazard exceedance intensity maps for different
-        return periods. Calls local_exceedance_inten.
+        """
+        Compute and plot hazard exceedance intensity maps for different
+        return periods. Calls local_exceedance_intensity. For handling large data sets and for
+        further options, see Notes.
 
         Parameters
         ----------
         return_periods: tuple(int), optional
             return periods to consider
-        smooth: bool, optional
-            smooth plot to plot.RESOLUTIONxplot.RESOLUTION
         axis: matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
-        figsize: tuple, optional
-            figure size for plt.subplots
+        kwargs_local_exceedance_intensity: dict
+            Dictionary of keyword arguments for the method hazard.local_exceedance_intensity.
         kwargs: optional
             arguments for pcolormesh matplotlib function used in event plots
 
@@ -61,24 +63,35 @@ class HazardPlot:
         -------
         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
             intenstats is return_periods.size x num_centroids
+
+        See Also
+        ---------
+        hazard.local_exceedance_intensity: method to calculate local exceedance frequencies.
+
+         Notes
+         -----
+         For handling large data, and for more fleixble options in the exceedance
+         intensity computation and in the plotting, we recommend to use
+         gdf, title, labels = hazard.local_exceedance_intensity() and
+         util.plot.plot_from_gdf(gdf, title, labels) instead.
         """
-        inten_stats = self.local_exceedance_inten(np.array(return_periods))
-        colbar_name = "Intensity (" + self.units + ")"
-        title = list()
-        for ret in return_periods:
-            title.append("Return period: " + str(ret) + " years")
-        axis = u_plot.geo_im_from_array(
-            inten_stats,
-            self.centroids.coord,
-            colbar_name,
-            title,
-            smooth=smooth,
-            axes=axis,
-            figsize=figsize,
-            adapt_fontsize=adapt_fontsize,
-            **kwargs,
+        LOGGER.info(
+            "Some errors in the previous calculation of local exceedance intensities have been "
+            "corrected, see Hazard.local_exceedance_intensity. To reproduce data with the "
+            "previous calculation, use CLIMADA v5.0.0 or less."
         )
-        return axis, inten_stats
+
+        if kwargs_local_exceedance_intensity is None:
+            kwargs_local_exceedance_intensity = {}
+
+        inten_stats, title, column_labels = self.local_exceedance_intensity(
+            return_periods, **kwargs_local_exceedance_intensity
+        )
+
+        axis = u_plot.plot_from_gdf(
+            inten_stats, title, column_labels, axis=axis, **kwargs
+        )
+        return axis, inten_stats.values[:, 1:].T.astype(float)
 
     def plot_intensity(
         self,

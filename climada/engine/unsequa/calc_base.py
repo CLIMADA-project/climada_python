@@ -207,7 +207,7 @@ class Calc:
         sampling_method : str, optional
             The sampling method as defined in SALib. Possible choices:
             'saltelli', 'latin', 'morris', 'dgsm', 'fast_sampler', 'ff', 'finite_diff',
-             https://salib.readthedocs.io/en/latest/api.html
+            https://salib.readthedocs.io/en/latest/api.html
             The default is 'saltelli'.
         sampling_kwargs : kwargs, optional
             Optional keyword arguments passed on to the SALib sampling_method.
@@ -227,7 +227,6 @@ class Calc:
         a power of 2. The users can generate dummy variables to achieve this
         requirement. Please refer to https://salib.readthedocs.io/en/latest/api.html
         for more details.
-
 
         See Also
         --------

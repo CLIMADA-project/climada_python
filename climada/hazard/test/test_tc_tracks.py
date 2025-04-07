@@ -22,6 +22,7 @@ Test tc_tracks module.
 import unittest
 from datetime import datetime as dt
 
+import cftime
 import geopandas as gpd
 import numpy as np
 import pandas as pd
@@ -44,6 +45,7 @@ TEST_TRACK_GETTELMAN = DATA_DIR.joinpath("gettelman_test_tracks.nc")
 TEST_TRACK_EMANUEL = DATA_DIR.joinpath("emanuel_test_tracks.mat")
 TEST_TRACK_EMANUEL_CORR = DATA_DIR.joinpath("temp_mpircp85cal_full.mat")
 TEST_TRACK_CHAZ = DATA_DIR.joinpath("chaz_test_tracks.nc")
+TEST_TRACK_FAST = DATA_DIR.joinpath("FAST_test_tracks.nc")
 TEST_TRACK_STORM = DATA_DIR.joinpath("storm_test_tracks.txt")
 TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath("tracks-antimeridian")
 TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath("tctracks_hdf5_legacy.nc")
@@ -82,13 +84,35 @@ class TestIbtracs(unittest.TestCase):
             provider="usa", storm_id="1992230N11325"
         )
         penv_ref = np.ones(97) * 1010
-        penv_ref[26:36] = [1011, 1012, 1013, 1014, 1015, 1014, 1014, 1014, 1014, 1012]
+        penv_ref[26:36] = [1011, 1012, 1013, 1014, 1015, 1015, 1014, 1014, 1014, 1012]
+        rmax_ref = np.zeros(97)
+        rmax_ref[63:82] = [
+            10.0,
+            10.0,
+            10.625,
+            11.25,
+            11.875,
+            12.5,
+            13.125,
+            13.75,
+            14.375,
+            15.0,
+            15.625,
+            16.25,
+            16.875,
+            17.5,
+            18.125,
+            18.75,
+            19.375,
+            20.0,
+            20.0,
+        ]
 
-        self.assertTrue(
-            np.allclose(tc_track.get_track()["environmental_pressure"].values, penv_ref)
+        np.testing.assert_array_almost_equal(
+            tc_track.get_track()["environmental_pressure"].values, penv_ref, decimal=4
         )
-        self.assertTrue(
-            np.allclose(tc_track.get_track()["radius_max_wind"].values, np.zeros(97))
+        np.testing.assert_array_almost_equal(
+            tc_track.get_track()["radius_max_wind"].values, rmax_ref, decimal=4
         )
 
     def test_ibtracs_raw_pass(self):
@@ -278,7 +302,7 @@ class TestIbtracs(unittest.TestCase):
             tc_try.data[0]["central_pressure"].values[0], 1013, places=0
         )
         self.assertAlmostEqual(
-            tc_try.data[0]["central_pressure"].values[5], 1008, places=0
+            tc_try.data[0]["central_pressure"].values[5], 1007, places=0
         )
         self.assertAlmostEqual(
             tc_try.data[0]["central_pressure"].values[-1], 1012, places=0
@@ -609,6 +633,51 @@ class TestIO(unittest.TestCase):
         tc_track = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM, years=[7])
         self.assertEqual(len(tc_track.data), 0)
 
+    def test_from_FAST(self):
+        """test the correct import of netcdf files from FAST model and the conversion to a
+        different xr.array structure compatible with CLIMADA."""
+
+        tc_track = tc.TCTracks.from_FAST(TEST_TRACK_FAST)
+
+        expected_attributes = {
+            "max_sustained_wind_unit": "m/s",
+            "central_pressure_unit": "hPa",
+            "name": "storm_0",
+            "sid": 0,
+            "orig_event_flag": True,
+            "data_provider": "FAST",
+            "id_no": 0,
+            "category": 1,
+        }
+
+        self.assertIsInstance(
+            tc_track, tc.TCTracks, "tc_track is not an instance of TCTracks"
+        )
+        self.assertIsInstance(
+            tc_track.data, list, "tc_track.data is not an instance of list"
+        )
+        self.assertIsInstance(
+            tc_track.data[0],
+            xr.Dataset,
+            "tc_track.data[0] not an instance of xarray.Dataset",
+        )
+        self.assertEqual(len(tc_track.data), 5)
+        self.assertEqual(tc_track.data[0].attrs, expected_attributes)
+        self.assertEqual(list(tc_track.data[0].coords.keys()), ["time", "lat", "lon"])
+        self.assertEqual(
+            tc_track.data[0].time.values[0],
+            np.datetime64("2025-09-01T00:00:00.000000000"),
+        )
+        self.assertEqual(tc_track.data[0].lat.values[0], 17.863591350508266)
+        self.assertEqual(tc_track.data[0].lon.values[0], -71.76441758319629)
+        self.assertEqual(len(tc_track.data[0].time), 35)
+        self.assertEqual(tc_track.data[0].time_step[0], 10800)
+        self.assertEqual(
+            tc_track.data[0].max_sustained_wind.values[10], 24.71636959089841
+        )
+        self.assertEqual(tc_track.data[0].environmental_pressure.data[0], 1010)
+        self.assertEqual(tc_track.data[0].basin[0], "NA")
+
     def test_to_geodataframe_points(self):
         """Conversion of TCTracks to GeoDataFrame using Points."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
@@ -695,20 +764,130 @@ class TestFuncs(unittest.TestCase):
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=storms)
         self.assertEqual(tc_track.subset({"basin": "SP"}).size, 2)
 
+    def test_subset_years(self):
+        """Test that subset_years correctly select tracks between year min and year max."""
+
+        tc_test = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL)
+        for i in range(5):
+            date = cftime.DatetimeProlepticGregorian(
+                2000 + i, 1 + i, 10 + i, 0, 0, 0, 0, has_year_zero=True
+            )
+            tc_test.data[i]["time"] = np.full(tc_test.data[i].time.shape[0], date)
+
+        # correct calling of the function
+        tc_subset = tc_test.subset_year(
+            start_date=(2000, False, False), end_date=(2003, False, False)
+        )
+        self.assertEqual(len(tc_subset.data), 4)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[1].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[1].time[0].item().month, 2)
+        self.assertEqual(tc_subset.data[2].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[2].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[3].time[0].item().year, 2003)
+        self.assertEqual(tc_subset.data[3].time[0].item().month, 4)
+        tc_subset = tc_test.subset_year(
+            start_date=(2000, False, False), end_date=(2000, False, False)
+        )
+        self.assertEqual(len(tc_subset.data), 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        tc_subset = tc_test.subset_year(
+            start_date=(False, 1, False), end_date=(False, 4, False)
+        )
+        self.assertEqual(len(tc_subset.data), 4)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[1].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[1].time[0].item().month, 2)
+        self.assertEqual(tc_subset.data[2].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[2].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[3].time[0].item().year, 2003)
+        self.assertEqual(tc_subset.data[3].time[0].item().month, 4)
+        tc_subset = tc_test.subset_year(
+            start_date=(False, 3, False), end_date=(False, 3, False)
+        )
+        self.assertEqual(len(tc_subset.data), 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2002)
+        tc_subset = tc_test.subset_year(
+            start_date=(False, False, 11), end_date=(False, False, 14)
+        )
+        self.assertEqual(len(tc_subset.data), 4)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 2)
+        self.assertEqual(tc_subset.data[1].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[1].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[2].time[0].item().year, 2003)
+        self.assertEqual(tc_subset.data[2].time[0].item().month, 4)
+        self.assertEqual(tc_subset.data[3].time[0].item().year, 2004)
+        self.assertEqual(tc_subset.data[3].time[0].item().month, 5)
+        tc_subset = tc_test.subset_year(
+            start_date=(False, False, 10), end_date=(False, False, 10)
+        )
+        self.assertEqual(len(tc_subset.data), 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        tc_subset = tc_test.subset_year(
+            start_date=(2000, 1, 10), end_date=(2000, 1, 13)
+        )
+        self.assertEqual(len(tc_subset.data), 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        tc_subset = tc_test.subset_year(
+            start_date=(2000, 1, 10), end_date=(2004, 9, 13)
+        )
+        self.assertEqual(len(tc_subset.data), 4)
+        self.assertEqual(tc_subset.data[0].time[0].item().year, 2000)
+        self.assertEqual(tc_subset.data[0].time[0].item().month, 1)
+        self.assertEqual(tc_subset.data[1].time[0].item().year, 2001)
+        self.assertEqual(tc_subset.data[1].time[0].item().month, 2)
+        self.assertEqual(tc_subset.data[2].time[0].item().year, 2002)
+        self.assertEqual(tc_subset.data[2].time[0].item().month, 3)
+        self.assertEqual(tc_subset.data[3].time[0].item().year, 2003)
+        self.assertEqual(tc_subset.data[3].time[0].item().month, 4)
+
+        # Invalid input: Mismatch between start_day and end_day
+        with self.assertRaisesRegex(
+            ValueError,
+            "Mismatch between start_year and end_year: "
+            "Both must be either True or False.",
+        ):
+            tc_test.subset_year((2000, False, False), (False, False, False))
+        with self.assertRaisesRegex(
+            ValueError,
+            "Mismatch between start_month and end_month: "
+            "Both must be either True or False.",
+        ):
+            tc_test.subset_year((2000, False, False), (2000, 5, False))
+        with self.assertRaisesRegex(
+            ValueError,
+            "Mismatch between start_day and end_day: "
+            "Both must be either True or False.",
+        ):
+            tc_test.subset_year((False, False, False), (False, False, 3))
+        with self.assertRaisesRegex(ValueError, "Start year is after end year."):
+            tc_test.subset_year((2007, False, False), (2000, False, False))
+        with self.assertRaisesRegex(
+            ValueError, "No tracks found for the specified date range"
+        ):
+            tc_test.subset_year((2100, False, False), (2150, False, False))
+
     def test_get_extent(self):
         """Test extent/bounds attributes."""
         storms = ["1988169N14259", "2002073S16161", "2002143S07157"]
         tc_track = tc.TCTracks.from_ibtracs_netcdf(
             storm_id=storms, provider=["usa", "bom"]
         )
-        bounds = (153.585022, -23.200001, 258.714996, 17.514986)
-        bounds_buf = (153.485022, -23.300001, 258.814996, 17.614986)
-        np.testing.assert_array_almost_equal(tc_track.bounds, bounds)
+        bounds = (153.6, -23.2, 258.7, 17.5)
+        bounds_buf = (153.5, -23.3, 258.8, 17.6)
+        np.testing.assert_array_almost_equal(tc_track.bounds, bounds, decimal=4)
         np.testing.assert_array_almost_equal(
-            tc_track.get_bounds(deg_buffer=0.1), bounds_buf
+            tc_track.get_bounds(deg_buffer=0.1), bounds_buf, decimal=4
         )
         np.testing.assert_array_almost_equal(
-            tc_track.extent, u_coord.toggle_extent_bounds(bounds)
+            tc_track.extent, u_coord.toggle_extent_bounds(bounds), decimal=4
         )
 
     def test_generate_centroids(self):
@@ -718,13 +897,13 @@ class TestFuncs(unittest.TestCase):
             storm_id=storms, provider=["usa", "bom"]
         )
         cen = tc_track.generate_centroids(10, 1)
-        cen_bounds = (157.585022, -19.200001, 257.585022, 10.799999)
+        cen_bounds = (157.6, -19.2, 257.6, 10.8)
         self.assertEqual(cen.size, 44)
         self.assertEqual(np.unique(cen.lat).size, 4)
         self.assertEqual(np.unique(cen.lon).size, 11)
         np.testing.assert_array_equal(np.diff(np.unique(cen.lat)), 10)
         np.testing.assert_array_equal(np.diff(np.unique(cen.lon)), 10)
-        np.testing.assert_array_almost_equal(cen.total_bounds, cen_bounds)
+        np.testing.assert_array_almost_equal(cen.total_bounds, cen_bounds, decimal=4)
 
     def test_interp_track_pass(self):
         """Interpolate track to min_time_step. Compare to MATLAB reference."""

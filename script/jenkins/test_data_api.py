@@ -22,11 +22,9 @@ Test files_handler module.
 import datetime as dt
 import unittest
 from pathlib import Path
-from sys import dont_write_bytecode
 
 import numpy as np
-import pandas as pd
-import xmlrunner
+import pytest
 from pandas_datareader import wb
 
 from climada import CONFIG
@@ -125,8 +123,7 @@ class TestDataAvail(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestDataAvail)
     from sys import argv
 
     outputdir = argv[1] if len(argv) > 1 else str(Path.cwd().joinpath("tests_xml"))
-    xmlrunner.XMLTestRunner(output=outputdir).run(TESTS)
+    pytest.main([f"--junitxml={outputdir}/tests.xml", __file__])
