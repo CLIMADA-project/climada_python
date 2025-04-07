@@ -97,7 +97,8 @@ else:
         return image_median
 
     def obtain_image_sentinel(sentinel_collection, time_range, area):
-        """Selection of median, cloud-free image from a collection of images in the Sentinel 2 dataset
+        """Selection of median, cloud-free image from a collection of images in the Sentinel 2
+        dataset.
         See also: https://developers.google.com/earth-engine/datasets/catalog/COPERNICUS_S2
 
         Parameters
@@ -148,14 +149,13 @@ else:
         region : list
         """
         if isinstance(geom, ee.Geometry):
-            region = geom.getInfo()["coordinates"]
-        elif isinstance(geom, ee.Feature, ee.Image):
-            region = geom.geometry().getInfo()["coordinates"]
-        elif isinstance(geom, list):
-            condition = all([isinstance(item) == list for item in geom])
-            if condition:
-                region = geom
-        return region
+            return geom.getInfo()["coordinates"]
+        elif isinstance(geom, (ee.Feature, ee.Image)):
+            return geom.geometry().getInfo()["coordinates"]
+        else:
+            raise ValueError(
+                "parameter must be one of `ee.Geometry`, `ee.Feature`, `ee.Image`"
+            )
 
     def get_url(name, image, scale, region):
         """It will open and download automatically a zip folder containing Geotiff data of 'image'.
