@@ -21,6 +21,7 @@ Define Uncertainty Impact class
 
 __all__ = ["CalcImpact"]
 
+import copy as cp
 import itertools
 import logging
 import time
@@ -30,6 +31,12 @@ import numpy as np
 import pandas as pd
 import pathos.multiprocessing as mp
 
+# import network from petals
+from climada_petals.engine.networks import nw_utils as nwu
+from climada_petals.engine.networks.nw_base import Graph
+from climada_petals.engine.networks.nw_calcs import cascade
+
+import climada.util.lines_polys_handler as u_lp
 from climada.engine import ImpactCalc
 from climada.engine.unsequa.calc_base import (
     Calc,
@@ -42,8 +49,6 @@ from climada.engine.unsequa.unc_output import UncImpactOutput
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
-
-# import network from petals
 
 # use pathos.multiprocess fork of multiprocessing for compatibility
 # wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
@@ -300,7 +305,13 @@ class CalcCascade(Calc):
 
 
 def _map_impact_calc(
-    sample_chunks, nw_input_var, impf_input_var, haz_input_var, ci_types
+    sample_chunks,
+    nw_input_var,
+    impf_input_var,
+    haz_input_var,
+    ci_types,
+    df_dependencies,
+    friction_surf,
 ):
     """
     Map to compute impact for all parameter samples in parallel
@@ -338,14 +349,12 @@ def _map_impact_calc(
         haz = haz_input_var.evaluate(**haz_samples)
 
         # disrupt network
-        ci_network_disr = disrupt_network(
-            nw, haz, impf, impfid_dict, ci_types=ci_types, res_disagg=200
-        )
+        nw_disr = disrupt_network(nw, haz, impf, ci_types=ci_types, res_disagg=200)
 
-        # Load friction surface (if needed)
+        # Load friction surface or pass it down as argument
 
         # IMPACT CASCADES
-        ci_graph_disr = Graph(ci_network_disr, directed=False)
+        ci_graph_disr = Graph(nw_disr, directed=False)
         ci_graph_disr = cascade(
             ci_graph_disr,
             df_dependencies,
@@ -355,15 +364,132 @@ def _map_impact_calc(
         )
 
         # CALC IMPACTSTATS
-        ci_network_disr = ci_graph_disr.return_network()
+        nw_disr = ci_graph_disr.return_network()
         imp_dict = nwu.disaster_impact_allservices_df(
-            ci_network.nodes, ci_network_disr.nodes, services=ci_types
+            nw.nodes, nw_disr.nodes, services=ci_types
         )
         if "people" in ci_types:
             imp_dict["people"] = sum(
-                ci_network_disr.nodes[ci_network_disr.nodes.ci_type == "people"].imp_dir
+                nw_disr.nodes[nw_disr.nodes.ci_type == "people"].imp_dir
             )
 
         uncertainty_values.append([v for v in imp_dict.values()])
 
     return list(zip(*uncertainty_values))
+
+
+## For now, copy the nw functions here
+def gdf_from_network(df_edges_or_nodes, ci_type):
+    return df_edges_or_nodes[df_edges_or_nodes["ci_type"] == ci_type]
+
+
+def exposure_from_nodes(gdf, value=1, tag=None):
+    exp_pnt = Exposures(gdf)
+    exp_pnt.gdf["value"] = value
+    exp_pnt.description = tag if tag is not None else gdf.ci_type.iloc[0]
+
+    exp_pnt.set_lat_lon()
+    exp_pnt.check()
+    return exp_pnt
+
+
+def exposure_from_edges(
+    gdf, res, disagg_met=u_lp.DisaggMethod.FIX, disagg_val=1, tag=None
+):
+    exp_line = Exposures(gdf)
+    if not disagg_val:
+        disagg_val = res
+    exp_pnt = u_lp.exp_geom_to_pnt(
+        exp_line, res=res, to_meters=True, disagg_met=disagg_met, disagg_val=disagg_val
+    )
+    exp_pnt.description = tag if tag is not None else gdf.ci_type.iloc[0]
+
+    exp_pnt.set_lat_lon()
+    exp_pnt.check()
+    return exp_pnt
+
+
+def make_network_exposures(network, ci_types=None, res_orig=500):
+    exp_list = []
+    if ci_types is None:
+        ci_types = network.nodes.ci_type.unique()
+    for ci_type in ci_types:
+        if ci_type == "road":
+            disagg_val_road = res_orig  # damage fraction on y-axis
+            exp = exposure_from_edges(
+                gdf_from_network(network.edges, "road"),
+                res=res_orig,
+                disagg_val=disagg_val_road,
+            )
+        elif ci_type == "people":
+            gdf_ppl = gdf_from_network(network.nodes, "people")
+            exp = exposure_from_nodes(gdf_ppl, value=gdf_ppl.counts)
+        else:
+            gdf = gdf_from_network(network.nodes, ci_type)
+            exp = exposure_from_nodes(gdf)
+        exp_list.append(exp)
+    return exp_list
+
+
+def calc_point_impacts(haz, exp, impf_set):
+    """Impact calulation for a single point exposure."""
+    imp = ImpactCalc(exp, impf_set, haz)
+    imp = imp.impact(save_mat=True)
+    return imp
+
+
+def impacts_to_network(imp, exp_tag, impf_set, ci_network_disr):
+    """Assign impacts to network."""
+    # get impf
+    impf = impf_set.get_func(exp_tag)
+    func_states = list(
+        map(int, imp.imp_mat.toarray().flatten() <= impf.impact_threshold)
+    )  # this needs to be defined in impf
+
+    if exp_tag == "road":
+        ci_network_disr.edges.loc[
+            ci_network_disr.edges.ci_type == "road", "func_internal"
+        ] = func_states
+        ci_network_disr.edges.loc[
+            ci_network_disr.edges.ci_type == "road", "imp_dir"
+        ] = imp.imp_mat.toarray().flatten()
+
+    else:
+        ci_network_disr.nodes.loc[
+            ci_network_disr.nodes.ci_type == exp_tag, "func_internal"
+        ] = func_states
+        ci_network_disr.nodes.loc[
+            ci_network_disr.nodes.ci_type == exp_tag, "imp_dir"
+        ] = imp.imp_mat.toarray().flatten()
+
+    ci_network_disr.edges["func_tot"] = [
+        np.min([func_internal, func_tot])
+        for func_internal, func_tot in zip(
+            ci_network_disr.edges.func_internal, ci_network_disr.edges.func_tot
+        )
+    ]
+    ci_network_disr.nodes["func_tot"] = [
+        np.min([func_internal, func_tot])
+        for func_internal, func_tot in zip(
+            ci_network_disr.nodes.func_internal, ci_network_disr.nodes.func_tot
+        )
+    ]
+
+    return ci_network_disr
+
+
+def disrupt_network(network, haz, impf_set, ci_types=None, res_disagg=500):
+    """wrapper to disrupt network based on hazard and exposure data."""
+    network_disr = cp.deepcopy(network)
+    exp_list = make_network_exposures(network_disr, ci_types, res_orig=res_disagg)
+
+    for exp in exp_list:
+        exp.gdf[f"impf_{haz.haz_type}"] = exp.description
+        imp = calc_point_impacts(haz, exp, impf_set)
+        if exp.description in ["road"]:
+            imp = u_lp.impact_pnt_agg(imp, exp.gdf, u_lp.AggMethod.SUM)
+        network_disr = impacts_to_network(imp, exp.description, network_disr)
+        del imp
+        del exp
+    # gc.collect()
+    return network_disr
