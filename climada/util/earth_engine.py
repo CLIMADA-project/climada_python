@@ -32,14 +32,14 @@ try:
     import ee
 
     LOGGER.info("Google Earth Engine API successfully imported.")
-    ee_available = True
+    EE_AVAILABLE = True
 except ImportError:
     LOGGER.error(
         "Google Earth Engine API not found. Please install it using 'pip install earthengine-api'."
     )
-    ee_available = False
+    EE_AVAILABLE = False
 
-if not ee_available:
+if not EE_AVAILABLE:
     LOGGER.error(
         "Google Earth Engine API not found. Skipping the init of `earth_engine.py`."
     )
@@ -150,12 +150,11 @@ else:
         """
         if isinstance(geom, ee.Geometry):
             return geom.getInfo()["coordinates"]
-        elif isinstance(geom, (ee.Feature, ee.Image)):
+        if isinstance(geom, (ee.Feature, ee.Image)):
             return geom.geometry().getInfo()["coordinates"]
-        else:
-            raise ValueError(
-                "parameter must be one of `ee.Geometry`, `ee.Feature`, `ee.Image`"
-            )
+        raise ValueError(
+            "parameter must be one of `ee.Geometry`, `ee.Feature`, `ee.Image`"
+        )
 
     def get_url(name, image, scale, region):
         """It will open and download automatically a zip folder containing Geotiff data of 'image'.
