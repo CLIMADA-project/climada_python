@@ -43,6 +43,8 @@ from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
 
+# import network from petals
+
 # use pathos.multiprocess fork of multiprocessing for compatibility
 # wiht notebooks and other environments https://stackoverflow.com/a/65001152/12454103
 
@@ -50,12 +52,12 @@ from climada.util import log_level
 LOGGER = logging.getLogger(__name__)
 
 
-class CalcImpact(Calc):
+class CalcCascade(Calc):
     """
-    Impact uncertainty caclulation class.
+    Cascade uncertainty caclulation class.
 
     This is the class to perform uncertainty analysis on the outputs of a
-    climada.engine.impact.Impact() object.
+    climada_petals network cascade object.
 
     Attributes
     ----------
@@ -298,13 +300,7 @@ class CalcImpact(Calc):
 
 
 def _map_impact_calc(
-    sample_chunks,
-    exp_input_var,
-    impf_input_var,
-    haz_input_var,
-    rp,
-    calc_eai_exp,
-    calc_at_event,
+    sample_chunks, nw_input_var, impf_input_var, haz_input_var, ci_types
 ):
     """
     Map to compute impact for all parameter samples in parallel
@@ -313,18 +309,15 @@ def _map_impact_calc(
     ----------
     sample_chunks : pd.DataFrame
         Dataframe of the parameter samples
-    exp_input_var : InputVar or Exposures
-        Exposure uncertainty variable
+    nw_input_var : InputVar or Network
+        Network uncertainty variable
     impf_input_var : InputVar if ImpactFuncSet
         Impact function set uncertainty variable
     haz_input_var: InputVar or Hazard
         Hazard uncertainty variable
-    rp : list(int)
-        List of the chosen return periods.
-    calc_eai_exp : bool
-        Compute eai_exp or not
-    calc_at_event : bool
-        Compute eai_exp or not
+    ci_types : list(str)
+        List of the chosen critical infrastructures for which to compute impacts
+
 
     Returns
     -------
@@ -336,32 +329,41 @@ def _map_impact_calc(
     """
     uncertainty_values = []
     for _, sample in sample_chunks.iterrows():
-        exp_samples = sample[exp_input_var.labels].to_dict()
+        nw_samples = sample[nw_input_var.labels].to_dict()
         impf_samples = sample[impf_input_var.labels].to_dict()
         haz_samples = sample[haz_input_var.labels].to_dict()
 
-        exp = exp_input_var.evaluate(**exp_samples)
+        nw = nw_input_var.evaluate(**nw_samples)  # create network
         impf = impf_input_var.evaluate(**impf_samples)
         haz = haz_input_var.evaluate(**haz_samples)
 
-        exp.assign_centroids(haz, overwrite=False)
-        imp = ImpactCalc(exposures=exp, impfset=impf, hazard=haz).impact(
-            assign_centroids=False, save_mat=False
+        # disrupt network
+        ci_network_disr = disrupt_network(
+            nw, haz, impf, impfid_dict, ci_types=ci_types, res_disagg=200
         )
 
-        # Extract from climada.impact the chosen metrics
-        freq_curve = imp.calc_freq_curve(rp).impact
+        # Load friction surface (if needed)
 
-        if calc_eai_exp:
-            eai_exp = imp.eai_exp
-        else:
-            eai_exp = np.array([])
+        # IMPACT CASCADES
+        ci_graph_disr = Graph(ci_network_disr, directed=False)
+        ci_graph_disr = cascade(
+            ci_graph_disr,
+            df_dependencies,
+            friction_surf=friction_surf,
+            initial=False,
+            criterion="distance",
+        )
 
-        if calc_at_event:
-            at_event = imp.at_event
-        else:
-            at_event = np.array([])
+        # CALC IMPACTSTATS
+        ci_network_disr = ci_graph_disr.return_network()
+        imp_dict = nwu.disaster_impact_allservices_df(
+            ci_network.nodes, ci_network_disr.nodes, services=ci_types
+        )
+        if "people" in ci_types:
+            imp_dict["people"] = sum(
+                ci_network_disr.nodes[ci_network_disr.nodes.ci_type == "people"].imp_dir
+            )
 
-        uncertainty_values.append([imp.aai_agg, freq_curve, eai_exp, at_event])
+        uncertainty_values.append([v for v in imp_dict.values()])
 
     return list(zip(*uncertainty_values))
