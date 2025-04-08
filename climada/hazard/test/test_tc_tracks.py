@@ -874,6 +874,28 @@ class TestFuncs(unittest.TestCase):
         ):
             tc_test.subset_year((2100, False, False), (2150, False, False))
 
+    def test_subset_basin(self):
+        """test the correct splitting of a single tc object into different tc objets by basin"""
+
+        tc_test = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL)
+        tc_test.data[-1].lat[0] = 0  # modify lat of track to exclude it from a basin
+
+        with self.assertWarnsRegex(
+            UserWarning,
+            "A total of 1 tracks did not originate in any of the \n"
+            "defined basins. IDs of the tracks outside the basins: \[4\]",
+        ):
+            dict_basins = tc_test.subset_by_basin()
+
+        self.assertEqual(dict_basins["EP"].data[0].lat[0].item(), 12.553)
+        self.assertEqual(dict_basins["EP"].data[0].lon[0].item(), -109.445)
+        self.assertEqual(dict_basins["SI"].data[0].lat[0].item(), -8.699)
+        self.assertEqual(dict_basins["SI"].data[0].lon[0].item(), 52.761)
+        self.assertEqual(dict_basins["WP"].data[0].lat[0].item(), 8.502)
+        self.assertEqual(dict_basins["WP"].data[0].lon[0].item(), 164.909)
+        self.assertEqual(dict_basins["WP"].data[1].lat[0].item(), 16.234)
+        self.assertEqual(dict_basins["WP"].data[1].lon[0].item(), 116.424)
+
     def test_get_extent(self):
         """Test extent/bounds attributes."""
         storms = ["1988169N14259", "2002073S16161", "2002143S07157"]

@@ -432,8 +432,9 @@ class TCTracks:
         Returns
         -------
         dict_tc_basins : dict
-            A dictionary where the keys are basin names (e.g., "NA", "EP", "WP", etc.) and the values are instances
-            of the `TCTracks` class containing the tropical cyclones that belong to each basin.
+            A dictionary where the keys are basin names (e.g., "NA", "EP", "WP", etc.) and the
+            values are instances of the `TCTracks` class containing the tropical cyclones that
+            belong to each basin.
 
         Example:
         --------
@@ -447,24 +448,24 @@ class TCTracks:
         basins_dict = defaultdict(list)
         tracks_outside_basin: list = []
         # Iterate over each tropical cyclone
-        for tc in self.data:
-            lat, lon = tc.lat.values[0], tc.lon.values[0]
+        for track in self.data:
+            lat, lon = track.lat.values[0], track.lon.values[0]
             origin_point = Point(lon, lat)
             point_in_basin = False
 
             # Find the basin that contains the point
             for basin in Basin:
                 if basin.value.contains(origin_point):
-                    basins_dict[basin.name].append(tc)
+                    basins_dict[basin.name].append(track)
                     point_in_basin = True
                     break
 
             if not point_in_basin:
-                tracks_outside_basin.append(tc.id_no)
+                tracks_outside_basin.append(track.id_no)
 
         if tracks_outside_basin:
             warnings.warn(
-                f"A total of {len(tracks_outside_basin)} tracks did not originate in any of the "
+                f"A total of {len(tracks_outside_basin)} tracks did not originate in any of the \n"
                 f"defined basins. IDs of the tracks outside the basins: {tracks_outside_basin}",
                 UserWarning,
             )
