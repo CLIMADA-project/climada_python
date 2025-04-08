@@ -37,6 +37,7 @@ from textwrap import wrap
 import cartopy.crs as ccrs
 import geopandas as gpd
 import matplotlib as mpl
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
@@ -374,6 +375,11 @@ def geo_im_from_array(
     -------
     cartopy.mpl.geoaxes.GeoAxesSubplot
 
+    Notes
+    -----
+    Data points with NaN or inf are plotted in gray. White regions correspond to
+    regions outside the convex hull of the given coordinates.
+
     Raises
     ------
     ValueError
@@ -420,8 +426,7 @@ def geo_im_from_array(
 
     # prepare colormap
     cmap = plt.get_cmap(kwargs.pop("cmap", CMAP_RASTER))
-    cmap.set_bad("gainsboro")  # For NaNs and infs
-    cmap.set_under("white", alpha=0)  # For values below vmin
+    cmap.set_under("white")  # For values below vmin
 
     # Generate each subplot
     for array_im, axis, tit, name in zip(
@@ -470,6 +475,17 @@ def geo_im_from_array(
             cmap=cmap,
             **kwargs,
         )
+        # handle NaNs in griddata
+        color_nan = "gainsboro"
+        if np.any(np.isnan(x) for x in grid_im):
+            no_data_patch = mpatches.Patch(
+                facecolor=color_nan, edgecolor="black", label="NaN"
+            )
+            axis.legend(
+                handles=[no_data_patch] + axis.get_legend_handles_labels()[0],
+                loc="lower right",
+            )
+        axis.set_facecolor(color_nan)
         cbar = plt.colorbar(img, cax=cbax, orientation="vertical")
         cbar.set_label(name)
         axis.set_title("\n".join(wrap(tit)))

@@ -391,7 +391,7 @@ class TropCyclone(Hazard):
         percentile: str = "50",
         scenario: str = "4.5",
         target_year: int = 2050,
-        **kwargs,
+        yearly_steps: int = 5,
     ):
         """
         From current TC hazard instance, return new hazard set with future events
@@ -437,6 +437,9 @@ class TropCyclone(Hazard):
 
         target_year : int
             future year to be simulated, between 2000 and 2100. Default: 2050.
+        yearly_steps : int
+            yearly resolution at which projections are provided. Default is 5 years.
+
         Returns
         -------
         haz_cc : climada.hazard.TropCyclone
@@ -465,11 +468,11 @@ class TropCyclone(Hazard):
         for basin in np.unique(tc_cc.basin):
             scale_year_rcp_05, scale_year_rcp_45 = [
                 get_knutson_scaling_factor(
-                    percentile=percentile,
                     variable=variable,
+                    percentile=percentile,
                     basin=basin,
                     baseline=(np.min(years), np.max(years)),
-                    **kwargs,
+                    yearly_steps=yearly_steps,
                 ).loc[target_year, scenario]
                 for variable in ["cat05", "cat45"]
             ]
