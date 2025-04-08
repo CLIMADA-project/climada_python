@@ -904,8 +904,12 @@ def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     """
     if not u_coord.check_if_geo_coords(lat, 0):
         raise ValueError(
-            "Input lat and lon coordinates are not geographic "
-            "or have total extents > 180° for lat or > 360° for lon."
+            "Input lat and lon coordinates do not seem to correspond"
+            " to geographic coordinates in degrees. This can be because"
+            " total extents are > 180 for lat or > 360 for lon, lat coordinates"
+            " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
+            " If you use degree values outside of these ranges,"
+            " please shift the coordinates to the valid ranges."
         )
     return 2 * V_ANG_EARTH * np.sin(np.radians(np.abs(lat)))
 

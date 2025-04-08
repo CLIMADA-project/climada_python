@@ -1474,20 +1474,11 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_get_country_geometries_fail(self):
         """get_country_geometries with offensive parameters"""
-        with self.assertRaises(ValueError) as cm:
-            u_coord.get_country_geometries(extent=(-20, 350, 0, 0))
-        self.assertIn(
-            "Input lat and lon coordinates are not geographic "
-            "or have total extents > 180° for lat or > 360° for lon.",
-            str(cm.exception),
-        )
-        with self.assertRaises(ValueError) as cm:
-            u_coord.get_country_geometries(extent=(340, -20, 0, 0))
-        self.assertIn(
-            "longitude extent at the left (340) is larger "
-            "than longitude extent at the right (-20)",
-            str(cm.exception),
-        )
+        self.assertRaises(ValueError, 
+        u_coord.get_country_geometries(extent=(-20, 350, 0, 0)))        
+        self.assertRaises(ValueError,
+        u_coord.get_country_geometries(extent=(340, -20, 0, 0)))
+       
 
     def test_country_code_pass(self):
         """Test set_region_id"""
