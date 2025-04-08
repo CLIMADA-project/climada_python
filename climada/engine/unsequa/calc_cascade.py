@@ -89,7 +89,7 @@ class CalcCascade(Calc):
     """
 
     _input_var_names = (
-        "exp_input_var",
+        "nw_input_var",
         "impf_input_var",
         "haz_input_var",
     )
@@ -100,7 +100,7 @@ class CalcCascade(Calc):
 
     def __init__(
         self,
-        exp_input_var: Union[InputVar, Exposures],
+        nw_input_var: Union[InputVar, Exposures],
         impf_input_var: Union[InputVar, ImpactFuncSet],
         haz_input_var: Union[InputVar, Hazard],
     ):
@@ -111,8 +111,8 @@ class CalcCascade(Calc):
 
         Parameters
         ----------
-        exp_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.Exposure
-            Exposure uncertainty variable or Exposure
+        nw_input_var : climada.engine.uncertainty.input_var.InputVar or network
+            Exposure uncertainty variable or network
         impf_input_var : climada.engine.uncertainty.input_var.InputVar or climada.entity.ImpactFuncSet
             Impact function set uncertainty variable or Impact function set
         haz_input_var : climada.engine.uncertainty.input_var.InputVar or climada.hazard.Hazard
@@ -121,7 +121,7 @@ class CalcCascade(Calc):
         """
 
         Calc.__init__(self)
-        self.exp_input_var = InputVar.var_to_inputvar(exp_input_var)
+        self.exp_input_var = InputVar.var_to_inputvar(nw_input_var)
         self.impf_input_var = InputVar.var_to_inputvar(impf_input_var)
         self.haz_input_var = InputVar.var_to_inputvar(haz_input_var)
 
@@ -131,21 +131,17 @@ class CalcCascade(Calc):
     def uncertainty(
         self,
         unc_sample,
-        rp=None,
-        calc_eai_exp=False,
-        calc_at_event=False,
+        df_dependencies,
+        friction_surf,
+        ci_types=None,
         processes=1,
         chunksize=None,
     ):
         """
         Computes the impact for each sample in unc_data.sample_df.
 
-        By default, the aggregated average impact within a period of 1/frequency_unit
-        (impact.aai_agg) and the excees impact at return periods rp
-        (imppact.calc_freq_curve(self.rp).impact) is computed.
-        Optionally, eai_exp and at_event is computed (this may require
-        a larger amount of memory if the number of samples and/or the number
-        of centroids and/or exposures points is large).
+        By default, number of people losing access to each ci_type is computed
+        along with the number of people directly affected.
 
         This sets the attributes self.rp, self.calc_eai_exp,
         self.calc_at_event, self.metrics.
@@ -217,12 +213,12 @@ class CalcCascade(Calc):
             chunksize = _multiprocess_chunksize(samples_df, processes)
         unit = self.value_unit
 
-        if rp is None:
-            rp = [5, 10, 20, 50, 100, 250]
+        if ci_types is None:
+            ci_types = df_dependencies.source.unique().tolist() + ["people"]
 
-        self.rp = rp
-        self.calc_eai_exp = calc_eai_exp
-        self.calc_at_event = calc_at_event
+        self.ci_types = ci_types
+        self.df_dependencies = df_dependencies
+        self.friction_surf = friction_surf
 
         one_sample = samples_df.iloc[0:1]
         start = time.time()
@@ -230,37 +226,35 @@ class CalcCascade(Calc):
         elapsed_time = time.time() - start
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
-        [aai_agg_list, freq_curve_list, eai_exp_list, at_event_list] = (
-            self._compute_imp_metrics(
-                samples_df, chunksize=chunksize, processes=processes
-            )
+        imp_met_dict = self._compute_imp_metrics(
+            samples_df, chunksize=chunksize, processes=processes
         )
 
         # Assign computed impact distribution data to self
-        aai_agg_unc_df = pd.DataFrame(aai_agg_list, columns=["aai_agg"])
-        freq_curve_unc_df = pd.DataFrame(
-            freq_curve_list, columns=["rp" + str(n) for n in rp]
-        )
-        eai_exp_unc_df = pd.DataFrame(eai_exp_list)
-        # Note: sparse dataframes are not used as they are not nativel y compatible with .to_hdf5
-        at_event_unc_df = pd.DataFrame(at_event_list)
-
-        if calc_eai_exp:
-            exp = self.exp_input_var.evaluate()
-            coord_df = pd.DataFrame(
-                dict(latitude=exp.latitude, longitude=exp.longitude)
-            )
-        else:
-            coord_df = pd.DataFrame([])
+        imp_met_unc_df = pd.DataFrame(imp_met_dict)
+        # freq_curve_unc_df = pd.DataFrame(
+        #    freq_curve_list, columns=["rp" + str(n) for n in rp]
+        # )
+        # eai_exp_unc_df = pd.DataFrame(eai_exp_list)
+        ## Note: sparse dataframes are not used as they are not nativel y compatible with .to_hdf5
+        # at_event_unc_df = pd.DataFrame(at_event_list)
+        #
+        # if calc_eai_exp:
+        #    exp = self.exp_input_var.evaluate()
+        #    coord_df = pd.DataFrame(
+        #        dict(latitude=exp.latitude, longitude=exp.longitude)
+        #    )
+        # else:
+        #    coord_df = pd.DataFrame([])
 
         return UncImpactOutput(
             samples_df=samples_df,
             unit=unit,
-            aai_agg_unc_df=aai_agg_unc_df,
-            freq_curve_unc_df=freq_curve_unc_df,
-            eai_exp_unc_df=eai_exp_unc_df,
-            at_event_unc_df=at_event_unc_df,
-            coord_df=coord_df,
+            imp_met_unc_df=imp_met_unc_df,
+            # freq_curve_unc_df=freq_curve_unc_df,
+            # eai_exp_unc_df=eai_exp_unc_df,
+            # at_event_unc_df=at_event_unc_df,
+            # coord_df=coord_df,
         )
 
     def _compute_imp_metrics(self, samples_df, chunksize, processes):
@@ -338,7 +332,7 @@ def _map_impact_calc(
         (np.array([]) if self.calc_at_event=False).
 
     """
-    uncertainty_values = []
+    uncertainty_values = {k: [] for k in ci_types}
     for _, sample in sample_chunks.iterrows():
         nw_samples = sample[nw_input_var.labels].to_dict()
         impf_samples = sample[impf_input_var.labels].to_dict()
@@ -373,9 +367,10 @@ def _map_impact_calc(
                 nw_disr.nodes[nw_disr.nodes.ci_type == "people"].imp_dir
             )
 
-        uncertainty_values.append([v for v in imp_dict.values()])
+        {uncertainty_values[k].append(v) for k, v in imp_dict.items()}
+        # uncertainty_values.append([v for v in imp_dict.values()])
 
-    return list(zip(*uncertainty_values))
+    return uncertainty_values  # list(zip(*uncertainty_values))
 
 
 ## For now, copy the nw functions here
@@ -443,7 +438,7 @@ def impacts_to_network(imp, exp_tag, impf_set, ci_network_disr):
     # get impf
     impf = impf_set.get_func(exp_tag)
     func_states = list(
-        map(int, imp.imp_mat.toarray().flatten() <= impf.impact_threshold)
+        map(int, imp.imp_mat.toarray().flatten() <= impf.func_threshold)
     )  # this needs to be defined in impf
 
     if exp_tag == "road":
