@@ -46,7 +46,7 @@ import shapely.ops
 import shapely.vectorized
 import shapely.wkt
 from cartopy.io import shapereader
-from shapely.geometry import MultiPolygon, Point, Polygon, box
+from shapely.geometry import MultiPolygon, Point, box
 from sklearn.neighbors import BallTree
 
 import climada.util.hdf5_handler as u_hdf5
@@ -1723,19 +1723,20 @@ def bounding_box_from_countries(country_names, buffer=1.0):
     """
 
     country_geometry = get_country_geometries(country_names).geometry
-    longitudes, latitudes = [], []
-    for multipolygon in country_geometry:
-        if isinstance(multipolygon, Polygon):  # if entry is polygon
-            for coord in polygon.exterior.coords:  # Extract exterior coordinates
-                longitudes.append(coord[0])
-                latitudes.append(coord[1])
-        else:  # if entry is multipolygon
-            for polygon in multipolygon.geoms:
-                for coord in polygon.exterior.coords:  # Extract exterior coordinates
-                    longitudes.append(coord[0])
-                    latitudes.append(coord[1])
+    generator_country_geometry = (
+        poly if isinstance(poly, MultiPolygon) else MultiPolygon([poly])
+        for poly in country_geometry
+    )
+    lon, lat = np.concatenate(
+        [
+            np.array(pg.exterior.coords).T
+            for poly in generator_country_geometry
+            for pg in poly.geoms
+        ],
+        axis=1,
+    )
 
-    return latlon_bounds(np.array(latitudes), np.array(longitudes), buffer=buffer)
+    return latlon_bounds(lat, lon, buffer=buffer)
 
 
 def bounding_box_from_cardinal_bounds(*, northern, eastern, western, southern):
@@ -1756,12 +1757,13 @@ def bounding_box_from_cardinal_bounds(*, northern, eastern, western, southern):
     Returns
     -------
     tuple
-        The resulting normalized bounding box (min_lon, min_lat, max_lon, max_lat) with -180 <= min_lon < max_lon < 540
+        The resulting normalized bounding box (min_lon, min_lat, max_lon, max_lat)
+        with -180 <= min_lon < max_lon < 540
 
     """
 
     # latitude bounds check
-    if not ((90 >= northern > southern >= -90)):
+    if not 90 >= northern > southern >= -90:
         raise ValueError(
             "Given northern bound is below given southern bound or out of bounds"
         )
@@ -3029,9 +3031,11 @@ def set_df_geometry_points(df_val, scheduler=None, crs=None):
         contains latitude and longitude columns
     scheduler : str, optional
         Scheduler type for dask map_partitions.
+
         .. deprecated:: 5.0
            This function does not use dask features anymore. The parameter has no effect
            and will be removed in a future version.
+
     crs : object (anything readable by pyproj4.CRS.from_user_input), optional
         Coordinate Reference System, if omitted or None: df_val.geometry.crs
     """

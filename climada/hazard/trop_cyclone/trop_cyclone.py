@@ -72,6 +72,7 @@ class TropCyclone(Hazard):
         *  3 Hurrican category 3
         *  4 Hurrican category 4
         *  5 Hurrican category 5
+
     basin : list of str
         Basin where every event starts:
 
@@ -82,6 +83,7 @@ class TropCyclone(Hazard):
         * 'SI' South Indian
         * 'SP' Southern Pacific
         * 'SA' South Atlantic
+
     windfields : list of csr_matrix
         For each event, the full velocity vectors at each centroid and track position in a sparse
         matrix of shape (npositions, ncentroids * 2) that can be reshaped to a full ndarray of
@@ -107,22 +109,26 @@ class TropCyclone(Hazard):
         ----------
         category : np.ndarray of int, optional
             For every event, the TC category using the Saffir-Simpson scale:
-                -1 tropical depression
-                0 tropical storm
-                1 Hurrican category 1
-                2 Hurrican category 2
-                3 Hurrican category 3
-                4 Hurrican category 4
-                5 Hurrican category 5
+
+            * '-1 tropical depression
+            * '0 tropical storm
+            * '1 Hurrican category 1
+            * '2 Hurrican category 2
+            * '3 Hurrican category 3
+            * '4 Hurrican category 4
+            * '5 Hurrican category 5
+
         basin : list of str, optional
             Basin where every event starts:
-                'NA' North Atlantic
-                'EP' Eastern North Pacific
-                'WP' Western North Pacific
-                'NI' North Indian
-                'SI' South Indian
-                'SP' Southern Pacific
-                'SA' South Atlantic
+
+            * 'NA' North Atlantic
+            * 'EP' Eastern North Pacific
+            * 'WP' Western North Pacific
+            * 'NI' North Indian
+            * 'SI' South Indian
+            * 'SP' Southern Pacific
+            * 'SA' South Atlantic
+
         windfields : list of csr_matrix, optional
             For each event, the full velocity vectors at each centroid and track position in a
             sparse matrix of shape (npositions,  ncentroids * 2) that can be reshaped to a full
@@ -213,6 +219,7 @@ class TropCyclone(Hazard):
                     Cyclone Outflow. Part I: Implications for Storm Structure. Journal
                     of the Atmospheric Sciences 68(10): 2236–2249.
                     https://dx.doi.org/10.1175/JAS-D-10-05024.1
+
         model_kwargs : dict, optional
             If given, forward these kwargs to the selected wind model. None of the
             parameters is currently supported by the ER11 model. Default: None.
@@ -240,6 +247,10 @@ class TropCyclone(Hazard):
                 inside of the brackets is that the wind speed maximum is attained a bit
                 farther away from the center than according to the recorded radius of
                 maximum winds (RMW). Default: False
+            cyclostrophic : bool, optional
+                If True, do not apply the influence of the Coriolis force (set the Coriolis
+                terms to 0).
+                Default: True for H10 model, False otherwise.
 
         ignore_distance_to_coast : boolean, optional
             If True, centroids far from coast are not ignored.
@@ -408,18 +419,22 @@ class TropCyclone(Hazard):
             are the 10th, 25th, 50th, 75th and 90th. Please refer to the mentioned publications
             for more details.
             possible percentiles:
-                '5/10' either the 5th or 10th percentile depending on variable (see text above)
-                '25' for the 25th percentile
-                '50' for the 50th percentile
-                '75' for the 75th percentile
-                '90/95' either the 90th or 95th percentile depending on variable  (see text above)
+
+            * '5/10' either the 5th or 10th percentile depending on variable (see text above)
+            * '25' for the 25th percentile
+            * '50' for the 50th percentile
+            * '75' for the 75th percentile
+            * '90/95' either the 90th or 95th percentile depending on variable  (see text above)
+
             Default: '50'
         scenario : str
             possible scenarios:
-                '2.6' for RCP 2.6
-                '4.5' for RCP 4.5
-                '6.0' for RCP 6.0
-                '8.5' for RCP 8.5
+
+            * '2.6' for RCP 2.6
+            * '4.5' for RCP 4.5
+            * '6.0' for RCP 6.0
+            * '8.5' for RCP 8.5
+
         target_year : int
             future year to be simulated, between 2000 and 2100. Default: 2050.
         Returns
