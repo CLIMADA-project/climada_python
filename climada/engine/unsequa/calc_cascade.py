@@ -426,19 +426,18 @@ def make_network_exposures(network, ci_types=None, res_orig=500):
     return exp_list
 
 
-def calc_point_impacts(haz, exp, impf_set):
+def calc_point_impacts(haz, exp, impf):
     """Impact calulation for a single point exposure."""
-    imp = ImpactCalc(exp, impf_set, haz)
+    imp = ImpactCalc(exp, impf, haz)
     imp = imp.impact(save_mat=True)
     return imp
 
 
-def impacts_to_network(imp, exp_tag, impf_set, ci_network_disr):
+def impacts_to_network(imp, exp_tag, impf_thresh_set, ci_network_disr):
     """Assign impacts to network."""
     # get impf
-    impf = impf_set.get_func(exp_tag)
     func_states = list(
-        map(int, imp.imp_mat.toarray().flatten() <= impf.func_threshold)
+        map(int, imp.imp_mat.toarray().flatten() <= impf_thresh_set.getThresh(exp_tag))
     )  # this needs to be defined in impf
 
     if exp_tag == "road":
@@ -473,17 +472,20 @@ def impacts_to_network(imp, exp_tag, impf_set, ci_network_disr):
     return ci_network_disr
 
 
-def disrupt_network(network, haz, impf_set, ci_types=None, res_disagg=500):
+def disrupt_network(network, haz, impf_thresh_set, ci_types=None, res_disagg=500):
     """wrapper to disrupt network based on hazard and exposure data."""
     network_disr = cp.deepcopy(network)
     exp_list = make_network_exposures(network_disr, ci_types, res_orig=res_disagg)
 
     for exp in exp_list:
-        exp.gdf[f"impf_{haz.haz_type}"] = exp.description
-        imp = calc_point_impacts(haz, exp, impf_set)
+        impf = impf_thresh_set.getImpf(exp.description)
+        exp.gdf[f"impf_{haz.haz_type}"] = impf.id
+        imp = calc_point_impacts(haz, exp, impf)
         if exp.description in ["road"]:
             imp = u_lp.impact_pnt_agg(imp, exp.gdf, u_lp.AggMethod.SUM)
-        network_disr = impacts_to_network(imp, exp.description, network_disr)
+        network_disr = impacts_to_network(
+            imp, exp.description, impf_thresh_set, network_disr
+        )
         del imp
         del exp
     # gc.collect()
