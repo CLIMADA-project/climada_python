@@ -45,7 +45,7 @@ from climada.engine.unsequa.calc_base import (
     _transpose_chunked_data,
 )
 from climada.engine.unsequa.input_var import InputVar
-from climada.engine.unsequa.unc_output import UncImpactOutput
+from climada.engine.unsequa.unc_output import UncCascadeOutput
 from climada.entity import Exposures, ImpactFuncSet
 from climada.hazard import Hazard
 from climada.util import log_level
@@ -247,7 +247,7 @@ class CalcCascade(Calc):
         # else:
         #    coord_df = pd.DataFrame([])
 
-        return UncImpactOutput(
+        return UncCascadeOutput(
             samples_df=samples_df,
             unit=unit,
             imp_met_unc_df=imp_met_unc_df,
