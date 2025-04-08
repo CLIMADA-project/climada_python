@@ -285,12 +285,12 @@ class CalcCascade(Calc):
             p_iterator = _sample_parallel_iterator(
                 samples=samples_df,
                 chunksize=chunksize,
-                exp_input_var=self.exp_input_var,
+                nw_input_var=self.exp_input_var,
                 impf_input_var=self.impf_input_var,
                 haz_input_var=self.haz_input_var,
-                rp=self.rp,
-                calc_eai_exp=self.calc_eai_exp,
-                calc_at_event=self.calc_at_event,
+                ci_types=self.ci_types,
+                df_dependencies=self.df_dependencies,
+                friction_surf=self.friction_surf,
             )
             if processes > 1:
                 with mp.Pool(processes=processes) as pool:
