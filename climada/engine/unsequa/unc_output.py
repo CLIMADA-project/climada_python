@@ -1398,3 +1398,34 @@ class UncCostBenefitOutput(UncOutput):
         self.cost_ben_ratio_unc_df = cost_ben_ratio_unc_df
         self.cost_ben_ratio_sens_df = None
         self.cost_benefit_kwargs = cost_benefit_kwargs
+
+
+class UncCascadeOutput(UncOutput):
+    """Extension of UncOutput specific for CalcImpact, returned by the
+    uncertainty() method.
+    """
+
+    def __init__(
+        self,
+        samples_df,
+        unit,
+        imp_met_unc_df,
+    ):
+        """Constructor
+
+        Uncertainty output values from impact.calc for each sample
+
+        Parameters
+        ----------
+        samples_df : pandas.DataFrame
+            input parameters samples
+        unit : str
+            value unit
+        imp_met_unc_df : pandas.DataFrame
+            Each row contains the values of the number of people losing access to
+            ci_types defined in the columns, computed over the sample (row of
+
+        """
+        super().__init__(samples_df, unit)
+        self.imp_met_unc_df = imp_met_unc_df
+        self.imp_met_sens_df = None
