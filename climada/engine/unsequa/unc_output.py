@@ -112,18 +112,22 @@ class UncOutput(ABC):
     @abstractmethod
     def __init__(self, samples_df, unit=None):
         """
-        Initialize Uncertainty Data object.
-
-        Parameters
-        ----------
-        samples_df : pandas.DataFrame
-            input parameters samples
-        unit : str, optional
-            value unit
+        Empty constructor to be overwritten by subclasses
         """
-        # Data
-        self.samples_df = samples_df
-        self.unit = unit
+        # """
+        # Initialize Uncertainty Data object.
+
+    #
+    # Parameters
+    # ----------
+    # samples_df : pandas.DataFrame
+    #    input parameters samples
+    # unit : str, optional
+    #    value unit
+    # """
+    ## Data
+    # self.samples_df = samples_df
+    # self.unit = unit
 
     def order_samples(self, by_parameters):
         """
@@ -1233,6 +1237,58 @@ class UncOutput(ABC):
                 }
                 unc_data.sensitivity_kwargs = tuple(sens_kwargs.items())
         return unc_data
+
+
+class UncBaseOutput(UncOutput):
+    """
+    Class to store and plot uncertainty and sensitivity analysis output data
+
+    This is the base class to store uncertainty and sensitivity outputs of an
+    analysis  done on climada.engine.impact.Impact() or
+    climada.engine.costbenefit.CostBenefit() object.
+
+    Attributes
+    ----------
+    samples_df : pandas.DataFrame
+        Values of the sampled uncertainty parameters. It has n_samples rows
+        and one column per uncertainty parameter.
+    sampling_method : str
+        Name of the sampling method from SAlib.
+        https://salib.readthedocs.io/en/latest/api.html#
+    n_samples : int
+        Effective number of samples (number of rows of samples_df)
+    param_labels : list
+        Name of all the uncertainty parameters
+    distr_dict : dict
+        Comon flattened dictionary of all the distr_dict of all input variables.
+        It represents the distribution of all the uncertainty parameters.
+    problem_sa : dict
+        The description of the uncertainty variables and their
+        distribution as used in SALib.
+        https://salib.readthedocs.io/en/latest/basics.html.
+    """
+
+    _metadata = [
+        "sampling_method",
+        "sampling_kwargs",
+        "sensitivity_method",
+        "sensitivity_kwargs",
+    ]
+
+    def __init__(self, samples_df, unit=None):
+        """
+        Initialize Uncertainty Data object.
+
+        Parameters
+        ----------
+        samples_df : pandas.DataFrame
+            input parameters samples
+        unit : str, optional
+            value unit
+        """
+        # Data
+        self.samples_df = samples_df
+        self.unit = unit
 
 
 class UncImpactOutput(UncOutput):
