@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Uncertainty Impact class
 """
 
-__all__ = ["CalcImpact"]
+__all__ = ["CalcCascade"]
 
 import copy as cp
 import itertools

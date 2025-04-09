@@ -24,6 +24,7 @@ __all__ = [
     "UncCostBenefitOutput",
     "UncImpactOutput",
     "UncDeltaImpactOutput",
+    "UncCascadeOutput",
 ]
 
 import datetime as dt
