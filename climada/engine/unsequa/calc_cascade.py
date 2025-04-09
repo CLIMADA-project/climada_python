@@ -125,7 +125,7 @@ class CalcCascade(Calc):
         self.impf_input_var = InputVar.var_to_inputvar(impf_input_var)
         self.haz_input_var = InputVar.var_to_inputvar(haz_input_var)
 
-        self.value_unit = self.exp_input_var.evaluate().value_unit
+        self.value_unit = "people"
         self.check_distr()
 
     def uncertainty(
