@@ -121,7 +121,7 @@ class CalcCascade(Calc):
         """
 
         Calc.__init__(self)
-        self.exp_input_var = InputVar.var_to_inputvar(nw_input_var)
+        self.nw_input_var = InputVar.var_to_inputvar(nw_input_var)
         self.impf_input_var = InputVar.var_to_inputvar(impf_input_var)
         self.haz_input_var = InputVar.var_to_inputvar(haz_input_var)
 
@@ -279,7 +279,7 @@ class CalcCascade(Calc):
             p_iterator = _sample_parallel_iterator(
                 samples=samples_df,
                 chunksize=chunksize,
-                nw_input_var=self.exp_input_var,
+                nw_input_var=self.nw_input_var,
                 impf_input_var=self.impf_input_var,
                 haz_input_var=self.haz_input_var,
                 ci_types=self.ci_types,
