@@ -222,11 +222,11 @@ class CalcCascade(Calc):
 
         one_sample = samples_df.iloc[0:1]
         start = time.time()
-        self._compute_imp_metrics(one_sample, chunksize=1, processes=1)
+        self._compute_metrics(one_sample, chunksize=1, processes=1)
         elapsed_time = time.time() - start
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
-        imp_met_dict = self._compute_imp_metrics(
+        imp_met_dict = self._compute_metrics(
             samples_df, chunksize=chunksize, processes=processes
         )
 
@@ -257,7 +257,7 @@ class CalcCascade(Calc):
             # coord_df=coord_df,
         )
 
-    def _compute_imp_metrics(self, samples_df, chunksize, processes):
+    def _compute_metrics(self, samples_df, chunksize, processes):
         """Compute the uncertainty metrics
 
         Parameters
