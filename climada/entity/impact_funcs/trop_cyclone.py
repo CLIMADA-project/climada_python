@@ -40,12 +40,17 @@ class CountryCode(Enum):
     Enum class that links ISO country codes (both iso3a and iso3n) to specific regions and
     associated impact function IDs.
 
-    Attributes:
-        iso3a (dict): A mapping of region names to lists of 3-letter ISO country codes (iso3a).
-        iso3n (dict): A mapping of region names to lists of numeric ISO country codes (iso3n).
-        impf_id (dict): A mapping of region names to corresponding impact function IDs.
-        region_name (dict): A mapping of region names to their descriptive names.
-    """
+    Attributes
+    ----------
+        ISO3A: dict
+             A mapping of region names to lists of 3-letter ISO country codes (iso3a).
+        ISO3N: dict
+             A mapping of region names to lists of numeric ISO country codes (iso3n).
+        IMPF_ID: dict
+            A mapping of region names to corresponding impact function IDs.
+        REGION_NAME: dict
+            A mapping of region names to their descriptive names.
+      """"
 
     # fmt: off
     ISO3N = {
