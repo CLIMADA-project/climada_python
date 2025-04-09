@@ -50,7 +50,7 @@ class CountryCode(Enum):
             A mapping of region names to corresponding impact function IDs.
         REGION_NAME: dict
             A mapping of region names to their descriptive names.
-      """"
+    """
 
     # fmt: off
     ISO3N = {
@@ -458,7 +458,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         )
 
     @staticmethod
-    def get_regions_per_countries(
+    def get_impf_id_regions_per_countries(
         countries: list = None, code_type: str = "ISO3A"
     ) -> tuple:
         """Return the impact function id and the region corresponding to a list of countries,
@@ -467,20 +467,24 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         Parameters:
         -----------
         countries : list
-            List containing the ISO code of the country, which should be either
-            a string if the code is iso3a or an integer if ISO3N. For example, for Switzerland:
-            the ISO3A code is "CHE" and the ISO3N is 756.
+            List containing the ISO codes of the country, which should be either
+            in string format if the code is "ISO3A" or an integer if "ISO3N", see code_type below.
         code_type : str
-            Either "ISO3A" or "ISO3N".
+            Either "ISO3A" or "ISO3N". "ISO3A" stands for "ISO 3166-1 alpha-3" which is a
+            three-letter country code, "ISO3N" stands for "ISO 3166-1 numeric" which is a
+            three-digit country code, the numeric version of "ISO3A". For example, for Switzerland:
+            the "ISO3A" code is "CHE" and the "ISO3N" is 756.
 
         Returns:
         --------
         impf_ids : list
             List of impact function ids matching the countries.
         regions_ids : list
-            List of the regions that match the countries.
+            List of the region ids. Regions are a container of countries as defined in:
+            https://nhess.copernicus.org/articles/21/393/2021/nhess-21-393-2021.pdf, and implemented
+            in the CountryCode Enum Class. Example: "NA1", "NA2", ...
         regions_names : list
-            List of the regions that match the countries.
+            List of the regions names. Example: "Caribbean and Mexico", "USA and Canada", ...
         """
 
         if code_type not in {"ISO3A", "ISO3N"}:

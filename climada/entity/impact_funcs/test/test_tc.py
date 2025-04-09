@@ -169,39 +169,41 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertListEqual(out[3], ["CAN", "USA"])
 
     def test_get_region_per_countries(self):
-        """Test static get_regions_per_countries()"""
+        """Test get_impf_id_regions_per_countries()"""
         ifs = ImpfSetTropCyclone()
-        out = ifs.get_regions_per_countries(countries=["CHE"], code_type="ISO3A")
+        out = ifs.get_impf_id_regions_per_countries(
+            countries=["CHE"], code_type="ISO3A"
+        )
         self.assertEqual(out[0][0], 10)
         self.assertEqual(out[1][0], "ROW")
         self.assertEqual(out[2][0], "Rest of The World")
-        out = ifs.get_regions_per_countries(countries=[756], code_type="ISO3N")
+        out = ifs.get_impf_id_regions_per_countries(countries=[756], code_type="ISO3N")
         self.assertEqual(out[0][0], 10)
         self.assertEqual(out[1][0], "ROW")
         self.assertEqual(out[2][0], "Rest of The World")
         with self.assertRaises(ValueError) as context:
-            ImpfSetTropCyclone.get_regions_per_countries(
+            ImpfSetTropCyclone.get_impf_id_regions_per_countries(
                 countries=["SWE"], code_type="invalid_code"
             )
         self.assertEqual(
             str(context.exception), "code_type must be either 'iso3a' or 'iso3n'"
         )
         with self.assertRaises(ValueError) as context:
-            ImpfSetTropCyclone.get_regions_per_countries(
+            ImpfSetTropCyclone.get_impf_id_regions_per_countries(
                 countries=["SWE", 840], code_type="ISO3A"
             )
         self.assertEqual(
             str(context.exception), "All elements in the list must be of the same type."
         )
         with self.assertRaises(ValueError) as context:
-            ImpfSetTropCyclone.get_regions_per_countries(
+            ImpfSetTropCyclone.get_impf_id_regions_per_countries(
                 countries=[840, 124], code_type="ISO3A"
             )
         self.assertEqual(
             str(context.exception), "ISO3A code type cannot have integer values."
         )
         with self.assertRaises(ValueError) as context:
-            ImpfSetTropCyclone.get_regions_per_countries(
+            ImpfSetTropCyclone.get_impf_id_regions_per_countries(
                 countries=["MEX"], code_type="ISO3N"
             )
         self.assertEqual(
