@@ -191,10 +191,10 @@ def download_world_bank_indicator(
         The country code in ISO alpha 3
     indicator : str
         The ID of the indicator in the World Bank API
-    parse_dates : bool
+    parse_dates : bool, optional
         Whether the dates of the indicator data should be parsed as datetime objects.
-        If ``False`` (default), they will be parsed as ``int`` (this only works for
-        yearly data).
+        If ``False`` (default), this will first try to parse them as ``int`` (this only
+        works for yearly data), and then parse as datetime objects if that fails.
 
     Returns
     -------
@@ -224,19 +224,28 @@ def download_world_bank_indicator(
         except KeyError:
             pass
 
-        # Update the data
+        # Check if there is no data available
         pages = json_data[0]["pages"]
+        if pages == 0:
+            raise ValueError(
+                f"No data available for country {country_code}, indicator {indicator}"
+            )
+
+        # Update the data
         page = page + 1
         raw_data.extend(json_data[1])
 
     # Create dataframe
     data = pd.DataFrame.from_records(raw_data)
 
-    # Parse dates
+    # Maybe parse dates
     if parse_dates:
         data["date"] = pd.DatetimeIndex(data["date"])
     else:
-        data["date"] = data["date"].astype("int")
+        try:
+            data["date"] = data["date"].astype("int")
+        except TypeError:
+            data["date"] = pd.DatetimeIndex(data["date"])
 
     # Only return indicator data (with a proper name)
     return data.set_index("date")["value"].rename(data["indicator"].iloc[0]["value"])

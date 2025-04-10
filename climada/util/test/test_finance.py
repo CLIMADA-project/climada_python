@@ -160,6 +160,11 @@ class TestWBData(unittest.TestCase):
             "Did you use the correct country code",
         ):
             download_world_bank_indicator("ESP", "BogusIndicator")
+        with self.assertRaisesRegex(
+            ValueError,
+            "No data available for country AIA, indicator NY.GDP.MKTP.CD",
+        ):
+            download_world_bank_indicator("AIA", "NY.GDP.MKTP.CD")
 
 
 class TestWealth2GDP(unittest.TestCase):
