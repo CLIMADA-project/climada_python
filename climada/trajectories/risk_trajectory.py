@@ -26,12 +26,19 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 
-from climada.engine.impact_calc import ImpactCalc
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.riskperiod import RiskPeriod
+from climada.trajectories.riskperiod import (
+    CalcRiskPeriod,
+    ImpactCalcComputation,
+    ImpactComputationStrategy,
+    InterpolationStrategy,
+    LinearInterpolation,
+)
 from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
+
+POSSIBLE_METRICS = ["aai", "rp", "group", "components"]
 
 
 class RiskTrajectory:
@@ -62,39 +69,61 @@ class RiskTrajectory:
     def __init__(
         self,
         snapshots_list: list[Snapshot],
+        interval_freq: str = "YS",
+        all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
-        metrics: list[str] = ["aai", "eai", "rp"],
-        return_periods: list[int] = [100, 500, 1000],
-        compute_groups=False,
         risk_transf_cover=None,
         risk_transf_attach=None,
+        calc_residual: bool = True,
+        interpolation_strategy: InterpolationStrategy | None = None,
+        impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        "docstring"
-        self._metrics_up_to_date: bool = False
-        self.metrics = metrics
-        self._return_periods = return_periods
+        self._aai_metrics = None
+        self._return_periods_metrics = None
+        self._risk_components_metrics = None
+        self._aai_per_group_metrics = None
+        self._all_risk_metrics = None
+        self._metrics_up_to_date = False
+        self._risk_period_up_to_date: bool = False
+        self._snapshots = snapshots_list
+        self._all_groups_name = all_groups_name
+        self._default_rp = [50, 100, 500]
         self.start_date = min([snapshot.date for snapshot in snapshots_list])
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
+        self._interval_freq = interval_freq
         self.risk_disc = risk_disc
         self._risk_transf_cover = risk_transf_cover
         self._risk_transf_attach = risk_transf_attach
+        self._calc_residual = calc_residual
+        self._interpolation_strategy = interpolation_strategy or LinearInterpolation()
+        self._impact_computation_strategy = (
+            impact_computation_strategy or ImpactCalcComputation()
+        )
         LOGGER.debug("Computing risk periods")
-        self._risk_periods = self._calc_risk_periods(snapshots_list)
-        self._update_risk_metrics(compute_groups=compute_groups)
+        self._risk_periods_calculators = self._calc_risk_periods(snapshots_list)
+
+    def _reset_metrics(self):
+        self._aai_metrics = None
+        self._return_periods_metrics = None
+        self._risk_components_metrics = None
+        self._aai_per_group_metrics = None
+        self._all_risk_metrics = None
+        self._metrics_up_to_date = False
 
     @property
-    def return_periods(self) -> list[int]:
-        """The return periods considered in the risk trajectory."""
-        return self._return_periods
+    def default_rp(self):
+        return self._default_rp
 
-    @return_periods.setter
-    def return_periods(self, value: list[int]):
+    @default_rp.setter
+    def default_rp(self, value):
         if not isinstance(value, list):
-            raise ValueError("Not a list")
+            ValueError("Return periods need to be a list of int.")
         if any(not isinstance(i, int) for i in value):
-            raise ValueError("List elements are not int")
-        self._return_periods = value
+            ValueError("Return periods need to be a list of int.")
+        self._return_periods_metrics = None
+        self._all_risk_metrics = None
         self._metrics_up_to_date = False
+        self._default_rp = value
 
     @property
     def risk_transf_cover(self):
@@ -104,7 +133,8 @@ class RiskTrajectory:
     @risk_transf_cover.setter
     def risk_transf_cover(self, value):
         self._risk_transf_cover = value
-        self._metrics_up_to_date = False
+        self._risk_period_up_to_date = False
+        self._reset_metrics
 
     @property
     def risk_transf_attach(self):
@@ -114,12 +144,17 @@ class RiskTrajectory:
     @risk_transf_attach.setter
     def risk_transf_attach(self, value):
         self._risk_transf_attach = value
-        self._metrics_up_to_date = False
+        self._risk_period_up_to_date = False
+        self._reset_metrics
 
     @property
-    def risk_periods(self) -> list[RiskPeriod]:
+    def risk_periods(self) -> list:
         """The computed risk periods from the snapshots."""
-        return self._risk_periods
+        if not self._risk_period_up_to_date:
+            self._risk_periods_calculators = self._calc_risk_periods(self._snapshots)
+            self._risk_period_up_to_date = True
+
+        return self._risk_periods_calculators
 
     def _calc_risk_periods(self, snapshots):
         def pairwise(container: list):
@@ -145,42 +180,126 @@ class RiskTrajectory:
             next(b, None)
             return zip(a, b)
 
+        # impfset = self._merge_impfset(snapshots)
         return [
-            RiskPeriod(start_snapshot, end_snapshot)
+            CalcRiskPeriod(
+                start_snapshot,
+                end_snapshot,
+                interval_freq=self._interval_freq,
+                interpolation_strategy=self._interpolation_strategy,
+                impact_computation_strategy=self._impact_computation_strategy,
+                risk_transf_cover=self.risk_transf_cover,
+                risk_transf_attach=self.risk_transf_attach,
+                calc_residual=self._calc_residual,
+            )
             for start_snapshot, end_snapshot in pairwise(snapshots)
         ]
 
-    def _update_risk_metrics(self, compute_groups=False):
-        results_df = []
-        for period in self._risk_periods:
-            results_df.append(
-                impact_mixer(
-                    period,
-                    self.metrics,
-                    self.return_periods,
-                    compute_groups,
-                    all_groups_name="All",
-                )
-            )
-        results_df = pd.concat(results_df, axis=0)
+    @classmethod
+    def npv_transform(cls, df, risk_disc):
+        def _npv_group(group, disc):
+            start_date = group.index.get_level_values("date").min()
+            end_date = group.index.get_level_values("date").max()
+            return calc_npv_cash_flows(group, start_date, end_date, disc)
 
-        # duplicate rows may arise from overlapping end and start if there's more than two snapshots
-        results_df.drop_duplicates(inplace=True)
+        df = df.set_index("date")
+        grouper = cls._grouper
+        if "group" in df.columns:
+            grouper = ["group"] + grouper
 
-        # reorder the columns (but make sure not to remove possibly important ones in the future)
-        columns_to_front = ["date", "measure", "metric"]
-        if compute_groups:
-            columns_to_front = ["group"] + columns_to_front
-        self._annual_risk_metrics = results_df[
-            columns_to_front
-            + [
-                col
-                for col in results_df.columns
-                if col not in columns_to_front + ["group", "risk", "rp"]
+        df["risk"] = df.groupby(
+            grouper,
+            dropna=False,
+            as_index=False,
+            group_keys=False,
+        )["risk"].transform(_npv_group, risk_disc)
+        df = df.reset_index()
+        return df
+
+    def _generic_metrics(
+        self, npv=True, metric_name=None, metric_meth=None, *args, **kwargs
+    ):
+        """Generic method to compute metrics based on the provided metric name and method."""
+        if metric_name is None or metric_meth is None:
+            raise ValueError("Both metric_name and metric_meth must be provided.")
+
+        # Construct the attribute name for storing the metric results
+        attr_name = f"_{metric_name}_metrics"
+
+        if getattr(self, attr_name, None) is None:
+            tmp = []
+            for calc_period in self.risk_periods:
+                # Call the specified method on the calc_period object
+                tmp.append(getattr(calc_period, metric_meth)(*args, **kwargs))
+
+            tmp = pd.concat(tmp)
+            tmp.drop_duplicates(inplace=True)
+            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+            columns_to_front = ["group", "date", "measure", "metric"]
+            tmp = tmp[
+                columns_to_front
+                + [
+                    col
+                    for col in tmp.columns
+                    if col not in columns_to_front + ["group", "risk", "rp"]
+                ]
+                + ["risk"]
             ]
-            + ["risk"]
-        ]
-        self._metrics_up_to_date = True
+            if npv:
+                tmp = self.npv_transform(tmp, self.risk_disc)
+
+            setattr(self, attr_name, tmp)
+
+        return getattr(self, attr_name)
+
+    def aai_metrics(self, npv=True):
+        return self._generic_metrics(
+            npv=npv, metric_name="aai", metric_meth="calc_aai_metric"
+        )
+
+    def return_periods_metrics(self, return_periods=None, npv=True):
+        return_periods = return_periods if return_periods else self.default_rp
+        return self._generic_metrics(
+            npv=npv,
+            metric_name="return_periods",
+            metric_meth="calc_return_periods_metric",
+            return_periods=return_periods,
+        )
+
+    def aai_per_group_metrics(self, npv=True):
+        return self._generic_metrics(
+            npv=npv,
+            metric_name="aai_per_group",
+            metric_meth="calc_aai_per_group_metric",
+        )
+
+    def risk_components_metrics(self, npv=True):
+        return self._generic_metrics(
+            npv=npv,
+            metric_name="risk_components",
+            metric_meth="calc_risk_components_metric",
+        )
+
+    def all_risk_metrics(self, return_periods=[50, 100, 500], npv=True):
+        if not self._metrics_up_to_date:
+            aai = self.aai_metrics
+            rp = self.return_periods_metrics(return_periods)
+            aai_per_group = self.aai_per_group_metrics
+            risk_components = self.risk_components_metrics
+            tmp = pd.concat([aai, rp, aai_per_group, risk_components])
+            columns_to_front = ["group", "date", "measure", "metric"]
+            self._all_risk_metrics = tmp[
+                columns_to_front
+                + [
+                    col
+                    for col in tmp.columns
+                    if col not in columns_to_front + ["group", "risk", "rp"]
+                ]
+                + ["risk"]
+            ]
+            self._metrics_up_to_date = True
+
+        return self._all_risk_metrics
 
     @staticmethod
     def _get_risk_periods(
@@ -192,36 +311,8 @@ class RiskTrajectory:
             if (start_date >= period.start_date or end_date <= period.end_date)
         ]
 
-    def _calc_per_date_risk_metrics(self, npv=True):
-        def npv_transform(group):
-            start_date = group.index.get_level_values("date").min()
-            end_date = group.index.get_level_values("date").max()
-            return calc_npv_cash_flows(group, start_date, end_date, self.risk_disc)
-
-        if self._metrics_up_to_date:
-            df = self._annual_risk_metrics
-        else:
-            self._update_risk_metrics()
-            df = self._annual_risk_metrics
-
-        if npv:
-            df = df.set_index("date")
-            grouper = self._grouper
-            if "group" in df.columns:
-                grouper = ["group"] + grouper
-
-            df["risk"] = df.groupby(
-                grouper,
-                dropna=False,
-                as_index=False,
-                group_keys=False,
-            )["risk"].transform(npv_transform)
-            df = df.reset_index()
-
-        return df
-
     @classmethod
-    def _calc_periods_risk(cls, df: pd.DataFrame, time_unit="year", colname="risk"):
+    def _per_period_risk(cls, df: pd.DataFrame, time_unit="year", colname="risk"):
         def identify_continuous_periods(group, time_unit):
             # Calculate the difference between consecutive dates
             if time_unit == "year":
@@ -271,75 +362,32 @@ class RiskTrajectory:
     @property
     def per_date_risk_metrics(self) -> pd.DataFrame | pd.Series:
         """Returns a tidy dataframe of the risk metrics for all dates."""
-        return self._calc_risk_metrics(total=False, npv=True)
+        return self._prepare_risk_metrics(total=False, npv=True)
 
     @property
     def total_risk_metrics(self):
         """Returns a tidy dataframe of the risk metrics with the total for each different period."""
-        return self._calc_risk_metrics(total=True, npv=True)
+        return self._prepare_risk_metrics(total=True, npv=True)
 
-    def _calc_risk_metrics(self, total=False, npv=True):
-        df = self._calc_per_date_risk_metrics(npv=npv)
+    def _prepare_risk_metrics(self, total=False, npv=True):
+        df = self.all_risk_metrics(npv=npv)
         if total:
-            return self._calc_periods_risk(df)
+            return self._per_period_risk(df)
 
         return df
 
-    def _calc_waterfall_plot_data(self, start_date=None, end_date=None):
+    def _calc_waterfall_plot_data(self, start_date=None, end_date=None, npv=True):
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        considered_risk_periods = self._get_risk_periods(
-            self._risk_periods, start_date=start_date, end_date=end_date
-        )
-
-        risk_component = {
-            str(period.start_date)
-            + "-"
-            + str(period.end_date): self._calc_risk_component(period)
-            for period in considered_risk_periods
-        }
-        risk_component = pd.concat(
-            risk_component.values(), keys=risk_component.keys(), names=["Period"]
-        ).reset_index()
-        risk_component = risk_component.loc[
-            (risk_component["date"].dt.date >= start_date)
-            & (risk_component["date"].dt.date <= end_date)
+        risk_components = self.risk_components_metrics(npv)
+        risk_components = risk_components.loc[
+            (risk_components["date"].dt.date >= start_date)
+            & (risk_components["date"].dt.date <= end_date)
         ]
-        risk_component["Base risk"] = risk_component["Base risk"].min()
-        risk_component[["Change in Exposure", "Change in Hazard (with Exposure)"]] = (
-            risk_component[["Change in Exposure", "Change in Hazard (with Exposure)"]]
-            .replace(0, None)
-            .ffill()
-            .fillna(0.0)
-        )
-        return risk_component
-
-    def _calc_risk_component(self, period: RiskPeriod):
-        imp_mats_H0 = period._imp_mats_0
-        imp_mats_H1 = period._imp_mats_1
-        freq_H0 = period.snapshot0.hazard.frequency
-        freq_H1 = period.snapshot1.hazard.frequency
-        per_date_eai_H0, per_date_eai_H1 = calc_per_date_eais(
-            imp_mats_H0, imp_mats_H1, freq_H0, freq_H1
-        )
-        per_date_aai_H0, per_date_aai_H1 = calc_per_date_aais(
-            per_date_eai_H0, per_date_eai_H1
-        )
-        prop_H1 = np.linspace(0, 1, num=len(period.date_idx))
-        prop_H0 = 1 - prop_H1
-        per_date_aai = prop_H0 * per_date_aai_H0 + prop_H1 * per_date_aai_H1
-
-        risk_dev_0 = per_date_aai_H0 - per_date_aai[0]
-        risk_cc_0 = per_date_aai - (risk_dev_0 + per_date_aai[0])
-        df = pd.DataFrame(
-            {
-                "Base risk": per_date_aai - (risk_dev_0 + risk_cc_0),
-                "Change in Exposure": risk_dev_0,
-                "Change in Hazard (with Exposure)": risk_cc_0,
-            },
-            index=period.date_idx,
-        )
-        return df.round(1)
+        risk_components = risk_components.set_index(["date", "metric"])[
+            "risk"
+        ].unstack()
+        return risk_components
 
     def plot_per_date_waterfall(self, ax=None, start_date=None, end_date=None):
         """Plot a waterfall chart of risk components over a specified date range.
@@ -376,7 +424,7 @@ class RiskTrajectory:
         risk_component = self._calc_waterfall_plot_data(
             start_date=start_date, end_date=end_date
         )
-        risk_component.plot(ax=ax, kind="bar", x="date", stacked=True)
+        risk_component.plot(ax=ax, kind="bar", stacked=True)
         # Construct y-axis label and title based on parameters
         value_label = "USD"
         title_label = (
@@ -423,7 +471,7 @@ class RiskTrajectory:
             _, ax = plt.subplots(figsize=(8, 5))
 
         risk_component = risk_component.loc[
-            (risk_component["date"].dt.date == end_date)
+            (risk_component.index.date == end_date)
         ].squeeze()
 
         labels = [
@@ -433,17 +481,17 @@ class RiskTrajectory:
             f"Total Risk {end_date}",
         ]
         values = [
-            risk_component["Base risk"],
-            risk_component["Change in Exposure"],
-            risk_component["Change in Hazard (with Exposure)"],
-            risk_component["Base risk"]
-            + risk_component["Change in Exposure"]
-            + risk_component["Change in Hazard (with Exposure)"],
+            risk_component["base risk"],
+            risk_component["delta from exposure"],
+            risk_component["delta from hazard"],
+            risk_component["base risk"]
+            + risk_component["delta from exposure"]
+            + risk_component["delta from hazard"],
         ]
         bottoms = [
             0.0,
-            risk_component["Base risk"],
-            risk_component["Base risk"] + risk_component["Change in Exposure"],
+            risk_component["base risk"],
+            risk_component["base risk"] + risk_component["delta from exposure"],
             0.0,
         ]
 
@@ -515,136 +563,6 @@ def calc_npv_cash_flows(cash_flows, start_date, end_date=None, disc=None):
     return df["npv_cash_flow"]
 
 
-def calc_per_date_eais(imp_mats_0, imp_mats_1, frequency_0, frequency_1):
-    """
-    Calculate per_date expected annual impact (EAI) values for two scenarios.
-
-    Parameters
-    ----------
-    imp_mats_0 : list of np.ndarray
-        List of interpolated impact matrices for scenario 0.
-    imp_mats_1 : list of np.ndarray
-        List of interpolated impact matrices for scenario 1.
-    frequency_0 : np.ndarray
-        Frequency values associated with scenario 0.
-    frequency_1 : np.ndarray
-        Frequency values associated with scenario 1.
-
-    Returns
-    -------
-    tuple
-        Tuple containing:
-        - per_date_eai_exp_0 : list of float
-            per date expected annual impacts for scenario 0.
-        - per_date_eai_exp_1 : list of float
-            per date expected annual impacts for scenario 1.
-    """
-    per_date_eai_exp_0 = [
-        ImpactCalc.eai_exp_from_mat(imp_mat, frequency_0) for imp_mat in imp_mats_0
-    ]
-    per_date_eai_exp_1 = [
-        ImpactCalc.eai_exp_from_mat(imp_mat, frequency_1) for imp_mat in imp_mats_1
-    ]
-    return per_date_eai_exp_0, per_date_eai_exp_1
-
-
-def calc_per_date_aais(per_date_eai_exp_0, per_date_eai_exp_1):
-    """
-    Calculate per_date aggregate annual impact (AAI) values for two scenarios.
-
-    Parameters
-    ----------
-    per_date_eai_exp_0 : list of float
-        Per_Date expected annual impacts for scenario 0.
-    per_date_eai_exp_1 : list of float
-        Per_Date expected annual impacts for scenario 1.
-
-    Returns
-    -------
-    tuple
-        Tuple containing:
-        - per_date_aai_0 : list of float
-            Aggregate annual impact values for scenario 0.
-        - per_date_aai_1 : list of float
-            Aggregate annual impact values for scenario 1.
-    """
-    per_date_aai_0 = [
-        ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in per_date_eai_exp_0
-    ]
-    per_date_aai_1 = [
-        ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in per_date_eai_exp_1
-    ]
-    return per_date_aai_0, per_date_aai_1
-
-
-def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None):
-    """
-    Calculate the frequency curve
-
-    Parameters:
-    imp_mat_intrpl (np.array): The interpolated impact matrix
-    frequency (np.array): The frequency of the hazard
-    return_per (np.array): The return period
-
-    Returns:
-    ifc_return_per (np.array): The impact exceeding frequency
-    ifc_impact (np.array): The impact exceeding the return period
-    """
-
-    # Calculate the at_event make the np.array
-    at_event = np.sum(imp_mat_intrpl, axis=1).A1
-
-    # Sort descendingly the impacts per events
-    sort_idxs = np.argsort(at_event)[::-1]
-    # Calculate exceedence frequency
-    exceed_freq = np.cumsum(frequency[sort_idxs])
-    # Set return period and impact exceeding frequency
-    ifc_return_per = 1 / exceed_freq[::-1]
-    ifc_impact = at_event[sort_idxs][::-1]
-
-    if return_per is not None:
-        interp_imp = np.interp(return_per, ifc_return_per, ifc_impact)
-        ifc_return_per = return_per
-        ifc_impact = interp_imp
-
-    return ifc_impact
-
-
-def calc_per_date_rps(imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_periods):
-    """
-    Calculate per_date return period impact values for two scenarios.
-
-    Parameters
-    ----------
-    imp_mats_0 : list of np.ndarray
-        List of interpolated impact matrices for scenario 0.
-    imp_mats_1 : list of np.ndarray
-        List of interpolated impact matrices for scenario 1.
-    frequency_0 : np.ndarray
-        Frequency values for scenario 0.
-    frequency_1 : np.ndarray
-        Frequency values for scenario 1.
-    return_periods : list of int
-        Return periods to calculate impact values for.
-
-    Returns
-    -------
-    tuple
-        Tuple containing:
-        - rp_0 : list of np.ndarray
-            Per_Date return period impact values for scenario 0.
-        - rp_1 : list of np.ndarray
-            Per_Date return period impact values for scenario 1.
-    """
-    rp_0 = [
-        calc_freq_curve(imp_mat, frequency_0, return_periods) for imp_mat in imp_mats_0
-    ]
-    rp_1 = [
-        calc_freq_curve(imp_mat, frequency_1, return_periods) for imp_mat in imp_mats_1
-    ]
-    return rp_0, rp_1
-
-
 def get_eai_exp(eai_exp, group_map):
     """
     Aggregate expected annual impact (EAI) by groups.
@@ -665,101 +583,3 @@ def get_eai_exp(eai_exp, group_map):
     for group_name, exp_indices in group_map.items():
         eai_region_id[group_name] = np.sum(eai_exp[:, exp_indices], axis=1)
     return eai_region_id
-
-
-def impact_mixer(
-    risk_period,
-    metrics,
-    return_periods,
-    compute_groups=False,
-    all_groups_name: str | None = None,
-):
-    """
-    Perform Bayesian mixing of impacts across snapshots.
-
-    Parameters
-    ----------
-    start_snapshot : Snapshot
-        The starting snapshot.
-    end_snapshot : Snapshot
-        The ending snapshot.
-    metrics : list of str
-        Metrics to calculate (e.g., 'eai', 'aai', 'rp').
-    return_periods : list of int
-        Return periods for calculating impact values.
-    groups : dict, optional
-        Mapping of group names to indices for aggregating EAI values by group.
-    all_groups_name : str, optional
-        Name for all-groups aggregation in the output.
-    risk_transf_cover : float, optional
-        Coverage level for risk transfer calculations.
-    risk_transf_attach : float, optional
-        Attachment point for risk transfer calculations.
-    calc_residual : bool, optional
-        Whether to calculate residual impacts after applying risk transfer.
-
-    Returns
-    -------
-    pd.DataFrame
-        DataFrame of calculated impact values by date, group, and metric.
-    """
-
-    # Posterity comment: This was called bayesian_mixing in its initial version,
-    # although there is nothing really bayesian here, (but it did sound cool!)
-
-    all_groups_n = pd.NA if all_groups_name is None else all_groups_name
-
-    prop_H0, prop_H1 = risk_period._prop_H0, risk_period._prop_H1
-    frequency_0 = risk_period.snapshot0.hazard.frequency
-    frequency_1 = risk_period.snapshot1.hazard.frequency
-    imp_mats_0, imp_mats_1 = risk_period.get_interp()
-    per_date_eai_exp_0, per_date_eai_exp_1 = calc_per_date_eais(
-        imp_mats_0, imp_mats_1, frequency_0, frequency_1
-    )
-    date_idx = risk_period.date_idx
-    res = []
-    if "aai" in metrics:
-        per_date_aai_0, per_date_aai_1 = calc_per_date_aais(
-            per_date_eai_exp_0, per_date_eai_exp_1
-        )
-        per_date_aai = prop_H0 * per_date_aai_0 + prop_H1 * per_date_aai_1
-        aai_df = pd.DataFrame(index=date_idx, columns=["risk"], data=per_date_aai)
-        aai_df["group"] = all_groups_n
-        aai_df["metric"] = "aai"
-        aai_df.reset_index(inplace=True)
-        res.append(aai_df)
-
-    if "rp" in metrics:
-        rp_0, rp_1 = calc_per_date_rps(
-            imp_mats_0, imp_mats_1, frequency_0, frequency_1, return_periods
-        )
-        per_date_rp = np.multiply(prop_H0.reshape(-1, 1), rp_0) + np.multiply(
-            prop_H1.reshape(-1, 1), rp_1
-        )
-        rp_df = pd.DataFrame(
-            index=date_idx, columns=return_periods, data=per_date_rp
-        ).melt(value_name="risk", var_name="rp", ignore_index=False)
-        rp_df.reset_index(inplace=True)
-        rp_df["group"] = all_groups_n
-        rp_df["metric"] = "rp_" + rp_df["rp"].astype(str)
-        res.append(rp_df)
-
-    if compute_groups:
-        per_date_eai = np.multiply(
-            prop_H0.reshape(-1, 1), per_date_eai_exp_0
-        ) + np.multiply(prop_H1.reshape(-1, 1), per_date_eai_exp_1)
-        eai_group_df = pd.DataFrame(
-            data=per_date_eai.T,
-            index=risk_period.snapshot1.exposure.gdf["group_id"],
-            columns=risk_period.date_idx,
-        )
-        eai_group_df = eai_group_df.groupby(eai_group_df.index).sum()
-        eai_group_df = eai_group_df.melt(
-            ignore_index=False, value_name="risk"
-        ).reset_index(names="group")
-        eai_group_df["metric"] = "aai"
-        res.append(eai_group_df)
-
-    ret = pd.concat(res, axis=0)
-    ret["measure"] = risk_period.measure_name
-    return ret
