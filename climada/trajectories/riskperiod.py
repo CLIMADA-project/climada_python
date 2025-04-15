@@ -485,21 +485,27 @@ class CalcRiskPeriod:
 
     def calc_aai_per_group_metric(self):
         aai_per_group_df = []
-        for group in np.unique(np.concatenate(self._group_id_E0, self._group_id_E1)):
+        for group in np.unique(np.concatenate([self._group_id_E0, self._group_id_E1])):
             group_idx_E0 = np.where(self._group_id_E0 != group)
             group_idx_E1 = np.where(self._group_id_E1 != group)
             per_date_aai_H0, per_date_aai_H1 = (
-                self.per_date_eai_H0[group_idx_E0].sum(),
-                self.per_date_eai_H1[group_idx_E1].sum(),
+                self.per_date_eai_H0[:, group_idx_E0].sum(),
+                self.per_date_eai_H1[:, group_idx_E1].sum(),
             )
             per_date_aai = (
                 self._prop_H0 * per_date_aai_H0 + self._prop_H1 * per_date_aai_H1
             )
             df = pd.DataFrame(index=self.date_idx, columns=["risk"], data=per_date_aai)
-            df["group"] = pd.NA
-            aai_per_group_df += df
+            df["group"] = group
+            aai_per_group_df.append(df)
 
-        return pd.concat(aai_per_group_df)
+        aai_per_group_df = pd.concat(aai_per_group_df)
+        aai_per_group_df["metric"] = "aai"
+        aai_per_group_df["measure"] = (
+            self.measure.name if self.measure else "no_measure"
+        )
+        aai_per_group_df.reset_index(inplace=True)
+        return aai_per_group_df
 
     def calc_return_periods_metric(self, return_periods):
         rp_0, rp_1 = self.per_date_return_periods_H0(

@@ -282,21 +282,13 @@ class RiskTrajectory:
 
     def all_risk_metrics(self, return_periods=[50, 100, 500], npv=True):
         if not self._metrics_up_to_date:
-            aai = self.aai_metrics
+            aai = self.aai_metrics()
             rp = self.return_periods_metrics(return_periods)
-            aai_per_group = self.aai_per_group_metrics
-            risk_components = self.risk_components_metrics
-            tmp = pd.concat([aai, rp, aai_per_group, risk_components])
-            columns_to_front = ["group", "date", "measure", "metric"]
-            self._all_risk_metrics = tmp[
-                columns_to_front
-                + [
-                    col
-                    for col in tmp.columns
-                    if col not in columns_to_front + ["group", "risk", "rp"]
-                ]
-                + ["risk"]
-            ]
+            aai_per_group = self.aai_per_group_metrics()
+            risk_components = self.risk_components_metrics()
+            self._all_risk_metrics = pd.concat(
+                [aai, rp, aai_per_group, risk_components]
+            )
             self._metrics_up_to_date = True
 
         return self._all_risk_metrics
