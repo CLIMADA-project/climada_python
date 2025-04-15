@@ -1195,6 +1195,11 @@ class Impact:
             plot impact as log10(impact). Default: True
         smooth : bool, optional
             smooth plot to plot.RESOLUTIONxplot.RESOLUTION. Default: True
+        mask_rel_distance: float, optional
+            Relative distance (with respect to maximal map extent in longitude or latitude) to data
+            points above which plot should not display values. For instance, to only plot values
+            at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+            Default is None.
         kwargs_local_exceedance_impact: dict
             Dictionary of keyword arguments for the method impact.local_exceedance_impact.
         kwargs : dict, optional

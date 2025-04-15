@@ -370,6 +370,11 @@ def geo_im_from_array(
     adapt_fontsize : bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
         the default matplotlib font size is used. Default is True.
+    mask_rel_distance: float, optional
+        Relative distance (with respect to maximal map extent in longitude or latitude) to data
+        points above which plot should not display values. For instance, to only plot values
+        at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+        Default is None.
     **kwargs
         arbitrary keyword arguments for pcolormesh matplotlib function
 
@@ -1123,6 +1128,11 @@ def plot_from_gdf(
     adapt_fontsize: bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure.
         Otherwise the default matplotlib font size is used. Default is True.
+    mask_rel_distance: float, optional
+        Relative distance (with respect to maximal map extent in longitude or latitude) to data
+        points above which plot should not display values. For instance, to only plot values
+        at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+        Default is None.
     kwargs: optional
         Arguments for pcolormesh matplotlib function used in event plots.
 

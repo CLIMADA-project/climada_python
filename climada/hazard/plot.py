@@ -57,6 +57,11 @@ class HazardPlot:
             axis to use
         kwargs_local_exceedance_intensity: dict
             Dictionary of keyword arguments for the method hazard.local_exceedance_intensity.
+        mask_rel_distance: float, optional
+            Relative distance (with respect to maximal map extent in longitude or latitude) to data
+            points above which plot should not display values. For instance, to only plot values
+            at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+            Default is None.
         kwargs: optional
             arguments for pcolormesh matplotlib function used in event plots
 
@@ -130,6 +135,11 @@ class HazardPlot:
             in module `climada.util.plot`)
         axis: matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        mask_rel_distance: float, optional
+            Relative distance (with respect to maximal map extent in longitude or latitude) to data
+            points above which plot should not display values. For instance, to only plot values
+            at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+            Default is None.
         kwargs: optional
             arguments for pcolormesh matplotlib function
             used in event plots or for plot function used in centroids plots
@@ -165,7 +175,15 @@ class HazardPlot:
 
         raise ValueError("Provide one event id or one centroid id.")
 
-    def plot_fraction(self, event=None, centr=None, smooth=True, axis=None, **kwargs):
+    def plot_fraction(
+        self,
+        event=None,
+        centr=None,
+        smooth=True,
+        axis=None,
+        mask_rel_distance=None,
+        **kwargs,
+    ):
         """Plot fraction values for a selected event or centroid.
 
         Parameters
@@ -187,6 +205,11 @@ class HazardPlot:
             in module `climada.util.plot`)
         axis: matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        mask_rel_distance: float, optional
+            Relative distance (with respect to maximal map extent in longitude or latitude) to data
+            points above which plot should not display values. For instance, to only plot values
+            at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+            Default is None.
         kwargs: optional
             arguments for pcolormesh matplotlib function
             used in event plots or for plot function used in centroids plots
@@ -204,7 +227,13 @@ class HazardPlot:
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(
-                event, self.fraction, col_label, smooth, axis, **kwargs
+                event,
+                self.fraction,
+                col_label,
+                smooth,
+                axis,
+                mask_rel_distance=mask_rel_distance,
+                **kwargs,
             )
         if centr is not None:
             if isinstance(centr, tuple):
@@ -245,6 +274,11 @@ class HazardPlot:
             axis to use
         figsize: tuple, optional
             figure size for plt.subplots
+        mask_rel_distance: float, optional
+            Relative distance (with respect to maximal map extent in longitude or latitude) to data
+            points above which plot should not display values. For instance, to only plot values
+            at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+            Default is None.
         kwargs: optional
             arguments for pcolormesh matplotlib function
 
