@@ -1178,6 +1178,7 @@ class Impact:
         return_periods=(25, 50, 100, 250),
         log10_scale=True,
         axis=None,
+        mask_rel_distance=None,
         kwargs_local_exceedance_impact=None,
         **kwargs,
     ):
@@ -1242,7 +1243,12 @@ class Impact:
             )
 
         axis = u_plot.plot_from_gdf(
-            impacts_stats, title, column_labels, axis=axis, **kwargs
+            impacts_stats,
+            title,
+            column_labels,
+            axis=axis,
+            mask_rel_distance=mask_rel_distance,
+            **kwargs,
         )
         return axis, impacts_stats_vals
 

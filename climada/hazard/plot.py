@@ -40,6 +40,7 @@ class HazardPlot:
         self,
         return_periods=(25, 50, 100, 250),
         axis=None,
+        mask_rel_distance=None,
         kwargs_local_exceedance_intensity=None,
         **kwargs,
     ):
@@ -89,7 +90,12 @@ class HazardPlot:
         )
 
         axis = u_plot.plot_from_gdf(
-            inten_stats, title, column_labels, axis=axis, **kwargs
+            inten_stats,
+            title,
+            column_labels,
+            axis=axis,
+            mask_rel_distance=mask_rel_distance,
+            **kwargs,
         )
         return axis, inten_stats.values[:, 1:].T.astype(float)
 
@@ -100,6 +106,7 @@ class HazardPlot:
         smooth=True,
         axis=None,
         adapt_fontsize=True,
+        mask_rel_distance=None,
         **kwargs,
     ):
         """Plot intensity values for a selected event or centroid.
@@ -148,6 +155,7 @@ class HazardPlot:
                 crs_epsg,
                 axis,
                 adapt_fontsize=adapt_fontsize,
+                mask_rel_distance=mask_rel_distance,
                 **kwargs,
             )
         if centr is not None:
@@ -215,6 +223,7 @@ class HazardPlot:
         axis=None,
         figsize=(9, 13),
         adapt_fontsize=True,
+        mask_rel_distance=None,
         **kwargs,
     ):
         """Plot an event of the input matrix.
@@ -283,6 +292,7 @@ class HazardPlot:
             figsize=figsize,
             proj=crs_espg,
             adapt_fontsize=adapt_fontsize,
+            mask_rel_distance=mask_rel_distance,
             **kwargs,
         )
 

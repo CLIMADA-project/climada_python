@@ -47,6 +47,7 @@ from matplotlib import colormaps as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from rasterio.crs import CRS
 from scipy.interpolate import griddata
+from scipy.spatial import cKDTree
 from shapely.geometry import box
 
 import climada.util.coordinates as u_coord
@@ -337,6 +338,7 @@ def geo_im_from_array(
     axes=None,
     figsize=(9, 13),
     adapt_fontsize=True,
+    mask_rel_distance=None,
     **kwargs,
 ):
     """Image(s) plot defined in array(s) over input coordinates.
@@ -448,6 +450,18 @@ def geo_im_from_array(
                 (grid_x, grid_y),
                 fill_value=min_value,
             )
+            # Compute distance of each grid point to the nearest known point
+            if mask_rel_distance is not None:
+                tree = cKDTree(np.array((coord[:, 1], coord[:, 0])).T)
+                distances, _ = tree.query(
+                    np.c_[grid_x.ravel(), grid_y.ravel()],
+                    p=2,  # for plotting squares and not sphere around centroids use p=np.inf
+                )
+                threshold = (
+                    max(extent[1] - extent[0], extent[3] - extent[2])
+                    * mask_rel_distance
+                )
+                grid_im[(distances.reshape(grid_im.shape) > threshold)] = min_value
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()
             grid_y = coord[:, 0].reshape((width, height)).transpose()
@@ -477,7 +491,7 @@ def geo_im_from_array(
         )
         # handle NaNs in griddata
         color_nan = "gainsboro"
-        if np.any(np.isnan(x) for x in grid_im):
+        if np.isnan(grid_im).any():
             no_data_patch = mpatches.Patch(
                 facecolor=color_nan, edgecolor="black", label="NaN"
             )
@@ -1086,6 +1100,7 @@ def plot_from_gdf(
     axis=None,
     figsize=(9, 13),
     adapt_fontsize=True,
+    mask_rel_distance=None,
     **kwargs,
 ):
     """Plot several subplots from different columns of a GeoDataFrame, e.g., for
@@ -1168,6 +1183,7 @@ def plot_from_gdf(
         axes=axis,
         figsize=figsize,
         adapt_fontsize=adapt_fontsize,
+        mask_rel_distance=mask_rel_distance,
         **kwargs,
     )
 
