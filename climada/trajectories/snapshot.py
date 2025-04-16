@@ -22,7 +22,6 @@ This modules implements the Snapshot and SnapshotsCollection classes.
 
 import copy
 import datetime
-import itertools
 import logging
 
 from climada.entity.exposures import Exposures

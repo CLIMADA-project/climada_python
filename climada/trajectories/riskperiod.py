@@ -28,6 +28,7 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import lil_matrix
 
+from climada.engine.impact import Impact
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.measures.base import Measure
 from climada.trajectories.snapshot import Snapshot
@@ -65,6 +66,8 @@ class LinearInterpolation(InterpolationStrategy):
                 raise ValueError(
                     "Interpolation between impact matrices of different shapes"
                 )
+            else:
+                raise e
 
     @staticmethod
     def interpolate_imp_mat(imp0, imp1, time_points):
@@ -114,8 +117,8 @@ class ImpactComputationStrategy(ABC):
     @abstractmethod
     def compute_impacts(
         self,
-        snapshot0,
-        snapshot1,
+        snapshot0: Snapshot,
+        snapshot1: Snapshot,
         risk_transf_attach: float | None,
         risk_transf_cover: float | None,
         calc_residual: bool,
@@ -128,8 +131,8 @@ class ImpactCalcComputation(ImpactComputationStrategy):
 
     def compute_impacts(
         self,
-        snapshot0,
-        snapshot1,
+        snapshot0: Snapshot,
+        snapshot1: Snapshot,
         risk_transf_attach: float | None,
         risk_transf_cover: float | None,
         calc_residual: bool = False,
@@ -140,7 +143,9 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         )
         return impacts
 
-    def _calculate_impacts_for_snapshots(self, snapshot0, snapshot1):
+    def _calculate_impacts_for_snapshots(
+        self, snapshot0: Snapshot, snapshot1: Snapshot
+    ):
         """Calculate impacts for the given snapshots and impact function set."""
         imp_E0H0 = ImpactCalc(
             snapshot0.exposure, snapshot0.impfset, snapshot0.hazard
@@ -158,7 +163,7 @@ class ImpactCalcComputation(ImpactComputationStrategy):
 
     def _apply_risk_transfer(
         self,
-        impacts,
+        impacts: tuple[Impact, Impact, Impact, Impact],
         risk_transf_attach: float | None,
         risk_transf_cover: float | None,
         calc_residual: bool,
@@ -249,8 +254,8 @@ class CalcRiskPeriod:
 
     def __init__(
         self,
-        snapshot0,
-        snapshot1,
+        snapshot0: Snapshot,
+        snapshot1: Snapshot,
         interval_freq: str | None = "YS",
         time_points: int | None = None,
         interpolation_strategy: InterpolationStrategy | None = None,
@@ -266,11 +271,11 @@ class CalcRiskPeriod:
             snapshot0.date,
             snapshot1.date,
             periods=time_points,
-            freq=interval_freq,
+            freq=interval_freq,  # type: ignore
             name="date",
         )
         self.time_points = len(self.date_idx)
-        self.interval_freq = self.date_idx.inferred_freq
+        self.interval_freq = pd.infer_freq(self.date_idx)
         self.measure = measure
         self._prop_H1 = np.linspace(0, 1, num=self.time_points)
         self._prop_H0 = 1 - self._prop_H1
@@ -485,7 +490,9 @@ class CalcRiskPeriod:
 
     def calc_aai_per_group_metric(self):
         aai_per_group_df = []
-        for group in np.unique(np.concatenate([self._group_id_E0, self._group_id_E1])):
+        for group in np.unique(
+            np.concatenate(np.array([self._group_id_E0, self._group_id_E1]), axis=0)
+        ):
             group_idx_E0 = np.where(self._group_id_E0 != group)
             group_idx_E1 = np.where(self._group_id_E1 != group)
             per_date_aai_H0, per_date_aai_H1 = (

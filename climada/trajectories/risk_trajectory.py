@@ -156,7 +156,7 @@ class RiskTrajectory:
 
         return self._risk_periods_calculators
 
-    def _calc_risk_periods(self, snapshots):
+    def _calc_risk_periods(self, snapshots: list[Snapshot]) -> list[CalcRiskPeriod]:
         def pairwise(container: list):
             """
             Generate pairs of successive elements from an iterable.
@@ -280,8 +280,10 @@ class RiskTrajectory:
             metric_meth="calc_risk_components_metric",
         )
 
-    def all_risk_metrics(self, return_periods=[50, 100, 500], npv=True):
-        if not self._metrics_up_to_date:
+    def all_risk_metrics(
+        self, return_periods=[50, 100, 500], npv=True
+    ) -> pd.DataFrame | pd.Series:
+        if not self._metrics_up_to_date or self._all_risk_metrics is None:
             aai = self.aai_metrics()
             rp = self.return_periods_metrics(return_periods)
             aai_per_group = self.aai_per_group_metrics()
@@ -304,7 +306,9 @@ class RiskTrajectory:
         ]
 
     @classmethod
-    def _per_period_risk(cls, df: pd.DataFrame, time_unit="year", colname="risk"):
+    def _per_period_risk(
+        cls, df: pd.DataFrame, time_unit="year", colname="risk"
+    ) -> pd.DataFrame | pd.Series:
         def identify_continuous_periods(group, time_unit):
             # Calculate the difference between consecutive dates
             if time_unit == "year":
@@ -357,11 +361,11 @@ class RiskTrajectory:
         return self._prepare_risk_metrics(total=False, npv=True)
 
     @property
-    def total_risk_metrics(self):
+    def total_risk_metrics(self) -> pd.DataFrame | pd.Series:
         """Returns a tidy dataframe of the risk metrics with the total for each different period."""
         return self._prepare_risk_metrics(total=True, npv=True)
 
-    def _prepare_risk_metrics(self, total=False, npv=True):
+    def _prepare_risk_metrics(self, total=False, npv=True) -> pd.DataFrame | pd.Series:
         df = self.all_risk_metrics(npv=npv)
         if total:
             return self._per_period_risk(df)
