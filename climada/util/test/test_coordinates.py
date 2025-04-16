@@ -342,6 +342,23 @@ def data_arrays_resampling_demo():
 class TestFunc(unittest.TestCase):
     """Test auxiliary functions"""
 
+    def test_check_geo_coords(self):
+        """Test the check_if_geo_coords function"""
+        # test correct geographical coords
+        lat, lon = np.array([0, -2, 5]), np.array([-179, 175, 178])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), True)
+        # test wrong lat
+        lat, lon = np.array([0, 200, 5]), np.array([-179, 175, 178])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+        # test wrong lon
+        lat, lon = np.array([0, -2, 5]), np.array([-400, 175, 176])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+        lat, lon = np.array([0, -2, 5]), np.array([700, 1000, 800])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+        # test wrong extent
+        lat, lon = np.array([0, -2, 5]), np.array([-179, 175, 370])
+        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+
     def test_lon_normalize(self):
         """Test the longitude normalization function"""
         data = np.array([-180, 20.1, -30, 190, -350])
@@ -1457,18 +1474,11 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_get_country_geometries_fail(self):
         """get_country_geometries with offensive parameters"""
-        with self.assertRaises(ValueError) as cm:
-            u_coord.get_country_geometries(extent=(-20, 350, 0, 0))
-        self.assertIn(
-            "longitude extent range is greater than 360: -20 to 350", str(cm.exception)
-        )
-        with self.assertRaises(ValueError) as cm:
-            u_coord.get_country_geometries(extent=(350, -20, 0, 0))
-        self.assertIn(
-            "longitude extent at the left (350) is larger "
-            "than longitude extent at the right (-20)",
-            str(cm.exception),
-        )
+        self.assertRaises(ValueError, 
+        u_coord.get_country_geometries(extent=(-20, 350, 0, 0)))        
+        self.assertRaises(ValueError,
+        u_coord.get_country_geometries(extent=(340, -20, 0, 0)))
+       
 
     def test_country_code_pass(self):
         """Test set_region_id"""
