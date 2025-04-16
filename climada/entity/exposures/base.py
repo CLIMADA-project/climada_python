@@ -37,6 +37,7 @@ from deprecation import deprecated
 from geopandas import GeoDataFrame, GeoSeries, points_from_xy
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from rasterio.warp import Resampling
+from xarray import DataArray
 
 import climada.util.coordinates as u_coord
 import climada.util.hdf5_handler as u_hdf5
@@ -1121,26 +1122,39 @@ class Exposures:
         self.to_crs(crs_ori, inplace=True)
         return axis
 
-    def write_hdf5(self, file_name):
+    def write_hdf5(self, file_name, pickle_geometry=False):
         """Write data frame and metadata in hdf5 format
 
         Parameters
         ----------
         file_name : str
             (path and) file name to write to.
+        pickle_geometry : bool
+            flag, indicating whether the "geometry" of the Exposures` `data` will be stored as
+            pickled shapely objects instead of wkb bytes. This is faster but less durable, because
+            pickled data may get unreadable for future shapely versions.
+            Default: False
         """
         LOGGER.info("Writing %s", file_name)
         store = pd.HDFStore(file_name, mode="w")
-        pandas_df = pd.DataFrame(self.gdf)
+        pandas_df = pd.DataFrame(self.data)
+        wkb_data = {}
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
-                pandas_df[col] = np.asarray(self.gdf[col])
+                if pickle_geometry:
+                    pandas_df[col] = np.asarray(self.data[col])
+                else:
+                    wkb_data[col] = to_wkb_store(self.geometry)
+                    pandas_df.drop(columns=["geometry"])
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
             # Write dataframe
             store.put("exposures", pandas_df)
+
+        if wkb_data:
+            store.put("wkb_data", wkb_data)
 
         var_meta = {}
         for var in type(self)._metadata:
@@ -1184,7 +1198,14 @@ class Exposures:
             crs = metadata.get("crs", metadata.get("_crs"))
             if crs is None and metadata.get("meta"):
                 crs = metadata["meta"].get("crs")
-            exp = cls(store["exposures"], crs=crs)
+            data = pd.DataFrame(store["exposures"])
+            try:
+                wkb_data = store.get("wkb_data")
+            except KeyError:
+                wkb_data = {}
+            for col, val in wkb_data.items():
+                data[col] = from_wkb_store(val)
+            exp = cls(data, crs=crs)
             for key, val in metadata.items():
                 if key in type(exp)._metadata:  # pylint: disable=protected-access
                     setattr(exp, key, val)
@@ -1551,6 +1572,21 @@ def _read_mat_optional(exposures, data, var_names):
             exposures[INDICATOR_CENTR] = assigned
     except KeyError:
         pass
+
+
+def to_wkb_store(geometry: np.array, store):
+    wkb_data = geometry.to_wkb().to_numpy()
+    import h5py
+
+    wkb_dataset = h5py.Dataset(store)
+
+    # Store WKB as variable-length byte arrays
+    dt = h5py.vlen_dtype(np.dtype("uint8"))
+    wkb_dataset.dtype = dt
+    for i, geom_bytes in enumerate(wkb_data):
+        wkb_dataset[i] = np.frombuffer(geom_bytes, dtype="uint8")
+
+    return wkb_data
 
 
 def _read_mat_metadata(exposures, data, file_name, var_names):
