@@ -78,12 +78,7 @@ class RiskTrajectory:
         interpolation_strategy: InterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        self._aai_metrics = None
-        self._return_periods_metrics = None
-        self._risk_components_metrics = None
-        self._aai_per_group_metrics = None
-        self._all_risk_metrics = None
-        self._metrics_up_to_date = False
+        self._reset_metrics()
         self._risk_period_up_to_date: bool = False
         self._snapshots = snapshots_list
         self._all_groups_name = all_groups_name
@@ -103,6 +98,7 @@ class RiskTrajectory:
         self._risk_periods_calculators = self._calc_risk_periods(snapshots_list)
 
     def _reset_metrics(self):
+        self._eai_metrics = None
         self._aai_metrics = None
         self._return_periods_metrics = None
         self._risk_components_metrics = None

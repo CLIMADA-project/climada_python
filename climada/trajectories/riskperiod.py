@@ -20,17 +20,21 @@ This modules implements the Snapshot and SnapshotsCollection classes.
 
 """
 
-import copy
 import logging
-from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
-from scipy.sparse import lil_matrix
 
-from climada.engine.impact import Impact
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.measures.base import Measure
+from climada.trajectories.impact_calc_strat import (
+    ImpactCalcComputation,
+    ImpactComputationStrategy,
+)
+from climada.trajectories.interpolation import (
+    InterpolationStrategy,
+    LinearInterpolation,
+)
 from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
@@ -46,207 +50,6 @@ def lazy_property(method):
         return getattr(self, attr_name)
 
     return _lazy
-
-
-class InterpolationStrategy(ABC):
-    """Interface for interpolation strategies."""
-
-    @abstractmethod
-    def interpolate(self, imp_E0, imp_E1, time_points: int) -> list: ...
-
-
-class LinearInterpolation(InterpolationStrategy):
-    """Linear interpolation strategy."""
-
-    def interpolate(self, imp_E0, imp_E1, time_points: int):
-        try:
-            return self.interpolate_imp_mat(imp_E0, imp_E1, time_points)
-        except ValueError as e:
-            if str(e) == "inconsistent shape":
-                raise ValueError(
-                    "Interpolation between impact matrices of different shapes"
-                )
-            else:
-                raise e
-
-    @staticmethod
-    def interpolate_imp_mat(imp0, imp1, time_points):
-        """Interpolate between two impact matrices over a specified time range.
-
-        Parameters
-        ----------
-        imp0 : ImpactCalc
-            The impact calculation for the starting time.
-        imp1 : ImpactCalc
-            The impact calculation for the ending time.
-        time_points:
-            The number of points to interpolate.
-
-        Returns
-        -------
-        list of np.ndarray
-            List of interpolated impact matrices for each time points in the specified range.
-        """
-
-        def interpolate_sm(mat_start, mat_end, time, time_points):
-            """Perform linear interpolation between two matrices for a specified time point."""
-            if time > time_points:
-                raise ValueError("time point must be within the range")
-
-            ratio = time / (time_points - 1)
-
-            # Convert the input matrices to a format that allows efficient modification of its elements
-            mat_start = lil_matrix(mat_start)
-            mat_end = lil_matrix(mat_end)
-
-            # Perform the linear interpolation
-            mat_interpolated = mat_start + ratio * (mat_end - mat_start)
-
-            return mat_interpolated
-
-        LOGGER.debug(f"imp0: {imp0.imp_mat.data[0]}, imp1: {imp1.imp_mat.data[0]}")
-        return [
-            interpolate_sm(imp0.imp_mat, imp1.imp_mat, time, time_points)
-            for time in range(time_points)
-        ]
-
-
-class ImpactComputationStrategy(ABC):
-    """Interface for impact computation strategies."""
-
-    @abstractmethod
-    def compute_impacts(
-        self,
-        snapshot0: Snapshot,
-        snapshot1: Snapshot,
-        risk_transf_attach: float | None,
-        risk_transf_cover: float | None,
-        calc_residual: bool,
-    ) -> tuple:
-        pass
-
-
-class ImpactCalcComputation(ImpactComputationStrategy):
-    """Default impact computation strategy."""
-
-    def compute_impacts(
-        self,
-        snapshot0: Snapshot,
-        snapshot1: Snapshot,
-        risk_transf_attach: float | None,
-        risk_transf_cover: float | None,
-        calc_residual: bool = False,
-    ):
-        impacts = self._calculate_impacts_for_snapshots(snapshot0, snapshot1)
-        self._apply_risk_transfer(
-            impacts, risk_transf_attach, risk_transf_cover, calc_residual
-        )
-        return impacts
-
-    def _calculate_impacts_for_snapshots(
-        self, snapshot0: Snapshot, snapshot1: Snapshot
-    ):
-        """Calculate impacts for the given snapshots and impact function set."""
-        imp_E0H0 = ImpactCalc(
-            snapshot0.exposure, snapshot0.impfset, snapshot0.hazard
-        ).impact()
-        imp_E1H0 = ImpactCalc(
-            snapshot1.exposure, snapshot1.impfset, snapshot0.hazard
-        ).impact()
-        imp_E0H1 = ImpactCalc(
-            snapshot0.exposure, snapshot0.impfset, snapshot1.hazard
-        ).impact()
-        imp_E1H1 = ImpactCalc(
-            snapshot1.exposure, snapshot1.impfset, snapshot1.hazard
-        ).impact()
-        return imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1
-
-    def _apply_risk_transfer(
-        self,
-        impacts: tuple[Impact, Impact, Impact, Impact],
-        risk_transf_attach: float | None,
-        risk_transf_cover: float | None,
-        calc_residual: bool,
-    ):
-        """Apply risk transfer to the calculated impacts."""
-        if risk_transf_attach is not None and risk_transf_cover is not None:
-            for imp in impacts:
-                imp.imp_mat = self.calculate_residual_or_risk_transfer_impact_matrix(
-                    imp.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
-                )
-
-    def calculate_residual_or_risk_transfer_impact_matrix(
-        self, imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
-    ):
-        """
-        Calculate either the residual or the risk transfer impact matrix.
-
-        The impact matrix is adjusted based on the total impact for each event.
-        When calculating the residual impact, the result is the total impact minus
-        the risk layer. The risk layer is defined as the minimum of the cover and
-        the maximum of the difference between the total impact and the attachment.
-        If `calc_residual` is False, the function returns the risk layer matrix
-        instead of the residual.
-
-        Parameters
-        ----------
-        imp_mat : scipy.sparse.csr_matrix
-            The original impact matrix to be scaled.
-        attachment : float, optional
-            The attachment point for the risk layer.
-        cover : float, optional
-            The maximum coverage for the risk layer.
-        calc_residual : bool, default=True
-            Determines if the function calculates the residual (if True) or the
-            risk layer (if False).
-
-        Returns
-        -------
-        scipy.sparse.csr_matrix
-            The adjusted impact matrix, either residual or risk transfer.
-
-        Example
-        -------
-        >>> calc_residual_or_risk_transf_imp_mat(imp_mat, attachment=100, cover=500, calc_residual=True)
-        Residual impact matrix with applied risk layer adjustments.
-        """
-        if risk_transf_attach and risk_transf_cover:
-            # Make a copy of the impact matrix
-            imp_mat = copy.deepcopy(imp_mat)
-            # Calculate the total impact per event
-            total_at_event = imp_mat.sum(axis=1).A1
-            # Risk layer at event
-            transfer_at_event = np.minimum(
-                np.maximum(total_at_event - risk_transf_attach, 0), risk_transf_cover
-            )
-            # Resiudal impact
-            residual_at_event = np.maximum(total_at_event - transfer_at_event, 0)
-
-            # Calculate either the residual or transfer impact matrix
-            # Choose the denominator to rescale the impact values
-            if calc_residual:
-                # Rescale the impact values
-                numerator = residual_at_event
-            else:
-                # Rescale the impact values
-                numerator = transfer_at_event
-
-            # Rescale the impact values
-            rescale_impact_values = np.divide(
-                numerator,
-                total_at_event,
-                out=np.zeros_like(numerator, dtype=float),
-                where=total_at_event != 0,
-            )
-
-            # The multiplication is broadcasted across the columns for each row
-            result_matrix = imp_mat.multiply(rescale_impact_values[:, np.newaxis])
-
-            return result_matrix
-
-        else:
-
-            return imp_mat
 
 
 class CalcRiskPeriod:
@@ -344,6 +147,10 @@ class CalcRiskPeriod:
     def per_date_aai_H1(self):
         return self.calc_per_date_aais(self.per_date_eai_H1)
 
+    @lazy_property
+    def eai_gdf(self):
+        return self.calc_eai_gdf()
+
     def per_date_return_periods_H0(self, return_periods) -> np.ndarray:
         return self.calc_per_date_rps(
             self.imp_mats_H0, self.snapshot0.hazard.frequency, return_periods
@@ -357,7 +164,7 @@ class CalcRiskPeriod:
     @classmethod
     def calc_per_date_eais(cls, imp_mats, frequency) -> np.ndarray:
         """
-        Calculate per_date expected annual impact (EAI) values for two scenarios.
+        Calculate per_date expected average impact (EAI) values for two scenarios.
 
         Parameters
         ----------
@@ -477,6 +284,20 @@ class CalcRiskPeriod:
             ifc_impact = interp_imp
 
         return ifc_impact
+
+    def calc_eai_gdf(self):
+        per_date_eai_H0, per_date_eai_H1 = (self.per_date_eai_H0, self.per_date_eai_H1)
+        per_date_eai = np.multiply(
+            self._prop_H0.reshape(-1, 1), per_date_eai_H0
+        ) + np.multiply(self._prop_H1.reshape(-1, 1), per_date_eai_H1)
+        df = pd.DataFrame(per_date_eai, index=self.date_idx)
+        df = df.reset_index().melt(
+            id_vars="date", var_name="coord_id", value_name="risk"
+        )
+        eai_gdf = self.snapshot1.exposure.gdf
+        eai_gdf["coord_id"] = eai_gdf.index
+        eai_gdf = eai_gdf.merge(df, on="coord_id")
+        return eai_gdf
 
     def calc_aai_metric(self):
         per_date_aai_H0, per_date_aai_H1 = self.per_date_aai_H0, self.per_date_aai_H1
