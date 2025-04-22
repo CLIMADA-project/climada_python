@@ -1145,7 +1145,7 @@ class Exposures:
                     pandas_df[col] = np.asarray(self.data[col])
                 else:
                     wkb_data[col] = to_wkb_store(self.geometry)
-                    pandas_df.drop(columns=["geometry"])
+                    pandas_df.drop(columns=[col], inplace=True)
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
         with warnings.catch_warnings():
