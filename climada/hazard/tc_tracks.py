@@ -195,7 +195,7 @@ Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone haz
 dataset using STORM. Scientific Data 7(1): 40."""
 
 
-class Basin(Enum):
+class Basin_bounds_storm(Enum):
     """
     Store tropical cyclones basin geographical extent.
     The boundaries of the basin are represented as a polygon (using the `shapely` Polygon object)
@@ -415,6 +415,18 @@ class TCTracks:
 
         return out
 
+    BASINS_GDF = gpd.GeoDataFrame(
+        {"basin": b, "geometry": b.value} for b in Basin_bounds_storm
+    )
+
+    def get_basins(
+        track,
+    ):  # this is the method I had in mind for 1. and I'd guess it could be a performance boost
+        track_coordinates = gpd.GeoDataFrame(
+            geometry=gpd.points_from_xy(track.lon, track.lat)
+        )
+        return track_coordinates.sjoin(BASINS_GDF, how="left", predicate="within").basin
+
     def subset_by_basin(self):
         """Subset all tropical cyclones tracks by basin.
 
@@ -439,7 +451,7 @@ class TCTracks:
         Example:
         --------
         >>> tc = TCTracks.from_ibtracks("")
-        >>> tc_basins = tc.split_by_basin()
+        >>> tc_basins = tc.subset_by_basin()
         >>> tc_basins["NA"] # to access tracks in the North Atlantic
 
         """
@@ -454,7 +466,7 @@ class TCTracks:
             point_in_basin = False
 
             # Find the basin that contains the point
-            for basin in Basin:
+            for basin in Basin_bounds_storm:
                 if basin.value.contains(origin_point):
                     basins_dict[basin.name].append(track)
                     point_in_basin = True
