@@ -18,52 +18,83 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Cross-calibration on top of a single calibration module
 """
 
-from abc import ABC, abstractmethod
-from dataclasses import dataclass, InitVar, field
-from typing import List, Any, Tuple, Sequence, Dict, Callable, Optional
-from copy import copy, deepcopy
-from itertools import repeat
 import logging
+from abc import ABC, abstractmethod
+from copy import copy, deepcopy
+from dataclasses import InitVar, dataclass, field
+from itertools import repeat
+from pathlib import Path
+from typing import Any, Callable, Mapping, Optional, Sequence
 
-import numpy as np
-from numpy.random import default_rng
-import pandas as pd
-from pathos.multiprocessing import ProcessPool
-from tqdm import tqdm
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
+import numpy as np
+import pandas as pd
+from numpy.random import default_rng
+from pathos.multiprocessing import ProcessPool
+from tqdm import tqdm
 
 from ...engine.unsequa.input_var import InputVar
 from ...entity.impact_funcs import ImpactFuncSet
 from ..coordinates import country_to_iso
-from .base import Output, Input
+from .base import Input, Optimizer, Output
 
 LOGGER = logging.getLogger(__name__)
 
 
-def sample_data(data: pd.DataFrame, sample: List[Tuple[int, int]]):
-    """Return a sample of the data"""
+def sample_data(data: pd.DataFrame, sample: list[tuple[int, int]]):
+    """
+    Return a DataFrame containing only the sampled values from the input data.
+
+    The resulting data frame has the same shape and indices ad `data` and is filled with
+    NaNs, except for the row and column indices specified by `sample`.
+
+    Parameters
+    ----------
+    data : pandas.DataFrame
+        The input DataFrame from which values will be sampled.
+    sample : list of tuple of int
+        A list of (row, column) index pairs indicating which positions
+        to copy from `data` into the returned DataFrame.
+
+    Returns
+    -------
+    pandas.DataFrame
+        A DataFrame of the same shape as `data` with NaNs in all positions
+        except those specified in `sample`, which contain the corresponding values
+        from `data`.
+    """
     # Create all-NaN data
     data_sampled = pd.DataFrame(np.nan, columns=data.columns, index=data.index)
 
     # Extract sample values from data
-    for x, y in sample:
-        data_sampled.iloc[x, y] = data.iloc[x, y]
+    for row, col in sample:
+        data_sampled.iloc[row, col] = data.iloc[row, col]
 
     return data_sampled
 
 
-def event_info_from_input(input: Input) -> Dict[str, Any]:
-    """Get information on the event(s) for which we calibrated"""
+def event_info_from_input(inp: Input) -> dict[str, Any]:
+    """Get information on the event(s) for which we calibrated
+
+    This tries to retrieve the event IDs, region IDs, and event names.
+    For an average ensemble, they might be lists of lists.
+
+    Returns
+    -------
+    dict
+        With keys `event_id`, `region_id`, `event_name`
+    """
     # Get region and event IDs
-    data = input.data.dropna(axis="columns", how="all").dropna(axis="index", how="all")
+    data = inp.data.dropna(axis="columns", how="all").dropna(axis="index", how="all")
     event_ids = data.index
     region_ids = data.columns
 
     # Get event name
-    try:
-        event_names = input.hazard.select(event_id=event_ids.to_list()).event_name
-    except Exception:
+    hazard = inp.hazard.select(event_id=event_ids.to_list())
+    if hazard is not None:
+        event_names = hazard.event_name
+    else:
         event_names = []
 
     # Return data
@@ -74,19 +105,12 @@ def event_info_from_input(input: Input) -> Dict[str, Any]:
     }
 
 
-def optimize(optimizer_type, input, opt_init_kwargs, opt_run_kwargs):
-    opt = optimizer_type(input, **opt_init_kwargs)
-    out = opt.run(**opt_run_kwargs)
-    return SingleEnsembleOptimizerOutput(
-        params=out.params,
-        target=out.target,
-        event_info=event_info_from_input(input),
-    )
-
-
 @dataclass
 class SingleEnsembleOptimizerOutput(Output):
     """Output for a single member of an ensemble optimizer
+
+    This extends a regular :py:class:`~climada.util.calibrate.base.Output` by
+    information on the particular event(s) this calibration was performed on.
 
     Attributes
     ----------
@@ -94,11 +118,46 @@ class SingleEnsembleOptimizerOutput(Output):
         Information on the events for this calibration instance
     """
 
-    event_info: Dict[str, Any] = field(default_factory=dict)
+    event_info: dict[str, Any] = field(default_factory=dict)
+
+
+def optimize(
+    optimizer_type: type[Optimizer],
+    inp: Input,
+    opt_init_kwargs: Mapping[str, Any],
+    opt_run_kwargs: Mapping[str, Any],
+) -> SingleEnsembleOptimizerOutput:
+    """Instantiate an optimizer, run it, and return its output
+
+    Parameters
+    ----------
+    optimizer_type : type
+        The type of the optimizer to use
+    inp : Input
+        The optimizer input
+    opt_init_kwargs
+        Keyword argument for initializing the optimizer
+    opt_run_kwargs
+        Keyword argument for running the optimizer
+
+    Returns
+    -------
+    SingleEnsembleOptimizerOutput
+        The output of the optimizer
+    """
+    opt = optimizer_type(inp, **opt_init_kwargs)
+    out = opt.run(**opt_run_kwargs)
+    return SingleEnsembleOptimizerOutput(
+        params=out.params,
+        target=out.target,
+        event_info=event_info_from_input(inp),
+    )
 
 
 @dataclass
 class EnsembleOptimizerOutput:
+    """The collective output of an ensemble optimization"""
+
     data: pd.DataFrame
 
     @classmethod
@@ -116,17 +175,17 @@ class EnsembleOptimizerOutput:
 
         return cls(data=data)
 
-    def to_hdf(self, filepath):
+    def to_hdf(self, filepath: Path | str):
         """Store data to HDF5"""
         self.data.to_hdf(filepath, key="data")
 
     @classmethod
-    def from_hdf(cls, filepath):
+    def from_hdf(cls, filepath: Path | str):
         """Load data from HDF"""
         return cls(data=pd.read_hdf(filepath, key="data"))
 
     @classmethod
-    def from_csv(cls, filepath):
+    def from_csv(cls, filepath: Path | str):
         """Load data from CSV"""
         LOGGER.warning(
             "Do not use CSV for storage, because it does not preserve data types. "
@@ -134,7 +193,7 @@ class EnsembleOptimizerOutput:
         )
         return cls(data=pd.read_csv(filepath, header=[0, 1]))
 
-    def to_csv(self, filepath):
+    def to_csv(self, filepath: Path | str):
         """Store data as CSV"""
         LOGGER.warning(
             "Do not use CSV for storage, because it does not preserve data types. "
@@ -142,7 +201,7 @@ class EnsembleOptimizerOutput:
         )
         self.data.to_csv(filepath, index=None)
 
-    def _to_impf_sets(self, impact_func_creator) -> List[ImpactFuncSet]:
+    def _to_impf_sets(self, impact_func_creator) -> list[ImpactFuncSet]:
         """Return a list of impact functions created from the stored parameters"""
         return [
             impact_func_creator(**row["Parameters"]) for _, row in self.data.iterrows()
@@ -188,7 +247,7 @@ class EnsembleOptimizerOutput:
         impact_func_creator: Callable[..., ImpactFuncSet],
         haz_type,
         impf_id,
-        input=None,
+        inp=None,
     ):
         """Plot all impact functions with appropriate color coding and event data"""
         # Store data to plot
@@ -218,9 +277,9 @@ class EnsembleOptimizerOutput:
 
         # Plot hazard histogram
         # NOTE: Actually requires selection by exposure, but this is not trivial!
-        if input is not None:
+        if inp is not None:
             ax2 = ax.twinx()
-            ax2.hist(input.hazard.intensity.data, bins=40, color="grey", alpha=0.5)
+            ax2.hist(inp.hazard.intensity.data, bins=40, color="grey", alpha=0.5)
 
         # Sort data by final MDR value, then plot
         colors = plt.get_cmap("turbo")(np.linspace(0, 1, self.data.shape[0]))
@@ -257,7 +316,6 @@ class EnsembleOptimizerOutput:
         impact_func_creator: Callable[..., ImpactFuncSet],
         haz_type,
         impf_id,
-        input=None,
         category=None,
         category_col_dict=None,
         **impf_set_plot_kwargs,
@@ -302,14 +360,26 @@ class EnsembleOptimizerOutput:
 
 @dataclass
 class EnsembleOptimizer(ABC):
-    """"""
+    """Abstract base class for defining an ensemble optimizer
+
+    Attributes
+    ----------
+    input : Input
+        The input for the optimization
+    optimizer_type : type[Optimizer]
+        The type of the optimizer to use for each calibration task
+    optimizer_init_kwargs
+        Keyword argument for initializing the calibration optimizer
+    samples : list of list of tuple(int, int)
+        The samples for each calibration task
+    """
 
     input: Input
-    optimizer_type: Any
-    optimizer_init_kwargs: Dict[str, Any] = field(default_factory=dict)
-    samples: List[List[Tuple[int, int]]] = field(init=False)
+    optimizer_type: type[Optimizer]
+    optimizer_init_kwargs: dict[str, Any] = field(default_factory=dict)
+    samples: list[list[tuple[int, int]]] = field(init=False)
 
-    def __post_init__(self):
+    def __post_init__(self, **__):
         """"""
         if self.samples is None:
             raise RuntimeError("Samples must be set!")
@@ -345,7 +415,7 @@ class EnsembleOptimizer(ABC):
 
     def _iterate_sequential(
         self, **optimizer_run_kwargs
-    ) -> List[SingleEnsembleOptimizerOutput]:
+    ) -> list[SingleEnsembleOptimizerOutput]:
         """Iterate over all samples sequentially"""
         return [
             optimize(
@@ -358,7 +428,7 @@ class EnsembleOptimizer(ABC):
 
     def _iterate_parallel(
         self, processes, **optimizer_run_kwargs
-    ) -> List[SingleEnsembleOptimizerOutput]:
+    ) -> list[SingleEnsembleOptimizerOutput]:
         """Iterate over all samples in parallel"""
         iterations = len(self.samples)
         opt_run_kwargs = (deepcopy(optimizer_run_kwargs) for _ in range(iterations))
@@ -378,12 +448,12 @@ class EnsembleOptimizer(ABC):
             )
 
     @abstractmethod
-    def input_from_sample(self, sample: List[Tuple[int, int]]) -> Input:
-        """"""
+    def input_from_sample(self, sample: list[tuple[int, int]]) -> Input:
+        """Define how an input is created from a sample"""
 
     def _update_init_kwargs(
-        self, init_kwargs: Dict[str, Any], iteration: int
-    ) -> Dict[str, Any]:
+        self, init_kwargs: dict[str, Any], iteration: int
+    ) -> dict[str, Any]:
         """Copy settings in the init_kwargs and update for each iteration"""
         kwargs = copy(init_kwargs)  # Maybe deepcopy?
         if "random_state" in kwargs:
@@ -393,7 +463,17 @@ class EnsembleOptimizer(ABC):
 
 @dataclass
 class AverageEnsembleOptimizer(EnsembleOptimizer):
-    """"""
+    """An optimizer for the average ensemble
+
+    Attributes
+    ----------
+    sample_fraction : float
+        The fraction of data points to use for each calibration
+    ensemble_size : int
+        The number of calibration tasks to perform
+    random_state : int
+        The seed for the random number generator selecting the samples
+    """
 
     sample_fraction: InitVar[float] = 0.8
     ensemble_size: InitVar[int] = 20
@@ -420,7 +500,7 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
 
         return super().__post_init__()
 
-    def input_from_sample(self, sample: List[Tuple[int, int]]):
+    def input_from_sample(self, sample: list[tuple[int, int]]):
         """Shallow-copy the input and update the data"""
         input = copy(self.input)  # NOTE: Shallow copy!
         input.data = sample_data(input.data, sample)
@@ -429,7 +509,16 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
 
 @dataclass
 class TragedyEnsembleOptimizer(EnsembleOptimizer):
-    """"""
+    """An optimizer for the ensemble of tragedies
+
+    Attributes
+    ----------
+    ensemble_size : int, optional
+        The number of calibration tasks to perform. Defaults to `None`, which means one
+        for each data point. Must be smaller or equal to the number of data points.
+    random_state : int
+        The seed for the random number generator selecting the samples
+    """
 
     ensemble_size: InitVar[Optional[int]] = None
     random_state: InitVar[int] = 1
@@ -454,7 +543,7 @@ class TragedyEnsembleOptimizer(EnsembleOptimizer):
 
         return super().__post_init__()
 
-    def input_from_sample(self, sample: List[Tuple[int, int]]):
+    def input_from_sample(self, sample: list[tuple[int, int]]):
         """Subselect all input"""
         # Data
         input = copy(self.input)  # NOTE: Shallow copy!
@@ -473,66 +562,3 @@ class TragedyEnsembleOptimizer(EnsembleOptimizer):
         # input.exposure = exp
 
         return input
-
-
-# @dataclass
-# class CrossCalibration:
-#     """A class for running multiple calibration tasks on data subsets"""
-
-#     input: Input
-#     optimizer_type: Any
-#     sample_size: int = 1
-#     ensemble_size: Optional[int] = None
-#     random_state: InitVar[int] = 1
-#     optimizer_init_kwargs: Mapping[str, Any] = field(default_factory=dict)
-
-#     def __post_init__(self, random_state):
-#         """"""
-#         if self.sample_size < 1:
-#             raise ValueError("Sample size must be >=1")
-#         if self.sample_size > 1 and self.ensemble_size is None:
-#             raise ValueError("Ensemble size must be set if sample size > 1")
-
-#         # Copy the original data
-#         self.data = self.input.data.copy()
-#         notna_idx = np.argwhere(self.data.notna().to_numpy())
-
-#         # Create the samples
-#         if self.ensemble_size is not None:
-#             rng = default_rng(random_state)
-#             self.samples = [
-#                 rng.choice(notna_idx, size=self.sample_size, replace=False)
-#                 for _ in range(self.ensemble_size)
-#             ]
-#         else:
-#             self.samples = notna_idx.tolist()
-
-#         print("Samples:\n", self.samples)
-
-#     def run(self, **optimizer_run_kwargs) -> List[Output]:
-#         """Run the optimizer for the ensemble"""
-#         outputs = []
-#         for idx, sample in enumerate(self.samples):
-#             # Select data samples
-#             data_sample = self.data.copy()
-#             data_sample.iloc[:, :] = np.nan  # Set all to NaN
-#             for x, y in sample:
-#                 data_sample.iloc[x, y] = self.data.iloc[x, y]
-
-#             # Run the optimizer
-#             input = deepcopy(self.input)
-#             input.data = data_sample
-
-#             # NOTE: NOO assign_centroids
-#             opt = self.optimizer_type(input, **self.optimizer_init_kwargs)
-#             out = opt.run(**optimizer_run_kwargs)
-#             outputs.append(out)
-#             print(f"Ensemble: {idx}, Params: {out.params}")
-
-#         return outputs
-
-
-# # TODO: Tragedy: Localize exposure and hazards!
-# @dataclass
-# class TragedyEnsembleCrossCalibration(CrossCalibration):
-#     """Cross calibration for computing an ensemble of tragedies"""
