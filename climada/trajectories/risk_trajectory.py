@@ -69,6 +69,7 @@ class RiskTrajectory:
     def __init__(
         self,
         snapshots_list: list[Snapshot],
+        *,
         interval_freq: str = "YS",
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
@@ -280,10 +281,10 @@ class RiskTrajectory:
         self, return_periods=[50, 100, 500], npv=True
     ) -> pd.DataFrame | pd.Series:
         if not self._metrics_up_to_date or self._all_risk_metrics is None:
-            aai = self.aai_metrics()
-            rp = self.return_periods_metrics(return_periods)
-            aai_per_group = self.aai_per_group_metrics()
-            risk_components = self.risk_components_metrics()
+            aai = self.aai_metrics(npv)
+            rp = self.return_periods_metrics(return_periods, npv)
+            aai_per_group = self.aai_per_group_metrics(npv)
+            risk_components = self.risk_components_metrics(npv)
             self._all_risk_metrics = pd.concat(
                 [aai, rp, aai_per_group, risk_components]
             )
