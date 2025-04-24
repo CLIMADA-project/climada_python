@@ -36,7 +36,7 @@ Ensemble Optimizers
 
 Calibration creating ensembles of impact functions.
 
-.. automodule:: climada.util.calibrate.cross_calibrate
+.. automodule:: climada.util.calibrate.ensemble
    :members:
    :show-inheritance:
    :inherited-members:  abc.ABC

@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
-Cross-calibration on top of a single calibration module
+Ensemble calibration on top of the single-function calibration module
 """
 
 import logging

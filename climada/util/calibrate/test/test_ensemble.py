@@ -15,7 +15,7 @@ You should have received a copy of the GNU General Public License along
 with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
-Tests for cross calibration module
+Tests for ensemble calibration module
 """
 
 import copy
@@ -30,7 +30,7 @@ import pandas as pd
 import pandas.testing as pdt
 
 from climada.util.calibrate.base import Input, Output
-from climada.util.calibrate.cross_calibrate import (
+from climada.util.calibrate.ensemble import (
     AverageEnsembleOptimizer,
     EnsembleOptimizer,
     EnsembleOptimizerOutput,
@@ -39,7 +39,8 @@ from climada.util.calibrate.cross_calibrate import (
     event_info_from_input,
     sample_data,
 )
-from climada.util.calibrate.test.test_base import ConcreteOptimizer, exposure, hazard
+
+from .test_base import ConcreteOptimizer, exposure, hazard
 
 
 class TestEnsembleOptimizerOutput(unittest.TestCase):
@@ -225,7 +226,7 @@ class TestEnsembleOptimizer(unittest.TestCase):
             assign_centroids=False,
         )
 
-    @patch("climada.util.calibrate.cross_calibrate.ProcessPool")
+    @patch("climada.util.calibrate.ensemble.ProcessPool")
     def test_run(self, pool_class_mock, opt_class_mock):
         """Test initialization"""
         # Mock the optimizer class
