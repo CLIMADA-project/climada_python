@@ -257,6 +257,7 @@ class EnsembleOptimizerOutput:
         inp: Input | None = None,
         impf_plot_kwargs: Mapping[str, Any] | None = None,
         hazard_plot_kwargs: Mapping[str, Any] | None = None,
+        legend: bool = True,
     ):
         """Plot all impact functions with appropriate color coding and event data"""
         # Store data to plot
@@ -271,9 +272,15 @@ class EnsembleOptimizerOutput:
                     f"impf_id: {impf_id}"
                 )
 
-            region_id = country_to_iso(row[("Event", "region_id")])
-            event_name = row[("Event", "event_name")]
-            event_id = row[("Event", "event_id")]
+            def single_entry(arr):
+                """If ``arr`` has a single entry, return it, else ``arr`` itself"""
+                if len(arr) == 1:
+                    return arr[0]
+                return arr
+
+            region_id = single_entry(country_to_iso(row[("Event", "region_id")]))
+            event_name = single_entry(row[("Event", "event_name")])
+            event_id = single_entry(row[("Event", "event_id")])
 
             label = f"{event_name}, {region_id}, {event_id}"
             if len(event_name) > 1 or len(event_id) > 1:
@@ -289,15 +296,26 @@ class EnsembleOptimizerOutput:
 
         # Create plot
         _, ax = plt.subplots()
+        legend_xpad = 0
 
         # Plot hazard histogram
         # NOTE: Actually requires selection by exposure, but this is not trivial!
         if inp is not None:
+            # Create secondary axis
             ax2 = ax.twinx()
+            ax2.set_zorder(1)
+            ax.set_zorder(2)
+            ax.set_facecolor("none")
+            legend_xpad = 0.15
+
+            # Draw histogram
             hist_kwargs = {"bins": 40, "color": "grey", "alpha": 0.5}
             if hazard_plot_kwargs is not None:
                 hist_kwargs.update(hazard_plot_kwargs)
             ax2.hist(inp.hazard.intensity.data, **hist_kwargs)
+            ax2.set_ylabel("Intensity Count", color=hist_kwargs["color"])
+            ax2.tick_params(axis="y", colors=hist_kwargs["color"])
+
         elif hazard_plot_kwargs is not None:
             LOGGER.warning("No 'inp' parameter provided. Ignoring 'hazard_plot_kwargs'")
 
@@ -320,16 +338,17 @@ class EnsembleOptimizerOutput:
         ax.set_title(f"{haz_type} {impf_id}")
         ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
         ax.set_ylim(0, 1)
-        ax.legend(
-            bbox_to_anchor=(1.05, 1),
-            borderaxespad=0,
-            borderpad=0,
-            loc="upper left",
-            title="Event Name, Country, Event ID",
-            frameon=False,
-            fontsize="xx-small",
-            title_fontsize="x-small",
-        )
+        if legend:
+            ax.legend(
+                bbox_to_anchor=(1.05 + legend_xpad, 1),
+                borderaxespad=0,
+                borderpad=0,
+                loc="upper left",
+                title="Event Name, Country, Event ID",
+                frameon=False,
+                fontsize="xx-small",
+                title_fontsize="x-small",
+            )
 
         return ax
 
@@ -511,16 +530,21 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
         The number of calibration tasks to perform
     random_state : int
         The seed for the random number generator selecting the samples
+    replace : bool
+        If samples of the impact data should be drawn with replacement
     """
 
     sample_fraction: InitVar[float] = 0.8
     ensemble_size: InitVar[int] = 20
     random_state: InitVar[int] = 1
+    replace: InitVar[bool] = False
 
-    def __post_init__(self, sample_fraction, ensemble_size, random_state):
+    def __post_init__(self, sample_fraction, ensemble_size, random_state, replace):
         """Create the samples"""
-        if sample_fraction <= 0 or sample_fraction >= 1:
-            raise ValueError("Sample fraction must be in (0, 1)")
+        if sample_fraction <= 0:
+            raise ValueError("Sample fraction must be larger than 0")
+        elif sample_fraction > 1 and not replace:
+            raise ValueError("Sample fraction must be <=1 or replace must be True")
         if ensemble_size < 1:
             raise ValueError("Ensemble size must be >=1")
 
@@ -532,7 +556,7 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
         # Create samples
         rng = default_rng(random_state)
         self.samples = [
-            rng.choice(notna_idx, size=num_samples, replace=False)
+            rng.choice(notna_idx, size=num_samples, replace=replace)
             for _ in range(ensemble_size)
         ]
 

@@ -356,19 +356,41 @@ class TestAverageEnsembleOptimizer(unittest.TestCase):
         npt.assert_array_equal(samples[0], [[0, 0], [2, 1], [3, 0], [3, 1]])
         npt.assert_array_equal(samples[0], samples[1])
 
+    def test_sampling_replace(self):
+        """Test if replacement works"""
+        data = pd.DataFrame({"a": [1.0]})
+        self.input = DummyInput(data)
+        opt = AverageEnsembleOptimizer(
+            input=self.input,
+            ensemble_size=1,
+            sample_fraction=3,
+            replace=True,
+            optimizer_type=ConcreteOptimizer,
+        )
+        npt.assert_array_equal(opt.samples, [[(0, 0), (0, 0), (0, 0)]])
+
     def test_invalid_sample_fraction(self):
-        with self.assertRaisesRegex(ValueError, "Sample fraction"):
-            AverageEnsembleOptimizer(
-                input=self.input,
-                sample_fraction=1,
-                optimizer_type=ConcreteOptimizer,
-            )
         with self.assertRaisesRegex(ValueError, "Sample fraction"):
             AverageEnsembleOptimizer(
                 input=self.input,
                 sample_fraction=0,
                 optimizer_type=ConcreteOptimizer,
             )
+        with self.assertRaisesRegex(ValueError, "Sample fraction"):
+            AverageEnsembleOptimizer(
+                input=self.input,
+                sample_fraction=1.2,
+                replace=False,
+                optimizer_type=ConcreteOptimizer,
+            )
+
+        # Should not throw
+        AverageEnsembleOptimizer(
+            input=self.input,
+            sample_fraction=1.1,
+            replace=True,
+            optimizer_type=ConcreteOptimizer,
+        )
 
     def test_invalid_ensemble_size(self):
         with self.assertRaisesRegex(ValueError, "Ensemble size must be >=1"):
