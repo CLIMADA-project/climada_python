@@ -66,10 +66,9 @@ class CalcRiskPeriod:
         risk_transf_attach: float | None = None,
         risk_transf_cover: float | None = None,
         calc_residual: bool = False,
-        measure: Measure | None = None,
     ):
-        self.snapshot0 = snapshot0
-        self.snapshot1 = snapshot1
+        self._snapshot0 = snapshot0
+        self._snapshot1 = snapshot1
         self.date_idx = pd.date_range(
             snapshot0.date,
             snapshot1.date,
@@ -77,31 +76,153 @@ class CalcRiskPeriod:
             freq=interval_freq,  # type: ignore
             name="date",
         )
-        self.time_points = len(self.date_idx)
-        self.interval_freq = pd.infer_freq(self.date_idx)
-        self.measure = measure
-        self._prop_H1 = np.linspace(0, 1, num=self.time_points)
-        self._prop_H0 = 1 - self._prop_H1
         self.interpolation_strategy = interpolation_strategy or LinearInterpolation()
         self.impact_computation_strategy = (
             impact_computation_strategy or ImpactCalcComputation()
         )
-        self._E0H0, self._E1H0, self._E0H1, self._E1H1 = (
-            self.impact_computation_strategy.compute_impacts(
-                snapshot0,
-                snapshot1,
-                risk_transf_attach,
-                risk_transf_cover,
-                calc_residual,
-            )
-        )
+        self.risk_transf_attach = risk_transf_attach
+        self.risk_transf_cover = risk_transf_cover
+        self.calc_residual = calc_residual
+        self.measure = None  # Only possible to set with apply_measure to make sure snapshots are consistent
+
+        self._group_id_E0 = self.snapshot0.exposure.gdf["group_id"].values
+        self._group_id_E1 = self.snapshot1.exposure.gdf["group_id"].values
+
+    def _reset_impact_data(self):
+        self._impacts_arrays = None, None, None, None
         self._imp_mats_H0, self._imp_mats_H1 = None, None
         self._imp_mats_E0, self._imp_mats_E1 = None, None
         self._per_date_eai_H0, self._per_date_eai_H1 = None, None
         self._per_date_aai_H0, self._per_date_aai_H1 = None, None
         self._per_date_return_periods_H0, self._per_date_return_periods_H1 = None, None
-        self._group_id_E0 = self.snapshot0.exposure.gdf["group_id"].values
-        self._group_id_E1 = self.snapshot1.exposure.gdf["group_id"].values
+
+    @property
+    def snapshot0(self):
+        return self._snapshot0
+
+    @property
+    def snapshot1(self):
+        return self._snapshot1
+
+    @property
+    def date_idx(self):
+        return self._date_idx
+
+    @date_idx.setter
+    def date_idx(self, value, /):
+        if not isinstance(value, pd.DatetimeIndex):
+            raise ValueError("Not a DatetimeIndex")
+
+        self._date_idx = value
+        self._time_points = len(self.date_idx)
+        self._interval_freq = pd.infer_freq(self.date_idx)
+        self._prop_H1 = np.linspace(0, 1, num=self.time_points)
+        self._prop_H0 = 1 - self._prop_H1
+        self._reset_impact_data()
+
+    @property
+    def time_points(self):
+        return self._time_points
+
+    @time_points.setter
+    def time_points(self, value, /):
+        if not isinstance(value, int):
+            raise ValueError("Not an int")
+
+        self.date_idx = pd.date_range(
+            self.snapshot0.date, self.snapshot1.date, periods=value, name="date"
+        )
+
+    @property
+    def interval_freq(self):
+        return self._interval_freq
+
+    @interval_freq.setter
+    def interval_freq(self, value, /):
+        freq = pd.tseries.frequencies.to_offset(value)
+        self.date_idx = pd.date_range(
+            self.snapshot0.date, self.snapshot1.date, freq=freq, name="date"
+        )
+
+    @property
+    def interpolation_strategy(self):
+        return self._interpolation_strategy
+
+    @interpolation_strategy.setter
+    def interpolation_strategy(self, value, /):
+        if not isinstance(value, InterpolationStrategy):
+            raise ValueError("Not an interpolation strategy")
+
+        self._interpolation_strategy = value
+        self._reset_impact_data()
+
+    @property
+    def impact_computation_strategy(self):
+        return self._impact_computation_strategy
+
+    @impact_computation_strategy.setter
+    def impact_computation_strategy(self, value, /):
+        if not isinstance(value, ImpactComputationStrategy):
+            raise ValueError("Not an interpolation strategy")
+
+        self._impact_computation_strategy = value
+        self._reset_impact_data()
+
+    @lazy_property
+    def impacts_arrays(self):
+        return self.impact_computation_strategy.compute_impacts(
+            self.snapshot0,
+            self.snapshot1,
+            self.risk_transf_attach,
+            self.risk_transf_cover,
+            self.calc_residual,
+        )
+
+    @property
+    def _E0H0(self):
+        return self.impacts_arrays[0]
+
+    @property
+    def _E1H0(self):
+        return self.impacts_arrays[1]
+
+    @property
+    def _E0H1(self):
+        return self.impacts_arrays[2]
+
+    @property
+    def _E1H1(self):
+        return self.impacts_arrays[3]
+
+    @property
+    def risk_transf_attach(self):
+        return self._risk_transfer_attach
+
+    @risk_transf_attach.setter
+    def risk_transf_attach(self, value, /):
+        self._risk_transfer_attach = value
+        self._reset_impact_data()
+
+    @property
+    def risk_transf_cover(self):
+        return self._risk_transfer_cover
+
+    @risk_transf_cover.setter
+    def risk_transf_cover(self, value, /):
+        self._risk_transfer_cover = value
+        self._reset_impact_data()
+
+    @property
+    def calc_residual(self):
+        return self._calc_residual
+
+    @calc_residual.setter
+    def calc_residual(self, value, /):
+        if not isinstance(value, bool):
+            raise ValueError("Not a boolean")
+
+        self._calc_residual = value
+        self._reset_impact_data()
 
     @lazy_property
     def imp_mats_H0(self):
@@ -336,9 +457,10 @@ class CalcRiskPeriod:
         return aai_per_group_df
 
     def calc_return_periods_metric(self, return_periods):
-        rp_0, rp_1 = self.per_date_return_periods_H0(
-            return_periods
-        ), self.per_date_return_periods_H1(return_periods)
+        rp_0, rp_1 = (
+            self.per_date_return_periods_H0(return_periods),
+            self.per_date_return_periods_H1(return_periods),
+        )
         per_date_rp = np.multiply(self._prop_H0.reshape(-1, 1), rp_0) + np.multiply(
             self._prop_H1.reshape(-1, 1), rp_1
         )
@@ -375,3 +497,22 @@ class CalcRiskPeriod:
         df["group"] = pd.NA
         df["measure"] = self.measure.name if self.measure else "no_measure"
         return df
+
+    def apply_measure(self, measure: Measure):
+        snap0 = self.snapshot0.apply_measure(measure)
+        snap1 = self.snapshot1.apply_measure(measure)
+
+        risk_period = CalcRiskPeriod(
+            snap0,
+            snap1,
+            self.interval_freq,
+            self.time_points,
+            self.interpolation_strategy,
+            self.impact_computation_strategy,
+            self.risk_transf_attach,
+            self.risk_transf_cover,
+            self.calc_residual,
+        )
+
+        risk_period.measure = measure
+        return risk_period
