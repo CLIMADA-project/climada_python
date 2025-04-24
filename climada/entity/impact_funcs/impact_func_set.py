@@ -112,7 +112,7 @@ class ImpactFuncSet:
     def __eq__(self, value: object, /) -> bool:
         if isinstance(value, ImpactFuncSet):
             return self._data == value._data
-        
+
         return False
 
     def clear(self):
