@@ -53,7 +53,9 @@ class TestLitPopExposure(unittest.TestCase):
         self.assertEqual(ent.gdf.shape[0], 2829)
 
     def test_BLM150_pass(self):
-        """Test from_countries for BLM at 150 arcsec, 2 data points"""
+        """Test from_countries for BLM at 150 arcsec, 2 data points
+        The world bank doesn't provide data for Saint Barthélemy, fall back to natearth
+        """
         ent = lp.LitPop.from_countries("BLM", res_arcsec=150, reference_year=2016)
         self.assertEqual(ent.gdf.shape[0], 2)
 
