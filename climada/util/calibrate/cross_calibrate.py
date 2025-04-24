@@ -35,7 +35,7 @@ from pathos.multiprocessing import ProcessPool
 from tqdm import tqdm
 
 from ...engine.unsequa.input_var import InputVar
-from ...entity.impact_funcs import ImpactFuncSet
+from ...entity.impact_funcs import ImpactFunc, ImpactFuncSet
 from ..coordinates import country_to_iso
 from .base import Input, Optimizer, Output
 
@@ -46,8 +46,8 @@ def sample_data(data: pd.DataFrame, sample: list[tuple[int, int]]):
     """
     Return a DataFrame containing only the sampled values from the input data.
 
-    The resulting data frame has the same shape and indices ad `data` and is filled with
-    NaNs, except for the row and column indices specified by `sample`.
+    The resulting data frame has the same shape and indices ad ``data`` and is filled
+    with NaNs, except for the row and column indices specified by ``sample``.
 
     Parameters
     ----------
@@ -55,14 +55,14 @@ def sample_data(data: pd.DataFrame, sample: list[tuple[int, int]]):
         The input DataFrame from which values will be sampled.
     sample : list of tuple of int
         A list of (row, column) index pairs indicating which positions
-        to copy from `data` into the returned DataFrame.
+        to copy from ``data`` into the returned DataFrame.
 
     Returns
     -------
     pandas.DataFrame
-        A DataFrame of the same shape as `data` with NaNs in all positions
-        except those specified in `sample`, which contain the corresponding values
-        from `data`.
+        A DataFrame of the same shape as ``data`` with NaNs in all positions
+        except those specified in ``sample``, which contain the corresponding values
+        from ``data``.
     """
     # Create all-NaN data
     data_sampled = pd.DataFrame(np.nan, columns=data.columns, index=data.index)
@@ -82,7 +82,7 @@ def event_info_from_input(inp: Input) -> dict[str, Any]:
     Returns
     -------
     dict
-        With keys `event_id`, `region_id`, `event_name`
+        With keys ``event_id``, ``region_id``, ``event_name``
     """
     # Get region and event IDs
     data = inp.data.dropna(axis="columns", how="all").dropna(axis="index", how="all")
@@ -161,6 +161,11 @@ class EnsembleOptimizerOutput:
     @classmethod
     def from_outputs(cls, outputs: Sequence[SingleEnsembleOptimizerOutput]):
         """Build data from a list of outputs"""
+        # Support empty sequences
+        if not outputs:
+            return cls(data=pd.DataFrame())
+
+        # Derive column names
         cols = pd.MultiIndex.from_tuples(
             [("Parameters", p_name) for p_name in outputs[0].params.keys()]
             + [("Event", p_name) for p_name in outputs[0].event_info]
@@ -216,7 +221,11 @@ class EnsembleOptimizerOutput:
     def plot(
         self, impact_func_creator: Callable[..., ImpactFuncSet], **impf_set_plot_kwargs
     ):
-        """Plot all impact functions into the same plot"""
+        """Plot all impact functions into the same plot
+
+        This uses the basic plot functions of
+        :py:class:`~climada.entity.impact_funcs.base.ImpactFuncSet`.
+        """
         impf_set_list = self._to_impf_sets(impact_func_creator)
 
         # Create a single plot for the overall layout, then continue plotting into it
@@ -243,9 +252,11 @@ class EnsembleOptimizerOutput:
     def plot_shiny(
         self,
         impact_func_creator: Callable[..., ImpactFuncSet],
-        haz_type,
-        impf_id,
-        inp=None,
+        haz_type: str,
+        impf_id: int,
+        inp: Input | None = None,
+        impf_plot_kwargs: Mapping[str, Any] | None = None,
+        hazard_plot_kwargs: Mapping[str, Any] | None = None,
     ):
         """Plot all impact functions with appropriate color coding and event data"""
         # Store data to plot
@@ -254,6 +265,12 @@ class EnsembleOptimizerOutput:
             impf = impact_func_creator(**row["Parameters"]).get_func(
                 haz_type=haz_type, fun_id=impf_id
             )
+            if not isinstance(impf, ImpactFunc):
+                raise ValueError(
+                    f"Cannot find a unique impact function for haz_type: {haz_type}, "
+                    f"impf_id: {impf_id}"
+                )
+
             region_id = country_to_iso(row[("Event", "region_id")])
             event_name = row[("Event", "event_name")]
             event_id = row[("Event", "event_id")]
@@ -277,17 +294,24 @@ class EnsembleOptimizerOutput:
         # NOTE: Actually requires selection by exposure, but this is not trivial!
         if inp is not None:
             ax2 = ax.twinx()
-            ax2.hist(inp.hazard.intensity.data, bins=40, color="grey", alpha=0.5)
+            hist_kwargs = {"bins": 40, "color": "grey", "alpha": 0.5}
+            if hazard_plot_kwargs is not None:
+                hist_kwargs.update(hazard_plot_kwargs)
+            ax2.hist(inp.hazard.intensity.data, **hist_kwargs)
+        elif hazard_plot_kwargs is not None:
+            LOGGER.warning("No 'inp' parameter provided. Ignoring 'hazard_plot_kwargs'")
 
         # Sort data by final MDR value, then plot
         colors = plt.get_cmap("turbo")(np.linspace(0, 1, self.data.shape[0]))
         data_plt = sorted(data_plt, key=lambda x: x["mdr"][-1], reverse=True)
+        impf_plot_kwargs = impf_plot_kwargs if impf_plot_kwargs is not None else {}
         for idx, data_dict in enumerate(data_plt):
             ax.plot(
                 data_dict["intensity"],
                 data_dict["mdr"],
                 label=data_dict["label"],
                 color=colors[idx],
+                **impf_plot_kwargs,
             )
 
         # Cosmetics
@@ -312,40 +336,61 @@ class EnsembleOptimizerOutput:
     def plot_category(
         self,
         impact_func_creator: Callable[..., ImpactFuncSet],
-        haz_type,
-        impf_id,
-        category=None,
-        category_col_dict=None,
+        haz_type: str,
+        impf_id: int,
+        category: str,
+        category_colors: Mapping[str, str | tuple] | None = None,
         **impf_set_plot_kwargs,
     ):
-        """Plot all impact functions with appropriate color coding according to a category"""
+        """Plot impact functions with coloring according to a certain category
+
+        Parameters
+        ----------
+        impact_func_creator : Callable
+            A function taking parameters and returning an
+            :py:class:`~climada.entity.impact_funcs.base.ImpactFuncSet`.
+        haz_type : str
+            The hazard type of the impact function to plot.
+        impf_id : int
+            The ID of the impact function to plot.
+        category : str
+            The event information on which to categorize (can be ``"region_id"``,
+            ``"event_id"``, or ``"event_name"``)
+        category_colors : dict(str, str or tuple), optional
+            Specify which categories to plot (keys) and what colors to use for them
+            (values). If ``None``, will categorize for unique values in the ``category``
+            column and color automatically.
+        """
         impf_set_arr = np.array(self._to_impf_sets(impact_func_creator))
 
-        if category_col_dict is None:
+        if category_colors is None:
             unique_categories = self.data[("Event", category)].unique()
-            print(unique_categories)
-            unique_colors = plt.get_cmap("Set1")(
+            unique_colors = plt.get_cmap("turbo")(
                 np.linspace(0, 1, len(unique_categories))
             )
         else:
-            unique_categories = list(category_col_dict.keys())
-            unique_colors = list(category_col_dict.values())
+            unique_categories = category_colors.keys()
+            unique_colors = category_colors.values()
 
-        fig, ax = plt.subplots()
+        _, ax = plt.subplots()
         for sel_category, color in zip(unique_categories, unique_colors):
             cat_idx = self.data[("Event", category)] == sel_category
 
             for i, impf_set in enumerate(impf_set_arr[cat_idx]):
                 impf = impf_set.get_func(haz_type=haz_type, fun_id=impf_id)
+                if not isinstance(impf, ImpactFunc):
+                    raise ValueError(
+                        "Cannot find a unique impact function for haz_type: "
+                        f"{haz_type}, impf_id: {impf_id}"
+                    )
                 label = f"{sel_category}, n={cat_idx.sum()} " if i == 0 else None
                 ax.plot(
                     impf.intensity,
                     impf.paa * impf.mdd,
-                    **impf_set_plot_kwargs,
                     color=color,
                     label=label,
+                    **impf_set_plot_kwargs,
                 )
-                # impf.mdr.plot(axis=ax, **impf_set_plot_kwargs)#, label=sel_category)
 
         ax.legend(
             title=category, bbox_to_anchor=(1.05, 1), loc="upper left", frameon=False
@@ -375,12 +420,7 @@ class EnsembleOptimizer(ABC):
     input: Input
     optimizer_type: type[Optimizer]
     optimizer_init_kwargs: dict[str, Any] = field(default_factory=dict)
-    samples: list[list[tuple[int, int]]] = field(init=False)
-
-    def __post_init__(self, **__):
-        """"""
-        if self.samples is None:
-            raise RuntimeError("Samples must be set!")
+    samples: list[list[tuple[int, int]]] = field(init=False, default_factory=list)
 
     def run(self, processes=1, **optimizer_run_kwargs) -> EnsembleOptimizerOutput:
         """Execute the ensemble optimization
@@ -392,7 +432,7 @@ class EnsembleOptimizer(ABC):
             1 (no parallelization)
         optimizer_run_kwargs
             Additional keywords arguments for the
-            :py:func`~climada.util.calibrate.base.Optimizer.run` method of the
+            :py:func:`~climada.util.calibrate.base.Optimizer.run` method of the
             particular optimizer used.
         """
         if processes == 1:
@@ -496,8 +536,6 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
             for _ in range(ensemble_size)
         ]
 
-        return super().__post_init__()
-
     def input_from_sample(self, sample: list[tuple[int, int]]):
         """Shallow-copy the input and update the data"""
         input = copy(self.input)  # NOTE: Shallow copy!
@@ -512,8 +550,8 @@ class TragedyEnsembleOptimizer(EnsembleOptimizer):
     Attributes
     ----------
     ensemble_size : int, optional
-        The number of calibration tasks to perform. Defaults to `None`, which means one
-        for each data point. Must be smaller or equal to the number of data points.
+        The number of calibration tasks to perform. Defaults to ``None``, which means
+        one for each data point. Must be smaller or equal to the number of data points.
     random_state : int
         The seed for the random number generator selecting the samples
     """
@@ -538,8 +576,6 @@ class TragedyEnsembleOptimizer(EnsembleOptimizer):
 
             rng = default_rng(random_state)
             self.samples = rng.choice(self.samples, ensemble_size, replace=False)
-
-        return super().__post_init__()
 
     def input_from_sample(self, sample: list[tuple[int, int]]):
         """Subselect all input"""

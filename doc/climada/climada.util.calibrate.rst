@@ -30,3 +30,13 @@ Calibration based on the ``scipy.optimize`` module.
    :members:
    :show-inheritance:
    :inherited-members:  abc.ABC
+
+Ensemble Optimizers
+-------------------
+
+Calibration creating ensembles of impact functions.
+
+.. automodule:: climada.util.calibrate.cross_calibrate
+   :members:
+   :show-inheritance:
+   :inherited-members:  abc.ABC

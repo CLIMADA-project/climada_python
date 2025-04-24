@@ -95,6 +95,11 @@ class TestEnsembleOptimizerOutput(unittest.TestCase):
             pd.Series([["a", "b"], [1]], name=("Event", "event_name")),
         )
 
+    def test_from_outputs_empty(self):
+        """Test 'from_outputs' with empty list"""
+        out = EnsembleOptimizerOutput.from_outputs([])
+        self.assertTrue(out.data.empty)
+
     def test_cycling(self):
         """Test correct cycling to files"""
         with TemporaryDirectory() as tmp:
@@ -194,10 +199,6 @@ class TestEventInfoFromInput(unittest.TestCase):
 class ConcreteEnsembleOptimizer(EnsembleOptimizer):
     """Concrete instantiation of an ensemble optimizer"""
 
-    def __post_init__(self, **__):
-        self.samples = [[(0, 0)], [(1, 0), (1, 1)], [(2, 0)]]
-        return super().__post_init__(**__)
-
     def input_from_sample(self, sample):
         inp = copy.copy(self.input)  # NOTE: Shallow copy!
         inp.data = sample_data(inp.data, sample)
@@ -241,6 +242,7 @@ class TestEnsembleOptimizer(unittest.TestCase):
             optimizer_type=opt_class_mock,
             optimizer_init_kwargs={"foo": "bar", "random_state": 2},
         )
+        self.opt.samples = [[(0, 0)], [(1, 0), (1, 1)], [(2, 0)]]
 
         outputs = []
         for proc in (1, 3):
@@ -298,6 +300,16 @@ class TestEnsembleOptimizer(unittest.TestCase):
                 pool_mock.reset_mock()
 
         pdt.assert_frame_equal(outputs[0].data, outputs[1].data)
+
+    def test_run_empty_samples(self, opt_class_mock):
+        """Test execution with empty samples list"""
+        self.opt = ConcreteEnsembleOptimizer(
+            input=self.input,
+            optimizer_type=opt_class_mock,
+            optimizer_init_kwargs={"foo": "bar", "random_state": 2},
+        )
+        ens_out = self.opt.run(processes=1, bar="baz")
+        self.assertTrue(ens_out.data.empty)
 
 
 class DummyInput:
