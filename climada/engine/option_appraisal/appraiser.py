@@ -31,7 +31,9 @@ from pandas.core.frame import ValueKeyFunc
 from climada.engine.option_appraisal.plot import plot_CB_summary, plot_dately
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
-from climada.trajectories.risk_trajectory import RiskTrajectory, calc_npv_cash_flows
+from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
+from climada.trajectories.interpolation import InterpolationStrategy
+from climada.trajectories.risk_trajectory import RiskTrajectory
 from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
@@ -45,17 +47,31 @@ class MeasuresAppraiser(RiskTrajectory):
 
     def __init__(
         self,
-        snapshots: list[Snapshot],
+        snapshots_list: list[Snapshot],
         measure_set: MeasureSet,
+        interval_freq: str = "YS",
+        all_groups_name: str = "All",
         cost_disc: DiscRates | None = None,
         risk_disc: DiscRates | None = None,
-        metrics: list[str] = ["aai", "eai", "rp"],
-        return_periods: list[int] = [100, 500, 1000],
+        risk_transf_cover=None,
+        risk_transf_attach=None,
+        calc_residual: bool = True,
+        interpolation_strategy: InterpolationStrategy | None = None,
+        impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        "docstring"
         self.cost_disc = cost_disc
         self.measure_set = copy.deepcopy(measure_set)
-        super().__init__(snapshots, risk_disc, metrics, return_periods)
+        super().__init__(
+            snapshots_list,
+            interval_freq,
+            all_groups_name,
+            risk_disc,
+            risk_transf_cover,
+            risk_transf_attach,
+            calc_residual,
+            interpolation_strategy,
+            impact_computation_strategy,
+        )
 
     def _calc_risk_periods(self, snapshots):
         risk_periods = super()._calc_risk_periods(snapshots)
@@ -340,7 +356,6 @@ class MeasuresAppraiser(RiskTrajectory):
 
 
 class _PlannedMeasuresAppraiser(MeasuresAppraiser):
-
     def __init__(
         self,
         snapshots: SnapshotsCollection,
@@ -598,7 +613,7 @@ def _planner_to_planning(planner: dict[str, tuple[int, int]]) -> dict[int, list[
 
 
 def _get_unique_measure_periods(
-    date_to_measures: dict[Union[int, datetime.date], list[str]]
+    date_to_measures: dict[Union[int, datetime.date], list[str]],
 ) -> list[tuple[list[str], datetime.date, datetime.date]]:
     """Extract unique measure lists with their corresponding min and max date.
 
@@ -643,7 +658,6 @@ def _get_unique_measure_periods(
 
         if measures != current_measures:  # New unique set detected
             if current_measures is not None:  # Save the previous period
-
                 ## HERE WE NEED A FREQ OR SMTHG
                 unique_periods.append(
                     (current_measures, start_date, d - datetime.timedelta(days=1))
@@ -661,7 +675,7 @@ def _get_unique_measure_periods(
 
 
 def _get_unique_measure_periods(
-    date_to_measures: dict[int, list[str]]
+    date_to_measures: dict[int, list[str]],
 ) -> list[tuple[list[str], int, int]]:
     """Extract unique measure lists with their corresponding min and max date.
 
