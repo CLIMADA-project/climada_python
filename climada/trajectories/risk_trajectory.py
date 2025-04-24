@@ -69,6 +69,7 @@ class RiskTrajectory:
     def __init__(
         self,
         snapshots_list: list[Snapshot],
+        *,
         interval_freq: str = "YS",
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
