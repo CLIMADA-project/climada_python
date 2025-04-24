@@ -78,7 +78,6 @@ def event_info_from_input(inp: Input) -> dict[str, Any]:
     """Get information on the event(s) for which we calibrated
 
     This tries to retrieve the event IDs, region IDs, and event names.
-    For an average ensemble, they might be lists of lists.
 
     Returns
     -------
@@ -91,10 +90,9 @@ def event_info_from_input(inp: Input) -> dict[str, Any]:
     region_ids = data.columns
 
     # Get event name
-    hazard = inp.hazard.select(event_id=event_ids.to_list())
-    if hazard is not None:
-        event_names = hazard.event_name
-    else:
+    try:
+        event_names = inp.hazard.select(event_id=event_ids.to_list()).event_name
+    except IndexError:
         event_names = []
 
     # Return data
