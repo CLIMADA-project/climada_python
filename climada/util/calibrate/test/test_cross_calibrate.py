@@ -451,3 +451,20 @@ class TestTragedyEnsembleOptimizer(unittest.TestCase):
         self.assertIs(inp.stub, self.input.stub)
         pdt.assert_frame_equal(inp.data, pd.DataFrame({"a": [2.0]}, index=[3]))
         inp.hazard.select.assert_called_once_with(event_id=pd.Index([3]))
+
+
+# Execute Tests
+if __name__ == "__main__":
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSampleData)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEventInfoFromInput))
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestEnsembleOptimizerOutput)
+    )
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEnsembleOptimizer))
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestAverageEnsembleOptimizer)
+    )
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestTragedyEnsembleOptimizer)
+    )
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
