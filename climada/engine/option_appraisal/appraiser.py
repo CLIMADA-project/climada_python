@@ -34,6 +34,7 @@ from climada.entity.measures.measure_set import MeasureSet
 from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
 from climada.trajectories.interpolation import InterpolationStrategy
 from climada.trajectories.risk_trajectory import RiskTrajectory
+from climada.trajectories.riskperiod import CalcRiskPeriod
 from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
@@ -48,11 +49,12 @@ class MeasuresAppraiser(RiskTrajectory):
     def __init__(
         self,
         snapshots_list: list[Snapshot],
+        *,
         measure_set: MeasureSet,
         interval_freq: str = "YS",
         all_groups_name: str = "All",
-        cost_disc: DiscRates | None = None,
         risk_disc: DiscRates | None = None,
+        cost_disc: DiscRates | None = None,
         risk_transf_cover=None,
         risk_transf_attach=None,
         calc_residual: bool = True,
@@ -63,22 +65,22 @@ class MeasuresAppraiser(RiskTrajectory):
         self.measure_set = copy.deepcopy(measure_set)
         super().__init__(
             snapshots_list,
-            interval_freq,
-            all_groups_name,
-            risk_disc,
-            risk_transf_cover,
-            risk_transf_attach,
-            calc_residual,
-            interpolation_strategy,
-            impact_computation_strategy,
+            interval_freq=interval_freq,
+            all_groups_name=all_groups_name,
+            risk_disc=risk_disc,
+            risk_transf_cover=risk_transf_cover,
+            risk_transf_attach=risk_transf_attach,
+            calc_residual=calc_residual,
+            interpolation_strategy=interpolation_strategy,
+            impact_computation_strategy=impact_computation_strategy,
         )
 
-    def _calc_risk_periods(self, snapshots):
+    def _calc_risk_periods(self, snapshots: list[Snapshot]):
         risk_periods = super()._calc_risk_periods(snapshots)
         risk_periods += self._calc_measure_periods(risk_periods)
         return risk_periods
 
-    def _calc_measure_periods(self, risk_periods):
+    def _calc_measure_periods(self, risk_periods: list[CalcRiskPeriod]):
         res = []
         for _, measure in self.measure_set.measures().items():
             LOGGER.debug(f"Creating measures risk_period for measure {measure.name}")
