@@ -46,6 +46,10 @@ def lazy_property(method):
     @property
     def _lazy(self):
         if getattr(self, attr_name) is None:
+            meas_n = self.measure.name if self.measure else "no_measure"
+            LOGGER.debug(
+                f"Computing {method.__name__} for {self._snapshot0.date}-{self._snapshot1.date} with {meas_n}."
+            )
             setattr(self, attr_name, method(self))
         return getattr(self, attr_name)
 
@@ -67,13 +71,14 @@ class CalcRiskPeriod:
         risk_transf_cover: float | None = None,
         calc_residual: bool = False,
     ):
+        LOGGER.info("Instantiating new CalcRiskPeriod.")
         self._snapshot0 = snapshot0
         self._snapshot1 = snapshot1
-        self.date_idx = pd.date_range(
-            snapshot0.date,
-            snapshot1.date,
+        self.date_idx = CalcRiskPeriod._set_date_idx(
+            date1=snapshot0.date,
+            date2=snapshot1.date,
             periods=time_points,
-            freq=interval_freq,  # type: ignore
+            freq=interval_freq,
             name="date",
         )
         self.interpolation_strategy = interpolation_strategy or LinearInterpolation()
@@ -89,12 +94,65 @@ class CalcRiskPeriod:
         self._group_id_E1 = self.snapshot1.exposure.gdf["group_id"].values
 
     def _reset_impact_data(self):
-        self._impacts_arrays = None, None, None, None
+        self._impacts_arrays = None
         self._imp_mats_H0, self._imp_mats_H1 = None, None
         self._imp_mats_E0, self._imp_mats_E1 = None, None
         self._per_date_eai_H0, self._per_date_eai_H1 = None, None
         self._per_date_aai_H0, self._per_date_aai_H1 = None, None
         self._per_date_return_periods_H0, self._per_date_return_periods_H1 = None, None
+
+    @staticmethod
+    def _set_date_idx(
+        date1: str | pd.Timestamp,
+        date2: str | pd.Timestamp,
+        periods: int | None = None,
+        freq: str | None = None,
+        name: str | None = None,
+    ) -> pd.DatetimeIndex:
+        """
+        Generate a date range index based on the provided parameters.
+
+        Parameters
+        ----------
+        date1 : str or pd.Timestamp
+            The start date of the date range.
+        date2 : str or pd.Timestamp
+            The end date of the date range.
+        periods : int, optional
+            Number of date points to generate. If None, `freq` must be provided.
+        freq : str, optional
+            Frequency string for the date range. If None, `periods` must be provided.
+        name : str, optional
+            Name of the resulting date range index.
+
+        Returns
+        -------
+        pd.DatetimeIndex
+            A DatetimeIndex representing the date range.
+
+        Raises
+        ------
+        ValueError
+            If the number of periods and frequency given to date_range are inconsistent.
+        """
+        if periods is not None and freq is not None:
+            points = None
+        else:
+            points = periods
+
+        ret = pd.date_range(
+            date1,
+            date2,
+            periods=points,
+            freq=freq,  # type: ignore
+            name=name,
+        )
+        if periods is not None and len(ret) != periods:
+            raise ValueError(
+                "Number of periods and frequency given to date_range are inconsistant"
+            )
+
+        return ret
 
     @property
     def snapshot0(self):
