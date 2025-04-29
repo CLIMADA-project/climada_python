@@ -97,6 +97,19 @@ class ImpactFunc:
         self.mdd = mdd if mdd is not None else np.array([])
         self.paa = paa if paa is not None else np.array([])
 
+    def __eq__(self, value: object, /) -> bool:
+        if isinstance(value, ImpactFunc):
+            return (
+                self.haz_type == value.haz_type
+                and self.id == value.id
+                and self.name == value.name
+                and self.intensity_unit == value.intensity_unit
+                and np.array_equal(self.intensity, value.intensity)
+                and np.array_equal(self.mdd, value.mdd)
+                and np.array_equal(self.paa, value.paa)
+            )
+        return False
+
     def calc_mdr(self, inten: Union[float, np.ndarray]) -> np.ndarray:
         """Interpolate impact function to a given intensity.
 
@@ -177,7 +190,7 @@ class ImpactFunc:
         mdd: tuple[float, float] = (0, 1),
         paa: tuple[float, float] = (1, 1),
         impf_id: int = 1,
-        **kwargs
+        **kwargs,
     ):
         """Step function type impact function.
 
@@ -218,7 +231,7 @@ class ImpactFunc:
             intensity=intensity,
             mdd=mdd,
             paa=paa,
-            **kwargs
+            **kwargs,
         )
 
     def set_step_impf(self, *args, **kwargs):
@@ -238,7 +251,7 @@ class ImpactFunc:
         x0: float,
         haz_type: str,
         impf_id: int = 1,
-        **kwargs
+        **kwargs,
     ):
         r"""Sigmoid type impact function hinging on three parameter.
 
@@ -287,7 +300,7 @@ class ImpactFunc:
             intensity=intensity,
             paa=paa,
             mdd=mdd,
-            **kwargs
+            **kwargs,
         )
 
     def set_sigmoid_impf(self, *args, **kwargs):
@@ -308,7 +321,7 @@ class ImpactFunc:
         exponent: float,
         haz_type: str,
         impf_id: int = 1,
-        **kwargs
+        **kwargs,
     ):
         r"""S-shape polynomial impact function hinging on four parameter.
 
