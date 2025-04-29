@@ -109,6 +109,12 @@ class ImpactFuncSet:
             for impf in impact_funcs:
                 self.append(impf)
 
+    def __eq__(self, value: object, /) -> bool:
+        if isinstance(value, ImpactFuncSet):
+            return self._data == value._data
+
+        return False
+
     def clear(self):
         """Reinitialize attributes."""
         self._data = dict()  # {hazard_type : {id:ImpactFunc}}
