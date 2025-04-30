@@ -151,12 +151,12 @@ class TestWBData(unittest.TestCase):
 
         # Check errors raised
         with self.assertRaisesRegex(
-            RuntimeError,
+            ValueError,
             "Did you use the correct country code",
         ):
             download_world_bank_indicator("Spain", "NY.GDP.MKTP.CD")
         with self.assertRaisesRegex(
-            RuntimeError,
+            ValueError,
             "Did you use the correct country code",
         ):
             download_world_bank_indicator("ESP", "BogusIndicator")

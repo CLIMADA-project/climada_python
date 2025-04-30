@@ -216,7 +216,7 @@ def download_world_bank_indicator(
         # Check if we received an error message
         try:
             if json_data[0]["message"][0]["id"] == "120":
-                raise RuntimeError(
+                raise ValueError(
                     "Error requesting data from the World Bank API. Did you use the "
                     "correct country code and indicator ID?"
                 )
