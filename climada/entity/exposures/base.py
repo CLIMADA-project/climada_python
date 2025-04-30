@@ -29,6 +29,7 @@ from pathlib import Path
 
 import cartopy.crs as ccrs
 import contextily as ctx
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -37,7 +38,6 @@ from deprecation import deprecated
 from geopandas import GeoDataFrame, GeoSeries, points_from_xy
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from rasterio.warp import Resampling
-from xarray import DataArray
 
 import climada.util.coordinates as u_coord
 import climada.util.hdf5_handler as u_hdf5
@@ -1122,30 +1122,31 @@ class Exposures:
         self.to_crs(crs_ori, inplace=True)
         return axis
 
-    def write_hdf5(self, file_name, pickle_geometry=False):
+    def write_hdf5(self, file_name, pickle_geometry_as_shapely=False):
         """Write data frame and metadata in hdf5 format
 
         Parameters
         ----------
         file_name : str
             (path and) file name to write to.
-        pickle_geometry : bool
+        pickle_geometry_as_shapely : bool
             flag, indicating whether the "geometry" of the Exposures` `data` will be stored as
-            pickled shapely objects instead of wkb bytes. This is faster but less durable, because
-            pickled data may get unreadable for future shapely versions.
+            pickled shapely objects instead of wkb bytes. This has been the case for earlier
+            CLIMADA version, up to 6.0, and is perhaps faster but less durable,
+            because pickled data may evantually get unreadable for future shapely versions.
             Default: False
         """
         LOGGER.info("Writing %s", file_name)
         store = pd.HDFStore(file_name, mode="w")
-        pandas_df = pd.DataFrame(self.data)
-        wkb_data = {}
+        pandas_df = pd.DataFrame(self.gdf)
+        wkb_columns = []
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
-                if pickle_geometry:
-                    pandas_df[col] = np.asarray(self.data[col])
+                if pickle_geometry_as_shapely:
+                    pandas_df[col] = np.asarray(self.gdf[col])
                 else:
-                    wkb_data[col] = to_wkb_store(self.geometry)
-                    pandas_df.drop(columns=[col], inplace=True)
+                    pandas_df[col] = gpd.GeoSeries.to_wkb(pandas_df[col])
+                    wkb_columns.append(col)
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
         with warnings.catch_warnings():
@@ -1153,13 +1154,11 @@ class Exposures:
             # Write dataframe
             store.put("exposures", pandas_df)
 
-        if wkb_data:
-            store.put("wkb_data", wkb_data)
-
         var_meta = {}
         for var in type(self)._metadata:
             var_meta[var] = getattr(self, var)
         var_meta["crs"] = self.crs
+        var_meta["wkb_columns"] = wkb_columns
         store.get_storer("exposures").attrs.metadata = var_meta
 
         store.close()
@@ -1199,12 +1198,13 @@ class Exposures:
             if crs is None and metadata.get("meta"):
                 crs = metadata["meta"].get("crs")
             data = pd.DataFrame(store["exposures"])
-            try:
-                wkb_data = store.get("wkb_data")
-            except KeyError:
-                wkb_data = {}
-            for col, val in wkb_data.items():
-                data[col] = from_wkb_store(val)
+
+            wkb_columns = (
+                metadata.pop("wkb_columns") if "wkb_columns" in metadata else []
+            )
+            for col in wkb_columns:
+                data[col] = gpd.GeoSeries.from_wkb(data[col])
+
             exp = cls(data, crs=crs)
             for key, val in metadata.items():
                 if key in type(exp)._metadata:  # pylint: disable=protected-access
@@ -1572,21 +1572,6 @@ def _read_mat_optional(exposures, data, var_names):
             exposures[INDICATOR_CENTR] = assigned
     except KeyError:
         pass
-
-
-def to_wkb_store(geometry: np.array, store):
-    wkb_data = geometry.to_wkb().to_numpy()
-    import h5py
-
-    wkb_dataset = h5py.Dataset(store)
-
-    # Store WKB as variable-length byte arrays
-    dt = h5py.vlen_dtype(np.dtype("uint8"))
-    wkb_dataset.dtype = dt
-    for i, geom_bytes in enumerate(wkb_data):
-        wkb_dataset[i] = np.frombuffer(geom_bytes, dtype="uint8")
-
-    return wkb_data
 
 
 def _read_mat_metadata(exposures, data, file_name, var_names):
