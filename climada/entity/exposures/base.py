@@ -1145,7 +1145,7 @@ class Exposures:
                 if pickle_geometry_as_shapely:
                     pandas_df[col] = np.asarray(self.gdf[col])
                 else:
-                    pandas_df[col] = gpd.GeoSeries.to_wkb(pandas_df[col])
+                    pandas_df[col] = gpd.GeoSeries(pandas_df[col]).to_wkb()
                     wkb_columns.append(col)
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
