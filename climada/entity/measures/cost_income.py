@@ -22,8 +22,7 @@ Define the Cash Flows class.
 # Define default discount rates
 # DISC_RATES = DiscRates(years=np.arange(1900, 2100), rates=np.ones(np.arange(1900, 2100).size))
 
-
-from datetime import datetime
+from datetime import date, datetime, timedelta
 from typing import Optional, Tuple
 
 import matplotlib.pyplot as plt
@@ -32,98 +31,97 @@ import pandas as pd
 
 
 class CostIncome:
-
     def __init__(
         self,
-        mkt_price_year: float = datetime.today().year,  # Get the year of today as integer
-        cost_growth_rate: float = 0.0,
+        *,
+        mkt_price_year: int = datetime.today().year,
         init_cost: float = 0.0,
-        annual_cost: float = 0.0,
-        annual_income: float = 0.0,
-        income_growth_rate: float = 0.0,
+        periodic_cost: float = 0.0,
+        periodic_income: float = 0.0,
+        cost_yearly_growth_rate: float = 0.0,
+        income_yearly_growth_rate: float = 0.0,
         custom_cash_flows: Optional[pd.DataFrame] = None,
+        freq: str = "YS",
     ):
-
-        self.mkt_price_year = mkt_price_year
-        # Cost parameters
-        self.cost_growth_rate = cost_growth_rate
+        self.freq = freq  # CostIncome._freq_to_days(freq)
+        self.mkt_price_year = datetime(mkt_price_year, 1, 1)
+        self.cost_growth_rate = cost_yearly_growth_rate
         self.init_cost = -abs(init_cost)
-        self.annual_cost = -abs(annual_cost)
-        # Income parameters
-        self.annual_income = annual_income
-        self.income_growth_rate = income_growth_rate
-        # Custom cash flows
-        # Update the cost columns to be negative
+        self.periodic_cost = -abs(periodic_cost)
+        self.periodic_income = periodic_income
+        self.income_growth_rate = income_yearly_growth_rate
+
         if custom_cash_flows is not None and "cost" in custom_cash_flows.columns:
             custom_cash_flows["cost"] = -abs(custom_cash_flows["cost"])
+            custom_cash_flows["date"] = pd.to_datetime(custom_cash_flows["date"])
+            custom_cash_flows = (
+                custom_cash_flows.set_index("date").resample(self.freq).sum()
+            )
+
         self.custom_cash_flows = custom_cash_flows
 
-        # Custom cash flows
-        if self.custom_cash_flows is not None:
-            self.custom_cash_flows = self.custom_cash_flows.groupby("year").sum()
-            if (
-                "cost" not in self.custom_cash_flows.columns
-                and "income" not in self.custom_cash_flows.columns
-            ):
-                raise ValueError(
-                    "Custom cash flows DataFrame must contain 'cost' or 'income' column"
-                )
-
-    def _calc_cash_flow_at_year(self, impl_year, year):
+    @staticmethod
+    def _freq_to_days(freq: str) -> str:
         """
-        Calculate the net cash flow at a specific year
+        Convert a frequency string to the equivalent number of days.
 
         Parameters:
         -----------
-        impl_year: int
-            the year the measure is implemented
-        year: int
-            the year to calculate the cash flow
+        freq : str
+            A frequency string (e.g., 'D' for daily, 'M' for monthly, 'Y' for yearly).
 
         Returns:
         --------
-        Tuple[float, float, float]
-            the net cash flow, cost, and income at the given year
+        float
+            The equivalent number of days for the given frequency string.
         """
+        try:
+            # Convert the frequency string to a DateOffset object
+            offset = pd.tseries.frequencies.to_offset(freq)
 
-        # Calculate the increased cost and income multipliers
-        cost_incr_multi = (1 + self.cost_growth_rate) ** (year - self.mkt_price_year)
-        income_incr_multi = (1 + self.income_growth_rate) ** (
-            year - self.mkt_price_year
-        )
+            # Calculate the number of days by applying the offset to a base date
+            base_date = pd.Timestamp("2000-01-01")
+            end_date = base_date + offset
 
-        # Calculate the cash flows at the given year
-        if year < impl_year:
+            # Return the difference in days
+            return f"{(end_date - base_date).days}d"
+        except ValueError:
+            raise ValueError(f"Invalid frequency string: {freq}")
+
+    def _get_custom_cash_flow(self, date, column):
+        return self.custom_cash_flows.loc[date, column]
+
+    def _calc_cash_flow_at_date(self, impl_date, current_date):
+        delta = (current_date - self.mkt_price_year) / pd.Timedelta("365d")
+
+        cost_incr = (1 + self.cost_growth_rate) ** delta
+        income_incr = (1 + self.income_growth_rate) ** delta
+
+        if current_date < impl_date:
             cost = 0
             income = 0
-        elif year == impl_year:
-            cost = self.init_cost * cost_incr_multi
-            income = self.annual_income * income_incr_multi
+        elif current_date == impl_date:
+            cost = self.init_cost * cost_incr
+            income = self.periodic_income * income_incr
         else:
-            cost = self.annual_cost * cost_incr_multi
-            income = self.annual_income * income_incr_multi
+            cost = self.periodic_cost * cost_incr
+            income = self.periodic_income * income_incr
 
-        # Custom cash flows
-        custom_cost = self._get_custom_cash_flow(year, "cost")
-        custom_income = self._get_custom_cash_flow(year, "income")
+        custom_cost = (
+            self._get_custom_cash_flow(current_date, "cost")
+            if self.custom_cash_flows is not None
+            else 0
+        )
+        custom_income = (
+            self._get_custom_cash_flow(current_date, "income")
+            if self.custom_cash_flows is not None
+            else 0
+        )
+        net = custom_income + income + custom_cost + cost
 
-        # Net cash flow
-        net_cash_flow = custom_income + income + custom_cost + cost
+        return net, custom_cost + cost, custom_income + income
 
-        return net_cash_flow, custom_cost + cost, custom_income + income
-
-    def _get_custom_cash_flow(self, year, column):
-        if self.custom_cash_flows is not None:
-            if year in self.custom_cash_flows.index:
-                if column in self.custom_cash_flows.columns:
-                    return self.custom_cash_flows.loc[year, column]
-                else:
-                    raise ValueError(
-                        f"Column '{column}' not found in custom cash flows DataFrame"
-                    )
-        return 0
-
-    def calc_cash_flows(self, impl_year, start_year, end_year, disc=None):
+    def calc_cash_flows(self, impl_date, start_date, end_date, disc=None):
         """
         Calculate the cash flows over a given period
 
@@ -146,32 +144,32 @@ class CostIncome:
         Tuple[np.ndarray, np.ndarray, np.ndarray]
             the net cash flows, costs, and incomes over the given period
         """
+        impl_date = pd.Timestamp(impl_date)
+        dates = pd.date_range(start=start_date, end=end_date, freq=self.freq)
 
-        net_cash_flows = []
-        costs = []
-        incomes = []
+        net_list, cost_list, income_list = [], [], []
 
-        # Calculate the cash flows for each year
-        for year in range(start_year, end_year + 1):
-            net_cash_flow, cost, income = self._calc_cash_flow_at_year(impl_year, year)
-            net_cash_flows.append(net_cash_flow)
-            costs.append(cost)
-            incomes.append(income)
+        for d in dates:
+            net, cost, income = self._calc_cash_flow_at_date(impl_date, d)
+            net_list.append(net)
+            cost_list.append(cost)
+            income_list.append(income)
 
-        net_cash_flows = np.array(net_cash_flows)
-        costs = np.array(costs)
-        incomes = np.array(incomes)
+        net_cash_flows = np.array(net_list)
+        costs = np.array(cost_list)
+        incomes = np.array(income_list)
 
-        # Discount the cash flows if discount rates are provided
         if disc:
-            # Get the discount factors for the years in the period
-            years = np.array(list(range(start_year, end_year + 1)))
+            # Get the discount factors for the dates in the period
+            years = np.array([d.year for d in dates])
             disc_years = np.intersect1d(years, disc.years)
             disc_rates = disc.rates[np.isin(disc.years, disc_years)]
             years = np.array([year for year in years if year in disc_years])
             discount_factors = np.array(
                 [
-                    1 / (1 + disc_rates[disc_years == year][0]) ** (year - start_year)
+                    1
+                    / (1 + disc_rates[disc_years == year][0])
+                    ** (year - start_date.year)
                     for year in years
                 ]
             )
@@ -208,98 +206,114 @@ class CostIncome:
         """
 
         net_cash_flows, costs, incomes = self.calc_cash_flows(
-            impl_year, start_year, end_year, disc=None
+            impl_year, start_year, end_year, disc=disc
         )
         return np.sum(net_cash_flows), np.sum(costs), np.sum(incomes)
 
     def plot_cash_flows(
         self,
-        impl_year,
-        start_year,
-        end_year,
+        impl_date: date,
+        start_date: date,
+        end_date: date,
         disc=None,
         to_plot=["net", "cost", "income"],
     ):
         """
-        Plot the cash flows over a given period
+        Plot the cash flows over a given period.
 
         Parameters:
         -----------
-        impl_year: int
-            the year the measure is implemented
-
-        start_year: int
-            the start year of the period
-
-        end_year: int
-            the end year of the period
-
+        impl_date: datetime
+            The date the measure is implemented.
+        start_date: datetime
+            The start date of the period.
+        end_date: datetime
+            The end date of the period.
+        offset: timedelta or str
+            The offset for the period (e.g., timedelta(days=1) or 'M' for month).
         disc: DiscRates object
-            the discount rates (optional)
-
+            The discount rates (optional).
         to_plot: list
-            list of strings indicating which cash flows to plot. Options are 'net', 'cost', 'income'.
+            List of strings indicating which cash flows to plot. Options are 'net', 'cost', 'income'.
         """
-
         # Calculate the cash flows over the given period
         net_cash_flows, costs, incomes = self.calc_cash_flows(
-            impl_year, start_year, end_year, disc=disc
+            impl_date, start_date, end_date, disc=disc
         )
 
         # Plot the cash flows with colors
-        plt.figure()
-        years = range(start_year, end_year + 1)
+        fig, ax = plt.subplots()
+        date_range = pd.date_range(
+            start=start_date, end=end_date, freq=self._freq_to_days(self.freq)
+        )
+        width = pd.tseries.frequencies.to_offset(self.freq).delta.days
+
         if "cost" in to_plot:
-            plt.bar(years, costs, color="red", label="Cost")
+            ax.bar(date_range, costs, color="red", label="Cost", width=width)
         if "income" in to_plot:
-            plt.bar(years, incomes, color="blue", label="Income", alpha=0.7)
+            ax.bar(
+                date_range,
+                incomes,
+                color="blue",
+                label="Income",
+                alpha=0.7,
+                width=width,
+            )
         if "net" in to_plot:
-            plt.bar(
-                years,
+            ax.bar(
+                date_range,
                 net_cash_flows,
                 color="blue",
                 edgecolor="red",
                 hatch="//",
                 label="Net",
                 alpha=0.5,
+                width=width,
             )
-        plt.xlabel("Year")
+        ax.xaxis_date()  # <---- treat x-ticks as datetime
+        fig.autofmt_xdate()
+        plt.xlabel("Date")
         plt.ylabel("Cash Flow [CHF]")
         plt.title("Discounted Cash Flows" if disc else "Cash Flows")
         plt.legend()
         plt.show()
+        return ax
 
-    def calc_cashflows(self, impl_year, start_year, end_year, disc=None):
+    def calc_cashflows(
+        self, impl_date: datetime, start_date: datetime, end_date: datetime, disc=None
+    ) -> pd.DataFrame:
         """
-        Calculate the cash flows over a given period and return them as a DataFrame
+        Calculate the cash flows over a given period and return them as a DataFrame.
 
         Parameters:
         -----------
-        impl_year: int
-            the year the measure is implemented
-        start_year: int
-            the start year of the period
-        end_year: int
-            the end year of the period
+        impl_date: datetime
+            The date the measure is implemented.
+        start_date: datetime
+            The start date of the period.
+        end_date: datetime
+            The end date of the period.
+        offset: timedelta or str
+            The offset for the period (e.g., timedelta(days=1) or 'M' for month).
         disc: DiscRates object
-            the discount rates (optional)
+            The discount rates (optional).
 
         Returns:
         --------
         cash_flows: pd.DataFrame
-            the cash flows over the given period
+            The cash flows over the given period.
         """
-
         # Make a DataFrame to store the cash flows
-        cash_flows = pd.DataFrame(columns=["year", "net", "cost", "income"])
+        cash_flows = pd.DataFrame(columns=["date", "net", "cost", "income"])
 
-        # Calculate the cash flows for each year
+        # Calculate the cash flows for each date
         net_cash_flows, costs, incomes = self.calc_cash_flows(
-            impl_year, start_year, end_year, disc=disc
+            impl_date, start_date, end_date, disc=disc
         )
 
         # Add the cash flows to the DataFrame
-        cash_flows["year"] = range(start_year, end_year + 1)
+        date_range = pd.date_range(start=start_date, end=end_date, freq=self.freq)
+        cash_flows["date"] = date_range
         cash_flows["net"] = net_cash_flows
         cash_flows["cost"] = costs
         cash_flows["income"] = incomes

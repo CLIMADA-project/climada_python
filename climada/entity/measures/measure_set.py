@@ -189,22 +189,22 @@ class MeasureSet:
 
         def comb_cost_income():
             combined_cost_income = CostIncome(
-                mkt_price_year=meas_list[0].cost_income.mkt_price_year,
-                cost_growth_rate=meas_list[0].cost_income.cost_growth_rate,
+                mkt_price_year=meas_list[0].cost_income.mkt_price_year.year,
+                cost_yearly_growth_rate=meas_list[0].cost_income.cost_growth_rate,
                 init_cost=sum([meas.cost_income.init_cost for meas in meas_list]),
-                annual_cost=sum([meas.cost_income.annual_cost for meas in meas_list]),
-                annual_income=sum(
-                    [meas.cost_income.annual_income for meas in meas_list]
+                periodic_cost=sum(
+                    [meas.cost_income.periodic_cost for meas in meas_list]
                 ),
-                income_growth_rate=meas_list[0].cost_income.income_growth_rate,
+                periodic_income=sum(
+                    [meas.cost_income.periodic_income for meas in meas_list]
+                ),
+                income_yearly_growth_rate=meas_list[0].cost_income.income_growth_rate,
             )
             return combined_cost_income
 
         return Measure(
             name="_".join(names) if combo_name is None else combo_name,
             haz_type=self.haz_type,
-            # start_year=start_year,
-            # end_year=end_year,
             exposures_change=comb_exp_map,
             impfset_change=comb_impfset_map,
             hazard_change=comb_haz_map,
