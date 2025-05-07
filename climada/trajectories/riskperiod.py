@@ -476,6 +476,11 @@ class CalcRiskPeriod:
         eai_gdf = self.snapshot1.exposure.gdf
         eai_gdf["coord_id"] = eai_gdf.index
         eai_gdf = eai_gdf.merge(df, on="coord_id")
+        eai_gdf = eai_gdf.rename(
+            columns={"group_id": "group", "value": "exposure_value"}
+        )
+        eai_gdf["metric"] = "eai"
+        eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"
         return eai_gdf
 
     def calc_aai_metric(self):
@@ -493,11 +498,11 @@ class CalcRiskPeriod:
         for group in np.unique(
             np.concatenate(np.array([self._group_id_E0, self._group_id_E1]), axis=0)
         ):
-            group_idx_E0 = np.where(self._group_id_E0 != group)
-            group_idx_E1 = np.where(self._group_id_E1 != group)
+            group_idx_E0 = np.where(self._group_id_E0 == group)[0]
+            group_idx_E1 = np.where(self._group_id_E1 == group)[0]
             per_date_aai_H0, per_date_aai_H1 = (
-                self.per_date_eai_H0[:, group_idx_E0].sum(),
-                self.per_date_eai_H1[:, group_idx_E1].sum(),
+                self.per_date_eai_H0[:, group_idx_E0].sum(axis=1),
+                self.per_date_eai_H1[:, group_idx_E1].sum(axis=1),
             )
             per_date_aai = (
                 self._prop_H0 * per_date_aai_H0 + self._prop_H1 * per_date_aai_H1
