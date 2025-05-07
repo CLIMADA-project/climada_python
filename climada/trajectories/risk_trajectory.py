@@ -38,7 +38,8 @@ from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
 
-POSSIBLE_METRICS = ["aai", "rp", "group", "components"]
+POSSIBLE_METRICS = ["eai", "aai", "return_periods", "risk_components", "aai_per_group"]
+DEFAULT_RP = [50, 100, 500]
 
 
 class RiskTrajectory:
@@ -83,7 +84,7 @@ class RiskTrajectory:
         self._risk_period_up_to_date: bool = False
         self._snapshots = snapshots_list
         self._all_groups_name = all_groups_name
-        self._default_rp = [50, 100, 500]
+        self._default_rp = DEFAULT_RP
         self.start_date = min([snapshot.date for snapshot in snapshots_list])
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
         self._interval_freq = interval_freq
@@ -99,11 +100,9 @@ class RiskTrajectory:
         self._risk_periods_calculators = self._calc_risk_periods(snapshots_list)
 
     def _reset_metrics(self):
-        self._eai_metrics = None
-        self._aai_metrics = None
-        self._return_periods_metrics = None
-        self._risk_components_metrics = None
-        self._aai_per_group_metrics = None
+        for metric in POSSIBLE_METRICS:
+            setattr(self, "_" + metric + "_metrics", None)
+
         self._all_risk_metrics = None
 
     @property
@@ -118,7 +117,6 @@ class RiskTrajectory:
             ValueError("Return periods need to be a list of int.")
         self._return_periods_metrics = None
         self._all_risk_metrics = None
-        self._metrics_up_to_date = False
         self._default_rp = value
 
     @property
@@ -192,7 +190,7 @@ class RiskTrajectory:
         ]
 
     @classmethod
-    def npv_transform(cls, df, risk_disc):
+    def npv_transform(cls, df: pd.DataFrame, risk_disc) -> pd.DataFrame:
         def _npv_group(group, disc):
             start_date = group.index.get_level_values("date").min()
             end_date = group.index.get_level_values("date").max()
@@ -213,12 +211,20 @@ class RiskTrajectory:
         return df
 
     def _generic_metrics(
-        self, npv=True, metric_name=None, metric_meth=None, *args, **kwargs
+        self,
+        npv: bool = True,
+        metric_name: str | None = None,
+        metric_meth: str | None = None,
+        **kwargs,
     ):
         """Generic method to compute metrics based on the provided metric name and method."""
         if metric_name is None or metric_meth is None:
             raise ValueError("Both metric_name and metric_meth must be provided.")
 
+        if metric_name not in POSSIBLE_METRICS:
+            raise NotImplementedError(
+                f"{metric_name} not implemented ({POSSIBLE_METRICS})."
+            )
         # Construct the attribute name for storing the metric results
         attr_name = f"_{metric_name}_metrics"
 
@@ -226,7 +232,7 @@ class RiskTrajectory:
             tmp = []
             for calc_period in self.risk_periods:
                 # Call the specified method on the calc_period object
-                tmp.append(getattr(calc_period, metric_meth)(*args, **kwargs))
+                tmp.append(getattr(calc_period, metric_meth)(**kwargs))
 
             tmp = pd.concat(tmp)
             tmp.drop_duplicates(inplace=True)
@@ -241,88 +247,107 @@ class RiskTrajectory:
                 ]
                 + ["risk"]
             ]
-            if npv:
-                tmp = self.npv_transform(tmp, self.risk_disc)
-
             setattr(self, attr_name, tmp)
+
+        if npv:
+            return self.npv_transform(getattr(self, attr_name), self.risk_disc)
 
         return getattr(self, attr_name)
 
-    def _compute_metrics(
-        self, metric_name, metric_meth, total=False, npv=True, *args, **kwargs
+    def _compute_period_metrics(
+        self, metric_name: str, metric_meth: str, npv: bool = True, **kwargs
     ):
-        """Helper method to compute metrics and optionally return total risk."""
+        """Helper method to compute total metrics per period."""
         df = self._generic_metrics(
-            npv=npv, metric_name=metric_name, metric_meth=metric_meth, *args, **kwargs
+            npv=npv, metric_name=metric_name, metric_meth=metric_meth, **kwargs
         )
-        if total:
-            return self._per_period_risk(df)
+        return self._per_period_risk(df)
+
+    def _compute_metrics(
+        self, metric_name: str, metric_meth: str, npv: bool = True, **kwargs
+    ):
+        """Helper method to compute metrics."""
+        df = self._generic_metrics(
+            npv=npv, metric_name=metric_name, metric_meth=metric_meth, **kwargs
+        )
         return df
 
-    def aai_metrics(self, total=False, npv=True, *args, **kwargs):
+    def eai_metrics(self, npv: bool = True):
         return self._compute_metrics(
-            total=total,
+            npv=npv,
+            metric_name="eai",
+            metric_meth="calc_eai_gdf",
+        )
+
+    def aai_metrics(self, npv: bool = True):
+        return self._compute_metrics(
             npv=npv,
             metric_name="aai",
             metric_meth="calc_aai_metric",
-            *args,
-            **kwargs,
         )
 
-    def return_periods_metrics(
-        self, total=False, return_periods=None, npv=True, *args, **kwargs
-    ):
-        return_periods = return_periods if return_periods else self.default_rp
+    def return_periods_metrics(self, return_periods, npv: bool = True):
         return self._compute_metrics(
             npv=npv,
             metric_name="return_periods",
             metric_meth="calc_return_periods_metric",
             return_periods=return_periods,
-            *args,
-            **kwargs,
         )
 
-    def aai_per_group_metrics(self, npv=True, *args, **kwargs):
+    def aai_per_group_metrics(self, npv: bool = True):
         return self._compute_metrics(
             npv=npv,
             metric_name="aai_per_group",
             metric_meth="calc_aai_per_group_metric",
-            *args,
-            **kwargs,
         )
 
-    def risk_components_metrics(self, npv=True, *args, **kwargs):
+    def risk_components_metrics(self, npv: bool = True):
         return self._compute_metrics(
             npv=npv,
             metric_name="risk_components",
             metric_meth="calc_risk_components_metric",
-            *args,
-            **kwargs,
         )
 
-    def all_risk_metrics(
-        self, return_periods=[50, 100, 500], npv=True, *args, **kwargs
+    def per_date_risk_metrics(
+        self,
+        metrics: list[str] | None = None,
+        return_periods: list[int] | None = None,
+        npv: bool = True,
     ) -> pd.DataFrame | pd.Series:
+        metrics_df = []
+        metrics = (
+            ["aai", "return_periods", "aai_per_group"] if metrics is None else metrics
+        )
+        return_periods = return_periods if return_periods else self.default_rp
+        if "aai" in metrics:
+            metrics_df.append(self.aai_metrics(npv))
+        if "return_periods" in metrics:
+            metrics_df.append(self.return_periods_metrics(return_periods, npv))
+        if "aai_per_group" in metrics:
+            metrics_df.append(self.aai_per_group_metrics(npv))
 
-        aai = self.aai_metrics(npv, *args, **kwargs)
-        rp = self.return_periods_metrics(return_periods, npv, *args, **kwargs)
-        aai_per_group = self.aai_per_group_metrics(npv, *args, **kwargs)
-        risk_components = self.risk_components_metrics(npv, *args, **kwargs)
-        return pd.concat([aai, rp, aai_per_group, risk_components])
+        return pd.concat(metrics_df)
 
     @staticmethod
     def _get_risk_periods(
-        risk_periods, start_date: datetime.date, end_date: datetime.date
+        risk_periods: list[CalcRiskPeriod],
+        start_date: datetime.date,
+        end_date: datetime.date,
     ):
         return [
             period
             for period in risk_periods
-            if (start_date >= period.start_date or end_date <= period.end_date)
+            if (
+                start_date >= period.snapshot0.date or end_date <= period.snapshot1.date
+            )
         ]
 
     @classmethod
     def _per_period_risk(
-        cls, df: pd.DataFrame, time_unit="year", colname="risk"
+        cls,
+        df: pd.DataFrame,
+        time_unit: str = "year",
+        colname: str | list[str] = "risk",
     ) -> pd.DataFrame | pd.Series:
         def identify_continuous_periods(group, time_unit):
             # Calculate the difference between consecutive dates
@@ -358,7 +383,6 @@ class RiskTrajectory:
         for col in colname:
             agg_dict[col] = pd.NamedAgg(column=col, aggfunc="sum")
         # Group by the identified periods and calculate start and end dates
-        print(df_periods)
         df_periods = (
             df_periods.groupby(grouper + ["period_id"], dropna=False)
             .agg(**agg_dict)
@@ -370,24 +394,24 @@ class RiskTrajectory:
             + " to "
             + df_periods["end_date"].astype(str)
         )
-        # df_periods = df_periods.rename(columns={"total": f"{colname}"})
         df_periods = df_periods.drop(["period_id", "start_date", "end_date"], axis=1)
         return df_periods[
             ["period"] + [col for col in df_periods.columns if col != "period"]
         ]
 
-    @property
-    def per_date_risk_metrics(self, *args, **kwargs) -> pd.DataFrame | pd.Series:
-        """Returns a tidy dataframe of the risk metrics for all dates."""
-        return self.all_risk_metrics(*args, **kwargs)
-
-    @property
-    def total_risk_metrics(self, *args, **kwargs) -> pd.DataFrame | pd.Series:
+    def per_period_risk_metrics(
+        self, metrics: list[str] = ["aai", "return_periods", "aai_per_group"], **kwargs
+    ) -> pd.DataFrame | pd.Series:
         """Returns a tidy dataframe of the risk metrics with the total for each different period."""
-        df = self.all_risk_metrics(*args, **kwargs)
-        return self._per_period_risk(df)
+        df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
+        return self._per_period_risk(df, **kwargs)
 
-    def _calc_waterfall_plot_data(self, start_date=None, end_date=None, npv=True):
+    def _calc_waterfall_plot_data(
+        self,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+        npv: bool = True,
+    ):
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
         risk_components = self.risk_components_metrics(npv)
@@ -400,7 +424,12 @@ class RiskTrajectory:
         ].unstack()
         return risk_components
 
-    def plot_per_date_waterfall(self, ax=None, start_date=None, end_date=None):
+    def plot_per_date_waterfall(
+        self,
+        ax=None,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ):
         """Plot a waterfall chart of risk components over a specified date range.
 
         This method generates a stacked bar chart to visualize the
@@ -446,7 +475,12 @@ class RiskTrajectory:
         ax.set_ylabel(value_label)
         return ax
 
-    def plot_waterfall(self, ax=None, start_date=None, end_date=None):
+    def plot_waterfall(
+        self,
+        ax=None,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ):
         """Plot a waterfall chart of risk components between two dates.
 
         This method generates a waterfall plot to visualize the changes in risk components
@@ -543,7 +577,12 @@ and hazard compared to risk with future exposure and present hazard.""",
         return ax
 
 
-def calc_npv_cash_flows(cash_flows, start_date, end_date=None, disc=None):
+def calc_npv_cash_flows(
+    cash_flows: pd.DataFrame,
+    start_date: datetime.date,
+    end_date: datetime.date | None = None,
+    disc: DiscRates | None = None,
+):
     # If no discount rates are provided, return the cash flows as is
     if not disc:
         return cash_flows
@@ -572,25 +611,3 @@ def calc_npv_cash_flows(cash_flows, start_date, end_date=None, disc=None):
     df["npv_cash_flow"] = df["cash_flow"] * df["discount_factor"]
 
     return df["npv_cash_flow"]
-
-
-def get_eai_exp(eai_exp, group_map):
-    """
-    Aggregate expected annual impact (EAI) by groups.
-
-    Parameters
-    ----------
-    eai_exp : np.ndarray
-        Array of EAI values.
-    group_map : dict
-        Mapping of group names to indices for aggregation.
-
-    Returns
-    -------
-    dict
-        Dictionary of EAI values aggregated by specified groups.
-    """
-    eai_region_id = {}
-    for group_name, exp_indices in group_map.items():
-        eai_region_id[group_name] = np.sum(eai_exp[:, exp_indices], axis=1)
-    return eai_region_id
