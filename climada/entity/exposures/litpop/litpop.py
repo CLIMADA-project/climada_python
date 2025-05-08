@@ -26,8 +26,8 @@ import numpy as np
 import pandas as pd
 import rasterio
 import shapely
-from shapefile import Shape
 from affine import Affine
+from shapefile import Shape
 
 import climada.util.coordinates as u_coord
 import climada.util.finance as u_fin
@@ -109,13 +109,13 @@ class LitPop(Exposures):
         reference_year=DEF_REF_YEAR,
         gpw_version=GPW_VERSION,
         data_dir=SYSTEM_DIR,
-        target_grid=None
+        target_grid=None,
     ):
-        """Init new LitPop exposure object for a list of countries (admin 0). 
-        'Lit' and 'pop' data are first resampled to the same grid before being 
-        used to estimate the exposure value. The data are regridded based on the 
-        'res_arcsec' argument or a predefined 'target_grid'. The regridding process 
-        is performed using 'util.coords.align_raster_data' with bilinear resampling 
+        """Init new LitPop exposure object for a list of countries (admin 0).
+        'Lit' and 'pop' data are first resampled to the same grid before being
+        used to estimate the exposure value. The data are regridded based on the
+        'res_arcsec' argument or a predefined 'target_grid'. The regridding process
+        is performed using 'util.coords.align_raster_data' with bilinear resampling
         ('rasterio.warp.Resampling.bilinear').
 
         Sets attributes `ref_year`, `crs`, `value`, `geometry`, `meta`,
@@ -129,7 +129,7 @@ class LitPop(Exposures):
         res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default is 30 arcsec, this corresponds to roughly 1 km.
-            - To use the original **GPW population grid**, set 'res_arcsec=30'.  
+            - To use the original **GPW population grid**, set 'res_arcsec=30'.
             - To use the original **nightlight grid**, set 'res_arcsec=15'.
             if 'target_grid' is defined, this argument is not used.
         exponents : tuple of two integers, optional
@@ -170,10 +170,10 @@ class LitPop(Exposures):
             redefines path to input data directory. The default is SYSTEM_DIR.
         target_grid : dict or None, optional
             A predefined grid onto which the exposure data should be mapped.
-            Default is None, the function will automatically define a target grid 
+            Default is None, the function will automatically define a target grid
             based on the 'res_arcsec' parameters. Specifically, if 'res_arcsec'
             is 15, the grid will be aligned to the nightlight data, otherwise
-            it will align to the GPW population grid.  
+            it will align to the GPW population grid.
             The dictionary should include:
             - "crs" : Coordinate reference system (e.g., "EPSG:4326")
             - "transform" : Affine transformation defining pixel locations
@@ -196,13 +196,14 @@ class LitPop(Exposures):
             total_values = [None] * len(countries)
         elif len(total_values) != len(countries):
             raise ValueError(
-                "'countries' and 'total_values' must be lists of same length")        
+                "'countries' and 'total_values' must be lists of same length"
+            )
         if target_grid is None:
             target_grid = cls._define_target_grid(
                 reference_year=reference_year,
                 gpw_version=gpw_version,
                 data_dir=data_dir,
-                res_arcsec=res_arcsec
+                res_arcsec=res_arcsec,
             )
         # litpop_list is initiated, a list containing one Exposure instance per
         # country and None for countries that could not be identified:
@@ -220,7 +221,7 @@ class LitPop(Exposures):
                     reference_year,
                     gpw_version,
                     data_dir,
-                    target_grid
+                    target_grid,
                 )
                 for tot_value, country in zip(total_values, countries)
             ]
@@ -236,7 +237,8 @@ class LitPop(Exposures):
                     total_value=total_values[idc],
                     reference_year=reference_year,
                     gpw_version=gpw_version,
-                    data_dir=data_dir, target_grid=target_grid
+                    data_dir=data_dir,
+                    target_grid=target_grid,
                 )
                 for idc, country in enumerate(countries)
             ]
@@ -248,7 +250,7 @@ class LitPop(Exposures):
             country for lp, country in zip(litpop_list, countries) if lp is None
         ]
         if not countries_in:
-            raise ValueError("No valid country identified in %s, aborting." % countries)
+            raise ValueError(f"No valid country identified in {countries}, aborting.")
         litpop_list = [exp for exp in litpop_list if exp is not None]
         if countries_out:
             LOGGER.warning(
@@ -316,15 +318,15 @@ class LitPop(Exposures):
         res_arcsec=15,
         reference_year=DEF_REF_YEAR,
         data_dir=SYSTEM_DIR,
-        target_grid=None
+        target_grid=None,
     ):
         """
         Wrapper around `from_countries` / `from_shape`.
 
         Initiate exposures instance with value equal to the original BlackMarble
-        nightlight intensity resampled based on the 'res_arcsec' argument or a predefined 
-        'target_grid'. The regridding process is performed using 'util.coords.align_raster_data' with bilinear resampling 
-        ('rasterio.warp.Resampling.bilinear'). 
+        nightlight intensity resampled based on the 'res_arcsec' argument or a predefined
+        'target_grid'. The regridding process is performed using 'util.coords.align_raster_data'
+        with bilinear resampling ('rasterio.warp.Resampling.bilinear').
 
         Provide either `countries` or `shape`.
 
@@ -337,7 +339,7 @@ class LitPop(Exposures):
         res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default is 30 arcsec, this corresponds to roughly 1 km.
-            - To use the original **GPW population grid**, set 'res_arcsec=30'.  
+            - To use the original **GPW population grid**, set 'res_arcsec=30'.
             - To use the original **nightlight grid**, set 'res_arcsec=15'.
             if 'target_grid' is defined, this argument is not used.
         reference_year : int, optional
@@ -346,10 +348,10 @@ class LitPop(Exposures):
             data directory. The default is None.
         target_grid : dict or None, optional
             A predefined grid onto which the exposure data should be mapped.
-            Default is None, the function will automatically define a target grid 
+            Default is None, the function will automatically define a target grid
             based on the 'res_arcsec' parameters. Specifically, if 'res_arcsec'
             is 15, the grid will be aligned to the nightlight data, otherwise
-            it will align to the GPW population grid.  
+            it will align to the GPW population grid.
             The dictionary should include:
             - "crs" : Coordinate reference system (e.g., "EPSG:4326")
             - "transform" : Affine transformation defining pixel locations
@@ -373,11 +375,11 @@ class LitPop(Exposures):
             )
         if target_grid is None:
             target_grid = cls._define_target_grid(
-            reference_year=reference_year,
-            gpw_version=GPW_VERSION,
-            data_dir=data_dir,
-            res_arcsec=res_arcsec
-    )
+                reference_year=reference_year,
+                gpw_version=GPW_VERSION,
+                data_dir=data_dir,
+                res_arcsec=res_arcsec,
+            )
         if countries is not None:
             exp = cls.from_countries(
                 countries,
@@ -387,7 +389,7 @@ class LitPop(Exposures):
                 reference_year=reference_year,
                 gpw_version=GPW_VERSION,
                 data_dir=data_dir,
-                target_grid=target_grid
+                target_grid=target_grid,
             )
         else:
             exp = cls.from_shape(
@@ -399,7 +401,7 @@ class LitPop(Exposures):
                 reference_year=reference_year,
                 gpw_version=GPW_VERSION,
                 data_dir=SYSTEM_DIR,
-                target_grid=target_grid
+                target_grid=target_grid,
             )
         LOGGER.warning(
             "Note: set_nightlight_intensity sets values to raw nightlight intensity, "
@@ -426,14 +428,14 @@ class LitPop(Exposures):
         reference_year=DEF_REF_YEAR,
         gpw_version=GPW_VERSION,
         data_dir=SYSTEM_DIR,
-        target_grid=None
+        target_grid=None,
     ):
         """
         Wrapper around `from_countries` / `from_shape`.
 
         Initiate exposures instance with value equal to GPW population count resampled
-        to 'res_arcsec' or 'target_grid'. The regridding process 
-        is performed using 'util.coords.align_raster_data' with bilinear resampling 
+        to 'res_arcsec' or 'target_grid'. The regridding process
+        is performed using 'util.coords.align_raster_data' with bilinear resampling
         ('rasterio.warp.Resampling.bilinear').
         Provide either `countries` or `shape`.
 
@@ -446,7 +448,7 @@ class LitPop(Exposures):
         res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default is 30 arcsec, this corresponds to roughly 1 km.
-            - To use the original **GPW population grid**, set 'res_arcsec=30'.  
+            - To use the original **GPW population grid**, set 'res_arcsec=30'.
             - To use the original **nightlight grid**, set 'res_arcsec=15'.
             if 'target_grid' is defined, this argument is not used.
         reference_year : int, optional
@@ -459,10 +461,10 @@ class LitPop(Exposures):
             Either countries or shape is required.
         target_grid : dict or None, optional
             A predefined grid onto which the exposure data should be mapped.
-            Default is None, the function will automatically define a target grid 
+            Default is None, the function will automatically define a target grid
             based on the 'res_arcsec' parameters. Specifically, if 'res_arcsec'
             is 15, the grid will be aligned to the nightlight data, otherwise
-            it will align to the GPW population grid.  
+            it will align to the GPW population grid.
             The dictionary should include:
             - "crs" : Coordinate reference system (e.g., "EPSG:4326")
             - "transform" : Affine transformation defining pixel locations
@@ -487,11 +489,11 @@ class LitPop(Exposures):
             )
         if target_grid is None:
             target_grid = cls._define_target_grid(
-            reference_year=reference_year,
-            gpw_version=gpw_version,
-            data_dir=data_dir,
-            res_arcsec=res_arcsec
-    )
+                reference_year=reference_year,
+                gpw_version=gpw_version,
+                data_dir=data_dir,
+                res_arcsec=res_arcsec,
+            )
         if countries is not None:
             exp = cls.from_countries(
                 countries,
@@ -501,7 +503,7 @@ class LitPop(Exposures):
                 reference_year=reference_year,
                 gpw_version=gpw_version,
                 data_dir=data_dir,
-                target_grid=target_grid
+                target_grid=target_grid,
             )
         else:
             exp = cls.from_shape(
@@ -513,7 +515,7 @@ class LitPop(Exposures):
                 reference_year=reference_year,
                 gpw_version=gpw_version,
                 data_dir=data_dir,
-                target_grid=target_grid
+                target_grid=target_grid,
             )
         return exp
 
@@ -537,14 +539,14 @@ class LitPop(Exposures):
         reference_year=DEF_REF_YEAR,
         gpw_version=GPW_VERSION,
         data_dir=SYSTEM_DIR,
-        target_grid=None
+        target_grid=None,
     ):
         """
         create LitPop exposure for `country` and then crop to given shape.
-        'Lit' and 'pop' data are first resampled to the same grid before being 
-        used to estimate the exposure value. The data are regridded based on the 
-        'res_arcsec' argument or a predefined 'target_grid'. The regridding process 
-        is performed using 'util.coords.align_raster_data' with bilinear resampling 
+        'Lit' and 'pop' data are first resampled to the same grid before being
+        used to estimate the exposure value. The data are regridded based on the
+        'res_arcsec' argument or a predefined 'target_grid'. The regridding process
+        is performed using 'util.coords.align_raster_data' with bilinear resampling
         ('rasterio.warp.Resampling.bilinear').
 
         Parameters
@@ -558,7 +560,7 @@ class LitPop(Exposures):
         res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default is 30 arcsec, this corresponds to roughly 1 km.
-            - To use the original **GPW population grid**, set 'res_arcsec=30'.  
+            - To use the original **GPW population grid**, set 'res_arcsec=30'.
             - To use the original **nightlight grid**, set 'res_arcsec=15'.
             if 'target_grid' is defined, this argument is not used.
         exponents : tuple of two integers, optional
@@ -593,10 +595,10 @@ class LitPop(Exposures):
             redefines path to input data directory. The default is SYSTEM_DIR.
         target_grid : dict or None, optional
             A predefined grid onto which the exposure data should be mapped.
-            Default is None, the function will automatically define a target grid 
+            Default is None, the function will automatically define a target grid
             based on the 'res_arcsec' parameters. Specifically, if 'res_arcsec'
             is 15, the grid will be aligned to the nightlight data, otherwise
-            it will align to the GPW population grid.  
+            it will align to the GPW population grid.
             The dictionary should include:
             - "crs" : Coordinate reference system (e.g., "EPSG:4326")
             - "transform" : Affine transformation defining pixel locations
@@ -622,18 +624,13 @@ class LitPop(Exposures):
             reference_year=reference_year,
             gpw_version=gpw_version,
             data_dir=data_dir,
-            target_grid=target_grid
+            target_grid=target_grid,
         )
 
         if isinstance(shape, Shape):
             # get gdf with geometries of points within shape:
             shape_gdf, _ = _get_litpop_single_polygon(
-                shape,
-                reference_year,
-                data_dir,
-                gpw_version,
-                exponents,
-                target_grid
+                shape, reference_year, data_dir, gpw_version, exponents, target_grid
             )
             shape_gdf = shape_gdf.drop(
                 columns=shape_gdf.columns[shape_gdf.columns != "geometry"]
@@ -712,7 +709,7 @@ class LitPop(Exposures):
         reference_year=DEF_REF_YEAR,
         gpw_version=GPW_VERSION,
         data_dir=SYSTEM_DIR,
-        target_grid=None
+        target_grid=None,
     ):
         """init LitPop exposure object for a custom shape.
         Requires user input regarding the total value to be disaggregated.
@@ -725,10 +722,10 @@ class LitPop(Exposures):
         and total value need to be provided manually.
         If these required input parameters are not known / available,
         better initiate Exposure for entire country and extract shape afterwards.
-        'Lit' and 'pop' data are first resampled to the same grid before being 
-        used to estimate the exposure value. The data are regridded based on the 
-        'res_arcsec' argument or a predefined 'target_grid'. The regridding process 
-        is performed using 'util.coords.align_raster_data' with bilinear resampling 
+        'Lit' and 'pop' data are first resampled to the same grid before being
+        used to estimate the exposure value. The data are regridded based on the
+        'res_arcsec' argument or a predefined 'target_grid'. The regridding process
+        is performed using 'util.coords.align_raster_data' with bilinear resampling
         ('rasterio.warp.Resampling.bilinear').
 
         Parameters
@@ -741,7 +738,7 @@ class LitPop(Exposures):
         res_arcsec : float, optional
             Horizontal resolution in arc-sec.
             The default is 30 arcsec, this corresponds to roughly 1 km.
-            - To use the original **GPW population grid**, set 'res_arcsec=30'.  
+            - To use the original **GPW population grid**, set 'res_arcsec=30'.
             - To use the original **nightlight grid**, set 'res_arcsec=15'.
             if 'target_grid' is defined, this argument is not used.
         exponents : tuple of two integers, optional
@@ -763,10 +760,10 @@ class LitPop(Exposures):
             redefines path to input data directory. The default is SYSTEM_DIR.
         target_grid : dict or None, optional
             A predefined grid onto which the exposure data should be mapped.
-            Default is None, the function will automatically define a target grid 
+            Default is None, the function will automatically define a target grid
             based on the 'res_arcsec' parameters. Specifically, if 'res_arcsec'
             is 15, the grid will be aligned to the nightlight data, otherwise
-            it will align to the GPW population grid.  
+            it will align to the GPW population grid.
             The dictionary should include:
             - "crs" : Coordinate reference system (e.g., "EPSG:4326")
             - "transform" : Affine transformation defining pixel locations
@@ -797,7 +794,7 @@ class LitPop(Exposures):
             gpw_version,
             exponents,
             target_grid,
-            region_id
+            region_id,
         )
 
         # disaggregate total value proportional to LitPop values:
@@ -874,35 +871,35 @@ class LitPop(Exposures):
         Returns
         -------
         target_grid : dict
-            A dictionary containing grid metadata, following the raster grid 
-            specification. 
+            A dictionary containing grid metadata, following the raster grid
+            specification.
         """
         res_deg = res_arcsec / 3600
         if res_arcsec == 15:
             # Black Marble Nightlights Grid
+            # pylint: disable=c-extension-no-member
             global_crs = rasterio.crs.CRS.from_epsg(4326)  # WGS84 projection
-            global_transform = Affine(
-                res_deg, 0, -180,  
-                0, -res_deg, 90)
+            global_transform = Affine(res_deg, 0, -180, 0, -res_deg, 90)
             global_width = round(360 / res_deg)
             global_height = round(180 / res_deg)
         else:
             # GPW Population Grid
-            file_path = pop_util.get_gpw_file_path(gpw_version,
-                                                   reference_year,
-                                                   data_dir=data_dir,
-                                                   verbose=False)
+            file_path = pop_util.get_gpw_file_path(
+                gpw_version, reference_year, data_dir=data_dir, verbose=False
+            )
             with rasterio.open(file_path, "r") as src:
                 global_crs = src.crs
                 gpw_transform = src.transform
             # Align grid resolution with GPW dataset
-            aligned_lon_min = -180 + (round((gpw_transform[2] - (-180)) / res_deg) * res_deg)
+            aligned_lon_min = -180 + (
+                round((gpw_transform[2] - (-180)) / res_deg) * res_deg
+            )
             aligned_lat_max = 90 - (round((90 - gpw_transform[5]) / res_deg) * res_deg)
-            
+
             global_transform = Affine(
-                res_deg, 0, aligned_lon_min,
-                0, -res_deg, aligned_lat_max)
-            
+                res_deg, 0, aligned_lon_min, 0, -res_deg, aligned_lat_max
+            )
+
             global_width = round(360 / res_deg)
             global_height = round(180 / res_deg)
 
@@ -917,7 +914,7 @@ class LitPop(Exposures):
             "transform": global_transform,
         }
         return target_grid
-    
+
     @staticmethod
     def _from_country(
         country,
@@ -927,7 +924,8 @@ class LitPop(Exposures):
         total_value=None,
         reference_year=DEF_REF_YEAR,
         gpw_version=GPW_VERSION,
-        data_dir=SYSTEM_DIR):
+        data_dir=SYSTEM_DIR,
+    ):
         """init LitPop exposure object for one single country
         See docstring of from_countries() for detailled description of parameters.
 
@@ -936,8 +934,8 @@ class LitPop(Exposures):
         country : str or int
             country identifier as iso3alpha, iso3num or name.
         target_grid : dict
-            A dictionary containing grid metadata, following the raster grid 
-            specification.   
+            A dictionary containing grid metadata, following the raster grid
+            specification.
         exponents : tuple of two integers, optional
         fin_mode : str, optional
         total_value : numeric, optional
@@ -945,7 +943,7 @@ class LitPop(Exposures):
         gpw_version : int, optional
         data_dir : Path, optional
             redefines path to input data directory. The default is SYSTEM_DIR.
-            
+
         Raises
         ------
         ValueError
@@ -990,7 +988,7 @@ class LitPop(Exposures):
             )
             if gdf_tmp is None:
                 LOGGER.debug(
-                    f"Skipping polygon with index {idx} for" + f" country {iso3a}."
+                    "Skipping polygon with index %d for country %s.", idx, iso3a
                 )
                 continue
             total_population += meta_tmp["total_population"]
@@ -1019,28 +1017,29 @@ class LitPop(Exposures):
     # Alias method names for backward compatibility:
     set_country = set_countries
 
+
 def _crop_target_grid(target_grid, polygon):
     """
     Crop the target grid to match the bounding box of a given polygon.
 
-    This function extracts a subset of the target grid that spatially 
-    aligns with the bounding box of the given polygon. The cropped grid 
-    retains the same resolution and coordinate reference system (CRS) as 
+    This function extracts a subset of the target grid that spatially
+    aligns with the bounding box of the given polygon. The cropped grid
+    retains the same resolution and coordinate reference system (CRS) as
     the original grid but is limited to the extent of the polygon.
 
     Parameters
     ----------
     target_grid : dict
-        A dictionary containing grid metadata, following the raster grid 
-        specification. 
+        A dictionary containing grid metadata, following the raster grid
+        specification.
     polygon : shapely.geometry.Polygon
         The polygon whose bounding box will be used to crop the grid.
 
     Returns
     -------
     cropped_grid : dict
-        A dictionary with the same structure as 'target_grid', but with 
-        updated 'width', 'height', and 'transform' to match the 
+        A dictionary with the same structure as 'target_grid', but with
+        updated 'width', 'height', and 'transform' to match the
         polygon's bounding box.
     """
     bbox = polygon.bounds  # (minx, miny, maxx, maxy)
@@ -1065,10 +1064,15 @@ def _crop_target_grid(target_grid, polygon):
     cropped_grid["width"] = col_max - col_min
     cropped_grid["height"] = row_max - row_min
     cropped_grid["transform"] = Affine(
-        target_grid["transform"].a, 0, cropped_min_lon,
-        0, target_grid["transform"].e, cropped_max_lat
+        target_grid["transform"].a,
+        0,
+        cropped_min_lon,
+        0,
+        target_grid["transform"].e,
+        cropped_max_lat,
     )
     return cropped_grid
+
 
 def _get_litpop_single_polygon(
     polygon,
@@ -1104,8 +1108,8 @@ def _get_litpop_single_polygon(
         Defining power with which lit (nightlights) and pop (gpw) go into LitPop. To get
         nightlights^3 without population count: (3, 0). To use population count alone: (0, 1).
     target_grid : dict
-        A dictionary containing grid metadata, following the raster grid 
-        specification. 
+        A dictionary containing grid metadata, following the raster grid
+        specification.
     region_id : int, optional
         if provided, region_id of gdf is set to value. The default is ``None``, in which
         case the region is determined automatically for every location of the resulting
@@ -1325,8 +1329,8 @@ def reproject_input_data(
         The meta data with the reference grid used to define the global destination
         grid should be first in the list, e.g., GPW population data for LitPop.
     target_grid : dict
-        A dictionary containing grid metadata, following the raster grid 
-        specification. 
+        A dictionary containing grid metadata, following the raster grid
+        specification.
     resampling : resampling function, optional
         The default is rasterio.warp.Resampling.bilinear
     conserve : str, optional, either 'mean' or 'sum'
@@ -1352,7 +1356,6 @@ def reproject_input_data(
     global_origins = (dst_transform[2], dst_transform[5])  # (lon, lat)
     data_out_list = [None] * len(data_array_list)
     meta_out = target_grid.copy()  # Copy all existing fields directly
-
 
     for idx, _ in enumerate(data_array_list):
         # reproject data grid:
@@ -1574,7 +1577,7 @@ def _calc_admin1_one_country(
     reference_year,
     gpw_version,
     data_dir,
-    target_grid
+    target_grid,
 ):
     """
     Calculates the LitPop on admin1 level for provinces/states where such information are
@@ -1652,7 +1655,7 @@ def _calc_admin1_one_country(
                 reference_year=reference_year,
                 gpw_version=gpw_version,
                 data_dir=data_dir,
-                target_grid=target_grid
+                target_grid=target_grid,
             )
         )
         exp_list[-1].gdf["admin1"] = record["name"]

@@ -22,9 +22,9 @@ Tests on LitPop exposures.
 import unittest
 
 import numpy as np
-from shapely.geometry import Polygon
 from rasterio import Affine
 from rasterio.crs import CRS
+from shapely.geometry import Polygon
 
 import climada.util.coordinates as u_coord
 from climada import CONFIG
@@ -117,7 +117,6 @@ class TestLitPopExposure(unittest.TestCase):
                 fin_mode=fin_mode,
                 reference_year=2015,
             )
-        # print(cm)
         self.assertIn("LitPop: Init Exposure for country: CHE", cm.output[0])
         self.assertEqual(ent.region_id.min(), 756)
         self.assertEqual(ent.region_id.max(), 756)
@@ -359,10 +358,13 @@ class TestAdmin1(unittest.TestCase):
         admin1_info = admin1_info[country]
         admin1_shapes = admin1_shapes[country]
         admin1_names = [record["name"] for record in admin1_info]
-        print(admin1_names)
-        for idx, name in enumerate(admin1_names):
-            if admin1_names[idx] == state_name:
-                break
+
+        idx = next(
+            idx
+            for idx, _name in enumerate(admin1_names)
+            if admin1_names[idx] == state_name
+        )
+        self.assertEqual(idx, 8)
 
         # init LitPop for Brandenburg
         exp_bra2 = lp.LitPop.from_shape_and_countries(
@@ -394,6 +396,7 @@ class TestGPWPopulation(unittest.TestCase):
             self.assertIn("gpw_v4_population", str(path))
         except FileExistsError as err:
             self.assertIn("lease download", err.args[0])
+            # pylint: disabled=consider-using-f-string
             self.skipTest("GPW input data for GPW v4.%i not found." % (gpw_version))
 
     def test_load_gpw_pop_shape_pass(self):
@@ -413,7 +416,9 @@ class TestGPWPopulation(unittest.TestCase):
             self.assertEqual(len(data.shape), 2)
         except FileExistsError as err:
             self.assertIn("lease download", err.args[0])
+            # pylint: disabled=consider-using-f-string
             self.skipTest("GPW input data for GPW v4.%i not found." % (gpw_version))
+
 
 class TestLitPopGridAlignment(unittest.TestCase):
     """Test grid alignment, geometry validity, and expected structure in LitPop."""
@@ -424,17 +429,22 @@ class TestLitPopGridAlignment(unittest.TestCase):
         # Define the target resolution in degrees (150 arcseconds = 0.0416667°)
         target_res_deg = 150 / 3600  # Convert arcseconds to degrees (0.0416667°)
 
-        #Ensure the grid is aligned exactly at half-cell positions
+        # Ensure the grid is aligned exactly at half-cell positions
         aligned_lon_min = -180 + (target_res_deg / 2)  # Shift half a cell right
-        aligned_lat_max = 90 - (target_res_deg / 2)    # Shift half a cell down
+        aligned_lat_max = 90 - (target_res_deg / 2)  # Shift half a cell down
         # Compute grid width & height
         width = int(360 / target_res_deg)  # 360° longitude range
         height = int(180 / target_res_deg)  # 180° latitude range
 
         # Define the affine transform for the target grid
         transform = Affine(
-            target_res_deg, 0, aligned_lon_min,  # X resolution, rotation, X origin
-            0, -target_res_deg, aligned_lat_max  # Y rotation, Y resolution (negative), Y origin
+            target_res_deg,
+            0,
+            aligned_lon_min,  # X resolution, rotation, X origin
+            0,
+            -target_res_deg,
+            aligned_lat_max,  # Y rotation, Y resolution (negative),
+            # Y origin
         )
 
         # Define the target grid metadata
@@ -455,15 +465,32 @@ class TestLitPopGridAlignment(unittest.TestCase):
         # Define test cases with correct resolution
         cls.test_cases = [
             ("from_countries", {"countries": cls.test_countries, "res_arcsec": 30}),
-            ("from_nightlight_intensity", {"countries": cls.test_countries, "res_arcsec": 30}),
+            (
+                "from_nightlight_intensity",
+                {"countries": cls.test_countries, "res_arcsec": 30},
+            ),
             ("from_population", {"countries": cls.test_countries, "res_arcsec": 30}),
-            ("from_shape_and_countries", {"shape": cls.test_shape, "countries": cls.test_countries, "res_arcsec": 30}),
-            ("from_shape", {"shape": cls.test_shape, "total_value": cls.test_total_value, "res_arcsec": 30}),
+            (
+                "from_shape_and_countries",
+                {
+                    "shape": cls.test_shape,
+                    "countries": cls.test_countries,
+                    "res_arcsec": 30,
+                },
+            ),
+            (
+                "from_shape",
+                {
+                    "shape": cls.test_shape,
+                    "total_value": cls.test_total_value,
+                    "res_arcsec": 30,
+                },
+            ),
         ]
 
     def check_exposure_geometry(self, exp, method_name):
         """Validate that the exposure data points align correctly to the expected grid."""
-    
+
         # Ensure exposure data exists
         self.assertIsNotNone(exp, f"{method_name} returned None")
         self.assertFalse(exp.gdf.empty, f"GeoDataFrame is empty in {method_name}!")
@@ -475,40 +502,50 @@ class TestLitPopGridAlignment(unittest.TestCase):
         # Define the target resolution in degrees (150 arcseconds = 0.0416667°)
         target_res_deg = 150 / 3600  # Convert arcseconds to degrees (0.0416667°)
 
-        #Ensure the grid is aligned exactly at half-cell positions
-        aligned_lon_min = -180   # Shift half a cell right
-        aligned_lat_max = 90 
+        # Ensure the grid is aligned exactly at half-cell positions
+        aligned_lon_min = -180  # Shift half a cell right
+        aligned_lat_max = 90
         # Compute expected alignment positions
-        expected_lons = np.arange(aligned_lon_min, aligned_lon_min+360, target_res_deg)
-        expected_lats = np.arange(aligned_lat_max-180, aligned_lat_max  , target_res_deg ) 
-                # Check that all longitudes and latitudes align to expected values
+        expected_lons = np.arange(
+            aligned_lon_min, aligned_lon_min + 360, target_res_deg
+        )
+        expected_lats = np.arange(
+            aligned_lat_max - 180, aligned_lat_max, target_res_deg
+        )
+        # Check that all longitudes and latitudes align to expected values
         self.assertTrue(
             np.all(np.isin(np.round(longitudes, 6), np.round(expected_lons, 6))),
-            f"Longitude coordinates are not aligned to the expected grid in {method_name}!"
+            f"Longitude coordinates are not aligned to the expected grid in {method_name}!",
         )
         self.assertTrue(
             np.all(np.isin(np.round(latitudes, 6), np.round(expected_lats, 6))),
-            f"Latitude coordinates are not aligned to the expected grid in {method_name}!"
+            f"Latitude coordinates are not aligned to the expected grid in {method_name}!",
         )
 
     def test_litpop_grid_alignment(self):
         """Loop through LitPop methods and validate grid alignment."""
         for method_name, kwargs in self.test_cases:
             with self.subTest(method=method_name):
-                exp = getattr(lp.LitPop, method_name)(**kwargs, target_grid=self.target_grid)
+                exp = getattr(lp.LitPop, method_name)(
+                    **kwargs, target_grid=self.target_grid
+                )
                 self.check_exposure_geometry(exp, method_name)
 
     def test_litpop_grid_consistency(self):
-        """Ensure total exposure values and dataset lengths remain consistent across different grid configurations."""
-        
+        """Ensure total exposure values and dataset lengths remain consistent across different grid
+        configurations."""
+
         country = "FRA"  # Example country, adjust as needed
         default_res = 30  # Default resolution in arcseconds
         test_res = 150  # Test resolution in arcseconds (5x coarser)
 
         # Compute exposure with different configurations
-        exp_default = lp.LitPop.from_countries([country])  # Default settings (30 arcseconds)
-        exp_res = lp.LitPop.from_countries([country], res_arcsec=test_res)  # Using specified resolution (150 arcseconds)
-        exp_grid = lp.LitPop.from_countries([country], target_grid=self.target_grid)  # Using target grid
+        # Default settings (30 arcseconds):
+        exp_default = lp.LitPop.from_countries([country])
+        # Using specified resolution (150 arcseconds):
+        exp_res = lp.LitPop.from_countries([country], res_arcsec=test_res)
+        # Using target grid:
+        exp_grid = lp.LitPop.from_countries([country], target_grid=self.target_grid)
 
         # Extract total exposure values
         sum_default = exp_default.gdf["value"].sum()
@@ -524,14 +561,27 @@ class TestLitPopGridAlignment(unittest.TestCase):
         tolerance = 0.1 * sum_default  # 10% of default value
 
         # Check that the total exposure values are within tolerance
-        self.assertAlmostEqual(sum_res, sum_default, delta=tolerance,
-                            msg="Exposure sum differs by more than 10% when using resolution.")
-        self.assertAlmostEqual(sum_grid, sum_default, delta=tolerance,
-                            msg="Exposure sum differs by more than 10% when using a target grid.")
+        self.assertAlmostEqual(
+            sum_res,
+            sum_default,
+            delta=tolerance,
+            msg="Exposure sum differs by more than 10% when using resolution.",
+        )
+        self.assertAlmostEqual(
+            sum_grid,
+            sum_default,
+            delta=tolerance,
+            msg="Exposure sum differs by more than 10% when using a target grid.",
+        )
 
         # Check that the number of grid points is similar when using the same resolution
-        self.assertAlmostEqual(len_res, len_grid, delta=0.05 * len_res,
-                            msg="Dataset lengths differ significantly between resolution and target grid.")
+        self.assertAlmostEqual(
+            len_res,
+            len_grid,
+            delta=0.05 * len_res,
+            msg="Dataset lengths differ significantly between resolution and target grid.",
+        )
+
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure)
