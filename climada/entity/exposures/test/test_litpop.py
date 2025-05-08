@@ -32,22 +32,28 @@ from climada.entity.exposures.litpop import litpop as lp
 def data_arrays_demo(number_of_arrays=2):
     """init demo data arrays (2d) for LitPop core calculations"""
     data_arrays = list()
+    # fmt: off
     if number_of_arrays > 0:
-        data_arrays.append(np.array([[0, 1, 2], [3, 4, 5]]))
-        # array([[0, 1, 2],
-        #       [3, 4, 5]])
+        data_arrays.append(np.array([
+            [0, 1, 2],
+            [3, 4, 5]
+        ]))
     if number_of_arrays > 1:
-        data_arrays.append(np.array([[10, 10, 10], [1, 1, 1]]))
-        # array([[10, 10, 10],
-        #       [1, 1, 1]])
+        data_arrays.append(np.array([
+            [10, 10, 10],
+            [ 1,  1,  1]
+        ]))
     if number_of_arrays > 2:
-        data_arrays.append(np.array([[0, 1, 10], [0, 1, 10]]))
-        # array([[0, 1, 10],
-        #       [0, 1, 10]])
+        data_arrays.append(np.array([
+            [0, 1, 10],
+            [0, 1, 10]
+        ]))
     if number_of_arrays > 3:
-        data_arrays.append([[0, 1, 10, 100], [0, 1, 10, 100]])
-        # [[0, 1, 10, 100],
-        #  [0, 1, 10, 100]]
+        data_arrays.append([
+            [0, 1, 10, 100],
+            [0, 1, 10, 100]
+        ])
+    # fmt: on
     return data_arrays
 
 

@@ -396,7 +396,7 @@ class TestGPWPopulation(unittest.TestCase):
             self.assertIn("gpw_v4_population", str(path))
         except FileExistsError as err:
             self.assertIn("lease download", err.args[0])
-            # pylint: disabled=consider-using-f-string
+            # pylint: disable=consider-using-f-string
             self.skipTest("GPW input data for GPW v4.%i not found." % (gpw_version))
 
     def test_load_gpw_pop_shape_pass(self):
@@ -416,7 +416,7 @@ class TestGPWPopulation(unittest.TestCase):
             self.assertEqual(len(data.shape), 2)
         except FileExistsError as err:
             self.assertIn("lease download", err.args[0])
-            # pylint: disabled=consider-using-f-string
+            # pylint: disable=consider-using-f-string
             self.skipTest("GPW input data for GPW v4.%i not found." % (gpw_version))
 
 
