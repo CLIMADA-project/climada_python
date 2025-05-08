@@ -1122,19 +1122,13 @@ class Exposures:
         self.to_crs(crs_ori, inplace=True)
         return axis
 
-    def write_hdf5(self, file_name, pickle_geometry_as_shapely=False):
+    def write_hdf5(self, file_name):
         """Write data frame and metadata in hdf5 format
 
         Parameters
         ----------
         file_name : str
             (path and) file name to write to.
-        pickle_geometry_as_shapely : bool
-            flag, indicating whether the "geometry" of the Exposures` `data` will be stored as
-            pickled shapely objects instead of wkb bytes. This has been the case for earlier
-            CLIMADA version, up to 6.0, and is perhaps faster but less durable,
-            because pickled data may evantually get unreadable for future shapely versions.
-            Default: False
         """
         LOGGER.info("Writing %s", file_name)
         store = pd.HDFStore(file_name, mode="w")
@@ -1142,11 +1136,8 @@ class Exposures:
         wkb_columns = []
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
-                if pickle_geometry_as_shapely:
-                    pandas_df[col] = np.asarray(self.gdf[col])
-                else:
-                    pandas_df[col] = gpd.GeoSeries(pandas_df[col]).to_wkb()
-                    wkb_columns.append(col)
+                pandas_df[col] = gpd.GeoSeries(pandas_df[col]).to_wkb()
+                wkb_columns.append(col)
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
         with warnings.catch_warnings():
