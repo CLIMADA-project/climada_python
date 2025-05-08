@@ -213,15 +213,15 @@ class LitPop(Exposures):
             # GSDP data folder.
             litpop_list = [
                 _calc_admin1_one_country(
-                    country,
-                    res_arcsec,
-                    exponents,
-                    fin_mode,
-                    tot_value,
-                    reference_year,
-                    gpw_version,
-                    data_dir,
-                    target_grid,
+                    country=country,
+                    res_arcsec=res_arcsec,
+                    exponents=exponents,
+                    fin_mode=fin_mode,
+                    total_value=tot_value,
+                    reference_year=reference_year,
+                    gpw_version=gpw_version,
+                    data_dir=data_dir,
+                    target_grid=target_grid,
                 )
                 for tot_value, country in zip(total_values, countries)
             ]
@@ -231,7 +231,7 @@ class LitPop(Exposures):
             # within each country and combined at the end.
             litpop_list = [
                 cls._from_country(
-                    country,
+                    country=country,
                     exponents=exponents,
                     fin_mode=fin_mode,
                     total_value=total_values[idc],
@@ -382,7 +382,7 @@ class LitPop(Exposures):
             )
         if countries is not None:
             exp = cls.from_countries(
-                countries,
+                countries=countries,
                 res_arcsec=res_arcsec,
                 exponents=(1, 0),
                 fin_mode="none",
@@ -393,8 +393,8 @@ class LitPop(Exposures):
             )
         else:
             exp = cls.from_shape(
-                shape,
-                None,
+                shape=shape,
+                total_value=None,
                 res_arcsec=res_arcsec,
                 exponents=(1, 0),
                 value_unit="",
@@ -496,7 +496,7 @@ class LitPop(Exposures):
             )
         if countries is not None:
             exp = cls.from_countries(
-                countries,
+                countries=countries,
                 res_arcsec=res_arcsec,
                 exponents=(0, 1),
                 fin_mode="pop",
@@ -507,8 +507,8 @@ class LitPop(Exposures):
             )
         else:
             exp = cls.from_shape(
-                shape,
-                None,
+                shape=shape,
+                total_value=None,
                 res_arcsec=res_arcsec,
                 exponents=(0, 1),
                 value_unit="people",
@@ -617,7 +617,7 @@ class LitPop(Exposures):
         """
         # init countries' exposure:
         exp = cls.from_countries(
-            countries,
+            countries=countries,
             res_arcsec=res_arcsec,
             exponents=exponents,
             fin_mode=fin_mode,
@@ -788,13 +788,13 @@ class LitPop(Exposures):
             )
 
         litpop_gdf, _ = _get_litpop_single_polygon(
-            shape,
-            reference_year,
-            data_dir,
-            gpw_version,
-            exponents,
-            target_grid,
-            region_id,
+            polygon=shape,
+            reference_year=reference_year,
+            data_dir=data_dir,
+            gpw_version=gpw_version,
+            exponents=exponents,
+            target_grid=target_grid,
+            region_id=region_id,
         )
 
         # disaggregate total value proportional to LitPop values:
@@ -977,12 +977,12 @@ class LitPop(Exposures):
                 gdf_tmp,
                 meta_tmp,
             ) = _get_litpop_single_polygon(
-                polygon,
-                reference_year,
-                data_dir,
-                gpw_version,
-                exponents,
-                target_grid,
+                polygon=polygon,
+                reference_year=reference_year,
+                data_dir=data_dir,
+                gpw_version=gpw_version,
+                exponents=exponents,
+                target_grid=target_grid,
                 verbose=(idx > 0),
                 region_id=iso3n,
             )
@@ -1064,12 +1064,12 @@ def _crop_target_grid(target_grid, polygon):
     cropped_grid["width"] = col_max - col_min
     cropped_grid["height"] = row_max - row_min
     cropped_grid["transform"] = Affine(
-        target_grid["transform"].a,
-        0,
-        cropped_min_lon,
-        0,
-        target_grid["transform"].e,
-        cropped_max_lat,
+        a=target_grid["transform"].a,
+        b=0,
+        c=cropped_min_lon,
+        d=0,
+        e=target_grid["transform"].e,
+        f=cropped_max_lat,
     )
     return cropped_grid
 
@@ -1133,8 +1133,8 @@ def _get_litpop_single_polygon(
     offsets = (0, 0) if exponents[1] == 0 else (1, 0)
     # import population data (2d array), meta data, and global grid info,
     pop, meta_pop, _ = pop_util.load_gpw_pop_shape(
-        polygon,
-        reference_year,
+        polygon=polygon,
+        reference_year=reference_year,
         gpw_version=gpw_version,
         data_dir=data_dir,
         verbose=verbose,
@@ -1149,8 +1149,8 @@ def _get_litpop_single_polygon(
     # reproject Lit and Pop input data to aligned grid with target resolution:
     try:
         [pop, nlight], meta_out = reproject_input_data(
-            [pop, nlight],
-            [meta_pop, meta_nl],
+            data_array_list=[pop, nlight],
+            meta_list=[meta_pop, meta_nl],
             target_grid=cropped_grid,
         )
     except ValueError as err:
@@ -1363,9 +1363,9 @@ def reproject_input_data(
             dst_height, dst_width, dst_transform
         )
         data_out_list[idx], meta_out["transform"] = u_coord.align_raster_data(
-            data_array_list[idx],
-            meta_list[idx]["crs"],
-            meta_list[idx]["transform"],
+            source=data_array_list[idx],
+            src_crs=meta_list[idx]["crs"],
+            src_transform=meta_list[idx]["transform"],
             dst_crs=dst_crs,
             dst_resolution=(res_degree, res_degree),
             dst_bounds=dst_bounds,
@@ -1648,8 +1648,8 @@ def _calc_admin1_one_country(
         # total value is defined from country multiplied by grp_share:
         exp_list.append(
             LitPop.from_shape(
-                admin1_shapes[idx],
-                total_value * grp_values[record["name"]],
+                shape=admin1_shapes[idx],
+                total_value=total_value * grp_values[record["name"]],
                 res_arcsec=res_arcsec,
                 exponents=exponents,
                 reference_year=reference_year,
