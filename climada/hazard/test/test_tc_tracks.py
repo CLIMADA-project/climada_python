@@ -1288,7 +1288,7 @@ class TestFuncs(unittest.TestCase):
         world = gpd.GeoDataFrame(
             data=[cntry.attributes for cntry in shape_file.records()],
             geometry=[cntry.geometry for cntry in shape_file.records()],
-        )
+        ).rename(columns=lambda col: col.lower())
         exp_world = Exposures(world)
         exp = Exposures(exp_world.gdf[exp_world.gdf["name"] == "Cuba"])
 
