@@ -10,15 +10,33 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+Removed:
+
+- `pandas-datareader`
+
 ### Added
+- Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
 
 ### Changed
+- `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, `Impact.local_return_period`, using the `climada.util.interpolation` module: New default (no binning), binning on decimals, and faster implementation [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
+- World Bank indicator data is now downloaded directly from their API via the function `download_world_bank_indicator`, instead of relying on the `pandas-datareader` package [#1033](https://github.com/CLIMADA-project/climada_python/pull/1033)
 
 ### Fixed
+- NaN plotting issues in `geo_im_from_array`[#1038](https://github.com/CLIMADA-project/climada_python/pull/1038)
 
 ### Deprecated
 
 ### Removed
+- `climada.util.interpolation.round_to_sig_digits` [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
+
+## 6.0.1
+
+Release date: 2025-03-13
+
+### Fixed
+
+- bug in `climada.util.coordinates.bounding_box_from_countries` occurring if the country is a polygon and not a multipolygon
+  [#1018](https://github.com/CLIMADA-project/climada_python/pull/1018)
 
 ## 6.0.0
 
@@ -60,6 +78,7 @@ Removed:
 
 ### Added
 
+- `climada.hazard.tc_tracks.TCTracks.subset_years` function [#1023](https://github.com/CLIMADA-project/climada_python/pull/1023)
 - `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
 - `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex`with CLIMADA
@@ -177,6 +196,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - `Impact.from_hdf5` now calls `str` on `event_name` data that is not strings, and issue a warning then [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - Split `climada.hazard.trop_cyclone` module into smaller submodules without affecting module usage [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
+- `yearly_steps` parameter of `TropCyclone.apply_climate_scenario_knu` has been made explicit [#991](https://github.com/CLIMADA-project/climada_python/pull/991)
 
 ### Fixed
 
