@@ -429,5 +429,4 @@ class TestLitPop(unittest.TestCase):
 
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPop)
-    # TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestUncertainty))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

@@ -586,5 +586,6 @@ class TestLitPopGridAlignment(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAdmin1))
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopGridAlignment)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGPWPopulation))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopGridAlignment))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
