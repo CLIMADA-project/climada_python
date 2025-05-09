@@ -29,6 +29,7 @@ from pathlib import Path
 
 import cartopy.crs as ccrs
 import contextily as ctx
+import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
@@ -1132,9 +1133,11 @@ class Exposures:
         LOGGER.info("Writing %s", file_name)
         store = pd.HDFStore(file_name, mode="w")
         pandas_df = pd.DataFrame(self.gdf)
+        wkb_columns = []
         for col in pandas_df.columns:
             if str(pandas_df[col].dtype) == "geometry":
-                pandas_df[col] = np.asarray(self.gdf[col])
+                pandas_df[col] = gpd.GeoSeries(pandas_df[col]).to_wkb()
+                wkb_columns.append(col)
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
         with warnings.catch_warnings():
@@ -1146,6 +1149,7 @@ class Exposures:
         for var in type(self)._metadata:
             var_meta[var] = getattr(self, var)
         var_meta["crs"] = self.crs
+        var_meta["wkb_columns"] = wkb_columns
         store.get_storer("exposures").attrs.metadata = var_meta
 
         store.close()
@@ -1184,7 +1188,15 @@ class Exposures:
             crs = metadata.get("crs", metadata.get("_crs"))
             if crs is None and metadata.get("meta"):
                 crs = metadata["meta"].get("crs")
-            exp = cls(store["exposures"], crs=crs)
+            data = pd.DataFrame(store["exposures"])
+
+            wkb_columns = (
+                metadata.pop("wkb_columns") if "wkb_columns" in metadata else []
+            )
+            for col in wkb_columns:
+                data[col] = gpd.GeoSeries.from_wkb(data[col])
+
+            exp = cls(data, crs=crs)
             for key, val in metadata.items():
                 if key in type(exp)._metadata:  # pylint: disable=protected-access
                     setattr(exp, key, val)
