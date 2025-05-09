@@ -373,13 +373,6 @@ class LitPop(Exposures):
             raise ValueError(
                 "Not allowed to set both `countries` and `shape`. Aborting."
             )
-        if target_grid is None:
-            target_grid = cls._define_target_grid(
-                reference_year=reference_year,
-                gpw_version=GPW_VERSION,
-                data_dir=data_dir,
-                res_arcsec=res_arcsec,
-            )
         if countries is not None:
             exp = cls.from_countries(
                 countries=countries,
@@ -486,13 +479,6 @@ class LitPop(Exposures):
         if countries is not None and shape is not None:
             raise ValueError(
                 "Not allowed to set both `countries` and `shape`. Aborting."
-            )
-        if target_grid is None:
-            target_grid = cls._define_target_grid(
-                reference_year=reference_year,
-                gpw_version=gpw_version,
-                data_dir=data_dir,
-                res_arcsec=res_arcsec,
             )
         if countries is not None:
             exp = cls.from_countries(
@@ -785,6 +771,14 @@ class LitPop(Exposures):
             raise NotImplementedError(
                 "Not implemented for `shape` of type list or "
                 "GeoSeries. Loop over elements of series outside method."
+            )
+
+        if target_grid is None:
+            target_grid = cls._define_target_grid(
+                reference_year=reference_year,
+                gpw_version=gpw_version,
+                data_dir=data_dir,
+                res_arcsec=res_arcsec,
             )
 
         litpop_gdf, _ = _get_litpop_single_polygon(
