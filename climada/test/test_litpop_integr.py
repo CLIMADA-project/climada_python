@@ -167,7 +167,7 @@ class TestLitPopExposure(unittest.TestCase):
         ent = lp.LitPop.from_shape(
             shape, total_value, res_arcsec=30, reference_year=2016
         )
-        self.assertEqual(ent.value.sum(), 1000.0)
+        self.assertAlmostEqual(ent.value.sum(), 1000.0)
         self.assertEqual(ent.value.min(), 0.0)
         self.assertEqual(ent.region_id.min(), 756)
         self.assertEqual(ent.region_id.max(), 756)
@@ -223,7 +223,7 @@ class TestLitPopExposure(unittest.TestCase):
         ref_year = 2016
         ent = lp.LitPop.from_nightlight_intensity(country_name, reference_year=ref_year)
 
-        self.assertEqual(ent.value.sum(), 36469.0)
+        self.assertAlmostEqual(ent.value.sum(), 36469.0)
         self.assertEqual(ent.region_id[1], 438)
         self.assertEqual(ent.value_unit, "")
         self.assertAlmostEqual(ent.latitude.max(), 47.260416666666664)
@@ -330,7 +330,15 @@ class TestAdmin1(unittest.TestCase):
         resolution = 300
         country = "CHE"
         ent = lp._calc_admin1_one_country(
-            country, resolution, (2, 1), "pc", None, 2016, lp.GPW_VERSION, SYSTEM_DIR
+            country,
+            resolution,
+            exponents=(2, 1),
+            fin_mode="pc",
+            total_value=None,
+            reference_year=2016,
+            gpw_version=lp.GPW_VERSION,
+            data_dir=SYSTEM_DIR,
+            target_grid=None,
         )
 
         self.assertEqual(ent.gdf.shape[0], 699)
