@@ -259,7 +259,30 @@ class EnsembleOptimizerOutput:
         hazard_plot_kwargs: Mapping[str, Any] | None = None,
         legend: bool = True,
     ):
-        """Plot all impact functions with appropriate color coding and event data"""
+        """Plot all impact functions with appropriate color coding and event data
+
+        Parameters
+        ----------
+        impact_func_creator : Callable
+            A function taking parameters and returning an
+            :py:class:`~climada.entity.impact_funcs.base.ImpactFuncSet`.
+        haz_type : str
+            The hazard type of the impact function to plot.
+        impf_id : int
+            The ID of the impact function to plot.
+        inp : Input, optional
+            The input object used for the calibration. If provided, a histogram of the
+            hazard intensity will be drawn behin the impact functions.
+        impf_plot_kwargs
+            Keyword arguments for the function plotting the impact functions.
+        hazard_plot_kwargs
+            Keyword arguments for the function plotting the hazard intensity histogram.
+        legend : bool
+            Whether to create a legend or not. The legend may become cluttered for
+            results of
+            :py:class:`~climada.util.calibrate.ensemble.AverageEnsembleOptimizer`,
+            therefore it is advisable to disable it in these cases.
+        """
         # Store data to plot
         data_plt = []
         for _, row in self.data.iterrows():
@@ -402,7 +425,7 @@ class EnsembleOptimizerOutput:
                         "Cannot find a unique impact function for haz_type: "
                         f"{haz_type}, impf_id: {impf_id}"
                     )
-                label = f"{sel_category}, n={cat_idx.sum()} " if i == 0 else None
+                label = f"{sel_category}, {cat_idx.sum()}" if i == 0 else None
                 ax.plot(
                     impf.intensity,
                     impf.paa * impf.mdd,
@@ -412,11 +435,18 @@ class EnsembleOptimizerOutput:
                 )
 
         ax.legend(
-            title=category, bbox_to_anchor=(1.05, 1), loc="upper left", frameon=False
+            title=f"{category}, count",
+            bbox_to_anchor=(1.05, 1),
+            loc="upper left",
+            frameon=False,
+            borderaxespad=0,
+            borderpad=0,
         )
         # Cosmetics
         ax.set_xlabel(f"Intensity [{impf.intensity_unit}]")
         ax.set_ylabel("Impact")
+        ax.yaxis.set_major_formatter(mticker.PercentFormatter(xmax=1))
+        ax.set_ylim(0, 1)
         return ax
 
 
