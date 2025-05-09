@@ -1133,7 +1133,7 @@ def _get_litpop_single_polygon(
     offsets = (0, 0) if exponents[1] == 0 else (1, 0)
     # import population data (2d array), meta data, and global grid info,
     pop, meta_pop, _ = pop_util.load_gpw_pop_shape(
-        polygon=polygon,
+        geometry=polygon,
         reference_year=reference_year,
         gpw_version=gpw_version,
         data_dir=data_dir,
