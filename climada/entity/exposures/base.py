@@ -1133,11 +1133,9 @@ class Exposures:
         LOGGER.info("Writing %s", file_name)
         store = pd.HDFStore(file_name, mode="w")
         pandas_df = pd.DataFrame(self.gdf)
-        wkb_columns = []
-        for col in pandas_df.columns:
-            if str(pandas_df[col].dtype) == "geometry":
-                pandas_df[col] = gpd.GeoSeries(pandas_df[col]).to_wkb()
-                wkb_columns.append(col)
+        geocols = self.gdf.columns[self.gdf.dtypes == "geometry"].to_list()
+        for col in geocols:
+            pandas_df[col] = gpd.GeoSeries(pandas_df[col]).to_wkb()
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
         with warnings.catch_warnings():
@@ -1149,7 +1147,7 @@ class Exposures:
         for var in type(self)._metadata:
             var_meta[var] = getattr(self, var)
         var_meta["crs"] = self.crs
-        var_meta["wkb_columns"] = wkb_columns
+        var_meta["wkb_columns"] = geocols
         store.get_storer("exposures").attrs.metadata = var_meta
 
         store.close()
