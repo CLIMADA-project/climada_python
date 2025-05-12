@@ -1132,7 +1132,7 @@ class Exposures:
         """
         LOGGER.info("Writing %s", file_name)
         store = pd.HDFStore(file_name, mode="w")
-        geocols = self.gdf.columns[self.gdf.dtypes == "geometry"].to_list()
+        geocols = self.data.columns[self.data.dtypes == "geometry"].to_list()
         pandas_df = self.data.to_wkb()
 
         # Avoid pandas PerformanceWarning when writing HDF5 data
