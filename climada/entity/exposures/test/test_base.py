@@ -384,6 +384,9 @@ class TestIO(unittest.TestCase):
         exp.ref_year = 2020
         exp.value_unit = "XSD"
 
+        # add another geometry column
+        exp.data["geocol2"] = exp.data.geometry.copy(deep=True)
+
         file_name = DATA_DIR.joinpath("test_hdf5_exp.h5")
 
         # pd.errors.PerformanceWarning should be suppressed. Therefore, make sure that
@@ -431,7 +434,12 @@ class TestIO(unittest.TestCase):
             u_coord.equal_crs(exp.crs, exp_read.crs),
             f"{exp.crs} and {exp_read.crs} are different",
         )
-        self.assertTrue(u_coord.equal_crs(exp.gdf.crs, exp_read.gdf.crs))
+        self.assertTrue(u_coord.equal_crs(exp.data.crs, exp_read.data.crs))
+
+        self.assertTrue(exp_read.data["geocol2"].dtype == "geometry")
+        np.testing.assert_array_equal(
+            exp.data["geocol2"].geometry, exp_read.data["geocol2"].values
+        )
 
 
 class TestAddSea(unittest.TestCase):
