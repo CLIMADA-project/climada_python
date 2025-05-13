@@ -218,9 +218,7 @@ class CalcCostBenefit(Calc):
 
         one_sample = samples_df.iloc[0:1]
         start = time.time()
-        self._compute_cb_metrics(
-            one_sample, cost_benefit_kwargs, chunksize=1, processes=1
-        )
+        self._compute_metrics(one_sample, cost_benefit_kwargs, chunksize=1, processes=1)
         elapsed_time = time.time() - start
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
@@ -231,9 +229,7 @@ class CalcCostBenefit(Calc):
             tot_climate_risk,
             benefit,
             cost_ben_ratio,
-        ] = self._compute_cb_metrics(
-            samples_df, cost_benefit_kwargs, chunksize, processes
-        )
+        ] = self._compute_metrics(samples_df, cost_benefit_kwargs, chunksize, processes)
 
         # Assign computed impact distribution data to self
         tot_climate_risk_unc_df = pd.DataFrame(
@@ -293,9 +289,7 @@ class CalcCostBenefit(Calc):
             cost_benefit_kwargs=cost_benefit_kwargs,
         )
 
-    def _compute_cb_metrics(
-        self, samples_df, cost_benefit_kwargs, chunksize, processes
-    ):
+    def _compute_metrics(self, samples_df, cost_benefit_kwargs, chunksize, processes):
         """Compute the uncertainty metrics
 
         Parameters
