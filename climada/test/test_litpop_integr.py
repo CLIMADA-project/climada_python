@@ -44,7 +44,7 @@ shape = Polygon(
 )
 
 
-class TestLitPopExposure(unittest.TestCase):
+class TestLitPopExposures(unittest.TestCase):
     """Test LitPop exposure data model:"""
 
     def test_netherlands150_pass(self):
@@ -592,7 +592,7 @@ class TestLitPopGridAlignment(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposure)
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPopExposures)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestAdmin1))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestGPWPopulation))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestLitPopGridAlignment))

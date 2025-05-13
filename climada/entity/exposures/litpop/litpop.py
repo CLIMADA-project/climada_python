@@ -33,9 +33,10 @@ import climada.util.coordinates as u_coord
 import climada.util.finance as u_fin
 from climada import CONFIG
 from climada.entity.exposures.base import DEF_REF_YEAR, INDICATOR_IMPF, Exposures
-from climada.entity.exposures.litpop import gpw_population as pop_util
-from climada.entity.exposures.litpop import nightlight as nl_util
 from climada.util.constants import SYSTEM_DIR
+
+from .gpw_population import grid_aligned_with_gpw, load_gpw_pop_shape
+from .nightlight import BM_NIGHTLIGHT_GRID, load_nasa_nl_shape
 
 LOGGER = logging.getLogger(__name__)
 
@@ -868,46 +869,14 @@ class LitPop(Exposures):
             A dictionary containing grid metadata, following the raster grid
             specification.
         """
-        res_deg = res_arcsec / 3600
         if res_arcsec == 15:
-            # Black Marble Nightlights Grid
-            # pylint: disable=c-extension-no-member
-            global_crs = rasterio.crs.CRS.from_epsg(4326)  # WGS84 projection
-            global_transform = Affine(res_deg, 0, -180, 0, -res_deg, 90)
-            global_width = round(360 / res_deg)
-            global_height = round(180 / res_deg)
-        else:
-            # GPW Population Grid
-            file_path = pop_util.get_gpw_file_path(
-                gpw_version, reference_year, data_dir=data_dir, verbose=False
-            )
-            with rasterio.open(file_path, "r") as src:
-                global_crs = src.crs
-                gpw_transform = src.transform
-            # Align grid resolution with GPW dataset
-            aligned_lon_min = -180 + (
-                round((gpw_transform[2] - (-180)) / res_deg) * res_deg
-            )
-            aligned_lat_max = 90 - (round((90 - gpw_transform[5]) / res_deg) * res_deg)
-
-            global_transform = Affine(
-                res_deg, 0, aligned_lon_min, 0, -res_deg, aligned_lat_max
-            )
-
-            global_width = round(360 / res_deg)
-            global_height = round(180 / res_deg)
-
-        # Define the target grid using the computed values
-        target_grid = {
-            "driver": "GTiff",
-            "dtype": "float32",
-            "nodata": None,
-            "crs": global_crs,
-            "width": global_width,
-            "height": global_height,
-            "transform": global_transform,
-        }
-        return target_grid
+            return BM_NIGHTLIGHT_GRID
+        return grid_aligned_with_gpw(
+            reference_year=reference_year,
+            gpw_version=gpw_version,
+            res_arcsec=res_arcsec,
+            data_dir=data_dir,
+        )
 
     @staticmethod
     def _from_country(
@@ -1126,7 +1095,7 @@ def _get_litpop_single_polygon(
     # set nightlight offset (delta) to 1 in case n>0, c.f. delta in Eq. 1 of paper:
     offsets = (0, 0) if exponents[1] == 0 else (1, 0)
     # import population data (2d array), meta data, and global grid info,
-    pop, meta_pop, _ = pop_util.load_gpw_pop_shape(
+    pop, meta_pop, _ = load_gpw_pop_shape(
         geometry=polygon,
         reference_year=reference_year,
         gpw_version=gpw_version,
@@ -1135,7 +1104,7 @@ def _get_litpop_single_polygon(
     )
     total_population = pop.sum()
     # import nightlight data (2d array) and associated meta data:
-    nlight, meta_nl = nl_util.load_nasa_nl_shape(
+    nlight, meta_nl = load_nasa_nl_shape(
         polygon, reference_year, data_dir=data_dir, dtype=float
     )
 
