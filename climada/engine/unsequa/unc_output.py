@@ -109,25 +109,24 @@ class UncOutput(ABC):
         "sensitivity_kwargs",
     ]
 
-    @abstractmethod
+    # @abstractmethod
     def __init__(self, samples_df, unit=None):
-        """
-        Empty constructor to be overwritten by subclasses
-        """
         # """
-        # Initialize Uncertainty Data object.
+        # Empty constructor to be overwritten by subclasses
+        # """
+        """
+        Initialize Uncertainty Data object
 
-    #
-    # Parameters
-    # ----------
-    # samples_df : pandas.DataFrame
-    #    input parameters samples
-    # unit : str, optional
-    #    value unit
-    # """
-    ## Data
-    # self.samples_df = samples_df
-    # self.unit = unit
+        Parameters
+        ----------
+        samples_df : pandas.DataFrame
+           input parameters samples
+        unit : str, optional
+           value unit
+        """
+        # Data
+        self.samples_df = samples_df
+        self.unit = unit
 
     def order_samples(self, by_parameters):
         """
