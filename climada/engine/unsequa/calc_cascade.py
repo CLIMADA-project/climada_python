@@ -95,7 +95,9 @@ class CalcCascade(Calc):
     )
     """Names of the required uncertainty variables"""
 
-    _metric_names = ("aai_agg", "freq_curve", "at_event", "eai_exp")
+    _metric_names = [
+        "imp_met"
+    ]  # need to be a list instead of tuple in case of unique metric
     """Names of the cost benefit output metrics"""
 
     def __init__(
@@ -103,6 +105,7 @@ class CalcCascade(Calc):
         nw_input_var: Union[InputVar, Exposures],
         impf_input_var: Union[InputVar, ImpactFuncSet],
         haz_input_var: Union[InputVar, Hazard],
+        ci_types: list,
     ):
         """Initialize UncCalcImpact
 
@@ -124,16 +127,14 @@ class CalcCascade(Calc):
         self.nw_input_var = InputVar.var_to_inputvar(nw_input_var)
         self.impf_input_var = InputVar.var_to_inputvar(impf_input_var)
         self.haz_input_var = InputVar.var_to_inputvar(haz_input_var)
-
+        self.ci_types = ci_types
         self.value_unit = "people"
         self.check_distr()
 
     def uncertainty(
         self,
         unc_sample,
-        df_dependencies,
         friction_surf,
-        ci_types=None,
         processes=1,
         chunksize=None,
     ):
@@ -212,26 +213,18 @@ class CalcCascade(Calc):
         if chunksize is None:
             chunksize = _multiprocess_chunksize(samples_df, processes)
         unit = self.value_unit
-
-        if ci_types is None:
-            ci_types = df_dependencies.source.unique().tolist() + ["people"]
-
-        self.ci_types = ci_types
-        self.df_dependencies = df_dependencies
         self.friction_surf = friction_surf
-
         one_sample = samples_df.iloc[0:1]
         start = time.time()
         self._compute_metrics(one_sample, chunksize=1, processes=1)
         elapsed_time = time.time() - start
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
-        imp_met_dict = self._compute_metrics(
+        imp_met_list = self._compute_metrics(
             samples_df, chunksize=chunksize, processes=processes
         )
-
         # Assign computed impact distribution data to self
-        imp_met_unc_df = pd.DataFrame(imp_met_dict)
+        imp_met_unc_df = pd.DataFrame(imp_met_list, index=self.ci_types).T
         # freq_curve_unc_df = pd.DataFrame(
         #    freq_curve_list, columns=["rp" + str(n) for n in rp]
         # )
@@ -246,7 +239,6 @@ class CalcCascade(Calc):
         #    )
         # else:
         #    coord_df = pd.DataFrame([])
-
         return UncCascadeOutput(
             samples_df=samples_df,
             unit=unit,
@@ -283,11 +275,14 @@ class CalcCascade(Calc):
                 impf_input_var=self.impf_input_var,
                 haz_input_var=self.haz_input_var,
                 ci_types=self.ci_types,
-                df_dependencies=self.df_dependencies,
                 friction_surf=self.friction_surf,
             )
             if processes > 1:
-                with mp.Pool(processes=processes) as pool:
+                from multiprocess import get_context
+
+                # need to use multiprocess instead of multiprocessing
+                # to avoid pickling error and get_context to avoid deadlocks
+                with get_context("spawn").Pool(processes=processes) as pool:
                     LOGGER.info("Using %s CPUs.", processes)
                     imp_metrics = pool.starmap(_map_impact_calc, p_iterator)
             else:
@@ -296,6 +291,7 @@ class CalcCascade(Calc):
         # Perform the actual computation
         with log_level(level="ERROR", name_prefix="climada"):
             return _transpose_chunked_data(imp_metrics)
+            # return imp_metrics
 
 
 def _map_impact_calc(
@@ -304,7 +300,6 @@ def _map_impact_calc(
     impf_input_var,
     haz_input_var,
     ci_types,
-    df_dependencies,
     friction_surf,
 ):
     """
@@ -332,13 +327,14 @@ def _map_impact_calc(
         (np.array([]) if self.calc_at_event=False).
 
     """
-    uncertainty_values = {k: [] for k in ci_types}
+    # uncertainty_values = {k: [] for k in ci_types}
+    uncertainty_values = []
     for _, sample in sample_chunks.iterrows():
         nw_samples = sample[nw_input_var.labels].to_dict()
         impf_samples = sample[impf_input_var.labels].to_dict()
         haz_samples = sample[haz_input_var.labels].to_dict()
 
-        nw = nw_input_var.evaluate(**nw_samples)  # create network
+        nw, df_dep = nw_input_var.evaluate(**nw_samples)  # create network
         impf = impf_input_var.evaluate(**impf_samples)
         haz = haz_input_var.evaluate(**haz_samples)
 
@@ -351,7 +347,7 @@ def _map_impact_calc(
         ci_graph_disr = Graph(nw_disr, directed=False)
         ci_graph_disr = cascade(
             ci_graph_disr,
-            df_dependencies,
+            df_dep,
             friction_surf=friction_surf,
             initial=False,
             criterion="distance",
@@ -362,15 +358,15 @@ def _map_impact_calc(
         imp_dict = nwu.disaster_impact_allservices_df(
             nw.nodes, nw_disr.nodes, services=ci_types
         )
-        if "people" in ci_types:
-            imp_dict["people"] = sum(
-                nw_disr.nodes[nw_disr.nodes.ci_type == "people"].imp_dir
-            )
-
-        {uncertainty_values[k].append(v) for k, v in imp_dict.items()}
-        # uncertainty_values.append([v for v in imp_dict.values()])
-
-    return uncertainty_values  # list(zip(*uncertainty_values))
+        imp_types = [
+            ci_type + "_access" if ci_type != "people" else ci_type
+            for ci_type in ci_types
+        ]
+        print(imp_types)
+        # {uncertainty_values[k].append(v) for k, v in imp_dict.items()}
+        imp_list = [imp_dict[imp_type] for imp_type in imp_types]
+        uncertainty_values.append(imp_list)
+    return list(zip(*uncertainty_values))
 
 
 ## For now, copy the nw functions here
@@ -480,7 +476,7 @@ def disrupt_network(network, haz, impf_thresh_set, ci_types=None, res_disagg=500
     for exp in exp_list:
         impf = impf_thresh_set.getImpf(exp.description)
         exp.gdf[f"impf_{haz.haz_type}"] = impf.id
-        imp = calc_point_impacts(haz, exp, impf)
+        imp = calc_point_impacts(haz, exp, ImpactFuncSet([impf]))
         if exp.description in ["road"]:
             imp = u_lp.impact_pnt_agg(imp, exp.gdf, u_lp.AggMethod.SUM)
         network_disr = impacts_to_network(
