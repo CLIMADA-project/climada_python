@@ -203,7 +203,6 @@ class LitPop(Exposures):
             target_grid = cls._define_target_grid(
                 reference_year=reference_year,
                 gpw_version=gpw_version,
-                data_dir=data_dir,
                 res_arcsec=res_arcsec,
             )
         # litpop_list is initiated, a list containing one Exposure instance per
@@ -778,7 +777,6 @@ class LitPop(Exposures):
             target_grid = cls._define_target_grid(
                 reference_year=reference_year,
                 gpw_version=gpw_version,
-                data_dir=data_dir,
                 res_arcsec=res_arcsec,
             )
 
@@ -848,7 +846,7 @@ class LitPop(Exposures):
         return exp
 
     @staticmethod
-    def _define_target_grid(reference_year, gpw_version, data_dir, res_arcsec):
+    def _define_target_grid(reference_year, gpw_version, res_arcsec):
         """
         Defines the target grid based on population or nightlight metadata.
 
@@ -858,8 +856,6 @@ class LitPop(Exposures):
             The reference year for population and nightlight data.
         gpw_version : int
             Version number of GPW population data.
-        data_dir : str
-            Path to input data directory.
         res_arcsec : int or None
             Desired resolution in arcseconds. If None, aligns to population grid.
 
@@ -875,7 +871,6 @@ class LitPop(Exposures):
             reference_year=reference_year,
             gpw_version=gpw_version,
             res_arcsec=res_arcsec,
-            data_dir=data_dir,
         )
 
     @staticmethod
@@ -1099,7 +1094,6 @@ def _get_litpop_single_polygon(
         geometry=polygon,
         reference_year=reference_year,
         gpw_version=gpw_version,
-        data_dir=data_dir,
         verbose=verbose,
     )
     total_population = pop.sum()

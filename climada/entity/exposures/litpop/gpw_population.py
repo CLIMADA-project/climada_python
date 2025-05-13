@@ -26,14 +26,13 @@ import rasterio
 from affine import Affine
 
 from climada import CONFIG
-from climada.util.constants import SYSTEM_DIR
+
+DATA_DIR = CONFIG.exposures.litpop.gpw_population.data_dir.dir()
 
 LOGGER = logging.getLogger(__name__)
 
 
-def load_gpw_pop_shape(
-    geometry, reference_year, gpw_version, data_dir=SYSTEM_DIR, layer=0, verbose=True
-):
+def load_gpw_pop_shape(geometry, reference_year, gpw_version, layer=0, verbose=True):
     """Read gridded population data from TIFF and crop to given shape(s).
 
     Note: A (free) NASA Earthdata login is necessary to download the data.
@@ -51,9 +50,6 @@ def load_gpw_pop_shape(
     gpw_version : int
         Version number of GPW population data, i.e. 11 for v4.11.
         The default is CONFIG.exposures.litpop.gpw_population.gpw_version.int()
-    data_dir : Path, optional
-        Path to data directory holding GPW data folders.
-        The default is SYSTEM_DIR.
     layer : int, optional
         relevant data layer in input TIFF file to return.
         The default is 0 and should not be changed without understanding the
@@ -76,9 +72,7 @@ def load_gpw_pop_shape(
     """
 
     # check whether GPW input file exists and get file path
-    file_path = get_gpw_file_path(
-        gpw_version, reference_year, data_dir=data_dir, verbose=verbose
-    )
+    file_path = get_gpw_file_path(gpw_version, reference_year, verbose=verbose)
 
     # open TIFF and extract cropped data from input file:
     with rasterio.open(file_path, "r") as src:
@@ -100,7 +94,7 @@ def load_gpw_pop_shape(
     return pop_data[layer, :, :], meta, global_transform
 
 
-def get_gpw_file_path(gpw_version, reference_year, data_dir=None, verbose=True):
+def get_gpw_file_path(gpw_version, reference_year, verbose=True):
     """Check available GPW population data versions and year closest to
     `reference_year` and return full path to TIFF file.
 
@@ -111,8 +105,6 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=None, verbose=True):
     reference_year : int (optional)
         Data year is selected as close to reference_year as possible.
         The default is 2020.
-    data_dir : pathlib.Path (optional)
-        Absolute path where files are stored. Default: SYSTEM_DIR
     verbose : bool, optional
         Enable verbose logging about the used GPW version and reference year. Default: True.
 
@@ -124,8 +116,6 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=None, verbose=True):
     -------
     pathlib.Path : path to input file with population data
     """
-    if data_dir is None:
-        data_dir = SYSTEM_DIR
 
     # get years available in GPW data from CONFIG and convert to array:
     years_available = np.array(
@@ -154,7 +144,7 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=None, verbose=True):
         gpw_version,
         year,
     )
-    for file_path in [data_dir / gpw_filename, data_dir / gpw_dirname / gpw_filename]:
+    for file_path in [DATA_DIR / gpw_filename, DATA_DIR / gpw_dirname / gpw_filename]:
         if file_path.is_file():
             if verbose:
                 LOGGER.info("GPW Version v4.%2i", gpw_version)
@@ -174,7 +164,7 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=None, verbose=True):
     )
 
 
-def grid_aligned_with_gpw(reference_year, gpw_version, res_arcsec, data_dir=SYSTEM_DIR):
+def grid_aligned_with_gpw(reference_year, gpw_version, res_arcsec):
     """
     Defines a grid based on population metadata.
 
@@ -186,8 +176,6 @@ def grid_aligned_with_gpw(reference_year, gpw_version, res_arcsec, data_dir=SYST
         Version number of GPW population data.
     res_arcsec : int or None
         Desired resolution in arcseconds. If None, aligns to population grid.
-    data_dir : str
-        Path to input data directory.
 
     Returns
     -------
@@ -197,9 +185,7 @@ def grid_aligned_with_gpw(reference_year, gpw_version, res_arcsec, data_dir=SYST
     """
     res_deg = res_arcsec / 3600
 
-    file_path = get_gpw_file_path(
-        gpw_version, reference_year, data_dir=data_dir, verbose=False
-    )
+    file_path = get_gpw_file_path(gpw_version, reference_year, verbose=False)
     with rasterio.open(file_path, "r") as src:
         global_crs = src.crs
         gpw_transform = src.transform
