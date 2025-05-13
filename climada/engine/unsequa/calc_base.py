@@ -28,7 +28,7 @@ from abc import ABC, abstractmethod
 import numpy as np
 import pandas as pd
 
-from climada.engine.unsequa.unc_output import UncBaseOutput
+from climada.engine.unsequa.unc_output import UncOutput
 from climada.util.value_representation import sig_dig as u_sig_dig
 
 LOGGER = logging.getLogger(__name__)
@@ -266,7 +266,7 @@ class Calc(ABC):
         df_samples.attrs["sampling_method"] = sampling_method
         df_samples.attrs["sampling_kwargs"] = tuple(sampling_kwargs.items())
 
-        unc_output = UncBaseOutput(df_samples)
+        unc_output = UncOutput(df_samples)
         LOGGER.info("Effective number of made samples: %d", unc_output.n_samples)
         return unc_output
 
