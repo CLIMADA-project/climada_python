@@ -26,6 +26,7 @@ from cartopy.io import shapereader
 
 from climada.util.finance import (
     _gdp_twn,
+    download_world_bank_indicator,
     gdp,
     income_group,
     nat_earth_adm0,
@@ -136,6 +137,34 @@ class TestWBData(unittest.TestCase):
         ref_val = 12424514013.7604
         self.assertEqual(wb_year, ref_year)
         self.assertAlmostEqual(wb_val, ref_val)
+
+    def test_download_wb_data(self):
+        """Test downloading data via the API"""
+        # Unfortunate reference test
+        data = download_world_bank_indicator("ESP", "NY.GDP.MKTP.CD")
+        self.assertAlmostEqual(data[1960], 12424514013.7604)
+        self.assertEqual(data.name, "GDP (current US$)")
+
+        # Check parsing dates
+        data = download_world_bank_indicator("ESP", "NY.GDP.MKTP.CD", parse_dates=True)
+        self.assertEqual(data.index[-1], np.datetime64("1960-01-01"))
+
+        # Check errors raised
+        with self.assertRaisesRegex(
+            ValueError,
+            "Did you use the correct country code",
+        ):
+            download_world_bank_indicator("Spain", "NY.GDP.MKTP.CD")
+        with self.assertRaisesRegex(
+            ValueError,
+            "Did you use the correct country code",
+        ):
+            download_world_bank_indicator("ESP", "BogusIndicator")
+        with self.assertRaisesRegex(
+            ValueError,
+            "No data available for country AIA, indicator NY.GDP.MKTP.CD",
+        ):
+            download_world_bank_indicator("AIA", "NY.GDP.MKTP.CD")
 
 
 class TestWealth2GDP(unittest.TestCase):
