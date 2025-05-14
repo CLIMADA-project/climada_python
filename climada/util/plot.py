@@ -338,7 +338,7 @@ def geo_im_from_array(
     axes=None,
     figsize=(9, 13),
     adapt_fontsize=True,
-    mask_rel_distance=None,
+    mask_relative_distance=None,
     **kwargs,
 ):
     """Image(s) plot defined in array(s) over input coordinates.
@@ -370,10 +370,10 @@ def geo_im_from_array(
     adapt_fontsize : bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
         the default matplotlib font size is used. Default is True.
-    mask_rel_distance: float, optional
+    mask_relative_distance: float, optional
         Relative distance (with respect to maximal map extent in longitude or latitude) to data
         points above which plot should not display values. For instance, to only plot values
-        at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+        at the centroids, use mask_relative_distance=0.01. If None, the plot is not masked.
         Default is None.
     **kwargs
         arbitrary keyword arguments for pcolormesh matplotlib function
@@ -456,7 +456,7 @@ def geo_im_from_array(
                 fill_value=min_value,
             )
             # Compute distance of each grid point to the nearest known point
-            if mask_rel_distance is not None:
+            if mask_relative_distance is not None:
                 tree = cKDTree(np.array((coord[:, 1], coord[:, 0])).T)
                 distances, _ = tree.query(
                     np.c_[grid_x.ravel(), grid_y.ravel()],
@@ -464,7 +464,7 @@ def geo_im_from_array(
                 )
                 threshold = (
                     max(extent[1] - extent[0], extent[3] - extent[2])
-                    * mask_rel_distance
+                    * mask_relative_distance
                 )
                 grid_im[(distances.reshape(grid_im.shape) > threshold)] = min_value
         else:
@@ -1105,7 +1105,7 @@ def plot_from_gdf(
     axis=None,
     figsize=(9, 13),
     adapt_fontsize=True,
-    mask_rel_distance=None,
+    mask_relative_distance=None,
     **kwargs,
 ):
     """Plot several subplots from different columns of a GeoDataFrame, e.g., for
@@ -1128,10 +1128,10 @@ def plot_from_gdf(
     adapt_fontsize: bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure.
         Otherwise the default matplotlib font size is used. Default is True.
-    mask_rel_distance: float, optional
+    mask_relative_distance: float, optional
         Relative distance (with respect to maximal map extent in longitude or latitude) to data
         points above which plot should not display values. For instance, to only plot values
-        at the centroids, use mask_rel_distance=0.01. If None, the plot is not masked.
+        at the centroids, use mask_relative_distance=0.01. If None, the plot is not masked.
         Default is None.
     kwargs: optional
         Arguments for pcolormesh matplotlib function used in event plots.
@@ -1193,7 +1193,7 @@ def plot_from_gdf(
         axes=axis,
         figsize=figsize,
         adapt_fontsize=adapt_fontsize,
-        mask_rel_distance=mask_rel_distance,
+        mask_relative_distance=mask_relative_distance,
         **kwargs,
     )
 
