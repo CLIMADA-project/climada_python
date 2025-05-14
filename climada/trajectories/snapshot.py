@@ -46,9 +46,10 @@ class Snapshot:
     Notes
     -----
 
-    The object creates copies of the exposure hazard and impact function set.
+    The object creates deep copies of the exposure hazard and impact function set.
 
-    To create a snapshot with a measure use Snapshot.apply_measure(measure).
+    To create a snapshot with a measure, create a snapshot `snap` without
+    the measure and call `snap.apply_measure(measure)`, which returns a new Snapshot object.
     """
 
     def __init__(
@@ -97,6 +98,18 @@ class Snapshot:
             raise TypeError("date_arg must be an int, str, or datetime.date")
 
     def apply_measure(self, measure: Measure):
+        """Create a new snapshot from a measure
+
+        This methods creates a new `Snapshot` object by applying a measure on
+        the current one.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure to be applied to the snapshot
+
+        """
+
         LOGGER.debug(f"Applying measure {measure.name} on snapshot {id(self)}")
         exp_new, impfset_new, haz_new = measure.apply(
             self.exposure, self.impfset, self.hazard
