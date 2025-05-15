@@ -1392,7 +1392,7 @@ class TestAssign(unittest.TestCase):
             np.testing.assert_array_equal(assigned_idx, result)
 
     def test_match_coordinates_different_unit(self):
-        """Test match_coordinates function"""
+        """Test match_coordinates function in cases of different units"""
         self.setUp_match_coordinates()
         unit_conv_funcs = {
             "degree": lambda x: x,
@@ -1443,18 +1443,18 @@ class TestAssign(unittest.TestCase):
             )
             np.testing.assert_array_equal(assigned_idx, result)
 
-    def test_nearest_neighbor_euclidean_invalid_unit(self):
-        # Test with invalid unit ('foo')
+    def test_match_coordinates_invalid_unit(self):
+        """Test match_coordinates with invalid unit"""
         self.setUp_match_coordinates()
         coords_to_assign = np.deg2rad(self.coords_to_assign)
         coords = np.deg2rad(self.coords)
         with self.assertRaises(ValueError):
-            u_coord._nearest_neighbor_euclidean(
-                coords_to_assign, coords, "foo", u_coord.NEAREST_NEIGHBOR_THRESHOLD
+            u_coord.match_coordinates(
+                coords, coords_to_assign, "foo", u_coord.NEAREST_NEIGHBOR_THRESHOLD
             )
 
     def test_nearest_neighbor_approx_invalid_unit(self):
-        # Test with invalid unit
+        """Test approx nearest neighbor with invalid unit"""
         self.setUp_match_coordinates()
         coords_to_assign = np.deg2rad(self.coords_to_assign)
         coords = np.deg2rad(self.coords)
@@ -1464,7 +1464,7 @@ class TestAssign(unittest.TestCase):
             )
 
     def test_nearest_neighbor_haversine_invalid_unit(self):
-        # Test with invalid unit
+        """Test haversine nearest neighbor with invalid unit"""
         self.setUp_match_coordinates()
         coords_to_assign = np.deg2rad(self.coords_to_assign)
         coords = np.deg2rad(self.coords)
@@ -1474,7 +1474,7 @@ class TestAssign(unittest.TestCase):
             )
 
     def test_nearest_neighbor_euclidean_invalid_unit_with_antimeridian(self):
-        # Test with invalid unit when check_antimeridian=True
+        """Test euclidean nearest neighbor antimeridian with invalid unit"""
         self.setUp_match_coordinates()
         with self.assertRaises(ValueError):
             u_coord._nearest_neighbor_euclidean(
