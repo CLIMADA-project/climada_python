@@ -41,15 +41,19 @@ LOGGER = logging.getLogger(__name__)
 
 
 def lazy_property(method):
+    # This function is used as a decorator for properties
+    # that require "heavy" computation and are not always needed
+    # if the property is none, it uses the corresponding computation method
+    # and stores the result in the corresponding private attribute
     attr_name = f"_{method.__name__}"
 
     @property
     def _lazy(self):
         if getattr(self, attr_name) is None:
-            meas_n = self.measure.name if self.measure else "no_measure"
-            LOGGER.debug(
-                f"Computing {method.__name__} for {self._snapshot0.date}-{self._snapshot1.date} with {meas_n}."
-            )
+            # meas_n = self.measure.name if self.measure else "no_measure"
+            # LOGGER.debug(
+            #     f"Computing {method.__name__} for {self._snapshot0.date}-{self._snapshot1.date} with {meas_n}."
+            # )
             setattr(self, attr_name, method(self))
         return getattr(self, attr_name)
 
@@ -57,13 +61,43 @@ def lazy_property(method):
 
 
 class CalcRiskPeriod:
-    """Handles the computation of impacts for a risk period."""
+    """Handles the computation of impacts for a risk period.
+
+    This object handles the interpolations and computations of risk metrics in
+    between two given snapshots, along a DateTime index build on
+    `interval_freq` or `time_points`.
+
+    Attributes
+    ----------
+
+    date_idx: pd.DateTimeIndex
+        The date index for the different interpolated points between the two snapshots
+    interpolation_strategy: InterpolationStrategy, optional
+        The approach used to interpolate impact matrices in between the two snapshots, linear by default.
+    impact_computation_strategy: ImpactComputationStrategy, optional
+        The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots.
+        Defaults to ImpactCalc
+    risk_transf_attach: float, optional
+        The attachement of risk transfer to apply. Defaults to None.
+    risk_transf_cover: float, optional
+        The cover of risk transfer to apply. Defaults to None.
+    calc_residual: bool, optional
+        A boolean stating whether the residual (True) or transfered risk (False) is retained when doing
+        the risk transfer. Defaults to False.
+    measure: Measure, optional
+        The measure to apply to both snapshots. Defaults to None.
+
+    Notes
+    -----
+
+    This class is intended for internal computation. Users should favor `RiskTrajectory` objects.
+    """
 
     def __init__(
         self,
         snapshot0: Snapshot,
         snapshot1: Snapshot,
-        interval_freq: str | None = "YS",
+        interval_freq: str | None = "AS-JAN",
         time_points: int | None = None,
         interpolation_strategy: InterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
@@ -99,6 +133,7 @@ class CalcRiskPeriod:
         self._imp_mats_E0, self._imp_mats_E1 = None, None
         self._per_date_eai_H0, self._per_date_eai_H1 = None, None
         self._per_date_aai_H0, self._per_date_aai_H1 = None, None
+        self._eai_gdf = None
         self._per_date_return_periods_H0, self._per_date_return_periods_H1 = None, None
 
     @staticmethod
@@ -146,10 +181,16 @@ class CalcRiskPeriod:
             periods=points,
             freq=freq,  # type: ignore
             name=name,
+            normalize=True,
         )
         if periods is not None and len(ret) != periods:
             raise ValueError(
                 "Number of periods and frequency given to date_range are inconsistant"
+            )
+
+        if pd.infer_freq(ret) != freq:
+            LOGGER.debug(
+                f"Given interval frequency ( {pd.infer_freq(ret)} ) and infered interval frequency differ ( {freq} )."
             )
 
         return ret
@@ -171,7 +212,7 @@ class CalcRiskPeriod:
         if not isinstance(value, pd.DatetimeIndex):
             raise ValueError("Not a DatetimeIndex")
 
-        self._date_idx = value
+        self._date_idx = value.normalize()
         self._time_points = len(self.date_idx)
         self._interval_freq = pd.infer_freq(self.date_idx)
         self._prop_H1 = np.linspace(0, 1, num=self.time_points)

@@ -23,7 +23,6 @@ import itertools
 import logging
 
 import matplotlib.pyplot as plt
-import numpy as np
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates

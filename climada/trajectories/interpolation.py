@@ -1,8 +1,30 @@
+"""
+This file is part of CLIMADA.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+This modules implements different sparce matrices interpolation approaches.
+
+"""
+
 import logging
 from abc import ABC, abstractmethod
 
 import numpy as np
-from scipy.sparse import lil_matrix
+from scipy.sparse import csr_matrix, lil_matrix
 
 LOGGER = logging.getLogger(__name__)
 
@@ -21,7 +43,7 @@ class LinearInterpolation(InterpolationStrategy):
         try:
             return self.interpolate_imp_mat(imp_E0, imp_E1, time_points)
         except ValueError as e:
-            if str(e) == "inconsistent shape":
+            if str(e) == "inconsistent shapes":
                 raise ValueError(
                     "Interpolation between impact matrices of different shapes"
                 )
@@ -61,7 +83,7 @@ class LinearInterpolation(InterpolationStrategy):
             # Perform the linear interpolation
             mat_interpolated = mat_start + ratio * (mat_end - mat_start)
 
-            return mat_interpolated
+            return csr_matrix(mat_interpolated)
 
         LOGGER.debug(f"imp0: {imp0.imp_mat.data[0]}, imp1: {imp1.imp_mat.data[0]}")
         return [
@@ -70,19 +92,11 @@ class LinearInterpolation(InterpolationStrategy):
         ]
 
 
-class ExponentialInterpolation:
+class ExponentialInterpolation(InterpolationStrategy):
     """Exponential interpolation strategy."""
 
     def interpolate(self, imp_E0, imp_E1, time_points: int):
-        try:
-            return self.interpolate_imp_mat(imp_E0, imp_E1, time_points)
-        except ValueError as e:
-            if str(e) == "inconsistent shape":
-                raise ValueError(
-                    "Interpolation between impact matrices of different shapes"
-                )
-            else:
-                raise e
+        return self.interpolate_imp_mat(imp_E0, imp_E1, time_points)
 
     @staticmethod
     def interpolate_imp_mat(imp0, imp1, time_points):
@@ -119,15 +133,9 @@ class ExponentialInterpolation:
             # Convert back to the original domain using the exponential function
             mat_interpolated = np.exp(log_mat_interpolated)
 
-            return lil_matrix(mat_interpolated)
+            return csr_matrix(mat_interpolated)
 
         return [
             interpolate_sm(imp0.imp_mat, imp1.imp_mat, time, time_points)
             for time in range(time_points)
         ]
-
-
-# Example usage
-# Assuming imp0 and imp1 are instances of ImpactCalc with imp_mat attributes as sparse matrices
-# interpolator = ExponentialInterpolation()
-# interpolated_matrices = interpolator.interpolate(imp0, imp1, 100)

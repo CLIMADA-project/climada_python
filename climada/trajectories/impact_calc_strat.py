@@ -124,13 +124,9 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         scipy.sparse.csr_matrix
             The adjusted impact matrix, either residual or risk transfer.
 
-        Example
-        -------
-        >>> calc_residual_or_risk_transf_imp_mat(imp_mat, attachment=100, cover=500, calc_residual=True)
-        Residual impact matrix with applied risk layer adjustments.
         """
+
         if risk_transf_attach and risk_transf_cover:
-            # Make a copy of the impact matrix
             imp_mat = copy.deepcopy(imp_mat)
             # Calculate the total impact per event
             total_at_event = imp_mat.sum(axis=1).A1
@@ -138,19 +134,15 @@ class ImpactCalcComputation(ImpactComputationStrategy):
             transfer_at_event = np.minimum(
                 np.maximum(total_at_event - risk_transf_attach, 0), risk_transf_cover
             )
-            # Resiudal impact
             residual_at_event = np.maximum(total_at_event - transfer_at_event, 0)
 
             # Calculate either the residual or transfer impact matrix
             # Choose the denominator to rescale the impact values
             if calc_residual:
-                # Rescale the impact values
                 numerator = residual_at_event
             else:
-                # Rescale the impact values
                 numerator = transfer_at_event
 
-            # Rescale the impact values
             rescale_impact_values = np.divide(
                 numerator,
                 total_at_event,
