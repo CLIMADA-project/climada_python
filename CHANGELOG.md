@@ -15,6 +15,8 @@ Removed:
 - `pandas-datareader`
 
 ### Added
+- Added optional parameter to `geo_im_from_array`, `plot_from_gdf`, `plot_rp_imp`, `plot_rp_intensity`,
+`plot_intensity`, `plot_fraction`, `_event_plot` to mask plotting when regions are too far from data points [#1047](https://github.com/CLIMADA-project/climada_python/pull/1047).
 - Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
 
 ### Changed
