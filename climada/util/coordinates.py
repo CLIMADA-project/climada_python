@@ -1406,7 +1406,7 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    if unit == "deg":
+    if unit == "degree":
         dist = dist * EARTH_RADIUS_KM
     num_warn = np.sum(dist > threshold)
     if num_warn:
@@ -1458,7 +1458,7 @@ def _nearest_neighbor_euclidean(
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    if unit == "deg":
+    if unit == "degree":
         dist = dist * EARTH_RADIUS_KM
     num_warn = np.sum(dist > threshold)
     if num_warn:
@@ -1470,7 +1470,7 @@ def _nearest_neighbor_euclidean(
         assigned[dist > threshold] = -1
 
     if check_antimeridian:
-        if unit != "deg":
+        if unit != "degree":
             raise ValueError("check_antimeridian is only implemented for degrees")
         assigned = _nearest_neighbor_antimeridian(
             np.rad2deg(centroids), np.rad2deg(coordinates[idx]), threshold, assigned
