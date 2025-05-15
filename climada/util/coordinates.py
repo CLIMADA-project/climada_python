@@ -1348,7 +1348,8 @@ def _nearest_neighbor_approx(
     # first check that unit is in degree
     if unit != "degree":
         raise ValueError(
-            "Only degree unit is supported for nearest neighbor approximation"
+            "Only degree unit is supported for nearest neighbor approximation."
+            "Please use euclidean distance for non-degree units."
         )
     # Compute only for the unique coordinates. Copy the results for the
     # not unique coordinates
@@ -1413,6 +1414,12 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
     np.array
         with as many rows as coordinates containing the centroids indexes
     """
+    # first check that unit is in degree
+    if unit != "degree":
+        raise ValueError(
+            "Only degree unit is supported for nearest neighbor approximation."
+            "Please use euclidean distance for non-degree units."
+        )
     # Construct tree from centroids
     tree = BallTree(centroids, metric="haversine")
     # Select unique exposures coordinates
@@ -1433,8 +1440,7 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    if unit == "degree":
-        dist = dist * EARTH_RADIUS_KM
+    dist = dist * EARTH_RADIUS_KM
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
@@ -1549,7 +1555,7 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
         if np.any(cent_strip_bool):
             cent_strip = centroids[cent_strip_bool]
             strip_assigned = _nearest_neighbor_haversine(
-                cent_strip, coord_strip, "degree", threshold
+                np.deg2rad(cent_strip), np.deg2rad(coord_strip), "degree", threshold
             )
             new_coords = cent_strip_bool.nonzero()[0][strip_assigned]
             new_coords[strip_assigned == -1] = -1
