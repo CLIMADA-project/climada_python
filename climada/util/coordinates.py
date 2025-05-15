@@ -1292,9 +1292,10 @@ def match_centroids(
         # If the coord_gdf has no crs defined (or no valid geometry column),
         # no error is raised and it is assumed that the user set the crs correctly
         pass
+
+    # infer unit
     if not unit:
-        # infer unit
-        unit = infer_coords_unit(coord_gdf)
+        unit = infer_unit_coords(coord_gdf)
 
     assigned = match_coordinates(
         np.stack([coord_gdf.geometry.y.values, coord_gdf.geometry.x.values], axis=1),
