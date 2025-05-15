@@ -112,6 +112,39 @@ def check_if_geo_coords(lat, lon):
     return bool(test)
 
 
+def infer_unit_coords(coords):
+    """
+    Infer the unit of measurement for the given coordinate system.
+
+    Parameters
+    ----------
+    coords : GeoDataFrame or similar object
+        An object with a coordinate reference system (CRS) attribute.
+
+    Returns
+    -------
+    unit : str
+        The unit of measurement for the coordinate system, either 'degree' for
+        geodetic systems or 'm' for projected systems.
+
+    Raises
+    ------
+    ValueError
+        If the coordinate system is neither geodetic nor projected, or if the
+        unit cannot be inferred.
+    """
+
+    if coords.crs.is_geodetic():
+        unit = "degree"
+    elif coords.crs.is_projected:
+        unit = "m"
+    else:
+        raise ValueError(
+            "Unable to infer unit for coordinate points. Please specify unit of the coordinates."
+        )
+    return unit
+
+
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     """Convert lat/lon coodinates to radial vectors (on geosphere)
 
@@ -1260,15 +1293,8 @@ def match_centroids(
         # no error is raised and it is assumed that the user set the crs correctly
         pass
     if not unit:
-        # try to infer unit
-        if coord_gdf.crs.is_geodetic():
-            unit = "degree"
-        elif coord_gdf.crs.is_projected:
-            unit = "m"
-        else:
-            raise ValueError(
-                "Unable to infer unit for coordinate points. Please specify unit of the coordinates."
-            )
+        # infer unit
+        unit = infer_coords_unit(coord_gdf)
 
     assigned = match_coordinates(
         np.stack([coord_gdf.geometry.y.values, coord_gdf.geometry.x.values], axis=1),
