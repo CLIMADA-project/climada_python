@@ -485,7 +485,7 @@ class Hazard(HazardIO, HazardPlot):
         self,
         return_periods=(25, 50, 100, 250),
         method="interpolate",
-        min_intensity=None,
+        min_intensity=0,
         log_frequency=True,
         log_intensity=True,
         bin_decimals=None,
@@ -512,8 +512,7 @@ class Hazard(HazardIO, HazardPlot):
             periods and extends the interpolation between these points to the given return period
             (similar for small return periods). Defauls to "interpolate".
         min_intensity : float, optional
-            Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
-            will be used. Defaults to None.
+            Minimum threshold to filter the hazard intensity. Defaults to 0.
         log_frequency : bool, optional
             If set to True, (cummulative) frequency values are converted to log scale before
             inter- and extrapolation. Defaults to True.
@@ -554,8 +553,6 @@ class Hazard(HazardIO, HazardPlot):
         intensities range from 1e6 to 1e9, you could use bin_decimals=-5, if your intensities
         range from 0.0001 to .01, you could use bin_decimals=5.
         """
-        if not min_intensity and min_intensity != 0:
-            min_intensity = self.intensity_thres
         # check frequency unit
         return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
             self.frequency_unit
@@ -639,7 +636,7 @@ class Hazard(HazardIO, HazardPlot):
         self,
         threshold_intensities=(10.0, 20.0),
         method="interpolate",
-        min_intensity=None,
+        min_intensity=0,
         log_frequency=True,
         log_intensity=True,
         bin_decimals=None,
@@ -667,8 +664,7 @@ class Hazard(HazardIO, HazardPlot):
             points to the given threshold intensity (similar for small threshold intensites).
             Defaults to "interpolate".
         min_intensity : float, optional
-            Minimum threshold to filter the hazard intensity. If set to None, self.intensity_thres
-            will be used. Defaults to None.
+            Minimum threshold to filter the hazard intensity. Defaults to 0.
         log_frequency : bool, optional
             If set to True, (cummulative) frequency values are converted to log scale before
             inter- and extrapolation. Defaults to True.
@@ -710,8 +706,6 @@ class Hazard(HazardIO, HazardPlot):
         intensities range from 1e6 to 1e9, you could use bin_decimals=-5, if your intensities
         range from 0.0001 to .01, you could use bin_decimals=5.
         """
-        if not min_intensity and min_intensity != 0:
-            min_intensity = self.intensity_thres
         # check frequency unit
         return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
             self.frequency_unit
