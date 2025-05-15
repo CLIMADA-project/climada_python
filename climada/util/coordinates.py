@@ -88,9 +88,9 @@ are not considered."""
 def check_if_geo_coords(lat, lon):
     """Check if latitude and longitude arrays are likely in geographic coordinates,
     testing if min/max values are within -90 to 90 for latitude and -540 to 540
-    for longitude. Lon coordinates of <-360 or >360 are allowed to cover cases 
+    for longitude. Lon coordinates of <-360 or >360 are allowed to cover cases
     of objects being defined close to the 180 meridian.
-    
+
     Parameters
     ----------
     lat, lon : ndarrays of floats, same shape
@@ -492,7 +492,9 @@ def get_gridcellarea(lat, resolution=0.5, unit="ha"):
     elif unit == "ha":
         area = (ONE_LAT_KM * resolution) ** 2 * np.cos(np.deg2rad(lat)) * 100
     else:
-        raise ValueError(f"'{unit}' unit not recognized. Please use any of 'm2', 'km2' or 'ha'.")
+        raise ValueError(
+            f"'{unit}' unit not recognized. Please use any of 'm2', 'km2' or 'ha'."
+        )
 
     return area
 
@@ -1056,6 +1058,7 @@ def match_coordinates(
     coords,
     coords_to_assign,
     distance="euclidean",
+    unit="degree",
     threshold=NEAREST_NEIGHBOR_THRESHOLD,
     **kwargs,
 ):
@@ -1159,22 +1162,41 @@ def match_coordinates(
 
         # assign remaining coordinates to their geographically nearest neighbor
         if threshold > 0 and exact_assign_idx.size != coords_view.size:
-            # check that coords are geographic before proceeding to nearest neighbor search
-            if not (
-                check_if_geo_coords(coords[:, 0], coords[:, 1])
-                and check_if_geo_coords(coords_to_assign[:, 0], coords_to_assign[:, 1])
-            ):
-                raise ValueError(
-                    "Input lat and lon coordinates do not seem to correspond"
-                    " to geographic coordinates in degrees. This can be because"
-                    " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-                    " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-                    " If you use degree values outside of these ranges,"
-                    " please shift the coordinates to the valid ranges."
-                )
+            # convert to proper units before proceeding to nearest neighbor search
+            if unit == "degree":
+                # check that coords are indeed geographic before converting
+                if not (
+                    check_if_geo_coords(coords[:, 0], coords[:, 1])
+                    and check_if_geo_coords(
+                        coords_to_assign[:, 0], coords_to_assign[:, 1]
+                    )
+                ):
+                    raise ValueError(
+                        "Input lat and lon coordinates do not seem to correspond"
+                        " to geographic coordinates in degrees. This can be because"
+                        " total extents are > 180 for lat or > 360 for lon, lat coordinates"
+                        " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
+                        " If you use degree values outside of these ranges,"
+                        " please shift the coordinates to the valid ranges."
+                    )
+
+                coords = np.radians(coords)
+                coords_to_assign = np.radians(coords_to_assign)
+            elif unit == "m":
+                coords *= 1e-3
+                coords_to_assign *= 1e-3
+            elif unit == "km":
+                pass
+            else:
+                raise ValueError("Unit must be one of 'deg', 'm' or 'km'.")
+
             not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
-                coords_to_assign, coords[not_assigned_idx_mask], threshold, **kwargs
+                coords_to_assign,
+                coords[not_assigned_idx_mask],
+                unit,
+                threshold,
+                **kwargs,
             )
     return assigned_idx
 
@@ -1233,11 +1255,13 @@ def match_centroids(
         # If the coord_gdf has no crs defined (or no valid geometry column),
         # no error is raised and it is assumed that the user set the crs correctly
         pass
+    # try to infer unit
 
     assigned = match_coordinates(
         np.stack([coord_gdf.geometry.y.values, coord_gdf.geometry.x.values], axis=1),
         centroids.coord,
         distance=distance,
+        unit=unit,
         threshold=threshold,
     )
     return assigned
@@ -1253,7 +1277,7 @@ def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
 
 
 def _nearest_neighbor_approx(
-    centroids, coordinates, threshold, check_antimeridian=True
+    centroids, coordinates, unit, threshold, check_antimeridian=True
 ):
     """Compute the nearest centroid for each coordinate using the
     euclidean distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
@@ -1281,14 +1305,21 @@ def _nearest_neighbor_approx(
     np.array
         with as many rows as coordinates containing the centroids indexes
     """
-
+    # first check that unit is in degree
+    if unit != "deg":
+        raise ValueError(
+            "Only degree unit is supported for nearest neighbor approximation"
+        )
     # Compute only for the unique coordinates. Copy the results for the
     # not unique coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
     # Compute cos(lat) for all centroids
-    centr_cos_lat = np.cos(np.radians(centroids[:, 0]))
+    centr_cos_lat = np.cos(centroids[:, 0])
     assigned = np.zeros(coordinates.shape[0], int)
     num_warn = 0
+    # need to convert back to degrees for the approx distance and nearest neighbor
+    coordinates = np.rad2deg(coordinates)
+    centroids = np.rad2deg(centroids)
     for icoord, iidx in enumerate(idx):
         dist = _dist_sqr_approx(
             centroids[:, 0],
@@ -1322,7 +1353,7 @@ def _nearest_neighbor_approx(
     return assigned
 
 
-def _nearest_neighbor_haversine(centroids, coordinates, threshold):
+def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
     """Compute the neareast centroid for each coordinate using a Ball tree with haversine distance.
 
     Parameters
@@ -1343,13 +1374,13 @@ def _nearest_neighbor_haversine(centroids, coordinates, threshold):
         with as many rows as coordinates containing the centroids indexes
     """
     # Construct tree from centroids
-    tree = BallTree(np.radians(centroids), metric="haversine")
+    tree = BallTree(centroids, metric="haversine")
     # Select unique exposures coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
     dist, assigned = tree.query(
-        np.radians(coordinates[idx]),
+        coordinates[idx],
         k=1,
         return_distance=True,
         dualtree=True,
@@ -1362,21 +1393,23 @@ def _nearest_neighbor_haversine(centroids, coordinates, threshold):
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
+    if unit == "deg":
+        dist = dist * EARTH_RADIUS_KM
+    num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
             "Distance to closest centroid is greater than %s" "km for %s coordinates.",
             threshold,
             num_warn,
         )
-        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
+        assigned[dist > threshold] = -1
 
     # Copy result to all exposures and return value
     return assigned[inv]
 
 
 def _nearest_neighbor_euclidean(
-    centroids, coordinates, threshold, check_antimeridian=True
+    centroids, coordinates, unit, threshold, check_antimeridian=True
 ):
     """Compute the neareast centroid for each coordinate using a k-d tree.
 
@@ -1403,27 +1436,31 @@ def _nearest_neighbor_euclidean(
         with as many rows as coordinates containing the centroids indexes
     """
     # Construct tree from centroids
-    tree = scipy.spatial.KDTree(np.radians(centroids))
+    tree = scipy.spatial.KDTree(centroids)
     # Select unique exposures coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
-    dist, assigned = tree.query(np.radians(coordinates[idx]), k=1, p=2, workers=-1)
+    dist, assigned = tree.query(coordinates[idx], k=1, p=2, workers=-1)
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    num_warn = np.sum(dist * EARTH_RADIUS_KM > threshold)
+    if unit == "deg":
+        dist = dist * EARTH_RADIUS_KM
+    num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
             "Distance to closest centroid is greater than %s" "km for %s coordinates.",
             threshold,
             num_warn,
         )
-        assigned[dist * EARTH_RADIUS_KM > threshold] = -1
+        assigned[dist > threshold] = -1
 
     if check_antimeridian:
+        if unit != "deg":
+            raise ValueError("check_antimeridian is only implemented for degrees")
         assigned = _nearest_neighbor_antimeridian(
-            centroids, coordinates[idx], threshold, assigned
+            np.rad2deg(centroids), np.rad2deg(coordinates[idx]), threshold, assigned
         )
 
     # Copy result to all exposures and return value
@@ -1678,7 +1715,7 @@ def get_country_code(lat, lon, gridded=False):
     if lat.size == 0:
         return np.empty((0,), dtype=int)
     LOGGER.info("Setting region_id %s points.", str(lat.size))
-     # first check that input lat lon are geographic
+    # first check that input lat lon are geographic
     if not check_if_geo_coords(lat, lon):
         raise ValueError(
             "Input lat and lon coordinates do not seem to correspond"
