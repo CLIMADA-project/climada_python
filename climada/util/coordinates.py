@@ -1122,6 +1122,9 @@ def match_coordinates(
     distance : str, optional
         Distance to use for non-exact matching. Possible values are "euclidean", "haversine" and
         "approx". Default: "euclidean"
+    unit : str, optional
+        Unit to use for non-exact matching. Possible values are "degree", "m", "km".
+        Default: "degree"
     threshold : float, optional
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
         Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km)
@@ -1255,6 +1258,9 @@ def match_centroids(
         Distance to use in case of vector centroids.
         Possible values are "euclidean", "haversine" and "approx".
         Default: "euclidean"
+    unit : str, optional
+        Unit to use for non-exact matching. Possible values are "degree", "m", "km".
+        Default: None
     threshold : float, optional
         If the distance (in km) to the nearest neighbor exceeds `threshold`,
         the index `-1` is assigned.
@@ -1331,6 +1337,8 @@ def _nearest_neighbor_approx(
     coordinates : 2d array
         First column contains latitude, second
         column contains longitude. Each row is a geographic point
+    unit : str
+        Unit to use for non-exact matching. Only possible value is "degree"
     threshold : float
         distance threshold in km over which no neighbor will
         be found. Those are assigned with a -1 index
@@ -1405,6 +1413,8 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
     coordinates : 2d array
         First column contains latitude, second
         column contains longitude. Each row is a geographic point
+    unit : str
+        Unit to use for non-exact matching. Only possible value is "degree"
     threshold : float
         distance threshold in km over which no neighbor will
         be found. Those are assigned with a -1 index
@@ -1467,6 +1477,8 @@ def _nearest_neighbor_euclidean(
     coordinates : 2d array
         First column contains latitude, second column contains longitude. Each
         row is a geographic point
+    unit : str
+        Unit to use for non-exact matching. Possible values are "degree", "m", "km".
     threshold : float
         distance threshold in km over which no neighbor will be found. Those
         are assigned with a -1 index
@@ -1474,6 +1486,7 @@ def _nearest_neighbor_euclidean(
         If True, the nearest neighbor in a strip with lon size equal to threshold around the
         antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
         both coordinates and centroids, and is assumed equal to 0.5*(lon_max+lon_min) + 180.
+        Requires the coordinates to be in degrees.
         Default: True
 
     Returns
