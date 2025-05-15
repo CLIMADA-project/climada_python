@@ -1188,7 +1188,7 @@ def match_coordinates(
             elif unit == "km":
                 pass
             else:
-                raise ValueError("Unit must be one of 'deg', 'm' or 'km'.")
+                raise ValueError("Unit must be one of 'degree', 'm' or 'km'.")
 
             not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
@@ -1202,7 +1202,11 @@ def match_coordinates(
 
 
 def match_centroids(
-    coord_gdf, centroids, distance="euclidean", threshold=NEAREST_NEIGHBOR_THRESHOLD
+    coord_gdf,
+    centroids,
+    distance="euclidean",
+    unit=None,
+    threshold=NEAREST_NEIGHBOR_THRESHOLD,
 ):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
     If distances > threshold in points' distances, -1 is returned.
@@ -1255,7 +1259,16 @@ def match_centroids(
         # If the coord_gdf has no crs defined (or no valid geometry column),
         # no error is raised and it is assumed that the user set the crs correctly
         pass
-    # try to infer unit
+    if not unit:
+        # try to infer unit
+        if coord_gdf.crs.is_geodetic():
+            unit = "degree"
+        elif coord_gdf.crs.is_projected:
+            unit = "m"
+        else:
+            raise ValueError(
+                "Unable to infer unit for coordinate points. Please specify unit of the coordinates."
+            )
 
     assigned = match_coordinates(
         np.stack([coord_gdf.geometry.y.values, coord_gdf.geometry.x.values], axis=1),
@@ -1306,7 +1319,7 @@ def _nearest_neighbor_approx(
         with as many rows as coordinates containing the centroids indexes
     """
     # first check that unit is in degree
-    if unit != "deg":
+    if unit != "degree":
         raise ValueError(
             "Only degree unit is supported for nearest neighbor approximation"
         )
