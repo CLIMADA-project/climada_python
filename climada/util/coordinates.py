@@ -134,7 +134,7 @@ def infer_unit_coords(coords):
         unit cannot be inferred.
     """
 
-    if coords.crs.is_geodetic():
+    if coords.crs.is_geographic:
         unit = "degree"
     elif coords.crs.is_projected:
         unit = "m"
@@ -1549,7 +1549,7 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
         if np.any(cent_strip_bool):
             cent_strip = centroids[cent_strip_bool]
             strip_assigned = _nearest_neighbor_haversine(
-                cent_strip, coord_strip, threshold
+                cent_strip, coord_strip, "degree", threshold
             )
             new_coords = cent_strip_bool.nonzero()[0][strip_assigned]
             new_coords[strip_assigned == -1] = -1
