@@ -1454,10 +1454,7 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
-            "Distance to closest centroid is greater than %s",
-            "km for %s coordinates.",
-            threshold,
-            num_warn,
+            f"Distance to closest centroid is greater than {threshold} km for {num_warn} coordinates."
         )
         assigned[dist > threshold] = -1
 
@@ -1510,10 +1507,7 @@ def _nearest_neighbor_euclidean(
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
-            "Distance to closest centroid is greater than %s",
-            "km for %s coordinates.",
-            threshold,
-            num_warn,
+            f"Distance to closest centroid is greater than {threshold} km for {num_warn} coordinates."
         )
         assigned[dist > threshold] = -1
 
