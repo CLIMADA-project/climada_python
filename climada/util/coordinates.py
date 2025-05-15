@@ -1211,8 +1211,8 @@ def match_coordinates(
                         "Input lat and lon coordinates do not seem to correspond"
                         " to geographic coordinates in degrees. This can be because"
                         " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-                        " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-                        " If you use degree values outside of these ranges,"
+                        " are outside of -90<lat<90, or lon coordinates are outside of "
+                        "-540<lon<540. If you use degree values outside of these ranges,"
                         " please shift the coordinates to the valid ranges."
                     )
 
@@ -1454,7 +1454,8 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
-            "Distance to closest centroid is greater than %s" "km for %s coordinates.",
+            "Distance to closest centroid is greater than %s",
+            "km for %s coordinates.",
             threshold,
             num_warn,
         )
@@ -1509,7 +1510,8 @@ def _nearest_neighbor_euclidean(
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
-            "Distance to closest centroid is greater than %s" "km for %s coordinates.",
+            "Distance to closest centroid is greater than %s",
+            "km for %s coordinates.",
             threshold,
             num_warn,
         )
