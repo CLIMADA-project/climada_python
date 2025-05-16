@@ -219,14 +219,12 @@ class CalcImpact(Calc):
 
         one_sample = samples_df.iloc[0:1]
         start = time.time()
-        self._compute_imp_metrics(one_sample, chunksize=1, processes=1)
+        self._compute_metrics(one_sample, chunksize=1, processes=1)
         elapsed_time = time.time() - start
         self.est_comp_time(unc_sample.n_samples, elapsed_time, processes)
 
         [aai_agg_list, freq_curve_list, eai_exp_list, at_event_list] = (
-            self._compute_imp_metrics(
-                samples_df, chunksize=chunksize, processes=processes
-            )
+            self._compute_metrics(samples_df, chunksize=chunksize, processes=processes)
         )
 
         # Assign computed impact distribution data to self
@@ -256,7 +254,7 @@ class CalcImpact(Calc):
             coord_df=coord_df,
         )
 
-    def _compute_imp_metrics(self, samples_df, chunksize, processes):
+    def _compute_metrics(self, samples_df, chunksize, processes):
         """Compute the uncertainty metrics
 
         Parameters
