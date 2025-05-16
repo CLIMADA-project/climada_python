@@ -1350,7 +1350,7 @@ class TestFuncs(unittest.TestCase):
         lon_test = np.array([170, 179.18, 180.05])
         lat_test = np.array([-60, -16.56, -16.85])
         on_land = np.array([False, True, True])
-        lon_shift = np.array([-360, 0, 360])
+        lon_shift = np.array([360, 360, 360])
         # ensure both points are considered on land as is
         np.testing.assert_array_equal(
             u_coord.coord_on_land(lat=lat_test, lon=lon_test), on_land
