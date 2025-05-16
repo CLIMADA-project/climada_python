@@ -338,7 +338,7 @@ def geo_im_from_array(
     axes=None,
     figsize=(9, 13),
     adapt_fontsize=True,
-    mask_distance=None,
+    mask_distance=0.01,
     **kwargs,
 ):
     """Image(s) plot defined in array(s) over input coordinates.
@@ -374,7 +374,7 @@ def geo_im_from_array(
         Only regions are plotted that are closer to any of the data points than this distance,
         relative to overall plot size. For instance, to only plot values
         at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-        Default is None.
+        Default is 0.01.
     **kwargs
         arbitrary keyword arguments for pcolormesh matplotlib function
 
@@ -1104,7 +1104,7 @@ def plot_from_gdf(
     axis=None,
     figsize=(9, 13),
     adapt_fontsize=True,
-    mask_distance=None,
+    mask_distance=0.01,
     **kwargs,
 ):
     """Plot several subplots from different columns of a GeoDataFrame, e.g., for
@@ -1131,7 +1131,7 @@ def plot_from_gdf(
         Relative distance (with respect to maximal map extent in longitude or latitude) to data
         points above which plot should not display values. For instance, to only plot values
         at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-        Default is None.
+        Default is 0.01.
     kwargs: optional
         Arguments for pcolormesh matplotlib function used in event plots.
 

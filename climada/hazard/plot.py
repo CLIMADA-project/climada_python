@@ -40,7 +40,7 @@ class HazardPlot:
         self,
         return_periods=(25, 50, 100, 250),
         axis=None,
-        mask_distance=None,
+        mask_distance=0.01,
         kwargs_local_exceedance_intensity=None,
         **kwargs,
     ):
@@ -61,7 +61,7 @@ class HazardPlot:
             Only regions are plotted that are closer to any of the data points than this distance,
             relative to overall plot size. For instance, to only plot values
             at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-            Default is None.
+            Default is 0.01.
         kwargs: optional
             arguments for pcolormesh matplotlib function used in event plots
 
@@ -111,7 +111,7 @@ class HazardPlot:
         smooth=True,
         axis=None,
         adapt_fontsize=True,
-        mask_distance=None,
+        mask_distance=0.01,
         **kwargs,
     ):
         """Plot intensity values for a selected event or centroid.
@@ -139,7 +139,7 @@ class HazardPlot:
             Only regions are plotted that are closer to any of the data points than this distance,
             relative to overall plot size. For instance, to only plot values
             at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-            Default is None.
+            Default is 0.01.
         kwargs: optional
             arguments for pcolormesh matplotlib function
             used in event plots or for plot function used in centroids plots
@@ -181,7 +181,7 @@ class HazardPlot:
         centr=None,
         smooth=True,
         axis=None,
-        mask_distance=None,
+        mask_distance=0.01,
         **kwargs,
     ):
         """Plot fraction values for a selected event or centroid.
@@ -252,7 +252,7 @@ class HazardPlot:
         axis=None,
         figsize=(9, 13),
         adapt_fontsize=True,
-        mask_distance=None,
+        mask_distance=0.01,
         **kwargs,
     ):
         """Plot an event of the input matrix.
