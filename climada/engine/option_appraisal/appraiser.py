@@ -19,11 +19,17 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import copy
+import datetime
 import logging
 import warnings
 
+import matplotlib.dates as mdates
+import matplotlib.patches as mpatches
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import seaborn as sns
+from pandas.api.types import is_numeric_dtype
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
@@ -57,7 +63,7 @@ class MeasuresAppraiser(RiskTrajectory):
         snapshots_list: list[Snapshot],
         *,
         measure_set: MeasureSet,
-        interval_freq: str = "YS",
+        interval_freq: str = "AS-JAN",
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
         cost_disc: DiscRates | None = None,
@@ -82,11 +88,13 @@ class MeasuresAppraiser(RiskTrajectory):
         )
 
     def _calc_risk_periods(self, snapshots: list[Snapshot]):
+        LOGGER.debug(f"{self.__class__.__name__}: Calc risk periods")
         risk_periods = super()._calc_risk_periods(snapshots)
         risk_periods += self._calc_measure_periods(risk_periods)
         return risk_periods
 
     def _calc_measure_periods(self, risk_periods: list[CalcRiskPeriod]):
+        LOGGER.debug(f"{self.__class__.__name__}: Calc risk periods with measures")
         res = []
         for _, measure in self.measure_set.measures().items():
             LOGGER.debug(f"Creating measures risk_period for measure {measure.name}")
@@ -102,29 +110,25 @@ class MeasuresAppraiser(RiskTrajectory):
         metric_name=None,
         metric_meth=None,
         measures: list[str] | None = None,
-        averted: bool = True,
-        cash_flow: bool = True,
-        cost_benefit: bool = True,
         **kwargs,
     ):
         base_metrics = super()._generic_metrics(npv, metric_name, metric_meth, **kwargs)
+        base_metrics = self._calc_averted(base_metrics)
+        no_measures = base_metrics[base_metrics["measure"] == "no_measure"].copy()
+        no_measures["reference risk"] = no_measures["risk"]
+        no_measures["averted risk"] = 0.0
+        no_measures["measure net cost"] = 0.0
+        no_measures["measure cost benefit"] = 0.0
+        cash_flow_metrics = self._calc_per_measure_annual_cash_flows()
+        base_metrics = base_metrics.merge(
+            cash_flow_metrics[["date", "measure", "measure net cost"]],
+            on=["measure", "date"],
+        )
+        base_metrics = pd.concat([no_measures, base_metrics])
 
-        if averted:
-            base_metrics = self._calc_averted(base_metrics)
-
-        if cash_flow:
-            cash_flow_metrics = self._calc_per_measure_annual_cash_flows()
-            base_metrics = base_metrics.merge(
-                cash_flow_metrics[["date", "measure", "measure net cost"]],
-                on=["measure", "date"],
-            )
-
-        if cost_benefit:
-            averted_risk = None if averted else self._calc_averted(base_metrics)
-            cash_flow_metrics = (
-                None if cash_flow else self._calc_per_measure_annual_cash_flows()
-            )
-            base_metrics = self._calc_cb(base_metrics, averted_risk, cash_flow_metrics)
+        averted_risk = base_metrics["averted risk"]
+        cash_flow_metrics = base_metrics["measure net cost"]
+        base_metrics["measure cost benefit"] = averted_risk - cash_flow_metrics
 
         if measures is not None:
             base_metrics = base_metrics.loc[
@@ -213,22 +217,169 @@ class MeasuresAppraiser(RiskTrajectory):
         df = df.rename(columns={"net": "measure net cost"})
         return df
 
-    def _calc_cb(
-        self,
-        base_metrics: pd.DataFrame,
-        averted_risk: pd.DataFrame | None,
-        cash_flow_metrics: pd.DataFrame | None,
-    ):
-        averted_risk = (
-            averted_risk if averted_risk is not None else base_metrics["averted risk"]
-        )
-        cash_flow_metrics = (
-            cash_flow_metrics
-            if cash_flow_metrics is not None
-            else base_metrics["measure net cost"]
-        )
+    def _calc_cb(self, base_metrics: pd.DataFrame):
+        averted_risk = base_metrics["averted risk"]
+        cash_flow_metrics = base_metrics["measure net cost"]
         base_metrics["measure cost benefit"] = averted_risk - cash_flow_metrics
         return base_metrics
+
+    def _calc_waterfall_plot_data(
+        self,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+        npv: bool = True,
+    ):
+        start_date = self.start_date if start_date is None else start_date
+        end_date = self.end_date if end_date is None else end_date
+        risk_components = self.risk_components_metrics(npv)
+        risk_components = risk_components.loc[
+            (risk_components["date"].dt.date >= start_date)
+            & (risk_components["date"].dt.date <= end_date)
+            & (risk_components["measure"] != "no_measure")
+        ]
+        # risk_components = risk_components.set_index(["date", "measure", "metric"])[
+        #    ["risk","reference risk","averted risk", "measure net cost"]
+        # ].unstack()
+        return risk_components
+
+    def plot_per_date_waterfall(
+        self,
+        ax=None,
+        start_date: datetime.date | None = None,
+        end_date: datetime.date | None = None,
+    ):
+        """Plot a waterfall chart of risk components over a specified date range.
+
+        This method generates a stacked bar chart to visualize the
+        risk components between specified start and end dates, for each date in between.
+        If no dates are provided, it defaults to the start and end dates of the risk trajectory.
+        See the notes on how risk is attributed to each components.
+
+        Parameters
+        ----------
+        ax : matplotlib.axes.Axes, optional
+            The matplotlib axes on which to plot. If None, a new figure and axes are created.
+        start_date : datetime, optional
+            The start date for the waterfall plot. If None, defaults to the start date of the risk trajectory.
+        end_date : datetime, optional
+            The end date for the waterfall plot. If None, defaults to the end date of the risk trajectory.
+
+        Returns
+        -------
+        matplotlib.axes.Axes
+            The matplotlib axes with the plotted waterfall chart.
+
+        Notes
+        -----
+        The "risk components" are plotted such that the increase in risk due to the hazard component
+        really denotes the difference between the risk associated with both future exposure and hazard
+        compared to the risk associated with future exposure and present hazard.
+        """
+        start_date = self.start_date if start_date is None else start_date
+        end_date = self.end_date if end_date is None else end_date
+        df = self._calc_waterfall_plot_data(start_date=start_date, end_date=end_date)
+        metrics = ["base risk", "delta from exposure", "delta from hazard"]
+        colors = {
+            "base risk": "skyblue",
+            "delta from exposure": "orange",
+            "delta from hazard": "lightgreen",
+        }
+        hatch_style = "///"
+
+        # Filter relevant rows
+        filtered = df[df["metric"].isin(metrics)]
+
+        # Unique measures
+        measures = filtered["measure"].unique()
+
+        _, axs = plt.subplots(
+            len(measures), 1, figsize=(14, 5 * len(measures)), sharex=True
+        )
+
+        if len(measures) == 1:
+            axs = [axs]
+
+        for i, measure in enumerate(measures):
+            ax = axs[i]
+            d = filtered[filtered["measure"] == measure]
+
+            # Pivot for stacked bars
+            reference = d.pivot(
+                index="date", columns="metric", values="reference risk"
+            ).fillna(0)
+            averted = (
+                d.pivot(index="date", columns="metric", values="averted risk")
+                .fillna(0)
+                .sum(axis=1)
+            )
+            risk = (
+                d.pivot(index="date", columns="metric", values="risk")
+                .fillna(0)
+                .sum(axis=1)
+            )
+
+            x = np.arange(len(reference.index))
+            width = 0.35  # width of each bar
+            spacing = width + 0.05  # space between stacked bar and residual risk bar
+
+            bottom = np.zeros(len(x))
+
+            # Stacked + hatched
+            for metric in metrics:
+                h = reference[metric].values
+                # Main reference segment
+                ax.bar(
+                    x,
+                    h,
+                    bottom=bottom,
+                    width=width,
+                    color=colors[metric],
+                    label=metric,
+                    edgecolor=colors[metric],
+                    linewidth=0.5,
+                )
+                bottom += h
+                # Hatched averted overlay
+
+            ax.bar(
+                x + spacing,
+                risk,
+                width=width,
+                color="grey",
+                edgecolor="grey",
+                label="residual risk",
+                linewidth=0.5,
+            )
+            ax.bar(
+                x + spacing,
+                averted,
+                bottom=risk,
+                width=width,
+                color="none",
+                edgecolor="grey",
+                hatch=hatch_style,
+                linewidth=0.5,
+            )
+
+            # Labels and ticks
+            ax.set_title(f"Measure: {measure}")
+            ax.set_xticks(x + spacing / 2)
+            ax.set_xticklabels(reference.index, rotation=45)
+
+            # Custom legend to add hatch explanation
+            handles = [mpatches.Patch(facecolor=colors[m], label=m) for m in metrics]
+            handles.append(
+                mpatches.Patch(
+                    facecolor="white",
+                    edgecolor="grey",
+                    hatch=hatch_style,
+                    label="averted with measure",
+                )
+            )
+            handles.append(mpatches.Patch(facecolor="gray", label="residual risk"))
+            ax.legend(handles=handles, loc="upper left")
+
+        return axs
 
     def plot(
         self,
@@ -238,6 +389,7 @@ class MeasuresAppraiser(RiskTrajectory):
         groups: list[int] | list[str] | None = None,
         **kwargs,
     ):
+        # TODO: redo with matplotlib to have some stacked and bottom
         variables = self._risk_vars if variables is None else variables
         groups = ["All"] if groups is None else groups
         to_plot, time_g = (
@@ -248,7 +400,11 @@ class MeasuresAppraiser(RiskTrajectory):
                 "period",
             )
         )
-        measures = to_plot["measure"].unique() if measures is None else measures
+        measures = (
+            np.setdiff1d(to_plot["measure"].unique(), ["no_measure"])
+            if measures is None
+            else measures
+        )
 
         to_plot["averted risk"] *= -1
 
