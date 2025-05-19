@@ -1,5 +1,13 @@
+This developer guide regroups all information intended for contributors.
+
+Very minimal instruction for contributing can be found below.
+
+If you are interested in contributing to Climada, we recommand you to start with the
+`Overview <Guide_CLIMADA_Development>` part of this guide.
+
 .. include:: ../../CONTRIBUTING.md
    :parser: myst_parser.sphinx_
+   :start-line: 3
 
 .. toctree::
    :maxdepth: 2
