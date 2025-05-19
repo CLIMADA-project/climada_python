@@ -121,11 +121,11 @@ These instructions will install the most recent stable version of CLIMADA withou
 
 .. _install-advanced:
 
----------------------
-Advanced Instructions
----------------------
+---------------------------------------------
+Advanced Instructions: Installing from source
+---------------------------------------------
 
-For advanced Python users or developers of CLIMADA, we recommed cloning the CLIMADA repository and installing the package from source.
+For advanced Python users or developers of CLIMADA, cloning the CLIMADA repository and installing the package from source.
 
 .. warning::
 
@@ -213,6 +213,8 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
       Using a path ``./`` (referring to the path you are currently located at) will instruct ``pip`` to install the local files instead of downloading the module from the internet.
       The ``-e`` (for "editable") option further instructs ``pip`` to link to the source files instead of copying them during installation.
       This means that any changes to the source files will have immediate effects in your environment, and re-installing the module is never required.
+
+      Further note that this works only for the source files not for the dependencies. If you change the latter, you will need to update the environment with step 6. !
 
 #. Verify that everything is installed correctly by executing a single test:
 
