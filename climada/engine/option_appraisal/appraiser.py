@@ -431,185 +431,331 @@ class MeasuresAppraiser(RiskTrajectory):
         return g
 
 
-# class _PlannedMeasuresAppraiser(MeasuresAppraiser):
-#     def __init__(
-#         self,
-#         snapshots: SnapshotsCollection,
-#         measure_set: MeasureSet,
-#         planner: dict[str, tuple[int, int]],
-#         cost_disc: DiscRates | None = None,
-#         risk_disc: DiscRates | None = None,
-#         metrics: list[str] = ["aai", "eai", "rp"],
-#         return_periods: list[int] = [100, 500, 1000],
-#     ):
-#         self.planner = planner
-#         self._planning = _get_unique_measure_periods(_planner_to_planning(self.planner))
-#         super().__init__(
-#             snapshots,
-#             measure_set,
-#             cost_disc,
-#             risk_disc,
-#             metrics,
-#             return_periods,
-#         )
+class _PlannedMeasuresAppraiser(MeasuresAppraiser):
+    def __init__(
+        self,
+        snapshots_list: list[Snapshot],
+        *,
+        measure_set: MeasureSet,
+        planner: (
+            dict[str, tuple[int, int]] | dict[str, tuple[datetime.date, datetime.date]]
+        ),
+        interval_freq: str = "AS-JAN",
+        all_groups_name: str = "All",
+        risk_disc: DiscRates | None = None,
+        cost_disc: DiscRates | None = None,
+        risk_transf_cover=None,
+        risk_transf_attach=None,
+        calc_residual: bool = True,
+        interpolation_strategy: InterpolationStrategy | None = None,
+        impact_computation_strategy: ImpactComputationStrategy | None = None,
+    ):
+        if all(
+            isinstance(value, tuple)
+            and all(isinstance(element, int) for element in value)
+            for value in planner.values()
+        ):
+            planner = {
+                k: (datetime.date(v1, 1, 1), datetime.date(v2, 1, 1))  # type: ignore
+                for k, (v1, v2) in planner.items()
+            }
+        self.planner: dict[str, tuple[datetime.date, datetime.date]] = planner
+        self._planning = _get_unique_measure_periods(self.planner)
+        super().__init__(
+            snapshots_list,
+            measure_set=measure_set,
+            interval_freq=interval_freq,
+            all_groups_name=all_groups_name,
+            risk_disc=risk_disc,
+            cost_disc=cost_disc,
+            risk_transf_cover=risk_transf_cover,
+            risk_transf_attach=risk_transf_attach,
+            calc_residual=calc_residual,
+            interpolation_strategy=interpolation_strategy,
+            impact_computation_strategy=impact_computation_strategy,
+        )
 
-#     def _single_measure_risk_metrics(self, measure_name):
-#         """Not currently used"""
-#         date_start, date_end = self.planner.get(
-#             measure_name, (self.start_date, self.end_date)
-#         )
-#         ret = self._calc_annual_risk_metrics().copy()
-#         ret = ret.set_index(["measure", "date"]).sort_index()
-#         ret = ret.loc[pd.IndexSlice[measure_name, date_start:date_end],].reset_index()
-#         return ret
+    def _calc_measure_periods(self, risk_periods):
+        # For each planned period, find correponding risk periods and create the periods with measure from planning
+        LOGGER.debug(
+            f"{self.__class__.__name__}: Calc risk periods with planned measures"
+        )
+        res = []
+        for (start_date, end_date), measure_name_list in self._planning.items():
+            # Not sure this works as intended (pbly could be simplified anyway)
+            if len(measure_name_list) > 1:
+                measure = self.measure_set.combine(names=measure_name_list)
+            elif len(measure_name_list) == 1:
+                measure = self.measure_set._data[measure_name_list[0]]
+            else:
+                measure = None
 
-#     def _calc_measure_periods(self, risk_periods):
-#         # For each planned period, find correponding risk periods and create the periods with measure from planning
-#         res = []
-#         for measure_name_list, start_date, end_date in self._planning:
-#             # Not sure this works as intended (pbly could be simplified anyway)
-#             measure = self.measure_set.combine(names=measure_name_list)
-#             periods = self._get_risk_periods(risk_periods, start_date, end_date)
-#             LOGGER.debug(f"Creating measures risk_period for measure {measure.name}")
-#             meas_periods = [period.apply_measure(measure) for period in periods]
-#             res += meas_periods
-#         return res
+            periods = self._get_risk_periods(risk_periods, start_date, end_date)
+            if measure:
+                LOGGER.debug(
+                    f"Creating measures risk_period for measure {measure.name}"
+                )
+                meas_periods = [period.apply_measure(measure) for period in periods]
+                res += meas_periods
+        return res
 
-#     def _calc_annual_risk_metrics(self, npv=True):
-#         df = super()._calc_annual_risk_metrics(npv)
-#         df = df.set_index(["measure", "date"]).sort_index()
-#         mask = pd.Series(False, index=df.index)
-#         # for each measure set mask to true at corresponding date (bitwise or)
-#         for measure_combo, start, end in self._planning:
-#             mask |= (
-#                 (df.index.get_level_values("measure") == "_".join(measure_combo))
-#                 & (df.index.get_level_values("date") >= start)
-#                 & (df.index.get_level_values("date") <= end)
-#             )
+    def _generic_metrics(
+        self,
+        npv=True,
+        metric_name=None,
+        metric_meth=None,
+        measures: list[str] | None = None,
+        **kwargs,
+    ):
+        base_metrics = super()._generic_metrics(
+            npv,
+            metric_name,
+            metric_meth,
+            measures,
+            **kwargs,
+        )
+        base_metrics = base_metrics.set_index(["measure", "date"]).sort_index()
+        mask = pd.Series(False, index=base_metrics.index)
+        for (start, end), measure_name_list in self._planning.items():
+            start, end = pd.Timestamp(start), pd.Timestamp(end)
+            mask |= (
+                (
+                    base_metrics.index.get_level_values("measure")
+                    == "_".join(measure_name_list)
+                )
+                & (base_metrics.index.get_level_values("date") >= start)
+                & (base_metrics.index.get_level_values("date") <= end)
+            )
 
-#         # for the no_measure case, set mask to true at corresponding date,
-#         # only for those dates that have no active measures
-#         no_measure_mask = mask.groupby("date").sum() == 0
-#         mask.loc[
-#             pd.IndexSlice["no_measure"], no_measure_mask[no_measure_mask].index
-#         ] = True
+        no_measure_mask = mask.groupby("date").sum() == 0
+        mask.loc[
+            pd.IndexSlice["no_measure"], no_measure_mask[no_measure_mask].index
+        ] = True
 
-#         return df[mask].reset_index().sort_values("date")
+        return base_metrics[mask].reset_index().sort_values("date")
 
-#     def _calc_per_measure_annual_cash_flows(self, disc=None):
-#         res = []
-#         for measure, (start, end) in self.planner.items():
-#             df = self.measure_set.measures()[measure].cost_income.calc_cashflows(
-#                 impl_date=start, start_date=start, end_date=end, disc=disc
-#             )
-#             df["measure"] = measure
-#             res.append(df)
+    def _calc_per_measure_annual_cash_flows(self):
+        res = []
+        for meas_name, (start, end) in self.planner.items():
+            need_agg = False
+            measure = self.measure_set.measures()[meas_name]
+            if measure.cost_income.freq != self._interval_freq:
+                need_agg = True
+                warnings.warn(
+                    (
+                        f"{meas_name} has a different CostIncome interval frequency ({measure.cost_income.freq}) "
+                        f"than the MeasureAppraiser ({self._interval_freq}). "
+                        f"Cash flows will be aggregated to {measure.cost_income.freq} "
+                        "but this **may** lead to inconsistencies."
+                    ),
+                    stacklevel=2,
+                )
 
-#         df = pd.concat(res)
-#         df = df.groupby("date", as_index=False).agg(
-#             {
-#                 col: ("sum" if is_numeric_dtype(df[col]) else lambda x: "_".join(x))
-#                 for col in df.columns
-#                 if col != "date"
-#             }
-#         )
-#         return df
+            df = measure.cost_income.calc_cashflows(
+                impl_date=start,
+                start_date=start,
+                end_date=end,
+                disc=self.cost_disc,
+            )
+            if need_agg:
+                df = df.groupby(df["date"].dt.year, as_index=False).agg(
+                    {"net": "sum", "cost": "sum", "income": "sum", "date": "first"}
+                )
+            df["measure"] = meas_name
+            res.append(df)
+        df = pd.concat(res)
+        df = df.groupby("date", as_index=False).agg(
+            {
+                col: ("sum" if is_numeric_dtype(df[col]) else lambda x: "_".join(x))
+                for col in df.columns
+                if col != "date"
+            }
+        )
+        df["net"] *= -1
+        df = df.rename(columns={"net": "measure net cost"})
+        return df
 
-#     def plot_CB_summary(
-#         self,
-#         metric="aai",
-#         measure_colors=None,
-#         y_label="Risk",
-#         title="Benefit and Benefit/Cost Ratio by Measure",
-#     ):
-#         raise NotImplementedError("Not Implemented for that class")
-#         df = self.calc_CB(dately=True)
-#         df_plan = df.groupby(["group", "metric"], as_index=False).agg(
-#             start_date=pd.NamedAgg(column="date", aggfunc="min"),
-#             end_date=pd.NamedAgg(column="date", aggfunc="max"),
-#             base_risk=pd.NamedAgg(column="base risk", aggfunc="sum"),
-#             residual_risk=pd.NamedAgg(column="residual risk", aggfunc="sum"),
-#             averted_risk=pd.NamedAgg(column="averted risk", aggfunc="sum"),
-#             cost_net=pd.NamedAgg(column="cost (net)", aggfunc="sum"),
-#         )
-#         df_plan["measure"] = "Whole risk period"
-#         df.columns = df.columns.str.replace("_", " ")
-#         df["B/C ratio"] = (df["averted risk"] / df["cost net"]).fillna(0.0)
-#         plot_CB_summary(
-#             df,
-#             metric=metric,
-#             measure_colors=measure_colors,
-#             y_label=y_label,
-#             title=title,
-#         )
+    def plot(
+        self,
+        measures: list[str] | None = None,
+        per_date: bool = False,
+        variables: list[str] | None = None,
+        groups: list[int] | list[str] | None = None,
+        **kwargs,
+    ):
+        variables = self._risk_vars if variables is None else variables
+        groups = ["All"] if groups is None else groups
+        to_plot, time_g = (
+            (self.per_date_risk_metrics(**kwargs), "date")
+            if per_date
+            else (
+                self.per_period_risk_metrics(**kwargs),
+                "period",
+            )
+        )
+        measures = to_plot["measure"].unique() if measures is None else measures
 
-#     def plot_dately(
-#         self,
-#         to_plot="residual risk",
-#         metric="aai",
-#         y_label=None,
-#         title=None,
-#         with_measure=True,
-#         measure_colors=None,
-#     ):
-#         plot_dately(
-#             self.calc_CB(dately=True).sort_values("residual risk"),
-#             to_plot=to_plot,
-#             with_measure=with_measure,
-#             metric=metric,
-#             y_label=y_label,
-#             title=title,
-#             measure_colors=measure_colors,
-#         )
+        to_plot["averted risk"] *= -1
 
-#     def plot_waterfall(self, ax=None, start_date=None, end_date=None):
-#         df = self.calc_CB(dately=True)
-#         averted = df.loc[
-#             (df["date"] == 2080)
-#             & (df["metric"] == "aai")
-#             & (df["measure"] != "no_measure")
-#         ]
-#         ax = super().plot_waterfall(ax=ax, start_date=start_date, end_date=end_date)
-#         ax.bar("Averted risk", ax.patches[-1].get_height(), width=1, visible=False)
-#         # ax.text(
-#         #     x=ax.get_xticks()[-1] - ax.patches[-1].get_width() / 2 + 0.02,
-#         #     y=ax.patches[-1].get_height() * 0.96,
-#         #     ha="left",
-#         #     s="Averted risk",
-#         #     size=12,
-#         # )
-#         averted = averted.sort_values("averted risk")
-#         for i, meas in enumerate(averted["measure"].unique()):
-#             measure_risk = averted.loc[
-#                 (averted["measure"] == meas), "averted risk"
-#             ].values[0]
-#             x_arrow = (
-#                 ax.get_xticks()[-1]
-#                 - ax.patches[-1].get_width() / 2
-#                 + 0.1
-#                 + (ax.patches[-1].get_width() / averted["measure"].nunique()) * i
-#             )
-#             top_arrow = ax.patches[-1].get_height()
-#             bottom_arrow = top_arrow - measure_risk
-#             ax.annotate(
-#                 "",
-#                 xy=(x_arrow, bottom_arrow),
-#                 xytext=(x_arrow, top_arrow),
-#                 arrowprops=dict(
-#                     facecolor="tab:green", width=12, headwidth=20, headlength=10
-#                 ),
-#             )
-#             ax.text(
-#                 x=x_arrow,
-#                 y=top_arrow - (top_arrow - bottom_arrow) / 2,
-#                 va="center",
-#                 ha="center",
-#                 s=meas,
-#                 rotation=-90,
-#                 size="x-small",
-#             )
+        to_plot = to_plot.melt(id_vars=[time_g, "group", "measure", "metric"])
+        to_plot = to_plot.loc[
+            (to_plot["metric"] == "aai")
+            & (to_plot["variable"].isin(variables))
+            & (to_plot["group"].isin(groups))
+            & (to_plot["measure"].isin(measures))
+        ]
 
-#         return ax
+        if per_date:
+            planner_t = {
+                label: (pd.Timestamp(v1), pd.Timestamp(v2))
+                for label, (v1, v2) in self.planner.items()
+            }
+            _, axs = plt.subplots(
+                2, figsize=(10, 8), gridspec_kw={"height_ratios": [12, 1]}
+            )
+            sns.barplot(
+                to_plot.loc[to_plot["group"] == "All"],
+                hue="variable",
+                hue_order=variables,
+                x="date",
+                y="value",
+                ax=axs[0],
+            )
+            axs[0].tick_params(rotation=45)
+            y = 0
+            for label_text, (start, end) in planner_t.items():
+                axs[1].barh(
+                    y,
+                    (end - start).days,
+                    left=start,
+                    height=0.6,
+                    color="skyblue",
+                    edgecolor="k",
+                )
+                axs[1].text(
+                    start,
+                    y,
+                    "  " + label_text,
+                    va="center",
+                    ha="left",
+                    fontsize=8,
+                    color="black",
+                )
+                y += 1
+
+            axs[1].xaxis.set_major_locator(mdates.YearLocator(5))
+            axs[1].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
+            axs[1].set_xlim(min(to_plot["date"]), max(to_plot["date"]))
+            axs[1].set_yticks([])
+            axs[0].set_xticks([])
+            axs[0].set_xlabel("")
+            return axs
+        else:
+            g = sns.barplot(
+                to_plot.loc[to_plot["group"] == "All"],
+                hue="variable",
+                hue_order=variables,
+                x=time_g,
+                y="value",
+            )
+            g.tick_params(axis="x", which="both", rotation=45)
+            return g
+
+    # def plot_CB_summary(
+    #     self,
+    #     metric="aai",
+    #     measure_colors=None,
+    #     y_label="Risk",
+    #     title="Benefit and Benefit/Cost Ratio by Measure",
+    # ):
+    #     raise NotImplementedError("Not Implemented for that class")
+    #     df = self.calc_CB(dately=True)
+    #     df_plan = df.groupby(["group", "metric"], as_index=False).agg(
+    #         start_date=pd.NamedAgg(column="date", aggfunc="min"),
+    #         end_date=pd.NamedAgg(column="date", aggfunc="max"),
+    #         base_risk=pd.NamedAgg(column="base risk", aggfunc="sum"),
+    #         residual_risk=pd.NamedAgg(column="residual risk", aggfunc="sum"),
+    #         averted_risk=pd.NamedAgg(column="averted risk", aggfunc="sum"),
+    #         cost_net=pd.NamedAgg(column="cost (net)", aggfunc="sum"),
+    #     )
+    #     df_plan["measure"] = "Whole risk period"
+    #     df.columns = df.columns.str.replace("_", " ")
+    #     df["B/C ratio"] = (df["averted risk"] / df["cost net"]).fillna(0.0)
+    #     plot_CB_summary(
+    #         df,
+    #         metric=metric,
+    #         measure_colors=measure_colors,
+    #         y_label=y_label,
+    #         title=title,
+    #     )
+
+    # def plot_dately(
+    #     self,
+    #     to_plot="residual risk",
+    #     metric="aai",
+    #     y_label=None,
+    #     title=None,
+    #     with_measure=True,
+    #     measure_colors=None,
+    # ):
+    #     plot_dately(
+    #         self.calc_CB(dately=True).sort_values("residual risk"),
+    #         to_plot=to_plot,
+    #         with_measure=with_measure,
+    #         metric=metric,
+    #         y_label=y_label,
+    #         title=title,
+    #         measure_colors=measure_colors,
+    #     )
+
+    # def plot_waterfall(self, ax=None, start_date=None, end_date=None):
+    #     df = self.calc_CB(dately=True)
+    #     averted = df.loc[
+    #         (df["date"] == 2080)
+    #         & (df["metric"] == "aai")
+    #         & (df["measure"] != "no_measure")
+    #     ]
+    #     ax = super().plot_waterfall(ax=ax, start_date=start_date, end_date=end_date)
+    #     ax.bar("Averted risk", ax.patches[-1].get_height(), width=1, visible=False)
+    #     # ax.text(
+    #     #     x=ax.get_xticks()[-1] - ax.patches[-1].get_width() / 2 + 0.02,
+    #     #     y=ax.patches[-1].get_height() * 0.96,
+    #     #     ha="left",
+    #     #     s="Averted risk",
+    #     #     size=12,
+    #     # )
+    #     averted = averted.sort_values("averted risk")
+    #     for i, meas in enumerate(averted["measure"].unique()):
+    #         measure_risk = averted.loc[
+    #             (averted["measure"] == meas), "averted risk"
+    #         ].values[0]
+    #         x_arrow = (
+    #             ax.get_xticks()[-1]
+    #             - ax.patches[-1].get_width() / 2
+    #             + 0.1
+    #             + (ax.patches[-1].get_width() / averted["measure"].nunique()) * i
+    #         )
+    #         top_arrow = ax.patches[-1].get_height()
+    #         bottom_arrow = top_arrow - measure_risk
+    #         ax.annotate(
+    #             "",
+    #             xy=(x_arrow, bottom_arrow),
+    #             xytext=(x_arrow, top_arrow),
+    #             arrowprops=dict(
+    #                 facecolor="tab:green", width=12, headwidth=20, headlength=10
+    #             ),
+    #         )
+    #         ax.text(
+    #             x=x_arrow,
+    #             y=top_arrow - (top_arrow - bottom_arrow) / 2,
+    #             va="center",
+    #             ha="center",
+    #             s=meas,
+    #             rotation=-90,
+    #             size="x-small",
+    #         )
+
+    #     return ax
 
 
 # class AdaptationPlansAppraiser:
@@ -658,134 +804,38 @@ class MeasuresAppraiser(RiskTrajectory):
 #         )
 
 
-# def format_periods_dict(periods_dict):
-#     formatted_string = ""
-#     for measure, (start_date, end_date) in periods_dict.items():
-#         formatted_string += f"{measure}: {start_date} - {end_date} ; "
-#     return formatted_string.strip()
+def format_periods_dict(periods_dict):
+    formatted_string = ""
+    for measure, (start_date, end_date) in periods_dict.items():
+        formatted_string += f"{measure}: {start_date} - {end_date} ; "
+    return formatted_string.strip()
 
 
-# def _planner_to_planning(planner: dict[str, tuple[int, int]]) -> dict[int, list[str]]:
-#     """Transform a dictionary of measures with date spans into a dictionary
-#     where each key is a date, and the value is a list of active measures.
+def _get_unique_measure_periods(
+    planner: dict[str, tuple[datetime.date, datetime.date]],
+) -> dict[tuple[datetime.date, datetime.date], list[str]]:
+    """Extract unique measure lists with their corresponding min and max date.
 
-#     Parameters
-#     ----------
-#     measures : dict[str, tuple[int, int]]
-#         Dictionary where keys are measure names and values are (start_date, end_date).
+    Parameters
+    ----------
+    date_to_measures : dict[Union[int, date], list[str]]
+        Dictionary where keys are dates (as int or datetime.date) and values are lists of active measures.
 
-#     Returns
-#     -------
-#     dict[int, list[str]]
-#         Dictionary where each key is a date, and the value is a list of active measures.
-#     """
-#     date_to_measures = defaultdict(list)
+    Returns
+    -------
+    list[tuple[list[str], date, date]]
+        A list of tuples containing (unique measure list, min date, max date).
+    """
+    boundaries = sorted(
+        {pt for _, (start, end) in planner.items() for pt in (start, end)}
+    )
+    subintervals = [
+        (boundaries[i], boundaries[i + 1]) for i in range(len(boundaries) - 1)
+    ]
 
-#     for measure, (start, end) in planner.items():
-#         for date in range(start, end + 1):  # Include both start and end date
-#             date_to_measures[date].append(measure)
-
-#     return dict(date_to_measures)
-
-
-# def _get_unique_measure_periods(
-#     date_to_measures: dict[Union[int, datetime.date], list[str]],
-# ) -> list[tuple[list[str], datetime.date, datetime.date]]:
-#     """Extract unique measure lists with their corresponding min and max date.
-
-#     Parameters
-#     ----------
-#     date_to_measures : dict[Union[int, date], list[str]]
-#         Dictionary where keys are dates (as int or datetime.date) and values are lists of active measures.
-
-#     Returns
-#     -------
-#     list[tuple[list[str], date, date]]
-#         A list of tuples containing (unique measure list, min date, max date).
-#     """
-#     # Convert all keys to datetime.date if they are integers
-#     if isinstance(list(date_to_measures.keys())[0], int):
-#         LOGGER.info("Found integer keys from planner dict, assuming they are years.")
-#         converted_dates = {
-#             datetime.date(d, 1, 1): measures for d, measures in date_to_measures.items()
-#         }
-#     elif isinstance(list(date_to_measures.keys())[0], datetime.date):
-#         converted_dates = {d: measures for d, measures in date_to_measures.items()}
-#     elif isinstance(list(date_to_measures.keys())[0], str):
-#         converted_dates = {
-#             datetime.date.fromisoformat(d): measures
-#             for d, measures in date_to_measures.items()
-#         }
-#     else:
-#         raise ValueError(
-#             "Planner dict must have years (int) or datetime.date or str date in iso format as keys."
-#         )
-
-#     sorted_dates = sorted(converted_dates.keys())  # Ensure chronological order
-#     unique_periods = []
-
-#     current_measures = None
-#     start_date = None
-
-#     for d in sorted_dates:
-#         measures = sorted(
-#             converted_dates[d]
-#         )  # Sorting ensures consistency in comparison
-
-#         if measures != current_measures:  # New unique set detected
-#             if current_measures is not None:  # Save the previous period
-#                 ## HERE WE NEED A FREQ OR SMTHG
-#                 unique_periods.append(
-#                     (current_measures, start_date, d - datetime.timedelta(days=1))
-#                 )
-
-#             # Start a new period
-#             current_measures = measures
-#             start_date = d
-
-#     # Add the last recorded period
-#     if current_measures is not None:
-#         unique_periods.append((current_measures, start_date, sorted_dates[-1]))
-
-#     return unique_periods
-
-
-# def _get_unique_measure_periods(
-#     date_to_measures: dict[int, list[str]],
-# ) -> list[tuple[list[str], int, int]]:
-#     """Extract unique measure lists with their corresponding min and max date.
-
-#     Parameters
-#     ----------
-#     date_to_measures : dict[int, list[str]]
-#         Dictionary where keys are dates and values are lists of active measures.
-
-#     Returns
-#     -------
-#     list[tuple[list[str], int, int]]
-#         A list of tuples containing (unique measure list, min date, max date).
-#     """
-#     sorted_dates = sorted(date_to_measures.keys())  # Ensure chronological order
-#     unique_periods = []
-
-#     current_measures = None
-#     start_date = None
-
-#     for date in sorted_dates:
-#         measures = sorted(
-#             date_to_measures[date]
-#         )  # Sorting ensures consistency in comparison
-
-#         if measures != current_measures:  # New unique set detected
-#             if current_measures is not None:  # Save the previous period
-#                 unique_periods.append((current_measures, start_date, date - 1))
-
-#             # Start a new period
-#             current_measures = measures
-#             start_date = date
-
-#     # Add the last recorded period
-#     if current_measures is not None:
-#         unique_periods.append((current_measures, start_date, sorted_dates[-1]))
-
-#     return unique_periods
+    return {
+        (s, e): [
+            key for key, (start, end) in planner.items() if start <= s and e <= end
+        ]
+        for s, e in subintervals
+    }
