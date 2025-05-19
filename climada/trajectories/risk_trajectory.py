@@ -173,6 +173,7 @@ class RiskTrajectory:
             next(b, None)
             return zip(a, b)
 
+        LOGGER.debug(f"{self.__class__.__name__}: Calc risk periods")
         # impfset = self._merge_impfset(snapshots)
         return [
             CalcRiskPeriod(
@@ -227,26 +228,25 @@ class RiskTrajectory:
         # Construct the attribute name for storing the metric results
         attr_name = f"_{metric_name}_metrics"
 
-        if getattr(self, attr_name, None) is None:
-            tmp = []
-            for calc_period in self.risk_periods:
-                # Call the specified method on the calc_period object
-                tmp.append(getattr(calc_period, metric_meth)(**kwargs))
+        tmp = []
+        for calc_period in self.risk_periods:
+            # Call the specified method on the calc_period object
+            tmp.append(getattr(calc_period, metric_meth)(**kwargs))
 
-            tmp = pd.concat(tmp)
-            tmp.drop_duplicates(inplace=True)
-            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
-            columns_to_front = ["group", "date", "measure", "metric"]
-            tmp = tmp[
-                columns_to_front
-                + [
-                    col
-                    for col in tmp.columns
-                    if col not in columns_to_front + ["group", "risk", "rp"]
-                ]
-                + ["risk"]
+        tmp = pd.concat(tmp)
+        tmp.drop_duplicates(inplace=True)
+        tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+        columns_to_front = ["group", "date", "measure", "metric"]
+        tmp = tmp[
+            columns_to_front
+            + [
+                col
+                for col in tmp.columns
+                if col not in columns_to_front + ["group", "risk", "rp"]
             ]
-            setattr(self, attr_name, tmp)
+            + ["risk"]
+        ]
+        setattr(self, attr_name, tmp)
 
         if npv:
             return self.npv_transform(getattr(self, attr_name), self.risk_disc)
@@ -271,40 +271,39 @@ class RiskTrajectory:
         )
         return df
 
-    def eai_metrics(self, npv: bool = True):
+    def eai_metrics(self, npv: bool = True, **kwargs):
         return self._compute_metrics(
-            npv=npv,
-            metric_name="eai",
-            metric_meth="calc_eai_gdf",
+            npv=npv, metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
         )
 
-    def aai_metrics(self, npv: bool = True):
+    def aai_metrics(self, npv: bool = True, **kwargs):
         return self._compute_metrics(
-            npv=npv,
-            metric_name="aai",
-            metric_meth="calc_aai_metric",
+            npv=npv, metric_name="aai", metric_meth="calc_aai_metric", **kwargs
         )
 
-    def return_periods_metrics(self, return_periods, npv: bool = True):
+    def return_periods_metrics(self, return_periods, npv: bool = True, **kwargs):
         return self._compute_metrics(
             npv=npv,
             metric_name="return_periods",
             metric_meth="calc_return_periods_metric",
             return_periods=return_periods,
+            **kwargs,
         )
 
-    def aai_per_group_metrics(self, npv: bool = True):
+    def aai_per_group_metrics(self, npv: bool = True, **kwargs):
         return self._compute_metrics(
             npv=npv,
             metric_name="aai_per_group",
             metric_meth="calc_aai_per_group_metric",
+            **kwargs,
         )
 
-    def risk_components_metrics(self, npv: bool = True):
+    def risk_components_metrics(self, npv: bool = True, **kwargs):
         return self._compute_metrics(
             npv=npv,
             metric_name="risk_components",
             metric_meth="calc_risk_components_metric",
+            **kwargs,
         )
 
     def per_date_risk_metrics(
