@@ -23,6 +23,7 @@ import copy
 import datetime as dt
 import itertools
 import logging
+from abc import ABC, abstractmethod
 
 import numpy as np
 import pandas as pd
@@ -33,7 +34,7 @@ from climada.util.value_representation import sig_dig as u_sig_dig
 LOGGER = logging.getLogger(__name__)
 
 
-class Calc:
+class Calc(ABC):
     """
     Base class for uncertainty quantification
 
@@ -80,6 +81,7 @@ class Calc:
     _metric_names = ()
     """Names of the output metrics"""
 
+    @abstractmethod
     def __init__(self):
         """
         Empty constructor to be overwritten by subclasses
@@ -422,6 +424,16 @@ class Calc:
         sens_output.sensitivity_kwargs = tuple(sensitivity_kwargs.items())
 
         return sens_output
+
+    @abstractmethod
+    def uncertainty(self):
+        """Compute the uncertainty of the output values"""
+        pass
+
+    @abstractmethod
+    def _compute_metrics(self):
+        """Compute the uncertainty of the output values"""
+        pass
 
 
 def _multiprocess_chunksize(samples_df, processes):
