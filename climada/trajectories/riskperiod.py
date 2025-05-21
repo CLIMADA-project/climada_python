@@ -45,6 +45,10 @@ from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
 
+logging.getLogger("climada.util.coordinates").setLevel(logging.WARNING)
+logging.getLogger("climada.entity.exposures.base").setLevel(logging.WARNING)
+logging.getLogger("climada.engine.impact_calc").setLevel(logging.WARNING)
+
 
 def lazy_property(method):
     # This function is used as a decorator for properties
@@ -111,7 +115,7 @@ class CalcRiskPeriod:
         risk_transf_cover: float | None = None,
         calc_residual: bool = False,
     ):
-        LOGGER.info("Instantiating new CalcRiskPeriod.")
+        LOGGER.debug("Instantiating new CalcRiskPeriod.")
         self._snapshot0 = snapshot0
         self._snapshot1 = snapshot1
         self.date_idx = CalcRiskPeriod._set_date_idx(
