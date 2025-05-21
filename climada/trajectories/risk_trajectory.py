@@ -274,7 +274,11 @@ class RiskTrajectory:
             tmp.append(getattr(calc_period, metric_meth)(**kwargs))
 
         tmp = pd.concat(tmp)
-        tmp.drop_duplicates(inplace=True)
+        tmp = tmp.set_index(["date", "group", "measure", "metric"])
+        tmp = tmp[
+            ~tmp.index.duplicated(keep="last")
+        ]  # We want to avoid overlap when more than 2 snapshots
+        tmp = tmp.reset_index()
         tmp["group"] = tmp["group"].fillna(self._all_groups_name)
         columns_to_front = ["group", "date", "measure", "metric"]
         tmp = tmp[
