@@ -16,7 +16,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This modules implements the Snapshot and SnapshotsCollection classes.
+This modules implements the CalcRiskPeriod class.
+
+CalcRiskPeriod are used to compute risk metrics (and intermediate requirements)
+in between two snapshots.
+
+As these computations are not always required and can become "heavy", a so called "lazy"
+approach is used: computation is only done when required, and then stored.
 
 """
 
@@ -212,7 +218,7 @@ class CalcRiskPeriod:
         if not isinstance(value, pd.DatetimeIndex):
             raise ValueError("Not a DatetimeIndex")
 
-        self._date_idx = value.normalize()
+        self._date_idx = value.normalize()  # Avoids weird hourly data
         self._time_points = len(self.date_idx)
         self._interval_freq = pd.infer_freq(self.date_idx)
         self._prop_H1 = np.linspace(0, 1, num=self.time_points)

@@ -16,6 +16,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
+This file implements risk trajectory objects, to allow a better evaluation
+of risk in between two points in time (snapshots).
+
 """
 
 import datetime
