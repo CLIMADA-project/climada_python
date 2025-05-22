@@ -134,8 +134,16 @@ class CalcRiskPeriod:
         self.calc_residual = calc_residual
         self.measure = None  # Only possible to set with apply_measure to make sure snapshots are consistent
 
-        self._group_id_E0 = self.snapshot0.exposure.gdf["group_id"].values
-        self._group_id_E1 = self.snapshot1.exposure.gdf["group_id"].values
+        self._group_id_E0 = (
+            self.snapshot0.exposure.gdf["group_id"].values
+            if "group_id" in self.snapshot0.exposure.gdf.columns
+            else np.array([])
+        )
+        self._group_id_E1 = (
+            self.snapshot1.exposure.gdf["group_id"].values
+            if "group_id" in self.snapshot1.exposure.gdf.columns
+            else np.array([])
+        )
 
     def _reset_impact_data(self):
         self._impacts_arrays = None
