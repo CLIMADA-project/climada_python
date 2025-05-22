@@ -113,27 +113,28 @@ class MeasuresAppraiser(RiskTrajectory):
         **kwargs,
     ):
         base_metrics = super()._generic_metrics(npv, metric_name, metric_meth, **kwargs)
-        base_metrics = self._calc_averted(base_metrics)
-        no_measures = base_metrics[base_metrics["measure"] == "no_measure"].copy()
-        no_measures["reference risk"] = no_measures["risk"]
-        no_measures["averted risk"] = 0.0
-        no_measures["measure net cost"] = 0.0
-        no_measures["measure cost benefit"] = 0.0
-        cash_flow_metrics = self._calc_per_measure_annual_cash_flows()
-        base_metrics = base_metrics.merge(
-            cash_flow_metrics[["date", "measure", "measure net cost"]],
-            on=["measure", "date"],
-        )
-        base_metrics = pd.concat([no_measures, base_metrics])
+        if base_metrics is not None:
+            base_metrics = self._calc_averted(base_metrics)
+            no_measures = base_metrics[base_metrics["measure"] == "no_measure"].copy()
+            no_measures["reference risk"] = no_measures["risk"]
+            no_measures["averted risk"] = 0.0
+            no_measures["measure net cost"] = 0.0
+            no_measures["measure cost benefit"] = 0.0
+            cash_flow_metrics = self._calc_per_measure_annual_cash_flows()
+            base_metrics = base_metrics.merge(
+                cash_flow_metrics[["date", "measure", "measure net cost"]],
+                on=["measure", "date"],
+            )
+            base_metrics = pd.concat([no_measures, base_metrics])
 
-        averted_risk = base_metrics["averted risk"]
-        cash_flow_metrics = base_metrics["measure net cost"]
-        base_metrics["measure cost benefit"] = averted_risk - cash_flow_metrics
+            averted_risk = base_metrics["averted risk"]
+            cash_flow_metrics = base_metrics["measure net cost"]
+            base_metrics["measure cost benefit"] = averted_risk - cash_flow_metrics
 
-        if measures is not None:
-            base_metrics = base_metrics.loc[
-                base_metrics["measure"].isin(measures)
-            ].reset_index()
+            if measures is not None:
+                base_metrics = base_metrics.loc[
+                    base_metrics["measure"].isin(measures)
+                ].reset_index()
 
         return base_metrics
 
