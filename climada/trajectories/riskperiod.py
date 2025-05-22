@@ -570,6 +570,9 @@ class CalcRiskPeriod:
             df["group"] = group
             aai_per_group_df.append(df)
 
+        # If no groups defined
+        if not aai_per_group_df:
+            return None
         aai_per_group_df = pd.concat(aai_per_group_df)
         aai_per_group_df["metric"] = "aai"
         aai_per_group_df["measure"] = (
