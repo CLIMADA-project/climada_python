@@ -273,6 +273,9 @@ class RiskTrajectory:
             # Call the specified method on the calc_period object
             tmp.append(getattr(calc_period, metric_meth)(**kwargs))
 
+        # Notably for per_group_aai being None:
+        if not tmp:
+            return None
         tmp = pd.concat(tmp)
         tmp = tmp.set_index(["date", "group", "measure", "metric"])
         tmp = tmp[
