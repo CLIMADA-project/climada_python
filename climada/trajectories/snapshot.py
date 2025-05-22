@@ -16,7 +16,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This modules implements the Snapshot and SnapshotsCollection classes.
+This modules implements the Snapshot class.
+
+Snapshot are used to store the a snapshot of Exposure, Hazard, Vulnerability
+at a specific date.
 
 """
 

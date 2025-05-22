@@ -16,6 +16,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
+This file implements risk trajectory objects, to allow a better evaluation
+of risk in between two points in time (snapshots).
+
 """
 
 import datetime
@@ -106,6 +109,13 @@ class RiskTrajectory:
 
     @property
     def default_rp(self):
+        """The default return period values to use when computing risk period metrics.
+
+        Notes
+        -----
+
+        Changing its value resets the corresponding metric.
+        """
         return self._default_rp
 
     @default_rp.setter
@@ -120,7 +130,14 @@ class RiskTrajectory:
 
     @property
     def risk_transf_cover(self):
-        """The risk transfer coverage."""
+        """The risk transfer coverage.
+
+        Notes
+        -----
+
+        Changing its  value resets the risk metrics.
+        """
+
         return self._risk_transf_cover
 
     @risk_transf_cover.setter
@@ -131,7 +148,14 @@ class RiskTrajectory:
 
     @property
     def risk_transf_attach(self):
-        """The risk transfer attachment."""
+        """The risk transfer attachment.
+
+        Notes
+        -----
+
+        Changing its  value resets the risk metrics.
+        """
+
         return self._risk_transf_attach
 
     @risk_transf_attach.setter
@@ -190,11 +214,27 @@ class RiskTrajectory:
         ]
 
     @classmethod
-    def npv_transform(cls, df: pd.DataFrame, risk_disc) -> pd.DataFrame:
+    def npv_transform(cls, df: pd.DataFrame, risk_disc: DiscRates) -> pd.DataFrame:
+        """Apply discount rate to a metric `DataFrame`.
+
+        Parameters
+        ----------
+        df : pd.DataFrame
+            The `DataFrame` of the metric to discount.
+        risk_disc : DiscRate
+            The discount rate to apply.
+
+        Returns
+        -------
+        pd.DataFrame
+            The discounted risk metric.
+
+
+        """
+
         def _npv_group(group, disc):
             start_date = group.index.get_level_values("date").min()
-            end_date = group.index.get_level_values("date").max()
-            return calc_npv_cash_flows(group, start_date, end_date, disc)
+            return calc_npv_cash_flows(group, start_date, disc)
 
         df = df.set_index("date")
         grouper = cls._grouper
@@ -234,7 +274,11 @@ class RiskTrajectory:
             tmp.append(getattr(calc_period, metric_meth)(**kwargs))
 
         tmp = pd.concat(tmp)
-        tmp.drop_duplicates(inplace=True)
+        tmp = tmp.set_index(["date", "group", "measure", "metric"])
+        tmp = tmp[
+            ~tmp.index.duplicated(keep="last")
+        ]  # We want to avoid overlap when more than 2 snapshots
+        tmp = tmp.reset_index()
         tmp["group"] = tmp["group"].fillna(self._all_groups_name)
         columns_to_front = ["group", "date", "measure", "metric"]
         tmp = tmp[
@@ -272,11 +316,39 @@ class RiskTrajectory:
         return df
 
     def eai_metrics(self, npv: bool = True, **kwargs):
+        """Return the estimatated annual impacts at each exposure point for each date.
+
+        This method computes and return a `GeoDataFrame` with eai metric
+        (for each exposure point) for each date.
+
+        Parameters
+        ----------
+        npv : bool
+            Whether to apply the (risk) discount rate if it is defined.
+            Defaults to `True`.
+
+        Notes
+        -----
+
+        This computation may become quite expensive for big areas with high resolution.
+
+        """
         return self._compute_metrics(
             npv=npv, metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
         )
 
     def aai_metrics(self, npv: bool = True, **kwargs):
+        """Return the average annual impacts for each date.
+
+        This method computes and return a `DataFrame` with aai metric for each date.
+
+        Parameters
+        ----------
+        npv : bool
+            Whether to apply the (risk) discount rate if it is defined.
+            Defaults to `True`.
+        """
+
         return self._compute_metrics(
             npv=npv, metric_name="aai", metric_meth="calc_aai_metric", **kwargs
         )
@@ -291,6 +363,18 @@ class RiskTrajectory:
         )
 
     def aai_per_group_metrics(self, npv: bool = True, **kwargs):
+        """Return the average annual impacts for each exposure group ID.
+
+        This method computes and return a `DataFrame` with aai metric for each
+        of the exposure group defined by a group id, for each date.
+
+        Parameters
+        ----------
+        npv : bool
+            Whether to apply the (risk) discount rate if it is defined.
+            Defaults to `True`.
+        """
+
         return self._compute_metrics(
             npv=npv,
             metric_name="aai_per_group",
@@ -299,6 +383,24 @@ class RiskTrajectory:
         )
 
     def risk_components_metrics(self, npv: bool = True, **kwargs):
+        """Return the "components" of change in future risk (Exposure and Hazard)
+
+        This method returns the components of the change in risk at each date:
+
+           - The base risk, i.e., the risk without change in hazard or exposure, compared to trajectory earliest date.
+           - The "delta from exposure", i.e., the additional risks that come with change in exposure
+           - The "delta from hazard", i.e., the additional risks that come with change in hazard
+
+        Due to how computations are being done the "delta from exposure" corresponds to the change of risk due to change in exposure while hazard remains constant to "baseline hazard", while "delta from hazard" corresponds to the change of risk due to change in hazard, while exposure remains constant to **future** exposure.
+
+        Parameters
+        ----------
+        npv : bool
+            Whether to apply the (risk) discount rate if it is defined.
+            Defaults to `True`.
+
+        """
+
         return self._compute_metrics(
             npv=npv,
             metric_name="risk_components",
@@ -312,6 +414,30 @@ class RiskTrajectory:
         return_periods: list[int] | None = None,
         npv: bool = True,
     ) -> pd.DataFrame | pd.Series:
+        """Returns a DataFrame of risk metrics for each dates
+
+        This methods collects (and if needed computes) the `metrics`
+        (Defaulting to "aai", "return_periods" and "aai_per_group").
+
+        Parameters
+        ----------
+        metrics : list[str], optional
+            The list of metrics to return (defaults to
+            ["aai","return_periods","aai_per_group"])
+        return_periods : list[int], optional
+            The return periods to consider for the return periods metric
+            (default to the value of the `.default_rp` attribute)
+        npv : bool
+            Whether to apply the (risk) discount rate if it was defined
+            when instantiating the trajectory. Defaults to `True`.
+
+        Returns
+        -------
+        pd.DataFrame | pd.Series
+            A tidy DataFrame with metrics value for all possible dates.
+
+        """
+
         metrics_df = []
         metrics = (
             ["aai", "return_periods", "aai_per_group"] if metrics is None else metrics
@@ -578,19 +704,34 @@ and hazard compared to risk with future exposure and present hazard.""",
 def calc_npv_cash_flows(
     cash_flows: pd.DataFrame,
     start_date: datetime.date,
-    end_date: datetime.date | None = None,
     disc: DiscRates | None = None,
 ):
-    # If no discount rates are provided, return the cash flows as is
+    """Apply discount rate to cash flows
+
+    If it is defined, applies a discount rate `disc` to a given cash flow
+    `cash_flows` assuming present year corresponds to `start_date`.
+
+    Parameters
+    ----------
+    cash_flows : pd.DataFrame
+        The cash flow to apply the discount rate to
+    start_date : datetime.date
+        The date representing the present
+    end_date : datetime.date, optional
+    disc : DiscRates, optional
+        The discount rate to apply
+
+    Returns
+    -------
+
+    A dataframe (copy) of `cash_flows` where values are discounted according to `disc`
+    """
+
     if not disc:
         return cash_flows
 
     if not isinstance(cash_flows.index, pd.DatetimeIndex):
         raise ValueError("cash_flows must be a pandas Series with a datetime index")
-
-    # Determine the end date if not provided
-    if end_date is None:
-        end_date = cash_flows.index[-1]
 
     df = cash_flows.to_frame(name="cash_flow")
     df["year"] = df.index.year

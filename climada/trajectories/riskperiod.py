@@ -16,7 +16,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This modules implements the Snapshot and SnapshotsCollection classes.
+This modules implements the CalcRiskPeriod class.
+
+CalcRiskPeriod are used to compute risk metrics (and intermediate requirements)
+in between two snapshots.
+
+As these computations are not always required and can become "heavy", a so called "lazy"
+approach is used: computation is only done when required, and then stored.
 
 """
 
@@ -38,6 +44,10 @@ from climada.trajectories.interpolation import (
 from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
+
+logging.getLogger("climada.util.coordinates").setLevel(logging.WARNING)
+logging.getLogger("climada.entity.exposures.base").setLevel(logging.WARNING)
+logging.getLogger("climada.engine.impact_calc").setLevel(logging.WARNING)
 
 
 def lazy_property(method):
@@ -105,7 +115,7 @@ class CalcRiskPeriod:
         risk_transf_cover: float | None = None,
         calc_residual: bool = False,
     ):
-        LOGGER.info("Instantiating new CalcRiskPeriod.")
+        LOGGER.debug("Instantiating new CalcRiskPeriod.")
         self._snapshot0 = snapshot0
         self._snapshot1 = snapshot1
         self.date_idx = CalcRiskPeriod._set_date_idx(
@@ -124,8 +134,16 @@ class CalcRiskPeriod:
         self.calc_residual = calc_residual
         self.measure = None  # Only possible to set with apply_measure to make sure snapshots are consistent
 
-        self._group_id_E0 = self.snapshot0.exposure.gdf["group_id"].values
-        self._group_id_E1 = self.snapshot1.exposure.gdf["group_id"].values
+        self._group_id_E0 = (
+            self.snapshot0.exposure.gdf["group_id"].values
+            if "group_id" in self.snapshot0.exposure.gdf.columns
+            else np.array([])
+        )
+        self._group_id_E1 = (
+            self.snapshot1.exposure.gdf["group_id"].values
+            if "group_id" in self.snapshot1.exposure.gdf.columns
+            else np.array([])
+        )
 
     def _reset_impact_data(self):
         self._impacts_arrays = None
@@ -212,7 +230,7 @@ class CalcRiskPeriod:
         if not isinstance(value, pd.DatetimeIndex):
             raise ValueError("Not a DatetimeIndex")
 
-        self._date_idx = value.normalize()
+        self._date_idx = value.normalize()  # Avoids weird hourly data
         self._time_points = len(self.date_idx)
         self._interval_freq = pd.infer_freq(self.date_idx)
         self._prop_H1 = np.linspace(0, 1, num=self.time_points)
