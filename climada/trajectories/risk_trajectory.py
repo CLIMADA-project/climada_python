@@ -274,31 +274,36 @@ class RiskTrajectory:
             tmp.append(getattr(calc_period, metric_meth)(**kwargs))
 
         # Notably for per_group_aai being None:
-        if not tmp:
-            return None
-        tmp = pd.concat(tmp)
-        tmp = tmp.set_index(["date", "group", "measure", "metric"])
-        tmp = tmp[
-            ~tmp.index.duplicated(keep="last")
-        ]  # We want to avoid overlap when more than 2 snapshots
-        tmp = tmp.reset_index()
-        tmp["group"] = tmp["group"].fillna(self._all_groups_name)
-        columns_to_front = ["group", "date", "measure", "metric"]
-        tmp = tmp[
-            columns_to_front
-            + [
-                col
-                for col in tmp.columns
-                if col not in columns_to_front + ["group", "risk", "rp"]
+        try:
+            tmp = pd.concat(tmp)
+        except ValueError as e:
+            if str(e) == "All objects passed were None":
+                return None
+            else:
+                raise e
+        else:
+            tmp = tmp.set_index(["date", "group", "measure", "metric"])
+            tmp = tmp[
+                ~tmp.index.duplicated(keep="last")
+            ]  # We want to avoid overlap when more than 2 snapshots
+            tmp = tmp.reset_index()
+            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+            columns_to_front = ["group", "date", "measure", "metric"]
+            tmp = tmp[
+                columns_to_front
+                + [
+                    col
+                    for col in tmp.columns
+                    if col not in columns_to_front + ["group", "risk", "rp"]
+                ]
+                + ["risk"]
             ]
-            + ["risk"]
-        ]
-        setattr(self, attr_name, tmp)
+            setattr(self, attr_name, tmp)
 
-        if npv:
-            return self.npv_transform(getattr(self, attr_name), self.risk_disc)
+            if npv:
+                return self.npv_transform(getattr(self, attr_name), self.risk_disc)
 
-        return getattr(self, attr_name)
+            return getattr(self, attr_name)
 
     def _compute_period_metrics(
         self, metric_name: str, metric_meth: str, npv: bool = True, **kwargs
