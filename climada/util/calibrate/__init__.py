@@ -26,4 +26,9 @@ from .bayesian_optimizer import (
     BayesianOptimizerOutputEvaluator,
     select_best,
 )
+from .ensemble import (
+    AverageEnsembleOptimizer,
+    EnsembleOptimizerOutput,
+    TragedyEnsembleOptimizer,
+)
 from .scipy_optimizer import ScipyMinimizeOptimizer
