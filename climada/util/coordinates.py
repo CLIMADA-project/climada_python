@@ -2635,12 +2635,12 @@ def refine_raster_data(data, transform, res, method="linear", fill_value=0):
 
 
 def read_vector(file_name, field_name, dst_crs=None):
-    """Read vector file format supported by fiona.
+    """Read vector file format supported by GeoPandas.
 
     Parameters
     ----------
     file_name : str
-        vector file with format supported by fiona and 'geometry' field.
+        vector file with format supported by GeoPandas and 'geometry' field.
     field_name : list(str)
         list of names of the columns with values.
     dst_crs : crs, optional

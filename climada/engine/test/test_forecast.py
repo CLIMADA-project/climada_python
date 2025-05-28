@@ -23,7 +23,6 @@ import datetime as dt
 import unittest
 from pathlib import Path
 
-import fiona
 import geopandas as gpd
 import matplotlib.pyplot as plt
 import numpy as np
@@ -147,12 +146,12 @@ class TestPlot(unittest.TestCase):
         adm1_shape_file = shapereader.natural_earth(
             resolution="10m", category="cultural", name="admin_1_states_provinces"
         )
+
         if not cantons_file.exists():
-            with fiona.open(adm1_shape_file, "r") as source:
-                with fiona.open(cantons_file, "w", **source.meta) as sink:
-                    for f in source:
-                        if f["properties"]["adm0_a3"] == "CHE":
-                            sink.write(f)
+            source = gpd.read_file(adm1_shape_file)
+            cantons_data = source[source["adm0_a3"] == "CHE"]
+            cantons_data.to_file(cantons_file)
+
         ## test plotting functions
         # should save plot without failing
         forecast.plot_imp_map(

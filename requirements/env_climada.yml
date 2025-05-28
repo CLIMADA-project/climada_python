@@ -10,7 +10,7 @@ dependencies:
   - dask>=2025.2
   - eccodes>=2.40
   - gdal>=3.10
-  - geopandas>=0.14,<1.0  # geopandas 1.0 does not depend on fiona anymore, hence fiona would need to be added as dependency
+  - geopandas>=0.14
   - h5py>=3.12
   - haversine>=2.9
   - matplotlib-base>=3.10

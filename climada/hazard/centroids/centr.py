@@ -820,12 +820,12 @@ class Centroids:
 
     @classmethod
     def from_vector_file(cls, file_name, dst_crs=None):
-        """Create Centroids object from vector file (any format supported by fiona).
+        """Create Centroids object from vector file (any format supported by GeoPandas).
 
         Parameters
         ----------
         file_name : str
-            vector file with format supported by fiona and 'geometry' field.
+            vector file with format supported by GeoPandas and 'geometry' field.
         dst_crs : crs, optional
             reproject to given crs
             If no crs is given in the file, simply sets the crs.
