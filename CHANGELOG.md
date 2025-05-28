@@ -30,6 +30,7 @@ Removed:
 ### Fixed
 
 - NaN plotting issues in `geo_im_from_array`[#1038](https://github.com/CLIMADA-project/climada_python/pull/1038)
+- Broken ECMWF links in pydoc of `climada.hazard.storm_europe` relocated. [#944](https://github.com/CLIMADA-project/climada_python/pull/944)
 
 ### Deprecated
 
