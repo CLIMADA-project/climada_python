@@ -19,6 +19,8 @@ Removed:
 `plot_intensity`, `plot_fraction`, `_event_plot` to mask plotting when regions are too far from data points [#1047](https://github.com/CLIMADA-project/climada_python/pull/1047). To recreate previous plots (no masking), the parameter can be set to None.
 - Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
 
+- `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
+
 ### Changed
 
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, `Impact.local_return_period`, using the `climada.util.interpolation` module: New default (no binning), binning on decimals, and faster implementation [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
