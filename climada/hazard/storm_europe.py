@@ -61,10 +61,15 @@ N_PROB_EVENTS = 5 * 6
 class StormEurope(Hazard):
     """A hazard set containing european winter storm events. Historic storm
     events can be downloaded at https://cds.climate.copernicus.eu/ and read
-    with `from_footprints`. Weather forecasts can be automatically downloaded from
-    https://opendata.dwd.de/ and read with from_icon_grib(). Weather forecast
+    with :meth:`from_footprints`. Weather forecasts can be automatically downloaded from
+    https://opendata.dwd.de/ and read with :meth:`from_icon_grib`. Weather forecast
     from the COSMO-Consortium https://www.cosmo-model.org/ can be read with
-    from_cosmoe_file().
+    :meth:`from_cosmoe_file`.
+
+    Direct links to CDS data:
+
+    * Winter windstorm indicators (1979 to 2021): https://doi.org/10.24381/cds.9b4ea013
+    * Synthetic windstorm events (1986 to 2011): https://doi.org/10.24381/cds.ce973f02
 
     Attributes
     ----------
