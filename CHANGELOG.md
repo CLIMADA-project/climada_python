@@ -13,6 +13,7 @@ Code freeze date: YYYY-MM-DD
 Removed:
 
 - `pandas-datareader`
+- `fiona`
 
 ### Added
 - Added optional parameter to `geo_im_from_array`, `plot_from_gdf`, `plot_rp_imp`, `plot_rp_intensity`,
@@ -24,6 +25,7 @@ Removed:
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, `Impact.local_return_period`, using the `climada.util.interpolation` module: New default (no binning), binning on decimals, and faster implementation [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
 - World Bank indicator data is now downloaded directly from their API via the function `download_world_bank_indicator`, instead of relying on the `pandas-datareader` package [#1033](https://github.com/CLIMADA-project/climada_python/pull/1033)
 - `Exposures.write_hdf5` pickles geometry data in WKB format, which is faster and more sustainable. [#1051](https://github.com/CLIMADA-project/climada_python/pull/1051)
+- CLIMADA does not make explicit use of `fiona` anymore [#1057](https://github.com/CLIMADA-project/climada_python/pull/1057)
 
 ### Fixed
 
