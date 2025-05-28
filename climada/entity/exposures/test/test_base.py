@@ -378,11 +378,14 @@ class TestIO(unittest.TestCase):
 
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
-        exp_df = Exposures(pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632")
-        exp_df.check()
+        exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632")
+
         # set metadata
-        exp_df.ref_year = 2020
-        exp_df.value_unit = "XSD"
+        exp.ref_year = 2020
+        exp.value_unit = "XSD"
+
+        # add another geometry column
+        exp.data["geocol2"] = exp.data.geometry.copy(deep=True)
 
         file_name = DATA_DIR.joinpath("test_hdf5_exp.h5")
 
@@ -392,46 +395,51 @@ class TestIO(unittest.TestCase):
 
         with warnings.catch_warnings():
             warnings.simplefilter("error", category=pd.errors.PerformanceWarning)
-            exp_df.write_hdf5(file_name)
+            exp.write_hdf5(file_name=file_name)
 
         exp_read = Exposures.from_hdf5(file_name)
 
-        self.assertEqual(exp_df.ref_year, exp_read.ref_year)
-        self.assertEqual(exp_df.value_unit, exp_read.value_unit)
-        self.assertEqual(exp_df.description, exp_read.description)
-        np.testing.assert_array_equal(exp_df.latitude, exp_read.latitude)
-        np.testing.assert_array_equal(exp_df.longitude, exp_read.longitude)
-        np.testing.assert_array_equal(exp_df.value, exp_read.value)
+        self.assertEqual(exp.ref_year, exp_read.ref_year)
+        self.assertEqual(exp.value_unit, exp_read.value_unit)
+        self.assertEqual(exp.description, exp_read.description)
+        np.testing.assert_array_equal(exp.latitude, exp_read.latitude)
+        np.testing.assert_array_equal(exp.longitude, exp_read.longitude)
+        np.testing.assert_array_equal(exp.value, exp_read.value)
         np.testing.assert_array_equal(
-            exp_df.data["deductible"].values, exp_read.data["deductible"].values
+            exp.data["deductible"].values, exp_read.data["deductible"].values
         )
         np.testing.assert_array_equal(
-            exp_df.data["cover"].values, exp_read.data["cover"].values
+            exp.data["cover"].values, exp_read.data["cover"].values
         )
         np.testing.assert_array_equal(
-            exp_df.data["region_id"].values, exp_read.data["region_id"].values
+            exp.data["region_id"].values, exp_read.data["region_id"].values
         )
         np.testing.assert_array_equal(
-            exp_df.data["category_id"].values, exp_read.data["category_id"].values
+            exp.data["category_id"].values, exp_read.data["category_id"].values
         )
         np.testing.assert_array_equal(
-            exp_df.data["impf_TC"].values, exp_read.data["impf_TC"].values
+            exp.data["impf_TC"].values, exp_read.data["impf_TC"].values
         )
         np.testing.assert_array_equal(
-            exp_df.data["centr_TC"].values, exp_read.data["centr_TC"].values
+            exp.data["centr_TC"].values, exp_read.data["centr_TC"].values
         )
         np.testing.assert_array_equal(
-            exp_df.data["impf_FL"].values, exp_read.data["impf_FL"].values
+            exp.data["impf_FL"].values, exp_read.data["impf_FL"].values
         )
         np.testing.assert_array_equal(
-            exp_df.data["centr_FL"].values, exp_read.data["centr_FL"].values
+            exp.data["centr_FL"].values, exp_read.data["centr_FL"].values
         )
 
         self.assertTrue(
-            u_coord.equal_crs(exp_df.crs, exp_read.crs),
-            f"{exp_df.crs} and {exp_read.crs} are different",
+            u_coord.equal_crs(exp.crs, exp_read.crs),
+            f"{exp.crs} and {exp_read.crs} are different",
         )
-        self.assertTrue(u_coord.equal_crs(exp_df.gdf.crs, exp_read.gdf.crs))
+        self.assertTrue(u_coord.equal_crs(exp.data.crs, exp_read.data.crs))
+
+        self.assertTrue(exp_read.data["geocol2"].dtype == "geometry")
+        np.testing.assert_array_equal(
+            exp.data["geocol2"].geometry, exp_read.data["geocol2"].values
+        )
 
 
 class TestAddSea(unittest.TestCase):
