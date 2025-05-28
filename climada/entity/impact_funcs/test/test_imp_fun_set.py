@@ -20,6 +20,7 @@ Test ImpactFuncSet class.
 """
 
 import unittest
+from copy import deepcopy
 
 import numpy as np
 
