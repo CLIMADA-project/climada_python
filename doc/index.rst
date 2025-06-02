@@ -7,7 +7,7 @@ Welcome to CLIMADA!
 .. card:: CLIMADA (CLIMate ADAptation)
    :text-align: center
    :width: 75%
-   :margin: auto
+   :margin: 2 2 auto auto
 
    CLIMADA is a free and open-source software framework for climate risk assessment and
    adaptation option appraisal.
