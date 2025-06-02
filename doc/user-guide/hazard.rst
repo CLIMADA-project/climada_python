@@ -2,7 +2,7 @@
 Hazard Tutorials
 ================
 
-These guides present the `Hazard` class as well as subclasses 
+These guides present the `Hazard` class as well as subclasses
 that handle tropical cyclones and winter storms more specifically.
 
 .. toctree::
