@@ -1285,8 +1285,8 @@ def reproject_input_data(
         ...     'height': 1939,
         ...     'count': 1,
         ...     'crs': CRS.from_epsg(4326),
-        ...     'transform': Affine(0.00833333333333333, 0.0, -18.175000000000068,
-        ...                         0.0, -0.00833333333333333, 43.79999999999993),
+        ...     'transform': Affine(30/3600, 0.0, -18.175,
+        ...                         0.0, -30/3600, 43.8),
         ... }
 
         The meta data with the reference grid used to define the global destination
