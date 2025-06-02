@@ -45,11 +45,29 @@ Windows
 * Download the Windows installer at the Install section from `Miniforge`_.
 * Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
 
+.. _python-versions:
+
+.. admonition:: Python Versions
+
+   CLIMADA is primarily tested against a **supported** Python version, but is allowed to run with others.
+   If you follow the installation instructions exactly, you will create an environment with the supported version.
+   Depending on your setup, you are free to choose another allowed version, but we recommend the supported one.
+
+   .. list-table::
+      :width: 60%
+
+      * - **Supported Version**
+        - ``3.11``
+      * - Allowed Versions
+        - ``3.10``, ``3.11``, ``3.12``
+
 .. _install-choice:
 
 ---------------------------------------
 Decide on Your Entry Level!
 ---------------------------------------
+
+.. hint:: When mentioning the terms "terminal" or "command line" in the following, we are referring to the "Terminal" apps on macOS or Linux and the "Miniforge Prompt" on Windows.
 
 Depening on your level of expertise, we provide two different approaches:
 
@@ -183,18 +201,7 @@ For advanced Python users or developers of CLIMADA, cloning the CLIMADA reposito
       Use the wildcard ``.*`` at the end to allow a downgrade of the bugfix version of Python.
       This increases compatibility when installing the requirements in the next step.
 
-   .. note::
-
-      CLIMADA can be installed for different Python versions.
-      If you want to use a different version, replace the version specification in the command above with another allowed version.
-
-      .. list-table::
-         :width: 60%
-
-         * - **Supported Version**
-           - ``3.11``
-         * - Allowed Versions
-           - ``3.10``, ``3.11``
+   .. note:: You may choose any of the  :ref:`allowed Python versions <python-versions>` from the list above.
 
 #. Use the default environment specs in ``env_climada.yml`` to install all dependencies.
    Then activate the environment:

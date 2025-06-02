@@ -60,7 +60,7 @@ setup(
         "Topic :: Scientific/Engineering :: Mathematics",
     ],
     keywords="climate adaptation",
-    python_requires=">=3.10,<3.12",
+    python_requires=">=3.10,<3.13",
     install_requires=[
         "bayesian-optimization<2.0",
         "bottleneck",
@@ -78,7 +78,6 @@ setup(
         "openpyxl",
         "overpy",
         "pandas",
-        "pandas-datareader",
         "pathos",
         "peewee",
         "pillow",
