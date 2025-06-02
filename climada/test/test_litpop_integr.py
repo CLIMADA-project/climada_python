@@ -170,9 +170,6 @@ class TestLitPopExposures(unittest.TestCase):
         self.assertAlmostEqual(ent.value.sum(), 1000.0)
         self.assertEqual(ent.value.min(), 0.0)
         self.assertAlmostEqual(ent.value.max(), 5.058, places=4)
-        # Note: up to climada 6.0 this value used to be 5.05792616746308, then 5.058035160766561.
-        # The discrepancy assumedly caused by rounding differences of the slightly changed
-        # calculation procedure.
         self.assertEqual(ent.region_id.min(), 756)
         self.assertEqual(ent.region_id.max(), 756)
         self.assertAlmostEqual(ent.latitude.min(), 47.2 + 15 / 3600)
@@ -180,8 +177,6 @@ class TestLitPopExposures(unittest.TestCase):
         self.assertEqual(
             ent.gdf.loc[ent.gdf["value"] == ent.gdf["value"].max()].index[0], 434
         )
-        # Note: up to climada 6.0 this index used to be 482, because of its then irregular order.
-        # Specifically: the dataframe started at 36 and then skipped 71, 107, 143, etc.
         self.assertAlmostEqual(
             ent.gdf.loc[ent.gdf["value"] == ent.gdf["value"].max()].geometry.y.values[
                 0
