@@ -330,7 +330,7 @@ class TCTracks:
         """Subset TCTracks between start and end dates, both included.
 
         Parameters:
-        ----------
+        -----------
         start_date: tuple
             First date to include in the selection (YYYY, MM, DD). Each element can either
             be an integer or `False`. If an element is `False`, it is ignored during the filter.
