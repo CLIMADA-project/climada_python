@@ -21,6 +21,8 @@ You are good to go!
 
    You don't have mamba or conda installed or you are looking for advanced installation instructions? Look up our :doc:`detailed instructions <install>` on CLIMADA installation.
 
+Climada in a Nutshell
+---------------------
 
 .. dropdown:: How does CLIMADA compute impacts ?
    :color: primary
@@ -107,5 +109,4 @@ You are good to go!
    Navigate this documentation <Guide_get_started>
    Introduction <Guide_Introduction>
    Installation instructions <install>
-   How to cite CLIMADA <../misc/citation>
    Python introduction <0_intro_python>

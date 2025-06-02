@@ -28,6 +28,8 @@ adaptation options. Modules for generating different types of hazards and other
 specialized applications can be found in the `CLIMADA Petals
 <https://climada-petals.readthedocs.io/en/stable/>`_ module.
 
+**Useful links:** `WCR Group <https://wcr.ethz.ch/>`_ | `CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>`_ | `CLIMADA website <https://climada.ethz.ch>`_ | `Mailing list <https://sympa.ethz.ch/sympa/info/climada-users>`_
+
 .. grid:: 1 2 2 2
     :gutter: 4
     :padding: 2 2 0 0
@@ -136,6 +138,3 @@ specialized applications can be found in the `CLIMADA Petals
    Developer Guide <development/index>
    API Reference <api/index>
    Changelog <misc/CHANGELOG>
-   CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>
-   WCR Group <https://wcr.ethz.ch/>
-   CLIMADA Website <https://climada.ethz.ch>
