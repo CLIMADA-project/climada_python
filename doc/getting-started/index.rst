@@ -5,13 +5,13 @@ Getting started
 Quick Installation
 --------------------
 
+The simple CLIMADA installation only requires the `mamba` (or `conda`) python environment manager (look :ref:`here <install-manager>`).
 
-
-Are you already working with mamba or conda? proceed to install CLIMADA by executing the following line in the terminal::
+If you are already working with mamba or conda, you can install CLIMADA by executing the following line in the terminal:
 
     mamba create -n climada_env -c conda-forge climada
 
-Each time you will want to work with CLIMADA, simply activate the environnment::
+Each time you will want to work with CLIMADA, simply activate the environment::
 
     mamba activate climada_env
 
@@ -19,9 +19,9 @@ You are good to go!
 
 .. seealso::
 
-   You don't have mamba or conda installed or you are looking for advanced installation instructions? Look up our :doc:`detailed instructions <install>` on CLIMADA installation.
+   You don't have mamba or conda installed, or you are looking for advanced installation instructions? Look up our :doc:`detailed instructions <install>` on CLIMADA installation.
 
-Climada in a Nutshell
+CLIMADA in a Nutshell
 ---------------------
 
 .. dropdown:: How does CLIMADA compute impacts ?
@@ -33,7 +33,7 @@ Climada in a Nutshell
    (e.g., population, infrastructure), and applies vulnerability functions that estimate damage
    given the hazard intensity. By aggregating these results, CLIMADA calculates expected
    impacts, such as economic losses or affected populations. See the dedicated :doc:`impact tutorial </user-guide/climada_engine_Impact>`
-   for more informations.
+   for more information.
 
    .. image:: /user-guide/img/risk_framework.png
       :width: 400
@@ -43,7 +43,7 @@ Climada in a Nutshell
 .. dropdown:: How do you create a Hazard ?
    :color: primary
 
-   From a risk perspective, the intersting aspect of a natural hazard is its location and intensity. For such,
+   From a risk perspective, the interesting aspect of a natural hazard is its location and intensity. For such,
    CLIMADA allows you to load your own :doc:`hazard </user-guide/climada_hazard_Hazard>` data or to directly define it in the platform. As an example,
    users can easily load historical tropical cyclone tracks (IBTracks) and apply stochastic methods to generate
    a larger ensemble of tracks from the historical ones, from which they can easily compute the maximal windspeed,

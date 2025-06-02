@@ -14,6 +14,8 @@ All following instructions should work on any operating system (OS) that is supp
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
 
+.. _install-manager:
+
 ---------------------------
 Install environment manager
 ---------------------------
@@ -225,6 +227,24 @@ For advanced Python users or developers of CLIMADA, cloning the CLIMADA reposito
    Executing CLIMADA for the first time will take some time because it will generate a directory tree in your home/user directory.
    If this test passes, great!
    You are good to go.
+
+.. _change-branch:
+
+How to switch branch
+^^^^^^^^^^^^^^^^^^^^^^
+
+Advanced users, or reviewers, may also want to check the feature of a specific branch other than develop.
+To do so, **assuming you did install CLIMADA in editable mode (`pip install` with the `-e` flag)**, you just have to:
+
+```
+git fetch
+git checkout <branch>
+git pull
+```
+
+This will work most of the time, except if the target branch defines new dependencies that you don't have already in your environment (as they will not get installed this way), in that case you can install these dependencies yourself, or create a new environment with the *new* requirements from the branch.
+
+If you did not install CLIMADA in editable mode, you can also reinstall CLIMADA from its folder after switching the branch (`pip install [-e] ./`).
 
 .. _devdeps:
 

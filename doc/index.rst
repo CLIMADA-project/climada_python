@@ -4,17 +4,17 @@
 Welcome to CLIMADA!
 ===================
 
-.. raw:: html
+.. card:: CLIMADA (CLIMate ADAptation)
+   :text-align: center
+   :width: 75%
+   :margin: auto
 
-    <div class="hero">
-      <b style="font-size: 1.5rem; display: block;">CLIMADA (CLIMate ADAptation)</b>
-      <p style="font-size: 1.5rem; display: block;">
-        is a free and open-source software framework for climate risk assessment and
-        adaptation option appraisal. Designed by a large scientific community, it
-        helps reasearchers, policymakers, and businesses analyse the impacts of
-        natural hazards and explore adaptation strategies.
-      </p>
-    </div>
+   CLIMADA is a free and open-source software framework for climate risk assessment and
+   adaptation option appraisal.
+   Designed by a large scientific community, it
+   helps researchers, policymakers, and businesses analyse the impacts of
+   natural hazards and explore adaptation strategies.
+
 
 CLIMADA is primarily developed and maintained by the `Weather and Climate Risks
 Group <https://wcr.ethz.ch/>`_ at `ETH Zürich <https://ethz.ch/en.html>`_.
@@ -31,12 +31,14 @@ specialized applications can be found in the `CLIMADA Petals
 **Useful links:** `WCR Group <https://wcr.ethz.ch/>`_ | `CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>`_ | `CLIMADA website <https://climada.ethz.ch>`_ | `Mailing list <https://sympa.ethz.ch/sympa/info/climada-users>`_
 
 .. grid:: 1 2 2 2
-    :gutter: 4
-    :padding: 2 2 0 0
+    :margin: 5
+    :gutter: 0 2 3 4
+    :padding: 0 0 2 2
     :class-container: sd-text-center
 
     .. grid-item-card:: Getting Started
         :shadow: md
+        :width: 75%
 
         Getting started with CLIMADA: How to install?
         What are the basic concepts and functionalities?
@@ -52,6 +54,7 @@ specialized applications can be found in the `CLIMADA Petals
 
     .. grid-item-card:: User Guide
         :shadow: md
+        :width: 75%
 
         Want to go more in depth? Check out the User guide. It contains detailed
         tutorials on the different concepts, modules and possible usage of CLIMADA.
@@ -70,6 +73,7 @@ specialized applications can be found in the `CLIMADA Petals
 
     .. grid-item-card::  Implementation API reference
         :shadow: md
+        :width: 75%
 
         The reference guide contains a detailed description of
         the CLIMADA API. The API reference describes each module, class,
@@ -87,6 +91,7 @@ specialized applications can be found in the `CLIMADA Petals
 
     .. grid-item-card::  Developer guide
         :shadow: md
+        :width: 75%
 
         Saw a typo in the documentation? Want to improve
         existing functionalities? Want to extend them?
