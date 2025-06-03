@@ -60,11 +60,16 @@ N_PROB_EVENTS = 5 * 6
 
 class StormEurope(Hazard):
     """A hazard set containing european winter storm events. Historic storm
-    events can be downloaded at http://wisc.climate.copernicus.eu/ and read
-    with `from_footprints`. Weather forecasts can be automatically downloaded from
-    https://opendata.dwd.de/ and read with from_icon_grib(). Weather forecast
-    from the COSMO-Consortium http://www.cosmo-model.org/ can be read with
-    from_cosmoe_file().
+    events can be downloaded at https://cds.climate.copernicus.eu/ and read
+    with :meth:`from_footprints`. Weather forecasts can be automatically downloaded from
+    https://opendata.dwd.de/ and read with :meth:`from_icon_grib`. Weather forecast
+    from the COSMO-Consortium https://www.cosmo-model.org/ can be read with
+    :meth:`from_cosmoe_file`.
+
+    Direct links to CDS data:
+
+    * Winter windstorm indicators (1979 to 2021): https://doi.org/10.24381/cds.9b4ea013
+    * Synthetic windstorm events (1986 to 2011): https://doi.org/10.24381/cds.ce973f02
 
     Attributes
     ----------
@@ -696,7 +701,7 @@ class StormEurope(Hazard):
         ssi = sum_i(area_cell_i * intensity_cell_i^3)
 
         'wisc_gust', according to the WISC Tier 1 definition found at
-        https://wisc.climate.copernicus.eu/wisc/#/help/products#tier1_section
+        https://confluence.ecmwf.int/display/CKB/Synthetic+Windstorm+Events+for+Europe+from+1986+to+2011%3A+Product+User+Guide
         ssi = sum(area_on_land) * mean(intensity)^3
 
         In both definitions, only raster cells that are above the threshold are
