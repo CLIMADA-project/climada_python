@@ -68,6 +68,7 @@ setup(
         "contextily",
         "dask",
         "deprecation",
+        "fiona",
         "geopandas",
         "h5py",
         "haversine",

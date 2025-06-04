@@ -9,6 +9,7 @@ dependencies:
   - contextily>=1.6
   - dask>=2025.2
   - eccodes>=2.40
+  - fiona>=1.10
   - gdal>=3.10
   - geopandas>=0.14
   - h5py>=3.12
