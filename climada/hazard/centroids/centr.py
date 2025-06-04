@@ -23,7 +23,7 @@ import copy
 import logging
 import warnings
 from pathlib import Path
-from typing import Any, Literal, Union
+from typing import Any, Literal, Optional, Union
 
 import cartopy
 import cartopy.crs as ccrs
@@ -52,21 +52,7 @@ EXP_SPECIFIC_COLS = ["value", "impf_", "centr_", "cover", "deductible"]
 
 
 class Centroids:
-    """Contains vector centroids as a GeoDataFrame
-
-    Attributes
-    ----------
-    lat : np.array
-        Latitudinal coordinates in the specified CRS (can be any unit).
-    lon : np.array
-        Longitudinal coordinates in the specified CRS (can be any unit).
-    crs : pyproj.CRS
-        Coordinate reference system. Default: EPSG:4326 (WGS84)
-    region_id : np.array, optional
-        Numeric country (or region) codes. Default: None
-    on_land : np.array, optional
-        Boolean array indicating on land (True) or off shore (False). Default: None
-    """
+    """Contains vector centroids as a GeoDataFrame"""
 
     def __init__(
         self,
@@ -116,13 +102,13 @@ class Centroids:
             self.set_on_land(source=on_land, overwrite=True)
 
     @property
-    def lat(self):
-        """Return latitudes"""
+    def lat(self) -> np.array:
+        """Latitudinal coordinates in the specified CRS (can be any unit)."""
         return self.gdf.geometry.y.values
 
     @property
-    def lon(self):
-        """Return longitudes"""
+    def lon(self) -> np.array:
+        """Longitudinal coordinates in the specified CRS (can be any unit)."""
         return self.gdf.geometry.x.values
 
     @property
@@ -131,8 +117,8 @@ class Centroids:
         return self.gdf["geometry"]
 
     @property
-    def on_land(self):
-        """Get the on_land property"""
+    def on_land(self) -> Optional[np.array]:
+        """Boolean array indicating on land (True) or off shore (False). Default: None"""
         if "on_land" not in self.gdf:
             return None
         if self.gdf["on_land"].isna().all():
@@ -140,8 +126,8 @@ class Centroids:
         return self.gdf["on_land"].values
 
     @property
-    def region_id(self):
-        """Get the assigned region_id"""
+    def region_id(self) -> Optional[np.array]:
+        """Numeric country (or region) codes. Default: None"""
         if "region_id" not in self.gdf:
             return None
         if self.gdf["region_id"].isna().all():
@@ -149,8 +135,8 @@ class Centroids:
         return self.gdf["region_id"].values
 
     @property
-    def crs(self):
-        """Get the crs"""
+    def crs(self) -> CRS:
+        """Coordinate reference system. Default: EPSG:4326 (WGS84)"""
         return self.gdf.crs
 
     @property
