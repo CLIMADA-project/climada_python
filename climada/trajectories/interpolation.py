@@ -21,121 +21,149 @@ This modules implements different sparce matrices interpolation approaches.
 """
 
 import logging
-from abc import ABC, abstractmethod
+from abc import ABC
+from typing import Callable
 
 import numpy as np
-from scipy.sparse import csr_matrix, lil_matrix
 
 LOGGER = logging.getLogger(__name__)
 
 
-class InterpolationStrategy(ABC):
+def linear_interp_imp_mat(mat_start, mat_end, interpolation_range) -> list:
+    """Linearly interpolates between two impact matrices over an interpolation range.
+
+    Returns a list of `interpolation_range` matrices linearly interpolated between
+    `mat_start` and `mat_end`.
+    """
+    res = []
+    for point in range(interpolation_range):
+        ratio = point / (interpolation_range - 1)
+        mat_interpolated = mat_start + ratio * (mat_end - mat_start)
+        res.append(mat_interpolated)
+    return res
+
+
+def exponential_interp_imp_mat(mat_start, mat_end, interpolation_range, rate) -> list:
+    """Exponentially interpolates between two impact matrices over an interpolation range with a growth rate `rate`.
+
+    Returns a list of `interpolation_range` matrices exponentially (with growth rate `rate`) interpolated between
+    `mat_start` and `mat_end`.
+    """
+    # Convert matrices to logarithmic domain
+    mat_start = mat_start.copy()
+    mat_end = mat_end.copy()
+    mat_start.data = np.log(mat_start.data + np.finfo(float).eps) / np.log(rate)
+    mat_end.data = np.log(mat_end.data + np.finfo(float).eps) / np.log(rate)
+
+    # Perform linear interpolation in the logarithmic domain
+    res = []
+    for point in range(interpolation_range):
+        ratio = point / (interpolation_range - 1)
+        mat_interpolated = mat_start * (1 - ratio) + ratio * mat_end
+        mat_interpolated.data = np.exp(mat_interpolated.data * np.log(rate))
+        res.append(mat_interpolated)
+    return res
+
+
+def linear_interp_arrays(arr_start, arr_end, interpolation_range):
+    """Perform linear interpolation between two arrays (of a scalar metric) over an interpolation range."""
+    prop1 = np.linspace(0, 1, interpolation_range)
+    prop0 = 1 - prop1
+    if arr_start.ndim > 1:
+        prop0, prop1 = prop0.reshape(-1, 1), prop1.reshape(-1, 1)
+
+    return np.multiply(arr_start, prop0) + np.multiply(arr_end, prop1)
+
+
+def exponential_interp_arrays(arr_start, arr_end, interpolation_range, rate):
+    """Perform exponential interpolation between two arrays (of a scalar metric) over an interpolation range with a growth rate `rate`."""
+    prop1 = np.linspace(0, 1, interpolation_range)
+    prop0 = 1 - prop1
+    if arr_start.ndim > 1:
+        prop0, prop1 = prop0.reshape(-1, 1), prop1.reshape(-1, 1)
+
+    return np.exp(
+        (
+            np.multiply(np.log(arr_start) / np.log(rate), prop0)
+            + np.multiply(np.log(arr_end) / np.log(rate), prop1)
+        )
+        * np.log(rate)
+    )
+
+
+def logarithmic_interp_arrays(arr_start, arr_end, interpolation_range):
+    """Perform logarithmic (natural logarithm) interpolation between two arrays (of a scalar metric) over an interpolation range."""
+    prop1 = np.logspace(0, 1, interpolation_range)
+    prop0 = 1 - prop1
+    if arr_start.ndim > 1:
+        prop0, prop1 = prop0.reshape(-1, 1), prop1.reshape(-1, 1)
+
+    return np.multiply(arr_start, prop0) + np.multiply(arr_end, prop1)
+
+
+class InterpolationStrategyBase(ABC):
+    exposure_interp: Callable
+    hazard_interp: Callable
+    vulnerability_interp: Callable
+
+    def interp_exposure_dim(
+        self, imp_E0, imp_E1, interpolation_range: int, **kwargs
+    ) -> list:
+        """Interpolates along the exposure change between two impact matrices.
+
+        Returns a list of `interpolation_range` matrices linearly interpolated between
+        `mat_start` and `mat_end`.
+        """
+        try:
+            res = self.exposure_interp(imp_E0, imp_E1, interpolation_range, **kwargs)
+        except ValueError as err:
+            if str(err) == "inconsistent shapes":
+                raise ValueError(
+                    "Tried to interpolate impact matrices of different shape. A possible reason could be Exposures of different shapes."
+                )
+
+            raise err
+
+        return res
+
+    def interp_hazard_dim(
+        self, metric_0, metric_1, interpolation_range: int, **kwargs
+    ) -> np.ndarray:
+        return self.hazard_interp(metric_0, metric_1, interpolation_range, **kwargs)
+
+    def interp_vulnerability_dim(
+        self, metric_0, metric_1, interpolation_range: int, **kwargs
+    ) -> np.ndarray:
+        return self.vulnerability_interp(
+            metric_0, metric_1, interpolation_range, **kwargs
+        )
+
+
+class InterpolationStrategy(InterpolationStrategyBase):
     """Interface for interpolation strategies."""
 
-    @abstractmethod
-    def interpolate(self, imp_E0, imp_E1, time_points: int) -> list: ...
+    def __init__(self, exposure_interp, hazard_interp, vulnerability_interp) -> None:
+        super().__init__()
+        self.exposure_interp = exposure_interp
+        self.hazard_interp = hazard_interp
+        self.vulnerability_interp = vulnerability_interp
 
 
-class LinearInterpolation(InterpolationStrategy):
+class AllLinearStrategy(InterpolationStrategyBase):
     """Linear interpolation strategy."""
 
-    def interpolate(self, imp_E0, imp_E1, time_points: int):
-        try:
-            return self.interpolate_imp_mat(imp_E0, imp_E1, time_points)
-        except ValueError as e:
-            if str(e) == "inconsistent shapes":
-                raise ValueError(
-                    "Interpolation between impact matrices of different shapes"
-                )
-            else:
-                raise e
-
-    @staticmethod
-    def interpolate_imp_mat(imp0, imp1, time_points):
-        """Interpolate between two impact matrices over a specified time range.
-
-        Parameters
-        ----------
-        imp0 : ImpactCalc
-            The impact calculation for the starting time.
-        imp1 : ImpactCalc
-            The impact calculation for the ending time.
-        time_points:
-            The number of points to interpolate.
-
-        Returns
-        -------
-        list of np.ndarray
-            List of interpolated impact matrices for each time points in the specified range.
-        """
-
-        def interpolate_sm(mat_start, mat_end, time, time_points):
-            """Perform linear interpolation between two matrices for a specified time point."""
-            if time > time_points:
-                raise ValueError("time point must be within the range")
-
-            ratio = time / (time_points - 1)
-
-            # Convert the input matrices to a format that allows efficient modification of its elements
-            mat_start = lil_matrix(mat_start)
-            mat_end = lil_matrix(mat_end)
-
-            # Perform the linear interpolation
-            mat_interpolated = mat_start + ratio * (mat_end - mat_start)
-
-            return csr_matrix(mat_interpolated)
-
-        LOGGER.debug(f"imp0: {imp0.imp_mat.data[0]}, imp1: {imp1.imp_mat.data[0]}")
-        return [
-            interpolate_sm(imp0.imp_mat, imp1.imp_mat, time, time_points)
-            for time in range(time_points)
-        ]
+    def __init__(self) -> None:
+        super().__init__()
+        self.exposure_interp = linear_interp_imp_mat
+        self.hazard_interp = linear_interp_arrays
+        self.vulnerability_interp = linear_interp_arrays
 
 
-class ExponentialInterpolation(InterpolationStrategy):
+class ExponentialExposureInterpolation(InterpolationStrategyBase):
     """Exponential interpolation strategy."""
 
-    def interpolate(self, imp_E0, imp_E1, time_points: int):
-        return self.interpolate_imp_mat(imp_E0, imp_E1, time_points)
-
-    @staticmethod
-    def interpolate_imp_mat(imp0, imp1, time_points):
-        """Interpolate between two impact matrices over a specified time range.
-
-        Parameters
-        ----------
-        imp0 : ImpactCalc
-            The impact calculation for the starting time.
-        imp1 : ImpactCalc
-            The impact calculation for the ending time.
-        time_points:
-            The number of points to interpolate.
-
-        Returns
-        -------
-        list of np.ndarray
-            List of interpolated impact matrices for each time points in the specified range.
-        """
-
-        def interpolate_sm(mat_start, mat_end, time, time_points):
-            """Perform exponential interpolation between two matrices for a specified time point."""
-            if time > time_points:
-                raise ValueError("time point must be within the range")
-
-            # Convert matrices to logarithmic domain
-            log_mat_start = np.log(mat_start.toarray() + np.finfo(float).eps)
-            log_mat_end = np.log(mat_end.toarray() + np.finfo(float).eps)
-
-            # Perform linear interpolation in the logarithmic domain
-            ratio = time / (time_points - 1)
-            log_mat_interpolated = log_mat_start + ratio * (log_mat_end - log_mat_start)
-
-            # Convert back to the original domain using the exponential function
-            mat_interpolated = np.exp(log_mat_interpolated)
-
-            return csr_matrix(mat_interpolated)
-
-        return [
-            interpolate_sm(imp0.imp_mat, imp1.imp_mat, time, time_points)
-            for time in range(time_points)
-        ]
+    def __init__(self) -> None:
+        super().__init__()
+        self.exposure_interp = exponential_interp_imp_mat
+        self.hazard_interp = linear_interp_arrays
+        self.vulnerability_interp = linear_interp_arrays
