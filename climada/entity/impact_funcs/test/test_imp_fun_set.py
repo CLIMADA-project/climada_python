@@ -20,6 +20,7 @@ Test ImpactFuncSet class.
 """
 
 import unittest
+from copy import deepcopy
 
 import numpy as np
 
@@ -297,7 +298,7 @@ class TestEquality(unittest.TestCase):
         mdd = np.array([0, 0.5])
 
         fun_1 = ImpactFunc("TC", 3, intensity, mdd, paa)
-        fun_2 = ImpactFunc("TC", 3, intensity, mdd, paa)
+        fun_2 = ImpactFunc("TC", 3, deepcopy(intensity), deepcopy(mdd), deepcopy(paa))
         fun_3 = ImpactFunc("TC", 4, intensity + 1, mdd, paa)
 
         self.impact_set1 = ImpactFuncSet([fun_1])

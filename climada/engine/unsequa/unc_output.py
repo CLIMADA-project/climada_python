@@ -84,20 +84,9 @@ class UncOutput:
     samples_df : pandas.DataFrame
         Values of the sampled uncertainty parameters. It has n_samples rows
         and one column per uncertainty parameter.
-    sampling_method : str
-        Name of the sampling method from SAlib.
-        https://salib.readthedocs.io/en/latest/api.html#
-    n_samples : int
-        Effective number of samples (number of rows of samples_df)
-    param_labels : list
-        Name of all the uncertainty parameters
     distr_dict : dict
         Comon flattened dictionary of all the distr_dict of all input variables.
         It represents the distribution of all the uncertainty parameters.
-    problem_sa : dict
-        The description of the uncertainty variables and their
-        distribution as used in SALib.
-        https://salib.readthedocs.io/en/latest/basics.html.
     """
 
     _metadata = [
@@ -192,6 +181,7 @@ class UncOutput:
     def sampling_method(self):
         """
         Returns the sampling method used to generate self.samples_df
+        See: https://salib.readthedocs.io/en/latest/api.html#
 
         Returns
         -------
