@@ -29,12 +29,12 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.interpolation import InterpolationStrategyBase
 from climada.trajectories.riskperiod import (
+    AllLinearStrategy,
     CalcRiskPeriod,
     ImpactCalcComputation,
     ImpactComputationStrategy,
-    InterpolationStrategy,
-    LinearInterpolation,
 )
 from climada.trajectories.snapshot import Snapshot
 
@@ -79,7 +79,7 @@ class RiskTrajectory:
         risk_transf_cover=None,
         risk_transf_attach=None,
         calc_residual: bool = True,
-        interpolation_strategy: InterpolationStrategy | None = None,
+        interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
         self._reset_metrics()
@@ -94,7 +94,7 @@ class RiskTrajectory:
         self._risk_transf_cover = risk_transf_cover
         self._risk_transf_attach = risk_transf_attach
         self._calc_residual = calc_residual
-        self._interpolation_strategy = interpolation_strategy or LinearInterpolation()
+        self._interpolation_strategy = interpolation_strategy or AllLinearStrategy()
         self._impact_computation_strategy = (
             impact_computation_strategy or ImpactCalcComputation()
         )
@@ -283,6 +283,9 @@ class RiskTrajectory:
                 raise e
         else:
             tmp = tmp.set_index(["date", "group", "measure", "metric"])
+            if "coord_id" in tmp.columns:
+                tmp = tmp.set_index(["coord_id"], append=True)
+
             tmp = tmp[
                 ~tmp.index.duplicated(keep="last")
             ]  # We want to avoid overlap when more than 2 snapshots
@@ -596,6 +599,15 @@ class RiskTrajectory:
         risk_component = self._calc_waterfall_plot_data(
             start_date=start_date, end_date=end_date
         )
+        risk_component = risk_component[
+            [
+                "base risk",
+                "exposure contribution",
+                "hazard contribution",
+                "vulnerability contribution",
+                "interaction contribution",
+            ]
+        ]
         risk_component.plot(ax=ax, kind="bar", stacked=True)
         # Construct y-axis label and title based on parameters
         value_label = "USD"
@@ -654,21 +666,30 @@ class RiskTrajectory:
         labels = [
             f"Risk {start_date}",
             f"Exposure {end_date}",
-            f"Hazard {end_date}¹",
+            f"Hazard {end_date}",
+            f"Vulnerability {end_date}",
+            f"Interaction {end_date}",
             f"Total Risk {end_date}",
         ]
         values = [
             risk_component["base risk"],
-            risk_component["delta from exposure"],
-            risk_component["delta from hazard"],
-            risk_component["base risk"]
-            + risk_component["delta from exposure"]
-            + risk_component["delta from hazard"],
+            risk_component["exposure contribution"],
+            risk_component["hazard contribution"],
+            risk_component["vulnerability contribution"],
+            risk_component["interaction contribution"],
+            risk_component.sum(),
         ]
         bottoms = [
             0.0,
             risk_component["base risk"],
-            risk_component["base risk"] + risk_component["delta from exposure"],
+            risk_component["base risk"] + risk_component["exposure contribution"],
+            risk_component["base risk"]
+            + risk_component["exposure contribution"]
+            + risk_component["hazard contribution"],
+            risk_component["base risk"]
+            + risk_component["exposure contribution"]
+            + risk_component["hazard contribution"]
+            + risk_component["vulnerability contribution"],
             0.0,
         ]
 
@@ -677,7 +698,14 @@ class RiskTrajectory:
             values,
             bottom=bottoms,
             edgecolor="black",
-            color=["tab:blue", "tab:orange", "tab:green", "tab:red"],
+            color=[
+                "tab:cyan",
+                "tab:orange",
+                "tab:green",
+                "tab:red",
+                "tab:purple",
+                "tab:blue",
+            ],
         )
         for i in range(len(values)):
             ax.text(
@@ -695,16 +723,19 @@ class RiskTrajectory:
 
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
-        # ax.tick_params(axis='x', labelrotation=90,)
-        ax.annotate(
-            """¹: The increase in risk due to hazard denotes the difference in risk with future exposure
-and hazard compared to risk with future exposure and present hazard.""",
-            xy=(0.0, -0.15),
-            xycoords="axes fraction",
-            ha="left",
-            va="center",
-            fontsize=8,
+        ax.tick_params(
+            axis="x",
+            labelrotation=90,
         )
+        #         ax.annotate(
+        #             """¹: The increase in risk due to hazard denotes the difference in risk with future exposure
+        # and hazard compared to risk with future exposure and present hazard.""",
+        #             xy=(0.0, -0.15),
+        #             xycoords="axes fraction",
+        #             ha="left",
+        #             va="center",
+        #             fontsize=8,
+        #         )
 
         return ax
 

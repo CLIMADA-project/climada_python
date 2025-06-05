@@ -38,10 +38,11 @@ class ImpactComputationStrategy(ABC):
         self,
         snapshot0: Snapshot,
         snapshot1: Snapshot,
+        future: tuple[int, int, int],
         risk_transf_attach: float | None,
         risk_transf_cover: float | None,
         calc_residual: bool,
-    ) -> tuple:
+    ) -> Impact:
         pass
 
 
@@ -52,47 +53,40 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         self,
         snapshot0: Snapshot,
         snapshot1: Snapshot,
+        future: tuple[int, int, int],
         risk_transf_attach: float | None,
         risk_transf_cover: float | None,
         calc_residual: bool = False,
     ):
-        impacts = self._calculate_impacts_for_snapshots(snapshot0, snapshot1)
+        impact = self.compute_impacts_pre_transfer(snapshot0, snapshot1, future)
         self._apply_risk_transfer(
-            impacts, risk_transf_attach, risk_transf_cover, calc_residual
+            impact, risk_transf_attach, risk_transf_cover, calc_residual
         )
-        return impacts
+        return impact
 
-    def _calculate_impacts_for_snapshots(
-        self, snapshot0: Snapshot, snapshot1: Snapshot
-    ):
-        """Calculate impacts for the given snapshots and impact function set."""
-        imp_E0H0 = ImpactCalc(
-            snapshot0.exposure, snapshot0.impfset, snapshot0.hazard
-        ).impact()
-        imp_E1H0 = ImpactCalc(
-            snapshot1.exposure, snapshot1.impfset, snapshot0.hazard
-        ).impact()
-        imp_E0H1 = ImpactCalc(
-            snapshot0.exposure, snapshot0.impfset, snapshot1.hazard
-        ).impact()
-        imp_E1H1 = ImpactCalc(
-            snapshot1.exposure, snapshot1.impfset, snapshot1.hazard
-        ).impact()
-        return imp_E0H0, imp_E1H0, imp_E0H1, imp_E1H1
+    def compute_impacts_pre_transfer(
+        self,
+        snapshot0: Snapshot,
+        snapshot1: Snapshot,
+        future: tuple[int, int, int],
+    ) -> Impact:
+        exp = snapshot1.exposure if future[0] else snapshot0.exposure
+        haz = snapshot1.hazard if future[1] else snapshot0.hazard
+        vul = snapshot1.impfset if future[2] else snapshot0.impfset
+        return ImpactCalc(exposures=exp, impfset=vul, hazard=haz).impact()
 
     def _apply_risk_transfer(
         self,
-        impacts: tuple[Impact, Impact, Impact, Impact],
+        impact: Impact,
         risk_transf_attach: float | None,
         risk_transf_cover: float | None,
         calc_residual: bool,
     ):
         """Apply risk transfer to the calculated impacts."""
         if risk_transf_attach is not None and risk_transf_cover is not None:
-            for imp in impacts:
-                imp.imp_mat = self.calculate_residual_or_risk_transfer_impact_matrix(
-                    imp.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
-                )
+            impact.imp_mat = self.calculate_residual_or_risk_transfer_impact_matrix(
+                impact.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+            )
 
     def calculate_residual_or_risk_transfer_impact_matrix(
         self, imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
@@ -111,9 +105,9 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         ----------
         imp_mat : scipy.sparse.csr_matrix
             The original impact matrix to be scaled.
-        attachment : float, optional
+        attachment : float
             The attachment point for the risk layer.
-        cover : float, optional
+        cover : float
             The maximum coverage for the risk layer.
         calc_residual : bool, default=True
             Determines if the function calculates the residual (if True) or the
@@ -125,36 +119,30 @@ class ImpactCalcComputation(ImpactComputationStrategy):
             The adjusted impact matrix, either residual or risk transfer.
 
         """
+        imp_mat = copy.deepcopy(imp_mat)
+        # Calculate the total impact per event
+        total_at_event = imp_mat.sum(axis=1).A1
+        # Risk layer at event
+        transfer_at_event = np.minimum(
+            np.maximum(total_at_event - risk_transf_attach, 0), risk_transf_cover
+        )
+        residual_at_event = np.maximum(total_at_event - transfer_at_event, 0)
 
-        if risk_transf_attach and risk_transf_cover:
-            imp_mat = copy.deepcopy(imp_mat)
-            # Calculate the total impact per event
-            total_at_event = imp_mat.sum(axis=1).A1
-            # Risk layer at event
-            transfer_at_event = np.minimum(
-                np.maximum(total_at_event - risk_transf_attach, 0), risk_transf_cover
-            )
-            residual_at_event = np.maximum(total_at_event - transfer_at_event, 0)
-
-            # Calculate either the residual or transfer impact matrix
-            # Choose the denominator to rescale the impact values
-            if calc_residual:
-                numerator = residual_at_event
-            else:
-                numerator = transfer_at_event
-
-            rescale_impact_values = np.divide(
-                numerator,
-                total_at_event,
-                out=np.zeros_like(numerator, dtype=float),
-                where=total_at_event != 0,
-            )
-
-            # The multiplication is broadcasted across the columns for each row
-            result_matrix = imp_mat.multiply(rescale_impact_values[:, np.newaxis])
-
-            return result_matrix
-
+        # Calculate either the residual or transfer impact matrix
+        # Choose the denominator to rescale the impact values
+        if calc_residual:
+            numerator = residual_at_event
         else:
+            numerator = transfer_at_event
 
-            return imp_mat
+        rescale_impact_values = np.divide(
+            numerator,
+            total_at_event,
+            out=np.zeros_like(numerator, dtype=float),
+            where=total_at_event != 0,
+        )
+
+        # The multiplication is broadcasted across the columns for each row
+        result_matrix = imp_mat.multiply(rescale_impact_values[:, np.newaxis])
+
+        return result_matrix

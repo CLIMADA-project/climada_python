@@ -27,8 +27,8 @@ import numpy as np
 from scipy.sparse import csr_matrix
 
 from climada.trajectories.interpolation import (
-    ExponentialInterpolation,
-    LinearInterpolation,
+    AllLinearInterpolation,
+    ExponentialExposureInterpolation,
 )
 
 
@@ -42,7 +42,7 @@ class TestLinearInterpolation(unittest.TestCase):
         self.time_points = 5
 
         # Create an instance of LinearInterpolation
-        self.linear_interpolation = LinearInterpolation()
+        self.linear_interpolation = AllLinearInterpolation()
 
     def test_interpolate(self):
         result = self.linear_interpolation.interpolate(
@@ -84,7 +84,7 @@ class TestExponentialInterpolation(unittest.TestCase):
         self.time_points = 5
 
         # Create an instance of ExponentialInterpolation
-        self.exponential_interpolation = ExponentialInterpolation()
+        self.exponential_interpolation = ExponentialExposureInterpolation()
 
     def test_interpolate(self):
         result = self.exponential_interpolation.interpolate(

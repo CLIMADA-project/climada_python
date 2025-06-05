@@ -39,11 +39,11 @@ from climada.hazard import Hazard
 
 # Import the CalcRiskPeriod class and other necessary classes/functions
 from climada.trajectories.riskperiod import (
+    AllLinearInterpolation,
     CalcRiskPeriod,
     ImpactCalcComputation,
     ImpactComputationStrategy,
     InterpolationStrategy,
-    LinearInterpolation,
     Snapshot,
 )
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
@@ -115,7 +115,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.mock_snapshot0,
             self.mock_snapshot1,
             interval_freq="AS-JAN",
-            interpolation_strategy=LinearInterpolation(),
+            interpolation_strategy=AllLinearInterpolation(),
             impact_computation_strategy=ImpactCalcComputation(),
             # These will have to be tested when implemented
             # risk_transf_attach=0.1,
@@ -131,7 +131,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.time_points, self.future_date - self.present_date + 1
         )
         self.assertIsInstance(
-            self.calc_risk_period.interpolation_strategy, LinearInterpolation
+            self.calc_risk_period.interpolation_strategy, AllLinearInterpolation
         )
         self.assertIsInstance(
             self.calc_risk_period.impact_computation_strategy, ImpactCalcComputation
