@@ -554,6 +554,9 @@ class RiskTrajectory:
             (risk_components["date"].dt.date >= start_date)
             & (risk_components["date"].dt.date <= end_date)
         ]
+        risk_components = risk_components.loc[
+            risk_components["measure"] == "no_measure"
+        ]
         risk_components = risk_components.set_index(["date", "metric"])[
             "risk"
         ].unstack()
