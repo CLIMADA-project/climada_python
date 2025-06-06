@@ -223,7 +223,7 @@ class Calc:
         The 'ff' sampling method does not require a value for the N parameter.
         The inputed N value is hence ignored in the sampling process in the case
         of this method.
-        The 'ff' sampling method requires a number of uncerainty parameters to be
+        The 'ff' sampling method requires a number of uncertainty parameters to be
         a power of 2. The users can generate dummy variables to achieve this
         requirement. Please refer to https://salib.readthedocs.io/en/latest/api.html
         for more details.
@@ -231,7 +231,7 @@ class Calc:
         See Also
         --------
         SALib.sample: sampling methods from SALib SALib.sample
-            https://salib.readthedocs.io/en/latest/api.html
+        https://salib.readthedocs.io/en/latest/api.html
 
         """
 
