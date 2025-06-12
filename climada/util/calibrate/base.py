@@ -49,7 +49,7 @@ class Input:
         Exposures object to compute impacts from
     data : pandas.Dataframe
         The data to compare computed impacts to. Index: Event IDs matching the IDs of
-        ``hazard``. Columns: Arbitrary columns. NaN values in the data frame have
+        :py:attr:`hazard`. Columns: Arbitrary columns. NaN values in the data frame have
         special meaning: Corresponding impact values computed by the model are ignored
         in the calibration.
     impact_func_creator : Callable

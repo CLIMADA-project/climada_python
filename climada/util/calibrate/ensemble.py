@@ -205,7 +205,9 @@ class EnsembleOptimizerOutput:
         )
         self.data.to_csv(filepath, index=None)
 
-    def _to_impf_sets(self, impact_func_creator) -> list[ImpactFuncSet]:
+    def _to_impf_sets(
+        self, impact_func_creator: Callable[..., ImpactFuncSet]
+    ) -> list[ImpactFuncSet]:
         """Return a list of impact functions created from the stored parameters"""
         return [
             impact_func_creator(**row["Parameters"]) for _, row in self.data.iterrows()
@@ -453,18 +455,32 @@ class EnsembleOptimizerOutput:
 
 @dataclass
 class EnsembleOptimizer(ABC):
-    """Abstract base class for defining an ensemble optimizer
+    """Abstract base class for defining an ensemble optimizer.
+
+    An ensemble optimizer uses a user-defined optimizer type to run multiple calibration
+    tasks. The tasks are defined by the :py:attr:`samples` attribute: For each entry in
+    :py:attr:`samples`, a new :py:class:`~climada.util.calibrate.base.Input` is created
+    and passed to an instance of :py:attr:`optimizer_type`. Derived classes need to set
+    the :py:attr:`samples` during initialization and define the
+    :py:meth:`input_from_sample` method.
+
+    The calibration tasks can be conducted in parallel by executing :py:meth:`run` with
+    ``processes`` set to a value larger than 1.
 
     Attributes
     ----------
     input : Input
-        The input for the optimization
+        The generic input for the optimization
     optimizer_type : type[Optimizer]
         The type of the optimizer to use for each calibration task
     optimizer_init_kwargs
-        Keyword argument for initializing the calibration optimizer
+        Keyword argument for initializing an instance of the chosen
+        :py:attr:`optimizer_type`.
     samples : list of list of tuple(int, int)
-        The samples for each calibration task
+        The samples for each calibration task. Each entry is a list of tuples that
+        encode row and column indices of the ``Input``
+        :py:attr:`~climada.util.calibrate.base.Input.data` that are selected for the
+        particular calibration task. See :py:func:`sample_data`.
     """
 
     input: Input
@@ -551,18 +567,23 @@ class EnsembleOptimizer(ABC):
 
 @dataclass
 class AverageEnsembleOptimizer(EnsembleOptimizer):
-    """An optimizer for the average ensemble
+    """An optimizer for the "average ensemble".
+
+    This optimizer samples a fraction of the original events in
+    :py:attr:`~climada.util.calibrate.ensemble.EnsembleOptimizer.input`.
+    :py:attr:`~climada.util.calibrate.base.Input.data`.
 
     Attributes
     ----------
     sample_fraction : float
-        The fraction of data points to use for each calibration
+        The fraction of data points to use for each calibration. For values > 1,
+        :py:attr:`replace` must be ``True``.
     ensemble_size : int
-        The number of calibration tasks to perform
+        The number of calibration tasks to perform (and hence size of the ensemble).
     random_state : int
         The seed for the random number generator selecting the samples
     replace : bool
-        If samples of the impact data should be drawn with replacement
+        If samples of the input data should be drawn with replacement
     """
 
     sample_fraction: InitVar[float] = 0.8
@@ -600,13 +621,18 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
 
 @dataclass
 class TragedyEnsembleOptimizer(EnsembleOptimizer):
-    """An optimizer for the ensemble of tragedies
+    """An optimizer for the "ensemble of tragedies".
+
+    Each sample (and thus calibration task) of this optimizer only contains a single
+    event from :py:attr:`~climada.util.calibrate.ensemble.EnsembleOptimizer.input`.
+    :py:attr:`~climada.util.calibrate.base.Input.data`.
 
     Attributes
     ----------
     ensemble_size : int, optional
         The number of calibration tasks to perform. Defaults to ``None``, which means
         one for each data point. Must be smaller or equal to the number of data points.
+        If smaller, random events will be left out from the ensemble calibration.
     random_state : int
         The seed for the random number generator selecting the samples
     """
