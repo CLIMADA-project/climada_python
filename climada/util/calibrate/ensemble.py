@@ -34,9 +34,10 @@ from numpy.random import default_rng
 from pathos.multiprocessing import ProcessPool
 from tqdm import tqdm
 
-from ...engine.unsequa.input_var import InputVar
-from ...entity.impact_funcs import ImpactFunc, ImpactFuncSet
-from ..coordinates import country_to_iso
+from climada.engine.unsequa.input_var import InputVar
+from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
+from climada.util.coordinates import country_to_iso
+
 from .base import Input, Optimizer, Output
 
 LOGGER = logging.getLogger(__name__)
