@@ -560,9 +560,9 @@ class EnsembleOptimizer(ABC):
         """Iterate over all samples sequentially"""
         return [
             optimize(
-                self.optimizer_type, input, init_kwargs, deepcopy(optimizer_run_kwargs)
+                self.optimizer_type, inp, init_kwargs, deepcopy(optimizer_run_kwargs)
             )
-            for input, init_kwargs in tqdm(
+            for inp, init_kwargs in tqdm(
                 zip(self._inputs(), self._opt_init_kwargs()), total=len(self.samples)
             )
         ]
@@ -651,19 +651,19 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
 
     def input_from_sample(self, sample: list[tuple[int, int]]):
         """Shallow-copy the input and update the data"""
-        input = copy(self.input)  # NOTE: Shallow copy!
+        inp = copy(self.input)  # NOTE: Shallow copy!
 
         # Sampling
         # NOTE: We always need samples to support `replace=True`
-        input.data = sample_data(input.data, sample)
+        inp.data = sample_data(inp.data, sample)
         weights = (
-            input.data_weights
-            if input.data_weights is not None
-            else pd.DataFrame(1.0, index=input.data.index, columns=input.data.columns)
+            inp.data_weights
+            if inp.data_weights is not None
+            else pd.DataFrame(1.0, index=inp.data.index, columns=inp.data.columns)
         )
-        input.data_weights = sample_weights(weights, sample)
+        inp.data_weights = sample_weights(weights, sample)
 
-        return input
+        return inp
 
 
 @dataclass
@@ -708,28 +708,22 @@ class TragedyEnsembleOptimizer(EnsembleOptimizer):
     def input_from_sample(self, sample: list[tuple[int, int]]):
         """Subselect all input"""
         # Data
-        input = copy(self.input)  # NOTE: Shallow copy!
-        data = sample_data(input.data, sample)
-        input.data = data.dropna(axis="columns", how="all").dropna(
+        inp = copy(self.input)  # NOTE: Shallow copy!
+        data = sample_data(inp.data, sample)
+        inp.data = data.dropna(axis="columns", how="all").dropna(
             axis="index", how="all"
         )
-        if input.data_weights is not None:
-            input.data_weights, _ = input.data_weights.align(
-                input.data,
+        if inp.data_weights is not None:
+            inp.data_weights, _ = inp.data_weights.align(
+                inp.data,
                 axis=None,
                 join="right",
                 copy=True,
-                fill_value=input.missing_weights_value,
+                fill_value=inp.missing_weights_value,
             )
-            input.data_weights = sample_weights(input.data_weights, sample)
+            inp.data_weights = sample_weights(inp.data_weights, sample)
 
         # Select single hazard event
-        input.hazard = input.hazard.select(event_id=input.data.index)
+        inp.hazard = inp.hazard.select(event_id=inp.data.index)
 
-        # Select single region in exposure
-        # NOTE: This breaks impact_at_reg with pre-defined region IDs!!
-        # exp = input.exposure.copy(deep=False)
-        # exp.gdf = exp.gdf[exp.gdf["region_id"] == input.data.columns[0]]
-        # input.exposure = exp
-
-        return input
+        return inp
