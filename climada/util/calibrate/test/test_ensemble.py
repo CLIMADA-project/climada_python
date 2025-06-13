@@ -68,6 +68,25 @@ class TestEnsembleOptimizerOutput(unittest.TestCase):
             },
         )
 
+    def test_equality(self):
+        """Test equality comparison"""
+        df = pd.DataFrame([[0, 1], [2, 0]], columns=["a", "b"], index=[1, 2])
+        self.assertEqual(EnsembleOptimizerOutput(df), EnsembleOptimizerOutput(df))
+        # NOTE: Index must have equal values, not dtypes!
+        self.assertEqual(
+            EnsembleOptimizerOutput(df),
+            EnsembleOptimizerOutput(
+                pd.DataFrame([[0, 1], [2, 0]], columns=["a", "b"], index=[1.0, 2.0])
+            ),
+        )
+        self.assertNotEqual(
+            EnsembleOptimizerOutput(df),
+            EnsembleOptimizerOutput(
+                pd.DataFrame([[0, 1], [2, 0]], columns=["a", "c"], index=[1, 2])
+            ),
+        )
+        self.assertNotEqual(EnsembleOptimizerOutput(pd.DataFrame()), "output")
+
     def test_from_outputs(self):
         """Test 'from_outputs' initialization"""
         out = EnsembleOptimizerOutput.from_outputs([self.output1, self.output2])

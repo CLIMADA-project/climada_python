@@ -235,6 +235,13 @@ class EnsembleOptimizerOutput:
         )
         self.data.to_csv(filepath, index=None)
 
+    def __eq__(self, other):
+        """Equality comparison"""
+        if not isinstance(other, EnsembleOptimizerOutput):
+            return False
+
+        return self.data.equals(other.data)
+
     def _to_impf_sets(
         self, impact_func_creator: Callable[..., ImpactFuncSet]
     ) -> list[ImpactFuncSet]:
