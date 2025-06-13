@@ -75,6 +75,36 @@ def sample_data(data: pd.DataFrame, sample: list[tuple[int, int]]):
     return data_sampled
 
 
+def sample_weights(weights: pd.DataFrame, sample: list[tuple[int, int]]):
+    """
+    Return an updated DataFrame containing the appropriate weights for a sample.
+
+    Weights that are not in ``sample`` are set to zero, whereas weights that are sampled
+    multiple times will effectively multiplied by their occurrence in ``sample``.
+
+    Parameters
+    ----------
+    weights : pandas.DataFrame
+        The original weights for the data
+    sample : list of tuple of int
+        A list of (row, column) index pairs indicating which weights will be used, and
+        how often.
+
+    Returns
+    -------
+    pandas.DataFrame
+        Updated ``weights`` for ``sample``.
+    """
+    # Create all-zero weights
+    weights_sampled = pd.DataFrame(0.0, columns=weights.columns, index=weights.index)
+
+    # Add weights for each sample
+    for row, col in sample:
+        weights_sampled.iloc[row, col] += weights.iloc[row, col]
+
+    return weights_sampled
+
+
 def event_info_from_input(inp: Input) -> dict[str, Any]:
     """Get information on the event(s) for which we calibrated
 
@@ -595,7 +625,7 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
         """Create the samples"""
         if sample_fraction <= 0:
             raise ValueError("Sample fraction must be larger than 0")
-        elif sample_fraction > 1 and not replace:
+        if sample_fraction > 1 and not replace:
             raise ValueError("Sample fraction must be <=1 or replace must be True")
         if ensemble_size < 1:
             raise ValueError("Ensemble size must be >=1")
@@ -615,7 +645,17 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
     def input_from_sample(self, sample: list[tuple[int, int]]):
         """Shallow-copy the input and update the data"""
         input = copy(self.input)  # NOTE: Shallow copy!
+
+        # Sampling
+        # NOTE: We always need samples to support `replace=True`
         input.data = sample_data(input.data, sample)
+        weights = (
+            input.data_weights
+            if input.data_weights is not None
+            else pd.DataFrame(1.0, index=input.data.index, columns=input.data.columns)
+        )
+        input.data_weights = sample_weights(weights, sample)
+
         return input
 
 
@@ -666,6 +706,15 @@ class TragedyEnsembleOptimizer(EnsembleOptimizer):
         input.data = data.dropna(axis="columns", how="all").dropna(
             axis="index", how="all"
         )
+        if input.data_weights is not None:
+            input.data_weights, _ = input.data_weights.align(
+                input.data,
+                axis=None,
+                join="right",
+                copy=True,
+                fill_value=input.missing_weights_value,
+            )
+            input.data_weights = sample_weights(input.data_weights, sample)
 
         # Select single hazard event
         input.hazard = input.hazard.select(event_id=input.data.index)

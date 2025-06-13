@@ -38,6 +38,7 @@ from climada.util.calibrate.ensemble import (
     TragedyEnsembleOptimizer,
     event_info_from_input,
     sample_data,
+    sample_weights,
 )
 
 from .test_base import ConcreteOptimizer, exposure, hazard
@@ -157,6 +158,25 @@ class TestSampleData(unittest.TestCase):
                 [[0, np.nan, 2], [np.nan, 4, np.nan]],
                 index=df.index,
                 columns=df.columns,
+            ),
+        )
+
+
+class TestSampleWeights(unittest.TestCase):
+    """Test sample_weights function"""
+
+    def test_sample_weights(self):
+        """Test sampling of data weights"""
+        df = pd.DataFrame([[0, 1, 2], [3, 4, 5]], index=[1, 2], columns=["a", "b", "c"])
+        samples = [(0, 0), (0, 2), (1, 1), (0, 2)]
+
+        pdt.assert_frame_equal(
+            sample_weights(df, samples),
+            pd.DataFrame(
+                [[0, 0, 4], [0, 4, 0]],
+                index=df.index,
+                columns=df.columns,
+                dtype="float",
             ),
         )
 
@@ -319,6 +339,7 @@ class DummyInput:
         self.stub = "a"
         self.hazard = create_autospec(hazard())
         self.hazard.select.return_value = self.hazard
+        self.data_weights = None
 
 
 class TestAverageEnsembleOptimizer(unittest.TestCase):
@@ -419,9 +440,18 @@ class TestAverageEnsembleOptimizer(unittest.TestCase):
             input=self.input,
             optimizer_type=ConcreteOptimizer,
         )
-        inp = opt.input_from_sample([(0, 0)])
+        inp = opt.input_from_sample([(0, 0), (3, 1), (0, 0)])
+
         self.assertIsNot(inp, self.input)
         self.assertIs(inp.stub, self.input.stub)
+        pd.testing.assert_frame_equal(
+            inp.data,
+            pd.DataFrame({"a": [1.0, None, None, None], "b": [None, None, None, 4.0]}),
+        )
+        pd.testing.assert_frame_equal(
+            inp.data_weights,
+            pd.DataFrame({"a": [2.0, 0.0, 0.0, 0.0], "b": [0.0, 0.0, 0.0, 1.0]}),
+        )
 
 
 class TestTragedyEnsembleOptimizer(unittest.TestCase):

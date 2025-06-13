@@ -38,8 +38,8 @@ from climada.util.calibrate.base import Optimizer, Output
 class ConcreteOptimizer(Optimizer):
     """An instance for testing. Implements 'run' without doing anything"""
 
-    def run(self, **_):
-        pass
+    def run(self, *args, **kwargs):
+        return self._opt_func(*args, **kwargs)
 
 
 def hazard():
@@ -83,7 +83,7 @@ class TestInputPostInit(unittest.TestCase):
 
         # Create dummy funcs
         self.impact_to_dataframe = lambda _: pd.DataFrame()
-        self.cost_func = lambda impact, data: 1.0
+        self.cost_func = lambda impact, data, weights: 1.0
         self.impact_func_gen = lambda **kwargs: ImpactFuncSet()
 
     def test_post_init_calls(self):
@@ -138,7 +138,7 @@ class TestInputPostInit(unittest.TestCase):
             data=pd.DataFrame(
                 data={"col1": [1, 2], "col2": [2, 3]}, index=[0, 1], dtype="float"
             ),
-            cost_func=lambda x, y: (x + y).sum(axis=None),
+            cost_func=lambda x, y, _: (x + y).sum(axis=None),
             impact_func_creator=lambda _: ImpactFuncSet([ImpactFunc()]),
             # Mock the dataframe creation by ignoring the argument
             impact_to_dataframe=lambda _: pd.DataFrame(
@@ -191,6 +191,7 @@ class TestInputPostInit(unittest.TestCase):
             data_aligned, impact_df_aligned = input.impact_to_aligned_df(None)
 
 
+@patch("climada.util.calibrate.base.ImpactCalc", autospec=True)
 class TestOptimizer(unittest.TestCase):
     """Base class for testing optimizers. Creates an input mock"""
 
@@ -200,14 +201,52 @@ class TestOptimizer(unittest.TestCase):
             hazard=hazard(),
             exposure=exposure(),
             data=pd.DataFrame(data={"col1": [1, 2], "col2": [2, 3]}, index=[0, 1]),
-            cost_func=lambda x, y: (x + y).sum(axis=None),
-            impact_func_creator=lambda _: ImpactFuncSet([ImpactFunc()]),
+            cost_func=lambda x, y: ((x - y) ** 2).sum(),
+            impact_func_creator=lambda: ImpactFuncSet([ImpactFunc()]),
             impact_to_dataframe=lambda x: x.impact_at_reg(),
         )
         self.optimizer = ConcreteOptimizer(self.input)
 
+    def test_align(self, _):
+        """Test aligning of data frames"""
+        self.input.impact_to_dataframe = lambda _: pd.DataFrame(
+            data={"col1": [2, 4], "col2": [4, 0]}, index=[0, 2]
+        )
+        self.input.cost_func = lambda x, y, w: (x, y, w)
 
-class TestOuput(unittest.TestCase):
+        # Apply
+        data, impact, weights = self.optimizer.run()
+
+        # Check alignment
+        self.assertIsNone(weights)
+        pd.testing.assert_frame_equal(
+            data,
+            pd.DataFrame(
+                {"col1": [1, 2, 0], "col2": [2, 3, 0]}, index=[0, 1, 2], dtype="float"
+            ),
+        )
+        pd.testing.assert_frame_equal(
+            impact,
+            pd.DataFrame(
+                {"col1": [2, 0, 0], "col2": [4, 0, 0]}, index=[0, 1, 2], dtype="float"
+            ),
+        )
+
+        # Apply with weights
+        self.input.data_weights = pd.DataFrame({"col1": [1], "col2": [1]}, index=[1])
+        self.input.missing_weights_value = 2.0
+        data, impact, weights = self.optimizer.run()
+
+        # Check alignment
+        pd.testing.assert_frame_equal(
+            weights,
+            pd.DataFrame(
+                {"col1": [2, 1, 2], "col2": [2, 1, 2]}, index=[0, 1, 2], dtype="float"
+            ),
+        )
+
+
+class TestOutput(unittest.TestCase):
     """Test the optimizer output"""
 
     def test_cycle(self):
@@ -261,5 +300,6 @@ class TestOutputEvaluator(unittest.TestCase):
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInputPostInit)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOptimizer))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutput))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestOutputEvaluator))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
