@@ -176,7 +176,7 @@ class TestBayesianOptimizer(unittest.TestCase):
             init_points=10, n_iter=20, max_iterations=1
         )
         optimizer = BayesianOptimizer(self.input, random_state=1)
-        output = optimizer.run(controller)
+        output = optimizer.run(controller=controller)
 
         # Check result (low accuracy)
         self.assertAlmostEqual(output.params["slope"], 1.0, places=2)
@@ -210,7 +210,7 @@ class TestBayesianOptimizer(unittest.TestCase):
         controller = BayesianOptimizerController.from_input(
             self.input, sampling_base=5, max_iterations=3
         )
-        output = optimizer.run(controller)
+        output = optimizer.run(controller=controller)
 
         # Check results (low accuracy)
         self.assertEqual(output.p_space.dim, 2)
@@ -246,7 +246,7 @@ class TestBayesianOptimizer(unittest.TestCase):
         controller = BayesianOptimizerController.from_input(
             self.input, max_iterations=1
         )
-        output = optimizer.run(controller)
+        output = optimizer.run(controller=controller)
 
         output_eval = OutputEvaluator(self.input, output)
         output_eval.impf_set.plot()
