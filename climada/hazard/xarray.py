@@ -38,16 +38,11 @@ from climada.hazard.centroids.centr import Centroids
 
 LOGGER = logging.getLogger(__name__)
 
-DEF_COORDS = dict(event="time", longitude="longitude", latitude="latitude")
+DEF_COORDS = {"event": "time", "longitude": "longitude", "latitude": "latitude"}
 """Default coordinates when reading Hazard data from an xarray Dataset"""
 
 DEF_DATA_VARS = ["fraction", "frequency", "event_id", "event_name", "date"]
 """Default keys for optional Hazard attributes when reading from an xarray Dataset"""
-
-
-def get_default_coords():
-    """Return a copy of the default coordinate associations"""
-    return copy.deepcopy(DEF_COORDS)
 
 
 def to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
@@ -142,27 +137,136 @@ def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
     return values
 
 
-# TODO: Do not alter the original data (this should make everything cleaner?)
-# TODO: Fix default values. Make accessors, too!
+def load_from_xarray_or_return_default(
+    data: xr.Dataset,
+    user_key: str | None,
+    default_key: str,
+    hazard_attr: str,
+    accessor: Callable[[xr.DataArray], Any],
+    default_value: Any,
+) -> Any:
+    """Load data for a single Hazard attribute or return the default value
+
+    Does the following based on the ``user_key``:
+    * If the key is an empty string, return the default value
+    * If the key is a non-empty string, load the data for that key and return it.
+    * If the key is ``None``, look for the ``default_key`` in the data. If it
+        exists, return that data. If not, return the default value.
+
+    Parameters
+    ----------
+    user_key : str or None
+        The key set by the user to identify the DataArray to read data from.
+    default_key : str
+        The default key identifying the DataArray to read data from.
+    hazard_attr : str
+        The name of the attribute of ``Hazard`` where the data will be stored in.
+    accessor : Callable
+        A callable that takes the DataArray as argument and returns the data structure
+        that is required by the ``Hazard`` attribute.
+    default_value
+        The default value/array in case the data could not be found.
+
+    Returns
+    -------
+    The object that will be stored in the ``Hazard`` attribute ``hazard_attr``.
+
+    Raises
+    ------
+    KeyError
+        If ``user_key`` was a non-empty string but no such key was found in the data
+    RuntimeError
+        If the data structure loaded has a different shape than the default data
+        structure
+    """
+    # User does not want to read data
+    if user_key == "":
+        LOGGER.debug("Using default values for Hazard.%s per user request", hazard_attr)
+        return default_value
+
+    if not pd.isna(user_key):
+        # Read key exclusively
+        LOGGER.debug(
+            "Reading data for Hazard.%s from DataArray '%s'", hazard_attr, user_key
+        )
+        val = accessor(data[user_key])
+    else:
+        # Try default key
+        try:
+            val = accessor(data[default_key])
+            LOGGER.debug(
+                "Reading data for Hazard.%s from DataArray '%s'",
+                hazard_attr,
+                default_key,
+            )
+        except KeyError:
+            LOGGER.debug(
+                "Using default values for Hazard.%s. No data found", hazard_attr
+            )
+            return default_value
+
+    def vshape(array):
+        """Return a shape tuple for any array-like type we use"""
+        if isinstance(array, list):
+            return len(array)
+        if isinstance(array, sparse.csr_matrix):
+            return array.get_shape()
+        return array.shape
+
+    # Check size for read data
+    if default_value is not None and not np.array_equal(
+        vshape(val), vshape(default_value)
+    ):
+        raise RuntimeError(
+            f"'{user_key if user_key else default_key}' must have shape "
+            f"{vshape(default_value)}, but shape is {vshape(val)}"
+        )
+
+    # Return the data
+    return val
+
+
 @dataclass(repr=False, eq=False)
 class HazardXarrayReader:
+    """A helper class for creating a Hazard object from an xarray dataset
+
+    Initialize this class, then use :py:meth:`get_hazard_kwargs` to retrieve the kwargs
+    to be passed to the :py:class:`~climada.hazard.base.Hazard` initializer.
+
+    Attributes
+    ----------
+    data : xr.Dataset
+        The data to be read as hazard.
+    intensity : str
+        The name of the variable containing the hazard intensity information.
+        Default: ``"intensity"``
+    coordinate_vars : dict(str, str)
+        Mapping from default coordinate names to coordinate names in the dataset.
+    data_vars : dict(str, str)
+        Mapping from default variable names to variable names in the dataset.
+    crs : str
+        Coordinate reference system of the data to be read. Defaults to ``"EPSG:4326"``
+        (WGS 84).
+    rechunk : bool
+        If ``False``, automatically rechunk the data for more efficient reads from disk.
+        Default: ``False``.
+    """
+
     data: xr.Dataset
-    hazard_type: InitVar[str]
-    intensity_unit: InitVar[str]
     intensity: str = "intensity"
     coordinate_vars: InitVar[dict[str, str] | None] = field(default=None, kw_only=True)
     data_vars: dict[str, str] | None = field(default=None, kw_only=True)
     crs: str = field(default=u_const.DEF_CRS, kw_only=True)
     rechunk: bool = field(default=False, kw_only=True)
 
-    coords: dict[str, str] = field(init=False, default_factory=get_default_coords)
+    coords: dict[str, str] = field(
+        init=False, default_factory=lambda: copy.deepcopy(DEF_COORDS)
+    )
     data_dims: dict[str, tuple[Hashable, ...]] = field(init=False, default_factory=dict)
     hazard_kwargs: dict[str, Any] = field(init=False, default_factory=dict)
 
-    def __post_init__(self, hazard_type, intensity_unit, coordinate_vars):
+    def __post_init__(self, coordinate_vars):
         """Update coordinate and dimension names"""
-        self.hazard_kwargs.update(haz_type=hazard_type, units=intensity_unit)
-
         # Update coordinate identifiers
         coordinate_vars = coordinate_vars or {}
         unknown_coords = [co for co in coordinate_vars if co not in self.coords]
@@ -175,11 +279,11 @@ class HazardXarrayReader:
 
         # Retrieve dimensions of coordinates
         try:
-            self.data_dims = dict(
-                event=self.data[self.coords["event"]].dims,
-                longitude=self.data[self.coords["longitude"]].dims,
-                latitude=self.data[self.coords["latitude"]].dims,
-            )
+            self.data_dims = {
+                "event": self.data[self.coords["event"]].dims,
+                "longitude": self.data[self.coords["longitude"]].dims,
+                "latitude": self.data[self.coords["latitude"]].dims,
+            }
         # Handle KeyError for better error message
         except KeyError as err:
             key = err.args[0]
@@ -190,16 +294,12 @@ class HazardXarrayReader:
 
         # Check for unexpected keys
         self.data_vars = self.data_vars or {}
-        default_keys = pd.Series(DEF_DATA_VARS)
-        unknown_keys = [
-            key
-            for key in self.data_vars.keys()
-            if not default_keys.str.contains(key).any()
-        ]
+        default_keys = copy.deepcopy(DEF_DATA_VARS)
+        unknown_keys = [key for key in self.data_vars.keys() if key not in default_keys]
         if unknown_keys:
             raise ValueError(
-                f"Unknown data variables passed: '{unknown_keys}'. Supported "
-                f"data variables are {default_keys.to_list()}."
+                f"Unknown data variables passed: '{unknown_keys}'. Supported data "
+                f"variables are {default_keys}."
             )
 
     @classmethod
@@ -210,7 +310,7 @@ class HazardXarrayReader:
         with xr.open_dataset(filename, **open_dataset_kws) as dset:
             return cls(dset, *args, **kwargs)
 
-    def rechunk_data(self) -> xr.Dataset:
+    def rechunk_data(self, data: xr.Dataset) -> xr.Dataset:
         """Try to rechunk the data to optimize the stack operation afterwards."""
         chunks = (
             # We want one event to be contained in one chunk
@@ -219,28 +319,31 @@ class HazardXarrayReader:
             # Automated chunking in the event dimensions (as many as fit)
             | {dim: "auto" for dim in self.data_dims["event"]}
         )
-        return self.data.chunk(chunks=chunks)
+        return data.chunk(chunks=chunks)
 
     def get_hazard_kwargs(self) -> dict[str, Any]:
         """Return kwargs to initialize the hazard"""
+        # Shallow copy of the data
+        data = self.data.copy()
+
         # Try promoting single-value coordinates to dimensions
         for key, val in self.data_dims.items():
             if not val:
                 coord = self.coords[key]
                 LOGGER.debug("Promoting Dataset coordinate '%s' to dimension", coord)
-                self.data = self.data.expand_dims(coord)
-                self.data_dims[key] = self.data[coord].dims
+                data = data.expand_dims(coord)
+                self.data_dims[key] = data[coord].dims
 
         # Maybe rechunk
         if self.rechunk:
-            self.data = self.rechunk_data()
+            data = self.rechunk_data(data)
 
         # Stack (vectorize) the entire dataset into 2D (time, lat/lon)
         # NOTE: We want the set union of the dimensions, but Python 'set' does not
         #       preserve order. However, we want longitude to run faster than latitude.
         #       So we use 'dict' without values, as 'dict' preserves insertion order
         #       (dict keys behave like a set).
-        self.data = self.data.stack(
+        data = data.stack(
             event=self.data_dims["event"],
             lat_lon=list(
                 dict.fromkeys(
@@ -251,51 +354,49 @@ class HazardXarrayReader:
 
         # Transform coordinates into centroids
         centroids = Centroids(
-            lat=self.data[self.coords["latitude"]].values,
-            lon=self.data[self.coords["longitude"]].values,
+            lat=data[self.coords["latitude"]].values,
+            lon=data[self.coords["longitude"]].values,
             crs=self.crs,
         )
 
         # Read the intensity data
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", self.intensity)
-        intensity_matrix = to_csr_matrix(self.data[self.intensity])
+        intensity_matrix = to_csr_matrix(data[self.intensity])
 
         # Create a DataFrame storing access information for each of data_vars
         # NOTE: Each row will be passed as arguments to
         #       `load_from_xarray_or_return_default`, see its docstring for further
         #       explanation of the DataFrame columns / keywords.
-        num_events = self.data.sizes["event"]
+        num_events = data.sizes["event"]
         data_ident = pd.DataFrame(
-            data=dict(
+            data={
                 # The attribute of the Hazard class where the data will be stored
-                hazard_attr=DEF_DATA_VARS,
+                "hazard_attr": DEF_DATA_VARS,
                 # The identifier and default key used in this method
-                default_key=DEF_DATA_VARS,
+                "default_key": DEF_DATA_VARS,
                 # The key assigned by the user
-                user_key=None,
+                "user_key": None,
                 # The default value for each attribute
-                default_value=[
+                "default_value": [
                     None,
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
                     list(
                         year_month_day_accessor(
-                            self.data[self.coords["event"]], strict=False
+                            data[self.coords["event"]], strict=False
                         ).flat
                     ),
-                    date_to_ordinal_accessor(
-                        self.data[self.coords["event"]], strict=False
-                    ),
+                    date_to_ordinal_accessor(data[self.coords["event"]], strict=False),
                 ],
                 # The accessor for the data in the Dataset
-                accessor=[
+                "accessor": [
                     to_csr_matrix,
                     lambda x: maybe_repeat(default_accessor(x), num_events),
                     strict_positive_int_accessor,
                     lambda x: list(maybe_repeat(default_accessor(x), num_events).flat),
                     lambda x: maybe_repeat(date_to_ordinal_accessor(x), num_events),
                 ],
-            )
+            }
         )
 
         # Update with keys provided by the user
@@ -307,103 +408,10 @@ class HazardXarrayReader:
         # Set the Hazard attributes
         for _, ident in data_ident.iterrows():
             self.hazard_kwargs[ident["hazard_attr"]] = (
-                self.load_from_xarray_or_return_default(**ident)
+                load_from_xarray_or_return_default(data=data, **ident)
             )
 
         # Done!
         LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)
         self.hazard_kwargs.update(centroids=centroids, intensity=intensity_matrix)
         return self.hazard_kwargs
-
-    def load_from_xarray_or_return_default(
-        self,
-        user_key: str | None,
-        default_key: str,
-        hazard_attr: str,
-        accessor: Callable[[xr.DataArray], Any],
-        default_value: Any,
-    ) -> Any:
-        """Load data for a single Hazard attribute or return the default value
-
-        Does the following based on the ``user_key``:
-        * If the key is an empty string, return the default value
-        * If the key is a non-empty string, load the data for that key and return it.
-        * If the key is ``None``, look for the ``default_key`` in the data. If it
-            exists, return that data. If not, return the default value.
-
-        Parameters
-        ----------
-        user_key : str or None
-            The key set by the user to identify the DataArray to read data from.
-        default_key : str
-            The default key identifying the DataArray to read data from.
-        hazard_attr : str
-            The name of the attribute of ``Hazard`` where the data will be stored in.
-        accessor : Callable
-            A callable that takes the DataArray as argument and returns the data
-            structure that is required by the ``Hazard`` attribute.
-        default_value
-            The default value/array to return in case the data could not be found.
-
-        Returns
-        -------
-        The object that will be stored in the ``Hazard`` attribute ``hazard_attr``.
-
-        Raises
-        ------
-        KeyError
-            If ``user_key`` was a non-empty string but no such key was found in the
-            data
-        RuntimeError
-            If the data structure loaded has a different shape than the default data
-            structure
-        """
-        # User does not want to read data
-        if user_key == "":
-            LOGGER.debug(
-                "Using default values for Hazard.%s per user request", hazard_attr
-            )
-            return default_value
-
-        if not pd.isna(user_key):
-            # Read key exclusively
-            LOGGER.debug(
-                "Reading data for Hazard.%s from DataArray '%s'",
-                hazard_attr,
-                user_key,
-            )
-            val = accessor(self.data[user_key])
-        else:
-            # Try default key
-            try:
-                val = accessor(self.data[default_key])
-                LOGGER.debug(
-                    "Reading data for Hazard.%s from DataArray '%s'",
-                    hazard_attr,
-                    default_key,
-                )
-            except KeyError:
-                LOGGER.debug(
-                    "Using default values for Hazard.%s. No data found", hazard_attr
-                )
-                return default_value
-
-        def vshape(array):
-            """Return a shape tuple for any array-like type we use"""
-            if isinstance(array, list):
-                return len(array)
-            if isinstance(array, sparse.csr_matrix):
-                return array.get_shape()
-            return array.shape
-
-        # Check size for read data
-        if default_value is not None and not np.array_equal(
-            vshape(val), vshape(default_value)
-        ):
-            raise RuntimeError(
-                f"'{user_key if user_key else default_key}' must have shape "
-                f"{vshape(default_value)}, but shape is {vshape(val)}"
-            )
-
-        # Return the data
-        return val

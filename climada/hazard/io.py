@@ -32,6 +32,7 @@ import numpy as np
 import pandas as pd
 import rasterio
 import xarray as xr
+from deprecation import deprecated
 from scipy import sparse
 
 import climada.util.constants as u_const
@@ -274,6 +275,10 @@ class HazardIO:
         )
 
     @classmethod
+    @deprecated(
+        details="Hazard.from_xarray_raster now supports a filepath for the 'data' "
+        "parameter"
+    )
     def from_xarray_raster_file(
         cls, filepath: Union[pathlib.Path, str], *args, **kwargs
     ):
@@ -301,26 +306,14 @@ class HazardIO:
         Examples
         --------
 
-        >>> hazard = Hazard.from_xarray_raster_file("path/to/file.nc", "", "")
-
-        Notes
-        -----
-
-        If you have specific requirements for opening a data file, prefer opening it
-        yourself and using :py:meth:`~Hazard.from_xarray_raster`, following this pattern:
-
-        >>> open_kwargs = dict(engine="h5netcdf", chunks=dict(x=-1, y="auto"))
-        >>> with xarray.open_dataset("path/to/file.nc", **open_kwargs) as dset:
-        ...     hazard = Hazard.from_xarray_raster(dset, "", "")
         """
-        reader = HazardXarrayReader.from_file(filepath, *args, **kwargs)
-        kwargs = reader.get_hazard_kwargs()
-        return cls(**cls._check_and_cast_attrs(kwargs))
+        args = (filepath,) + args
+        return cls.from_xarray_raster(*args, **kwargs)
 
     @classmethod
     def from_xarray_raster(
         cls,
-        data: xr.Dataset,
+        data: xr.Dataset | pathlib.Path | str,
         hazard_type: str,
         intensity_unit: str,
         *,
@@ -329,6 +322,7 @@ class HazardIO:
         data_vars: Optional[Dict[str, str]] = None,
         crs: str = u_const.DEF_CRS,
         rechunk: bool = False,
+        open_dataset_kws: dict[str, Any] | None = None,
     ):
         """Read raster-like data from an xarray Dataset
 
@@ -352,13 +346,10 @@ class HazardIO:
         meaning that the object can be used in all CLIMADA operations without throwing
         an error due to missing data or faulty data types.
 
-        Use :py:meth:`~Hazard.from_xarray_raster_file` to open a file on disk
-        and load the resulting dataset with this method in one step.
-
         Parameters
         ----------
-        data : xarray.Dataset
-            The dataset to read from.
+        data : xarray.Dataset or Path or str
+            The filepath to read the data from or the already opened dataset
         hazard_type : str
             The type identifier of the hazard. Will be stored directly in the hazard
             object.
@@ -406,6 +397,9 @@ class HazardIO:
             be forced by rechunking the data. Ideally, you would select the chunks in
             that manner when opening the dataset before passing it to this function.
             Defaults to ``False``.
+        open_dataset_kws : dict(str, any)
+            Keyword arguments passed to ``xarray.open_dataset`` if ``data`` is a file
+            path. Ignored otherwise.
 
         Returns
         -------
@@ -414,8 +408,8 @@ class HazardIO:
 
         See Also
         --------
-        :py:meth:`~Hazard.from_xarray_raster_file`
-            Use this method if you want CLIMADA to open and read a file on disk for you.
+        :py:class:`HazardXarrayReader`
+            The helper class used to read the data.
 
         Notes
         -----
@@ -456,6 +450,21 @@ class HazardIO:
         ...     ),
         ... )
         >>> hazard = Hazard.from_xarray_raster(dset, "", "")
+
+        Data can also be read from a file.
+
+        >>> dset.to_netcdf("path/to/file.nc")
+        >>> hazard = Hazard.from_xarray_raster("path/to/file.nc", "", "")
+
+        If you have specific requirements for opening a data file, you can pass
+        ``open_dataset_kws``.
+
+        >>> hazard = Hazard.from_xarray_raster(
+        ...     dset,
+        ...     "",
+        ...     "",
+        ...     open_dataset_kws={"chunks": {"x": -1, "y": "auto"}, "engine": "netcdf4"}
+        ... )
 
         For non-default coordinate names, use the ``coordinate_vars`` argument.
 
@@ -568,26 +577,29 @@ class HazardIO:
         >>> dset = dset.expand_dims(time=[numpy.datetime64("2000-01-01")])
         >>> hazard = Hazard.from_xarray_raster(dset, "", "")
         """
+        reader_kwargs = {
+            "intensity": intensity,
+            "coordinate_vars": coordinate_vars,
+            "data_vars": data_vars,
+            "crs": crs,
+            "rechunk": rechunk,
+        }
         if not isinstance(data, xr.Dataset):
-            if isinstance(data, (pathlib.Path, str)):
+            if isinstance(data, xr.DataArray):
                 raise TypeError(
-                    "Passing a path to this classmethod is not supported. "
-                    "Use Hazard.from_xarray_raster_file instead."
+                    "This method only supports passing xr.Dataset. Consider promoting "
+                    "your xr.DataArray to a Dataset."
                 )
+            reader = HazardXarrayReader.from_file(
+                filename=data, open_dataset_kws=open_dataset_kws, **reader_kwargs
+            )
+        else:
+            reader = HazardXarrayReader(data=data, **reader_kwargs)
 
-            raise TypeError("This method only supports xarray.Dataset as input data")
-
-        reader = HazardXarrayReader(
-            data=data,
-            hazard_type=hazard_type,
-            intensity_unit=intensity_unit,
-            intensity=intensity,
-            coordinate_vars=coordinate_vars,
-            data_vars=data_vars,
-            crs=crs,
-            rechunk=rechunk,
-        )
-        kwargs = reader.get_hazard_kwargs()
+        kwargs = reader.get_hazard_kwargs() | {
+            "haz_type": hazard_type,
+            "units": intensity_unit,
+        }
         return cls(**cls._check_and_cast_attrs(kwargs))
 
     @staticmethod

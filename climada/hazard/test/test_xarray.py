@@ -46,13 +46,13 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         cls.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
         cls.latitude = np.array([0, 1])
         cls.longitude = np.array([0, 1, 2])
-        dset = xr.Dataset(
+        cls.dset = xr.Dataset(
             {
                 "intensity": (["time", "latitude", "longitude"], cls.intensity),
             },
             dict(time=cls.time, latitude=cls.latitude, longitude=cls.longitude),
         )
-        dset.to_netcdf(cls.netcdf_path)
+        cls.dset.to_netcdf(cls.netcdf_path)
 
     @classmethod
     def tearDownClass(cls):
@@ -108,49 +108,49 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 
     def test_load_path(self):
         """Load the data with path as argument"""
+        hazard = Hazard.from_xarray_raster(self.netcdf_path, "", "")
+        self._assert_default(hazard)
+
+        # Check deprecated method
         hazard = Hazard.from_xarray_raster_file(self.netcdf_path, "", "")
         self._assert_default(hazard)
 
         # Check wrong paths
-        with self.assertRaises(FileNotFoundError) as cm:
-            Hazard.from_xarray_raster_file("file-does-not-exist.nc", "", "")
-        self.assertIn("file-does-not-exist.nc", str(cm.exception))
-        with self.assertRaises(KeyError) as cm:
-            Hazard.from_xarray_raster_file(
+        with self.assertRaisesRegex(FileNotFoundError, "file-does-not-exist.nc"):
+            Hazard.from_xarray_raster("file-does-not-exist.nc", "", "")
+        with self.assertRaisesRegex(KeyError, "wrong-intensity-path"):
+            Hazard.from_xarray_raster(
                 self.netcdf_path, "", "", intensity="wrong-intensity-path"
             )
-        self.assertIn("wrong-intensity-path", str(cm.exception))
 
-    def test_load_dataset(self):
+    @patch("climada.hazard.xarray.xr.open_dataset")
+    def test_load_dataset(self, open_dataset_mock):
         """Load the data from an opened dataset as argument"""
+        open_dataset_mock.return_value.__enter__.return_value = self.dset
 
-        def _load_and_assert(chunks):
-            with xr.open_dataset(self.netcdf_path, chunks=chunks) as dataset:
-                hazard = Hazard.from_xarray_raster(dataset, "", "")
-                self._assert_default(hazard)
+        def _load_and_assert(**kwargs):
+            hazard = Hazard.from_xarray_raster(
+                self.netcdf_path, "", "", open_dataset_kws=kwargs
+            )
+            self._assert_default(hazard)
 
-        _load_and_assert(chunks=None)
-        _load_and_assert(chunks=dict(latitude=1, longitude=1, time=1))
+        _load_and_assert()
+        open_dataset_mock.assert_called_once_with(self.netcdf_path, chunks="auto")
+        open_dataset_mock.reset_mock()
+        _load_and_assert(chunks=dict(latitude=1, longitude=1, time=1), engine="netcdf4")
+        open_dataset_mock.assert_called_once_with(
+            self.netcdf_path,
+            chunks=dict(latitude=1, longitude=1, time=1),
+            engine="netcdf4",
+        )
 
     def test_type_error(self):
         """Calling 'from_xarray_raster' with wrong data type should throw"""
-        # Passing a path
-        with self.assertRaises(TypeError) as cm:
-            Hazard.from_xarray_raster(self.netcdf_path, "", "")
-        self.assertIn(
-            "Use Hazard.from_xarray_raster_file instead",
-            str(cm.exception),
-        )
-
         # Passing a DataArray
-        with xr.open_dataset(self.netcdf_path) as dset, self.assertRaises(
-            TypeError
-        ) as cm:
+        with xr.open_dataset(self.netcdf_path) as dset, self.assertRaisesRegex(
+            TypeError, "This method only supports passing xr.Dataset"
+        ):
             Hazard.from_xarray_raster(dset["intensity"], "", "")
-        self.assertIn(
-            "This method only supports xarray.Dataset as input data",
-            str(cm.exception),
-        )
 
     def test_type_and_unit(self):
         """Test passing a custom type and unit"""
@@ -352,9 +352,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
 
         def test_crs_from_input(crs_input):
             crs = CRS.from_user_input(crs_input)
-            hazard = Hazard.from_xarray_raster_file(
-                self.netcdf_path, "", "", crs=crs_input
-            )
+            hazard = Hazard.from_xarray_raster(self.netcdf_path, "", "", crs=crs_input)
             self.assertEqual(hazard.centroids.geometry.crs, crs)
 
         test_crs_from_input("EPSG:3857")
@@ -366,6 +364,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         # Drop time as dimension, but not as coordinate!
         with xr.open_dataset(self.netcdf_path) as ds:
             ds = ds.isel(time=0).squeeze()
+            print(ds)
             hazard = Hazard.from_xarray_raster(ds, "", "")
             self._assert_default_types(hazard)
             np.testing.assert_array_equal(
@@ -447,7 +446,7 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
 
     def test_dimension_naming(self):
         """Test if dimensions with different names can be read"""
-        hazard = Hazard.from_xarray_raster_file(
+        hazard = Hazard.from_xarray_raster(
             self.netcdf_path,
             "",
             "",
@@ -462,7 +461,7 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
 
     def test_coordinate_naming(self):
         """Test if coordinates with different names than dimensions can be read"""
-        hazard = Hazard.from_xarray_raster_file(
+        hazard = Hazard.from_xarray_raster(
             self.netcdf_path,
             "",
             "",
@@ -477,7 +476,7 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
 
     def test_2D_coordinates(self):
         """Test if read method correctly handles 2D coordinates"""
-        hazard = Hazard.from_xarray_raster_file(
+        hazard = Hazard.from_xarray_raster(
             self.netcdf_path,
             "",
             "",
@@ -579,18 +578,17 @@ class TestReadDimsCoordsNetCDF(unittest.TestCase):
     def test_errors(self):
         """Check if expected errors are thrown"""
         # Wrong coordinate key
-        with self.assertRaises(ValueError) as cm:
-            Hazard.from_xarray_raster_file(
+        with self.assertRaisesRegex(ValueError, "Unknown coordinates passed"):
+            Hazard.from_xarray_raster(
                 self.netcdf_path,
                 "",
                 "",
                 coordinate_vars=dict(bar="latitude", longitude="baz"),
             )
-        self.assertIn("Unknown coordinates passed: '['bar']'.", str(cm.exception))
 
         # Correctly specified, but the custom dimension does not exist
         with self.assertRaisesRegex(RuntimeError, "lalalatitude"):
-            Hazard.from_xarray_raster_file(
+            Hazard.from_xarray_raster(
                 self.netcdf_path,
                 "",
                 "",
