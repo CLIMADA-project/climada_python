@@ -55,7 +55,7 @@ def to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
 
     The CSR matrix stores NaNs explicitly, so we set them to zero.
     """
-    array = array.where(lambda x: np.invert(np.isnan(x)), 0)
+    array = array.where(lambda x: ~np.isnan(x), 0)
     array = xr.apply_ufunc(
         sp.COO.from_numpy,
         array,
@@ -142,6 +142,8 @@ def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
     return values
 
 
+# TODO: Do not alter the original data (this should make everything cleaner?)
+# TODO: Fix default values. Make accessors, too!
 @dataclass(repr=False, eq=False)
 class HazardXarrayReader:
     data: xr.Dataset
