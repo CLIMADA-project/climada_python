@@ -1504,6 +1504,9 @@ def _nearest_neighbor_euclidean(
     # threshold and set an unvalid index -1
     if unit == "degree":
         dist = dist * EARTH_RADIUS_KM
+    else:
+        # if unit is not in degree, check_antimeridian is forced to False
+        check_antimeridian = False
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
@@ -1512,8 +1515,6 @@ def _nearest_neighbor_euclidean(
         assigned[dist > threshold] = -1
 
     if check_antimeridian:
-        if unit != "degree":
-            raise ValueError("check_antimeridian is only implemented for degrees")
         assigned = _nearest_neighbor_antimeridian(
             np.rad2deg(centroids), np.rad2deg(coordinates[idx]), threshold, assigned
         )
