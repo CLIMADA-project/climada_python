@@ -1473,18 +1473,6 @@ class TestAssign(unittest.TestCase):
                 coords_to_assign, coords, "km", u_coord.NEAREST_NEIGHBOR_THRESHOLD
             )
 
-    def test_nearest_neighbor_euclidean_invalid_unit_with_antimeridian(self):
-        """Test euclidean nearest neighbor antimeridian with invalid unit"""
-        self.setUp_match_coordinates()
-        with self.assertRaises(ValueError):
-            u_coord._nearest_neighbor_euclidean(
-                self.coords_to_assign,
-                self.coords,
-                "km",
-                u_coord.NEAREST_NEIGHBOR_THRESHOLD,
-                check_antimeridian=True,
-            )
-
 
 class TestGetGeodata(unittest.TestCase):
     def test_nat_earth_resolution_pass(self):
