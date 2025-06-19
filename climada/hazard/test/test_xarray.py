@@ -42,7 +42,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         """Write a simple NetCDF file to read"""
         cls.tempdir = TemporaryDirectory()
         cls.netcdf_path = Path(cls.tempdir.name) / "default.nc"
-        cls.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, 11]]])
+        cls.intensity = np.array([[[0, 1, 2], [3, 4, 5]], [[6, 7, 8], [9, 10, np.nan]]])
         cls.time = np.array([dt.datetime(1999, 1, 1), dt.datetime(2000, 1, 1)])
         cls.latitude = np.array([0, 1])
         cls.longitude = np.array([0, 1, 2])
@@ -84,8 +84,10 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         self.assertEqual(hazard.centroids.geometry.crs, DEF_CRS)
 
         # Intensity data
+        # NOTE: NaN converted to zero
+        self.assertEqual(hazard.intensity.nnz, 10)
         np.testing.assert_array_equal(
-            hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
+            hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 0]]
         )
 
         # Fraction default
@@ -172,7 +174,7 @@ class TestReadDefaultNetCDF(unittest.TestCase):
             hazard = Hazard.from_xarray_raster(dataset, "", "")
             self._assert_default_types(hazard)
             np.testing.assert_array_equal(
-                hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 11]]
+                hazard.intensity.toarray(), [[0, 1, 2, 3, 4, 5], [6, 7, 8, 9, 10, 0]]
             )
             np.testing.assert_array_equal(hazard.date, time)
             np.testing.assert_array_equal(hazard.event_name, np.full(size, ""))

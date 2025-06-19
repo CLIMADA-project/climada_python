@@ -148,10 +148,11 @@ def load_from_xarray_or_return_default(
     """Load data for a single Hazard attribute or return the default value
 
     Does the following based on the ``user_key``:
+
     * If the key is an empty string, return the default value
     * If the key is a non-empty string, load the data for that key and return it.
-    * If the key is ``None``, look for the ``default_key`` in the data. If it
-        exists, return that data. If not, return the default value.
+    * If the key is ``None``, look for the ``default_key`` in the data. If it exists,
+      return that data. If not, return the default value.
 
     Parameters
     ----------
@@ -169,7 +170,7 @@ def load_from_xarray_or_return_default(
 
     Returns
     -------
-    The object that will be stored in the ``Hazard`` attribute ``hazard_attr``.
+    The object that will be stored in the ``Hazard`` attribute with name ``hazard_attr``
 
     Raises
     ------

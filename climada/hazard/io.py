@@ -276,21 +276,24 @@ class HazardIO:
 
     @classmethod
     @deprecated(
-        details="Hazard.from_xarray_raster now supports a filepath for the 'data' "
-        "parameter"
+        6.0,
+        details="Hazard.from_xarray_raster now supports a filepath as 'data' parameter",
     )
     def from_xarray_raster_file(
         cls, filepath: Union[pathlib.Path, str], *args, **kwargs
     ):
         """Read raster-like data from a file that can be loaded with xarray
 
-        This wraps :py:meth:`~Hazard.from_xarray_raster` by first opening the target file
+        .. deprecated:: 6.0
+           Pass ``filepath`` as ``data`` argument to :py:meth:`from_xarray_raster`
+           instead.
+
+        This wraps :py:meth:`from_xarray_raster` by first opening the target file
         as xarray dataset and then passing it to that classmethod. Use this wrapper as a
         simple alternative to opening the file yourself. The signature is exactly the
         same, except for the first argument, which is replaced by a file path here.
 
-        Additional (keyword) arguments are passed to
-        :py:meth:`~Hazard.from_xarray_raster`.
+        Additional (keyword) arguments are passed to :py:meth:`from_xarray_raster`.
 
         Parameters
         ----------
@@ -302,10 +305,6 @@ class HazardIO:
         -------
         hazard : climada.Hazard
             A hazard object created from the input data
-
-        Examples
-        --------
-
         """
         args = (filepath,) + args
         return cls.from_xarray_raster(*args, **kwargs)
@@ -356,13 +355,13 @@ class HazardIO:
         intensity_unit : str
             The physical units of the intensity.
         intensity : str, optional
-            Identifier of the `xarray.DataArray` containing the hazard intensity data.
+            Identifier of the ``xarray.DataArray`` containing the hazard intensity data.
         coordinate_vars : dict(str, str), optional
             Mapping from default coordinate names to coordinate names used in the data
             to read. The default is
-            ``dict(event="time", longitude="longitude", latitude="latitude")``, as most
-            of the commonly used hazard data happens to have a "time" attribute but no
-            "event" attribute.
+            ``{"event": "time", "longitude": "longitude", "latitude": "latitude"}``, as
+            most of the commonly used hazard data happens to have a "time" attribute but
+            no "event" attribute.
         data_vars : dict(str, str), optional
             Mapping from default variable names to variable names used in the data
             to read. The default names are ``fraction``, ``hazard_type``, ``frequency``,
@@ -377,7 +376,7 @@ class HazardIO:
             * ``date``: The ``event`` coordinate interpreted as date or ordinal, or
               ones if that fails (which will issue a warning).
             * ``fraction``: ``None``, which results in a value of 1.0 everywhere, see
-              :py:meth:`Hazard.__init__` for details.
+              :py:meth:`~climada.hazard.base.Hazard.__init__` for details.
             * ``hazard_type``: Empty string
             * ``frequency``: 1.0 for every event
             * ``event_name``: String representation of the event date or empty strings
@@ -386,8 +385,9 @@ class HazardIO:
 
         crs : str, optional
             Identifier for the coordinate reference system of the coordinates. Defaults
-            to ``EPSG:4326`` (WGS 84), defined by ``climada.util.constants.DEF_CRS``.
-            See https://pyproj4.github.io/pyproj/dev/api/crs/crs.html#pyproj.crs.CRS.from_user_input
+            to ``"EPSG:4326"`` (WGS 84), defined by
+            :py:const:`climada.util.coordinates.DEF_CRS`. See
+            https://pyproj4.github.io/pyproj/dev/api/crs/crs.html#pyproj.crs.CRS.from_user_input
             for further information on how to specify the coordinate system.
         rechunk : bool, optional
             Rechunk the dataset before flattening. This might have serious performance
@@ -403,12 +403,12 @@ class HazardIO:
 
         Returns
         -------
-        hazard : climada.Hazard
+        Hazard
             A hazard object created from the input data
 
         See Also
         --------
-        :py:class:`HazardXarrayReader`
+        :py:class:`climada.hazard.xarray.HazardXarrayReader`
             The helper class used to read the data.
 
         Notes
@@ -426,8 +426,9 @@ class HazardIO:
           ``data_vars``` parameter documentation above.
         * To avoid confusion in the call signature, several parameters are keyword-only
           arguments.
-        * The attributes ``Hazard.haz_type`` and ``Hazard.unit`` currently cannot be
-          read from the Dataset. Use the method parameters to set these attributes.
+        * The attributes :py:attr:`~climada.hazard.base.Hazard.haz_type` and
+          :py:attr:`~climada.hazard.base.Hazard.units` currently cannot be read from the
+          Dataset. Use the method parameters to set these attributes.
         * This method does not read coordinate system metadata. Use the ``crs`` parameter
           to set a custom coordinate system identifier.
 
