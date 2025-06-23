@@ -31,6 +31,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 from pandas.api.types import is_numeric_dtype
+from tqdm import tqdm
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
@@ -41,7 +42,7 @@ from climada.trajectories.riskperiod import CalcRiskPeriod
 from climada.trajectories.snapshot import Snapshot
 
 # from pandas.core.frame import ValueKeyFunc
-
+tqdm.pandas()
 
 LOGGER = logging.getLogger(__name__)
 
@@ -113,19 +114,24 @@ class MeasuresAppraiser(RiskTrajectory):
         measures: list[str] | None = None,
         **kwargs,
     ):
+        LOGGER.debug(f"Computing base metric: {metric_name}.")
         base_metrics = super()._generic_metrics(npv, metric_name, metric_meth, **kwargs)
         if base_metrics is not None:
+            LOGGER.debug(f"Computing averted risk for: {metric_name}.")
             base_metrics = self._calc_averted(base_metrics)
             no_measures = base_metrics[base_metrics["measure"] == "no_measure"].copy()
             no_measures["reference risk"] = no_measures["risk"]
             no_measures["averted risk"] = 0.0
             no_measures["measure net cost"] = 0.0
             no_measures["measure cost benefit"] = 0.0
+            LOGGER.debug(f"Computing cash flow for: {metric_name}.")
             cash_flow_metrics = self._calc_per_measure_annual_cash_flows()
+            LOGGER.debug(f"Merging with base metric: {metric_name}.")
             base_metrics = base_metrics.merge(
                 cash_flow_metrics[["date", "measure", "measure net cost"]],
                 on=["measure", "date"],
             )
+            LOGGER.debug(f"Merging with no measure: {metric_name}.")
             base_metrics = pd.concat([no_measures, base_metrics])
 
             averted_risk = base_metrics["averted risk"]
@@ -141,11 +147,9 @@ class MeasuresAppraiser(RiskTrajectory):
 
     @staticmethod
     def _calc_averted(base_metrics: pd.DataFrame) -> pd.DataFrame:
-        def subtract_no_measure(group, no_measure):
+        def subtract_no_measure(group, no_measure, merger):
             # Merge with no_measure to get the corresponding "no_measure" value
-            merged = group.merge(
-                no_measure, on=["group", "metric", "date"], suffixes=("", "_no_measure")
-            )
+            merged = group.merge(no_measure, on=merger, suffixes=("", "_no_measure"))
             # Subtract the "no_measure" risk from the current risk
             merged["reference risk"] = merged["risk_no_measure"]
             merged["averted risk"] = merged["risk_no_measure"] - merged["risk"]
@@ -154,10 +158,15 @@ class MeasuresAppraiser(RiskTrajectory):
         no_measures_metrics = base_metrics[
             base_metrics["measure"] == "no_measure"
         ].copy()
+        merger = ["group", "metric", "date"]
+        if "coord_id" in base_metrics.columns:
+            merger.append("coord_id")
 
         return base_metrics.groupby(
             ["group", "metric", "date"], group_keys=False, dropna=False
-        ).apply(subtract_no_measure, no_measures_metrics)
+        ).progress_apply(
+            subtract_no_measure, no_measure=no_measures_metrics, merger=merger
+        )
 
     @classmethod
     def _per_period_risk(
@@ -242,7 +251,6 @@ class MeasuresAppraiser(RiskTrajectory):
 
     def plot_per_date_waterfall_CB(
         self,
-        ax=None,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
     ):
@@ -297,81 +305,48 @@ class MeasuresAppraiser(RiskTrajectory):
         measures = df.index.get_level_values(0).unique()
 
         _, axs = plt.subplots(
-            len(measures), 1, figsize=(14, 5 * len(measures)), sharex=True
+            1 + len(measures),
+            1,
+            figsize=(14, 5 * len(measures)),
+            sharex=False,
+            sharey=False,
         )
-
-        if len(measures) == 1:
-            axs = [axs]
+        self.plot_per_date_waterfall(ax=axs[0])
 
         for i, measure in enumerate(measures):
-            ax = axs[i]
+            ax = axs[i + 1]
             d = df.loc[measure]
 
             # Pivot for stacked bars
-            reference = d.loc[:, "reference risk"]
             averted = d.loc[:, "averted risk"].sum(axis=1)
             risk = d.loc[:, "risk"].sum(axis=1)
-
-            x = np.arange(len(reference.index))
-            width = 0.35  # width of each bar
-            spacing = width + 0.05  # space between stacked bar and residual risk bar
-
-            bottom = np.zeros(len(x))
-
-            # Stacked + hatched
-            for metric in metrics:
-                h = reference[metric].values
-                # Main reference segment
-                ax.bar(
-                    x,
-                    h,
-                    bottom=bottom,
-                    width=width,
-                    color=colors[metric],
-                    label=metric,
-                    edgecolor=colors[metric],
-                    linewidth=0.5,
-                )
-                bottom += h
-                # Hatched averted overlay
-
-            ax.bar(
-                x + spacing,
-                risk,
-                width=width,
-                color="tab:cyan",
-                edgecolor="tab:cyan",
-                label="residual risk",
-                linewidth=0.5,
+            ax.stackplot(
+                d.index,
+                [risk, averted],
+                labels=["Residual risk", "Averted"],
+                colors=["purple", "pink"],
+                hatch=["", "/"],
             )
-            ax.bar(
-                x + spacing,
-                averted,
-                bottom=risk,
-                width=width,
-                color="none",
-                edgecolor="tab:olive",
-                hatch=hatch_style,
-                linewidth=0.5,
-            )
-
             # Labels and ticks
             ax.set_title(f"Measure: {measure}")
-            ax.set_xticks(x + spacing / 2)
-            ax.set_xticklabels(reference.index, rotation=45)
+            locator = mdates.AutoDateLocator()
+            formatter = mdates.ConciseDateFormatter(locator)
 
-            # Custom legend to add hatch explanation
-            handles = [mpatches.Patch(facecolor=colors[m], label=m) for m in metrics]
-            handles.append(
-                mpatches.Patch(
-                    facecolor="white",
-                    edgecolor="tab:olive",
-                    hatch=hatch_style,
-                    label="averted with measure",
-                )
-            )
-            handles.append(mpatches.Patch(facecolor="tab:cyan", label="residual risk"))
-            ax.legend(handles=handles, loc="upper left")
+            ax.xaxis.set_major_locator(locator)
+            ax.xaxis.set_major_formatter(formatter)
+
+            # # Custom legend to add hatch explanation
+            # handles = [mpatches.Patch(facecolor=colors[m], label=m) for m in metrics]
+            # handles.append(
+            #     mpatches.Patch(
+            #         facecolor="white",
+            #         edgecolor="tab:olive",
+            #         hatch=hatch_style,
+            #         label="averted with measure",
+            #     )
+            # )
+            # handles.append(mpatches.Patch(facecolor="tab:cyan", label="residual risk"))
+            ax.legend()
 
         return axs
 
@@ -405,8 +380,8 @@ class MeasuresAppraiser(RiskTrajectory):
             "Risk",
             "Averted Risk",
             "Residual risk",
-            "Measure cost",
-            "Cost benefit",
+            # "Measure cost",
+            # "Cost benefit",
         ]
         # measure_costs = risk_component.loc[:,("measure net cost","base risk")].unstack().sum()
         average_risk = (
@@ -431,17 +406,17 @@ class MeasuresAppraiser(RiskTrajectory):
                 m_average_risk["reference risk"],
                 m_average_risk["averted risk"],
                 m_average_risk["reference risk"] - m_average_risk["averted risk"],
-                m_average_risk["measure net cost"],
-                m_average_risk["averted risk"] - m_average_risk["measure net cost"],
+                # m_average_risk["measure net cost"],
+                # m_average_risk["averted risk"] - m_average_risk["measure net cost"],
             ]
             bottoms = [
                 0.0,
                 m_average_risk["reference risk"] - m_average_risk["averted risk"],
                 0.0,
-                m_average_risk["reference risk"] - m_average_risk["averted risk"],
-                m_average_risk["reference risk"]
-                - m_average_risk["averted risk"]
-                + m_average_risk["measure net cost"],
+                # m_average_risk["reference risk"] - m_average_risk["averted risk"],
+                # m_average_risk["reference risk"]
+                # - m_average_risk["averted risk"]
+                # + m_average_risk["measure net cost"],
             ]
             axs[i].bar(
                 labels,
@@ -477,24 +452,24 @@ class MeasuresAppraiser(RiskTrajectory):
                 arrowprops=dict(color="red", lw=2, shrink=0.1, width=12),
             )
 
-            axs[i].annotate(
-                "",
-                xy=(
-                    3,
-                    m_average_risk["measure net cost"]
-                    + (
-                        m_average_risk["reference risk"]
-                        - m_average_risk["averted risk"]
-                    ),
-                ),
-                xycoords="data",
-                xytext=(
-                    3,
-                    (m_average_risk["reference risk"] - m_average_risk["averted risk"]),
-                ),
-                textcoords="data",
-                arrowprops=dict(color="red", lw=2, shrink=0.1, width=12),
-            )
+            # axs[i].annotate(
+            #     "",
+            #     xy=(
+            #         3,
+            #         m_average_risk["measure net cost"]
+            #         + (
+            #             m_average_risk["reference risk"]
+            #             - m_average_risk["averted risk"]
+            #         ),
+            #     ),
+            #     xycoords="data",
+            #     xytext=(
+            #         3,
+            #         (m_average_risk["reference risk"] - m_average_risk["averted risk"]),
+            #     ),
+            #     textcoords="data",
+            #     arrowprops=dict(color="red", lw=2, shrink=0.1, width=12),
+            # )
 
             # Construct y-axis label and title based on parameters
             value_label = "USD (Average annual value)"
@@ -586,6 +561,7 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
         measures: list[str] | None = None,
         **kwargs,
     ):
+        LOGGER.info(f"Computing base metric: {metric_name}.")
         base_metrics = super()._generic_metrics(
             npv,
             metric_name,
@@ -593,6 +569,7 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
             measures,
             **kwargs,
         )
+        LOGGER.info(f"Computing planning metric: {metric_name}.")
         base_metrics = base_metrics.set_index(["measure", "date"]).sort_index()
         mask = pd.Series(False, index=base_metrics.index)
         for (start, end), measure_name_list in self._planning.items():
@@ -674,7 +651,6 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
 
     def plot_per_date_waterfall_CB(
         self,
-        ax=None,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
     ):
@@ -699,92 +675,45 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
         }
         hatch_style = "///"
 
-        reference = df.loc[:, "reference risk"]
-        averted = df.loc[:, "averted risk"].sum(axis=1)
-        risk = df.loc[:, "risk"].sum(axis=1)
-        measure_cost = df.loc[:, ("measure net cost", "base risk")]
-        x = np.arange(len(reference.index))
-        width = 0.35  # width of each bar
-        spacing = width + 0.05  # space between stacked bar and residual risk bar
+        measures = df.index.get_level_values(0).unique().drop("no_measure")
+        reference_risk = df["reference risk"].droplevel(0)
+        _, axs = plt.subplots(
+            3, 1, figsize=(14, 5 * len(measures)), sharex=True, sharey=False
+        )
+        axs[0].stackplot(
+            reference_risk.index,
+            [reference_risk[col] for col in reference_risk.columns],
+            labels=reference_risk.columns,
+        )
+        axs[0].legend()
+        locator = mdates.AutoDateLocator()
+        formatter = mdates.ConciseDateFormatter(locator)
+        ax = axs[1]
+        ax.sharey(axs[0])
+        d = df.copy().droplevel("measure")
 
-        bottom = np.zeros(len(x))
+        # Pivot for stacked bars
+        averted = d.loc[:, "averted risk"].sum(axis=1)
+        risk = d.loc[:, "risk"].sum(axis=1)
+        ax.stackplot(
+            d.index,
+            [risk, averted],
+            labels=["Residual risk", "Averted"],
+            colors=["purple", "pink"],
+            hatch=["", "/"],
+        )
+        # Labels and ticks
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(formatter)
 
+        ax.legend()
+
+        y = 0
         planner_t = {
             label: (pd.Timestamp(v1), pd.Timestamp(v2))
             for label, (v1, v2) in self.planner.items()
         }
-        fig, axs = plt.subplots(
-            3, figsize=(12, 8), gridspec_kw={"height_ratios": [10, 6, 1]}
-        )
-        for metric in metrics:
-            h = reference[metric].values
-            # Main reference segment
-            axs[0].bar(
-                x,
-                h,
-                bottom=bottom,
-                width=width,
-                color=colors[metric],
-                label=metric,
-                edgecolor=colors[metric],
-                linewidth=0.5,
-            )
-            bottom += h
 
-        axs[0].bar(
-            x + spacing,
-            risk,
-            width=width,
-            color="tab:cyan",
-            edgecolor="tab:cyan",
-            label="residual risk",
-            linewidth=0.5,
-        )
-        axs[0].bar(
-            x + spacing,
-            averted,
-            bottom=risk,
-            width=width,
-            color="none",
-            edgecolor="tab:olive",
-            hatch=hatch_style,
-            linewidth=0.5,
-        )
-        # Labels and ticks
-        axs[0].set_title("Planning cost benefit")
-        axs[0].set_ylim(0.0, 1.05 * risk.max())
-        # Custom legend to add hatch explanation
-        handles = [mpatches.Patch(facecolor=colors[m], label=m) for m in metrics]
-        handles.append(
-            mpatches.Patch(
-                facecolor="white",
-                edgecolor="tab:olive",
-                hatch=hatch_style,
-                label="averted with measure",
-            )
-        )
-        handles.append(mpatches.Patch(facecolor="tab:cyan", label="residual risk"))
-        axs[0].legend(handles=handles, loc="upper left")
-
-        axs[1].bar(
-            x,
-            measure_cost,
-            width=width,
-            color="tab:brown",
-            label="measure cost",
-            linewidth=0.5,
-        )
-        axs[1].bar(
-            x + spacing,
-            averted - measure_cost,
-            width=width,
-            color="tab:pink",
-            label="measure cost benefit",
-            linewidth=0.5,
-        )
-        axs[1].legend()
-
-        y = 0
         for label_text, (start, end) in planner_t.items():
             axs[2].barh(
                 y,
@@ -794,6 +723,7 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
                 color="skyblue",
                 edgecolor="none",
             )
+
             axs[2].text(
                 start,
                 y,
@@ -804,25 +734,26 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
                 color="black",
             )
             y += 1
-
-        axs[2].xaxis.set_major_locator(mdates.YearLocator(5))
+        axs[2].xaxis.set_major_locator(locator)
         axs[2].xaxis.set_major_formatter(mdates.DateFormatter("%Y"))
         axs[2].set_xlim(
             min(df.index.get_level_values(1)), max(df.index.get_level_values(1))
         )
-        axs[2].set_yticks([])
-        axs[2].spines["left"].set_visible(False)
-        axs[2].spines["top"].set_visible(False)
-        axs[2].spines["right"].set_visible(False)
-        axs[2].spines["bottom"].set_visible(False)
-        box = axs[2].get_position()
-        box.y0 = box.y0 + 0.03
-        box.y1 = box.y1 + 0.03
-        axs[2].set_position(box)
-        axs[0].set_xticks([])
-        axs[0].set_xlabel("")
-        axs[1].set_xticks([])
-        axs[1].set_xlabel("")
+        axs[0].xaxis.set_major_locator(locator)
+        axs[0].xaxis.set_major_formatter(formatter)
+        # axs[2].set_yticks([])
+        # axs[2].spines["left"].set_visible(False)
+        # axs[2].spines["top"].set_visible(False)
+        # axs[2].spines["right"].set_visible(False)
+        # axs[2].spines["bottom"].set_visible(False)
+        # box = axs[2].get_position()
+        # box.y0 = box.y0 + 0.03
+        # box.y1 = box.y1 + 0.03
+        # axs[2].set_position(box)
+        # axs[0].set_xticks([])
+        # axs[0].set_xlabel("")
+        # axs[1].set_xticks([])
+        # axs[1].set_xlabel("")
         return axs
 
     def plot_waterfall_CB(
