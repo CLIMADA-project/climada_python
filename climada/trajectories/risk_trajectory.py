@@ -25,6 +25,7 @@ import datetime
 import itertools
 import logging
 
+import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import pandas as pd
 
@@ -344,9 +345,10 @@ class RiskTrajectory:
         This computation may become quite expensive for big areas with high resolution.
 
         """
-        return self._compute_metrics(
+        df = self._compute_metrics(
             npv=npv, metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
         )
+        return df
 
     def aai_metrics(self, npv: bool = True, **kwargs):
         """Return the average annual impacts for each date.
@@ -564,6 +566,7 @@ class RiskTrajectory:
         ax=None,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
+        figsize=(12, 6),
     ):
         """Plot a waterfall chart of risk components over a specified date range.
 
@@ -593,7 +596,9 @@ class RiskTrajectory:
         compared to the risk associated with future exposure and present hazard.
         """
         if ax is None:
-            _, ax = plt.subplots(figsize=(12, 6))
+            fig, ax = plt.subplots(figsize=figsize)
+        else:
+            fig = ax.figure  # get parent figure from the axis
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
         risk_component = self._calc_waterfall_plot_data(
@@ -608,16 +613,30 @@ class RiskTrajectory:
                 "interaction contribution",
             ]
         ]
-        risk_component.plot(ax=ax, kind="bar", stacked=True)
+        # risk_component.plot(x="date", ax=ax, kind="bar", stacked=True)
+        ax.stackplot(
+            risk_component.index,
+            [risk_component[col] for col in risk_component.columns],
+            labels=risk_component.columns,
+        )
+        ax.legend()
+        # bottom = [0] * len(risk_component)
+        # for col in risk_component.columns:
+        #     bottom =  [b + v for b, v in zip(bottom, risk_component[col])]
         # Construct y-axis label and title based on parameters
         value_label = "USD"
-        title_label = (
-            f"Risk between {start_date} and {end_date} (Annual Average impact)"
-        )
+        title_label = f"Risk between {start_date} and {end_date} (Average impact)"
+
+        locator = mdates.AutoDateLocator()
+        formatter = mdates.ConciseDateFormatter(locator)
+
+        ax.xaxis.set_major_locator(locator)
+        ax.xaxis.set_major_formatter(formatter)
 
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
-        return ax
+        ax.set_ylim(0.0, 1.1 * ax.get_ylim()[1])
+        return fig, ax
 
     def plot_waterfall(
         self,
@@ -719,10 +738,11 @@ class RiskTrajectory:
 
         # Construct y-axis label and title based on parameters
         value_label = "USD"
-        title_label = f"Risk at {start_date} and {end_date} (Annual Average impact)"
+        title_label = f"Risk at {start_date} and {end_date} (Average impact)"
 
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
+        ax.set_ylim(0.0, 1.1 * ax.get_ylim()[1])
         ax.tick_params(
             axis="x",
             labelrotation=90,
