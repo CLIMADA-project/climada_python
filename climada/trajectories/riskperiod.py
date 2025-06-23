@@ -685,12 +685,10 @@ class CalcRiskPeriod:
         df = df.reset_index().melt(
             id_vars="date", var_name="coord_id", value_name="risk"
         )
-        eai_gdf = self.snapshot0.exposure.gdf
+        eai_gdf = self.snapshot0.exposure.gdf[["group_id"]]
         eai_gdf["coord_id"] = eai_gdf.index
         eai_gdf = eai_gdf.merge(df, on="coord_id")
-        eai_gdf = eai_gdf.rename(
-            columns={"group_id": "group", "value": "exposure_value"}
-        )
+        eai_gdf = eai_gdf.rename(columns={"group_id": "group"})
         eai_gdf["metric"] = "eai"
         eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"
         return eai_gdf

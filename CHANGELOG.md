@@ -21,9 +21,6 @@ Removed:
 
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
 
-- `climada.entity.impact_funcs.base.ImpactFunc.__eq__` method
-- `climada.entity.impact_funcs.impact_func_set.ImpactFuncSet.__eq__` method
-
 ### Changed
 
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, `Impact.local_return_period`, using the `climada.util.interpolation` module: New default (no binning), binning on decimals, and faster implementation [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
