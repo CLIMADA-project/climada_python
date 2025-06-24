@@ -90,12 +90,13 @@ class CalcRiskPeriod:
         The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots.
         Defaults to ImpactCalc
     risk_transf_attach: float, optional
-        The attachement of risk transfer to apply. Defaults to None.
+        A global attachement of risk transfer to apply. Note that this is different (and not exclusive) from the attachement
+        that can be defined in the `Exposures` object. Defaults to None.
     risk_transf_cover: float, optional
-        The cover of risk transfer to apply. Defaults to None.
+        A global cover of risk transfer to apply. See `risk_transf_attach` above. Defaults to None.
     calc_residual: bool, optional
-        A boolean stating whether the residual (True) or transfered risk (False) is retained when doing
-        the risk transfer. Defaults to False.
+        A boolean stating whether the residual (True) or transfered risk (False) is
+        retained when applying a global risk transfer. Defaults to False.
     measure: Measure, optional
         The measure to apply to both snapshots. Defaults to None.
 
