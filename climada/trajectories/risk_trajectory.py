@@ -100,7 +100,7 @@ class RiskTrajectory:
             impact_computation_strategy or ImpactCalcComputation()
         )
         LOGGER.debug("Computing risk periods")
-        self._risk_periods_calculators = self._calc_risk_periods(snapshots_list)
+        self._risk_periods_calculators = None
 
     def _reset_metrics(self):
         for metric in POSSIBLE_METRICS:
@@ -168,7 +168,7 @@ class RiskTrajectory:
     @property
     def risk_periods(self) -> list:
         """The computed risk periods from the snapshots."""
-        if not self._risk_period_up_to_date:
+        if self._risk_period_up_to_date is None or not self._risk_period_up_to_date:
             self._risk_periods_calculators = self._calc_risk_periods(self._snapshots)
             self._risk_period_up_to_date = True
 
@@ -211,7 +211,9 @@ class RiskTrajectory:
                 risk_transf_attach=self.risk_transf_attach,
                 calc_residual=self._calc_residual,
             )
-            for start_snapshot, end_snapshot in pairwise(snapshots)
+            for start_snapshot, end_snapshot in pairwise(
+                sorted(snapshots, key=lambda snap: snap.date)
+            )
         ]
 
     @classmethod
