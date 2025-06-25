@@ -623,10 +623,10 @@ class AverageEnsembleOptimizer(EnsembleOptimizer):
         If samples of the input data should be drawn with replacement
     """
 
-    sample_fraction: InitVar[float] = 0.8
+    sample_fraction: InitVar[float] = 1.0
     ensemble_size: InitVar[int] = 20
     random_state: InitVar[int] = 1
-    replace: InitVar[bool] = False
+    replace: InitVar[bool] = True
 
     def __post_init__(self, sample_fraction, ensemble_size, random_state, replace):
         """Create the samples"""

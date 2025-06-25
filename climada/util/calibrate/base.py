@@ -102,7 +102,7 @@ class Input:
     data: pd.DataFrame
     impact_func_creator: Callable[..., ImpactFuncSet]
     impact_to_dataframe: Callable[[Impact], pd.DataFrame]
-    cost_func: Callable[[pd.DataFrame, pd.DataFrame, pd.DataFrame | None], Number]
+    cost_func: Callable[[np.ndarray, np.ndarray, np.ndarray | None], Number]
     bounds: Optional[Mapping[str, Union[Bounds, Tuple[Number, Number]]]] = None
     constraints: Optional[Union[ConstraintType, list[ConstraintType]]] = None
     impact_calc_kwds: Mapping[str, Any] = field(
@@ -110,7 +110,7 @@ class Input:
     )
     missing_data_value: float = np.nan
     data_weights: pd.DataFrame | None = field(default=None, kw_only=True)
-    missing_weights_value: float = field(default=np.nan, kw_only=True)
+    missing_weights_value: float = field(default=0.0, kw_only=True)
     assign_centroids: InitVar[bool] = field(default=True, kw_only=True)
 
     def __post_init__(self, assign_centroids):
@@ -434,7 +434,7 @@ class Optimizer(ABC):
     input: Input
 
     def _target_func(
-        self, data: pd.DataFrame, predicted: pd.DataFrame, weights: pd.DataFrame | None
+        self, data: np.ndarray, predicted: np.ndarray, weights: np.ndarray | None
     ) -> Number:
         """Target function for the optimizer
 
@@ -523,9 +523,14 @@ class Optimizer(ABC):
                 copy=True,
                 fill_value=self.input.missing_weights_value,
             )
+            weights_aligned = weights_aligned.to_numpy().flatten()
 
         # Compute target function
-        return self._target_func(data_aligned, impact_df_aligned, weights_aligned)
+        return self._target_func(
+            data_aligned.to_numpy().flatten(),
+            impact_df_aligned.to_numpy().flatten(),
+            weights_aligned,
+        )
 
     @abstractmethod
     def run(self, **opt_kwargs) -> Output:
