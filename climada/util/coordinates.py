@@ -145,6 +145,26 @@ def infer_unit_coords(coords):
     return unit
 
 
+def get_crs_unit(coords):
+    """
+    Retrieve the unit of measurement for the coordinate reference system (CRS).
+
+    Parameters
+    ----------
+    coords : GeoDataFrame
+        An object with a coordinate reference system (CRS) attribute.
+
+    Returns
+    -------
+    unit : str
+        The unit of measurement for the coordinate system, as specified in the
+        CRS axis information. Assumes that both axes have the same unit.
+    """
+
+    unit = coords.crs.axis_info[0].unit_name  # assume both axes have the same unit
+    return unit
+
+
 def latlon_to_geosph_vector(lat, lon, rad=False, basis=False):
     """Convert lat/lon coodinates to radial vectors (on geosphere)
 
