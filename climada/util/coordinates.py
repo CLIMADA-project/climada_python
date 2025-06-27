@@ -1143,7 +1143,7 @@ def match_coordinates(
         Distance to use for non-exact matching. Possible values are "euclidean", "haversine" and
         "approx". Default: "euclidean"
     unit : str, optional
-        Unit to use for non-exact matching. Possible values are "degree", "m", "km".
+        Unit to use for non-exact matching. Possible values are "degree", "metre", "kilometre".
         Default: "degree"
     threshold : float, optional
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
@@ -1238,13 +1238,15 @@ def match_coordinates(
 
                 coords = np.radians(coords)
                 coords_to_assign = np.radians(coords_to_assign)
-            elif unit == "m":
+            elif unit == "metre":
                 coords *= 1e-3
                 coords_to_assign *= 1e-3
-            elif unit == "km":
+            elif unit == "kilometre":
                 pass
             else:
-                raise ValueError("Unit must be one of 'degree', 'm' or 'km'.")
+                raise ValueError(
+                    "Unit must be one of 'degree', 'metre' or 'kilometre'."
+                )
 
             not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
@@ -1261,7 +1263,6 @@ def match_centroids(
     coord_gdf,
     centroids,
     distance="euclidean",
-    unit=None,
     threshold=NEAREST_NEIGHBOR_THRESHOLD,
 ):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
@@ -1278,9 +1279,6 @@ def match_centroids(
         Distance to use in case of vector centroids.
         Possible values are "euclidean", "haversine" and "approx".
         Default: "euclidean"
-    unit : str, optional
-        Unit to use for non-exact matching. Possible values are "degree", "m", "km".
-        Default: None
     threshold : float, optional
         If the distance (in km) to the nearest neighbor exceeds `threshold`,
         the index `-1` is assigned.
@@ -1319,9 +1317,8 @@ def match_centroids(
         # no error is raised and it is assumed that the user set the crs correctly
         pass
 
-    # infer unit
-    if not unit:
-        unit = infer_unit_coords(coord_gdf)
+    # get unit of coordinate systems from axis of crs
+    unit = get_crs_unit(coord_gdf)
 
     assigned = match_coordinates(
         np.stack([coord_gdf.geometry.y.values, coord_gdf.geometry.x.values], axis=1),
