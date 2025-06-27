@@ -89,7 +89,8 @@ def check_if_geo_coords(lat, lon):
     """Check if latitude and longitude arrays are likely in geographic coordinates,
     testing if min/max values are within -90 to 90 for latitude and -540 to 540
     for longitude. Lon coordinates of <-360 or >360 are allowed to cover cases
-    of objects being defined close to the 180 meridian.
+    of objects being defined close to the 180 meridian for which longitude
+    intervals such as [179, 538] or [-538, -179] might be used.
 
     Parameters
     ----------
