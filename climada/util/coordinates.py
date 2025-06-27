@@ -138,7 +138,8 @@ def get_crs_unit(coords):
         unit = "km"
     else:
         raise ValueError(
-            f"Unknown unit: {unit}. Please provide a crs that has a unit of 'degree', 'metre' or 'kilometre'."
+            f"Unknown unit: {unit}. Please provide a crs that has a unit "
+            "of 'degree', 'metre' or 'kilometre'."
         )
     return unit
 
@@ -1288,13 +1289,14 @@ def match_centroids(
             raise ValueError("Set hazard and GeoDataFrame to same CRS first!")
         if coord_gdf.crs is None or centroids.crs is None:
             raise ValueError(
-                "Please provide coordinate GeoDataFrame and Hazard object with a valid crs attribute."
+                "Please provide coordinate GeoDataFrame and Hazard "
+                "object with a valid crs attribute."
             )
-    except AttributeError:
+    except AttributeError as exc:
         # a crs attribute is needed for unit inference
         raise ValueError(
             "Please provide coordinate GeoDataFrame and Hazard object with a valid crs attribute."
-        )
+        ) from exc
 
     # get unit of coordinate systems from axis of crs
     unit = get_crs_unit(coord_gdf)
@@ -1447,7 +1449,8 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
-            f"Distance to closest centroid is greater than {threshold} km for {num_warn} coordinates."
+            f"Distance to closest centroid is greater than {threshold} "
+            "km for {num_warn} coordinates."
         )
         assigned[dist > threshold] = -1
 
@@ -1512,7 +1515,9 @@ def _nearest_neighbor_euclidean(
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
-            f"Distance to closest centroid is greater than {threshold} km for {num_warn} coordinates."
+            "Distance to closest centroid is greater than %i " "km for %i coordinates.",
+            threshold,
+            num_warn,
         )
         assigned[dist > threshold] = -1
 
