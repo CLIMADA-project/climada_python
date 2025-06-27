@@ -113,39 +113,6 @@ def check_if_geo_coords(lat, lon):
     return bool(test)
 
 
-def infer_unit_coords(coords):
-    """
-    Infer the unit of measurement for the given coordinate system.
-
-    Parameters
-    ----------
-    coords : GeoDataFrame or similar object
-        An object with a coordinate reference system (CRS) attribute.
-
-    Returns
-    -------
-    unit : str
-        The unit of measurement for the coordinate system, either 'degree' for
-        geodetic systems or 'm' for projected systems.
-
-    Raises
-    ------
-    ValueError
-        If the coordinate system is neither geodetic nor projected, or if the
-        unit cannot be inferred.
-    """
-
-    if coords.crs.is_geographic:
-        unit = "degree"
-    elif coords.crs.is_projected:
-        unit = "m"
-    else:
-        raise ValueError(
-            "Unable to infer unit for coordinate points. Please specify unit of the coordinates."
-        )
-    return unit
-
-
 def get_crs_unit(coords):
     """
     Retrieve the unit of measurement for the coordinate reference system (CRS).
