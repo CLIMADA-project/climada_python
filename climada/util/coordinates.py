@@ -1237,8 +1237,6 @@ def match_coordinates(
                         " please shift the coordinates to the valid ranges."
                     )
 
-                coords = np.radians(coords)
-                coords_to_assign = np.radians(coords_to_assign)
             elif unit == "metre":
                 coords *= 1e-3
                 coords_to_assign *= 1e-3
@@ -1381,12 +1379,9 @@ def _nearest_neighbor_approx(
     # not unique coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
     # Compute cos(lat) for all centroids
-    centr_cos_lat = np.cos(centroids[:, 0])
+    centr_cos_lat = np.cos(np.radians(centroids[:, 0]))
     assigned = np.zeros(coordinates.shape[0], int)
     num_warn = 0
-    # need to convert back to degrees for the approx distance and nearest neighbor
-    coordinates = np.rad2deg(coordinates)
-    centroids = np.rad2deg(centroids)
     for icoord, iidx in enumerate(idx):
         dist = _dist_sqr_approx(
             centroids[:, 0],
@@ -1449,13 +1444,13 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
             "Please use euclidean distance for non-degree units."
         )
     # Construct tree from centroids
-    tree = BallTree(centroids, metric="haversine")
+    tree = BallTree(np.radians(centroids), metric="haversine")
     # Select unique exposures coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
 
     # query the k closest points of the n_points using dual tree
     dist, assigned = tree.query(
-        coordinates[idx],
+        np.radians(coordinates[idx]),
         k=1,
         return_distance=True,
         dualtree=True,
@@ -1510,6 +1505,11 @@ def _nearest_neighbor_euclidean(
     np.array
         with as many rows as coordinates containing the centroids indexes
     """
+    if (
+        unit == "degree"
+    ):  # if unit is in degree convert to radians for dist calculations
+        centroids = np.radians(centroids)
+        coordinates = np.radians(coordinates)
     # Construct tree from centroids
     tree = scipy.spatial.KDTree(centroids)
     # Select unique exposures coordinates
@@ -1518,13 +1518,17 @@ def _nearest_neighbor_euclidean(
     # query the k closest points of the n_points using dual tree
     dist, assigned = tree.query(coordinates[idx], k=1, p=2, workers=-1)
 
-    # Raise a warning if the minimum distance is greater than the
-    # threshold and set an unvalid index -1
     if unit == "degree":
+        # convert back to degree for check antimeridian and convert distance
+        centroids = np.rad2deg(centroids)
+        coordinates = np.rad2deg(coordinates)
         dist = dist * EARTH_RADIUS_KM
     else:
         # if unit is not in degree, check_antimeridian is forced to False
         check_antimeridian = False
+
+    # Raise a warning if the minimum distance is greater than the
+    # threshold and set an unvalid index -1
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
@@ -1534,7 +1538,7 @@ def _nearest_neighbor_euclidean(
 
     if check_antimeridian:
         assigned = _nearest_neighbor_antimeridian(
-            np.rad2deg(centroids), np.rad2deg(coordinates[idx]), threshold, assigned
+            centroids, coordinates[idx], threshold, assigned
         )
 
     # Copy result to all exposures and return value
@@ -1583,7 +1587,7 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
         if np.any(cent_strip_bool):
             cent_strip = centroids[cent_strip_bool]
             strip_assigned = _nearest_neighbor_haversine(
-                np.deg2rad(cent_strip), np.deg2rad(coord_strip), "degree", threshold
+                cent_strip, coord_strip, "degree", threshold
             )
             new_coords = cent_strip_bool.nonzero()[0][strip_assigned]
             new_coords[strip_assigned == -1] = -1
