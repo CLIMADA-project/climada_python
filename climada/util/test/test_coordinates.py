@@ -236,7 +236,7 @@ def def_ref_50():
     )
 
 
-class TestInferUnitCoords(unittest.TestCase):
+class TestGetUnitCoords(unittest.TestCase):
     def create_mock_gdf(self, crs, num_points=5):
         geometry = [
             shapely.Point(x, y) for x, y in zip(range(num_points), range(num_points))
@@ -244,42 +244,27 @@ class TestInferUnitCoords(unittest.TestCase):
         gdf = gpd.GeoDataFrame(geometry=geometry, crs=crs)
         return gdf
 
-    def test_infer_unit_geodetic(self):
-        """Test with a geodetic CRS (EPSG:4326)."""
+    def test_get_unit_degree(self):
+        """Test with a geodetic CRS in degree (EPSG:4326)."""
         crs = "EPSG:4326"
         gdf = self.create_mock_gdf(crs)
-        unit = u_coord.infer_unit_coords(gdf)
+        unit = u_coord.get_crs_unit(gdf)
         self.assertEqual(unit, "degree", "Expected unit 'degree' for geodetic CRS.")
 
-    def test_infer_unit_projected(self):
-        """Test with a projected CRS (EPSG:3857)."""
+    def test_get_unit_projected_metre(self):
+        """Test with a projected CRS in metre (EPSG:3857)."""
         crs = "EPSG:3857"
         gdf = self.create_mock_gdf(crs)
-        unit = u_coord.infer_unit_coords(gdf)
-        self.assertEqual(unit, "m", "Expected unit 'm' for projected CRS.")
+        unit = u_coord.get_crs_unit(gdf)
+        self.assertEqual(unit, "metre", "Expected unit 'metre' for projected CRS.")
 
-    def test_infer_unit_undefined_crs(self):
-        """Test with an undefined CRS."""
-        crs = None
+    def test_get_unit_projected_kilometre(self):
+        """Test with a projected CRS in kilometre (EPSG:22300)."""
+        crs = "EPSG:22300"
         gdf = self.create_mock_gdf(crs)
-        with self.assertRaises(AttributeError):
-            u_coord.infer_unit_coords(gdf)
-
-    def test_infer_unit_unsupported_crs(self):
-        """Test with a mocked unsupported CRS."""
-
-        class MockCRS:
-            is_geographic = False
-            is_projected = False
-
-        class MockGDF:
-            crs = MockCRS()
-
-        mock_gdf = MockGDF()
-        with self.assertRaises(ValueError) as context:
-            u_coord.infer_unit_coords(mock_gdf)
-        self.assertIn(
-            "Unable to infer unit for coordinate points", str(context.exception)
+        unit = u_coord.get_crs_unit(gdf)
+        self.assertEqual(
+            unit, "kilometre", "Expected unit 'kilometre' for projected CRS."
         )
 
 
@@ -492,10 +477,10 @@ class TestFunc(unittest.TestCase):
         )
         # conversion factors from reference data (in km, see above) to other units
         factors_km_to_x = {
-            "m": 1e3,
+            "metre": 1e3,
             "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
             "degree": 1.0 / u_coord.ONE_LAT_KM,
-            "km": 1.0,
+            "kilometre": 1.0,
         }
         compute_dist = np.stack(
             [
@@ -544,7 +529,7 @@ class TestFunc(unittest.TestCase):
                 axis=-1,
             )
             self.assertEqual(compute_dist.shape[0], data.shape[0])
-            places = 4 if units == "m" else 7
+            places = 4 if units == "metre" else 7
             for d, cd in zip(data[:, 4:], compute_dist):
                 self.assertAlmostEqual(d[0] * factor, cd[0], places=places)
                 self.assertAlmostEqual(d[1] * factor, cd[1], places=places)
@@ -562,10 +547,10 @@ class TestFunc(unittest.TestCase):
         )
         # conversion factors from reference data (in km, see above) to other units
         factors_km_to_x = {
-            "m": 1e3,
+            "metre": 1e3,
             "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
             "degree": 1.0 / u_coord.ONE_LAT_KM,
-            "km": 1.0,
+            "kilometre": 1.0,
         }
         for i, method in enumerate(["equirect", "geosphere"]):
             for units, factor in factors_km_to_x.items():
@@ -1337,19 +1322,19 @@ class TestAssign(unittest.TestCase):
         # test with different unit
         self.expected_results = {
             "degree": [
-                # test with different thresholds (in km)
+                # test with different thresholds (in degree)
                 (100, [2, 1, 2, 0, 3, -1, 4]),
                 (20, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
             ],
-            "m": [
-                # test with different thresholds (in km)
+            "metre": [
+                # test with different thresholds (in metre)
                 (100, [2, 1, 2, 0, 3, -1, -1]),
                 (20, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
             ],
-            "km": [
-                # test with different thresholds (in km)
+            "kilometre": [
+                # test with different thresholds (in kilometre)
                 (100, [2, 1, 2, 0, 3, -1, -1]),
                 (20, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
@@ -1396,11 +1381,11 @@ class TestAssign(unittest.TestCase):
         self.setUp_match_coordinates()
         unit_conv_funcs = {
             "degree": lambda x: x,
-            "km": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM,
-            "m": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM * 1e3,
+            "kilometre": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM,
+            "metre": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM * 1e3,
         }
         distance = "euclidean"
-        for unit in ["degree", "km", "m"]:
+        for unit in ["degree", "kilometre", "metre"]:
             results = self.expected_results[unit]
             # do not check antimeridian if units are not in degree
             check_antimeridian = False if unit != "degree" else True
@@ -1460,7 +1445,10 @@ class TestAssign(unittest.TestCase):
         coords = np.deg2rad(self.coords)
         with self.assertRaises(ValueError):
             u_coord._nearest_neighbor_approx(
-                coords_to_assign, coords, "km", u_coord.NEAREST_NEIGHBOR_THRESHOLD
+                coords_to_assign,
+                coords,
+                "kilometre",
+                u_coord.NEAREST_NEIGHBOR_THRESHOLD,
             )
 
     def test_nearest_neighbor_haversine_invalid_unit(self):
@@ -1470,7 +1458,10 @@ class TestAssign(unittest.TestCase):
         coords = np.deg2rad(self.coords)
         with self.assertRaises(ValueError):
             u_coord._nearest_neighbor_haversine(
-                coords_to_assign, coords, "km", u_coord.NEAREST_NEIGHBOR_THRESHOLD
+                coords_to_assign,
+                coords,
+                "kilometre",
+                u_coord.NEAREST_NEIGHBOR_THRESHOLD,
             )
 
 
