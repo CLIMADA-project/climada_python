@@ -130,6 +130,16 @@ def get_crs_unit(coords):
     """
 
     unit = coords.crs.axis_info[0].unit_name  # assume both axes have the same unit
+    if unit == "degree":
+        pass
+    elif unit == "metre":
+        unit = "m"
+    elif unit == "kilometre":
+        unit = "km"
+    else:
+        raise ValueError(
+            f"Unknown unit: {unit}. Please provide a crs that has a unit of 'degree', 'metre' or 'kilometre'."
+        )
     return unit
 
 
@@ -1111,7 +1121,7 @@ def match_coordinates(
         Distance to use for non-exact matching. Possible values are "euclidean", "haversine" and
         "approx". Default: "euclidean"
     unit : str, optional
-        Unit to use for non-exact matching. Possible values are "degree", "metre", "kilometre".
+        Unit to use for non-exact matching. Possible values are "degree", "m", "km".
         Default: "degree"
     threshold : float, optional
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
@@ -1204,15 +1214,13 @@ def match_coordinates(
                         " please shift the coordinates to the valid ranges."
                     )
 
-            elif unit == "metre":
+            elif unit == "m":
                 coords *= 1e-3
                 coords_to_assign *= 1e-3
-            elif unit == "kilometre":
+            elif unit == "km":
                 pass
             else:
-                raise ValueError(
-                    "Unit must be one of 'degree', 'metre' or 'kilometre'."
-                )
+                raise ValueError("Unit must be one of 'degree', 'm' or 'km'.")
 
             not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
@@ -1278,10 +1286,14 @@ def match_centroids(
     try:
         if not equal_crs(coord_gdf.crs, centroids.crs):
             raise ValueError("Set hazard and GeoDataFrame to same CRS first!")
+        if coord_gdf.crs is None or centroids.crs is None:
+            raise ValueError(
+                "Please provide coordinate GeoDataFrame and Hazard object with a valid crs attribute."
+            )
     except AttributeError:
         # a crs attribute is needed for unit inference
-        raise AttributeError(
-            "Please provide coordinate GeoDataFrame and Hazard object with a crs attribute."
+        raise ValueError(
+            "Please provide coordinate GeoDataFrame and Hazard object with a valid crs attribute."
         )
 
     # get unit of coordinate systems from axis of crs
