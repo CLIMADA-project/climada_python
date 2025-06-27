@@ -1279,9 +1279,10 @@ def match_centroids(
         if not equal_crs(coord_gdf.crs, centroids.crs):
             raise ValueError("Set hazard and GeoDataFrame to same CRS first!")
     except AttributeError:
-        # If the coord_gdf has no crs defined (or no valid geometry column),
-        # no error is raised and it is assumed that the user set the crs correctly
-        pass
+        # a crs attribute is needed for unit inference
+        raise AttributeError(
+            "Please provide coordinate GeoDataFrame and Hazard object with a crs attribute."
+        )
 
     # get unit of coordinate systems from axis of crs
     unit = get_crs_unit(coord_gdf)
