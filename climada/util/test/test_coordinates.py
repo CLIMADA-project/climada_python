@@ -251,21 +251,30 @@ class TestGetUnitCoords(unittest.TestCase):
         unit = u_coord.get_crs_unit(gdf)
         self.assertEqual(unit, "degree", "Expected unit 'degree' for geodetic CRS.")
 
-    def test_get_unit_projected_metre(self):
-        """Test with a projected CRS in metre (EPSG:3857)."""
+    def test_get_unit_projected_m(self):
+        """Test with a projected CRS in m (EPSG:3857)."""
         crs = "EPSG:3857"
         gdf = self.create_mock_gdf(crs)
         unit = u_coord.get_crs_unit(gdf)
-        self.assertEqual(unit, "metre", "Expected unit 'metre' for projected CRS.")
+        self.assertEqual(unit, "m", "Expected unit 'm' for projected CRS.")
 
-    def test_get_unit_projected_kilometre(self):
-        """Test with a projected CRS in kilometre (EPSG:22300)."""
+    def test_get_unit_projected_km(self):
+        """Test with a projected CRS in km (EPSG:22300)."""
         crs = "EPSG:22300"
         gdf = self.create_mock_gdf(crs)
         unit = u_coord.get_crs_unit(gdf)
-        self.assertEqual(
-            unit, "kilometre", "Expected unit 'kilometre' for projected CRS."
-        )
+        self.assertEqual(unit, "km", "Expected unit 'km' for projected CRS.")
+
+    def test_get_unit_invalid_crs(self):
+        """Test with an invalid CRS."""
+        crs = "EPSG:8189"
+        gdf = self.create_mock_gdf(crs)
+        with self.assertRaises(ValueError) as cm:
+            u_coord.get_crs_unit(gdf)
+            self.assertIn(
+                "Unknown unit: US survey foot. Please provide a crs that has a unit of 'degree', 'metre' or 'kilometre'.",
+                str(cm.exception),
+            )
 
 
 class TestDistance(unittest.TestCase):
@@ -475,12 +484,12 @@ class TestFunc(unittest.TestCase):
                 [-3, -130.1, 4, -30.5, 11079.7217421, 11087.0352544],
             ]
         )
-        # conversion factors from reference data (in km, see above) to other units
+        # conversion factors from reference data (in km see above) to other units
         factors_km_to_x = {
-            "metre": 1e3,
+            "m": 1e3,
             "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
             "degree": 1.0 / u_coord.ONE_LAT_KM,
-            "kilometre": 1.0,
+            "km": 1.0,
         }
         compute_dist = np.stack(
             [
@@ -529,7 +538,7 @@ class TestFunc(unittest.TestCase):
                 axis=-1,
             )
             self.assertEqual(compute_dist.shape[0], data.shape[0])
-            places = 4 if units == "metre" else 7
+            places = 4 if units == "m" else 7
             for d, cd in zip(data[:, 4:], compute_dist):
                 self.assertAlmostEqual(d[0] * factor, cd[0], places=places)
                 self.assertAlmostEqual(d[1] * factor, cd[1], places=places)
@@ -545,12 +554,12 @@ class TestFunc(unittest.TestCase):
                 [24.0, 85.0, 24.0, 85.0, 0, 0],
             ]
         )
-        # conversion factors from reference data (in km, see above) to other units
+        # conversion factors from reference data (in km see above) to other units
         factors_km_to_x = {
-            "metre": 1e3,
+            "m": 1e3,
             "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
             "degree": 1.0 / u_coord.ONE_LAT_KM,
-            "kilometre": 1.0,
+            "km": 1.0,
         }
         for i, method in enumerate(["equirect", "geosphere"]):
             for units, factor in factors_km_to_x.items():
@@ -936,6 +945,25 @@ class TestAssign(unittest.TestCase):
             u_coord.match_centroids(gdf, centroids)
         self.assertIn(
             "Set hazard and GeoDataFrame to same CRS first!", str(cm.exception)
+        )
+
+        # Test 4: no crs
+        df = pd.DataFrame({"longitude": [10, 20, 30], "latitude": [50, 60, 70]})
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
+            crs=None,
+        )
+
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
+        centroids = Centroids(lat=[1100000, 1200000], lon=[2500000, 2600000], crs=None)
+
+        with self.assertRaises(ValueError) as cm:
+            u_coord.match_centroids(gdf, centroids)
+        self.assertIn(
+            "Please provide coordinate GeoDataFrame and "
+            "Hazard object with a valid crs attribute.",
+            str(cm.exception),
         )
 
     def test_dist_sqr_approx_pass(self):
@@ -1327,14 +1355,14 @@ class TestAssign(unittest.TestCase):
                 (20, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
             ],
-            "metre": [
-                # test with different thresholds (in metre)
+            "m": [
+                # test with different thresholds (in m)
                 (100, [2, 1, 2, 0, 3, -1, -1]),
                 (20, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
             ],
-            "kilometre": [
-                # test with different thresholds (in kilometre)
+            "km": [
+                # test with different thresholds (in km)
                 (100, [2, 1, 2, 0, 3, -1, -1]),
                 (20, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
@@ -1381,11 +1409,11 @@ class TestAssign(unittest.TestCase):
         self.setUp_match_coordinates()
         unit_conv_funcs = {
             "degree": lambda x: x,
-            "kilometre": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM,
-            "metre": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM * 1e3,
+            "km": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM,
+            "m": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM * 1e3,
         }
         distance = "euclidean"
-        for unit in ["degree", "kilometre", "metre"]:
+        for unit in ["degree", "km", "m"]:
             results = self.expected_results[unit]
             # do not check antimeridian if units are not in degree
             check_antimeridian = False if unit != "degree" else True
@@ -1447,7 +1475,7 @@ class TestAssign(unittest.TestCase):
             u_coord._nearest_neighbor_approx(
                 coords_to_assign,
                 coords,
-                "kilometre",
+                "km",
                 u_coord.NEAREST_NEIGHBOR_THRESHOLD,
             )
 
@@ -1460,7 +1488,7 @@ class TestAssign(unittest.TestCase):
             u_coord._nearest_neighbor_haversine(
                 coords_to_assign,
                 coords,
-                "kilometre",
+                "km",
                 u_coord.NEAREST_NEIGHBOR_THRESHOLD,
             )
 
