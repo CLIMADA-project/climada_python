@@ -85,6 +85,11 @@ class StormEurope(Hazard):
         values only.
     ssi : np.array, float
         SSI as set by set_ssi; uses the Dawkins definition by default.
+
+    Class Attributes
+    ----------------
+    intensity_thres : float
+        Threshold below which wind speeds (in m/s) are stored as 0. Defaults to 14.6.
     """
 
     intensity_thres = DEF_INTENSITY_THRES

@@ -88,6 +88,11 @@ class TropCyclone(Hazard):
         For each event, the full velocity vectors at each centroid and track position in a sparse
         matrix of shape (npositions, ncentroids * 2) that can be reshaped to a full ndarray of
         shape (npositions, ncentroids, 2).
+
+    Class Attributes
+    ----------------
+    intensity_thres : float
+        Threshold below which wind speeds (in m/s) are stored as 0. Defaults to 17.5.
     """
 
     intensity_thres = DEF_INTENSITY_THRES
