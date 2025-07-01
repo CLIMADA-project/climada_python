@@ -90,12 +90,13 @@ class CalcRiskPeriod:
         The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots.
         Defaults to ImpactCalc
     risk_transf_attach: float, optional
-        The attachement of risk transfer to apply. Defaults to None.
+        A global attachement of risk transfer to apply. Note that this is different (and not exclusive) from the attachement
+        that can be defined in the `Exposures` object. Defaults to None.
     risk_transf_cover: float, optional
-        The cover of risk transfer to apply. Defaults to None.
+        A global cover of risk transfer to apply. See `risk_transf_attach` above. Defaults to None.
     calc_residual: bool, optional
-        A boolean stating whether the residual (True) or transfered risk (False) is retained when doing
-        the risk transfer. Defaults to False.
+        A boolean stating whether the residual (True) or transfered risk (False) is
+        retained when applying a global risk transfer. Defaults to False.
     measure: Measure, optional
         The measure to apply to both snapshots. Defaults to None.
 
@@ -670,13 +671,13 @@ class CalcRiskPeriod:
             self.per_date_eai_H1V1,
         )
         per_date_eai_V0 = self.interpolation_strategy.interp_hazard_dim(
-            per_date_eai_H0V0, per_date_eai_H1V0, self.time_points
+            per_date_eai_H0V0, per_date_eai_H1V0
         )
         per_date_eai_V1 = self.interpolation_strategy.interp_hazard_dim(
-            per_date_eai_H0V1, per_date_eai_H1V1, self.time_points
+            per_date_eai_H0V1, per_date_eai_H1V1
         )
         per_date_eai = self.interpolation_strategy.interp_vulnerability_dim(
-            per_date_eai_V0, per_date_eai_V1, self.time_points
+            per_date_eai_V0, per_date_eai_V1
         )
         return per_date_eai
 
@@ -689,6 +690,7 @@ class CalcRiskPeriod:
         eai_gdf["coord_id"] = eai_gdf.index
         eai_gdf = eai_gdf.merge(df, on="coord_id")
         eai_gdf = eai_gdf.rename(columns={"group_id": "group"})
+        eai_gdf["group"] = eai_gdf["group"].astype("category")
         eai_gdf["metric"] = "eai"
         eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"
         return eai_gdf
@@ -719,14 +721,17 @@ class CalcRiskPeriod:
                 "Group id are changing between present and future snapshot. Per group AAI will be linearly interpolated."
             )
             eai_fut_groups = self.eai_gdf.copy()
-            eai_fut_groups.index = self._group_id_E1
-            aai_fut_groups = (
-                eai_fut_groups.groupby(["date", "group"], as_index=False)["risk"]
-                .sum()
-                .values()
+            eai_fut_groups["group"] = pd.Categorical(
+                np.tile(self._group_id_E1, len(self.date_idx)),
+                categories=np.unique(
+                    np.concatenate([self._group_id_E0, self._group_id_E1])
+                ),
             )
+            aai_fut_groups = eai_fut_groups.groupby(["date", "group"], as_index=False)[
+                "risk"
+            ].sum()
             aai_per_group_df["risk"] = linear_interp_arrays(
-                aai_per_group_df["risk"], aai_fut_groups, self.time_points
+                aai_per_group_df["risk"].values, aai_fut_groups["risk"].values
             )
 
         aai_per_group_df["metric"] = "aai"
@@ -744,13 +749,13 @@ class CalcRiskPeriod:
             self.per_date_return_periods_H1V1(return_periods),
         )
         per_date_rp_V0 = self.interpolation_strategy.interp_hazard_dim(
-            per_date_rp_H0V0, per_date_rp_H1V0, self.time_points
+            per_date_rp_H0V0, per_date_rp_H1V0
         )
         per_date_rp_V1 = self.interpolation_strategy.interp_hazard_dim(
-            per_date_rp_H0V1, per_date_rp_H1V1, self.time_points
+            per_date_rp_H0V1, per_date_rp_H1V1
         )
         per_date_rp = self.interpolation_strategy.interp_vulnerability_dim(
-            per_date_rp_V0, per_date_rp_V1, self.time_points
+            per_date_rp_V0, per_date_rp_V1
         )
         rp_df = pd.DataFrame(
             index=self.date_idx, columns=return_periods, data=per_date_rp
@@ -762,11 +767,11 @@ class CalcRiskPeriod:
         return rp_df
 
     def calc_risk_components_metric(self):
-        per_date_aai_V0 = self.interpolation_strategy.interp_vulnerability_dim(
-            self.per_date_aai_H0V0, self.per_date_aai_H1V0, self.time_points
+        per_date_aai_V0 = self.interpolation_strategy.interp_hazard_dim(
+            self.per_date_aai_H0V0, self.per_date_aai_H1V0
         )
         per_date_aai_H0 = self.interpolation_strategy.interp_vulnerability_dim(
-            self.per_date_aai_H0V0, self.per_date_aai_H0V1, self.time_points
+            self.per_date_aai_H0V0, self.per_date_aai_H0V1
         )
         df = pd.DataFrame(
             {

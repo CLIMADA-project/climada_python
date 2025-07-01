@@ -43,7 +43,7 @@ class ImpactComputationStrategy(ABC):
         risk_transf_cover: float | None,
         calc_residual: bool,
     ) -> Impact:
-        pass
+        """Method used to compute impact from the snapshots."""
 
 
 class ImpactCalcComputation(ImpactComputationStrategy):
@@ -89,17 +89,24 @@ class ImpactCalcComputation(ImpactComputationStrategy):
             )
 
     def calculate_residual_or_risk_transfer_impact_matrix(
-        self, imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
+        self, imp_mat, attachement, cover, calc_residual
     ):
-        """
-        Calculate either the residual or the risk transfer impact matrix.
+        """Calculate either the residual or the risk transfer impact matrix
+        from a global risk transfer mechanism.
 
-        The impact matrix is adjusted based on the total impact for each event.
-        When calculating the residual impact, the result is the total impact minus
-        the risk layer. The risk layer is defined as the minimum of the cover and
-        the maximum of the difference between the total impact and the attachment.
-        If `calc_residual` is False, the function returns the risk layer matrix
-        instead of the residual.
+        To compute the transfered risk, the function first computes for each event,
+        the (positive) difference between their total impact and `attachment`.
+        The transfered risk for each event is then defined as the minimum between
+        this value and `cover`. The residual impact is the total impact minus
+        the transfered risk.
+        The impact matrix is then adjusted by multiply impact per centroids
+        by the ratio between residual risk and total impact for each event.
+        As such, the risk transfer is shared among all impacted exposure points
+        and equaly distributed.
+
+        If `calc_residual` is False, the function returns the transfered risk
+        at each points instead of the residual risk by using the ratio between
+        transfered risk and total impact instead.
 
         Parameters
         ----------
@@ -118,13 +125,21 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         scipy.sparse.csr_matrix
             The adjusted impact matrix, either residual or risk transfer.
 
+        Warnings
+        --------
+
+        This transfer capability is different and not exclusive with the one
+        implemented in ImpactCalc, which is defined at the centroid level.
+        The mechanism here corresponds to a global cover applied to the whole
+        region studied.
+
         """
         imp_mat = copy.deepcopy(imp_mat)
         # Calculate the total impact per event
         total_at_event = imp_mat.sum(axis=1).A1
         # Risk layer at event
         transfer_at_event = np.minimum(
-            np.maximum(total_at_event - risk_transf_attach, 0), risk_transf_cover
+            np.maximum(total_at_event - attachement, 0), cover
         )
         residual_at_event = np.maximum(total_at_event - transfer_at_event, 0)
 
