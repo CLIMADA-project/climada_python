@@ -122,9 +122,9 @@ class RiskTrajectory:
     @default_rp.setter
     def default_rp(self, value):
         if not isinstance(value, list):
-            ValueError("Return periods need to be a list of int.")
+            raise ValueError("Return periods need to be a list of int.")
         if any(not isinstance(i, int) for i in value):
-            ValueError("Return periods need to be a list of int.")
+            raise ValueError("Return periods need to be a list of int.")
         self._return_periods_metrics = None
         self._all_risk_metrics = None
         self._default_rp = value
@@ -477,7 +477,7 @@ class RiskTrajectory:
             period
             for period in risk_periods
             if (
-                start_date >= period.snapshot0.date or end_date <= period.snapshot1.date
+                start_date <= period.snapshot0.date or end_date >= period.snapshot1.date
             )
         ]
 
@@ -803,9 +803,8 @@ def calc_npv_cash_flows(
     )
     tmp.index = df.index
     df = tmp.copy()
-    df["discount_factor"] = (1 / (1 + df["rate"])) ** (
-        (df.index - start_date).days // 365
-    )
+    start = pd.Timestamp(start_date)
+    df["discount_factor"] = (1 / (1 + df["rate"])) ** ((df.index - start).days // 365)
 
     # Apply the discount factors to the cash flows
     df["npv_cash_flow"] = df["cash_flow"] * df["discount_factor"]
