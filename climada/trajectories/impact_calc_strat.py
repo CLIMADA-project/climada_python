@@ -43,7 +43,7 @@ class ImpactComputationStrategy(ABC):
         risk_transf_cover: float | None,
         calc_residual: bool,
     ) -> Impact:
-        pass
+        """Method used to compute impact from the snapshots."""
 
 
 class ImpactCalcComputation(ImpactComputationStrategy):
