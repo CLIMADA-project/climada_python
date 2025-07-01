@@ -179,7 +179,7 @@ class Measure:
         u_check.size(2, self.mdd_impact, "Measure.mdd_impact")
         u_check.size(2, self.paa_impact, "Measure.paa_impact")
 
-    def calc_impact(self, exposures, imp_fun_set, hazard, assign_centroids=True):
+    def calc_impact(self, exposures, imp_fun_set, hazard):
         """
         Apply measure and compute impact and risk transfer of measure
         implemented over inputs.
@@ -192,12 +192,6 @@ class Measure:
             impact function set instance
         hazard : climada.hazard.Hazard
             hazard instance
-        assign_centroids : bool, optional
-            indicates whether centroids are assigned to the self.exposures object.
-            Centroids assignment is an expensive operation; set this to ``False`` to save
-            computation time if the hazards' centroids are already assigned to the exposures
-            object.
-            Default: True
 
         Returns
         -------
@@ -206,7 +200,15 @@ class Measure:
         """
 
         new_exp, new_impfs, new_haz = self.apply(exposures, imp_fun_set, hazard)
-        return self._calc_impact(new_exp, new_impfs, new_haz, assign_centroids)
+        # assign centroids if missing
+        if new_haz.centr_exp_col not in new_exp.gdf.columns:
+            LOGGER.warning(
+                "No assigned hazard centroids in exposure object after the "
+                "application of the measure. The centroids were assigned in impact calcualtion."
+            )
+            new_exp.assign_centroids(new_haz)
+
+        return self._calc_impact(new_exp, new_impfs, new_haz)
 
     def apply(self, exposures, imp_fun_set, hazard):
         """
@@ -246,7 +248,7 @@ class Measure:
 
         return new_exp, new_impfs, new_haz
 
-    def _calc_impact(self, new_exp, new_impfs, new_haz, assign_centroids):
+    def _calc_impact(self, new_exp, new_impfs, new_haz):
         """Compute impact and risk transfer of measure implemented over inputs.
 
         Parameters
@@ -267,7 +269,7 @@ class Measure:
         )
 
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
-            save_mat=False, assign_centroids=assign_centroids
+            save_mat=False, assign_centroids=False
         )
         return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
 
