@@ -50,6 +50,9 @@ def exponential_interp_imp_mat(mat_start, mat_end, interpolation_range, rate) ->
     `mat_start` and `mat_end`.
     """
     # Convert matrices to logarithmic domain
+    if rate <= 0:
+        raise ValueError("Rate for exponential interpolation must be positive")
+
     mat_start = mat_start.copy()
     mat_end = mat_end.copy()
     mat_start.data = np.log(mat_start.data + np.finfo(float).eps) / np.log(rate)
@@ -65,8 +68,16 @@ def exponential_interp_imp_mat(mat_start, mat_end, interpolation_range, rate) ->
     return res
 
 
-def linear_interp_arrays(arr_start, arr_end, interpolation_range):
-    """Perform linear interpolation between two arrays (of a scalar metric) over an interpolation range."""
+def linear_interp_arrays(arr_start, arr_end):
+    """Perform linear interpolation between two arrays of `n` dates of one or multiple scalar metrics.
+
+    Returns a `n` sized arrays where the values linearly change from `arr_start` to `arr_end` over the `n` dates.
+    """
+    if arr_start.shape != arr_end.shape:
+        raise ValueError(
+            f"Cannot interpolate arrays of different shapes: {arr_start.shape} and {arr_end.shape}."
+        )
+    interpolation_range = arr_start.shape[0]
     prop1 = np.linspace(0, 1, interpolation_range)
     prop0 = 1 - prop1
     if arr_start.ndim > 1:
@@ -75,8 +86,21 @@ def linear_interp_arrays(arr_start, arr_end, interpolation_range):
     return np.multiply(arr_start, prop0) + np.multiply(arr_end, prop1)
 
 
-def exponential_interp_arrays(arr_start, arr_end, interpolation_range, rate):
-    """Perform exponential interpolation between two arrays (of a scalar metric) over an interpolation range with a growth rate `rate`."""
+def exponential_interp_arrays(arr_start, arr_end, rate):
+    """Perform exponential interpolation between two arrays of `n` dates of one or multiple scalar metrics.
+
+    Returns a `n` sized arrays where the values exponentially change from `arr_start` to `arr_end` over the `n` dates.
+    """
+
+    if rate <= 0:
+        raise ValueError("Rate for exponential interpolation must be positive")
+
+    if arr_start.shape != arr_end.shape:
+        raise ValueError(
+            f"Cannot interpolate arrays of different shapes: {arr_start.shape} and {arr_end.shape}."
+        )
+    interpolation_range = arr_start.shape[0]
+
     prop1 = np.linspace(0, 1, interpolation_range)
     prop0 = 1 - prop1
     if arr_start.ndim > 1:
@@ -84,21 +108,11 @@ def exponential_interp_arrays(arr_start, arr_end, interpolation_range, rate):
 
     return np.exp(
         (
-            np.multiply(np.log(arr_start) / np.log(rate), prop0)
-            + np.multiply(np.log(arr_end) / np.log(rate), prop1)
+            np.multiply(np.log(arr_start + np.finfo(float).eps) / np.log(rate), prop0)
+            + np.multiply(np.log(arr_end + np.finfo(float).eps) / np.log(rate), prop1)
         )
         * np.log(rate)
     )
-
-
-def logarithmic_interp_arrays(arr_start, arr_end, interpolation_range):
-    """Perform logarithmic (natural logarithm) interpolation between two arrays (of a scalar metric) over an interpolation range."""
-    prop1 = np.logspace(0, 1, interpolation_range)
-    prop0 = 1 - prop1
-    if arr_start.ndim > 1:
-        prop0, prop1 = prop0.reshape(-1, 1), prop1.reshape(-1, 1)
-
-    return np.multiply(arr_start, prop0) + np.multiply(arr_end, prop1)
 
 
 class InterpolationStrategyBase(ABC):
@@ -126,17 +140,11 @@ class InterpolationStrategyBase(ABC):
 
         return res
 
-    def interp_hazard_dim(
-        self, metric_0, metric_1, interpolation_range: int, **kwargs
-    ) -> np.ndarray:
-        return self.hazard_interp(metric_0, metric_1, interpolation_range, **kwargs)
+    def interp_hazard_dim(self, metric_0, metric_1, **kwargs) -> np.ndarray:
+        return self.hazard_interp(metric_0, metric_1, **kwargs)
 
-    def interp_vulnerability_dim(
-        self, metric_0, metric_1, interpolation_range: int, **kwargs
-    ) -> np.ndarray:
-        return self.vulnerability_interp(
-            metric_0, metric_1, interpolation_range, **kwargs
-        )
+    def interp_vulnerability_dim(self, metric_0, metric_1, **kwargs) -> np.ndarray:
+        return self.vulnerability_interp(metric_0, metric_1, **kwargs)
 
 
 class InterpolationStrategy(InterpolationStrategyBase):
