@@ -719,7 +719,7 @@ class CalcRiskPeriod:
 
         eai_pres_groups = self.eai_gdf[["date", "coord_id", "group", "risk"]].copy()
         aai_per_group_df = eai_pres_groups.groupby(
-            ["date", "group"], as_index=False, observed=False
+            ["date", "group"], as_index=False, observed=True
         )["risk"].sum()
         if not np.array_equal(self._group_id_E0, self._group_id_E1):
             LOGGER.warning(
