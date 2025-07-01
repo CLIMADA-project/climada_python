@@ -26,6 +26,74 @@ import numpy as np
 from climada.entity.impact_funcs.base import ImpactFunc
 
 
+class TestEquality(unittest.TestCase):
+    """Test equality method"""
+
+    def setUp(self):
+        self.impf1 = ImpactFunc(
+            haz_type="TC",
+            id=1,
+            intensity=np.array([1, 2, 3]),
+            mdd=np.array([0.1, 0.2, 0.3]),
+            paa=np.array([0.4, 0.5, 0.6]),
+            intensity_unit="m/s",
+            name="Test Impact",
+        )
+        self.impf2 = ImpactFunc(
+            haz_type="TC",
+            id=1,
+            intensity=np.array([1, 2, 3]),
+            mdd=np.array([0.1, 0.2, 0.3]),
+            paa=np.array([0.4, 0.5, 0.6]),
+            intensity_unit="m/s",
+            name="Test Impact",
+        )
+        self.impf3 = ImpactFunc(
+            haz_type="FL",
+            id=2,
+            intensity=np.array([4, 5, 6]),
+            mdd=np.array([0.7, 0.8, 0.9]),
+            paa=np.array([0.1, 0.2, 0.3]),
+            intensity_unit="m",
+            name="Another Impact",
+        )
+
+    def test_reflexivity(self):
+        self.assertEqual(self.impf1, self.impf1)
+
+    def test_symmetry(self):
+        self.assertEqual(self.impf1, self.impf2)
+        self.assertEqual(self.impf2, self.impf1)
+
+    def test_transitivity(self):
+        impf4 = ImpactFunc(
+            haz_type="TC",
+            id=1,
+            intensity=np.array([1, 2, 3]),
+            mdd=np.array([0.1, 0.2, 0.3]),
+            paa=np.array([0.4, 0.5, 0.6]),
+            intensity_unit="m/s",
+            name="Test Impact",
+        )
+        self.assertEqual(self.impf1, self.impf2)
+        self.assertEqual(self.impf2, impf4)
+        self.assertEqual(self.impf1, impf4)
+
+    def test_consistency(self):
+        self.assertEqual(self.impf1, self.impf2)
+        self.assertEqual(self.impf1, self.impf2)
+
+    def test_comparison_with_none(self):
+        self.assertNotEqual(self.impf1, None)
+
+    def test_different_types(self):
+        self.assertNotEqual(self.impf1, "Not an ImpactFunc")
+
+    def test_inequality(self):
+        self.assertNotEqual(self.impf1, self.impf3)
+        self.assertTrue(self.impf1 != self.impf3)
+
+
 class TestInterpolation(unittest.TestCase):
     """Impact function interpolation test"""
 
@@ -139,5 +207,8 @@ class TestInterpolation(unittest.TestCase):
 
 # Execute Tests
 if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInterpolation)
-    unittest.TextTestRunner(verbosity=2).run(TESTS)
+    equality_tests = unittest.TestLoader().loadTestsFromTestCase(TestEquality)
+    interpolation_tests = unittest.TestLoader().loadTestsFromTestCase(TestInterpolation)
+    unittest.TextTestRunner(verbosity=2).run(
+        unittest.TestSuite([equality_tests, interpolation_tests])
+    )
