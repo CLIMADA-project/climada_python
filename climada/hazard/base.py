@@ -101,10 +101,6 @@ class Hazard(HazardIO, HazardPlot):
         (i.e., is equivalent to fraction is 1 everywhere).
     """
 
-    intensity_thres = 10
-    """Intensity threshold per hazard used to filter lower intensities. To be
-    set for every hazard type"""
-
     vars_oblig = {
         "units",
         "centroids",
