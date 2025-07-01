@@ -40,7 +40,7 @@ class TestImpactCalcComputation(unittest.TestCase):
 
         self.impact_calc_computation = ImpactCalcComputation()
 
-    @patch.object(ImpactCalcComputation, "_calculate_impacts_for_snapshots")
+    @patch.object(ImpactCalcComputation, "compute_impacts_pre_transfer")
     @patch.object(ImpactCalcComputation, "_apply_risk_transfer")
     def test_compute_impacts(
         self, mock_apply_risk_transfer, mock_calculate_impacts_for_snapshots
@@ -54,54 +54,32 @@ class TestImpactCalcComputation(unittest.TestCase):
         mock_calculate_impacts_for_snapshots.return_value = mock_impacts
 
         result = self.impact_calc_computation.compute_impacts(
-            self.mock_snapshot0, self.mock_snapshot1, 0.1, 0.9, False
+            self.mock_snapshot0, self.mock_snapshot1, (0, 0, 0), 0.1, 0.9, False
         )
 
         self.assertEqual(result, mock_impacts)
         mock_calculate_impacts_for_snapshots.assert_called_once_with(
-            self.mock_snapshot0, self.mock_snapshot1
+            self.mock_snapshot0, self.mock_snapshot1, (0, 0, 0)
         )
         mock_apply_risk_transfer.assert_called_once_with(mock_impacts, 0.1, 0.9, False)
 
     def test_calculate_impacts_for_snapshots(self):
         mock_imp_E0H0 = MagicMock(spec=Impact)
-        mock_imp_E1H0 = MagicMock(spec=Impact)
-        mock_imp_E0H1 = MagicMock(spec=Impact)
-        mock_imp_E1H1 = MagicMock(spec=Impact)
 
         with patch(
             "climada.trajectories.impact_calc_strat.ImpactCalc"
         ) as mock_impact_calc:
-            mock_impact_calc.return_value.impact.side_effect = [
-                mock_imp_E0H0,
-                mock_imp_E1H0,
-                mock_imp_E0H1,
-                mock_imp_E1H1,
-            ]
+            mock_impact_calc.return_value.impact.side_effect = [mock_imp_E0H0]
 
-            result = self.impact_calc_computation._calculate_impacts_for_snapshots(
-                self.mock_snapshot0, self.mock_snapshot1
+            result = self.impact_calc_computation.compute_impacts_pre_transfer(
+                self.mock_snapshot0, self.mock_snapshot1, (0, 0, 0)
             )
 
-            self.assertEqual(
-                result, (mock_imp_E0H0, mock_imp_E1H0, mock_imp_E0H1, mock_imp_E1H1)
-            )
+            self.assertEqual(result, mock_imp_E0H0)
 
     def test_apply_risk_transfer(self):
         mock_imp_E0H0 = MagicMock(spec=Impact)
         mock_imp_E0H0.imp_mat = MagicMock(spec=csr_matrix)
-
-        mock_imp_E1H0 = MagicMock(spec=Impact)
-        mock_imp_E1H0.imp_mat = MagicMock(spec=csr_matrix)
-
-        mock_imp_E0H1 = MagicMock(spec=Impact)
-        mock_imp_E0H1.imp_mat = MagicMock(spec=csr_matrix)
-
-        mock_imp_E1H1 = MagicMock(spec=Impact)
-        mock_imp_E1H1.imp_mat = MagicMock(spec=csr_matrix)
-
-        mock_impacts = (mock_imp_E0H0, mock_imp_E1H0, mock_imp_E0H1, mock_imp_E1H1)
-
         mock_imp_resi = MagicMock(spec=csr_matrix)
 
         with patch.object(
@@ -110,13 +88,10 @@ class TestImpactCalcComputation(unittest.TestCase):
         ) as mock_calc_risk_transfer:
             mock_calc_risk_transfer.return_value = mock_imp_resi
             self.impact_calc_computation._apply_risk_transfer(
-                mock_impacts, 0.1, 0.9, False
+                mock_imp_E0H0, 0.1, 0.9, False
             )
 
-            self.assertIs(mock_impacts[0].imp_mat, mock_imp_resi)
-            self.assertIs(mock_impacts[1].imp_mat, mock_imp_resi)
-            self.assertIs(mock_impacts[2].imp_mat, mock_imp_resi)
-            self.assertIs(mock_impacts[3].imp_mat, mock_imp_resi)
+            self.assertIs(mock_imp_E0H0.imp_mat, mock_imp_resi)
 
     def test_calculate_residual_or_risk_transfer_impact_matrix(self):
         imp_mat = MagicMock()
