@@ -293,6 +293,7 @@ class RiskTrajectory:
                 ~tmp.index.duplicated(keep="last")
             ]  # We want to avoid overlap when more than 2 snapshots
             tmp = tmp.reset_index()
+            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
             tmp["group"] = tmp["group"].fillna(self._all_groups_name)
             columns_to_front = ["group", "date", "measure", "metric"]
             tmp = tmp[
