@@ -249,6 +249,7 @@ class RiskTrajectory:
             dropna=False,
             as_index=False,
             group_keys=False,
+            observed=False,
         )["risk"].transform(_npv_group, risk_disc)
         df = df.reset_index()
         return df
@@ -509,9 +510,9 @@ class RiskTrajectory:
 
         df_sorted = df.sort_values(by=cls._grouper + ["date"])
         # Apply the function to identify continuous periods
-        df_periods = df_sorted.groupby(grouper, dropna=False, group_keys=False).apply(
-            identify_continuous_periods, time_unit
-        )
+        df_periods = df_sorted.groupby(
+            grouper, dropna=False, group_keys=False, observed=False
+        ).apply(identify_continuous_periods, time_unit)
 
         if isinstance(colname, str):
             colname = [colname]
@@ -524,7 +525,7 @@ class RiskTrajectory:
             agg_dict[col] = pd.NamedAgg(column=col, aggfunc="sum")
         # Group by the identified periods and calculate start and end dates
         df_periods = (
-            df_periods.groupby(grouper + ["period_id"], dropna=False)
+            df_periods.groupby(grouper + ["period_id"], dropna=False, observed=False)
             .agg(**agg_dict)
             .reset_index()
         )

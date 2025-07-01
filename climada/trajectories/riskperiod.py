@@ -147,6 +147,9 @@ class CalcRiskPeriod:
             if "group_id" in self.snapshot1.exposure.gdf.columns
             else np.array([])
         )
+        self._groups_id = np.unique(
+            np.concatenate([self._group_id_E0, self._group_id_E1])
+        )
 
     def _reset_impact_data(self):
         for fut in list(itertools.product([0, 1], repeat=3)):
@@ -690,7 +693,7 @@ class CalcRiskPeriod:
         eai_gdf["coord_id"] = eai_gdf.index
         eai_gdf = eai_gdf.merge(df, on="coord_id")
         eai_gdf = eai_gdf.rename(columns={"group_id": "group"})
-        eai_gdf["group"] = eai_gdf["group"].astype("category")
+        eai_gdf["group"] = pd.Categorical(eai_gdf["group"], categories=self._groups_id)
         eai_gdf["metric"] = "eai"
         eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"
         return eai_gdf
@@ -699,7 +702,9 @@ class CalcRiskPeriod:
         aai_df = pd.DataFrame(
             index=self.date_idx, columns=["risk"], data=self.per_date_aai
         )
-        aai_df["group"] = pd.NA
+        aai_df["group"] = pd.Categorical(
+            [pd.NA] * len(aai_df), categories=self._groups_id
+        )
         aai_df["metric"] = "aai"
         aai_df["measure"] = self.measure.name if self.measure else "no_measure"
         aai_df.reset_index(inplace=True)
@@ -713,9 +718,9 @@ class CalcRiskPeriod:
             return pd.DataFrame()
 
         eai_pres_groups = self.eai_gdf[["date", "coord_id", "group", "risk"]].copy()
-        aai_per_group_df = eai_pres_groups.groupby(["date", "group"], as_index=False)[
-            "risk"
-        ].sum()
+        aai_per_group_df = eai_pres_groups.groupby(
+            ["date", "group"], as_index=False, observed=False
+        )["risk"].sum()
         if not np.array_equal(self._group_id_E0, self._group_id_E1):
             LOGGER.warning(
                 "Group id are changing between present and future snapshot. Per group AAI will be linearly interpolated."
@@ -723,9 +728,7 @@ class CalcRiskPeriod:
             eai_fut_groups = self.eai_gdf.copy()
             eai_fut_groups["group"] = pd.Categorical(
                 np.tile(self._group_id_E1, len(self.date_idx)),
-                categories=np.unique(
-                    np.concatenate([self._group_id_E0, self._group_id_E1])
-                ),
+                categories=self._groups_id,
             )
             aai_fut_groups = eai_fut_groups.groupby(["date", "group"], as_index=False)[
                 "risk"
@@ -761,7 +764,9 @@ class CalcRiskPeriod:
             index=self.date_idx, columns=return_periods, data=per_date_rp
         ).melt(value_name="risk", var_name="rp", ignore_index=False)
         rp_df.reset_index(inplace=True)
-        rp_df["group"] = pd.NA
+        rp_df["group"] = pd.Categorical(
+            [pd.NA] * len(rp_df), categories=self._groups_id
+        )
         rp_df["metric"] = "rp_" + rp_df["rp"].astype(str)
         rp_df["measure"] = self.measure.name if self.measure else "no_measure"
         return rp_df
@@ -806,7 +811,7 @@ class CalcRiskPeriod:
             ignore_index=False,
         )
         df.reset_index(inplace=True)
-        df["group"] = pd.NA
+        df["group"] = pd.Categorical([pd.NA] * len(df), categories=self._groups_id)
         df["measure"] = self.measure.name if self.measure else "no_measure"
         return df
 
