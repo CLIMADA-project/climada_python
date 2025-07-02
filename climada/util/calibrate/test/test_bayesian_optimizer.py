@@ -316,10 +316,10 @@ class TestBayesianOptimizer(unittest.TestCase):
 
         # Call 'run'
         with patch.object(self.input, "impact_to_aligned_df") as align:
-            align.return_value = (None, None)
+            align.return_value = (pd.DataFrame(), pd.DataFrame())
             self.optimizer.run(controller=self.controller)
 
-        # Check call to '_kwargs_to_impact_func_gen'
+        # Check call to '_kwargs_to_impact_func_creator'
         call_args = self.input.impact_func_creator.call_args_list
         self.assertEqual(len(call_args), 3)
         for args in call_args:
@@ -340,7 +340,7 @@ class TestBayesianOptimizer(unittest.TestCase):
 
         # Call 'run'
         with patch.object(self.input, "impact_to_aligned_df") as align:
-            align.return_value = (None, None)
+            align.return_value = (pd.DataFrame(), pd.DataFrame())
             output = self.optimizer.run(controller=self.controller)
 
         # Check target space

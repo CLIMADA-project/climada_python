@@ -212,6 +212,7 @@ class TestOptimizer(unittest.TestCase):
         self.input.impact_to_dataframe = lambda _: pd.DataFrame(
             data={"col1": [2, 4], "col2": [4, 0]}, index=[0, 2]
         )
+        self.input.df_to_numpy = lambda df: df
         self.input.cost_func = lambda x, y, w: (x, y, w)
 
         # Apply

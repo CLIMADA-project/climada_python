@@ -26,6 +26,7 @@ from .bayesian_optimizer import (
     BayesianOptimizerOutputEvaluator,
     select_best,
 )
+from .cost_func import mse, msle
 from .ensemble import (
     AverageEnsembleOptimizer,
     EnsembleOptimizerOutput,

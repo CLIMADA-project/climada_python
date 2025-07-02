@@ -371,16 +371,17 @@ class TestAverageEnsembleOptimizer(unittest.TestCase):
 
     def test_post_init_sampling(self):
         opt = AverageEnsembleOptimizer(
-            input=self.input, sample_fraction=0.5, optimizer_type=ConcreteOptimizer
+            input=self.input, optimizer_type=ConcreteOptimizer
         )
         samples = np.array(opt.samples)
-        self.assertTupleEqual(samples.shape, (20, 2, 2))
+        self.assertTupleEqual(samples.shape, (20, 4, 2))
 
         opt = AverageEnsembleOptimizer(
             input=self.input,
             ensemble_size=11,
             sample_fraction=0.8,  # Will cause rounding
             optimizer_type=ConcreteOptimizer,
+            replace=False,
         )
         samples = np.array(opt.samples)
         self.assertTupleEqual(samples.shape, (11, 3, 2))
@@ -390,6 +391,7 @@ class TestAverageEnsembleOptimizer(unittest.TestCase):
             ensemble_size=2,
             sample_fraction=0.95,  # Will cause rounding, always select all
             optimizer_type=ConcreteOptimizer,
+            replace=False,
         )
 
         samples = [sorted([tuple(idx) for idx in arr]) for arr in opt.samples]

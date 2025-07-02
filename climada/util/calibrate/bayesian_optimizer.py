@@ -617,7 +617,7 @@ class BayesianOptimizer(Optimizer):
         )
 
     def _target_func(
-        self, data: pd.DataFrame, predicted: pd.DataFrame, weights: pd.DataFrame | None
+        self, data: np.ndarray, predicted: np.ndarray, weights: np.ndarray | None
     ) -> Number:
         """Invert the cost function because BayesianOptimization maximizes the target"""
         return -self.input.cost_func(data, predicted, weights)

@@ -86,6 +86,10 @@ class Input:
         :py:attr:`data`, insert this value. Defaults to NaN, in which case the impact
         from the model is ignored. Set this to zero to explicitly calibrate to zero
         impacts in these cases.
+    df_to_numpy : Callable
+        A function that transforms a pandas.DataFrame into a numpy.ndarray to be
+        inserted into the :py:attr:`cost_func`. By default, this will flatten the data
+        frame.
     data_weights : pandas.DataFrame, optional
         Weights for each entry in :py:attr:`data`. Must have the exact same index and
         columns. If ``None``, the weights will be ignored (equivalent to the same weight
@@ -109,6 +113,9 @@ class Input:
         default_factory=lambda: {"assign_centroids": False}
     )
     missing_data_value: float = np.nan
+    df_to_numpy: Callable[[pd.DataFrame], np.ndarray] = (
+        lambda df: df.to_numpy().flatten()
+    )
     data_weights: pd.DataFrame | None = field(default=None, kw_only=True)
     missing_weights_value: float = field(default=0.0, kw_only=True)
     assign_centroids: InitVar[bool] = field(default=True, kw_only=True)
@@ -523,12 +530,12 @@ class Optimizer(ABC):
                 copy=True,
                 fill_value=self.input.missing_weights_value,
             )
-            weights_aligned = weights_aligned.to_numpy().flatten()
+            weights_aligned = self.input.df_to_numpy(weights_aligned)
 
         # Compute target function
         return self._target_func(
-            data_aligned.to_numpy().flatten(),
-            impact_df_aligned.to_numpy().flatten(),
+            self.input.df_to_numpy(data_aligned),
+            self.input.df_to_numpy(impact_df_aligned),
             weights_aligned,
         )
 
