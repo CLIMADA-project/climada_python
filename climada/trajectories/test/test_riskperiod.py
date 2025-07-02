@@ -662,6 +662,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.assertEqual(result, "final_eai_result")
 
     def test_calc_eai_gdf(self):
+        self.calc_risk_period._groups_id = np.array([0])
         expected_risk = np.array([[1.0, 1.5, 12], [0, 3, 6], [1, 0, 6]])
         self.calc_risk_period.per_date_eai = expected_risk
         result = self.calc_risk_period.calc_eai_gdf()
@@ -683,6 +684,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
     def test_calc_aai_metric(self):
         expected_aai = np.array([2, 4.5, 24])
         self.calc_risk_period.per_date_aai = expected_aai
+        self.calc_risk_period._groups_id = np.array([0])
         result = self.calc_risk_period.calc_aai_metric()
         expected_columns = {
             "group",
@@ -702,6 +704,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
     def test_calc_aai_per_group_metric(self):
         self.calc_risk_period._group_id_E0 = np.array([1, 1, 2])
         self.calc_risk_period._group_id_E1 = np.array([2, 2, 2])
+        self.calc_risk_period._groups_id = np.array([1, 2])
         self.calc_risk_period.eai_gdf = pd.DataFrame(
             {
                 "date": pd.DatetimeIndex(
@@ -735,6 +738,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         np.testing.assert_array_almost_equal(expected_risk, actual_risk)
 
     def test_calc_return_periods_metric(self):
+        self.calc_risk_period._groups_id = np.array([0])
         self.calc_risk_period.per_date_return_periods_H0V0.return_value = "H0V0"
         self.calc_risk_period.per_date_return_periods_H1V0.return_value = "H1V0"
         self.calc_risk_period.per_date_return_periods_H0V1.return_value = "H0V1"
@@ -780,6 +784,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         )
 
     def test_calc_risk_components_metric(self):
+        self.calc_risk_period._groups_id = np.array([0])
         self.calc_risk_period.per_date_aai_H0V0 = np.array([0, 0, 0])
         self.calc_risk_period.per_date_aai_H1V0 = np.array([1, 1, 1])
         self.calc_risk_period.per_date_aai_H0V1 = np.array([2, 2, 2])

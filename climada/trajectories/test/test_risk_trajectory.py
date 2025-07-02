@@ -25,6 +25,7 @@ import unittest
 
 # Dummy Measure Enum for testing
 from enum import Enum
+from itertools import product
 from unittest.mock import Mock, PropertyMock, call, patch
 
 import numpy as np  # For potential NaN/NA comparisons
@@ -267,24 +268,25 @@ class TestRiskTrajectory(unittest.TestCase):
         mock_risk_periods.return_value = [mock_calc_period1, mock_calc_period2]
 
         # Mock the metric method on CalcRiskPeriod instances
-        mock_calc_period1.calc_aai_metric.return_value = pd.DataFrame(
-            {
-                "date": [pd.Timestamp("2023-01-01")],
-                "group": ["GroupA"],
-                "measure": ["MEAS1"],
-                "metric": ["aai"],
-                "risk": [100.0],
-            }
+        dates1 = [pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")]
+        dates2 = [pd.Timestamp("2025-01-01"), pd.Timestamp("2026-01-01")]
+        groups = ["GroupA", "GroupB", pd.NA]
+        measures = ["MEAS1", "MEAS2"]
+        metrics = ["aai"]
+        df1 = pd.DataFrame(
+            product(dates1, groups, measures, metrics),
+            columns=["date", "group", "measure", "metric"],
         )
-        mock_calc_period2.calc_aai_metric.return_value = pd.DataFrame(
-            {
-                "date": [pd.Timestamp("2024-01-01")],
-                "group": ["GroupB"],
-                "measure": ["MEAS2"],
-                "metric": ["aai"],
-                "risk": [200.0],
-            }
+        df1["risk"] = np.arange(12) * 100
+        df1["group"] = df1["group"].astype("category")
+        df2 = pd.DataFrame(
+            product(dates2, groups, measures, metrics),
+            columns=["date", "group", "measure", "metric"],
         )
+        df2["risk"] = np.arange(12) * 100 + 1200
+        df2["group"] = df2["group"].astype("category")
+        mock_calc_period1.calc_aai_metric.return_value = df1
+        mock_calc_period2.calc_aai_metric.return_value = df2
 
         # Mock npv_transform return value
         mock_npv_transform.return_value = "discounted_df"
@@ -300,20 +302,18 @@ class TestRiskTrajectory(unittest.TestCase):
 
         # Check concatenated DataFrame before NPV
         # We need to manually recreate the expected intermediate DataFrame before NPV for assertion
-        expected_pre_npv_df = pd.DataFrame(
-            {
-                "date": [pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")],
-                "group": ["GroupA", "GroupB"],
-                "measure": ["MEAS1", "MEAS2"],
-                "metric": ["aai", "aai"],
-                "risk": [100.0, 200.0],
-            }
+        df3 = pd.DataFrame(
+            product(dates1 + dates2, groups, measures, metrics),
+            columns=["date", "group", "measure", "metric"],
         )
-        expected_pre_npv_df["group"] = expected_pre_npv_df["group"].fillna("All")
+        df3["risk"] = np.arange(24) * 100
+        df3["group"] = df3["group"].astype("category")
+        df3["group"] = df3["group"].cat.add_categories(["All"])
+        df3["group"] = df3["group"].fillna("All")
+        expected_pre_npv_df = df3
         expected_pre_npv_df = expected_pre_npv_df[
             ["group", "date", "measure", "metric", "risk"]
         ]
-
         # npv_transform should be called with the correctly formatted (concatenated and ordered) DataFrame
         # and the risk_disc attribute
         mock_npv_transform.assert_called_once()
@@ -339,15 +339,17 @@ class TestRiskTrajectory(unittest.TestCase):
         # Mock CalcRiskPeriod instances
         mock_calc_period1 = Mock()
         mock_risk_periods.return_value = [mock_calc_period1]
-        mock_calc_period1.calc_aai_metric.return_value = pd.DataFrame(
-            {
-                "date": [pd.Timestamp("2023-01-01")],
-                "group": ["GroupA"],
-                "measure": ["MEAS1"],
-                "metric": ["aai"],
-                "risk": [100.0],
-            }
+        dates1 = [pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")]
+        groups = ["GroupA", "GroupB", pd.NA]
+        measures = ["MEAS1", "MEAS2"]
+        metrics = ["aai"]
+        df1 = pd.DataFrame(
+            product(groups, dates1, measures, metrics),
+            columns=["group", "date", "measure", "metric"],
         )
+        df1["risk"] = np.arange(12) * 100
+        df1["group"] = df1["group"].astype("category")
+        mock_calc_period1.calc_aai_metric.return_value = df1
 
         result = rt._generic_metrics(
             npv=False, metric_name="aai", metric_meth="calc_aai_metric"
@@ -355,15 +357,9 @@ class TestRiskTrajectory(unittest.TestCase):
 
         # Assertions
         mock_npv_transform.assert_not_called()
-        expected_df = pd.DataFrame(
-            {
-                "group": ["GroupA"],
-                "date": [pd.Timestamp("2023-01-01")],
-                "measure": ["MEAS1"],
-                "metric": ["aai"],
-                "risk": [100.0],
-            }
-        )
+        expected_df = df1.copy()
+        expected_df["group"] = expected_df["group"].cat.add_categories(["All"])
+        expected_df["group"] = expected_df["group"].fillna("All")
         pd.testing.assert_frame_equal(result, expected_df)
         pd.testing.assert_frame_equal(getattr(rt, "_aai_metrics"), expected_df)
 
@@ -413,7 +409,7 @@ class TestRiskTrajectory(unittest.TestCase):
         mock_calc_period.calc_eai_gdf.return_value = pd.DataFrame(
             {
                 "date": [pd.Timestamp("2023-01-01"), pd.Timestamp("2023-01-01")],
-                "group": ["All", "All"],
+                "group": pd.Categorical([pd.NA, pd.NA]),
                 "measure": ["MEAS1", "MEAS1"],
                 "metric": ["eai", "eai"],
                 "coord_id": [1, 2],
@@ -427,7 +423,7 @@ class TestRiskTrajectory(unittest.TestCase):
 
         expected_df = pd.DataFrame(
             {
-                "group": ["All", "All"],
+                "group": pd.Categorical(["All", "All"]),
                 "date": [pd.Timestamp("2023-01-01"), pd.Timestamp("2023-01-01")],
                 "measure": ["MEAS1", "MEAS1"],
                 "metric": ["eai", "eai"],
