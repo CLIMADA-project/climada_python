@@ -28,7 +28,7 @@ dependencies:
   - peewee>=3.17
   - pint>=0.24
   - pip
-  - pyarrow>=20.0  # this is needed by dask from conda-forge but not from pypi
+  - pyarrow>=20.0
   - pycountry>=24.6
   - pyproj>=3.7
   - pytables>=3.10  # this is the name of the pypi 'tables' package on conda-forge
