@@ -33,7 +33,7 @@ import pathos.multiprocessing as mp
 
 # import network from petals
 from climada_petals.engine.networks import nw_utils as nwu
-from climada_petals.engine.networks.nw_base import Graph
+from climada_petals.engine.networks.nw_base import Graph, Network
 from climada_petals.engine.networks.nw_calcs import cascade
 
 import climada.util.lines_polys_handler as u_lp
@@ -102,7 +102,7 @@ class CalcCascade(Calc):
 
     def __init__(
         self,
-        nw_input_var: Union[InputVar, Exposures],
+        nw_input_var: Union[InputVar, Network],
         impf_input_var: Union[InputVar, ImpactFuncSet],
         haz_input_var: Union[InputVar, Hazard],
         ci_types: list,
