@@ -11,8 +11,9 @@ dependencies:
   - dask>=2025.5
   - deprecation>=2.1
   - eccodes>=2.41
+  - fiona>=1.10
   - gdal>=3.10
-  - geopandas>=0.14,<1.0  # geopandas 1.0 does not depend on fiona anymore, hence fiona would need to be added as dependency
+  - geopandas>=0.14,<1.0  # not yet ready for upgrading
   - h5py>=3.13
   - haversine>=2.9
   - matplotlib-base>=3.10
@@ -20,25 +21,26 @@ dependencies:
   - numba>=0.61
   - numexpr>=2.10
   - openpyxl>=3.1
-  - osm-flex>=1.1
+  - osm-flex>=1.1  # this is only required for running the tutorials, not for the CLIMADA package itself
   - overpy>=0.7
   - pandas>=2.1,<2.2  # 2.2 is not compatible with the default pytables=3.7 and yields a very high deprecation warning number through geopandas
   - pathos>=0.3
   - peewee>=3.17
   - pint>=0.24
   - pip
+  - pyarrow>=20.0  # this is needed by dask from conda-forge but not from pypi
   - pycountry>=24.6
   - pyproj>=3.7
-  - pytables>=3.10
+  - pytables>=3.10  # this is the name of the pypi 'tables' package on conda-forge
   - python>=3.10,<3.13
   - pyxlsb>=1.0
   - rasterio>=1.4
   - requests>=2.32
-  - rtree>=1.3,<1.4  # needed by geopandas, 1.4.0 doesn't pass the `pip check`
+  - rtree>=1.3,<1.4  # 1.4.0 doesn't pass the `pip check`, needed by geopandas
   - salib>=1.5
-  - seaborn>=0.13
   - scikit-learn>=1.7
   - scipy>=1.14,<1.15  # 1.15 is not compatible with climada_petals, climada_petals.engine.test.test_supplychain fails with "'Series' has no attribute 'nonzero'"
+  - seaborn>=0.13
   - sparse>=0.17
   - statsmodels>=0.14
   - tabulate>=0.9
