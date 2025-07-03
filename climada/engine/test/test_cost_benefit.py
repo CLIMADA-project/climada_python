@@ -35,6 +35,8 @@ from climada.engine.cost_benefit import (
 )
 from climada.entity.disc_rates import DiscRates
 from climada.entity.entity_def import Entity
+from climada.entity.measures import Measure
+from climada.entity.measures.base import LOGGER as ILOG
 from climada.hazard.base import Hazard
 from climada.test import get_test_file
 from climada.util.api_client import Client
@@ -1118,6 +1120,58 @@ class TestSteps(unittest.TestCase):
         self.assertEqual(len(cost_ben.color_rgb), 4)
         self.assertEqual(len(cost_ben.cost_ben_ratio), 3)
         self.assertEqual(len(cost_ben.benefit), 3)
+
+    def test_measure_exposure_no_centroids(self):
+        """Test centroids assigned if no centroids were assigned in Measure Exposures object"""
+        hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+        entity = Entity.from_excel(ENT_DEMO_TODAY)
+        entity.check()
+        entity.exposures.ref_year = 2018
+
+        # test that warning is not raised when centroid are assigned
+        with self.assertLogs(ILOG, level="WARNING") as logs:
+            cost_ben = CostBenefit()
+            cost_ben.calc(
+                hazard,
+                entity,
+                future_year=2040,
+                risk_func=risk_aai_agg,
+                imp_time_depen=None,
+                save_imp=True,
+            )
+            ILOG.warning("Dummy warning")
+        self.assertEqual(
+            ["WARNING:climada.entity.measures.base:Dummy warning"],
+            logs.output,
+        )
+
+        # add measure with exposure without assigned centroids
+        exp_no_assigned_centroids = entity.exposures.copy()
+        exp_no_assigned_centroids.data = entity.exposures.data.drop(
+            columns=["centr_TC"]
+        )
+        entity.measures.append(
+            Measure(
+                name="no centroids",
+                haz_type="TC",
+                exposures_set=exp_no_assigned_centroids,
+            )
+        )
+
+        # test if warning is raised
+        with self.assertLogs(ILOG, level="WARNING") as logs:
+            cost_ben = CostBenefit()
+            cost_ben.calc(
+                hazard,
+                entity,
+                future_year=2040,
+                risk_func=risk_aai_agg,
+                imp_time_depen=None,
+                save_imp=True,
+            )
+        self.assertIn(
+            "No assigned hazard centroids in exposure object after", logs.output[0]
+        )
 
 
 class TestCalc(unittest.TestCase):
