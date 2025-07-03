@@ -66,7 +66,9 @@ class Input:
         "cost" between them. The optimization algorithm will try to minimize this
         number. The first argument is the true/correct values (:py:attr:`data`), the
         second argument is the estimated/predicted values, and the third argument is the
-        :py:attr:`data_weights`.
+        :py:attr:`data_weights`. The cost function is intended to operate on
+        ``numpy.ndarray`` objects.
+        Dataframes are transformed using :py:attr:`df_to_numpy`.
     bounds : Mapping (str, {Bounds, tuple(float, float)}), optional
         The bounds for the parameters. Keys: parameter names. Values:
         ``scipy.minimize.Bounds`` instance or tuple of minimum and maximum value.
@@ -86,7 +88,7 @@ class Input:
         :py:attr:`data`, insert this value. Defaults to NaN, in which case the impact
         from the model is ignored. Set this to zero to explicitly calibrate to zero
         impacts in these cases.
-    df_to_numpy : Callable
+    df_to_numpy : Callable, optional
         A function that transforms a pandas.DataFrame into a numpy.ndarray to be
         inserted into the :py:attr:`cost_func`. By default, this will flatten the data
         frame.
@@ -94,7 +96,7 @@ class Input:
         Weights for each entry in :py:attr:`data`. Must have the exact same index and
         columns. If ``None``, the weights will be ignored (equivalent to the same weight
         for each event).
-    missing_data_value : float, optional
+    missing_weights_value : float, optional
         Same as :py:attr:`missing_data_value`, but for :py:attr:`data_weights`.
     assign_centroids : bool, optional
         If ``True`` (default), assign the hazard centroids to the exposure when this
@@ -450,13 +452,13 @@ class Optimizer(ABC):
 
         Parameters
         ----------
-        data : pandas.DataFrame
+        data : nd.ndarray
             The reference data used for calibration. By default, this is
             :py:attr:`Input.data`.
-        predicted : pandas.DataFrame
+        predicted : nd.ndarray
             The impact predicted by the data calibration after it has been transformed
             into a dataframe by :py:attr:`Input.impact_to_dataframe`.
-        weights : pandas.DataFrame
+        weights : nd.ndarray
             The relative weight for each data/entry pair.
 
         Returns

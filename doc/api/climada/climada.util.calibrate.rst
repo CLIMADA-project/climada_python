@@ -4,12 +4,33 @@
 Impact Function Calibration Module
 ==================================
 
+What's New?
+-----------
+
+Since CLIMADA v6.0.1, some functionality of this module has been changed.
+When upgrading to a newer version of CLIMADA, please mind the following changes:
+
+* :py:class:`~climada.util.calibrate.base.Input` received additional attributes.
+  We now support optional weights that are passed to the cost function.
+  Therefore, the cost function must support an additional, optional argument.
+* :py:attr:`~climada.util.calibrate.base.Input.cost_func` now receives numpy arrays.
+  An additional attribute :py:attr:`~climada.util.calibrate.base.Input.df_to_numpy` was
+  added to transform ``pandas.DataFrame`` objects to ``np.ndarray``.
+  By default, it returns a flattened array.
+* This module now exports cost functions that support optional weights, see
+  :py:mod:`climada.util.calibrate.cost_func`.
+* :ref:`Ensemble optimizers <ensemble-optimizers>` have been addded.
+
 Base Classes
 ------------
 
 Generic classes for defining the data structures of this module.
 
 .. automodule:: climada.util.calibrate.base
+   :members:
+   :private-members:
+
+.. automodule:: climada.util.calibrate.cost_func
    :members:
    :private-members:
 
@@ -32,6 +53,8 @@ Calibration based on the ``scipy.optimize`` module.
    :members:
    :show-inheritance:
    :inherited-members:  abc.ABC
+
+.. _ensemble-optimizers:
 
 Ensemble Optimizers
 -------------------
