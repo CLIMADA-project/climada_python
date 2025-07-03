@@ -204,7 +204,9 @@ class Measure:
         if new_haz.centr_exp_col not in new_exp.gdf.columns:
             LOGGER.warning(
                 "No assigned hazard centroids in exposure object after the "
-                "application of the measure. The centroids were assigned in impact calcualtion."
+                "application of the measure. The centroids will be assigned during impact "
+                "calculation. This is potentiall costly. To silence this warning, make sure "
+                "that centroids are assigned to all exposures."
             )
             new_exp.assign_centroids(new_haz)
 
