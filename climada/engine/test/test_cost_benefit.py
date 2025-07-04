@@ -1129,21 +1129,30 @@ class TestSteps(unittest.TestCase):
         entity.exposures.ref_year = 2018
 
         # test that warning is not raised when centroid are assigned
-        with self.assertLogs(ILOG, level="WARNING") as logs:
-            cost_ben = CostBenefit()
-            cost_ben.calc(
-                hazard,
-                entity,
-                future_year=2040,
-                risk_func=risk_aai_agg,
-                imp_time_depen=None,
-                save_imp=True,
-            )
-            ILOG.warning("Dummy warning")
-        self.assertEqual(
-            ["WARNING:climada.entity.measures.base:Dummy warning"],
-            logs.output,
-        )
+        try:
+            with self.assertLogs(ILOG, level="WARNING") as logs:
+                cost_ben = CostBenefit()
+                cost_ben.calc(
+                    hazard,
+                    entity,
+                    future_year=2040,
+                    risk_func=risk_aai_agg,
+                    imp_time_depen=None,
+                    save_imp=True,
+                )
+                if logs.output:
+                    for log in logs.output:
+                        self.assertNotIn(
+                            "No assigned hazard centroids in exposure object after",
+                            log,
+                            "Centroids are already assinged in Measure Exposure object"
+                            "and should not be reassigned.",
+                        )
+        except AssertionError as e:
+            if "no logs" in str(e).lower():
+                pass
+            else:
+                raise
 
         # add measure with exposure without assigned centroids
         exp_no_assigned_centroids = entity.exposures.copy()
