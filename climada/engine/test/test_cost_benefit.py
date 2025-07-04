@@ -1140,14 +1140,13 @@ class TestSteps(unittest.TestCase):
                     imp_time_depen=None,
                     save_imp=True,
                 )
-                if logs.output:
-                    for log in logs.output:
-                        self.assertNotIn(
-                            "No assigned hazard centroids in exposure object after",
-                            log,
-                            "Centroids are already assinged in Measure Exposure object"
-                            "and should not be reassigned.",
-                        )
+                for log in logs.output:
+                    self.assertNotIn(
+                        "No assigned hazard centroids in exposure object after",
+                        log,
+                        "Centroids are already assinged in Measure Exposure object"
+                        "and should not be reassigned.",
+                    )
         except AssertionError as e:
             if "no logs" in str(e).lower():
                 pass
