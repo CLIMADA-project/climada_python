@@ -177,8 +177,12 @@ class MeasuresAppraiser(RiskTrajectory):
 
     def per_date_CB(self, metrics=None, **kwargs) -> pd.DataFrame | pd.Series:
         metrics_df = self.per_date_risk_metrics(metrics, **kwargs)
-        metrics_df["cumulated measure cost"] = metrics_df["measure net cost"].cumsum()
-        metrics_df["cumulated measure benefit"] = metrics_df["averted risk"].cumsum()
+        metrics_df["cumulated measure cost"] = metrics_df.groupby(
+            ["group", "measure", "metric"], observed=True
+        )["measure net cost"].cumsum()
+        metrics_df["cumulated measure benefit"] = metrics_df.groupby(
+            ["group", "measure", "metric"], observed=True
+        )["averted risk"].cumsum()
         metrics_df["cost/benefit ratio"] = (
             metrics_df["cumulated measure cost"]
             / metrics_df["cumulated measure benefit"]
