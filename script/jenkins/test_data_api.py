@@ -25,7 +25,6 @@ from pathlib import Path
 
 import numpy as np
 import pytest
-from pandas_datareader import wb
 
 from climada import CONFIG
 from climada.entity.exposures.litpop.nightlight import BM_FILENAMES, download_nl_files
@@ -36,7 +35,11 @@ from climada.util.dwd_icon_loader import (
     download_icon_grib,
 )
 from climada.util.files_handler import download_file, download_ftp
-from climada.util.finance import WORLD_BANK_INC_GRP, WORLD_BANK_WEALTH_ACC
+from climada.util.finance import (
+    WORLD_BANK_INC_GRP,
+    WORLD_BANK_WEALTH_ACC,
+    download_world_bank_indicator,
+)
 
 
 class TestDataAvail(unittest.TestCase):
@@ -75,7 +78,8 @@ class TestDataAvail(unittest.TestCase):
 
     def test_wb_api_pass(self):
         """Test World Bank API"""
-        wb.download(indicator="NY.GDP.MKTP.CD", country="CHE", start=1960, end=2030)
+        download_world_bank_indicator(indicator="NY.GDP.MKTP.CD", country_code="CHE")
+        # as this doesn't download to a file, there is nothing to unlink
 
     def test_ne_api_pass(self):
         """Test Natural Earth API"""

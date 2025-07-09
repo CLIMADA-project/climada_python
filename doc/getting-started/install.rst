@@ -14,6 +14,8 @@ All following instructions should work on any operating system (OS) that is supp
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
 
+.. _install-manager:
+
 ---------------------------
 Install environment manager
 ---------------------------
@@ -43,11 +45,29 @@ Windows
 * Download the Windows installer at the Install section from `Miniforge`_.
 * Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
 
+.. _python-versions:
+
+.. admonition:: Python Versions
+
+   CLIMADA is primarily tested against a **supported** Python version, but is allowed to run with others.
+   If you follow the installation instructions exactly, you will create an environment with the supported version.
+   Depending on your setup, you are free to choose another allowed version, but we recommend the supported one.
+
+   .. list-table::
+      :width: 60%
+
+      * - **Supported Version**
+        - ``3.11``
+      * - Allowed Versions
+        - ``3.10``, ``3.11``, ``3.12``
+
 .. _install-choice:
 
 ---------------------------------------
 Decide on Your Entry Level!
 ---------------------------------------
+
+.. hint:: When mentioning the terms "terminal" or "command line" in the following, we are referring to the "Terminal" apps on macOS or Linux and the "Miniforge Prompt" on Windows.
 
 Depening on your level of expertise, we provide two different approaches:
 
@@ -121,11 +141,11 @@ These instructions will install the most recent stable version of CLIMADA withou
 
 .. _install-advanced:
 
----------------------
-Advanced Instructions
----------------------
+---------------------------------------------
+Advanced Instructions: Installing from source
+---------------------------------------------
 
-For advanced Python users or developers of CLIMADA, we recommed cloning the CLIMADA repository and installing the package from source.
+For advanced Python users or developers of CLIMADA, cloning the CLIMADA repository and installing the package from source.
 
 .. warning::
 
@@ -181,18 +201,7 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
       Use the wildcard ``.*`` at the end to allow a downgrade of the bugfix version of Python.
       This increases compatibility when installing the requirements in the next step.
 
-   .. note::
-
-      CLIMADA can be installed for different Python versions.
-      If you want to use a different version, replace the version specification in the command above with another allowed version.
-
-      .. list-table::
-         :width: 60%
-
-         * - **Supported Version**
-           - ``3.11``
-         * - Allowed Versions
-           - ``3.10``, ``3.11``
+   .. note:: You may choose any of the  :ref:`allowed Python versions <python-versions>` from the list above.
 
 #. Use the default environment specs in ``env_climada.yml`` to install all dependencies.
    Then activate the environment:
@@ -214,6 +223,8 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
       The ``-e`` (for "editable") option further instructs ``pip`` to link to the source files instead of copying them during installation.
       This means that any changes to the source files will have immediate effects in your environment, and re-installing the module is never required.
 
+      Further note that this works only for the source files not for the dependencies. If you change the latter, you will need to update the environment with step 6. !
+
 #. Verify that everything is installed correctly by executing a single test:
 
    .. code-block:: shell
@@ -223,6 +234,24 @@ For advanced Python users or developers of CLIMADA, we recommed cloning the CLIM
    Executing CLIMADA for the first time will take some time because it will generate a directory tree in your home/user directory.
    If this test passes, great!
    You are good to go.
+
+.. _change-branch:
+
+How to switch branch
+^^^^^^^^^^^^^^^^^^^^^^
+
+Advanced users, or reviewers, may also want to check the feature of a specific branch other than develop.
+To do so, **assuming you did install CLIMADA in editable mode (`pip install` with the `-e` flag)**, you just have to:
+
+```
+git fetch
+git checkout <branch>
+git pull
+```
+
+This will work most of the time, except if the target branch defines new dependencies that you don't have already in your environment (as they will not get installed this way), in that case you can install these dependencies yourself, or create a new environment with the *new* requirements from the branch.
+
+If you did not install CLIMADA in editable mode, you can also reinstall CLIMADA from its folder after switching the branch (`pip install [-e] ./`).
 
 .. _devdeps:
 

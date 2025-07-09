@@ -37,6 +37,7 @@ from textwrap import wrap
 import cartopy.crs as ccrs
 import geopandas as gpd
 import matplotlib as mpl
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import requests
@@ -46,6 +47,7 @@ from matplotlib import colormaps as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from rasterio.crs import CRS
 from scipy.interpolate import griddata
+from scipy.spatial import cKDTree
 from shapely.geometry import box
 
 import climada.util.coordinates as u_coord
@@ -336,6 +338,7 @@ def geo_im_from_array(
     axes=None,
     figsize=(9, 13),
     adapt_fontsize=True,
+    mask_distance=0.01,
     **kwargs,
 ):
     """Image(s) plot defined in array(s) over input coordinates.
@@ -367,12 +370,22 @@ def geo_im_from_array(
     adapt_fontsize : bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
         the default matplotlib font size is used. Default is True.
+    mask_distance: float, optional
+        Only regions are plotted that are closer to any of the data points than this distance,
+        relative to overall plot size. For instance, to only plot values
+        at the centroids, use mask_distance=0.01. If None, the plot is not masked.
+        Default is 0.01.
     **kwargs
         arbitrary keyword arguments for pcolormesh matplotlib function
 
     Returns
     -------
     cartopy.mpl.geoaxes.GeoAxesSubplot
+
+    Notes
+    -----
+    Data points with NaN or inf are plotted in gray. White regions correspond to
+    regions outside the convex hull of the given coordinates.
 
     Raises
     ------
@@ -420,8 +433,7 @@ def geo_im_from_array(
 
     # prepare colormap
     cmap = plt.get_cmap(kwargs.pop("cmap", CMAP_RASTER))
-    cmap.set_bad("gainsboro")  # For NaNs and infs
-    cmap.set_under("white", alpha=0)  # For values below vmin
+    cmap.set_under("white")  # For values below vmin
 
     # Generate each subplot
     for array_im, axis, tit, name in zip(
@@ -443,6 +455,17 @@ def geo_im_from_array(
                 (grid_x, grid_y),
                 fill_value=min_value,
             )
+            # Compute distance of each grid point to the nearest known point
+            if mask_distance is not None:
+                tree = cKDTree(np.array((coord[:, 1], coord[:, 0])).T)
+                distances, _ = tree.query(
+                    np.c_[grid_x.ravel(), grid_y.ravel()],
+                    p=2,  # for plotting squares and not sphere around centroids use p=np.inf
+                )
+                threshold = (
+                    max(extent[1] - extent[0], extent[3] - extent[2]) * mask_distance
+                )
+                grid_im[(distances.reshape(grid_im.shape) > threshold)] = min_value
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()
             grid_y = coord[:, 0].reshape((width, height)).transpose()
@@ -470,6 +493,17 @@ def geo_im_from_array(
             cmap=cmap,
             **kwargs,
         )
+        # handle NaNs in griddata
+        color_nan = "gainsboro"
+        if np.isnan(grid_im).any():
+            no_data_patch = mpatches.Patch(
+                facecolor=color_nan, edgecolor="black", label="NaN"
+            )
+            axis.legend(
+                handles=[no_data_patch] + axis.get_legend_handles_labels()[0],
+                loc="lower right",
+            )
+        axis.set_facecolor(color_nan)
         cbar = plt.colorbar(img, cax=cbax, orientation="vertical")
         cbar.set_label(name)
         axis.set_title("\n".join(wrap(tit)))
@@ -1070,6 +1104,7 @@ def plot_from_gdf(
     axis=None,
     figsize=(9, 13),
     adapt_fontsize=True,
+    mask_distance=0.01,
     **kwargs,
 ):
     """Plot several subplots from different columns of a GeoDataFrame, e.g., for
@@ -1092,6 +1127,11 @@ def plot_from_gdf(
     adapt_fontsize: bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure.
         Otherwise the default matplotlib font size is used. Default is True.
+    mask_distance: float, optional
+        Relative distance (with respect to maximal map extent in longitude or latitude) to data
+        points above which plot should not display values. For instance, to only plot values
+        at the centroids, use mask_distance=0.01. If None, the plot is not masked.
+        Default is 0.01.
     kwargs: optional
         Arguments for pcolormesh matplotlib function used in event plots.
 
@@ -1152,6 +1192,7 @@ def plot_from_gdf(
         axes=axis,
         figsize=figsize,
         adapt_fontsize=adapt_fontsize,
+        mask_distance=mask_distance,
         **kwargs,
     )
 

@@ -27,7 +27,8 @@ import geopandas as gpd
 import numpy as np
 import pandas as pd
 import xarray as xr
-from shapely.geometry import LineString, MultiLineString, Point
+from cartopy.io import shapereader
+from shapely.geometry import LineString, MultiLineString
 
 import climada.hazard.tc_tracks as tc
 import climada.util.coordinates as u_coord
@@ -1278,8 +1279,16 @@ class TestFuncs(unittest.TestCase):
         storms = {"in": "2000233N12316", "out": "2000160N21267"}
         tc_track = tc.TCTracks.from_ibtracs_netcdf(storm_id=list(storms.values()))
 
-        # Define exposure from geopandas
-        world = gpd.read_file(gpd.datasets.get_path("naturalearth_lowres"))
+        # Define exposure from shapefile.natural_earth
+        shape_file = shapereader.Reader(
+            shapereader.natural_earth(
+                resolution="110m", category="cultural", name="admin_0_countries"
+            )
+        )
+        world = gpd.GeoDataFrame(
+            data=[cntry.attributes for cntry in shape_file.records()],
+            geometry=[cntry.geometry for cntry in shape_file.records()],
+        ).rename(columns=lambda col: col.lower())
         exp_world = Exposures(world)
         exp = Exposures(exp_world.gdf[exp_world.gdf["name"] == "Cuba"])
 

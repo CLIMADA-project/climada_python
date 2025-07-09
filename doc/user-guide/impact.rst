@@ -2,10 +2,10 @@
 Impact Tutorials
 ================
 
-These tutorials show how to compute impacts with CLIMADA, and all related aspects such 
+These tutorials show how to compute impacts with CLIMADA, and all related aspects such
 as impact functions, adaptation measures and discount rates and cost-benefit analysis.
 
-The first tutorial presents an end-to-end impact calculation, 
+The first tutorial presents an end-to-end impact calculation,
 and subsequent ones present each aspect in more details.
 
 Additionally you can find a guide on how to populate impact data from EM-DAT database.
