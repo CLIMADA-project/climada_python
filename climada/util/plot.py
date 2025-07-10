@@ -35,6 +35,7 @@ import warnings
 from textwrap import wrap
 
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import geopandas as gpd
 import matplotlib as mpl
 import matplotlib.patches as mpatches
@@ -338,7 +339,7 @@ def geo_im_from_array(
     axes=None,
     figsize=(9, 13),
     adapt_fontsize=True,
-    mask_distance=0.01,
+    mask_distance=0.03,
     **kwargs,
 ):
     """Image(s) plot defined in array(s) over input coordinates.
@@ -373,8 +374,8 @@ def geo_im_from_array(
     mask_distance: float, optional
         Only regions are plotted that are closer to any of the data points than this distance,
         relative to overall plot size. For instance, to only plot values
-        at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-        Default is 0.01.
+        at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+        Default is 0.03.
     **kwargs
         arbitrary keyword arguments for pcolormesh matplotlib function
 
@@ -725,25 +726,15 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize
 
 def add_shapes(axis):
     """
-    Overlay Earth's countries coastlines to matplotlib.pyplot axis.
+    Overlay Earth's countries and coastlines to matplotlib.pyplot axis.
 
     Parameters
     ----------
     axis : cartopy.mpl.geoaxes.GeoAxesSubplot
         Cartopy axis
-    projection : cartopy.crs projection, optional
-        Geographical projection.
-        The default is PlateCarree.
     """
-    shp_file = shapereader.natural_earth(
-        resolution="10m", category="cultural", name="admin_0_countries"
-    )
-    shp = shapereader.Reader(shp_file)
-    for geometry in shp.geometries():
-        axis.add_geometries(
-            [geometry], crs=ccrs.PlateCarree(), facecolor="none", edgecolor="dimgray"
-        )
-
+    axis.add_feature(cfeature.BORDERS.with_scale('10m'), edgecolor='dimgrey')
+    axis.add_feature(cfeature.COASTLINE.with_scale('10m'), edgecolor='dimgrey')
 
 def _ensure_utf8(val):
     # Without the `*.cpg` file present, the shape reader wrongly assumes latin-1 encoding:
@@ -1104,7 +1095,7 @@ def plot_from_gdf(
     axis=None,
     figsize=(9, 13),
     adapt_fontsize=True,
-    mask_distance=0.01,
+    mask_distance=0.03,
     **kwargs,
 ):
     """Plot several subplots from different columns of a GeoDataFrame, e.g., for
@@ -1130,8 +1121,8 @@ def plot_from_gdf(
     mask_distance: float, optional
         Relative distance (with respect to maximal map extent in longitude or latitude) to data
         points above which plot should not display values. For instance, to only plot values
-        at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-        Default is 0.01.
+        at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+        Default is 0.03.
     kwargs: optional
         Arguments for pcolormesh matplotlib function used in event plots.
 
