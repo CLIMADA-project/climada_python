@@ -736,6 +736,7 @@ def add_shapes(axis):
     axis.add_feature(cfeature.BORDERS.with_scale("10m"), edgecolor="dimgrey")
     axis.add_feature(cfeature.COASTLINE.with_scale("10m"), edgecolor="dimgrey")
 
+
 def _ensure_utf8(val):
     # Without the `*.cpg` file present, the shape reader wrongly assumes latin-1 encoding:
     # https://github.com/SciTools/cartopy/issues/1282
