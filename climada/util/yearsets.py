@@ -178,7 +178,7 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
     return np.round(np.random.poisson(lam=lam, size=n_sampled_years)).astype("int")
 
 
-def sample_events(events_per_year, freqs_orig, seed=None):
+def sample_events(events_per_year, freqs_orig, with_replacement=False, seed=None):
     """Sample events uniformely from an array (indices_orig) without replacement
     (if sum(events_per_year) > n_input_events the input events are repeated
     (tot_n_events/n_input_events) times, by ensuring that the same events doens't
@@ -190,6 +190,10 @@ def sample_events(events_per_year, freqs_orig, seed=None):
             Number of events per sampled year
         freqs_orig : np.ndarray
             Frequency of each input event
+        with_replacement : bool, optional
+            If False and all frequencies of freqs_orig are constant, events are sampled
+            without replacement. Otherwise, events are sampled with replacement.
+            Defaults to False.
         seed : Any, optional
             seed for the default bit generator.
             Default: None
@@ -203,47 +207,64 @@ def sample_events(events_per_year, freqs_orig, seed=None):
     """
 
     sampling_vect = []
-
     indices_orig = np.arange(len(freqs_orig))
 
-    freqs = freqs_orig
-    indices = indices_orig
+    # this is the previous way of sampling
+    # (without replacement, works well if frequencies are constant)
+    if np.unique(freqs_orig).size == 1 and not with_replacement:
 
-    # sample events for each sampled year
-    for amount_events in events_per_year:
-        # if there are not enough input events, choice with no replace will fail
-        if amount_events > len(freqs_orig):
-            raise ValueError(
-                f"cannot sample {amount_events} distinct events for a single year"
-                f" when there are only {len(freqs_orig)} input events"
+        indices = indices_orig
+        rng = default_rng(seed)
+
+        # sample events for each sampled year
+        for amount_events in events_per_year:
+            # if there are not enough input events, choice with no replace will fail
+            if amount_events > len(freqs_orig):
+                raise ValueError(
+                    f"cannot sample {amount_events} distinct events for a single year"
+                    f" when there are only {len(freqs_orig)} input events. Set "
+                    "with_replacement=True if you want to sample with replacmeent."
+                )
+
+            # if not enough events remaining, use original events
+            if len(indices) < amount_events or len(indices) == 0:
+                indices = indices_orig
+
+            # sample events
+            selected_events = rng.choice(
+                indices, size=amount_events, replace=False
+            ).astype("int")
+
+            # determine used events to remove them from sampling pool
+            idx_to_remove = [
+                np.where(indices == event)[0][0] for event in selected_events
+            ]
+            indices = np.delete(indices, idx_to_remove)
+
+            # save sampled events in sampling vector
+            sampling_vect.append(selected_events)
+
+    else:
+        # easier method if we allow for replacement sample with replacement
+        if with_replacement is False:
+            LOGGER.warning(
+                "Sampling without replacement not implemented for events with varying "
+                "frequencies. Events are sampled with replacement."
             )
 
-        # add the original indices and frequencies to the pool if there are less events
-        # in the pool than needed to fill the year one is sampling for
-        # or if the pool is empty (not covered in case amount_events is 0)
-        if len(np.unique(indices)) < amount_events or len(indices) == 0:
-            indices = np.append(indices, indices_orig)
-            freqs = np.append(freqs, freqs_orig)
-
-        # ensure that each event only occurs once per sampled year
-        unique_events = np.unique(indices, return_index=True)[0]
-        probab_dis = freqs[np.unique(indices, return_index=True)[1]] / (
-            np.sum(freqs[np.unique(indices, return_index=True)[1]])
-        )
-
-        # sample events
+        probab_dis = freqs_orig / sum(freqs_orig)
         rng = default_rng(seed)
+
+        # sample events for each sampled year
         selected_events = rng.choice(
-            unique_events, size=amount_events, replace=False, p=probab_dis
+            indices_orig, size=sum(events_per_year), replace=True, p=probab_dis
         ).astype("int")
 
-        # determine used events to remove them from sampling pool
-        idx_to_remove = [np.where(indices == event)[0][0] for event in selected_events]
-        indices = np.delete(indices, idx_to_remove)
-        freqs = np.delete(freqs, idx_to_remove)
-
-        # save sampled events in sampling vector
-        sampling_vect.append(selected_events)
+        # group to list of lists
+        index = 0
+        for amount_events in events_per_year:
+            sampling_vect.append(selected_events[index : index + amount_events])
+            index += amount_events
 
     return sampling_vect
 
