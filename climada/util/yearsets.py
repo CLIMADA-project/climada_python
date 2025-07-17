@@ -13,13 +13,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle impact_yearsets
 """
 
-import copy
 import logging
 
 import numpy as np
 from numpy.random import default_rng
 
 import climada.util.dates_times as u_dt
+from climada.engine import Impact
 
 LOGGER = logging.getLogger(__name__)
 
@@ -127,19 +127,23 @@ def impact_yearset_from_sampling_vect(
     # compute impact per sampled_year
     imp_per_year = compute_imp_per_year(imp, sampling_vect)
 
-    # copy imp object as basis for the yimp object
-    yimp = copy.deepcopy(imp)
-
     if correction_fac:  # adjust for sampling error
-        imp_per_year = imp_per_year.astype(float) / calculate_correction_fac(
-            imp_per_year, imp
-        )
+        correction_factor = calculate_correction_fac(imp_per_year, imp)
+        imp_per_year = imp_per_year.astype(float) * correction_factor
+        LOGGER.info("The correction factor is %s.", correction_factor)
 
-    # save calculations in yimp
-    yimp.at_event = imp_per_year
-    yimp.event_id = np.arange(1, len(sampled_years) + 1)
-    yimp.date = u_dt.str_to_date([str(date) + "-01-01" for date in sampled_years])
-    yimp.frequency = np.full_like(yimp.at_event, 1.0 / len(sampled_years), dtype=float)
+    # create yearly impact object
+    yimp = Impact(
+        at_event=imp_per_year,
+        date=u_dt.str_to_date([str(date) + "-01-01" for date in sampled_years]),
+        event_name=np.arange(1, len(sampled_years) + 1),
+        event_id=np.arange(1, len(sampled_years) + 1),
+        unit=imp.unit,
+        haz_type=imp.haz_type,
+        frequency=np.ones(len(sampled_years)) / len(sampled_years),
+    )
+
+    yimp.aai_agg = np.sum(yimp.frequency * yimp.at_event)
 
     return yimp
 
@@ -301,10 +305,9 @@ def calculate_correction_fac(imp_per_year, imp):
             The correction factor is calculated as imp_eai/yimp_eai
     """
 
-    yimp_eai = np.sum(imp_per_year) / len(imp_per_year)
+    yimp_eai = np.mean(imp_per_year)
     imp_eai = np.sum(imp.frequency * imp.at_event)
     correction_factor = imp_eai / yimp_eai
-    LOGGER.info("The correction factor amounts to %s", (correction_factor - 1) * 100)
 
     # if correction_factor > 0.1:
     #     tex = raw_input("Do you want to exclude small events?")
