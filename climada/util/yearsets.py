@@ -24,7 +24,9 @@ import climada.util.dates_times as u_dt
 LOGGER = logging.getLogger(__name__)
 
 
-def impact_yearset(imp, sampled_years, lam=None, correction_fac=True, seed=None):
+def impact_yearset(
+    imp, sampled_years, lam=None, correction_fac=True, with_replacement=False, seed=None
+):
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
     in the sampled_years list by sampling events from the impact received as input with a
     Poisson distribution centered around lam per year (lam = sum(imp.frequency)).
@@ -38,6 +40,10 @@ def impact_yearset(imp, sampled_years, lam=None, correction_fac=True, seed=None)
             impact object containing impacts per event
         sampled_years : list
             A list of years that shall be covered by the resulting yimp.
+        with_replacement : bool, optional
+            If False and all frequencies of freqs_orig are constant, events are sampled
+            without replacement. Otherwise, events are sampled with replacement.
+            Defaults to False.
         seed : Any, optional
             seed for the default bit generator
             default: None
@@ -68,27 +74,13 @@ def impact_yearset(imp, sampled_years, lam=None, correction_fac=True, seed=None)
     if not lam:
         lam = np.sum(imp.frequency)
     events_per_year = sample_from_poisson(n_sampled_years, lam, seed=seed)
-    sampling_vect = sample_events(events_per_year, imp.frequency, seed=seed)
+    sampling_vect = sample_events(
+        events_per_year, imp.frequency, with_replacement=with_replacement, seed=seed
+    )
 
     # compute impact per sampled_year
-    imp_per_year = compute_imp_per_year(imp, sampling_vect)
-
-    # copy imp object as basis for the yimp object
-    yimp = copy.deepcopy(imp)
-
-    # save imp_per_year in yimp
-    if correction_fac:  # adjust for sampling error
-        yimp.at_event = imp_per_year / calculate_correction_fac(imp_per_year, imp)
-    else:
-        yimp.at_event = imp_per_year
-
-    # save calculations in yimp
-    yimp.event_id = np.arange(1, n_sampled_years + 1)
-    yimp.date = u_dt.str_to_date([str(date) + "-01-01" for date in sampled_years])
-    yimp.frequency = (
-        np.ones(n_sampled_years)
-        * sum(len(row) for row in sampling_vect)
-        / n_sampled_years
+    yimp = impact_yearset_from_sampling_vect(
+        imp, sampled_years, sampling_vect, correction_fac=correction_fac
     )
 
     return yimp, sampling_vect
@@ -139,18 +131,15 @@ def impact_yearset_from_sampling_vect(
     yimp = copy.deepcopy(imp)
 
     if correction_fac:  # adjust for sampling error
-        imp_per_year = imp_per_year / calculate_correction_fac(imp_per_year, imp)
+        imp_per_year = imp_per_year.astype(float) / calculate_correction_fac(
+            imp_per_year, imp
+        )
 
     # save calculations in yimp
     yimp.at_event = imp_per_year
-    n_sampled_years = len(sampled_years)
-    yimp.event_id = np.arange(1, n_sampled_years + 1)
+    yimp.event_id = np.arange(1, len(sampled_years) + 1)
     yimp.date = u_dt.str_to_date([str(date) + "-01-01" for date in sampled_years])
-    yimp.frequency = (
-        np.ones(n_sampled_years)
-        * sum(len(row) for row in sampling_vect)
-        / n_sampled_years
-    )
+    yimp.frequency = np.full_like(yimp.at_event, 1.0 / len(sampled_years), dtype=float)
 
     return yimp
 
