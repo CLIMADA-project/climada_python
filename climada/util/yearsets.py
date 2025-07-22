@@ -25,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def impact_yearset(
-    imp, sampled_years, lam=None, correction_fac=True, with_replacement=False, seed=None
+    imp, sampled_years, lam=None, correction_fac=False, with_replacement=True, seed=None
 ):
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
     in the sampled_years list by sampling events from the impact received as input with a
@@ -41,9 +41,9 @@ def impact_yearset(
         sampled_years : list
             A list of years that shall be covered by the resulting yimp.
         with_replacement : bool, optional
-            If False and all frequencies of freqs_orig are constant, events are sampled
-            without replacement. Otherwise, events are sampled with replacement.
-            Defaults to False.
+            If True, impact events are sampled with replacement. If False, events are sampled
+            without replacement. Sampling without replacement can yield distorted samples if
+            frequencies of different events are unqual. Defaults to True.
         seed : Any, optional
             seed for the default bit generator
             default: None
@@ -87,7 +87,7 @@ def impact_yearset(
 
 
 def impact_yearset_from_sampling_vect(
-    imp, sampled_years, sampling_vect, correction_fac=True
+    imp, sampled_years, sampling_vect, correction_fac=False
 ):
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
     in the sampled_years list by sampling events from the impact received as input following
@@ -171,7 +171,7 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
     return np.round(np.random.poisson(lam=lam, size=n_sampled_years)).astype("int")
 
 
-def sample_events(events_per_year, freqs_orig, with_replacement=False, seed=None):
+def sample_events(events_per_year, freqs_orig, with_replacement=True, seed=None):
     """Sample events uniformely from an array (indices_orig) without replacement
     (if sum(events_per_year) > n_input_events the input events are repeated
     (tot_n_events/n_input_events) times, by ensuring that the same events doens't
@@ -184,9 +184,9 @@ def sample_events(events_per_year, freqs_orig, with_replacement=False, seed=None
         freqs_orig : np.ndarray
             Frequency of each input event
         with_replacement : bool, optional
-            If False and all frequencies of freqs_orig are constant, events are sampled
-            without replacement. Otherwise, events are sampled with replacement.
-            Defaults to False.
+            If True, impact events are sampled with replacement. If False, events are sampled
+            without replacement. Sampling without replacement can yield distorted samples if
+            frequencies of different events are unqual. Defaults to True.
         seed : Any, optional
             seed for the default bit generator.
             Default: None
@@ -201,13 +201,20 @@ def sample_events(events_per_year, freqs_orig, with_replacement=False, seed=None
 
     sampling_vect = []
     indices_orig = np.arange(len(freqs_orig))
+    rng = default_rng(seed)
 
-    # this is the previous way of sampling
-    # (without replacement, works well if frequencies are constant)
-    if np.unique(freqs_orig).size == 1 and not with_replacement:
+    # sample without replacement, works well if event frequencies are equal
+    if with_replacement is False:
+        # warn if frequencies of different events are not equal
+        if np.unique(freqs_orig).size != 1:
+            LOGGER.warning(
+                "The frequencies of the different events are not equal. This can lead to "
+                "distorted sampling if the frequencies vary significantly. To avoid this, "
+                "please set with_replacement=True to sample with replacement instead."
+            )
 
         indices = indices_orig
-        rng = default_rng(seed)
+        freqs = freqs_orig
 
         # sample events for each sampled year
         for amount_events in events_per_year:
@@ -222,10 +229,12 @@ def sample_events(events_per_year, freqs_orig, with_replacement=False, seed=None
             # if not enough events remaining, use original events
             if len(indices) < amount_events or len(indices) == 0:
                 indices = indices_orig
+                freqs = freqs_orig
 
             # sample events
+            probab_dis = freqs / sum(freqs)
             selected_events = rng.choice(
-                indices, size=amount_events, replace=False
+                indices, size=amount_events, replace=False, p=probab_dis
             ).astype("int")
 
             # determine used events to remove them from sampling pool
@@ -233,20 +242,14 @@ def sample_events(events_per_year, freqs_orig, with_replacement=False, seed=None
                 np.where(indices == event)[0][0] for event in selected_events
             ]
             indices = np.delete(indices, idx_to_remove)
+            freqs = np.delete(freqs, idx_to_remove)
 
             # save sampled events in sampling vector
             sampling_vect.append(selected_events)
 
     else:
         # easier method if we allow for replacement sample with replacement
-        if with_replacement is False:
-            LOGGER.warning(
-                "Sampling without replacement not implemented for events with varying "
-                "frequencies. Events are sampled with replacement."
-            )
-
         probab_dis = freqs_orig / sum(freqs_orig)
-        rng = default_rng(seed)
 
         # sample events for each sampled year
         selected_events = rng.choice(
