@@ -92,9 +92,6 @@ class StormEurope(Hazard):
         Threshold below which wind speeds (in m/s) are stored as 0. Defaults to 14.6.
     """
 
-    intensity_thres = DEF_INTENSITY_THRES
-    """Intensity threshold for storage in m/s."""
-
     vars_opt = Hazard.vars_opt.union({"ssi_wisc", "ssi", "ssi_full_area"})
     """Name of the variables that aren't need to compute the impact."""
 
@@ -726,8 +723,7 @@ class StormEurope(Hazard):
             ignoring the intensities at sea. Defaults to true, whereas
             the MATLAB version did not.
         threshold : float, optional
-            Intensity threshold used in index
-            definition. Cannot be lower than the read-in value.
+            Intensity threshold used in index definition.
         sel_cen : np.array, bool
             A boolean vector selecting centroids.
             Takes precendence over on_land.
@@ -741,12 +737,7 @@ class StormEurope(Hazard):
             intensity = self.intensity
 
         if threshold is not None:
-            assert (
-                threshold >= self.intensity_thres
-            ), "threshold cannot be below threshold upon read_footprint"
             intensity = intensity.multiply(intensity > threshold)
-        else:
-            intensity = intensity.multiply(intensity > self.intensity_thres)
 
         cent = self.centroids
         area_pixel = cent.get_area_pixel()

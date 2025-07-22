@@ -13,7 +13,8 @@ Code freeze date: YYYY-MM-DD
 Removed:
 
 - `pandas-datareader`
-- `intensity_thres` of a general `Hazard` object [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
+- `intensity_thres` of `Hazard`, `StormEurope`, and `TropCyclones` object [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
+- Deprecated method `climada.hazard.trop_cyclone.trop_cyclone.TropCyclone.set_from_tracks` [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
 
 ### Added
 - Added optional parameter to `geo_im_from_array`, `plot_from_gdf`, `plot_rp_imp`, `plot_rp_intensity`,
