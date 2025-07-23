@@ -28,6 +28,7 @@ Removed:
 - World Bank indicator data is now downloaded directly from their API via the function `download_world_bank_indicator`, instead of relying on the `pandas-datareader` package [#1033](https://github.com/CLIMADA-project/climada_python/pull/1033)
 - `Exposures.write_hdf5` pickles geometry data in WKB format, which is faster and more sustainable. [#1051](https://github.com/CLIMADA-project/climada_python/pull/1051)
 - The online documentation has been completely overhauled, now uses PyData theme: [#977](https://github.com/CLIMADA-project/climada_python/pull/977)
+- The default parameters of `impact_yearset`, `sample_events`, and `impact_yearset_from_sampling_vect` functions of the `climada.util.yearsets` module have been changed to sampling with replacement and not applying the correction factor to the impact yearsets. The application of the correction factor and the frequency of the resulting yearly impact object are corrected. [#1075](https://github.com/CLIMADA-project/climada_python/pull/1075)
 
 ### Fixed
 

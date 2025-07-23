@@ -40,6 +40,14 @@ def impact_yearset(
             impact object containing impacts per event
         sampled_years : list
             A list of years that shall be covered by the resulting yimp.
+        lam: float, optional
+            The parameter (i.e., the mean) of the Poisson distribution to sample the number of
+            events per year. If no lambda value is given, the default lam = sum(imp.frequency)
+            is used. Default is None.
+        correction_fac : boolean, optional
+            If True a correction factor is applied to the resulting yimp. It is
+            scaled in such a way that the expected annual impact (eai) of the yimp
+            equals the eai of the input impact. Defaults to False.
         with_replacement : bool, optional
             If True, impact events are sampled with replacement. If False, events are sampled
             without replacement. Sampling without replacement can yield distorted samples if
@@ -47,15 +55,6 @@ def impact_yearset(
         seed : Any, optional
             seed for the default bit generator
             default: None
-
-    Optional parameters
-        lam: int
-            The applied Poisson distribution is centered around lam events per year.
-            If no lambda value is given, the default lam = sum(imp.frequency) is used.
-        correction_fac : boolean
-            If True a correction factor is applied to the resulting yimp. It is
-            scaled in such a way that the expected annual impact (eai) of the yimp
-            equals the eai of the input impact
 
     Returns
     -------
@@ -110,12 +109,10 @@ def impact_yearset_from_sampling_vect(
             i.e. [yimp, sampling_vect] = climada_yearsets.impact_yearset(...)
             and can then be provided in this function to obtain the exact same sampling
             (also for a different imp object)
-
-    Optional parameter
-        correction_fac : boolean
+        correction_fac : boolean, optional
             If True a correction factor is applied to the resulting yimp. It is
             scaled in such a way that the expected annual impact (eai) of the yimp
-            equals the eai of the input impact
+            equals the eai of the input impact. Defaults to False.
 
     Returns
     -------
@@ -156,7 +153,8 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
         n_sampled_years : int
             The target number of years the impact yearset shall contain.
         lam: float
-            the applied Poisson distribution is centered around lambda events per year
+            The parameter (i.e., the mean) of the Poisson distribution to sample the number of
+            events per year.
         seed : int, optional
             seed for numpy.random, will be set if not None
             default: None
