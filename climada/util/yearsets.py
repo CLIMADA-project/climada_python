@@ -226,15 +226,20 @@ def sample_events(events_per_year, freqs_orig, with_replacement=True, seed=None)
                     "with_replacement=True if you want to sample with replacmeent."
                 )
 
-            # if not enough events remaining, use original events
+            # if not enough events remaining, append original events
             if len(indices) < amount_events or len(indices) == 0:
-                indices = indices_orig
-                freqs = freqs_orig
+                indices = np.append(indices, indices_orig)
+                freqs = np.append(freqs, freqs_orig)
+
+            # ensure that each event only occurs once per sampled year
+            unique_events = np.unique(indices, return_index=True)[0]
+            probab_dis = freqs[np.unique(indices, return_index=True)[1]] / (
+                np.sum(freqs[np.unique(indices, return_index=True)[1]])
+            )
 
             # sample events
-            probab_dis = freqs / sum(freqs)
             selected_events = rng.choice(
-                indices, size=amount_events, replace=False, p=probab_dis
+                unique_events, size=amount_events, replace=False, p=probab_dis
             ).astype("int")
 
             # determine used events to remove them from sampling pool
