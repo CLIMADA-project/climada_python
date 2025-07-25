@@ -909,31 +909,33 @@ class Centroids:
         xycols = []
         wkbcols = []
         store = pd.HDFStore(file_name, mode=mode, complevel=9)
-        pandas_df = pd.DataFrame(self.gdf)
-        for col in pandas_df.columns:
-            if str(pandas_df[col].dtype) == "geometry":
-                try:
-                    pandas_df[col + ".x"] = self.gdf[col].x
-                    pandas_df[col + ".y"] = self.gdf[col].y
-                    pandas_df.drop(col, inplace=True)
-                    xycols.append(col)
-                except ValueError:
-                    pandas_df[col] = self.gdf[col].to_wkb()
-                    wkbcols.append(col)
+        try:
+            pandas_df = pd.DataFrame(self.gdf)
+            for col in pandas_df.columns:
+                if str(pandas_df[col].dtype) == "geometry":
+                    try:
+                        pandas_df[col + ".x"] = self.gdf[col].x
+                        pandas_df[col + ".y"] = self.gdf[col].y
+                        pandas_df.drop(columns=[col], inplace=True)
+                        xycols.append(col)
+                    except ValueError:
+                        pandas_df[col] = self.gdf[col].to_wkb()
+                        wkbcols.append(col)
 
-        # Avoid pandas PerformanceWarning when writing HDF5 data
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
-            # Write dataframe
-            store.put("centroids", pandas_df)
+            # Avoid pandas PerformanceWarning when writing HDF5 data
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
+                # Write dataframe
+                store.put("centroids", pandas_df)
 
-        centroids_metadata = {"crs": CRS.from_user_input(self.crs).to_wkt()}
-        if xycols:
-            centroids_metadata["xy_columns"] = xycols
-        if wkbcols:
-            centroids_metadata["wkb_columns"] = wkbcols
-        store.get_storer("centroids").attrs.metadata = centroids_metadata
-        store.close()
+            centroids_metadata = {"crs": CRS.from_user_input(self.crs).to_wkt()}
+            if xycols:
+                centroids_metadata["xy_columns"] = xycols
+            if wkbcols:
+                centroids_metadata["wkb_columns"] = wkbcols
+            store.get_storer("centroids").attrs.metadata = centroids_metadata
+        finally:
+            store.close()
 
     @classmethod
     def from_hdf5(cls, file_name):
@@ -961,12 +963,12 @@ class Centroids:
                 # in previous versions of CLIMADA and/or geopandas,
                 # the CRS was stored in '_crs'/'crs'
                 crs = metadata.get("crs")
-                gdf = gpd.GeoDataFrame(store["centroids"], crs=crs)
+                gdf = gpd.GeoDataFrame(store["centroids"])
                 for xycol in metadata.get("xy_columns", []):
                     gdf[xycol] = gpd.points_from_xy(
                         x=gdf[xycol + ".x"], y=gdf[xycol + ".y"], crs=crs
                     )
-                    gdf.drop([xycol + ".x", xycol + ".y"], inplace=True)
+                    gdf.drop(columns=[xycol + ".x", xycol + ".y"], inplace=True)
                 for wkbcol in metadata.get("wkb_columns", []):
                     gdf[wkbcol] = gpd.GeoSeries.from_wkb(gdf[wkbcol], crs=crs)
 
