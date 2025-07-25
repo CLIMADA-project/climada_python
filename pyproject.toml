@@ -79,22 +79,6 @@ test = [
     "pytest-cov",
     "pytest-subtests"
 ]
-dev = [
-    "ipython",
-    "myst-nb",
-    "readthedocs-sphinx-ext>=2.2",
-    "sphinx",
-    "sphinx-book-theme",
-    "sphinx-markdown-tables",
-    "sphinx-design",
-    "sphinx-mdinclude",
-    "mccabe>=0.6",
-    "pylint>=3.0",
-    "pytest",
-    "pytest-cov",
-    "pytest-subtests",
-    "pre-commit"
-]
 
 [project.urls]
 Homepage = "https://github.com/CLIMADA-project/climada_python"

@@ -263,11 +263,12 @@ They are also not needed for using CLIMADA.
 However, if you want to develop CLIMADA, we strongly recommend you install them.
 
 With the ``climada_env`` activated, enter the workspace directory and then the CLIMADA repository as above.
-Then, add the ``dev`` extra specification to the ``pip install`` command (**mind the quotation marks**, and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
+Then, add the ``test`` extra specification to the ``pip install`` command (**mind the quotation marks**,
+ and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
 
 .. code-block:: shell
 
-   python -m pip install -e "./[dev]"
+   python -m pip install -e "./[test]"
 
 The CLIMADA Python package defines the following `extras <https://peps.python.org/pep-0508/#extras>`_:
 
@@ -277,12 +278,10 @@ The CLIMADA Python package defines the following `extras <https://peps.python.or
 
    * - Extra
      - Includes Dependencies...
-   * - ``doc``
-     - for building documentation
    * - ``test``
      - for running and evaluating tests
-   * - ``dev``
-     - combination of ``doc`` and ``test``, and additional tools for development
+   * - ``doc``
+     - for building documentation
 
 The developer dependencies also include `pre-commit <https://pre-commit.com/#intro>`_, which is used to install and run automated, so-called pre-commit hooks before a new commit.
 In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install the hooks first.
