@@ -89,10 +89,6 @@ class TropCyclone(Hazard):
         matrix of shape (npositions, ncentroids * 2) that can be reshaped to a full ndarray of
         shape (npositions, ncentroids, 2).
 
-    Class Attributes
-    ----------------
-    intensity_thres : float
-        Threshold below which wind speeds (in m/s) are stored as 0. Defaults to 17.5.
     """
 
     vars_opt = Hazard.vars_opt.union({"category"})
