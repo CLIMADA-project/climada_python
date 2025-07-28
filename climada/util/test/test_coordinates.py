@@ -392,19 +392,29 @@ class TestFunc(unittest.TestCase):
     def test_check_geo_coords(self):
         """Test the check_if_geo_coords function"""
         # test correct geographical coords
-        lat, lon = np.array([0, -2, 5]), np.array([-179, 175, 178])
-        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), True)
-        # test wrong lat
-        lat, lon = np.array([0, 200, 5]), np.array([-179, 175, 178])
-        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
-        # test wrong lon
-        lat, lon = np.array([0, -2, 5]), np.array([-400, 175, 176])
-        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
-        lat, lon = np.array([0, -2, 5]), np.array([700, 1000, 800])
-        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
-        # test wrong extent
-        lat, lon = np.array([0, -2, 5]), np.array([-179, 175, 370])
-        self.assertEqual(u_coord.check_if_geo_coords(lat, lon), False)
+        lats_lons_true = (np.array([0, -2, 5]), np.array([-179, 175, 178]))
+        u_coord.check_if_geo_coords(lats_lons_true[0], lats_lons_true[1])
+
+        # test wrong geographical coords
+        lats_lons_wrong = (
+            (np.array([0, 200, 5]), np.array([-179, 175, 178])),  # test wrong lat
+            (np.array([0, -2, 5]), np.array([-400, 175, 176])),  # test wrong lon
+            (np.array([0, -2, 5]), np.array([700, 1000, 800])),
+            (np.array([0, -2, 5]), np.array([-179, 175, 370])),  # test wrong extent
+        )
+
+        for ilat, ilon in lats_lons_wrong:
+            with self.assertRaises(ValueError) as cm:
+                u_coord.check_if_geo_coords(ilat, ilon)
+            self.assertIn(
+                "Input lat and lon coordinates do not seem to correspond"
+                " to geographic coordinates in degrees. This can be because"
+                " total extents are > 180 for lat or > 360 for lon, lat coordinates"
+                " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
+                " If you use degree values outside of these ranges,"
+                " please shift the coordinates to the valid ranges.",
+                str(cm.exception),
+            )
 
     def test_lon_normalize(self):
         """Test the longitude normalization function"""
