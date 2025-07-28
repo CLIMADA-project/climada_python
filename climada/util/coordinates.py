@@ -136,7 +136,7 @@ def get_crs_unit(coords):
     -------
     unit : str
         The unit of measurement for the coordinate system, as specified in the
-        CRS axis information. Assumes that both axes have the same unit.
+        CRS axis information.
     """
 
     unit = coords.crs.axis_info[0].unit_name  # assume both axes have the same unit
