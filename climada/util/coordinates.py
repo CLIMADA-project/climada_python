@@ -107,10 +107,20 @@ def check_if_geo_coords(lat, lon):
 
     # Check if latitude is within -90 to 90 and longitude is within -540 to 540
     # and extent are smaller than 180 and 360 respectively
-    test = (
+    like_geo = (
         lat.min() >= -91 and lat.max() <= 91 and lon.min() >= -541 and lon.max() <= 541
     ) and ((lat.max() - lat.min()) <= 181 and (lon.max() - lon.min()) <= 361)
-    return bool(test)
+
+    if not like_geo:
+        raise ValueError(
+            "Input lat and lon coordinates do not seem to correspond"
+            " to geographic coordinates in degrees. This can be because"
+            " total extents are > 180 for lat or > 360 for lon, lat coordinates"
+            " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
+            " If you use degree values outside of these ranges,"
+            " please shift the coordinates to the valid ranges."
+        )
+    return
 
 
 def get_crs_unit(coords):
@@ -508,15 +518,8 @@ def get_gridcellarea(lat, resolution=0.5, unit="ha"):
         unit of the output area (default: ha, alternatives: m2, km2)
     """
     # first check that lat is in geographic coordinates
-    if not check_if_geo_coords(lat, 0):
-        raise ValueError(
-            "Input lat and lon coordinates do not seem to correspond"
-            " to geographic coordinates in degrees. This can be because"
-            " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-            " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-            " If you use degree values outside of these ranges,"
-            " please shift the coordinates to the valid ranges."
-        )
+    check_if_geo_coords(lat, 0)
+
     if unit == "m2":
         area = (ONE_LAT_KM * resolution) ** 2 * np.cos(np.deg2rad(lat)) * 1000000
     elif unit == "km2":
@@ -579,15 +582,7 @@ def convert_wgs_to_utm(lon, lat):
     epsg_code : int
         EPSG code of UTM projection.
     """
-    if not check_if_geo_coords(lat, lon):
-        raise ValueError(
-            "Input lat and lon coordinates do not seem to correspond"
-            " to geographic coordinates in degrees. This can be because"
-            " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-            " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-            " If you use degree values outside of these ranges,"
-            " please shift the coordinates to the valid ranges."
-        )
+    check_if_geo_coords(lat, lon)
     epsg_utm_base = 32601 + (0 if lat >= 0 else 100)
     return epsg_utm_base + (math.floor((lon + 180) / 6) % 60)
 
@@ -645,15 +640,7 @@ def dist_to_coast(coord_lat, lon=None, highres=False, signed=False):
             raise ValueError(
                 f"Mismatching input coordinates size: {lat.size} != {lon.size}"
             )
-    if not check_if_geo_coords(lat, lon):
-        raise ValueError(
-            "Input lat and lon coordinates do not seem to correspond"
-            " to geographic coordinates in degrees. This can be because"
-            " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-            " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-            " If you use degree values outside of these ranges,"
-            " please shift the coordinates to the valid ranges."
-        )
+    check_if_geo_coords(lat, lon)
     return dist_to_coast_nasa(lat, lon, highres=highres, signed=signed)
 
 
@@ -769,15 +756,7 @@ def coord_on_land(lat, lon, land_geom=None):
         )
     if lat.size == 0:
         return np.empty((0,), dtype=bool)
-    if not check_if_geo_coords(lat, lon):
-        raise ValueError(
-            "Input lat and lon coordinates do not seem to correspond"
-            " to geographic coordinates in degrees. This can be because"
-            " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-            " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-            " If you use degree values outside of these ranges,"
-            " please shift the coordinates to the valid ranges."
-        )
+    check_if_geo_coords(lat, lon)
     delta_deg = 1
     lons = lon.copy()
     if land_geom is None:
@@ -895,15 +874,7 @@ def get_country_geometries(
         out = out[country_mask]
 
     if extent:
-        if not check_if_geo_coords(extent[2:], extent[:2]):
-            raise ValueError(
-                "Input lat and lon coordinates do not seem to correspond"
-                " to geographic coordinates in degrees. This can be because"
-                " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-                " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-                " If you use degree values outside of these ranges,"
-                " please shift the coordinates to the valid ranges."
-            )
+        check_if_geo_coords(extent[2:], extent[:2])
 
         if extent[1] < extent[0]:
             raise ValueError(
@@ -1200,21 +1171,9 @@ def match_coordinates(
             # convert to proper units before proceeding to nearest neighbor search
             if unit == "degree":
                 # check that coords are indeed geographic before converting
-                if not (
-                    check_if_geo_coords(coords[:, 0], coords[:, 1])
-                    and check_if_geo_coords(
-                        coords_to_assign[:, 0], coords_to_assign[:, 1]
-                    )
-                ):
-                    raise ValueError(
-                        "Input lat and lon coordinates do not seem to correspond"
-                        " to geographic coordinates in degrees. This can be because"
-                        " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-                        " are outside of -90<lat<90, or lon coordinates are outside of "
-                        "-540<lon<540. If you use degree values outside of these ranges,"
-                        " please shift the coordinates to the valid ranges."
-                    )
 
+                check_if_geo_coords(coords[:, 0], coords[:, 1])
+                check_if_geo_coords(coords_to_assign[:, 0], coords_to_assign[:, 1])
             elif unit == "m":
                 coords *= 1e-3
                 coords_to_assign *= 1e-3
@@ -1780,15 +1739,7 @@ def get_country_code(lat, lon, gridded=False):
         return np.empty((0,), dtype=int)
     LOGGER.info("Setting region_id %s points.", str(lat.size))
     # first check that input lat lon are geographic
-    if not check_if_geo_coords(lat, lon):
-        raise ValueError(
-            "Input lat and lon coordinates do not seem to correspond"
-            " to geographic coordinates in degrees. This can be because"
-            " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-            " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-            " If you use degree values outside of these ranges,"
-            " please shift the coordinates to the valid ranges."
-        )
+    check_if_geo_coords(lat, lon)
     if gridded:
         base_file = u_hdf5.read(NATEARTH_CENTROIDS[150])
         meta, region_id = base_file["meta"], base_file["region_id"]
