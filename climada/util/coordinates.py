@@ -1251,10 +1251,9 @@ def match_centroids(
                 "Please provide a coord_gdf (coordinate GeoDataFrame)"
                 "object with a valid crs attribute."
             )
-        if centroids.crs is None :
+        if centroids.crs is None:
             raise ValueError(
-                "Please provide centroids "
-                "object with a valid crs attribute."
+                "Please provide centroids " "object with a valid crs attribute."
             )
     except AttributeError as exc:
         # a crs attribute is needed for unit inference
@@ -1288,8 +1287,8 @@ def _nearest_neighbor_approx(
     centroids, coordinates, unit, threshold, check_antimeridian=True
 ):
     """Compute the nearest centroid for each coordinate using the
-    euclidean distance d = ((dlon)cos(lat))^2+(dlat)^2. For distant points
-    (e.g. more than 100km apart) use the haversine distance.
+    squared equirectangular approximation distance d = ((dlon)cos(lat))^2+(dlat)^2.
+    For distant points (e.g. more than 100km apart) use the haversine distance.
 
     Parameters
     ----------
