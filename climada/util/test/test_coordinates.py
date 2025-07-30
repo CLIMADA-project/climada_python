@@ -1360,15 +1360,15 @@ class TestAssign(unittest.TestCase):
         # test with different unit
         self.expected_results = {
             "degree": [
-                # test with different thresholds (in degree)
+                # test with different thresholds (in degree (converted to km))
                 (100, [2, 1, 2, 0, 3, -1, 4]),
                 (20, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
             ],
             "m": [
                 # test with different thresholds (in m)
-                (100, [2, 1, 2, 0, 3, -1, -1]),
-                (20, [-1, 1, 2, 0, 3, -1, -1]),
+                (100e3, [2, 1, 2, 0, 3, -1, -1]),
+                (20e3, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
             ],
             "km": [
