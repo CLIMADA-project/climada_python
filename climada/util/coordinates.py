@@ -1174,13 +1174,15 @@ def match_coordinates(
 
                 check_if_geo_coords(coords[:, 0], coords[:, 1])
                 check_if_geo_coords(coords_to_assign[:, 0], coords_to_assign[:, 1])
-            elif unit == "m":
-                coords *= 1e-3
-                coords_to_assign *= 1e-3
-            elif unit == "km":
-                pass
-            else:
-                raise ValueError("Unit must be one of 'degree', 'm' or 'km'.")
+            elif unit != "km":
+                LOGGER.warning(
+                    "You are using coordinates systems defined in %s. "
+                    "The following distance threshold will be used for coordinates "
+                    "matching: %i %s. Please adapt the distance threshold if needed. ",
+                    unit,
+                    threshold,
+                    unit,
+                )
 
             not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
@@ -1471,7 +1473,11 @@ def _nearest_neighbor_euclidean(
         centroids = np.rad2deg(centroids)
         coordinates = np.rad2deg(coordinates)
         dist = dist * EARTH_RADIUS_KM
+        threshold_unit = "km"
     else:
+        threshold_unit = (
+            unit  # the unit of the threshold is considered to be in input unit
+        )
         if check_antimeridian:
             # if unit is not in degree, check_antimeridian is forced to False
             check_antimeridian = False
@@ -1486,8 +1492,9 @@ def _nearest_neighbor_euclidean(
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
-            "Distance to closest centroid is greater than %i km for %i coordinates.",
+            "Distance to closest centroid is greater than %i %s for %i coordinates.",
             threshold,
+            threshold_unit,
             num_warn,
         )
         assigned[dist > threshold] = -1
