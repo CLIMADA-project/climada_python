@@ -1071,14 +1071,8 @@ def match_coordinates(
     nearest neighbor. If the distance to the nearest neighbor exceeds `threshold`, the index `-1`
     is assigned.
 
-    Currently, the nearest neighbor matching works with lat/lon coordinates only. However, you can
-    disable nearest neighbor matching by setting `threshold` to 0, in which case only exactly
-    matching coordinates are assigned to each other.
-
-    Make sure that all coordinates are according to the same coordinate reference system. In case
-    of lat/lon coordinates, the "haversine" distance is able to correctly compute the distance
-    across the antimeridian. However, when exact matches are enforced with `threshold=0`, lat/lon
-    coordinates need to be given in the same longitudinal range (such as (-180, 180)).
+    You can disable nearest neighbor matching by setting `threshold` to 0, in which case
+    only exactly matching coordinates are assigned to each other.
 
     Parameters
     ----------
@@ -1097,7 +1091,7 @@ def match_coordinates(
         Default: "degree"
     threshold : float, optional
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
-        Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km)
+        Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km or crs.unit)
     kwargs: dict, optional
         Keyword arguments to be passed on to nearest-neighbor finding functions in case of
         non-exact matching with the specified `distance`.
@@ -1116,6 +1110,17 @@ def match_coordinates(
     surface, in particular for higher latitude and distances larger than 100km. If more accuracy is
     needed, please use the 'haversine' distance metric. This however is slower for (quasi-)gridded
     data.
+
+    The nearest neighbor matching works with lat/lon coordinates (in degrees), and projected coordinates
+    (e.g. meters, kilometers). However, projected coordinates, require "euclidean" distance to be used
+    for nearest neighbor matching. Furthermore, the handling of antimeridian crossing is disabled
+    (check_antimeridian=False) and a warning is raised when the user attempts to use this option with
+    a non-degree coordinates system.
+
+    Make sure that all coordinates are according to the same coordinate reference system. In case
+    of lat/lon coordinates, the "haversine" distance is able to correctly compute the distance
+    across the antimeridian. However, when exact matches are enforced with `threshold=0`, lat/lon
+    coordinates need to be given in the same longitudinal range (such as (-180, 180)).
     """
     if coords.shape[0] == 0:
         return np.array([])
