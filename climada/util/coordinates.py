@@ -1216,10 +1216,11 @@ def match_centroids(
         Possible values are "euclidean", "haversine" and "approx".
         Default: "euclidean"
     threshold : float, optional
-        If the distance (in km) to the nearest neighbor exceeds `threshold`,
+        If the distance (in km for coordinates defined in degrees, in the unit of
+        the crs otherwise) to the nearest neighbor exceeds `threshold`,
         the index `-1` is assigned.
         Set `threshold` to 0, to disable nearest neighbor matching.
-        Default: ``NEAREST_NEIGHBOR_THRESHOLD`` (100km)
+        Default: ``NEAREST_NEIGHBOR_THRESHOLD`` (100<km or crs.unit>)
 
     See Also
     --------
@@ -1243,6 +1244,11 @@ def match_centroids(
     larger than 100km. If more accuracy is needed, please use 'haversine'
     distance metric. This however is slower for (quasi-)gridded data,
     and works only for non-gridded data.
+
+    Projected coordinates (defined in units other than degrees) are supported.
+    However, nearest neighbor matching for projected coordinates is only possible
+    using 'euclidean' distance, and handling of coordinates crossing the antimeridian
+    is not implemented.
     """
 
     try:
