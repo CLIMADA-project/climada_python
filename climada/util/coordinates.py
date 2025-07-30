@@ -1472,8 +1472,14 @@ def _nearest_neighbor_euclidean(
         coordinates = np.rad2deg(coordinates)
         dist = dist * EARTH_RADIUS_KM
     else:
-        # if unit is not in degree, check_antimeridian is forced to False
-        check_antimeridian = False
+        if check_antimeridian:
+            # if unit is not in degree, check_antimeridian is forced to False
+            check_antimeridian = False
+            LOGGER.warning(
+                "Handling of antimeridian crossing is not implemented for non-degree"
+                " coordinates ('check_antimeridian' has been set to False). Please use"
+                " degree-based coordinates system if you want to enable antimeridian crossing."
+            )
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1

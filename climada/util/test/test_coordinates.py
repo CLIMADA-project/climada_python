@@ -1256,7 +1256,7 @@ class TestAssign(unittest.TestCase):
         # Check copied coordinates have same neighbors
         self.assertEqual(neighbors[2], neighbors[0])
 
-    def antimeridian_warning(self, dist):
+    def distance_threshold_warning_antimeridian(self, dist):
         """Check that a warning is raised when minimum distance greater than threshold"""
         # Load input
         centroids, exposures = self.data_antimeridian_values()
@@ -1285,7 +1285,7 @@ class TestAssign(unittest.TestCase):
 
     def test_approx_antimeridian_warning(self):
         """Call normal_warning test for approximate distance"""
-        self.antimeridian_warning("approx")
+        self.distance_threshold_warning_antimeridian("approx")
 
     def test_haver_normal_pass(self):
         """Call normal_pass test for haversine distance"""
@@ -1301,7 +1301,7 @@ class TestAssign(unittest.TestCase):
 
     def test_haver_antimeridian_warning(self):
         """Call normal_warning test for haversine distance"""
-        self.antimeridian_warning("haversine")
+        self.distance_threshold_warning_antimeridian("haversine")
 
     def test_euc_normal_pass(self):
         """Call normal_pass test for euclidean distance"""
@@ -1317,7 +1317,7 @@ class TestAssign(unittest.TestCase):
 
     def test_euc_antimeridian_warning(self):
         """Call normal_warning test for euclidean distance"""
-        self.antimeridian_warning("euclidean")
+        self.distance_threshold_warning_antimeridian("euclidean")
 
     def test_diff_outcomes(self):
         """Different NN interpolation outcomes"""
@@ -1501,6 +1501,27 @@ class TestAssign(unittest.TestCase):
                 "km",
                 u_coord.NEAREST_NEIGHBOR_THRESHOLD,
             )
+
+    def antimeridian_warning_invalid_unit(self):
+        """Check that a warning is raised when coords are
+        non-degree and check_antimeridian is True"""
+
+        self.setUp_match_coordinates()
+        coords_to_assign = np.deg2rad(self.coords_to_assign) * EARTH_RADIUS_KM  # to km
+        coords = np.deg2rad(self.coords) * EARTH_RADIUS_KM
+
+        with self.assertLogs("climada.util.coordinates", level="WARNING") as cm:
+            neighbors = u_coord.match_coordinates(
+                coords_to_assign, coords, check_antimeridian=True
+            )
+        self.assertIn(
+            "Handling of antimeridian crossing is not implemented for non-degree"
+            " coordinates ('check_antimeridian' has been set to False). Please use"
+            " degree-based coordinates system if you want to enable antimeridian crossing.",
+            cm.output[1],
+        )
+
+        np.testing.assert_array_equal(neighbors, self.data_ref_antimeridian())
 
 
 class TestGetGeodata(unittest.TestCase):
