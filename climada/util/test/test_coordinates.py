@@ -954,7 +954,8 @@ class TestAssign(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             u_coord.match_centroids(gdf, centroids)
         self.assertIn(
-            "Set hazard and GeoDataFrame to same CRS first!", str(cm.exception)
+            "Please provide coord_gdf and centroids defined in a common CRS.",
+            str(cm.exception),
         )
 
         # Test 4: no crs
@@ -971,8 +972,7 @@ class TestAssign(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             u_coord.match_centroids(gdf, centroids)
         self.assertIn(
-            "Please provide coordinate GeoDataFrame and "
-            "Hazard object with a valid crs attribute.",
+            "Please provide coord_gdf and centroids with valid crs attributes.",
             str(cm.exception),
         )
 

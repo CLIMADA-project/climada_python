@@ -1246,7 +1246,7 @@ def match_centroids(
     try:
         if not equal_crs(coord_gdf.crs, centroids.crs):
             raise ValueError(
-                "Please provide coord_gdf and centroids defined in" " a common CRS."
+                "Please provide coord_gdf and centroids defined in a common CRS."
             )
         if coord_gdf.crs is None or centroids.crs is None:
             raise ValueError(
