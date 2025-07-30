@@ -1317,9 +1317,7 @@ def _nearest_neighbor_approx(
     if unit != "degree":
         raise ValueError(
             "Only degree unit is supported for nearest neighbor matching using"
-            "'approx' distance. Please use euclidean distance by setting "
-            "'distance=euclidean' in the match_coordinates or match_centroids "
-            "function when using units that are not degrees."
+            "'approx' distance."
         )
     # Compute only for the unique coordinates. Copy the results for the
     # not unique coordinates
