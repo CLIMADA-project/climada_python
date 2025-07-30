@@ -1317,8 +1317,10 @@ def _nearest_neighbor_approx(
     # first check that unit is in degree
     if unit != "degree":
         raise ValueError(
-            "Only degree unit is supported for nearest neighbor approximation."
-            "Please use euclidean distance for non-degree units."
+            "Only degree unit is supported for nearest neighbor matching using"
+            "'approx' distance. Please use euclidean distance by setting "
+            "'distance=euclidean' in the match_coordinates or match_centroids "
+            "function when using units that are not degrees."
         )
     # Compute only for the unique coordinates. Copy the results for the
     # not unique coordinates
@@ -1385,8 +1387,10 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
     # first check that unit is in degree
     if unit != "degree":
         raise ValueError(
-            "Only degree unit is supported for nearest neighbor approximation."
-            "Please use euclidean distance for non-degree units."
+            "Only degree unit is supported for nearest neighbor matching using"
+            "'haversine' distance. Please use euclidean distance by setting "
+            "'distance=euclidean' in the match_coordinates or match_centroids "
+            "function when using units that are not degrees."
         )
     # Construct tree from centroids
     tree = BallTree(np.radians(centroids), metric="haversine")
