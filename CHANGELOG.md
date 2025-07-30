@@ -13,6 +13,10 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 ### Changed
+- Update `util.coordinates.match_centroids` and `util.coordinates.match_coordinates` so that they also
+accept coordinates that are not defined in degree.
+- Implement cheap test to check that input coordinates at least seem geographic for functions that require
+geographic coordinates as input (e.g. `util.coordinates.dist_to_coast`, `util.coordinates.coord_on_land`).
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, `Impact.local_return_period`, using the `climada.util.interpolation` module: New default (no binning), binning on decimals, and faster implementation [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
 ### Fixed
 
