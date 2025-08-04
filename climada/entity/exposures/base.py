@@ -602,7 +602,6 @@ class Exposures:
         and parameters.
 
         The value -1 is used for distances larger than ``threshold`` in point distances.
-        In case of raster hazards the value -1 is used for centroids outside of the raster.
 
         Parameters
         ----------
@@ -615,7 +614,8 @@ class Exposures:
         threshold : float
             If the distance (in km) to the nearest neighbor exceeds `threshold`,
             the index `-1` is assigned.
-            Set `threshold` to 0, to disable nearest neighbor matching.
+            Set `threshold` to 0, to disable nearest neighbor matching and enforce
+            exact matching.
             Default: 100 (km)
         overwrite: bool
             If True, overwrite centroids already present. If False, do
@@ -623,33 +623,35 @@ class Exposures:
 
         See Also
         --------
-        climada.util.coordinates.match_grid_points: method to associate centroids to
-            exposure points when centroids is a raster
         climada.util.coordinates.match_coordinates:
             method to associate centroids to exposure points
         Notes
         -----
-        The default order of use is:
+        For coordinates in lat/lon coordinates distances in degrees differ from
+        distances in meters on the Earth surface, in particular for higher
+        latitude and distances larger than 100km. If more accuracy for degree
+        coordinates is needed, please use 'haversine' distance metric,
+        which however is slower.
 
-        1. if centroid raster is defined, assign exposures points to
-           the closest raster point.
-        2. if no raster, assign centroids to the nearest neighbor using
-           euclidian metric
+        Caution: bearest neighbourg matching can introduce serious artefacts
+        such as:
+            - exposure and hazard centroids with shifted grids can lead
+            to systematically wrong assignements.
+            - hazard centroids covering larger areas than exposures may lead
+            to sub-optimal matching if the threshold is too large
 
-        Both cases can introduce innacuracies for coordinates in lat/lon
-        coordinates as distances in degrees differ from distances in meters
-        on the Earth surface, in particular for higher latitude and distances
-        larger than 100km. If more accuracy is needed, please use 'haversine'
-        distance metric. This however is slower for (quasi-)gridded data,
-        and works only for non-gridded data.
+        Users are free to implement their own matching alrogithm and save the
+        matching centroid index in the appropriate column ``centr_[hazard.HAZ_TYPE]``.
         """
         haz_type = hazard.haz_type
         centr_haz = INDICATOR_CENTR + haz_type
         if centr_haz in self.gdf:
-            LOGGER.info("Exposures matching centroids already found for %s", haz_type)
             if overwrite:
                 LOGGER.info("Existing centroids will be overwritten for %s", haz_type)
             else:
+                LOGGER.info(
+                    "Exposures matching centroids already found for %s", haz_type
+                )
                 return
 
         LOGGER.info(
@@ -659,7 +661,7 @@ class Exposures:
         )
 
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
-            raise ValueError("Set hazard and exposure to same CRS first!")
+            raise ValueError("Set hazard and exposure to the same CRS first!")
         # Note: equal_crs is tested here, rather than within match_centroids(),
         # because exp.gdf.crs may not be defined, but exp.crs must be defined.
 
