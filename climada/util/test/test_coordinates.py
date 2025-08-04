@@ -38,7 +38,13 @@ from shapely.geometry import box
 import climada.util.coordinates as u_coord
 from climada import CONFIG
 from climada.hazard.base import Centroids
-from climada.util.constants import DEF_CRS, DEMO_DIR, HAZ_DEMO_FL, ONE_LAT_KM
+from climada.util.constants import (
+    DEF_CRS,
+    DEMO_DIR,
+    EARTH_RADIUS_KM,
+    HAZ_DEMO_FL,
+    ONE_LAT_KM,
+)
 
 DATA_DIR = CONFIG.util.test_data.dir()
 
@@ -230,6 +236,47 @@ def def_ref_50():
     )
 
 
+class TestGetUnitCoords(unittest.TestCase):
+    def create_mock_gdf(self, crs, num_points=5):
+        geometry = [
+            shapely.Point(x, y) for x, y in zip(range(num_points), range(num_points))
+        ]
+        gdf = gpd.GeoDataFrame(geometry=geometry, crs=crs)
+        return gdf
+
+    def test_get_unit_degree(self):
+        """Test with a geodetic CRS in degree (EPSG:4326)."""
+        crs = "EPSG:4326"
+        gdf = self.create_mock_gdf(crs)
+        unit = u_coord.get_crs_unit(gdf)
+        self.assertEqual(unit, "degree", "Expected unit 'degree' for geodetic CRS.")
+
+    def test_get_unit_projected_m(self):
+        """Test with a projected CRS in m (EPSG:3857)."""
+        crs = "EPSG:3857"
+        gdf = self.create_mock_gdf(crs)
+        unit = u_coord.get_crs_unit(gdf)
+        self.assertEqual(unit, "m", "Expected unit 'm' for projected CRS.")
+
+    def test_get_unit_projected_km(self):
+        """Test with a projected CRS in km (EPSG:22300)."""
+        crs = "EPSG:22300"
+        gdf = self.create_mock_gdf(crs)
+        unit = u_coord.get_crs_unit(gdf)
+        self.assertEqual(unit, "km", "Expected unit 'km' for projected CRS.")
+
+    def test_get_unit_invalid_crs(self):
+        """Test with an invalid CRS."""
+        crs = "EPSG:8189"
+        gdf = self.create_mock_gdf(crs)
+        with self.assertRaises(ValueError) as cm:
+            u_coord.get_crs_unit(gdf)
+            self.assertIn(
+                "Unknown unit: US survey foot. Please provide a crs that has a unit of 'degree', 'metre' or 'kilometre'.",
+                str(cm.exception),
+            )
+
+
 class TestDistance(unittest.TestCase):
     """Test distance functions."""
 
@@ -342,6 +389,33 @@ def data_arrays_resampling_demo():
 class TestFunc(unittest.TestCase):
     """Test auxiliary functions"""
 
+    def test_check_geo_coords(self):
+        """Test the check_if_geo_coords function"""
+        # test correct geographical coords
+        lats_lons_true = (np.array([0, -2, 5]), np.array([-179, 175, 178]))
+        u_coord.check_if_geo_coords(lats_lons_true[0], lats_lons_true[1])
+
+        # test wrong geographical coords
+        lats_lons_wrong = (
+            (np.array([0, 200, 5]), np.array([-179, 175, 178])),  # test wrong lat
+            (np.array([0, -2, 5]), np.array([-400, 175, 176])),  # test wrong lon
+            (np.array([0, -2, 5]), np.array([700, 1000, 800])),
+            (np.array([0, -2, 5]), np.array([-179, 175, 370])),  # test wrong extent
+        )
+
+        for ilat, ilon in lats_lons_wrong:
+            with self.assertRaises(ValueError) as cm:
+                u_coord.check_if_geo_coords(ilat, ilon)
+            self.assertIn(
+                "Input lat and lon coordinates do not seem to correspond"
+                " to geographic coordinates in degrees. This can be because"
+                " total extents are > 180 for lat or > 360 for lon, lat coordinates"
+                " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
+                " If you use degree values outside of these ranges,"
+                " please shift the coordinates to the valid ranges.",
+                str(cm.exception),
+            )
+
     def test_lon_normalize(self):
         """Test the longitude normalization function"""
         data = np.array([-180, 20.1, -30, 190, -350])
@@ -420,7 +494,7 @@ class TestFunc(unittest.TestCase):
                 [-3, -130.1, 4, -30.5, 11079.7217421, 11087.0352544],
             ]
         )
-        # conversion factors from reference data (in km, see above) to other units
+        # conversion factors from reference data (in km see above) to other units
         factors_km_to_x = {
             "m": 1e3,
             "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
@@ -490,7 +564,7 @@ class TestFunc(unittest.TestCase):
                 [24.0, 85.0, 24.0, 85.0, 0, 0],
             ]
         )
-        # conversion factors from reference data (in km, see above) to other units
+        # conversion factors from reference data (in km see above) to other units
         factors_km_to_x = {
             "m": 1e3,
             "radian": np.radians(1.0) / u_coord.ONE_LAT_KM,
@@ -880,7 +954,26 @@ class TestAssign(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             u_coord.match_centroids(gdf, centroids)
         self.assertIn(
-            "Set hazard and GeoDataFrame to same CRS first!", str(cm.exception)
+            "Please provide coord_gdf and centroids defined in a common CRS.",
+            str(cm.exception),
+        )
+
+        # Test 4: no crs
+        df = pd.DataFrame({"longitude": [10, 20, 30], "latitude": [50, 60, 70]})
+        gdf = gpd.GeoDataFrame(
+            df,
+            geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
+            crs=None,
+        )
+
+        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
+        centroids = Centroids(lat=[1100000, 1200000], lon=[2500000, 2600000], crs=None)
+
+        with self.assertRaises(ValueError) as cm:
+            u_coord.match_centroids(gdf, centroids)
+        self.assertIn(
+            "Please provide coord_gdf and centroids with valid crs attributes.",
+            str(cm.exception),
         )
 
     def test_dist_sqr_approx_pass(self):
@@ -1163,7 +1256,7 @@ class TestAssign(unittest.TestCase):
         # Check copied coordinates have same neighbors
         self.assertEqual(neighbors[2], neighbors[0])
 
-    def antimeridian_warning(self, dist):
+    def distance_threshold_warning_antimeridian(self, dist):
         """Check that a warning is raised when minimum distance greater than threshold"""
         # Load input
         centroids, exposures = self.data_antimeridian_values()
@@ -1192,7 +1285,7 @@ class TestAssign(unittest.TestCase):
 
     def test_approx_antimeridian_warning(self):
         """Call normal_warning test for approximate distance"""
-        self.antimeridian_warning("approx")
+        self.distance_threshold_warning_antimeridian("approx")
 
     def test_haver_normal_pass(self):
         """Call normal_pass test for haversine distance"""
@@ -1208,7 +1301,7 @@ class TestAssign(unittest.TestCase):
 
     def test_haver_antimeridian_warning(self):
         """Call normal_warning test for haversine distance"""
-        self.antimeridian_warning("haversine")
+        self.distance_threshold_warning_antimeridian("haversine")
 
     def test_euc_normal_pass(self):
         """Call normal_pass test for euclidean distance"""
@@ -1224,7 +1317,7 @@ class TestAssign(unittest.TestCase):
 
     def test_euc_antimeridian_warning(self):
         """Call normal_warning test for euclidean distance"""
-        self.antimeridian_warning("euclidean")
+        self.distance_threshold_warning_antimeridian("euclidean")
 
     def test_diff_outcomes(self):
         """Different NN interpolation outcomes"""
@@ -1255,30 +1348,52 @@ class TestAssign(unittest.TestCase):
             )
             np.testing.assert_array_equal(neighbors, ref)
 
-    def test_match_coordinates(self):
-        """Test match_coordinates function"""
-        # note that the coordinates are in lat/lon
-        coords = np.array(
+    def setUp_match_coordinates(self):
+        # Set up mock data for tests
+        # note that the base coordinates are in lat/lon
+        self.coords = np.array(
             [(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)]
         )
-        coords_to_assign = np.array([(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)])
-        expected_results = [
-            # test with different thresholds (in km)
-            (100, [2, 1, 2, 0, 3, -1, 4]),
-            (20, [-1, 1, 2, 0, 3, -1, -1]),
-            (0, [-1, 1, 2, 0, -1, -1, -1]),
-        ]
+        self.coords_to_assign = np.array(
+            [(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)]
+        )
+        # test with different unit
+        self.expected_results = {
+            "degree": [
+                # test with different thresholds (in degree (converted to km))
+                (100, [2, 1, 2, 0, 3, -1, 4]),
+                (20, [-1, 1, 2, 0, 3, -1, -1]),
+                (0, [-1, 1, 2, 0, -1, -1, -1]),
+            ],
+            "m": [
+                # test with different thresholds (in m)
+                (100e3, [2, 1, 2, 0, 3, -1, -1]),
+                (20e3, [-1, 1, 2, 0, 3, -1, -1]),
+                (0, [-1, 1, 2, 0, -1, -1, -1]),
+            ],
+            "km": [
+                # test with different thresholds (in km)
+                (100, [2, 1, 2, 0, 3, -1, -1]),
+                (20, [-1, 1, 2, 0, 3, -1, -1]),
+                (0, [-1, 1, 2, 0, -1, -1, -1]),
+            ],
+        }
 
+    def test_match_coordinates(self):
+        """Test match_coordinates function"""
+        self.setUp_match_coordinates()
+        unit = "degree"  # first only check for degrees
         for distance in ["euclidean", "haversine", "approx"]:
             # make sure that it works for both float32 and float64
             for test_dtype in [np.float64, np.float32]:
-                coords_typed = coords.astype(test_dtype)
-                coords_to_assign_typed = coords_to_assign.astype(test_dtype)
-                for thresh, result in expected_results:
+                coords_typed = self.coords.astype(test_dtype)
+                coords_to_assign_typed = self.coords_to_assign.astype(test_dtype)
+                for thresh, result in self.expected_results[unit]:
                     assigned_idx = u_coord.match_coordinates(
                         coords_typed,
                         coords_to_assign_typed,
                         distance=distance,
+                        unit=unit,
                         threshold=thresh,
                     )
                     np.testing.assert_array_equal(assigned_idx, result)
@@ -1287,7 +1402,7 @@ class TestAssign(unittest.TestCase):
             coords_to_assign_empty = np.array([])
             result = [-1, -1, -1, -1, -1, -1, -1]
             assigned_idx = u_coord.match_coordinates(
-                coords, coords_to_assign_empty, distance=distance, threshold=thresh
+                self.coords, coords_to_assign_empty, distance=distance, threshold=thresh
             )
             np.testing.assert_array_equal(assigned_idx, result)
 
@@ -1295,9 +1410,118 @@ class TestAssign(unittest.TestCase):
             coords_empty = np.array([])
             result = np.array([])
             assigned_idx = u_coord.match_coordinates(
-                coords_empty, coords_to_assign, distance=distance, threshold=thresh
+                coords_empty, self.coords_to_assign, distance=distance, threshold=thresh
             )
             np.testing.assert_array_equal(assigned_idx, result)
+
+    def test_match_coordinates_different_unit(self):
+        """Test match_coordinates function in cases of different units"""
+        self.setUp_match_coordinates()
+        unit_conv_funcs = {
+            "degree": lambda x: x,
+            "km": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM,
+            "m": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM * 1e3,
+        }
+        distance = "euclidean"
+        for unit in ["degree", "km", "m"]:
+            results = self.expected_results[unit]
+            # do not check antimeridian if units are not in degree
+            check_antimeridian = False if unit != "degree" else True
+            # make sure that it works for both float32 and float64
+            for test_dtype in [np.float64, np.float32]:
+                coords_typed = unit_conv_funcs[unit](self.coords.astype(test_dtype))
+                coords_to_assign_typed = unit_conv_funcs[unit](
+                    self.coords_to_assign.astype(test_dtype)
+                )
+                for thresh, result in results:
+                    assigned_idx = u_coord.match_coordinates(
+                        coords_typed,
+                        coords_to_assign_typed,
+                        distance=distance,
+                        unit=unit,
+                        threshold=thresh,
+                        check_antimeridian=check_antimeridian,
+                    )
+                    np.testing.assert_array_equal(assigned_idx, result)
+            # test empty coords_to_assign
+            coords_to_assign_empty = np.array([])
+            result = [-1, -1, -1, -1, -1, -1, -1]
+            assigned_idx = u_coord.match_coordinates(
+                self.coords,
+                coords_to_assign_empty,
+                distance=distance,
+                unit=unit,
+                threshold=thresh,
+            )
+            np.testing.assert_array_equal(assigned_idx, result)
+            # test empty coords
+            coords_empty = np.array([])
+            result = np.array([])
+            assigned_idx = u_coord.match_coordinates(
+                coords_empty,
+                self.coords_to_assign,
+                distance=distance,
+                unit=unit,
+                threshold=thresh,
+            )
+            np.testing.assert_array_equal(assigned_idx, result)
+
+    def test_match_coordinates_invalid_unit(self):
+        """Test match_coordinates with invalid unit"""
+        self.setUp_match_coordinates()
+        coords_to_assign = np.deg2rad(self.coords_to_assign)
+        coords = np.deg2rad(self.coords)
+        with self.assertRaises(ValueError):
+            u_coord.match_coordinates(
+                coords, coords_to_assign, "foo", u_coord.NEAREST_NEIGHBOR_THRESHOLD
+            )
+
+    def test_nearest_neighbor_approx_invalid_unit(self):
+        """Test approx nearest neighbor with invalid unit"""
+        self.setUp_match_coordinates()
+        coords_to_assign = np.deg2rad(self.coords_to_assign)
+        coords = np.deg2rad(self.coords)
+        with self.assertRaises(ValueError):
+            u_coord._nearest_neighbor_approx(
+                coords_to_assign,
+                coords,
+                "km",
+                u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+            )
+
+    def test_nearest_neighbor_haversine_invalid_unit(self):
+        """Test haversine nearest neighbor with invalid unit"""
+        self.setUp_match_coordinates()
+        coords_to_assign = np.deg2rad(self.coords_to_assign)
+        coords = np.deg2rad(self.coords)
+        with self.assertRaises(ValueError):
+            u_coord._nearest_neighbor_haversine(
+                coords_to_assign,
+                coords,
+                "km",
+                u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+            )
+
+    def antimeridian_warning_invalid_unit(self):
+        """Check that a warning is raised when coords are
+        non-degree and check_antimeridian is True"""
+
+        self.setUp_match_coordinates()
+        coords_to_assign = np.deg2rad(self.coords_to_assign) * EARTH_RADIUS_KM  # to km
+        coords = np.deg2rad(self.coords) * EARTH_RADIUS_KM
+
+        with self.assertLogs("climada.util.coordinates", level="WARNING") as cm:
+            neighbors = u_coord.match_coordinates(
+                coords_to_assign, coords, check_antimeridian=True
+            )
+        self.assertIn(
+            "Handling of antimeridian crossing is not implemented for non-degree"
+            " coordinates ('check_antimeridian' has been set to False). Please use"
+            " degree-based coordinates system if you want to enable antimeridian crossing.",
+            cm.output[1],
+        )
+
+        np.testing.assert_array_equal(neighbors, self.data_ref_antimeridian())
 
 
 class TestGetGeodata(unittest.TestCase):
@@ -1457,18 +1681,10 @@ class TestGetGeodata(unittest.TestCase):
 
     def test_get_country_geometries_fail(self):
         """get_country_geometries with offensive parameters"""
-        with self.assertRaises(ValueError) as cm:
+        with self.assertRaises(ValueError):
             u_coord.get_country_geometries(extent=(-20, 350, 0, 0))
-        self.assertIn(
-            "longitude extent range is greater than 360: -20 to 350", str(cm.exception)
-        )
-        with self.assertRaises(ValueError) as cm:
-            u_coord.get_country_geometries(extent=(350, -20, 0, 0))
-        self.assertIn(
-            "longitude extent at the left (350) is larger "
-            "than longitude extent at the right (-20)",
-            str(cm.exception),
-        )
+        with self.assertRaises(ValueError):
+            u_coord.get_country_geometries(extent=(340, -20, 0, 0))
 
     def test_country_code_pass(self):
         """Test set_region_id"""
