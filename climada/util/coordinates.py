@@ -1066,7 +1066,7 @@ def match_coordinates(
     coords_to_assign,
     distance="euclidean",
     unit="degree",
-    threshold=NEAREST_NEIGHBOR_THRESHOLD,
+    threshold=None,
     **kwargs,
 ):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
@@ -1147,10 +1147,13 @@ def match_coordinates(
     if np.array_equal(coords, coords_to_assign):
         assigned_idx = np.arange(coords.shape[0])
     else:
+        if threshold is None:
+            threshold = 2 * max(abs(r) for r in get_resolution(coords_to_assign.T))
         LOGGER.info(
             "No exact centroid match found. Reprojecting coordinates "
-            "to nearest neighbor closer than the threshold = %s",
+            "to nearest neighbor closer than the threshold = %s %s",
             threshold,
+            unit,
         )
         # pairs of floats can be sorted (lexicographically) in NumPy
         coords_view = coords.view(dtype="float64,float64").reshape(-1)
@@ -1180,18 +1183,8 @@ def match_coordinates(
             # convert to proper units before proceeding to nearest neighbor search
             if unit == "degree":
                 # check that coords are indeed geographic before converting
-
                 check_if_geo_coords(coords[:, 0], coords[:, 1])
                 check_if_geo_coords(coords_to_assign[:, 0], coords_to_assign[:, 1])
-            elif unit != "km":
-                LOGGER.warning(
-                    "You are using coordinates systems defined in %s. "
-                    "The following distance threshold will be used for coordinates "
-                    "matching: %i %s. Please adapt the distance threshold if needed. ",
-                    unit,
-                    threshold,
-                    unit,
-                )
 
             not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
@@ -1208,7 +1201,7 @@ def match_centroids(
     coord_gdf,
     centroids,
     distance="euclidean",
-    threshold=NEAREST_NEIGHBOR_THRESHOLD,
+    threshold=None,
 ):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
     If distances > threshold in points' distances, -1 is returned.
@@ -1352,7 +1345,7 @@ def _nearest_neighbor_approx(
         min_idx = dist.argmin()
         # Raise a warning if the minimum distance is greater than the
         # threshold and set an unvalid index -1
-        if np.sqrt(dist.min()) * ONE_LAT_KM > threshold:
+        if np.sqrt(dist.min()) > threshold:
             num_warn += 1
             min_idx = -1
 
@@ -1422,7 +1415,7 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
 
     # Raise a warning if the minimum distance is greater than the
     # threshold and set an unvalid index -1
-    dist = dist * EARTH_RADIUS_KM
+    dist = np.rad2deg(dist)
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
@@ -1483,12 +1476,8 @@ def _nearest_neighbor_euclidean(
         # convert back to degree for check antimeridian and convert distance
         centroids = np.rad2deg(centroids)
         coordinates = np.rad2deg(coordinates)
-        dist = dist * EARTH_RADIUS_KM
-        threshold_unit = "km"
+        dist = np.rad2deg(dist)
     else:
-        threshold_unit = (
-            unit  # the unit of the threshold is considered to be in input unit
-        )
         if check_antimeridian:
             # if unit is not in degree, check_antimeridian is forced to False
             check_antimeridian = False
@@ -1503,9 +1492,9 @@ def _nearest_neighbor_euclidean(
     num_warn = np.sum(dist > threshold)
     if num_warn:
         LOGGER.warning(
-            "Distance to closest centroid is greater than %i %s for %i coordinates.",
+            "Distance to closest centroid is greater than %f %s for %i coordinates.",
             threshold,
-            threshold_unit,
+            unit,
             num_warn,
         )
         assigned[dist > threshold] = -1
@@ -1531,7 +1520,7 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
         First column contains latitude, second column contains longitude. Each
         row is a geographic point
     threshold : float
-        distance threshold in km over which no neighbor will be found. Those
+        distance threshold in degree over which no neighbor will be found. Those
         are assigned with a -1 index
     assigned : 1d array
         coordinates that have assigned so far
@@ -1551,7 +1540,7 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned):
     mid_lon = 0.5 * (lon_max + lon_min)
     antimeridian = mid_lon + 180
 
-    thres_deg = np.degrees(threshold / EARTH_RADIUS_KM)
+    thres_deg = threshold
     coord_strip_bool = coordinates[:, 1] + antimeridian < 1.5 * thres_deg
     coord_strip_bool |= coordinates[:, 1] - antimeridian > -1.5 * thres_deg
     if np.any(coord_strip_bool):

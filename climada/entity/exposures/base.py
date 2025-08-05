@@ -591,7 +591,7 @@ class Exposures:
         self,
         hazard,
         distance="euclidean",
-        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+        threshold=None,
         overwrite=True,
     ):
         """Assign for each exposure coordinate closest hazard coordinate.
