@@ -1173,10 +1173,8 @@ def match_coordinates(
 
         # assign remaining coordinates to their geographically nearest neighbor
         if threshold > 0 and exact_assign_idx.size != coords_view.size:
-            # convert to proper units before proceeding to nearest neighbor search
             if unit == "degree":
-                # check that coords are indeed geographic before converting
-
+                # check that coords at least seem geographic before proceeding to nearest neighbor
                 check_if_geo_coords(coords[:, 0], coords[:, 1])
                 check_if_geo_coords(coords_to_assign[:, 0], coords_to_assign[:, 1])
             elif unit != "km":
