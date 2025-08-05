@@ -57,7 +57,7 @@ class MeasuresAppraiser(RiskTrajectory):
         "averted risk",
         "risk",
         "measure net cost",
-        "measure cost benefit",
+        "benefit minus cost",
     ]
 
     def __init__(
@@ -123,7 +123,7 @@ class MeasuresAppraiser(RiskTrajectory):
             no_measures["reference risk"] = no_measures["risk"]
             no_measures["averted risk"] = 0.0
             no_measures["measure net cost"] = 0.0
-            no_measures["measure cost benefit"] = 0.0
+            no_measures["benefit minus cost"] = 0.0
             LOGGER.debug(f"Computing cash flow for: {metric_name}.")
             cash_flow_metrics = self._calc_per_measure_annual_cash_flows()
             LOGGER.debug(f"Merging with base metric: {metric_name}.")
@@ -136,7 +136,7 @@ class MeasuresAppraiser(RiskTrajectory):
 
             averted_risk = base_metrics["averted risk"]
             cash_flow_metrics = base_metrics["measure net cost"]
-            base_metrics["measure cost benefit"] = averted_risk - cash_flow_metrics
+            base_metrics["benefit minus cost"] = averted_risk - cash_flow_metrics
 
             if measures is not None:
                 base_metrics = base_metrics.loc[
@@ -163,7 +163,7 @@ class MeasuresAppraiser(RiskTrajectory):
             merger.append("coord_id")
 
         return base_metrics.groupby(
-            ["group", "metric", "date"], group_keys=False, dropna=False
+            ["group", "metric", "date"], group_keys=False, dropna=False, observed=False
         ).progress_apply(
             subtract_no_measure, no_measure=no_measures_metrics, merger=merger
         )
@@ -231,7 +231,7 @@ class MeasuresAppraiser(RiskTrajectory):
     def _calc_cb(self, base_metrics: pd.DataFrame):
         averted_risk = base_metrics["averted risk"]
         cash_flow_metrics = base_metrics["measure net cost"]
-        base_metrics["measure cost benefit"] = averted_risk - cash_flow_metrics
+        base_metrics["benefit minus cost"] = averted_risk - cash_flow_metrics
         return base_metrics
 
     def _calc_waterfall_CB_plot_data(
