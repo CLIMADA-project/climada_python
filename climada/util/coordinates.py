@@ -97,6 +97,10 @@ def check_if_geo_coords(lat, lon):
     lat, lon : ndarrays of floats, same shape
         Latitudes and longitudes of points.
 
+    Raises
+    ------
+    ValueError : if lat or lon out of likely geographical coordinate bounds
+
     Returns
     -------
     test : bool
@@ -120,7 +124,7 @@ def check_if_geo_coords(lat, lon):
             " If you use degree values outside of these ranges,"
             " please shift the coordinates to the valid ranges."
         )
-    return
+    return True
 
 
 def get_crs_unit(coords):
