@@ -868,7 +868,7 @@ class TestAssign(unittest.TestCase):
             geometry=gpd.points_from_xy(df["longitude"], df["latitude"]),
             crs=DEF_CRS,
         )
-        assigned = u_coord.match_centroids(gdf, centroids)
+        assigned = u_coord.match_centroids(gdf, centroids, threshold=0.9)
 
         expected_result = [
             # constant y-value, varying x-value
@@ -918,9 +918,9 @@ class TestAssign(unittest.TestCase):
         centroids_empty = Centroids(lat=np.array([]), lon=np.array([]))
 
         expected_results = [
-            # test with different thresholds (in km)
-            (100, [2, 1, 2, 0, 3, -1, 4]),
-            (20, [-1, 1, 2, 0, 3, -1, -1]),
+            # test with different thresholds (in degrees)
+            (1.5, [2, 1, 2, 0, 3, 1, 4]),
+            (0.1, [-1, 1, 2, 0, 3, -1, -1]),
             (0, [-1, 1, 2, 0, -1, -1, -1]),
         ]
 
@@ -1215,7 +1215,9 @@ class TestAssign(unittest.TestCase):
         centroids, exposures = self.data_input_values()
 
         # Interpolate with default threshold
-        neighbors = u_coord.match_coordinates(exposures, centroids, distance=dist)
+        neighbors = u_coord.match_coordinates(
+            exposures, centroids, distance=dist, threshold=100
+        )
         # Reference output
         ref_neighbors = self.data_ref()
         # Check results
@@ -1229,7 +1231,7 @@ class TestAssign(unittest.TestCase):
         centroids, exposures = self.data_input_values()
 
         # Interpolate with lower threshold to raise warnings
-        threshold = 40
+        threshold = 40 / EARTH_RADIUS_KM
         with self.assertLogs("climada.util.coordinates", level="INFO") as cm:
             neighbors = u_coord.match_coordinates(
                 exposures, centroids, distance=dist, threshold=threshold
@@ -1262,7 +1264,7 @@ class TestAssign(unittest.TestCase):
         centroids, exposures = self.data_antimeridian_values()
 
         # Interpolate with lower threshold to raise warnings
-        threshold = 100
+        threshold = 100 / EARTH_RADIUS_KM
         with self.assertLogs("climada.util.coordinates", level="INFO") as cm:
             neighbors = u_coord.match_coordinates(
                 exposures, centroids, distance=dist, threshold=threshold
@@ -1321,7 +1323,7 @@ class TestAssign(unittest.TestCase):
 
     def test_diff_outcomes(self):
         """Different NN interpolation outcomes"""
-        threshold = 100000
+        threshold = 100000 / EARTH_RADIUS_KM
 
         # Define centroids
         lons = np.arange(-160, 180 + 1, 20)
@@ -1361,8 +1363,8 @@ class TestAssign(unittest.TestCase):
         self.expected_results = {
             "degree": [
                 # test with different thresholds (in degree (converted to km))
-                (100, [2, 1, 2, 0, 3, -1, 4]),
-                (20, [-1, 1, 2, 0, 3, -1, -1]),
+                (2, [2, 1, 2, 0, 3, 1, 4]),
+                (1.5, [-1, 1, 2, 0, 3, -1, -1]),
                 (0, [-1, 1, 2, 0, -1, -1, -1]),
             ],
             "m": [

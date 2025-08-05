@@ -212,7 +212,7 @@ class TestFuncs(unittest.TestCase):
                 0.0,
             ],
         )
-        exp.assign_centroids(haz)
+        exp.assign_centroids(haz, threshold=100)
 
         expected_result = [
             # constant y-value, varying x-value
