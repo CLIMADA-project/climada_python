@@ -275,10 +275,15 @@ class MCA_Calc:
         df = df.sort_index(axis=1)
         return df
 
-    def individual_rank(self):
-        reps = len(self.weights) / len(self.criteria_type)
+    def individual_rank(self, sub_selection=None):
+        weights = self.weights.reset_index(name="weight")
+
+        if sub_selection is not None:
+            weights = self.sub_select_df(weights, sub_selection)
+
+        reps = len(weights) / len(self.criteria_type)
         types = np.tile(np.where(self.criteria_type, 1, -1), reps=int(reps))
-        risk_metrics = self.pivoted_risk_metrics().copy() * types
+        risk_metrics = self.pivoted_risk_metrics(sub_selection).copy() * types
         return risk_metrics.rank(axis=0, ascending=False, method="max")
 
     def _mapped_criteria_types(self, weights):
