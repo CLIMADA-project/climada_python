@@ -19,13 +19,18 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 """
 
 import bisect
+import functools
 from typing import Any, Iterable
 
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 from pyrepo_mcda.additions import rank_preferences
 from pyrepo_mcda.compromise_rankings import copeland
 from pyrepo_mcda.mcda_methods import MULTIMOORA, SAW, SPOTIS, TOPSIS, VIKOR
+from pyrepo_mcda.sensitivity_analysis_weights_values import (
+    Sensitivity_analysis_weights_values,
+)
 
 from climada.engine.option_appraisal.MCDM.criterion import Criterion
 
@@ -56,6 +61,7 @@ class MCA_Calc:
         self._criteria_weights = None
         self._groups_weights = None
         self._metrics_weights = None
+        self._sensitivity_analyser = Sensitivity_analysis_weights_values()
 
         self._norm_criteria_weights = None
         self._norm_groups_weights = None
@@ -117,13 +123,23 @@ class MCA_Calc:
 
     @property
     def criteria_type(self) -> list[bool]:
-        return [c.obj_maximise for c in self.criteria]
+        return pd.Series(
+            [c.obj_maximise for c in self.criteria], index=self.criteria_cols
+        )
 
-    def add_criterion(self, criterion: Criterion, criterion_values: pd.Series):
+    def add_criterion(
+        self, criterion: Criterion, criterion_values: pd.Series, weight=None
+    ):
         tmp = self.risk_metrics.copy()
         tmp[criterion.column_name] = tmp[self.options_col].map(criterion_values)
         self.risk_metrics = tmp
         bisect.insort(self._criteria, criterion, key=lambda x: x.column_name)
+        if not weight:
+            weight = 1 / (len(self.criteria_weights) + 1)
+
+        tmp = self.criteria_weights.copy()
+        tmp[criterion.column_name] = weight
+        self.criteria_weights = tmp
 
     @property
     def criteria_weights(self) -> pd.Series:
@@ -205,38 +221,6 @@ class MCA_Calc:
         self._norm_metrics_weights = self.normalize_weights(self._metrics_weights)
         self._update_norm_weights()
 
-    # @property
-    # def groups_col(self) -> list[str]:
-    #     return self._groups
-
-    # @groups_col.setter
-    # def groups_col(self, value: Any, /):
-    #     if value:
-    #         fail_groups = [
-    #             k for k in value if k not in self.risk_metrics.columns
-    #         ]
-    #         if len(fail_groups) > 0:
-    #             raise ValueError(f"{fail_groups} not found in risk metric dataframe")
-
-    #         self._groups = value
-
-    def criteria_from_group(self, group_name):
-        pass
-        tmp = self.risk_metrics.copy()
-
-    @property
-    def scenario_cols(self) -> list[str]:
-        return self._scenario_cols
-
-    @scenario_cols.setter
-    def scenario_cols(self, value: Any, /):
-        if value:
-            fail_sce = [k for k in value if k not in self.risk_metrics.columns]
-            if len(fail_sce) > 0:
-                raise ValueError(f"{fail_sce} not found in risk metric dataframe")
-
-        self._scenario_cols = value
-
     @property
     def weights(self):
         return self._normalized_weights
@@ -258,7 +242,19 @@ class MCA_Calc:
         else:
             self._normalized_weights = None
 
-    def pivoted_risk_metrics(self):
+    @staticmethod
+    def sub_select_df(df, sub_selection):
+        return df[
+            functools.reduce(
+                lambda x, y: x & y,
+                (
+                    df[col].isin([val] if not isinstance(val, list) else val)
+                    for col, val in sub_selection.items()
+                ),
+            )
+        ]
+
+    def pivoted_risk_metrics(self, sub_selection=None):
         df = self.risk_metrics.copy().loc[
             :,
             [self.options_col]
@@ -266,23 +262,37 @@ class MCA_Calc:
             + [self.metrics_col]
             + [self.groups_col],
         ]
+        if sub_selection is not None:
+            df = self.sub_select_df(df, sub_selection)
+
         index = self.options_col
         columns = [self.metrics_col, self.groups_col]
         df = df.pivot_table(index=index, columns=columns)
         # df.columns.name = [self.groups_col,self.metrics_col,"criteria"]
         df.columns = df.columns.reorder_levels(
-            order=[self.groups_col, self.metrics_col, None]
+            order=[self.groups_col, self.metrics_col, "criteria"]
         )
         df = df.sort_index(axis=1)
         return df
+
+    def individual_rank(self):
+        reps = len(self.weights) / len(self.criteria_type)
+        types = np.tile(np.where(self.criteria_type, 1, -1), reps=int(reps))
+        risk_metrics = self.pivoted_risk_metrics().copy() * types
+        return risk_metrics.rank(axis=0, ascending=False, method="max")
+
+    def _mapped_criteria_types(self, weights):
+        reps = len(weights) / len(self.criteria_type[weights["criteria"]])
+        return np.tile(
+            np.where(self.criteria_type[weights["criteria"]], 1, -1), reps=int(reps)
+        )
 
     def calc_rankings(
         self,
         mcdm_methods=None,
         compromise_method=None,
         constraints=None,
-        rank_filt=None,
-        derived_columns=None,
+        sub_selection=None,
     ):
         """
         Calculate rankings for a DecisionMatrix instance using specified Multi-Criteria Decision Making (MCDM) methods.
@@ -292,12 +302,10 @@ class MCA_Calc:
             Dictionary of MCDM methods to use for ranking. Defaults to the MCDM_DEFAULT dictionary.
         - comp_ranks: dict, optional
             Dictionary of compromised ranking functions to use. Defaults to the COMP_DEFAULT dictionary.
-        - constraints: dict, optional
-            Dictionary of constraints to filter the data. Defaults to an empty dictionary.
-        - rank_filt: dict, optional
-            Dictionary of filters to apply to the ranking. Defaults to an empty dictionary.
-        - derived_columns: dict, optional
-            Dictionary of derived columns to calculate. Defaults to an empty dictionary.
+        - constraints: list, optional
+            List of constraints (pandas query strings) to filter the data. Defaults to an empty list.
+        - sub_selection: dict, optional
+            Dictionary of groups, metrics to sub-select
 
         Returns:
         - ranks_output: RanksOutput
@@ -308,13 +316,16 @@ class MCA_Calc:
             compromise_method if compromise_method else self.compromise_method
         )
         constraints = constraints if constraints else self.constraints
-        weights = self.weights.to_numpy()
-        reps = len(self.weights) / len(self.criteria_type)
-        types = np.tile(np.where(self.criteria_type, 1, -1), reps=int(reps))
-        risk_metrics = self.pivoted_risk_metrics().copy()
+        weights = self.weights.reset_index(name="weight")
+        if sub_selection is not None:
+            weights = self.sub_select_df(weights, sub_selection)
+
+        types = self._mapped_criteria_types(weights)
+        risk_metrics = self.pivoted_risk_metrics(sub_selection).copy()
         risk_metrics = risk_metrics.replace(0, np.finfo(float).eps)
         if constraints:
             for constraint in constraints:
+                # TODO update types if constraint
                 risk_metrics = risk_metrics.query(constraint)
 
         # TODO
@@ -323,7 +334,10 @@ class MCA_Calc:
             mca_df.append(
                 pd.Series(
                     self.rank_matrix(
-                        risk_metrics, weights=weights, types=types, method=method
+                        risk_metrics,
+                        weights=weights["weight"].to_numpy(),
+                        types=types,
+                        method=method,
                     ),
                     name=method_name,
                 )
@@ -345,33 +359,6 @@ class MCA_Calc:
 
         return mca_df
 
-        # for method_name, method in mcdm_methods.items():
-        #     grouped = risk_metrics.groupby(
-        #         self.scenario_cols, as_index=False, group_keys=False
-        #     )[self.criteria_cols]
-        #     tmp = []
-        #     for _, group in grouped:
-        #         group[method_name] = self.rank_matrix(group, weights=weights, types=types, method=method)
-        #         tmp.append(group[method_name])
-        #     mca_df.append(pd.concat(tmp,axis=0))
-        # mca_df = pd.concat(mca_df, axis=1)
-        # mca_df = pd.concat(
-        #     [risk_metrics.loc[:, [self.options_col] + self.scenario_cols], mca_df],
-        #     axis=1,
-        # )
-        # if compromise_method:
-        #     compromise = []
-        #     for method_name, method in compromise_method.items():
-        #         grouped = mca_df.groupby(
-        #             self.scenario_cols, as_index=False, group_keys=False
-        #         )[list(mcdm_methods.keys())]
-        #         for _, group in grouped:
-        #             group[method_name] = method(group)
-        #             compromise.append(group[method_name])
-
-        #     mca_df = pd.concat([mca_df, pd.concat(compromise, axis=0)], axis=1)
-        # return mca_df
-
     @staticmethod
     def rank_matrix(df, weights, types, method):
         matrix = df.to_numpy()
@@ -392,6 +379,33 @@ class MCA_Calc:
             prefs = rank_preferences(prefs, reverse=True)
             return pd.Series(prefs, index=df.index)
 
+    def calc_sensitivity(self, crit_col, method=TOPSIS()):
+        # TODO Can only work for one selected group and metric, decide on how to implement for more than that
+        sub_selection = {"group": "All", "metric": "aai"}
+        matrix = self.pivoted_risk_metrics(sub_selection)
+        weights = self.sub_select_df(
+            self.weights.reset_index(name="weight"), sub_selection
+        )
+        weights_values = np.arange(0.05, 0.95, 0.1)
+        types = self._mapped_criteria_types(weights)
+        data_sens = self._sensitivity_analyser(
+            matrix.values,
+            weights_values,
+            types,
+            method,
+            self.criteria_cols.index(crit_col),
+        )
+        data_sens.index = self.options_names
+        return data_sens
+
+    def plot_weight_sensitivity(self, crit_cols=None, method=TOPSIS()):
+        crit_cols = crit_cols if crit_cols else self.criteria_cols
+        for j, name in enumerate(crit_cols):
+            data_sens = self.calc_sensitivity(name, method)
+            plot_lineplot_sensitivity(
+                data_sens, "TOPSIS", name, "Weight value", "value"
+            )
+
     @staticmethod
     def criteria_col_in_risk_metrics(
         crit: Criterion, risk_metrics: pd.DataFrame
@@ -401,3 +415,62 @@ class MCA_Calc:
     @staticmethod
     def normalize_weights(weights: pd.Series) -> pd.Series:
         return weights / weights.sum()
+
+
+def plot_lineplot_sensitivity(
+    data_sens, method_name, criterion_name, x_title, filename=""
+):
+    """
+    Visualization method to display line chart of alternatives rankings obtained with
+    modification of weight of given criterion.
+
+    Parameters
+    ----------
+        df_plot : DataFrame
+            DataFrame containing rankings of alternatives obtained with different weight of
+            selected criterion. The particular rankings are contained in subsequent columns of
+            DataFrame.
+
+        method_name : str
+            Name of chosen MCDA method, i.e. `TOPSIS`, `VIKOR`, `CODAS`, `WASPAS`, `MULTIMOORA`, `MABAC`, `EDAS`, `SPOTIS`
+
+        criterion_name : str
+            Name of chosen criterion whose weight is modified
+
+        x_title : str
+            Title of x axis
+
+        filename : str
+            Name of file to save this chart
+
+    Examples
+    ----------
+    >>> plot_lineplot_sensitivity(df_plot, method_name, criterion_name, x_title, filename)
+    """
+    plt.figure(figsize=(8, 4))
+    for j in range(data_sens.shape[0]):
+
+        plt.plot(data_sens.iloc[j, :], linewidth=2)
+        ax = plt.gca()
+        y_min, y_max = ax.get_ylim()
+        x_min, x_max = ax.get_xlim()
+        plt.annotate(
+            "  " + data_sens.index[j],
+            (x_max, data_sens.iloc[j, -1]),
+            fontsize=12,
+            style="italic",
+            horizontalalignment="left",
+        )
+
+    plt.xlabel(x_title, fontsize=12)
+    plt.ylabel("Rank", fontsize=12)
+    plt.yticks(fontsize=12)
+    plt.xticks(fontsize=12)
+    plt.title(method_name + ", modification of " + criterion_name + " weight")
+    plt.grid(True, linestyle=":")
+    plt.tight_layout()
+    criterion_name = criterion_name.replace("$", "")
+    criterion_name = criterion_name.replace("{", "")
+    criterion_name = criterion_name.replace("}", "")
+    # plt.savefig('./results/' + 'sensitivity_' + 'lineplot_' + method_name + '_' + criterion_name + '_' + filename + '.eps')
+    plt.show()
