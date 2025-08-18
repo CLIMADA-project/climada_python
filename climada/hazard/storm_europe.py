@@ -57,6 +57,12 @@ HAZ_TYPE = "WS"
 N_PROB_EVENTS = 5 * 6
 """Number of events per historic event in probabilistic dataset"""
 
+DEF_INTENSITY_THRES = 14.7
+"""
+Default value for the threshold below which wind speeds (in m/s) are stored as 0.
+Same as used by WISC SSI calculations.
+"""
+
 
 class StormEurope(Hazard):
     """A hazard set containing european winter storm events. Historic storm
@@ -79,10 +85,8 @@ class StormEurope(Hazard):
         values only.
     ssi : np.array, float
         SSI as set by set_ssi; uses the Dawkins definition by default.
-    """
 
-    intensity_thres = 14.7
-    """Intensity threshold for storage in m/s; same as used by WISC SSI calculations."""
+    """
 
     vars_opt = Hazard.vars_opt.union({"ssi_wisc", "ssi", "ssi_full_area"})
     """Name of the variables that aren't need to compute the impact."""
@@ -139,7 +143,7 @@ class StormEurope(Hazard):
         centroids=None,
         files_omit="fp_era20c_1990012515_701_0.nc",
         combine_threshold=None,
-        intensity_thres=None,
+        intensity_thres=DEF_INTENSITY_THRES,
     ):
         """Create new StormEurope object from WISC footprints.
 
@@ -171,8 +175,8 @@ class StormEurope(Hazard):
             events are combined into one.
             Default is None, Advised for WISC is 2
         intensity_thres : float, optional
-            Intensity threshold for storage in m/s. Default: class attribute
-            StormEurope.intensity_thres (same as used by WISC SSI calculations)
+            Intensity threshold for storage in m/s. Default: 14.7
+            (same as used by WISC SSI calculations)
 
         Returns
         -------
@@ -180,9 +184,6 @@ class StormEurope(Hazard):
             StormEurope object with data from WISC footprints.
         """
         # pylint: disable=protected-access
-        intensity_thres = (
-            cls.intensity_thres if intensity_thres is None else intensity_thres
-        )
         file_names = get_file_names(path)
 
         if ref_raster is not None and centroids is not None:
@@ -300,7 +301,7 @@ class StormEurope(Hazard):
         event_date=None,
         model_name="COSMO-2E",
         description=None,
-        intensity_thres=None,
+        intensity_thres=DEF_INTENSITY_THRES,
     ):
         """Create a new StormEurope object with gust footprint from weather forecast.
 
@@ -331,17 +332,14 @@ class StormEurope(Hazard):
             description of the events, defaults
             to a combination of model_name and run_datetime
         intensity_thres : float, optional
-            Intensity threshold for storage in m/s. Default: class attribute
-            StormEurope.intensity_thres (same as used by WISC SSI calculations)
+            Intensity threshold for storage in m/s. Default: 14.7
+            (same as used by WISC SSI calculations)
 
         Returns
         -------
         haz : StormEurope
             StormEurope object with data from COSMO ensemble file.
         """
-        intensity_thres = (
-            cls.intensity_thres if intensity_thres is None else intensity_thres
-        )
 
         # read intensity from file
         with xr.open_dataset(fp_file) as ncdf:
@@ -435,7 +433,7 @@ class StormEurope(Hazard):
         description=None,
         grib_dir=None,
         delete_raw_data=True,
-        intensity_thres=None,
+        intensity_thres=DEF_INTENSITY_THRES,
     ):
         """Create new StormEurope object from DWD icon weather forecast footprints.
 
@@ -472,8 +470,8 @@ class StormEurope(Hazard):
             .grib.bz2 file format should be stored on the computer or
             removed
         intensity_thres : float, optional
-            Intensity threshold for storage in m/s. Default: class attribute
-            StormEurope.intensity_thres (same as used by WISC SSI calculations)
+            Intensity threshold for storage in m/s. Default: 14.7
+            (same as used by WISC SSI calculations)
 
         Returns
         -------
@@ -481,9 +479,6 @@ class StormEurope(Hazard):
             StormEurope object with data from DWD icon weather forecast footprints.
         """
         # pylint: disable=protected-access
-        intensity_thres = (
-            cls.intensity_thres if intensity_thres is None else intensity_thres
-        )
 
         if not (run_datetime.hour == 0 or run_datetime.hour == 12):
             LOGGER.warning(
@@ -724,8 +719,7 @@ class StormEurope(Hazard):
             ignoring the intensities at sea. Defaults to true, whereas
             the MATLAB version did not.
         threshold : float, optional
-            Intensity threshold used in index
-            definition. Cannot be lower than the read-in value.
+            Intensity threshold used in index definition.
         sel_cen : np.array, bool
             A boolean vector selecting centroids.
             Takes precendence over on_land.
@@ -739,12 +733,7 @@ class StormEurope(Hazard):
             intensity = self.intensity
 
         if threshold is not None:
-            assert (
-                threshold >= self.intensity_thres
-            ), "threshold cannot be below threshold upon read_footprint"
             intensity = intensity.multiply(intensity > threshold)
-        else:
-            intensity = intensity.multiply(intensity > self.intensity_thres)
 
         cent = self.centroids
         area_pixel = cent.get_area_pixel()
