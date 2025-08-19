@@ -38,7 +38,10 @@ def plot_salvador_ma():
     ax = shape.plot(figsize=(10, 10), alpha=0.5)
     ax.set_xlim(-9943223.896891385, -9911000.065720687)
     ax.set_ylim(1530712.637786494, 1555600.2891258441)
-    ctx.add_basemap(ax, zoom=12, url=ctx.providers.Stamen.Terrain)
+    # ctx.add_basemap(ax, zoom=12, url=ctx.providers.Stamen.Terrain)
+    ctx.add_basemap(ax, zoom=12, source=ctx.providers.OpenStreetMap.Mapnik)
+
+
     rect = patches.Rectangle(
         (-9931038.907412536, 1536570.51725147),
         4354.653554389253,
