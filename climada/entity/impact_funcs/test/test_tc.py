@@ -115,7 +115,7 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertEqual(impfs.size(), 10)
         self.assertEqual(impfs.get_ids()["TC"], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         self.assertEqual(impf_wp4.intensity_unit, "m/s")
-        self.assertEqual(impf_wp4.name, "North West Pacific (WP4)")
+        self.assertEqual(impf_wp4.name, "North West Pacific")
         self.assertAlmostEqual(v_halfs["WP2"], 188.4, places=7)
         self.assertAlmostEqual(v_halfs["ROW"], 110.1, places=7)
         self.assertListEqual(list(impf_wp4.intensity), list(np.arange(0, 121, 5)))
@@ -185,12 +185,17 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertEqual(impf_id_reg_id_reg_name[1][0], "ROW")
         self.assertEqual(impf_id_reg_id_reg_name[2][0], "Rest of The World")
 
-        with self.assertRaises(ValueError) as context:
-            ImpfSetTropCyclone.get_impf_id_regions_per_countries(countries=[3.22])
-        self.assertEqual(
-            str(context.exception),
-            "The element 3.22 is neither in ISO3A nor ISO3N format",
+        impf_id_reg_id_reg_name = ifs.get_impf_id_regions_per_countries(
+            countries=["CHE", 268]
         )
+        # CHE
+        self.assertEqual(impf_id_reg_id_reg_name[0][0], 10)
+        self.assertEqual(impf_id_reg_id_reg_name[1][0], "ROW")
+        self.assertEqual(impf_id_reg_id_reg_name[2][0], "Rest of The World")
+        # GEO (georgia, 268)
+        self.assertEqual(impf_id_reg_id_reg_name[0][1], 3)
+        self.assertEqual(impf_id_reg_id_reg_name[1][1], "NI")
+        self.assertEqual(impf_id_reg_id_reg_name[2][1], "North Indian")
 
 
 # Execute Tests
