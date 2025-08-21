@@ -286,6 +286,11 @@ class Basin_bounds_storm(Enum):
     )
 
 
+BASINS_GDF = gpd.GeoDataFrame(
+    {"basin": b, "geometry": b.value} for b in Basin_bounds_storm
+)
+
+
 class TCTracks:
     """Contains tropical cyclone tracks.
 
@@ -415,79 +420,58 @@ class TCTracks:
 
         return out
 
-    BASINS_GDF = gpd.GeoDataFrame(
-        {"basin": b, "geometry": b.value} for b in Basin_bounds_storm
-    )
+    def get_basins(track):
 
-    def get_basins(
-        track,
-    ):  # this is the method I had in mind for 1. and I'd guess it could be a performance boost
         track_coordinates = gpd.GeoDataFrame(
             geometry=gpd.points_from_xy(track.lon, track.lat)
         )
         return track_coordinates.sjoin(BASINS_GDF, how="left", predicate="within").basin
 
-    def subset_by_basin(self):
+    def subset_by_basin(self, origin: bool = False):
         """Subset all tropical cyclones tracks by basin.
 
-        This function iterates through the tropical cyclones in the dataset and assigns each cyclone
-        to a basin based on its geographical location. It checks whether the cyclone's position
-        (latitude and longitude) lies within the boundaries of any of the predefined basins and
-        then groups the cyclones into separate categories for each basin. The resulting dictionary
-        maps each basin's name to a list of tropical cyclones that fall within it.
+        This function collects for every basin the tracks that crossed them. The resulting dictionary
+        maps each basin's name to a list of tropical cyclones tracks that intersected them.
 
         Parameters
         ----------
         self : TCTtracks object
-            The object instance containing the tropical cyclone data (`self.data`) to be processed.
+            The object instance containing the tropical cyclone data (`self.data`).
+        origin : bool
+            Either True or False. If True, the outputs basin will contain only the tracks that originated there.
+            If False, every track that crossed a basin will be present in the basin.
 
         Returns
         -------
         dict_tc_basins : dict
             A dictionary where the keys are basin names (e.g., "NA", "EP", "WP", etc.) and the
-            values are instances of the `TCTracks` class containing the tropical cyclones that
-            belong to each basin.
-
-        Example:
-        --------
-        >>> tc = TCTracks.from_ibtracks("")
-        >>> tc_basins = tc.subset_by_basin()
-        >>> tc_basins["NA"] # to access tracks in the North Atlantic
+            values are instances of the `TCTracks` class: effectively all tracks that intersected or originated
+            in each basin, depending on the argument "origin".
+        tracks_outside_basin : list
+            A list of all tracks that did not cross any basin.
 
         """
 
-        # Initialize a defaultdict to store lists for each basin
-        basins_dict = defaultdict(list)
+        basins_dict: dict = defaultdict(list)
         tracks_outside_basin: list = []
-        # Iterate over each tropical cyclone
+
         for track in self.data:
-            lat, lon = track.lat.values[0], track.lon.values[0]
-            origin_point = Point(lon, lat)
-            point_in_basin = False
+            # if only origin basin is of interest (origin = True)
+            if origin:
+                origin_basin = TCTracks.get_basins(track)[0]
+                if origin_basin:
+                    basins_dict[origin_basin.name].append(track)
+                else:
+                    tracks_outside_basin.append(track)
+            else:  # if every basin crossed is of interest (origin = False)
+                touched = TCTracks.get_basins(track).dropna().drop_duplicates()
+                if touched.size:
+                    for basin in touched:
+                        basins_dict[basin.name].append(track)
+                else:
+                    tracks_outside_basin.append(track)
 
-            # Find the basin that contains the point
-            for basin in Basin_bounds_storm:
-                if basin.value.contains(origin_point):
-                    basins_dict[basin.name].append(track)
-                    point_in_basin = True
-                    break
-
-            if not point_in_basin:
-                tracks_outside_basin.append(track.id_no)
-
-        if tracks_outside_basin:
-            warnings.warn(
-                f"A total of {len(tracks_outside_basin)} tracks did not originate in any of the \n"
-                f"defined basins. IDs of the tracks outside the basins: {tracks_outside_basin}",
-                UserWarning,
-            )
-
-        # Create a dictionary with TCTracks for each basin
-        dict_tc_basins = {
-            basin_name: TCTracks(tc_list) for basin_name, tc_list in basins_dict.items()
-        }
-
-        return dict_tc_basins
+        return basins_dict, tracks_outside_basin
 
     def subset_year(
         self,

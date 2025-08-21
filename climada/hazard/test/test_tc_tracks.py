@@ -878,23 +878,28 @@ class TestFuncs(unittest.TestCase):
         """test the correct splitting of a single tc object into different tc objets by basin"""
 
         tc_test = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL)
-        tc_test.data[-1].lat[0] = 0  # modify lat of track to exclude it from a basin
 
-        with self.assertWarnsRegex(
-            UserWarning,
-            "A total of 1 tracks did not originate in any of the \n"
-            "defined basins. IDs of the tracks outside the basins: \[4\]",
-        ):
-            dict_basins = tc_test.subset_by_basin()
+        # all basin
+        dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=False)
 
-        self.assertEqual(dict_basins["EP"].data[0].lat[0].item(), 12.553)
-        self.assertEqual(dict_basins["EP"].data[0].lon[0].item(), -109.445)
-        self.assertEqual(dict_basins["SI"].data[0].lat[0].item(), -8.699)
-        self.assertEqual(dict_basins["SI"].data[0].lon[0].item(), 52.761)
-        self.assertEqual(dict_basins["WP"].data[0].lat[0].item(), 8.502)
-        self.assertEqual(dict_basins["WP"].data[0].lon[0].item(), 164.909)
-        self.assertEqual(dict_basins["WP"].data[1].lat[0].item(), 16.234)
-        self.assertEqual(dict_basins["WP"].data[1].lon[0].item(), 116.424)
+        self.assertEqual(len(dict_basins["NA"]), 1)
+        self.assertEqual(len(dict_basins["EP"]), 2)
+        self.assertEqual(len(dict_basins["WP"]), 2)
+        self.assertEqual(len(dict_basins["NI"]), 0)
+        self.assertEqual(len(dict_basins["SI"]), 1)
+        self.assertEqual(len(dict_basins["SP"]), 0)
+        self.assertEqual(len(tracks_outside_basin), 0)
+
+        # only origin basin
+        dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=True)
+
+        self.assertEqual(len(dict_basins["NA"]), 0)
+        self.assertEqual(len(dict_basins["EP"]), 2)
+        self.assertEqual(len(dict_basins["WP"]), 2)
+        self.assertEqual(len(dict_basins["NI"]), 0)
+        self.assertEqual(len(dict_basins["SI"]), 1)
+        self.assertEqual(len(dict_basins["SP"]), 0)
+        self.assertEqual(len(tracks_outside_basin), 0)
 
     def test_get_extent(self):
         """Test extent/bounds attributes."""
