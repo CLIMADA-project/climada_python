@@ -37,7 +37,7 @@ LOGGER = logging.getLogger(__name__)
 
 class CountryCode(Enum):
     """
-    Enum class that links ISO country codes (both iso3a and iso3n) to specific regions and
+    Enum class that links ISO country codes (both ISO3A and ISO3N) to specific regions and
     associated impact function IDs.
 
     Attributes
@@ -458,9 +458,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         )
 
     @staticmethod
-    def get_impf_id_regions_per_countries(
-        countries: list = None, code_type: str = "ISO3A"
-    ) -> tuple:
+    def get_impf_id_regions_per_countries(countries: list = None) -> tuple:
         """Return the impact function id and the region corresponding to a list of countries,
         or a single country.
 
@@ -468,12 +466,10 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         -----------
         countries : list
             List containing the ISO codes of the country, which should be either
-            in string format if the code is "ISO3A" or an integer if "ISO3N", see code_type below.
-        code_type : str
-            Either "ISO3A" or "ISO3N". "ISO3A" stands for "ISO 3166-1 alpha-3" which is a
-            three-letter country code, "ISO3N" stands for "ISO 3166-1 numeric" which is a
-            three-digit country code, the numeric version of "ISO3A". For example, for Switzerland:
-            the "ISO3A" code is "CHE" and the "ISO3N" is 756.
+            in string format if the code is "ISO 3166-1 alpha-3" or an integer if the code is
+            "ISO 3166-1 numeric", which is a three-digit country code, the numeric version of
+            "ISO 3166-1 alpha-3". For example, for Switzerland: the "ISO 3166-1 alpha-3" code is
+            "CHE" and the "ISO 3166-1 numeric" is 756.
 
         Returns:
         --------
@@ -487,23 +483,25 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             List of the regions names. Example: "Caribbean and Mexico", "USA and Canada", ...
         """
 
-        if code_type not in {"ISO3A", "ISO3N"}:
-            raise ValueError("code_type must be either 'iso3a' or 'iso3n'")
-        elif not all(isinstance(country, type(countries[0])) for country in countries):
-            raise ValueError("All elements in the list must be of the same type.")
-        elif code_type == "ISO3A" and isinstance((countries[0]), int):
-            raise ValueError("ISO3A code type cannot have integer values.")
-        elif code_type == "ISO3N" and isinstance((countries[0]), str):
-            raise ValueError("ISO3N code type cannot have string values.")
-
-        region_country_dict = getattr(CountryCode, code_type).value
         # Find region
-        regions_ids = [
-            region_id
-            for country in countries
-            for region_id, countr_in_region_id in region_country_dict.items()
-            if country in countr_in_region_id
-        ]
+        regions_ids = []
+        for country in countries:
+
+            if isinstance(country, str):
+                code_type = "ISO3A"
+            elif isinstance(country, int):
+                code_type = "ISO3N"
+            else:
+                raise ValueError(
+                    f"The element {country} is neither in ISO3A nor ISO3N format"
+                )
+
+            region_country_dict = getattr(CountryCode, code_type).value
+
+            for region_id, countr_in_region_id in region_country_dict.items():
+                if country in countr_in_region_id:
+                    regions_ids.append(region_id)
+
         # Find impact function id
         impf_ids = [CountryCode.IMPF_ID.value[region] for region in regions_ids]
         regions_name = [CountryCode.REGION_NAME.value[region] for region in regions_ids]
