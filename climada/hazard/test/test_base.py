@@ -1156,7 +1156,6 @@ class TestStats(unittest.TestCase):
         """Test local exceedance frequencies with lin lin interpolation"""
         haz = dummy_hazard()
         haz.intensity = sparse.csr_matrix([[1.0, 3.0, 1.0], [2.0, 3.0, 0.0]])
-        haz.intensity_thres = 0.5
         haz.frequency = np.full(2, 1.0)
         return_period = np.array([0.5, 2.0 / 3.0, 1.0])
         # first centroid has intensities 1,2 with cum frequencies 2,1
@@ -1180,9 +1179,9 @@ class TestStats(unittest.TestCase):
         haz.intensity = sparse.csr_matrix(
             [[0, 0, 1e1], [0.2, 1e1, 1e2], [1e3, 1e3, 1e3]]
         )
-        haz.intensity_thres = 0.5
+        min_intensity = 0.5
         haz.frequency = np.array([1.0, 0.1, 0.01])
-        return_period = (1000, 30, 0.1)
+        return_periods = (1000, 30, 0.1)
         # first centroid has intensities 1e3 with frequencies .01, cum freq .01
         # second centroid has intensities 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01
         # third centroid has intensities 1e1, 1e2, 1e3 with cum frequencies 1., .1, .01, cum freq 1.11, .11, .01
@@ -1190,7 +1189,9 @@ class TestStats(unittest.TestCase):
 
         # test stepfunction
         inten_stats, _, _ = haz.local_exceedance_intensity(
-            return_periods=(1000, 30, 0.1), method="stepfunction"
+            return_periods=return_periods,
+            method="stepfunction",
+            min_intensity=min_intensity,
         )
         np.testing.assert_allclose(
             inten_stats.values[:, 1:].astype(float),
@@ -1199,7 +1200,9 @@ class TestStats(unittest.TestCase):
 
         # test log log extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-            return_periods=(1000, 30, 0.1), method="extrapolate"
+            return_periods=return_periods,
+            method="extrapolate",
+            min_intensity=min_intensity,
         )
         np.testing.assert_allclose(
             inten_stats.values[:, 1:].astype(float),
@@ -1209,7 +1212,9 @@ class TestStats(unittest.TestCase):
 
         # test log log interpolation and extrapolation with constant
         inten_stats, _, _ = haz.local_exceedance_intensity(
-            return_periods=(1000, 30, 0.1), method="extrapolate_constant"
+            return_periods=return_periods,
+            method="extrapolate_constant",
+            min_intensity=min_intensity,
         )
         np.testing.assert_allclose(
             inten_stats.values[:, 1:].astype(float),
@@ -1219,7 +1224,7 @@ class TestStats(unittest.TestCase):
 
         # test log log interpolation and no extrapolation
         inten_stats, _, _ = haz.local_exceedance_intensity(
-            return_periods=(1000, 30, 0.1)
+            return_periods=return_periods, min_intensity=min_intensity
         )
         np.testing.assert_allclose(
             inten_stats.values[:, 1:].astype(float),
@@ -1235,6 +1240,7 @@ class TestStats(unittest.TestCase):
             log_frequency=False,
             log_intensity=False,
             method="extrapolate_constant",
+            min_intensity=min_intensity,
         )
         np.testing.assert_allclose(
             inten_stats.values[:, 1:].astype(float),
@@ -1270,7 +1276,6 @@ class TestStats(unittest.TestCase):
         haz.intensity = sparse.csr_matrix(
             [[0, 0, 1e1], [0.0, 1e1, 1e2], [1e3, 1e3, 1e3]]
         )
-        haz.intensity_thres = 0.5
         haz.frequency = np.array([1.0, 0.1, 0.01])
         # first centroid has intensities 1e3 with frequencies .01, cum freq .01
         # second centroid has intensities 1e1, 1e3 with cum frequencies .1, .01, cum freq .11, .01

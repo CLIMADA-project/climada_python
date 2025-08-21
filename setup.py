@@ -19,6 +19,7 @@ DEPS_DOC = [
     "sphinx",
     "sphinx-book-theme",
     "sphinx-markdown-tables",
+    "sphinx-design",
     "sphinx-mdinclude",
 ]
 
@@ -77,7 +78,6 @@ setup(
         "openpyxl",
         "overpy",
         "pandas",
-        "pandas-datareader",
         "pathos",
         "peewee",
         "pillow",

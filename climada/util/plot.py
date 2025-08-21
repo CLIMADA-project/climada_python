@@ -35,6 +35,7 @@ import warnings
 from textwrap import wrap
 
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import geopandas as gpd
 import matplotlib as mpl
 import matplotlib.patches as mpatches
@@ -47,6 +48,7 @@ from matplotlib import colormaps as cm
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from rasterio.crs import CRS
 from scipy.interpolate import griddata
+from scipy.spatial import cKDTree
 from shapely.geometry import box
 
 import climada.util.coordinates as u_coord
@@ -337,6 +339,7 @@ def geo_im_from_array(
     axes=None,
     figsize=(9, 13),
     adapt_fontsize=True,
+    mask_distance=0.03,
     **kwargs,
 ):
     """Image(s) plot defined in array(s) over input coordinates.
@@ -368,6 +371,11 @@ def geo_im_from_array(
     adapt_fontsize : bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
         the default matplotlib font size is used. Default is True.
+    mask_distance: float, optional
+        Only regions are plotted that are closer to any of the data points than this distance,
+        relative to overall plot size. For instance, to only plot values
+        at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+        Default is 0.03.
     **kwargs
         arbitrary keyword arguments for pcolormesh matplotlib function
 
@@ -448,6 +456,17 @@ def geo_im_from_array(
                 (grid_x, grid_y),
                 fill_value=min_value,
             )
+            # Compute distance of each grid point to the nearest known point
+            if mask_distance is not None:
+                tree = cKDTree(np.array((coord[:, 1], coord[:, 0])).T)
+                distances, _ = tree.query(
+                    np.c_[grid_x.ravel(), grid_y.ravel()],
+                    p=2,  # for plotting squares and not sphere around centroids use p=np.inf
+                )
+                threshold = (
+                    max(extent[1] - extent[0], extent[3] - extent[2]) * mask_distance
+                )
+                grid_im[(distances.reshape(grid_im.shape) > threshold)] = min_value
         else:
             grid_x = coord[:, 1].reshape((width, height)).transpose()
             grid_y = coord[:, 0].reshape((width, height)).transpose()
@@ -477,7 +496,7 @@ def geo_im_from_array(
         )
         # handle NaNs in griddata
         color_nan = "gainsboro"
-        if np.any(np.isnan(x) for x in grid_im):
+        if np.isnan(grid_im).any():
             no_data_patch = mpatches.Patch(
                 facecolor=color_nan, edgecolor="black", label="NaN"
             )
@@ -707,24 +726,15 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize
 
 def add_shapes(axis):
     """
-    Overlay Earth's countries coastlines to matplotlib.pyplot axis.
+    Overlay Earth's countries and coastlines to matplotlib.pyplot axis.
 
     Parameters
     ----------
     axis : cartopy.mpl.geoaxes.GeoAxesSubplot
         Cartopy axis
-    projection : cartopy.crs projection, optional
-        Geographical projection.
-        The default is PlateCarree.
     """
-    shp_file = shapereader.natural_earth(
-        resolution="10m", category="cultural", name="admin_0_countries"
-    )
-    shp = shapereader.Reader(shp_file)
-    for geometry in shp.geometries():
-        axis.add_geometries(
-            [geometry], crs=ccrs.PlateCarree(), facecolor="none", edgecolor="dimgray"
-        )
+    axis.add_feature(cfeature.BORDERS.with_scale("10m"), edgecolor="dimgrey")
+    axis.add_feature(cfeature.COASTLINE.with_scale("10m"), edgecolor="dimgrey")
 
 
 def _ensure_utf8(val):
@@ -1086,6 +1096,7 @@ def plot_from_gdf(
     axis=None,
     figsize=(9, 13),
     adapt_fontsize=True,
+    mask_distance=0.03,
     **kwargs,
 ):
     """Plot several subplots from different columns of a GeoDataFrame, e.g., for
@@ -1108,6 +1119,11 @@ def plot_from_gdf(
     adapt_fontsize: bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure.
         Otherwise the default matplotlib font size is used. Default is True.
+    mask_distance: float, optional
+        Relative distance (with respect to maximal map extent in longitude or latitude) to data
+        points above which plot should not display values. For instance, to only plot values
+        at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+        Default is 0.03.
     kwargs: optional
         Arguments for pcolormesh matplotlib function used in event plots.
 
@@ -1168,6 +1184,7 @@ def plot_from_gdf(
         axes=axis,
         figsize=figsize,
         adapt_fontsize=adapt_fontsize,
+        mask_distance=mask_distance,
         **kwargs,
     )
 

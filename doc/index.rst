@@ -1,28 +1,112 @@
+:html_theme.sidebar_secondary.remove: true
+
 ===================
 Welcome to CLIMADA!
 ===================
 
-.. image:: guide/img/CLIMADA_logo_QR.png
-   :align: center
-   :alt: CLIMADA Logo
+.. card:: CLIMADA (CLIMate ADAptation)
+   :text-align: center
+   :width: 75%
+   :margin: 2 2 auto auto
 
-`CLIMADA <https://climada.ethz.ch/>`_ stands for CLIMate ADAptation and is a probabilistic natural catastrophe impact model, that also calculates averted damage (benefit) thanks to adaptation measures of any kind (from grey to green infrastructure, behavioural, etc.).
+   CLIMADA is a free and open-source software framework for climate risk assessment and
+   adaptation option appraisal.
+   Designed by a large scientific community, it
+   helps researchers, policymakers, and businesses analyse the impacts of
+   natural hazards and explore adaptation strategies.
 
-CLIMADA is primarily developed and maintained by the `Weather and Climate Risks Group <https://wcr.ethz.ch/>`_ at `ETH Zürich <https://ethz.ch/en.html>`_.
 
-If you use CLIMADA for your own scientific work, please reference the appropriate publications according to the :doc:`misc/citation`.
+CLIMADA is primarily developed and maintained by the `Weather and Climate Risks
+Group <https://wcr.ethz.ch/>`_ at `ETH Zürich <https://ethz.ch/en.html>`_.
 
-This is the documentation of the CLIMADA core module which contains all functionalities necessary for performing climate risk analysis and appraisal of adaptation options. Modules for generating different types of hazards and other specialized applications can be found in the `CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>`_ module.
+If you use CLIMADA for your own scientific work, please reference the
+appropriate publications according to the :doc:`misc/citation`.
 
-Jump right in:
+This is the documentation of the CLIMADA core module which contains all
+functionalities necessary for performing climate risk analysis and appraisal of
+adaptation options. Modules for generating different types of hazards and other
+specialized applications can be found in the `CLIMADA Petals
+<https://climada-petals.readthedocs.io/en/stable/>`_ module.
 
-* :doc:`README <misc/README>`
-* :doc:`Getting Started <guide/Guide_get_started>`
-* :doc:`Installation <guide/install>`
-* :doc:`Overview <tutorial/1_main_climada>`
-* `GitHub Repository <https://github.com/CLIMADA-project/climada_python>`_
-* :doc:`Module Reference <climada/climada>`
-* `CLIMADA Webpage <https://climada.ethz.ch/>`_
+**Useful links:** `WCR Group <https://wcr.ethz.ch/>`_ | `CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>`_ | `CLIMADA website <https://climada.ethz.ch>`_ | `Mailing list <https://sympa.ethz.ch/sympa/info/climada-users>`_
+
+.. grid:: 1 2 2 2
+    :margin: 5
+    :gutter: 0 2 3 4
+    :padding: 0 0 2 2
+    :class-container: sd-text-center
+
+    .. grid-item-card:: Getting Started
+        :shadow: md
+        :width: 75%
+
+        Getting started with CLIMADA: How to install?
+        What are the basic concepts and functionalities?
+
+        +++
+
+        .. button-ref:: getting-started/index
+            :ref-type: doc
+            :click-parent:
+            :color: secondary
+            :expand:
+
+
+    .. grid-item-card:: User Guide
+        :shadow: md
+        :width: 75%
+
+        Want to go more in depth? Check out the User guide. It contains detailed
+        tutorials on the different concepts, modules and possible usage of CLIMADA.
+
+        +++
+
+        .. button-ref:: user-guide/index
+            :ref-type: doc
+            :click-parent:
+            :color: secondary
+            :expand:
+
+            To the user guide!
+
+
+
+    .. grid-item-card::  Implementation API reference
+        :shadow: md
+        :width: 75%
+
+        The reference guide contains a detailed description of
+        the CLIMADA API. The API reference describes each module, class,
+        methods and functions.
+
+        +++
+
+        .. button-ref:: api/index
+            :ref-type: doc
+            :click-parent:
+            :color: secondary
+            :expand:
+
+            To the reference guide!
+
+    .. grid-item-card::  Developer guide
+        :shadow: md
+        :width: 75%
+
+        Saw a typo in the documentation? Want to improve
+        existing functionalities? Want to extend them?
+        The contributing guidelines will guide you through
+        the process of improving CLIMADA.
+
+        +++
+
+        .. button-ref:: development/index
+            :ref-type: doc
+            :click-parent:
+            :color: secondary
+            :expand:
+
+            To the development guide!
 
 .. ifconfig:: readthedocs
 
@@ -31,6 +115,8 @@ Jump right in:
       ReadTheDocs hosts multiple versions of this documentation.
       Use the drop-down menu on the bottom left to switch versions.
       ``stable`` refers to the most recent release, whereas ``latest`` refers to the latest development version.
+
+**Date**: |today| **Version**: |version|
 
 .. admonition:: Copyright Notice
 
@@ -49,74 +135,11 @@ Jump right in:
 
 
 .. toctree::
-   :hidden:
-
-   CLIMADA Webpage <https://climada.ethz.ch/>
-   GitHub Repositories <https://github.com/CLIMADA-project>
-   CLIMADA Petals <https://climada-petals.readthedocs.io/en/stable/>
-   Weather and Climate Risks Group <https://wcr.ethz.ch/>
-
-
-.. toctree::
    :maxdepth: 1
-   :caption: User Guide
    :hidden:
 
-   guide/Guide_Introduction
-   Getting Started <guide/Guide_get_started>
-   guide/install
-   Running CLIMADA on Euler <guide/Guide_Euler>
-
-
-.. toctree::
-   :caption: API Reference
-   :hidden:
-
-   Python Modules <climada/climada>
-
-
-.. toctree::
-   :maxdepth: 2
-   :caption: Tutorials
-   :hidden:
-
-   Overview <tutorial/1_main_climada>
-   Python Introduction <tutorial/0_intro_python>
-   Hazard <tutorial/hazard>
-   Exposures <tutorial/exposures>
-   Impact <tutorial/impact>
-   Uncertainty Quantification <tutorial/unsequa>
-   tutorial/climada_engine_Forecast
-   tutorial/climada_util_calibrate
-   Google Earth Engine <tutorial/climada_util_earth_engine>
-   tutorial/climada_util_api_client
-   Local exceedance frequency and return period <tutorial/climada_util_local_exceedance_values>
-
-
-.. toctree::
-   :maxdepth: 1
-   :caption: Developer Guide
-   :hidden:
-
-   Development with Git <guide/Guide_Git_Development>
-   guide/Guide_CLIMADA_Tutorial
-   guide/Guide_Configuration
-   guide/Guide_Testing
-   guide/Guide_continuous_integration_GitHub_actions
-   guide/Guide_Review
-   guide/Guide_PythonDos-n-Donts
-   guide/Guide_Exception_Logging
-   Performance and Best Practices <guide/Guide_Py_Performance>
-   CLIMADA Coding Conventions <guide/Guide_CLIMADA_conventions>
-   Building the Documentation <README>
-
-
-.. toctree::
-   :caption: Miscellaneous
-   :hidden:
-
-   README <misc/README>
+   Getting started <getting-started/index>
+   User Guide <user-guide/index>
+   Developer Guide <development/index>
+   API Reference <api/index>
    Changelog <misc/CHANGELOG>
-   List of Authors <misc/AUTHORS>
-   Contribution Guide <misc/CONTRIBUTING>
-   misc/citation

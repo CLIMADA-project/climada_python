@@ -20,6 +20,7 @@ Test ImpactFuncSet class.
 """
 
 import unittest
+from copy import deepcopy
 
 import numpy as np
 
@@ -286,6 +287,55 @@ class TestContainer(unittest.TestCase):
         self.assertEqual("TC", imp_fun.get_hazard_types()[0])
         self.assertEqual(1, len(imp_fun.get_ids()))
         self.assertEqual([1], imp_fun.get_ids("TC"))
+
+
+class TestEquality(unittest.TestCase):
+    """Test equality method for ImpactFuncSet"""
+
+    def setUp(self):
+        intensity = np.array([0, 20])
+        paa = np.array([0, 1])
+        mdd = np.array([0, 0.5])
+
+        fun_1 = ImpactFunc("TC", 3, intensity, mdd, paa)
+        fun_2 = ImpactFunc("TC", 3, deepcopy(intensity), deepcopy(mdd), deepcopy(paa))
+        fun_3 = ImpactFunc("TC", 4, intensity + 1, mdd, paa)
+
+        self.impact_set1 = ImpactFuncSet([fun_1])
+        self.impact_set2 = ImpactFuncSet([fun_2])
+        self.impact_set3 = ImpactFuncSet([fun_3])
+        self.impact_set4 = ImpactFuncSet([fun_1, fun_3])
+
+    def test_reflexivity(self):
+        self.assertEqual(self.impact_set1, self.impact_set1)
+
+    def test_symmetry(self):
+        self.assertEqual(self.impact_set1, self.impact_set2)
+        self.assertEqual(self.impact_set2, self.impact_set1)
+
+    def test_transitivity(self):
+        impact_set5 = ImpactFuncSet([self.impact_set1._data["TC"][3]])
+        self.assertEqual(self.impact_set1, self.impact_set2)
+        self.assertEqual(self.impact_set2, impact_set5)
+        self.assertEqual(self.impact_set1, impact_set5)
+
+    def test_consistency(self):
+        self.assertEqual(self.impact_set1, self.impact_set2)
+        self.assertEqual(self.impact_set1, self.impact_set2)
+
+    def test_comparison_with_none(self):
+        self.assertNotEqual(self.impact_set1, None)
+
+    def test_different_types(self):
+        self.assertNotEqual(self.impact_set1, "Not an ImpactFuncSet")
+
+    def test_field_comparison(self):
+        self.assertNotEqual(self.impact_set1, self.impact_set3)
+        self.assertNotEqual(self.impact_set1, self.impact_set4)
+
+    def test_inequality(self):
+        self.assertNotEqual(self.impact_set1, self.impact_set3)
+        self.assertTrue(self.impact_set1 != self.impact_set3)
 
 
 class TestChecker(unittest.TestCase):
@@ -592,6 +642,7 @@ class TestWriter(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestContainer)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEquality))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestChecker))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestExtend))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReaderExcel))
