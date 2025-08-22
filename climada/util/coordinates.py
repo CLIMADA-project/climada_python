@@ -1055,6 +1055,49 @@ def assign_coordinates(*args, **kwargs):
 
 
 def estimate_matching_threshold(coords_to_assign):
+    """
+    Estimate the matching threshold based on coordinate resolution.
+
+    This function estimates a suitable threshold for matching coordinates by taking
+    twice the maximum resolution of the input coordinates (assuming a regular grid)
+
+    Parameters
+    ----------
+    coords_to_assign : array_like
+        An array of coordinates for which to estimate the threshold. The array
+        is expected to have a shape suitable for `get_resolution`, typically
+        (N, D) where N is the number of points and D is the dimensionality.
+
+    Returns
+    -------
+    float
+        The estimated matching threshold, calculated as 2 * max resolution.
+
+    Raises
+    ------
+    ValueError
+        If the input `coords_to_assign` contains fewer than two coordinates,
+        as resolution cannot be determined from a single point.
+
+    See Also
+    --------
+    get_resolution : Helper function to calculate the resolution of coordinates.
+
+    Notes
+    -----
+    The resolution is defined as the smallest non-zero difference between adjacent
+    sorted coordinate values.
+
+    Examples
+    --------
+    >>> coords = np.array([[10, 20], [10, 20.001], [10, 20.002]])
+    >>> estimate_matching_threshold(coords)
+    0.002
+
+    >>> coords_1d = np.array([1.0, 1.1, 1.2])
+    >>> estimate_matching_threshold(coords_1d)
+    0.2
+    """
     if len(coords_to_assign) < 2:
         raise ValueError(
             "The coordinate assignement threshold cannot be"
