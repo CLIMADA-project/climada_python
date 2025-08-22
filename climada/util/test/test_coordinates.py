@@ -1231,7 +1231,7 @@ class TestAssign(unittest.TestCase):
         centroids, exposures = self.data_input_values()
 
         # Interpolate with lower threshold to raise warnings
-        threshold = 40 / EARTH_RADIUS_KM
+        threshold = 0.361
         with self.assertLogs("climada.util.coordinates", level="INFO") as cm:
             neighbors = u_coord.match_coordinates(
                 exposures, centroids, distance=dist, threshold=threshold
@@ -1264,7 +1264,7 @@ class TestAssign(unittest.TestCase):
         centroids, exposures = self.data_antimeridian_values()
 
         # Interpolate with lower threshold to raise warnings
-        threshold = 100 / EARTH_RADIUS_KM
+        threshold = 0.1
         with self.assertLogs("climada.util.coordinates", level="INFO") as cm:
             neighbors = u_coord.match_coordinates(
                 exposures, centroids, distance=dist, threshold=threshold
@@ -1354,48 +1354,33 @@ class TestAssign(unittest.TestCase):
         # Set up mock data for tests
         # note that the base coordinates are in lat/lon
         self.coords = np.array(
-            [(0.2, 2), (0, 0), (0, 2), (2.1, 3), (1, 1), (-1, 1), (0, 179.9)]
+            [(0.2, 2), (0, 0), (0, 2), (2.1, 3), (0.95, 1), (-1, 1), (0, 179.9)]
         )
         self.coords_to_assign = np.array(
             [(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)]
         )
         # test with different unit
-        self.expected_results = {
-            "degree": [
-                # test with different thresholds (in degree (converted to km))
-                (2, [2, 1, 2, 0, 3, 1, 4]),
-                (1.5, [-1, 1, 2, 0, 3, -1, -1]),
-                (0, [-1, 1, 2, 0, -1, -1, -1]),
-            ],
-            "m": [
-                # test with different thresholds (in m)
-                (100e3, [2, 1, 2, 0, 3, -1, -1]),
-                (20e3, [-1, 1, 2, 0, 3, -1, -1]),
-                (0, [-1, 1, 2, 0, -1, -1, -1]),
-            ],
-            "km": [
-                # test with different thresholds (in km)
-                (100, [2, 1, 2, 0, 3, -1, -1]),
-                (20, [-1, 1, 2, 0, 3, -1, -1]),
-                (0, [-1, 1, 2, 0, -1, -1, -1]),
-            ],
-        }
+        self.expected_results = [
+            # test with different thresholds (in degree)
+            (2, [2, 1, 2, 0, 3, 1, 4]),
+            (0.1, [-1, 1, 2, 0, 3, -1, -1]),
+            (0, [-1, 1, 2, 0, -1, -1, -1]),
+        ]
 
     def test_match_coordinates(self):
         """Test match_coordinates function"""
         self.setUp_match_coordinates()
-        unit = "degree"  # first only check for degrees
         for distance in ["euclidean", "haversine", "approx"]:
             # make sure that it works for both float32 and float64
             for test_dtype in [np.float64, np.float32]:
                 coords_typed = self.coords.astype(test_dtype)
                 coords_to_assign_typed = self.coords_to_assign.astype(test_dtype)
-                for thresh, result in self.expected_results[unit]:
+                for thresh, result in self.expected_results:
                     assigned_idx = u_coord.match_coordinates(
                         coords_typed,
                         coords_to_assign_typed,
                         distance=distance,
-                        unit=unit,
+                        crs=DEF_CRS,
                         threshold=thresh,
                     )
                     np.testing.assert_array_equal(assigned_idx, result)
@@ -1413,58 +1398,6 @@ class TestAssign(unittest.TestCase):
             result = np.array([])
             assigned_idx = u_coord.match_coordinates(
                 coords_empty, self.coords_to_assign, distance=distance, threshold=thresh
-            )
-            np.testing.assert_array_equal(assigned_idx, result)
-
-    def test_match_coordinates_different_unit(self):
-        """Test match_coordinates function in cases of different units"""
-        self.setUp_match_coordinates()
-        unit_conv_funcs = {
-            "degree": lambda x: x,
-            "km": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM,
-            "m": lambda x: np.deg2rad(x) * EARTH_RADIUS_KM * 1e3,
-        }
-        distance = "euclidean"
-        for unit in ["degree", "km", "m"]:
-            results = self.expected_results[unit]
-            # do not check antimeridian if units are not in degree
-            check_antimeridian = False if unit != "degree" else True
-            # make sure that it works for both float32 and float64
-            for test_dtype in [np.float64, np.float32]:
-                coords_typed = unit_conv_funcs[unit](self.coords.astype(test_dtype))
-                coords_to_assign_typed = unit_conv_funcs[unit](
-                    self.coords_to_assign.astype(test_dtype)
-                )
-                for thresh, result in results:
-                    assigned_idx = u_coord.match_coordinates(
-                        coords_typed,
-                        coords_to_assign_typed,
-                        distance=distance,
-                        unit=unit,
-                        threshold=thresh,
-                        check_antimeridian=check_antimeridian,
-                    )
-                    np.testing.assert_array_equal(assigned_idx, result)
-            # test empty coords_to_assign
-            coords_to_assign_empty = np.array([])
-            result = [-1, -1, -1, -1, -1, -1, -1]
-            assigned_idx = u_coord.match_coordinates(
-                self.coords,
-                coords_to_assign_empty,
-                distance=distance,
-                unit=unit,
-                threshold=thresh,
-            )
-            np.testing.assert_array_equal(assigned_idx, result)
-            # test empty coords
-            coords_empty = np.array([])
-            result = np.array([])
-            assigned_idx = u_coord.match_coordinates(
-                coords_empty,
-                self.coords_to_assign,
-                distance=distance,
-                unit=unit,
-                threshold=thresh,
             )
             np.testing.assert_array_equal(assigned_idx, result)
 
