@@ -46,6 +46,7 @@ import shapely.ops
 import shapely.vectorized
 import shapely.wkt
 from cartopy.io import shapereader
+from pyproj.crs import CRS as PCRS
 from shapely.geometry import MultiPolygon, Point, box
 from sklearn.neighbors import BallTree
 
@@ -127,14 +128,14 @@ def check_if_geo_coords(lat, lon, raise_error=True):
     return like_geo
 
 
-def get_crs_unit(coords):
+def get_crs_unit(crs):
     """
     Retrieve the unit of measurement for the coordinate reference system (CRS).
 
     Parameters
     ----------
-    coords : GeoDataFrame
-        An object with a coordinate reference system (CRS) attribute.
+    crs : PyProj CRS
+        Coordinate reference system (CRS)
 
     Returns
     -------
@@ -143,7 +144,7 @@ def get_crs_unit(coords):
         CRS axis information.
     """
     try:
-        unit = coords.crs.axis_info[0].unit_name  # assume both axes have the same unit
+        unit = crs.axis_info[0].unit_name  # assume both axes have the same unit
     except:
         LOGGER.warning("The units of the input crs are undefined.")
         unit = "undefined"
@@ -1057,12 +1058,20 @@ def estimate_matching_threshold(coords_to_assign):
     return 2 * max(abs(r) for r in get_resolution(coords_to_assign.T))
 
 
+def degree_to_km(deg):
+    return np.deg2rad(deg) * EARTH_RADIUS_KM
+
+
+def km_to_degree(km):
+    return np.rad2deg(km / EARTH_RADIUS_KM)
+
+
 def match_coordinates(
     coords,
     coords_to_assign,
     distance="euclidean",
-    unit="degree",
     threshold=None,
+    crs=DEF_CRS,
     **kwargs,
 ):
     """To each coordinate in `coords`, assign a matching coordinate in `coords_to_assign`
@@ -1122,21 +1131,23 @@ def match_coordinates(
     across the antimeridian. However, when exact matches are enforced with `threshold=0`, lat/lon
     coordinates need to be given in the same longitudinal range (such as (-180, 180)).
     """
+    crs = PCRS.from_user_input(DEF_CRS)
+
     if coords.shape[0] == 0:
         return np.array([])
 
     if coords_to_assign.shape[0] == 0:
         return -np.ones(coords.shape[0]).astype(int)
 
-    if distance not in nearest_neighbor_funcs:
-        raise ValueError(
-            f'Coordinate assignment with "{distance}" distance is not supported.'
-        )
     nearest_neighbor_funcs = {
         "euclidean": _nearest_neighbor_euclidean,
         "haversine": _nearest_neighbor_haversine,
         "approx": _nearest_neighbor_approx,
     }
+    if distance not in nearest_neighbor_funcs:
+        raise ValueError(
+            f'Coordinate assignment with "{distance}" distance is not supported.'
+        )
 
     coords = coords.astype("float64")
     coords_to_assign = coords_to_assign.astype("float64")
@@ -1175,14 +1186,14 @@ def match_coordinates(
                 "No exact centroid match found. Reprojecting coordinates "
                 "to nearest neighbor closer than the threshold = %s %s",
                 threshold,
-                unit,
+                get_crs_unit(crs),
             )
 
             not_assigned_idx_mask = assigned_idx == -1
             assigned_idx[not_assigned_idx_mask] = nearest_neighbor_funcs[distance](
                 coords_to_assign,
                 coords[not_assigned_idx_mask],
-                unit,
+                crs,
                 threshold,
                 **kwargs,
             )
@@ -1265,14 +1276,11 @@ def match_centroids(
             "Please provide coord_gdf and centroids with valid crs attributes."
         ) from exc
 
-    # get unit of coordinate systems from axis of crs
-    unit = get_crs_unit(coord_gdf)
-
     assigned = match_coordinates(
         np.stack([coord_gdf.geometry.y.values, coord_gdf.geometry.x.values], axis=1),
         centroids.coord,
+        crs=centroids.crs,
         distance=distance,
-        unit=unit,
         threshold=threshold,
     )
     return assigned
@@ -1288,7 +1296,7 @@ def _dist_sqr_approx(lats1, lons1, cos_lats1, lats2, lons2):
 
 
 def _nearest_neighbor_approx(
-    centroids, coordinates, unit, threshold, check_antimeridian=True
+    centroids, coordinates, crs, threshold, check_antimeridian=True
 ):
     """Compute the nearest centroid for each coordinate using the
     squared equirectangular approximation distance d = ((dlon)cos(lat))^2+(dlat)^2.
@@ -1318,15 +1326,16 @@ def _nearest_neighbor_approx(
     np.array
         with as many rows as coordinates containing the centroids indexes
     """
-    # first check that unit is in degree
-    if unit != "degree":
+    if not crs.is_geographic:
         raise ValueError(
-            "Only degree unit is supported for nearest neighbor matching using"
+            "Only geographic crs are supported for nearest neighbor matching using"
             "'approx' distance."
         )
-    # check that coords are indeed geographic degrees
+    # check that coords are indeed geographic degrees (in case we do no trust the crs)
     check_if_geo_coords(centroids[:, 0], centroids[:, 1])
     check_if_geo_coords(coordinates[:, 0], coordinates[:, 1])
+    # convert the degree threshold in to km at equator threshold
+    threshold_km = degree_to_km(threshold)
     # Compute only for the unique coordinates. Copy the results for the
     # not unique coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)
@@ -1345,7 +1354,7 @@ def _nearest_neighbor_approx(
         min_idx = dist.argmin()
         # Raise a warning if the minimum distance is greater than the
         # threshold and set an unvalid index -1
-        if np.sqrt(dist.min()) > threshold:
+        if np.sqrt(dist.min()) * ONE_LAT_KM > threshold_km:
             num_warn += 1
             min_idx = -1
 
@@ -1361,13 +1370,13 @@ def _nearest_neighbor_approx(
 
     if check_antimeridian:
         assigned = _nearest_neighbor_antimeridian(
-            centroids, coordinates, threshold, assigned, unit=unit
+            centroids, coordinates, threshold, assigned, crs=crs
         )
 
     return assigned
 
 
-def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
+def _nearest_neighbor_haversine(centroids, coordinates, crs, threshold):
     """Compute the neareast centroid for each coordinate using a Ball tree with haversine distance.
 
     Parameters
@@ -1389,13 +1398,12 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
     np.array
         with as many rows as coordinates containing the centroids indexes
     """
-    # first check that unit is in degree
-    if unit != "degree":
+    if not crs.is_geographic:
         raise ValueError(
-            "Only coordinates in degree units are supported for nearest neighbor matching using"
+            "Only geographic crs are supported for nearest neighbor matching using"
             "'haversine' distance."
         )
-    # check that coords are indeed geographic degrees
+    # check that coords are indeed geographic degrees (in case we do no trust the crs)
     check_if_geo_coords(centroids[:, 0], centroids[:, 1])
     check_if_geo_coords(coordinates[:, 0], coordinates[:, 1])
     # Construct tree from centroids
@@ -1433,7 +1441,7 @@ def _nearest_neighbor_haversine(centroids, coordinates, unit, threshold):
 
 
 def _nearest_neighbor_euclidean(
-    centroids, coordinates, unit, threshold, check_antimeridian=True
+    centroids, coordinates, crs, threshold, check_antimeridian=True
 ):
     """Compute the neareast centroid for each coordinate using a k-d tree.
 
@@ -1462,6 +1470,7 @@ def _nearest_neighbor_euclidean(
     np.array
         with as many rows as coordinates containing the centroids indexes
     """
+    unit = get_crs_unit(crs)
     if (
         unit == "degree"
     ):  # if unit is in degree convert to radians for dist calculations
@@ -1504,14 +1513,14 @@ def _nearest_neighbor_euclidean(
 
     if check_antimeridian:
         assigned = _nearest_neighbor_antimeridian(
-            centroids, coordinates[idx], threshold, assigned, unit=unit
+            centroids, coordinates[idx], threshold, assigned, crs=crs
         )
 
     # Copy result to all exposures and return value
     return assigned[inv]
 
 
-def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned, unit):
+def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned, crs):
     """Recompute nearest neighbors close to the anti-meridian with the Haversine distance
 
     Parameters
@@ -1533,11 +1542,16 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned, 
     np.array
         with as many rows as coordinates containing the centroids indexes
     """
+    if not crs.is_geographic:
+        raise ValueError(
+            "Only geographic crs are supported for nearest neighbor matching using"
+            "'haversine' distance at the antimeridian."
+        )
     # first check that unit is in degree
-    if unit != "degree":
+    if get_crs_unit(crs) != "degree":
         raise ValueError(
             "Only coordinates in degree units are supported for nearest neighbor matching using"
-            "'haversine' distance a the antimeridian."
+            "'haversine' distance at the antimeridian."
         )
     lon_min = min(centroids[:, 1].min(), coordinates[:, 1].min())
     lon_max = max(centroids[:, 1].max(), coordinates[:, 1].max())
@@ -1559,7 +1573,7 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned, 
         if np.any(cent_strip_bool):
             cent_strip = centroids[cent_strip_bool]
             strip_assigned = _nearest_neighbor_haversine(
-                cent_strip, coord_strip, "degree", threshold
+                cent_strip, coord_strip, crs, threshold
             )
             new_coords = cent_strip_bool.nonzero()[0][strip_assigned]
             new_coords[strip_assigned == -1] = -1
