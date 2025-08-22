@@ -1055,6 +1055,11 @@ def assign_coordinates(*args, **kwargs):
 
 
 def estimate_matching_threshold(coords_to_assign):
+    if len(coords_to_assign) < 2:
+        raise ValueError(
+            "The coordinate assignement threshold cannot be"
+            "estimated for a single coordinate. Please set the threshold explicitly"
+        )
     return 2 * max(abs(r) for r in get_resolution(coords_to_assign.T))
 
 
@@ -1131,7 +1136,7 @@ def match_coordinates(
     across the antimeridian. However, when exact matches are enforced with `threshold=0`, lat/lon
     coordinates need to be given in the same longitudinal range (such as (-180, 180)).
     """
-    crs = PCRS.from_user_input(DEF_CRS)
+    crs = PCRS.from_user_input(crs)
 
     if coords.shape[0] == 0:
         return np.array([])
