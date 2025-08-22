@@ -1063,11 +1063,73 @@ def estimate_matching_threshold(coords_to_assign):
     return 2 * max(abs(r) for r in get_resolution(coords_to_assign.T))
 
 
-def degree_to_km(deg):
-    return np.deg2rad(deg) * EARTH_RADIUS_KM
+def degree_to_km(degree):
+    """
+    Convert an angle from degrees to kilometers.
+
+    This function converts a given angle in degrees to its equivalent distance in
+    kilometers on the Earth's surface. It assumes a spherical Earth with a constant
+    radius.
+
+    Parameters
+    ----------
+    degree : float or array_like
+        The angle(s) in degrees to convert.
+
+    Returns
+    -------
+    float or ndarray
+        The equivalent distance(s) in kilometers.
+
+    See Also
+    --------
+    km_to_degree : The inverse function to convert kilometers to degrees.
+
+    Notes
+    -----
+    The conversion is based on the formula: $distance = angle_{radians} \\times R$,
+    where $R$ is the Earth's radius.
+
+    Examples
+    --------
+    >>> degree_to_km(1.0)
+    111.19492664455822
+    """
+    return np.deg2rad(degree) * EARTH_RADIUS_KM
 
 
 def km_to_degree(km):
+    """
+    Convert a distance from kilometers to degrees.
+
+    This function converts a given distance in kilometers on the Earth's surface
+    to its equivalent angle in degrees. It assumes a spherical Earth with a
+    constant radius.
+
+    Parameters
+    ----------
+    km : float or array_like
+        The distance(s) in kilometers to convert.
+
+    Returns
+    -------
+    float or ndarray
+        The equivalent angle(s) in degrees.
+
+    See Also
+    --------
+    degree_to_km : The inverse function to convert degrees to kilometers.
+
+    Notes
+    -----
+    The conversion is based on the formula: $angle_{radians} = distance / R$,
+    where $R$ is the Earth's radius.
+
+    Examples
+    --------
+    >>> km_to_degree(111.195)
+    1.0000030589140416
+    """
     return np.rad2deg(km / EARTH_RADIUS_KM)
 
 
