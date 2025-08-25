@@ -585,17 +585,17 @@ class HazardIO:
             "crs": crs,
             "rechunk": rechunk,
         }
-        if not isinstance(data, xr.Dataset):
-            if isinstance(data, xr.DataArray):
-                raise TypeError(
-                    "This method only supports passing xr.Dataset. Consider promoting "
-                    "your xr.DataArray to a Dataset."
-                )
+        if isinstance(data, xr.Dataset):
+            reader = HazardXarrayReader(data=data, **reader_kwargs)
+        elif isinstance(data, xr.DataArray):
+            raise TypeError(
+                "This method only supports passing xr.Dataset. Consider promoting "
+                "your xr.DataArray to a Dataset."
+            )
+        else:  # data is pathlike
             reader = HazardXarrayReader.from_file(
                 filename=data, open_dataset_kws=open_dataset_kws, **reader_kwargs
             )
-        else:
-            reader = HazardXarrayReader(data=data, **reader_kwargs)
 
         kwargs = reader.get_hazard_kwargs() | {
             "haz_type": hazard_type,
@@ -605,10 +605,12 @@ class HazardIO:
 
     @staticmethod
     def _check_and_cast_attrs(attrs: Dict[str, Any]) -> Dict[str, Any]:
-        """Check the validity of the hazard attributes given and cast to correct type if required and possible.
+        """Check the validity of the hazard attributes given and cast to correct type if required
+        and possible.
 
         The current purpose is to check that event_name is a list of string
-        (and convert to string otherwise), although other checks and casting could be included here in the future.
+        (and convert to string otherwise), although other checks and casting could be included here
+        in the future.
 
         Parameters
         ----------
@@ -620,7 +622,8 @@ class HazardIO:
         -------
 
         attrs : dict
-            Attributes checked for type validity and casted otherwise (only event_name at the moment).
+            Attributes checked for type validity and casted otherwise (only event_name at the
+            moment).
 
         Warns
         -----
@@ -664,8 +667,8 @@ class HazardIO:
         def _check_and_cast_elements(
             attr_value: Any, expected_dtype: Union[Any, None]
         ) -> Any:
-            """Check if the elements of the container are of the expected dtype and cast if necessary,
-            while preserving the original container type.
+            """Check if the elements of the container are of the expected dtype and cast if
+            necessary, while preserving the original container type.
 
             Parameters
             ----------
@@ -678,7 +681,8 @@ class HazardIO:
             Returns
             -------
             attr_value : any
-                The value with elements cast to the expected type, preserving the original container type.
+                The value with elements cast to the expected type, preserving the original
+                container type.
             """
             if expected_dtype is None:
                 # No dtype enforcement required
