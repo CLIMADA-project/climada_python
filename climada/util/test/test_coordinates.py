@@ -28,6 +28,7 @@ import pandas as pd
 import rasterio.transform
 import shapely
 from cartopy.io import shapereader
+from pyproj import Transformer
 from pyproj.crs import CRS as PCRS
 from rasterio import Affine
 from rasterio.crs import CRS as RCRS
@@ -47,6 +48,14 @@ from climada.util.constants import (
 )
 
 DATA_DIR = CONFIG.util.test_data.dir()
+
+
+def convert_coordinates(coords_list, source_crs, target_crs):
+    transformer = Transformer.from_crs(source_crs, target_crs, always_xy=True)
+    converted_coords = np.array(
+        [transformer.transform(lon, lat) for lon, lat in coords_list]
+    )
+    return converted_coords
 
 
 def def_input_values():
@@ -248,33 +257,33 @@ class TestGetUnitCoords(unittest.TestCase):
         """Test with a geodetic CRS in degree (EPSG:4326)."""
         crs = "EPSG:4326"
         gdf = self.create_mock_gdf(crs)
-        unit = u_coord.get_crs_unit(gdf)
+        unit = u_coord.get_crs_unit(gdf.crs)
         self.assertEqual(unit, "degree", "Expected unit 'degree' for geodetic CRS.")
 
     def test_get_unit_projected_m(self):
         """Test with a projected CRS in m (EPSG:3857)."""
         crs = "EPSG:3857"
         gdf = self.create_mock_gdf(crs)
-        unit = u_coord.get_crs_unit(gdf)
-        self.assertEqual(unit, "m", "Expected unit 'm' for projected CRS.")
+        unit = u_coord.get_crs_unit(gdf.crs)
+        self.assertEqual(unit, "metre", "Expected unit 'metre' for projected CRS.")
 
     def test_get_unit_projected_km(self):
         """Test with a projected CRS in km (EPSG:22300)."""
         crs = "EPSG:22300"
         gdf = self.create_mock_gdf(crs)
-        unit = u_coord.get_crs_unit(gdf)
-        self.assertEqual(unit, "km", "Expected unit 'km' for projected CRS.")
+        unit = u_coord.get_crs_unit(gdf.crs)
+        self.assertEqual(
+            unit, "kilometre", "Expected unit 'kilometre' for projected CRS."
+        )
 
     def test_get_unit_invalid_crs(self):
         """Test with an invalid CRS."""
         crs = "EPSG:8189"
         gdf = self.create_mock_gdf(crs)
-        with self.assertRaises(ValueError) as cm:
-            u_coord.get_crs_unit(gdf)
-            self.assertIn(
-                "Unknown unit: US survey foot. Please provide a crs that has a unit of 'degree', 'metre' or 'kilometre'.",
-                str(cm.exception),
-            )
+        unit = u_coord.get_crs_unit(gdf.crs)
+        self.assertEqual(
+            unit, "US survey foot", "Expected unit 'US survey foot' for projected CRS."
+        )
 
 
 class TestDistance(unittest.TestCase):
@@ -1354,12 +1363,11 @@ class TestAssign(unittest.TestCase):
         # Set up mock data for tests
         # note that the base coordinates are in lat/lon
         self.coords = np.array(
-            [(0.2, 2), (0, 0), (0, 2), (2.1, 3), (0.95, 1), (-1, 1), (0, 179.9)]
+            [(0.2, 2), (0, 0), (0, 2), (2.1, 3), (0.95, 1), (-0.75, 0.75), (0, 179.9)]
         )
         self.coords_to_assign = np.array(
             [(2.1, 3), (0, 0), (0, 2), (0.9, 1.0), (0, -179.9)]
         )
-        # test with different unit
         self.expected_results = [
             # test with different thresholds (in degree)
             (2, [2, 1, 2, 0, 3, 1, 4]),
@@ -1401,43 +1409,85 @@ class TestAssign(unittest.TestCase):
             )
             np.testing.assert_array_equal(assigned_idx, result)
 
-    def test_match_coordinates_invalid_unit(self):
-        """Test match_coordinates with invalid unit"""
+    def test_match_coordinates_degree_crs(self):
+        """Test match_coordinates function"""
         self.setUp_match_coordinates()
-        coords_to_assign = np.deg2rad(self.coords_to_assign)
-        coords = np.deg2rad(self.coords)
-        with self.assertRaises(ValueError):
-            u_coord.match_coordinates(
-                coords, coords_to_assign, "foo", u_coord.NEAREST_NEIGHBOR_THRESHOLD
-            )
+        for distance in ["euclidean", "haversine", "approx"]:
+            # make sure that it works for both float32 and float64
+            crs = "EPSG:4258"  # degrees, Europe
+            for thresh, result in self.expected_results:
+                assigned_idx = u_coord.match_coordinates(
+                    convert_coordinates(self.coords, DEF_CRS, crs),
+                    convert_coordinates(self.coords_to_assign, DEF_CRS, crs),
+                    distance=distance,
+                    crs=crs,
+                    threshold=thresh,
+                )
+                np.testing.assert_array_equal(assigned_idx, result)
 
-    def test_nearest_neighbor_approx_invalid_unit(self):
-        """Test approx nearest neighbor with invalid unit"""
+            crs = "EPSG:4269"  # degrees NA
+            for thresh, result in self.expected_results:
+                assigned_idx = u_coord.match_coordinates(
+                    convert_coordinates(self.coords, DEF_CRS, crs),
+                    convert_coordinates(self.coords_to_assign, DEF_CRS, crs),
+                    distance=distance,
+                    crs=crs,
+                    threshold=thresh,
+                )
+                np.testing.assert_array_equal(assigned_idx, result)
+
+    def test_match_coordinates_projected_foot_crs(self):
+        """Test match_coordinates function"""
         self.setUp_match_coordinates()
-        coords_to_assign = np.deg2rad(self.coords_to_assign)
-        coords = np.deg2rad(self.coords)
-        with self.assertRaises(ValueError):
-            u_coord._nearest_neighbor_approx(
-                coords_to_assign,
-                coords,
-                "km",
-                u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+        distance = "euclidean"
+        crs = "EPSG:2227"  # US foot
+        for thresh, result in self.expected_results:
+            assigned_idx = u_coord.match_coordinates(
+                convert_coordinates(self.coords, DEF_CRS, crs)[
+                    :-1
+                ],  # last coordinate out of crs range
+                convert_coordinates(self.coords_to_assign, DEF_CRS, crs)[:-1],
+                distance=distance,
+                crs=crs,
+                threshold=u_coord.degree_to_km(thresh) * 3280,  # US foot
             )
+            np.testing.assert_array_equal(assigned_idx, result[:-1])
 
-    def test_nearest_neighbor_haversine_invalid_unit(self):
-        """Test haversine nearest neighbor with invalid unit"""
+    def test_match_coordinates_projected_meters_crs(self):
+        """Test match_coordinates function"""
         self.setUp_match_coordinates()
-        coords_to_assign = np.deg2rad(self.coords_to_assign)
-        coords = np.deg2rad(self.coords)
-        with self.assertRaises(ValueError):
-            u_coord._nearest_neighbor_haversine(
-                coords_to_assign,
-                coords,
-                "km",
-                u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+        distance = "euclidean"
+        crs = "EPSG:4087"  # meters
+        for thresh, result in self.expected_results:
+            assigned_idx = u_coord.match_coordinates(
+                convert_coordinates(self.coords, DEF_CRS, crs)[
+                    :-1
+                ],  # last coordinate out of crs range
+                convert_coordinates(self.coords_to_assign, DEF_CRS, crs)[:-1],
+                distance=distance,
+                crs=crs,
+                threshold=u_coord.degree_to_km(thresh) * 1000,  # meters
             )
+            np.testing.assert_array_equal(assigned_idx, result[:-1])
 
-    def antimeridian_warning_invalid_unit(self):
+    def test_match_coordinates_projected_meters2_crs(self):
+        """Test match_coordinates function"""
+        self.setUp_match_coordinates()
+        distance = "euclidean"
+        crs = "EPSG:3857"  # meters
+        for thresh, result in self.expected_results:
+            assigned_idx = u_coord.match_coordinates(
+                convert_coordinates(self.coords, DEF_CRS, crs)[
+                    :-1
+                ],  # last coordinate out of crs range
+                convert_coordinates(self.coords_to_assign, DEF_CRS, crs)[:-1],
+                distance=distance,
+                crs=crs,
+                threshold=u_coord.degree_to_km(thresh) * 1000,  # meters
+            )
+            np.testing.assert_array_equal(assigned_idx, result[:-1])
+
+    def test_antimeridian_warning_invalid_range(self):
         """Check that a warning is raised when coords are
         non-degree and check_antimeridian is True"""
 
@@ -1445,18 +1495,22 @@ class TestAssign(unittest.TestCase):
         coords_to_assign = np.deg2rad(self.coords_to_assign) * EARTH_RADIUS_KM  # to km
         coords = np.deg2rad(self.coords) * EARTH_RADIUS_KM
 
-        with self.assertLogs("climada.util.coordinates", level="WARNING") as cm:
-            neighbors = u_coord.match_coordinates(
-                coords_to_assign, coords, check_antimeridian=True
-            )
-        self.assertIn(
-            "Handling of antimeridian crossing is not implemented for non-degree"
-            " coordinates ('check_antimeridian' has been set to False). Please use"
-            " degree-based coordinates system if you want to enable antimeridian crossing.",
-            cm.output[1],
-        )
+        with self.assertRaises(ValueError):
+            u_coord.match_coordinates(coords_to_assign, coords, check_antimeridian=True)
 
-        np.testing.assert_array_equal(neighbors, self.data_ref_antimeridian())
+    def test_error_projected_crs_haversine_approx(self):
+        """Check that a warning is raised when coords are
+        non-degree and check_antimeridian is True"""
+
+        self.setUp_match_coordinates()
+        crs = "EPSG:3857"
+        coords_to_assign = convert_coordinates(self.coords_to_assign, DEF_CRS, crs)
+        coords = convert_coordinates(self.coords, DEF_CRS, crs)
+        for distance in ["haversine", "approx"]:
+            with self.assertRaises(ValueError):
+                u_coord.match_coordinates(
+                    coords_to_assign, coords, distance=distance, crs=crs
+                )
 
 
 class TestGetGeodata(unittest.TestCase):
