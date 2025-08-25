@@ -574,10 +574,13 @@ class TestImpactCalc(unittest.TestCase):
         eai_exp = np.array([aai_agg])
         at_event = np.array([imp_evt, 0])
         exp.set_geometry_points()
+        exp.assign_centroids(haz, threshold=1)
         impf_tc = ImpfTropCyclone.from_emanuel_usa()
         impf_set = ImpactFuncSet([impf_tc])
         impf_set.check()
-        imp = ImpactCalc(exp, impf_set, haz).impact(save_mat=True)
+        imp = ImpactCalc(exp, impf_set, haz).impact(
+            assign_centroids=False, save_mat=True
+        )
         check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
 
 
