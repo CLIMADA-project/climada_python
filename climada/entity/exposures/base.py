@@ -612,11 +612,11 @@ class Exposures:
             Possible values are "euclidean", "haversine" and "approx".
             Default: "euclidean"
         threshold : float
-            If the distance (in km) to the nearest neighbor exceeds `threshold`,
+            If the distance (in the exposure's crs) to the nearest neighbor exceeds `threshold`,
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching and enforce
             exact matching.
-            Default: 100 (km)
+            Default: twice the highest resolution of the hazard centroids
         overwrite: bool
             If True, overwrite centroids already present. If False, do
             not assign new centroids. Default is True.
@@ -633,7 +633,7 @@ class Exposures:
         coordinates is needed, please use 'haversine' distance metric,
         which however is slower.
 
-        Caution: bearest neighbourg matching can introduce serious artefacts
+        Caution: nearest neighbourg matching can introduce serious artefacts
         such as:
             - exposure and hazard centroids with shifted grids can lead
             to systematically wrong assignements.

@@ -1190,6 +1190,8 @@ def match_coordinates(
     nearest neighbor. If the distance to the nearest neighbor exceeds `threshold`, the index `-1`
     is assigned.
 
+    Make sure that all coordinates are according to the same coordinate reference system (crs).
+
     You can disable nearest neighbor matching by setting `threshold` to 0, in which case
     only exactly matching coordinates are assigned to each other.
 
@@ -1205,9 +1207,9 @@ def match_coordinates(
     distance : str, optional
         Distance to use for non-exact matching. Possible values are "euclidean", "haversine" and
         "approx". Default: "euclidean"
-    unit : str, optional
-        Unit to use for non-exact matching. Possible values are "degree", "m", "km".
-        Default: "degree"
+    crs : str or pyproj crs, optinal
+        Coordinate reference system (crs) of the input coordinates.
+        Default: EPSG:4326
     threshold : float, optional
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
         Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km or crs.unit)

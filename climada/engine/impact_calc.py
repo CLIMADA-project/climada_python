@@ -92,6 +92,8 @@ class ImpactCalc:
             Default: True
         assign_centroids : bool, optional
             indicates whether centroids are assigned to the self.exposures object.
+            The default centroids assignement uses euclidean distance and a threshold equal to
+            twice the highest resolution of the centroids (assuming a regular grid).
             Recommendation: assign the centroids directly with control
             over the distance metric and the distance threshold using
             `exposure.assign_centroids(hazard)`. In this case, set assign_centroids to ``False``.
