@@ -9,8 +9,9 @@ dependencies:
   - contextily>=1.6
   - dask>=2025.2
   - eccodes>=2.40
+  - fiona>=1.10
   - gdal>=3.10
-  - geopandas>=0.14,<1.0  # geopandas 1.0 does not depend on fiona anymore, hence fiona would need to be added as dependency
+  - geopandas>=0.14
   - h5py>=3.12
   - haversine>=2.9
   - matplotlib-base>=3.10
@@ -19,7 +20,7 @@ dependencies:
   - numexpr>=2.10
   - openpyxl>=3.1
   - osm-flex>=1.1
-  - pandas>=2.1,<2.2  # 2.2 is not compatible with the default pytables=3.7 and yields a very high deprecation warning number through geopandas
+  - pandas>=2.1
   - pathos>=0.3
   - pint>=0.24
   - pip
