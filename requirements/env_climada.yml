@@ -13,7 +13,7 @@ dependencies:
   - eccodes>=2.41
   - fiona>=1.10
   - gdal>=3.10
-  - geopandas>=0.14,<1.0  # not yet ready for upgrading
+  - geopandas>=0.14
   - h5py>=3.13
   - haversine>=2.9
   - matplotlib-base>=3.10
@@ -22,8 +22,7 @@ dependencies:
   - numexpr>=2.10
   - openpyxl>=3.1
   - osm-flex>=1.1  # this is only required for running the tutorials, not for the CLIMADA package itself
-  - overpy>=0.7
-  - pandas>=2.1,<2.2  # 2.2 is not compatible with the default pytables=3.7 and yields a very high deprecation warning number through geopandas
+  - pandas>=2.1
   - pathos>=0.3
   - peewee>=3.17
   - pint>=0.24
