@@ -980,7 +980,7 @@ class Centroids:
                         gdf.drop(columns=[xycol + ".x", xycol + ".y"], inplace=True)
                     for wkbcol in metadata.get("wkb_columns", []):
                         gdf[wkbcol] = gpd.GeoSeries.from_wkb(gdf[wkbcol], crs=crs)
-                gdf.set_geometry("geometry", crs=crs, inplace=True)
+                gdf.set_geometry("geometry", inplace=True)
 
         except TypeError:
             with h5py.File(file_name, "r") as data:

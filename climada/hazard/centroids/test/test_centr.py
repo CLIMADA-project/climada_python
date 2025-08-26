@@ -727,7 +727,7 @@ class TestCentroidsReaderWriter(unittest.TestCase):
 
     def test_read_write_hdf5_with_additional_columns(self):
         tmpfile = Path("test_write_hdf5.out.hdf5")
-        crs = DEF_CRS
+        crs = CRS.from_user_input(ALT_CRS)
         centroids_w = Centroids(
             lat=VEC_LAT,
             lon=VEC_LON,
@@ -762,7 +762,7 @@ class TestCentroidsReaderWriter(unittest.TestCase):
                         ]
                         * 8
                     }
-                ).set_geometry("more_shapes")
+                ).set_geometry("more_shapes", crs=DEF_CRS)
             )
         )
         centroids_w.write_hdf5(tmpfile)
