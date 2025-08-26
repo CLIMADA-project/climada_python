@@ -917,7 +917,7 @@ class Centroids:
             pandas_df = pd.DataFrame(self.gdf)
             for col in pandas_df.columns:
                 if str(pandas_df[col].dtype) == "geometry":
-                    if (self.gdf.geom_type == "Point").all():
+                    if (self.gdf[col].geom_type == "Point").all():
                         pandas_df[col + ".x"] = self.gdf[col].x
                         pandas_df[col + ".y"] = self.gdf[col].y
                         pandas_df.drop(columns=[col], inplace=True)
