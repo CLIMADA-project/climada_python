@@ -917,12 +917,12 @@ class Centroids:
             pandas_df = pd.DataFrame(self.gdf)
             for col in pandas_df.columns:
                 if str(pandas_df[col].dtype) == "geometry":
-                    try:
+                    if (self.gdf.geometry.geom_type == "Point").all():
                         pandas_df[col + ".x"] = self.gdf[col].x
                         pandas_df[col + ".y"] = self.gdf[col].y
                         pandas_df.drop(columns=[col], inplace=True)
                         xycols.append(col)
-                    except ValueError:
+                    else:
                         pandas_df[col] = self.gdf[col].to_wkb()
                         wkbcols.append(col)
 
