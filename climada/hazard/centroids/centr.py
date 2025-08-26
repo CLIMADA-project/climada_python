@@ -177,9 +177,13 @@ class Centroids:
 
         try:
             pd.testing.assert_frame_equal(self.gdf, other.gdf, check_like=True)
-            return True
         except AssertionError:
             return False
+
+        if not (self.gdf.geometry == other.gdf.geometry).all():
+            return False
+
+        return True
 
     def to_default_crs(self, inplace=True):
         """Project the current centroids to the default CRS (epsg4326)
@@ -483,11 +487,11 @@ class Centroids:
         -------
         ax : cartopy.mpl.geoaxes.GeoAxes instance
         """
-        if axis == None:
+        if axis is None:
             fig, axis = plt.subplots(
                 figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()}
             )
-        if type(axis) != cartopy.mpl.geoaxes.GeoAxes:
+        if type(axis) is not cartopy.mpl.geoaxes.GeoAxes:
             raise AttributeError(
                 f"The axis provided is of type: {type(axis)} "
                 "The function requires a cartopy.mpl.geoaxes.GeoAxes."
@@ -964,13 +968,19 @@ class Centroids:
                 # the CRS was stored in '_crs'/'crs'
                 crs = metadata.get("crs")
                 gdf = gpd.GeoDataFrame(store["centroids"])
-                for xycol in metadata.get("xy_columns", []):
-                    gdf[xycol] = gpd.points_from_xy(
-                        x=gdf[xycol + ".x"], y=gdf[xycol + ".y"], crs=crs
-                    )
-                    gdf.drop(columns=[xycol + ".x", xycol + ".y"], inplace=True)
-                for wkbcol in metadata.get("wkb_columns", []):
-                    gdf[wkbcol] = gpd.GeoSeries.from_wkb(gdf[wkbcol], crs=crs)
+                with warnings.catch_warnings():
+                    # setting a column named 'geometry' triggers a future warning
+                    # with geopandas 0.14
+                    warnings.simplefilter(action="ignore", category=FutureWarning)
+
+                    for xycol in metadata.get("xy_columns", []):
+                        gdf[xycol] = gpd.points_from_xy(
+                            x=gdf[xycol + ".x"], y=gdf[xycol + ".y"], crs=crs
+                        )
+                        gdf.drop(columns=[xycol + ".x", xycol + ".y"], inplace=True)
+                    for wkbcol in metadata.get("wkb_columns", []):
+                        gdf[wkbcol] = gpd.GeoSeries.from_wkb(gdf[wkbcol], crs=crs)
+                gdf.set_geometry("geometry", crs=crs, inplace=True)
 
         except TypeError:
             with h5py.File(file_name, "r") as data:

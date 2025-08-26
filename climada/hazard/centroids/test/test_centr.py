@@ -725,6 +725,51 @@ class TestCentroidsReaderWriter(unittest.TestCase):
         self.assertTrue(centroids_w == centroids_r)
         tmpfile.unlink()
 
+    def test_read_write_hdf5_with_additional_columns(self):
+        tmpfile = Path("test_write_hdf5.out.hdf5")
+        crs = DEF_CRS
+        centroids_w = Centroids(
+            lat=VEC_LAT,
+            lon=VEC_LON,
+            crs=crs,
+            region_id=REGION_ID,
+            on_land=ON_LAND,
+        )
+        centroids_w.gdf = (
+            centroids_w.gdf.join(
+                gpd.GeoDataFrame(
+                    {"more_points": [shapely.Point(i, i) for i in range(8)]}
+                ).set_geometry("more_points")
+            )
+            .join(
+                gpd.GeoDataFrame(
+                    {
+                        "some_shapes": [
+                            shapely.Point((2, 2)),
+                            shapely.Point((3, 3)),
+                            shapely.Polygon([(0, 0), (1, 1), (1, 0), (0, 0)]),
+                            shapely.LineString([(0, 1), (1, 0)]),
+                        ]
+                        * 2
+                    }
+                ).set_geometry("some_shapes")
+            )
+            .join(
+                gpd.GeoDataFrame(
+                    {
+                        "more_shapes": [
+                            shapely.LineString([(0, 1), (1, 2)]),
+                        ]
+                        * 8
+                    }
+                ).set_geometry("more_shapes")
+            )
+        )
+        centroids_w.write_hdf5(tmpfile)
+        centroids_r = Centroids.from_hdf5(tmpfile)
+        self.assertTrue(centroids_w == centroids_r)
+        tmpfile.unlink()
+
     def test_from_hdf5_nonexistent_file(self):
         """Test raising FileNotFoundError when creating Centroids object from a nonexistent HDF5 file"""
         file_name = "/path/to/nonexistentfile.h5"
