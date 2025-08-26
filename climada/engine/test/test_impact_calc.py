@@ -210,6 +210,28 @@ class TestImpactCalc(unittest.TestCase):
         self.assertAlmostEqual(6.570532945599105e11, impact.tot_value)
         self.assertAlmostEqual(6.512201157564421e09 * x, impact.aai_agg, 5)
 
+    def test_calc_impact_TC_change_crs_pass(self):
+        """Test compute impact"""
+        crs = "EPSG:4087"
+        exp = ENT.exposures.copy()
+        exp.to_crs(crs)
+        haz = deepcopy(HAZ)
+        haz.centroids.to_crs(crs)
+        icalc = ImpactCalc(exp, ENT.impact_funcs, haz)
+        impact = icalc.impact()
+        self.assertEqual(icalc.n_events, len(impact.at_event))
+        self.assertEqual(0, impact.at_event[0])
+        self.assertEqual(0, impact.at_event[7225])
+        self.assertAlmostEqual(1.472482938320243e08, impact.at_event[13809], delta=1)
+        self.assertAlmostEqual(7.076504723057620e10, impact.at_event[12147], delta=1)
+        self.assertEqual(0, impact.at_event[14449])
+        self.assertEqual(icalc.n_exp_pnt, len(impact.eai_exp))
+        self.assertAlmostEqual(1.518553670803242e08, impact.eai_exp[0], delta=1)
+        self.assertAlmostEqual(1.373490457046383e08, impact.eai_exp[25], 6)
+        self.assertAlmostEqual(1.066837260150042e08, impact.eai_exp[49], 6)
+        self.assertAlmostEqual(6.570532945599105e11, impact.tot_value)
+        self.assertAlmostEqual(6.512201157564421e09, impact.aai_agg, 5)
+
     def test_calc_impact_RF_pass(self):
         haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
         exp = Exposures.from_hdf5(
