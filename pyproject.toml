@@ -1,16 +1,16 @@
 [build-system]
-requires = ["setuptools>=61", "setuptools_scm"]
+requires = ["setuptools >= 64"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "climada"
 version = "6.0.2-dev"
-description = "CLIMADA in Python"
+description = "Framework for climate risk assessment and adaptation option appraisal"
 readme = "README.md"
 requires-python = ">=3.10,<3.13"
-license = { text = "GNU Lesser General Public License v3 (GPLv3)" }
+license = { text = "GNU General Public License v3 (GPLv3)" }
 authors = [
-    { name = "ETH", email = "schmide@ethz.ch" }
+    { name = "ETH", email = "climada-info@sympa.ethz.ch" }
 ]
 keywords = ["climate", "adaptation"]
 classifiers = [
@@ -71,13 +71,14 @@ doc = [
     "sphinx-design",
     "sphinx-mdinclude"
 ]
-test = [
+dev = [
     "ipython",
     "mccabe>=0.6",
     "pylint>=3.0",
     "pytest",
     "pytest-cov",
-    "pytest-subtests"
+    "pytest-subtests",
+    "pre-commit"
 ]
 
 [project.urls]

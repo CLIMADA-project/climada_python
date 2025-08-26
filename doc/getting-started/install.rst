@@ -268,7 +268,7 @@ Then, add the ``test`` extra specification to the ``pip install`` command (**min
 
 .. code-block:: shell
 
-   python -m pip install -e "./[test]"
+   python -m pip install -e "./[dev]"
 
 The CLIMADA Python package defines the following `extras <https://peps.python.org/pep-0508/#extras>`_:
 
@@ -278,10 +278,10 @@ The CLIMADA Python package defines the following `extras <https://peps.python.or
 
    * - Extra
      - Includes Dependencies...
-   * - ``test``
-     - for running and evaluating tests
+   * - ``dev``
+     - for developers, needed for running and evaluating tests and pre-commit actions
    * - ``doc``
-     - for building documentation
+     - for building the documentation files from in-source pydoc annotations
 
 The developer dependencies also include `pre-commit <https://pre-commit.com/#intro>`_, which is used to install and run automated, so-called pre-commit hooks before a new commit.
 In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install the hooks first.
