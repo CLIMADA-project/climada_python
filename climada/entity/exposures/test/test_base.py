@@ -103,6 +103,41 @@ class TestFuncs(unittest.TestCase):
             self.assertEqual(exp.gdf.shape[0], len(exp.hazard_centroids("FL")))
             np.testing.assert_array_equal(exp.hazard_centroids("FL"), expected_result)
 
+    def test_assign_meter_crs_pass(self):
+        """Check that attribute `assigned` is correctly set."""
+        np_rand = np.random.RandomState(123456789)
+
+        haz = Hazard.from_raster(
+            [HAZ_DEMO_FL], haz_type="FL", window=Window(10, 20, 50, 60)
+        )
+        ncentroids = haz.centroids.size
+        crs_meters = "EPSG:4087"
+        haz.centroids.to_crs(crs_meters, inplace=True)
+        exp = Exposures(
+            crs=haz.centroids.crs,
+            lon=np.concatenate(
+                [
+                    haz.centroids.lon,
+                    haz.centroids.lon + 0.001 * (-0.5 + np_rand.rand(ncentroids)),
+                ]
+            ),
+            lat=np.concatenate(
+                [
+                    haz.centroids.lat,
+                    haz.centroids.lat + 0.001 * (-0.5 + np_rand.rand(ncentroids)),
+                ]
+            ),
+        )
+        expected_result = np.concatenate([np.arange(ncentroids), np.arange(ncentroids)])
+
+        # make sure that it works for both float32 and float64
+        for test_dtype in [np.float64, np.float32]:
+            haz.centroids.gdf["lat"] = haz.centroids.lat.astype(test_dtype)
+            haz.centroids.gdf["lon"] = haz.centroids.lon.astype(test_dtype)
+            exp.assign_centroids(haz)
+            self.assertEqual(exp.gdf.shape[0], len(exp.hazard_centroids("FL")))
+            np.testing.assert_array_equal(exp.hazard_centroids("FL"), expected_result)
+
     def test__init__meta_type(self):
         """Check if meta of type list raises a ValueError in __init__"""
         with self.assertRaises(TypeError) as cm:
