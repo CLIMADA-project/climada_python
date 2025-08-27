@@ -20,6 +20,7 @@ Removed:
 - Added optional parameter to `geo_im_from_array`, `plot_from_gdf`, `plot_rp_imp`, `plot_rp_intensity`,
 `plot_intensity`, `plot_fraction`, `_event_plot` to mask plotting when regions are too far from data points [#1047](https://github.com/CLIMADA-project/climada_python/pull/1047). To recreate previous plots (no masking), the parameter can be set to None.
 - Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
+- Added util methods to handle crs coordinates consistently: `is_geo_coords`, `check_if_geo_coords`, `get_crs_unit`, `estimate_matching_threshold`, `degree_to_km`, and `km_to_degree` [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080)
 
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
 
@@ -27,9 +28,9 @@ Removed:
 - Changed the default mask_distance in `util.plot.geo_im_from_array` to 0.03 to avoid white gaps in gridded hazard data with comparably low resolution (>80 centroids per axis) [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
 - Increased speed of `util.plot.add_shapes` by avoiding for loops, substantially speeding up `Hazard.plot_intensity` and other functions. [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
 - Update `util.coordinates.match_centroids` and `util.coordinates.match_coordinates` so that they also
-accept coordinates that are not defined in degree.
+accept coordinates that are not defined in degree. [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080)
 - Implement cheap test to check that input coordinates at least seem geographic for functions that require
-geographic coordinates as input (e.g. `util.coordinates.dist_to_coast`, `util.coordinates.coord_on_land`).
+geographic coordinates as input (e.g. `util.coordinates.dist_to_coast`, `util.coordinates.coord_on_land`). [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080)
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, `Impact.local_return_period`, using the `climada.util.interpolation` module: New default (no binning), binning on decimals, and faster implementation [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
 - World Bank indicator data is now downloaded directly from their API via the function `download_world_bank_indicator`, instead of relying on the `pandas-datareader` package [#1033](https://github.com/CLIMADA-project/climada_python/pull/1033)
 - `Exposures.write_hdf5` pickles geometry data in WKB format, which is faster and more sustainable. [#1051](https://github.com/CLIMADA-project/climada_python/pull/1051)
