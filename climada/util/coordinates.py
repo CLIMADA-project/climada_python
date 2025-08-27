@@ -2183,10 +2183,10 @@ def get_resolution_1d(coords, min_resol=1.0e-8):
     res : float
         Resolution of given grid.
     """
-    res = np.diff(np.unique(coords))
-    diff = np.diff(coords)
-    mask = (res > min_resol) & np.isin(res, np.abs(diff))
-    return diff[np.abs(diff) == res[mask].min()][0]
+    res = np.diff(np.unique(coords))  # always positive because unique is sorted
+    diff = np.abs(np.diff(coords))
+    mask = (res > min_resol) & np.isin(res, diff)
+    return diff[diff == res[mask].min()][0]
 
 
 def get_resolution(*coords, min_resol=1.0e-8):
