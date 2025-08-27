@@ -45,7 +45,7 @@ DEF_DATA_VARS = ["fraction", "frequency", "event_id", "event_name", "date"]
 """Default keys for optional Hazard attributes when reading from an xarray Dataset"""
 
 
-def to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
+def _to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
     """Store a numpy array as sparse matrix, optimizing storage space
 
     The CSR matrix stores NaNs explicitly, so we set them to zero.
@@ -62,12 +62,12 @@ def to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
 
 
 # Define accessors for xarray DataArrays
-def default_accessor(array: xr.DataArray) -> np.ndarray:
+def _default_accessor(array: xr.DataArray) -> np.ndarray:
     """Take a DataArray and return its numpy representation"""
     return array.values
 
 
-def strict_positive_int_accessor(array: xr.DataArray) -> np.ndarray:
+def _strict_positive_int_accessor(array: xr.DataArray) -> np.ndarray:
     """Take a positive int DataArray and return its numpy representation
 
     Raises
@@ -84,12 +84,12 @@ def strict_positive_int_accessor(array: xr.DataArray) -> np.ndarray:
     return array.to_numpy()
 
 
-def date_to_ordinal_accessor(array: xr.DataArray, strict: bool = True) -> np.ndarray:
+def _date_to_ordinal_accessor(array: xr.DataArray, strict: bool = True) -> np.ndarray:
     """Take a DataArray and transform it into ordinals"""
     try:
         if np.issubdtype(array.dtype, np.integer):
             # Assume that data is ordinals
-            return strict_positive_int_accessor(array)
+            return _strict_positive_int_accessor(array)
 
         # Try transforming to ordinals
         return np.array(u_dt.datetime64_to_ordinal(array.to_numpy()))
@@ -107,7 +107,7 @@ def date_to_ordinal_accessor(array: xr.DataArray, strict: bool = True) -> np.nda
         return np.ones(array.shape)
 
 
-def year_month_day_accessor(array: xr.DataArray, strict: bool = True) -> np.ndarray:
+def _year_month_day_accessor(array: xr.DataArray, strict: bool = True) -> np.ndarray:
     """Take an array and return am array of YYYY-MM-DD strings"""
     try:
         return array.dt.strftime("%Y-%m-%d").to_numpy()
@@ -125,7 +125,7 @@ def year_month_day_accessor(array: xr.DataArray, strict: bool = True) -> np.ndar
         return np.full(array.shape, "")
 
 
-def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
+def _maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
     """Return the array or repeat a single-valued array
 
     If ``values`` has size 1, return an array that repeats this value ``times``
@@ -137,7 +137,7 @@ def maybe_repeat(values: np.ndarray, times: int) -> np.ndarray:
     return values
 
 
-def load_from_xarray_or_return_default(
+def _load_from_xarray_or_return_default(
     data: xr.Dataset,
     user_key: str | None,
     default_key: str,
@@ -362,7 +362,7 @@ class HazardXarrayReader:
 
         # Read the intensity data
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", self.intensity)
-        intensity_matrix = to_csr_matrix(data[self.intensity])
+        intensity_matrix = _to_csr_matrix(data[self.intensity])
 
         # Create a DataFrame storing access information for each of data_vars
         # NOTE: Each row will be passed as arguments to
@@ -383,19 +383,21 @@ class HazardXarrayReader:
                     np.ones(num_events),
                     np.array(range(num_events), dtype=int) + 1,
                     list(
-                        year_month_day_accessor(
+                        _year_month_day_accessor(
                             data[self.coords["event"]], strict=False
                         ).flat
                     ),
-                    date_to_ordinal_accessor(data[self.coords["event"]], strict=False),
+                    _date_to_ordinal_accessor(data[self.coords["event"]], strict=False),
                 ],
                 # The accessor for the data in the Dataset
                 "accessor": [
-                    to_csr_matrix,
-                    lambda x: maybe_repeat(default_accessor(x), num_events),
-                    strict_positive_int_accessor,
-                    lambda x: list(maybe_repeat(default_accessor(x), num_events).flat),
-                    lambda x: maybe_repeat(date_to_ordinal_accessor(x), num_events),
+                    _to_csr_matrix,
+                    lambda x: _maybe_repeat(_default_accessor(x), num_events),
+                    _strict_positive_int_accessor,
+                    lambda x: list(
+                        _maybe_repeat(_default_accessor(x), num_events).flat
+                    ),
+                    lambda x: _maybe_repeat(_date_to_ordinal_accessor(x), num_events),
                 ],
             }
         )
@@ -409,7 +411,7 @@ class HazardXarrayReader:
         # Set the Hazard attributes
         for _, ident in data_ident.iterrows():
             self.hazard_kwargs[ident["hazard_attr"]] = (
-                load_from_xarray_or_return_default(data=data, **ident)
+                _load_from_xarray_or_return_default(data=data, **ident)
             )
 
         # Done!
