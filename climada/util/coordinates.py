@@ -232,6 +232,7 @@ def lon_normalize(lon, center=0.0):
         Normalized longitudinal coordinates. Since the input `lon` is modified in place (!), the
         returned array is the same Python object (instead of a copy).
     """
+    check_if_geo_coords(lat=[0], lon=lon)
     if center is None:
         center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
@@ -286,6 +287,7 @@ def lon_bounds(lon, buffer=0.0):
     bounds : tuple (lon_min, lon_max)
         Bounding box of the given points.
     """
+    check_if_geo_coords(lat=[0], lon=lon)
     lon = lon_normalize(lon.copy())
     lon_uniq = np.unique(lon)
     lon_uniq = np.concatenate([lon_uniq, [360 + lon_uniq[0]]])
