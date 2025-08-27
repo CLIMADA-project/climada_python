@@ -1147,7 +1147,8 @@ def degree_to_km(degree):
     Notes
     -----
     The conversion is based on the formula:
-    .. math:: $distance = angle_{radians} \\times R$
+    .. math::
+        distance = angle_{radians} \\times R
     where R is the Earth's radius in km.
 
     Examples
@@ -1183,7 +1184,8 @@ def km_to_degree(km):
     Notes
     -----
     The conversion is based on the formula:
-    .. math::$angle_{radians} = distance / R$
+    .. math::
+        angle_{radians} = distance / R
     where R is the Earth's radius in km.
 
     Examples

@@ -21,7 +21,6 @@ Removed:
 `plot_intensity`, `plot_fraction`, `_event_plot` to mask plotting when regions are too far from data points [#1047](https://github.com/CLIMADA-project/climada_python/pull/1047). To recreate previous plots (no masking), the parameter can be set to None.
 - Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
 - Added util methods to handle crs coordinates consistently: `is_geo_coords`, `check_if_geo_coords`, `get_crs_unit`, `estimate_matching_threshold`, `degree_to_km`, and `km_to_degree` [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080)
-
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
 
 ### Changed
