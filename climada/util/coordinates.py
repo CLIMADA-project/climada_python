@@ -86,7 +86,34 @@ NEAREST_NEIGHBOR_THRESHOLD = 100
 are not considered."""
 
 
-def check_if_geo_coords(lat, lon, raise_error=True):
+def is_geo_coords(lat, lon):
+    """Test if latitude and longitude arrays are likely in geographic coordinates,
+    testing if min/max values are within -90 to 90 for latitude and -540 to 540
+    for longitude. Lon coordinates of <-360 or >360 are allowed to cover cases
+    of objects being defined close to the 180 meridian for which longitude
+    intervals such as [179, 538] or [-538, -179] might be used.
+
+    Parameters
+    ----------
+    lat, lon : ndarrays of floats, same shape
+        Latitudes and longitudes of points.
+
+    Returns
+    -------
+    test : bool
+        True if lat/lon ranges seem to be in the geographic coordinates range, otherwise False.
+    """
+    lat = np.asarray(lat)
+    lon = np.array(lon)
+
+    # Check if latitude is within -90 to 90 and longitude is within -540 to 540
+    # and extent are smaller than 180 and 360 respectively
+    return (
+        lat.min() >= -91 and lat.max() <= 91 and lon.min() >= -541 and lon.max() <= 541
+    ) and ((lat.max() - lat.min()) <= 181 and (lon.max() - lon.min()) <= 361)
+
+
+def check_if_geo_coords(lat, lon):
     """Check if latitude and longitude arrays are likely in geographic coordinates,
     testing if min/max values are within -90 to 90 for latitude and -540 to 540
     for longitude. Lon coordinates of <-360 or >360 are allowed to cover cases
@@ -102,21 +129,11 @@ def check_if_geo_coords(lat, lon, raise_error=True):
     ------
     ValueError : if lat or lon out of likely geographical coordinate bounds
 
-    Returns
-    -------
-    test : bool
-        True if lat/lon ranges seem to be in the geographic coordinates range, otherwise False.
+    See Also
+    --------
+    climada.util.coordinates.is_geo_coords: test if coordinates likely geographic
     """
-    lat = np.array(lat)
-    lon = np.array(lon)
-
-    # Check if latitude is within -90 to 90 and longitude is within -540 to 540
-    # and extent are smaller than 180 and 360 respectively
-    like_geo = (
-        lat.min() >= -91 and lat.max() <= 91 and lon.min() >= -541 and lon.max() <= 541
-    ) and ((lat.max() - lat.min()) <= 181 and (lon.max() - lon.min()) <= 361)
-
-    if not like_geo and raise_error:
+    if not is_geo_coords(lat, lon):
         raise ValueError(
             "Input lat and lon coordinates do not seem to correspond"
             " to geographic coordinates in degrees. This can be because"
@@ -125,7 +142,6 @@ def check_if_geo_coords(lat, lon, raise_error=True):
             " If you use degree values outside of these ranges,"
             " please shift the coordinates to the valid ranges."
         )
-    return like_geo
 
 
 def get_crs_unit(crs):
