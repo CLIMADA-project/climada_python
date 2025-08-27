@@ -915,6 +915,10 @@ class Centroids:
         store = pd.HDFStore(file_name, mode=mode, complevel=9)
         try:
             pandas_df = pd.DataFrame(self.gdf)
+            # we replace all columns of type geometry
+            # - with according x and y columns if they are strictly `Point`s
+            # - with wkb values if they have other shapes
+            # this saves a lot of time and disk space
             for col in pandas_df.columns:
                 if str(pandas_df[col].dtype) == "geometry":
                     if (self.gdf[col].geom_type == "Point").all():

@@ -767,7 +767,7 @@ class TestCentroidsReaderWriter(unittest.TestCase):
         )
         centroids_w.write_hdf5(tmpfile)
         centroids_r = Centroids.from_hdf5(tmpfile)
-        self.assertTrue(centroids_w == centroids_r)
+        self.assertEqual(centroids_w, centroids_r)
         tmpfile.unlink()
 
     def test_from_hdf5_nonexistent_file(self):
