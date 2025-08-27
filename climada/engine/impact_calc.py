@@ -122,6 +122,7 @@ class ImpactCalc:
             >>> haz = Hazard.from_hdf5(HAZ_DEMO_H5)  # Set hazard
             >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
+            >>> #Adjust threshold and distance to centroids/exposure resolution
             >>> exp.assign_centroids(hazard, threshold=1.5, distance='haversine')
             >>> impcalc = ImpactCal(exp, impfset, haz)
             >>> imp = impcalc.impact(insured=True, assign_centroids=False)
@@ -131,7 +132,7 @@ class ImpactCalc:
         --------
         apply_deductible_to_mat : apply deductible to impact matrix
         apply_cover_to_mat : apply cover to impact matrix
-        climada.exposures.assign_centroids : assign centroids to exposures explicitly
+        climada.entity.exposures.assign_centroids : assign centroids to exposures explicitly
         """
         # TODO: consider refactoring, making use of Exposures.hazard_impf
         # check for compatibility of exposures and hazard type

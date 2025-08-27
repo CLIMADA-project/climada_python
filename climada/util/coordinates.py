@@ -1123,7 +1123,7 @@ def estimate_matching_threshold(coords_to_assign):
 
 
 def degree_to_km(degree):
-    """
+    r"""
     Convert an angle from degrees to kilometers.
 
     This function converts a given angle in degrees to its equivalent distance in
@@ -1146,8 +1146,9 @@ def degree_to_km(degree):
 
     Notes
     -----
-    The conversion is based on the formula: $distance = angle_{radians} \\times R$,
-    where $R$ is the Earth's radius.
+    The conversion is based on the formula:
+    .. math:: $distance = angle_{radians} \\times R$
+    where R is the Earth's radius in km.
 
     Examples
     --------
@@ -1158,7 +1159,7 @@ def degree_to_km(degree):
 
 
 def km_to_degree(km):
-    """
+    r"""
     Convert a distance from kilometers to degrees.
 
     This function converts a given distance in kilometers on the Earth's surface
@@ -1181,8 +1182,9 @@ def km_to_degree(km):
 
     Notes
     -----
-    The conversion is based on the formula: $angle_{radians} = distance / R$,
-    where $R$ is the Earth's radius.
+    The conversion is based on the formula:
+    .. math::$angle_{radians} = distance / R$
+    where R is the Earth's radius in km.
 
     Examples
     --------
@@ -1225,10 +1227,12 @@ def match_coordinates(
         "approx". Default: "euclidean"
     crs : str or pyproj crs, optinal
         Coordinate reference system (crs) of the input coordinates.
-        Default: EPSG:4326
+        Default: EPSG:4326 (degrees lat/lon)
     threshold : float, optional
+        Assignement threshold in units of the provided crs.
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
-        Set `threshold` to 0 to disable nearest neighbor matching. Default: 100 (km or crs.unit)
+        Set `threshold` to 0 to disable nearest neighbor matching.
+        Default: twice the highest resolution of the coords_to_assign
     kwargs: dict, optional
         Keyword arguments to be passed on to nearest-neighbor finding functions in case of
         non-exact matching with the specified `distance`.
@@ -1251,13 +1255,21 @@ def match_coordinates(
     The nearest neighbor matching works with lat/lon coordinates (in degrees), and projected coordinates
     (e.g. meters, kilometers). However, projected coordinates, require "euclidean" distance to be used
     for nearest neighbor matching. Furthermore, the handling of antimeridian crossing is disabled
-    (check_antimeridian=False) and a warning is raised when the user attempts to use this option with
-    a non-degree coordinates system.
+    (check_antimeridian=False).
 
     Make sure that all coordinates are according to the same coordinate reference system. In case
     of lat/lon coordinates, the "haversine" distance is able to correctly compute the distance
-    across the antimeridian. However, when exact matches are enforced with `threshold=0`, lat/lon
+    across the antimeridian. When exact matches are enforced with `threshold=0`, lat/lon
     coordinates need to be given in the same longitudinal range (such as (-180, 180)).
+
+    See Also
+    --------
+    climada.util.coordinates.estimate_matching_threshold:
+        method to calculate the default threshold
+    climada.util.coordinates.km_to_degree:
+        method to approximately convert kilometers to degrees
+    climada.util.coordinates.degree_to_km:
+        method to approximately convert degrees to kilometers
     """
     crs = PCRS.from_user_input(crs)
 
@@ -1335,8 +1347,14 @@ def match_centroids(
     threshold=None,
 ):
     """Assign to each gdf coordinate point its closest centroids's coordinate.
-    If distances > threshold in points' distances, -1 is returned.
-    If centroids are in a raster and coordinate point is outside of it ``-1`` is assigned
+    If there is no exact match for some entry, an attempt is made to assign the geographically
+    nearest neighbor. If the distance to the nearest neighbor exceeds `threshold`, the index `-1`
+    is assigned.
+
+    Make sure that all coordinates are according to the same coordinate reference system (crs).
+
+    You can disable nearest neighbor matching by setting `threshold` to 0, in which case
+    only exactly matching coordinates are assigned to each other.
 
     Parameters
     ----------
@@ -1352,41 +1370,42 @@ def match_centroids(
         for geographic crs differs from the true distance.
         Default: "euclidean"
     threshold : float, optional
-        If the distance (in the unit of the crs otherwise) to the nearest
-        neighbor exceeds `threshold`, the index `-1` is assigned.
-        Set `threshold` to 0, to enforce exact coordinate matching only.
-        Default: 2 times the minimal grid spacing assuming centroids to ge
-        on a grid
+        Assignement threshold in units of the provided crs.
+        If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
+        Set `threshold` to 0 to disable nearest neighbor matching.
+        Default: twice the highest resolution of the coords_to_assign
 
     See Also
     --------
-    climada.util.coordinates.match_grid_points: method to associate centroids to
-        coordinate points when centroids is a raster
-    climada.util.coordinates.match_coordinates: method to associate centroids to
-        coordinate points
+    climada.util.coordinates.match_coordinates: method to match coordinates
     climada.util.coordinates.estimate_matching_threshold: method to estimate the
         default threshold
+    climada.util.coordinates.km_to_degree:
+        method to approximately convert kilometers to degrees
+    climada.util.coordinates.degree_to_km:
+        method to approximately convert degrees to kilometers
+    climada.util.coordinates.match_grid_points: method to associate centroids to
+        coordinate points when centroids is a raster
 
     Notes
     -----
-    The default order of use is:
+    For coordinates in lat/lon coordinates distances in degrees differ from
+    distances in meters on the Earth surface, in particular for higher
+    latitude and distances larger than 100km. If more accuracy for degree
+    coordinates is needed, please use 'haversine' distance metric,
+    which however is slower.
 
-        1. if centroid raster is defined, assign the closest raster point
-        to each gdf coordinate point.
-        2. if no raster, assign centroids to the nearest neighbor using
-        euclidian metric
-
-    Both cases can introduce innacuracies for coordinates in lat/lon
-    coordinates as distances in degrees differ from distances in meters
-    on the Earth surface, in particular for higher latitude and distances
-    larger than 100km. If more accuracy is needed, please use 'haversine'
-    distance metric. This however is slower for (quasi-)gridded data,
-    and works only for non-gridded data.
-
-    Projected coordinates (defined in units other than degrees) are supported.
-    However, nearest neighbor matching for projected coordinates is only possible
-    using 'euclidean' distance, and handling of coordinates crossing the antimeridian
-    is not implemented.
+    Caution: nearest neighbourg matching can introduce serious artefacts
+    such as:
+        - coordinates centroids with shifted grids can lead
+        to systematically wrong assignements.
+        - centroids covering larger areas than coordinates may lead
+        to sub-optimal matching if the threshold is too large
+        - projected crs often diverge at the anti-meridian and close points
+        on either side will be at a large distance. For proper handling
+        of the anti-meridian please use degree coordinates in EPSG:4326.
+        This might be relevant for countries like the Fidji or the US that
+        cross the anti-meridian.
     """
 
     try:
