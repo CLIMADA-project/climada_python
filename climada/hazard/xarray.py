@@ -64,7 +64,7 @@ def _to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
 # Define accessors for xarray DataArrays
 def _default_accessor(array: xr.DataArray) -> np.ndarray:
     """Take a DataArray and return its numpy representation"""
-    return array.values
+    return array.to_numpy()
 
 
 def _strict_positive_int_accessor(array: xr.DataArray) -> np.ndarray:
@@ -355,8 +355,8 @@ class HazardXarrayReader:
 
         # Transform coordinates into centroids
         centroids = Centroids(
-            lat=data[self.coords["latitude"]].values,
-            lon=data[self.coords["longitude"]].values,
+            lat=data[self.coords["latitude"]].to_numpy(),
+            lon=data[self.coords["longitude"]].to_numpy(),
             crs=self.crs,
         )
 
