@@ -1868,6 +1868,21 @@ class TestRasterMeta(unittest.TestCase):
         self.assertAlmostEqual(res_lat, 0.0833333333333)
         self.assertAlmostEqual(res_lon, 0.0833333333333)
 
+    def test_get_resolution_large_pass(self):
+        """Test _get_resolution method"""
+        centr = Centroids.from_pnt_bounds((-180, -90, 180, 90), 1)
+        res_lat, res_lon = u_coord.get_resolution(centr.lat, centr.lon)
+        self.assertAlmostEqual(res_lat, 1)
+        self.assertAlmostEqual(res_lon, 1)
+
+    def test_get_resolution_meters_pass(self):
+        centr = Centroids.from_pnt_bounds((-180, -90, 180, 90), 1)
+        centr.to_crs("EPSG:4087", inplace=True)  # meters
+        res = u_coord.degree_to_km(1) * 1000
+        res_lat, res_lon = u_coord.get_resolution(centr.lat, centr.lon)
+        self.assertAlmostEqual(res_lat, res, delta=500)  # approx to 500m correct
+        self.assertAlmostEqual(res_lon, res, delta=500)  # approx to 500m correct
+
     def test_vector_to_raster_pass(self):
         """Test vector_to_raster"""
         xmin, ymin, xmax, ymax = -60, -5, -50, 10  # bounds of points == centers pixels
