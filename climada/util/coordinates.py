@@ -1457,11 +1457,11 @@ def _nearest_neighbor_approx(
     coordinates : 2d array
         First column contains latitude, second
         column contains longitude. Each row is a geographic point
-    unit : str
-        Unit to use for non-exact matching. Only possible value is "degree"
+    crs : pyproj crs
+        Coordinate reference system (crs) of the input coordinates and centroids.
     threshold : float
-        distance threshold in km over which no neighbor will
-        be found. Those are assigned with a -1 index
+        Assignement threshold in units of the provided crs.
+        If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
     check_antimedirian: bool, optional
         If True, the nearest neighbor in a strip with lon size equal to threshold around the
         antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
@@ -1534,11 +1534,11 @@ def _nearest_neighbor_haversine(centroids, coordinates, crs, threshold):
     coordinates : 2d array
         First column contains latitude, second
         column contains longitude. Each row is a geographic point
-    unit : str
-        Unit to use for non-exact matching. Only possible value is "degree"
+    crs : pyproj crs
+        Coordinate reference system (crs) of the input coordinates and centroids.
     threshold : float
-        distance threshold in km over which no neighbor will
-        be found. Those are assigned with a -1 index
+        Assignement threshold in units of the provided crs.
+        If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
 
     Returns
     -------
@@ -1600,11 +1600,11 @@ def _nearest_neighbor_euclidean(
     coordinates : 2d array
         First column contains latitude, second column contains longitude. Each
         row is a geographic point
-    unit : str
-        Unit to use for non-exact matching. Possible values are "degree", "m", "km".
+    crs : pyproj crs
+        Coordinate reference system (crs) of the input coordinates and centroids.
     threshold : float
-        distance threshold in km over which no neighbor will be found. Those
-        are assigned with a -1 index
+        Assignement threshold in units of the provided crs.
+        If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
     check_antimedirian: bool, optional
         If True, the nearest neighbor in a strip with lon size equal to threshold around the
         antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
