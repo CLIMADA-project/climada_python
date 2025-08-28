@@ -10,13 +10,21 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+Added:
+
+- `fiona` >=1.10
+
+Updated:
+
+- `geopandas` >=0.14,<1.0 → >=0.14
+- `pandas` >=2.1,<2.2 → >=2.1
+
 Removed:
 
 - `pandas-datareader`
-- `intensity_thres` of `Hazard`, `StormEurope`, and `TropCyclones` object [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
-- Deprecated method `climada.hazard.trop_cyclone.trop_cyclone.TropCyclone.set_from_tracks` [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
 
 ### Added
+
 - Added optional parameter to `geo_im_from_array`, `plot_from_gdf`, `plot_rp_imp`, `plot_rp_intensity`,
 `plot_intensity`, `plot_fraction`, `_event_plot` to mask plotting when regions are too far from data points [#1047](https://github.com/CLIMADA-project/climada_python/pull/1047). To recreate previous plots (no masking), the parameter can be set to None.
 - Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
@@ -24,6 +32,7 @@ Removed:
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
 
 ### Changed
+
 - Changed the default mask_distance in `util.plot.geo_im_from_array` to 0.03 to avoid white gaps in gridded hazard data with comparably low resolution (>80 centroids per axis) [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
 - Increased speed of `util.plot.add_shapes` by avoiding for loops, substantially speeding up `Hazard.plot_intensity` and other functions. [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
 - Update `util.coordinates.match_centroids`, `util.coordinates.match_coordinates`, so that they also
@@ -45,6 +54,8 @@ geographic coordinates as input (e.g. `util.coordinates.dist_to_coast`, `util.co
 ### Removed
 
 - `climada.util.interpolation.round_to_sig_digits` [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
+- `intensity_thres` of `Hazard`, `StormEurope`, and `TropCyclones` object [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
+- Deprecated method `climada.hazard.trop_cyclone.trop_cyclone.TropCyclone.set_from_tracks` [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
 
 ## 6.0.1
 
@@ -214,6 +225,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - Split `climada.hazard.trop_cyclone` module into smaller submodules without affecting module usage [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
 - `yearly_steps` parameter of `TropCyclone.apply_climate_scenario_knu` has been made explicit [#991](https://github.com/CLIMADA-project/climada_python/pull/991)
+- `Hazard.write_hdf5` writes centroids as x,y columns (or as wkb in case of polygons) at a compression level of 9, not as pickled `Shapely` objects anymore, which reduces the size of the files significantly.
 
 ### Fixed
 
