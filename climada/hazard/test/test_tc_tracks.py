@@ -967,9 +967,9 @@ class TestFuncs(unittest.TestCase):
     def test_interp_track_lonnorm_pass(self):
         """Interpolate track with non-normalized longitude to min_time_step."""
         tc_track = tc.TCTracks.from_processed_ibtracs_csv(TEST_TRACK)
-        tc_track.data[0]["lon"].values[1] += 180
+        tc_track.data[0]["lon"].values[1] += 360
         tc_track.equal_timestep(time_step_h=1)
-        np.testing.assert_array_less(tc_track.data[0]["lon"].values, 180)
+        np.testing.assert_array_less(tc_track.data[0]["lon"].values, 0)
 
     def test_interp_track_redundancy_pass(self):
         """Interpolate tracks that are already interpolated."""
