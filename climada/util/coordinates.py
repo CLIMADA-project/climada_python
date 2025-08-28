@@ -232,6 +232,8 @@ def lon_normalize(lon, center=0.0):
         Normalized longitudinal coordinates. Since the input `lon` is modified in place (!), the
         returned array is the same Python object (instead of a copy).
     """
+    if len(lon) > 0:
+        check_if_geo_coords([0], lon)
     if center is None:
         center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
