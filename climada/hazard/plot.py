@@ -40,7 +40,7 @@ class HazardPlot:
         self,
         return_periods=(25, 50, 100, 250),
         axis=None,
-        mask_distance=0.01,
+        mask_distance=0.03,
         kwargs_local_exceedance_intensity=None,
         **kwargs,
     ):
@@ -60,8 +60,8 @@ class HazardPlot:
         mask_distance: float, optional
             Only regions are plotted that are closer to any of the data points than this distance,
             relative to overall plot size. For instance, to only plot values
-            at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-            Default is 0.01.
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs: optional
             arguments for pcolormesh matplotlib function used in event plots
 
@@ -111,7 +111,7 @@ class HazardPlot:
         smooth=True,
         axis=None,
         adapt_fontsize=True,
-        mask_distance=0.01,
+        mask_distance=0.03,
         **kwargs,
     ):
         """Plot intensity values for a selected event or centroid.
@@ -138,8 +138,8 @@ class HazardPlot:
         mask_distance: float, optional
             Only regions are plotted that are closer to any of the data points than this distance,
             relative to overall plot size. For instance, to only plot values
-            at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-            Default is 0.01.
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs: optional
             arguments for pcolormesh matplotlib function
             used in event plots or for plot function used in centroids plots
@@ -181,7 +181,7 @@ class HazardPlot:
         centr=None,
         smooth=True,
         axis=None,
-        mask_distance=0.01,
+        mask_distance=0.03,
         **kwargs,
     ):
         """Plot fraction values for a selected event or centroid.
@@ -208,8 +208,8 @@ class HazardPlot:
         mask_distance: float, optional
             Relative distance (with respect to maximal map extent in longitude or latitude) to data
             points above which plot should not display values. For instance, to only plot values
-            at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-            Default is None.
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs: optional
             arguments for pcolormesh matplotlib function
             used in event plots or for plot function used in centroids plots
@@ -252,7 +252,7 @@ class HazardPlot:
         axis=None,
         figsize=(9, 13),
         adapt_fontsize=True,
-        mask_distance=0.01,
+        mask_distance=0.03,
         **kwargs,
     ):
         """Plot an event of the input matrix.
@@ -277,8 +277,8 @@ class HazardPlot:
         mask_distance: float, optional
             Only regions are plotted that are closer to any of the data points than this distance,
             relative to overall plot size. For instance, to only plot values
-            at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-            Default is None.
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs: optional
             arguments for pcolormesh matplotlib function
 
