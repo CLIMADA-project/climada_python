@@ -285,6 +285,17 @@ class TestGetUnitCoords(unittest.TestCase):
             unit, "US survey foot", "Expected unit 'US survey foot' for projected CRS."
         )
 
+    def test_get_unit_crs_undefined(self):
+        """Test with an undefined CRS."""
+        crs = None
+        gdf = self.create_mock_gdf(crs)
+        with self.assertLogs("climada.util.coordinates", level="WARNING") as cm:
+            unit = u_coord.get_crs_unit(gdf.crs)
+        self.assertIn("The units of the input crs are undefined.", cm.output[0])
+        self.assertEqual(
+            unit, "undefined", "Expected unit 'undefined' for projected CRS."
+        )
+
 
 class TestDistance(unittest.TestCase):
     """Test distance functions."""
