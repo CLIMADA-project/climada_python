@@ -138,6 +138,24 @@ class TestFuncs(unittest.TestCase):
             self.assertEqual(exp.gdf.shape[0], len(exp.hazard_centroids("FL")))
             np.testing.assert_array_equal(exp.hazard_centroids("FL"), expected_result)
 
+    def test_assign_no_equal_crs(self):
+        haz = Hazard.from_raster(
+            [HAZ_DEMO_FL], haz_type="FL", window=Window(10, 20, 50, 60)
+        )
+        crs_km = "EPSG:4326"
+        crs_meters = "EPSG:4087"
+        exp = Exposures(
+            crs=crs_meters,
+            lon=haz.centroids.lon,
+            lat=haz.centroids.lat,
+        )
+        haz.centroids.to_crs(crs_km, inplace=True)
+        with self.assertRaises(ValueError) as cm:
+            exp.assign_centroids(haz)
+        self.assertEqual(
+            "Set hazard and exposure to the same CRS first!", str(cm.exception)
+        )
+
     def test__init__meta_type(self):
         """Check if meta of type list raises a ValueError in __init__"""
         with self.assertRaises(TypeError) as cm:
