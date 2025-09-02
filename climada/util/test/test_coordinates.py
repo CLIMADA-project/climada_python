@@ -659,6 +659,15 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(area2[0], 1781.5973363005)
         self.assertTrue(area2[0] <= 2500)
 
+        with self.assertRaises(ValueError) as cm:
+            area_unknown_unit = u_coord.get_gridcellarea(
+                lat, resolution, unit="unknown"
+            )
+            self.assertIn(
+                f"'unknown' unit not recognized. Please use any of 'm2', 'km2' or 'ha'.",
+                str(cm.exception),
+            )
+
     def test_read_vector_pass(self):
         """Test one columns data"""
         shp_file = shapereader.natural_earth(
