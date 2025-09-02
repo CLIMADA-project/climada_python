@@ -2186,6 +2186,10 @@ def get_resolution_1d(coords, min_resol=1.0e-8):
     res = np.diff(np.unique(coords))  # always positive because unique is sorted
     diff = np.abs(np.diff(coords))
     mask = (res > min_resol) & np.isin(res, diff)
+    if not len(mask):
+        raise ValueError(
+            "Cannot find a resolution higher than `min_resol` for the given coordinates"
+        )
     return diff[diff == res[mask].min()][0]
 
 
