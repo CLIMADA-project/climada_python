@@ -436,6 +436,21 @@ class TestFunc(unittest.TestCase):
                 str(cm.exception),
             )
 
+    def test_estimate_matching_threshold(self):
+        """Test the estimate_matching_threshold function"""
+        coords_pass = np.array([[10, 20], [10, 20.001], [10, 20.002]])
+        threshold_pass = u_coord.estimate_matching_threshold(coords_pass)
+        self.assertAlmostEqual(threshold_pass, 0.002, places=6)
+
+        coords_fail = np.array([[0, 0]])
+        with self.assertRaises(ValueError) as cm:
+            u_coord.estimate_matching_threshold(coords_fail)
+        self.assertIn(
+            "The coordinate assignement threshold cannot be"
+            "estimated for a single coordinate. Please set the threshold explicitly",
+            str(cm.exception),
+        )
+
     def test_lon_normalize(self):
         """Test the longitude normalization function"""
         data = np.array([-180, 20.1, -30, 190, -350])
