@@ -38,8 +38,8 @@ LOGGER = logging.getLogger(__name__)
 
 class CountryCode(Enum):
     """
-    Enum class that links ISO country codes (both ISO3A and ISO3N) to specific regions and
-    associated impact function IDs.
+    Enum class that links ISO country codes (both ISO3A and ISO3N) to specific regions
+    and associated impact function IDs.
 
     Attributes
     ----------
@@ -53,258 +53,49 @@ class CountryCode(Enum):
             A mapping of region names to their descriptive names.
     """
 
+    # fmt: off
     ALPHA3 = {
         "NA1": [
-            "AIA",
-            "ATG",
-            "ARG",
-            "ABW",
-            "BHS",
-            "BRB",
-            "BLZ",
-            "BMU",
-            "BOL",
-            "CPV",
-            "CYM",
-            "CHL",
-            "COL",
-            "CRI",
-            "CUB",
-            "DMA",
-            "DOM",
-            "ECU",
-            "SLV",
-            "FLK",
-            "GUF",
-            "GRD",
-            "GLP",
-            "GTM",
-            "GUY",
-            "HTI",
-            "HND",
-            "JAM",
-            "MTQ",
-            "MEX",
-            "MSR",
-            "NIC",
-            "PAN",
-            "PRY",
-            "PER",
-            "PRI",
-            "SHN",
-            "KNA",
-            "LCA",
-            "VCT",
-            "SXM",
-            "SUR",
-            "TTO",
-            "TCA",
-            "URY",
-            "VEN",
-            "VGB",
-            "VIR",
+            "ABW", "AIA", "ARG", "ATG", "BHS", "BLZ", "BMU", "BOL", "BRB", "CHL", "COL",
+            "CPV", "CRI", "CUB", "CYM", "DMA", "DOM", "ECU", "FLK", "GLP", "GRD", "GTM",
+            "GUF", "GUY", "HND", "HTI", "JAM", "KNA", "LCA", "MEX", "MSR", "MTQ", "NIC",
+            "PAN", "PER", "PRI", "PRY", "SHN", "SLV", "SUR", "SXM", "TCA", "TTO", "URY",
+            "VCT", "VEN", "VGB", "VIR",
         ],
         "NA2": ["CAN", "USA"],
         "NI": [
-            "AFG",
-            "ARM",
-            "AZE",
-            "BHR",
-            "BGD",
-            "BTN",
-            "DJI",
-            "ERI",
-            "ETH",
-            "GEO",
-            "IND",
-            "IRN",
-            "IRQ",
-            "ISR",
-            "JOR",
-            "KAZ",
-            "KWT",
-            "KGZ",
-            "LBN",
-            "MDV",
-            "MNG",
-            "MMR",
-            "NPL",
-            "OMN",
-            "PAK",
-            "QAT",
-            "SAU",
-            "SOM",
-            "LKA",
-            "SYR",
-            "TJK",
-            "TKM",
-            "UGA",
-            "ARE",
-            "UZB",
-            "YEM",
+            "AFG", "ARE", "ARM", "AZE", "BGD", "BHR", "BTN", "DJI", "ERI", "ETH", "GEO",
+            "IND", "IRN", "IRQ", "ISR", "JOR", "KAZ", "KGZ", "KWT", "LBN", "LKA", "MDV",
+            "MMR", "MNG", "NPL", "OMN", "PAK", "QAT", "SAU", "SOM", "SYR", "TJK", "TKM",
+            "UGA", "UZB", "YEM",
         ],
         "OC": [
-            "ASM",
-            "AUS",
-            "COK",
-            "FJI",
-            "PYF",
-            "GUM",
-            "KIR",
-            "MHL",
-            "FSM",
-            "NRU",
-            "NCL",
-            "NZL",
-            "NIU",
-            "NFK",
-            "MNP",
-            "PLW",
-            "PNG",
-            "PCN",
-            "WSM",
-            "SLB",
-            "TLS",
-            "TKL",
-            "TON",
-            "TUV",
-            "VUT",
-            "WLF",
+            "ASM", "AUS", "COK", "FJI", "FSM", "GUM", "KIR", "MHL", "MNP", "NCL", "NFK",
+            "NIU", "NRU", "NZL", "PCN", "PLW", "PNG", "PYF", "SLB", "TKL", "TLS", "TON",
+            "TUV", "VUT", "WLF", "WSM",
         ],
         "SI": [
-            "COM",
-            "COD",
-            "SWZ",
-            "MDG",
-            "MWI",
-            "MLI",
-            "MUS",
-            "MOZ",
-            "ZAF",
-            "TZA",
-            "ZWE",
+            "COD", "COM", "MDG", "MLI", "MOZ", "MUS", "MWI", "SWZ", "TZA", "ZAF", "ZWE",
         ],
         "WP1": ["KHM", "IDN", "LAO", "MYS", "THA", "VNM"],
         "WP2": ["PHL"],
         "WP3": ["CHN"],
         "WP4": ["HKG", "JPN", "KOR", "MAC", "TWN"],
         "ROW": [
-            "ALB",
-            "DZA",
-            "AND",
-            "AGO",
-            "ATA",
-            "AUT",
-            "BLR",
-            "BEL",
-            "BEN",
-            "BES",
-            "BIH",
-            "BWA",
-            "BVT",
-            "BRA",
-            "IOT",
-            "BRN",
-            "BGR",
-            "BFA",
-            "BDI",
-            "CMR",
-            "CAF",
-            "TCD",
-            "CXR",
-            "CCK",
-            "COG",
-            "HRV",
-            "CUW",
-            "CYP",
-            "CZE",
-            "CIV",
-            "DNK",
-            "EGY",
-            "GNQ",
-            "EST",
-            "FRO",
-            "FIN",
-            "FRA",
-            "ATF",
-            "GAB",
-            "GMB",
-            "DEU",
-            "GHA",
-            "GIB",
-            "GRC",
-            "GRL",
-            "GGY",
-            "GIN",
-            "GNB",
-            "HMD",
-            "VAT",
-            "HUN",
-            "ISL",
-            "IRL",
-            "IMN",
-            "ITA",
-            "JEY",
-            "KEN",
-            "PRK",
-            "XKX",
-            "LVA",
-            "LSO",
-            "LBR",
-            "LBY",
-            "LIE",
-            "LTU",
-            "LUX",
-            "MLT",
-            "MRT",
-            "MYT",
-            "MDA",
-            "MCO",
-            "MNE",
-            "MAR",
-            "NAM",
-            "NLD",
-            "NER",
-            "NGA",
-            "MKD",
-            "NOR",
-            "PSE",
-            "POL",
-            "PRT",
-            "ROU",
-            "RUS",
-            "RWA",
-            "REU",
-            "BLM",
-            "MAF",
-            "SPM",
-            "SMR",
-            "STP",
-            "SEN",
-            "SRB",
-            "SYC",
-            "SLE",
-            "SGP",
-            "SVK",
-            "SVN",
-            "SGS",
-            "SSD",
-            "ESP",
-            "SDN",
-            "SJM",
-            "SWE",
-            "CHE",
-            "TGO",
-            "TUN",
-            "TUR",
-            "UKR",
-            "GBR",
-            "UMI",
-            "ESH",
-            "ZMB",
-            "ALA",
+            "AGO", "ALA", "ALB", "AND", "ATA", "ATF", "AUT", "BDI", "BEL", "BEN", "BES",
+            "BFA", "BGR", "BIH", "BLM", "BLR", "BRA", "BRN", "BVT", "BWA", "CAF", "CCK",
+            "CHE", "CIV", "CMR", "COG", "CUW", "CXR", "CYP", "CZE", "DEU", "DNK", "DZA",
+            "EGY", "ESH", "ESP", "EST", "FIN", "FRA", "FRO", "GAB", "GBR", "GGY", "GHA",
+            "GIB", "GIN", "GMB", "GNB", "GNQ", "GRC", "GRL", "HMD", "HRV", "HUN", "IMN",
+            "IOT", "IRL", "ISL", "ITA", "JEY", "KEN", "LBR", "LBY", "LIE", "LSO", "LTU",
+            "LUX", "LVA", "MAF", "MAR", "MCO", "MDA", "MKD", "MLT", "MNE", "MRT", "MYT",
+            "NAM", "NER", "NGA", "NLD", "NOR", "POL", "PRK", "PRT", "PSE", "REU", "ROU",
+            "RUS", "RWA", "SDN", "SEN", "SGP", "SGS", "SJM", "SLE", "SMR", "SPM", "SRB",
+            "SSD", "STP", "SVK", "SVN", "SWE", "SYC", "TCD", "TGO", "TUN", "TUR", "UKR",
+            "UMI", "VAT", "XKX", "ZMB",
         ],
     }
+
     # fmt: on
     IMPF_ID = {
         "NA1": 1,
@@ -551,9 +342,8 @@ class ImpfSetTropCyclone(ImpactFuncSet):
                 header=0,
             )
 
-        regions_short = list(CountryCode.REGION_NAME.value.keys())[
-            :-1
-        ]  # removing the last item ROW
+        regions_short = list(CountryCode.REGION_NAME.value.keys())
+        regions_short.remove("ROW")
 
         # loop over calibration regions (column cal_region2 in df):
         reg_v_half = dict()
@@ -622,17 +412,17 @@ class ImpfSetTropCyclone(ImpactFuncSet):
 
     @staticmethod
     def get_impf_id_regions_per_countries(countries: list = None) -> tuple:
-        """Return the impact function id and the region corresponding to a list of countries,
-        or a single country.
+        """Return the impact function id and the region corresponding to some countries
 
         Parameters:
         -----------
         countries : list
             List containing the ISO codes of the country, which should be either
-            in string format if the code is "ISO 3166-1 alpha-3" abbreviated as "alpha3", or an integer
-            if the code is in "ISO 3166-1 numeric" abbreviated as "numeric", which is a three-digit country code,
-            the numeric version of "ISO 3166-1 alpha-3". For example, the "alpha3" code of Switzerland is
-            "CHE" and the "numeric" is 756.
+            in string format if the code is "ISO 3166-1 alpha-3" abbreviated as
+            "alpha3", or an integer if the code is in "ISO 3166-1 numeric" abbreviated
+            as "numeric", which is a three-digit country code, the numeric version of
+            "ISO 3166-1 alpha-3". For example, the "alpha3" code of Switzerland is "CHE"
+            and the "numeric" is 756.
 
         Returns:
         --------
@@ -643,7 +433,8 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             https://nhess.copernicus.org/articles/21/393/2021/nhess-21-393-2021.pdf, and implemented
             in the CountryCode Enum Class. Example: "NA1", "NA2", ...
         regions_names : list
-            List of the regions names. Example: "Caribbean and Mexico", "USA and Canada", ...
+            List of the regions names. Example: "Caribbean and Mexico",
+            "USA and Canada", ...
         """
 
         # Find region
