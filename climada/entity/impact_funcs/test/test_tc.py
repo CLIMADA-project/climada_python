@@ -180,7 +180,7 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertEqual(impf_id_reg_id_reg_name[0][0], 10)
         self.assertEqual(impf_id_reg_id_reg_name[1][0], "ROW")
         self.assertEqual(impf_id_reg_id_reg_name[2][0], "Rest of The World")
-        out = ifs.get_impf_id_regions_per_countries(countries=[756])
+        impf_id_reg_id_reg_name = ifs.get_impf_id_regions_per_countries(countries=[756])
         self.assertEqual(impf_id_reg_id_reg_name[0][0], 10)
         self.assertEqual(impf_id_reg_id_reg_name[1][0], "ROW")
         self.assertEqual(impf_id_reg_id_reg_name[2][0], "Rest of The World")
