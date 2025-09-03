@@ -80,7 +80,7 @@ def sample_weights(weights: pd.DataFrame, sample: list[tuple[int, int]]):
     Return an updated DataFrame containing the appropriate weights for a sample.
 
     Weights that are not in ``sample`` are set to zero, whereas weights that are sampled
-    multiple times will effectively multiplied by their occurrence in ``sample``.
+    multiple times are effectively multiplied by their occurrence in ``sample``.
 
     Parameters
     ----------
