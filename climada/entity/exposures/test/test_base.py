@@ -129,7 +129,7 @@ class TestFuncs(unittest.TestCase):
     def test_read_raster_pass(self):
         """from_raster"""
         exp = Exposures.from_raster(
-            HAZ_DEMO_FL, window=Window(10, 20, 50, 60), attrs={'value_unit': 'USD'}
+            HAZ_DEMO_FL, window=Window(10, 20, 50, 60), attrs={"value_unit": "USD"}
         )
         exp.check()
         self.assertTrue(u_coord.equal_crs(exp.crs, DEF_CRS))
