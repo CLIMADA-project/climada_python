@@ -707,6 +707,7 @@ class Exposures:
         width=None,
         height=None,
         resampling=Resampling.nearest,
+        attrs=None
     ):
         """Read raster data and set latitude, longitude, value and meta
 
@@ -734,11 +735,19 @@ class Exposures:
         resampling : rasterio.warp,.Resampling optional
             resampling
             function used for reprojection to dst_crs
+        attrs : dict
+            dictionary giving kwargs passed to the Exposures class. Keys must 
+            be in the Exposures._metadata list, i.e. "description", "ref_year",
+            "value_unit"
 
         returns
         --------
         Exposures
         """
+        if not attrs:
+            attrs = {}
+        attrs = {key: attrs[key] for key in set(attrs) & set(cls._metadata)}
+
         meta, value = u_coord.read_raster(
             file_name,
             [band],
@@ -765,6 +774,7 @@ class Exposures:
             },
             meta=meta,
             crs=meta["crs"],
+            **attrs
         )
 
     def plot_scatter(
