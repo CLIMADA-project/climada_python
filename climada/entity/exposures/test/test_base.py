@@ -129,9 +129,8 @@ class TestFuncs(unittest.TestCase):
     def test_read_raster_pass(self):
         """from_raster"""
         exp = Exposures.from_raster(
-            HAZ_DEMO_FL,
-            window=Window(10, 20, 50, 60),
-            attrs={'value_unit': 'USD'})
+            HAZ_DEMO_FL, window=Window(10, 20, 50, 60), attrs={'value_unit': 'USD'}
+        )
         exp.check()
         self.assertTrue(u_coord.equal_crs(exp.crs, DEF_CRS))
         self.assertAlmostEqual(
@@ -152,7 +151,7 @@ class TestFuncs(unittest.TestCase):
         self.assertAlmostEqual(
             exp.gdf["value"].values.reshape((60, 50))[25, 12], 0.056825936
         )
-        self.assertEqual(exp.value_unit, 'USD')
+        self.assertEqual(exp.value_unit, "USD")
 
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""

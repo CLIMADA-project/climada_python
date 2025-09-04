@@ -707,7 +707,7 @@ class Exposures:
         width=None,
         height=None,
         resampling=Resampling.nearest,
-        attrs=None
+        attrs=None,
     ):
         """Read raster data and set latitude, longitude, value and meta
 
@@ -736,7 +736,7 @@ class Exposures:
             resampling
             function used for reprojection to dst_crs
         attrs : dict
-            dictionary giving kwargs passed to the Exposures class. Keys must 
+            dictionary giving kwargs passed to the Exposures class. Keys must
             be in the Exposures._metadata list, i.e. "description", "ref_year",
             "value_unit"
 
@@ -774,7 +774,7 @@ class Exposures:
             },
             meta=meta,
             crs=meta["crs"],
-            **attrs
+            **attrs,
         )
 
     def plot_scatter(
