@@ -19,6 +19,7 @@ Define LitPop class.
 """
 
 import logging
+import numbers
 from pathlib import Path
 
 import geopandas
@@ -820,12 +821,12 @@ class LitPop(Exposures):
             total_value = _get_total_value_per_country(iso3a, fin_mode, reference_year)
 
         # disaggregate total value proportional to LitPop values:
-        if isinstance(total_value, (float, int)):
+        if isinstance(total_value, numbers.Number):
             litpop_gdf["value"] = (
                 np.divide(litpop_gdf["value"], litpop_gdf["value"].sum()) * total_value
             )
         elif total_value is not None:
-            raise TypeError("total_value must be int or float.")
+            raise TypeError(f"total_value ({total_value}) must be a number.")
 
         exp = LitPop()
         exp.set_gdf(litpop_gdf)

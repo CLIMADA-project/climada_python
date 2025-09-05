@@ -5,7 +5,7 @@ mamba create -n climada_env python=3.11
 mamba env update -n climada_env -f requirements/env_climada.yml
 
 source activate climada_env
-python -m pip install -e "./[test]"
+python -m pip install -e "./[dev]"
 
 make install_test
 

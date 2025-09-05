@@ -39,6 +39,7 @@ Removed:
 - World Bank indicator data is now downloaded directly from their API via the function `download_world_bank_indicator`, instead of relying on the `pandas-datareader` package [#1033](https://github.com/CLIMADA-project/climada_python/pull/1033)
 - `Exposures.write_hdf5` pickles geometry data in WKB format, which is faster and more sustainable. [#1051](https://github.com/CLIMADA-project/climada_python/pull/1051)
 - The online documentation has been completely overhauled, now uses PyData theme: [#977](https://github.com/CLIMADA-project/climada_python/pull/977)
+- Add `climada.hazard.xarray` module with helper structures for reading Hazard objects from `xarray` data [#1063](https://github.com/CLIMADA-project/climada_python/pull/1063)
 
 ### Fixed
 
@@ -46,6 +47,8 @@ Removed:
 - Broken ECMWF links in pydoc of `climada.hazard.storm_europe` relocated. [#944](https://github.com/CLIMADA-project/climada_python/pull/944)
 
 ### Deprecated
+
+- `Hazard.from_xarray_raster_file`. Use `Hazard.from_xarray_raster` and pass the file path as `data` argument [#1063](https://github.com/CLIMADA-project/climada_python/pull/1063)
 
 ### Removed
 
@@ -102,6 +105,7 @@ Removed:
 
 ### Added
 
+- `climada.entity.impact_funcs.trop_cyclone.ImpfSetTropCyclone.get_impf_id_regions_per_countries` function [#1034](https://github.com/CLIMADA-project/climada_python/pull/1034)
 - `climada.hazard.tc_tracks.TCTracks.subset_years` function [#1023](https://github.com/CLIMADA-project/climada_python/pull/1023)
 - `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
@@ -221,6 +225,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - Split `climada.hazard.trop_cyclone` module into smaller submodules without affecting module usage [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
 - `yearly_steps` parameter of `TropCyclone.apply_climate_scenario_knu` has been made explicit [#991](https://github.com/CLIMADA-project/climada_python/pull/991)
+- `Hazard.write_hdf5` writes centroids as x,y columns (or as wkb in case of polygons) at a compression level of 9, not as pickled `Shapely` objects anymore, which reduces the size of the files significantly.
 
 ### Fixed
 
