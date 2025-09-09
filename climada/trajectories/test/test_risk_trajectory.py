@@ -22,9 +22,6 @@ unit tests for risk_trajectory
 
 import datetime
 import unittest
-
-# Dummy Measure Enum for testing
-from enum import Enum
 from itertools import product
 from unittest.mock import Mock, PropertyMock, call, patch
 
@@ -46,21 +43,9 @@ from climada.trajectories.risk_trajectory import (
 )
 from climada.trajectories.riskperiod import (  # ImpactComputationStrategy, # If needed to mock its base class directly
     AllLinearStrategy,
-    CalcRiskPeriod,
     ImpactCalcComputation,
 )
 from climada.trajectories.snapshot import Snapshot
-
-
-class Measure(Enum):
-    SOME_MEASURE = 1
-    ANOTHER_MEASURE = 2
-    NO_MEASURE = 3  # For cases with no measure
-
-
-# --- Helper functions or classes for common mock objects ---
-# You might want to define some reusable mock setups if they are complex
-# E.g., a mock Snapshot or CalcRiskPeriod that always returns consistent data
 
 
 class TestRiskTrajectory(unittest.TestCase):
@@ -1091,39 +1076,6 @@ class TestRiskTrajectory(unittest.TestCase):
         result = RiskTrajectory._get_risk_periods(
             all_risk_periods, datetime.date(2021, 6, 1), datetime.date(2022, 6, 1)
         )
-        # The condition `start_date >= period.snapshot0.date or end_date <= period.snapshot1.date`
-        # means it includes periods that *overlap* with the range, not strictly *within*.
-        # So for 2021-06-01 to 2022-06-01:
-        # rp1: (2020-01-01 to 2021-01-01) -> end_date (2022-06-01) is not <= 2021-01-01. start_date (2021-06-01) is not >= 2020-01-01. So this condition is OR.
-        # This condition seems to be designed to return periods that are *outside* or *partially outside* the range,
-        # which is counter-intuitive for "get_risk_periods". Let's re-evaluate the original logic.
-
-        # Original condition: start_date >= period.snapshot0.date or end_date <= period.snapshot1.date
-        # This condition is true if the query start date is after or equal to period's start date
-        # OR if the query end date is before or equal to period's end date.
-        # This is essentially: (period_starts_before_or_at_query_start) OR (period_ends_after_or_at_query_end)
-        # This seems to be a filter for periods that are *partially or fully contained* by the query range,
-        # or that *start before* the query range, or *end after* the query range.
-        # It's an "overlapping or encompassing" filter.
-
-        # Let's test with the provided dates and the OR condition
-        # Range: 2021-06-01 to 2022-06-01
-        # mock_rp1 (2020-01-01 to 2021-01-01):
-        #   start_date (2021-06-01) >= period.snapshot0.date (2020-01-01) -> True
-        #   end_date (2022-06-01) <= period.snapshot1.date (2021-01-01) -> False
-        #   Result: True (due to OR) -> mock_rp1 IS included. This is correct based on the code, but unusual for 'get_risk_periods'.
-
-        # mock_rp2 (2021-01-01 to 2022-01-01):
-        #   start_date (2021-06-01) >= period.snapshot0.date (2021-01-01) -> True
-        #   end_date (2022-06-01) <= period.snapshot1.date (2022-01-01) -> False
-        #   Result: True (due to OR) -> mock_rp2 IS included.
-
-        # mock_rp3 (2022-01-01 to 2023-01-01):
-        #   start_date (2021-06-01) >= period.snapshot0.date (2022-01-01) -> False
-        #   end_date (2022-06-01) <= period.snapshot1.date (2023-01-01) -> True
-        #   Result: True (due to OR) -> mock_rp3 IS included.
-
-        # Based on the current logic, all periods should be returned given these examples.
         result = RiskTrajectory._get_risk_periods(
             all_risk_periods, datetime.date(2021, 6, 1), datetime.date(2022, 6, 1)
         )
@@ -1140,13 +1092,6 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertEqual(len(result), 3)
         self.assertListEqual(result, all_risk_periods)
 
-        # This method's logic seems to include all periods unless a period is strictly *outside* the given range,
-        # which is not what the current condition `(start_date >= period.snapshot0.date or end_date <= period.snapshot1.date)` does.
-        # It seems the intent might be `period.snapshot0.date < end_date and period.snapshot1.date > start_date` for true overlap.
-        # However, testing against the *current implementation* is the goal of unit testing.
-        # So these tests reflect the current (potentially unusual) behavior.
 
-
-# To run the tests
 if __name__ == "__main__":
     unittest.main(argv=["first-arg-is-ignored"], exit=False)
