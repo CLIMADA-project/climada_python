@@ -114,9 +114,6 @@ class CalcRiskPeriod:
         time_points: int | None = None,
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
-        risk_transf_attach: float | None = None,
-        risk_transf_cover: float | None = None,
-        calc_residual: bool = False,
     ):
         LOGGER.debug("Instantiating new CalcRiskPeriod.")
         self._snapshot0 = snapshot0
@@ -132,9 +129,6 @@ class CalcRiskPeriod:
         self.impact_computation_strategy = (
             impact_computation_strategy or ImpactCalcComputation()
         )
-        self.risk_transf_attach = risk_transf_attach
-        self.risk_transf_cover = risk_transf_cover
-        self.calc_residual = calc_residual
         self.measure = None  # Only possible to set with apply_measure to make sure snapshots are consistent
 
         self._group_id_E0 = (
@@ -299,12 +293,7 @@ class CalcRiskPeriod:
     @lazy_property
     def E0H0V0(self):
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0,
-            self.snapshot1,
-            (0, 0, 0),
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
+            self.snapshot0, self.snapshot1, (0, 0, 0)
         )
 
     @lazy_property
@@ -313,42 +302,24 @@ class CalcRiskPeriod:
             self.snapshot0,
             self.snapshot1,
             (1, 0, 0),
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
         )
 
     @lazy_property
     def E0H1V0(self):
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0,
-            self.snapshot1,
-            (0, 1, 0),
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
+            self.snapshot0, self.snapshot1, (0, 1, 0)
         )
 
     @lazy_property
     def E1H1V0(self):
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0,
-            self.snapshot1,
-            (1, 1, 0),
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
+            self.snapshot0, self.snapshot1, (1, 1, 0)
         )
 
     @lazy_property
     def E0H0V1(self):
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0,
-            self.snapshot1,
-            (0, 0, 1),
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
+            self.snapshot0, self.snapshot1, (0, 0, 1)
         )
 
     @lazy_property
@@ -357,9 +328,6 @@ class CalcRiskPeriod:
             self.snapshot0,
             self.snapshot1,
             (1, 0, 1),
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
         )
 
     @lazy_property
@@ -368,9 +336,6 @@ class CalcRiskPeriod:
             self.snapshot0,
             self.snapshot1,
             (0, 1, 1),
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
         )
 
     @lazy_property
@@ -379,44 +344,7 @@ class CalcRiskPeriod:
             self.snapshot0,
             self.snapshot1,
             (1, 1, 1),
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
         )
-
-    ###############################
-
-    ######## Risk transfer ########
-
-    @property
-    def risk_transf_attach(self):
-        return self._risk_transfer_attach
-
-    @risk_transf_attach.setter
-    def risk_transf_attach(self, value, /):
-        self._risk_transfer_attach = value
-        self._reset_impact_data()
-
-    @property
-    def risk_transf_cover(self):
-        return self._risk_transfer_cover
-
-    @risk_transf_cover.setter
-    def risk_transf_cover(self, value, /):
-        self._risk_transfer_cover = value
-        self._reset_impact_data()
-
-    @property
-    def calc_residual(self):
-        return self._calc_residual
-
-    @calc_residual.setter
-    def calc_residual(self, value, /):
-        if not isinstance(value, bool):
-            raise ValueError("Not a boolean")
-
-        self._calc_residual = value
-        self._reset_impact_data()
 
     ###############################
 
@@ -826,9 +754,6 @@ class CalcRiskPeriod:
             self.time_points,
             self.interpolation_strategy,
             self.impact_computation_strategy,
-            self.risk_transf_attach,
-            self.risk_transf_cover,
-            self.calc_residual,
         )
 
         risk_period.measure = measure

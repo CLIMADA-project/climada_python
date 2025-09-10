@@ -89,9 +89,6 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertEqual(rt.start_date, self.mock_snapshot1.date)
         self.assertEqual(rt.end_date, self.mock_snapshot3.date)
         self.assertIsNone(rt.risk_disc)
-        self.assertIsNone(rt._risk_transf_cover)
-        self.assertIsNone(rt._risk_transf_attach)
-        self.assertTrue(rt._calc_residual)
         self.assertEqual(rt._interpolation_strategy, self.mock_interpolation_strategy)
         self.assertEqual(
             rt._impact_computation_strategy, self.mock_impact_computation_strategy
@@ -110,9 +107,6 @@ class TestRiskTrajectory(unittest.TestCase):
             interval_freq="MS",
             all_groups_name="CustomAll",
             risk_disc=mock_disc,
-            risk_transf_cover=0.5,
-            risk_transf_attach=0.1,
-            calc_residual=False,
             interpolation_strategy=Mock(),
             impact_computation_strategy=Mock(),
         )
@@ -121,7 +115,6 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertEqual(rt.risk_disc, mock_disc)
         self.assertEqual(rt._risk_transf_cover, 0.5)
         self.assertEqual(rt._risk_transf_attach, 0.1)
-        self.assertFalse(rt._calc_residual)
 
     ## Test Properties (`@property` and `@setter`)
     def test_default_rp_getter_setter(self):
@@ -142,24 +135,6 @@ class TestRiskTrajectory(unittest.TestCase):
             rt.default_rp = "not a list"
         with self.assertRaises(ValueError):
             rt.default_rp = [10, "not an int"]
-
-    @patch("climada.trajectories.risk_trajectory.RiskTrajectory._reset_metrics")
-    def test_risk_transf_cover_setter(self, mock_reset_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
-        rt._risk_period_up_to_date = True  # Simulate old state
-        rt.risk_transf_cover = 0.5
-        self.assertEqual(rt._risk_transf_cover, 0.5)
-        self.assertFalse(rt._risk_period_up_to_date)  # Should be set to False
-        mock_reset_metrics.assert_called_once()  # Should call reset_metrics
-
-    @patch("climada.trajectories.risk_trajectory.RiskTrajectory._reset_metrics")
-    def test_risk_transf_attach_setter(self, mock_reset_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
-        rt._risk_period_up_to_date = True  # Simulate old state
-        rt.risk_transf_attach = 0.1
-        self.assertEqual(rt._risk_transf_attach, 0.1)
-        self.assertFalse(rt._risk_period_up_to_date)  # Should be set to False
-        mock_reset_metrics.assert_called_once()  # Should call reset_metrics
 
     # --- Test Core Risk Period Calculation (`risk_periods` property and `_calc_risk_periods`) ---
     # This is critical as many other methods depend on it.

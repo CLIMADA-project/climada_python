@@ -49,22 +49,8 @@ class RiskTrajectory:
     """Calculates risk trajectories over a series of snapshots.
 
     This class computes risk metrics over a series of snapshots,
-    optionally applying risk discounting and risk transfer adjustments.
+    optionally applying risk discounting.
 
-    Attributes
-    ----------
-    start_date : datetime
-        The start date of the risk trajectory.
-    end_date : datetime
-        The end date of the risk trajectory.
-    risk_disc : DiscRates | None
-        The discount rates for risk, default is None.
-    risk_transf_cover : optional
-        The risk transfer coverage, default is None.
-    risk_transf_attach : optional
-        The risk transfer attachment, default is None.
-    risk_periods : list
-        The computed RiskPeriod objects from the snapshots.
     """
 
     _grouper = ["measure", "metric"]
@@ -77,9 +63,6 @@ class RiskTrajectory:
         interval_freq: str = "YS",
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
-        risk_transf_cover=None,
-        risk_transf_attach=None,
-        calc_residual: bool = True,
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
@@ -92,9 +75,6 @@ class RiskTrajectory:
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
         self._interval_freq = interval_freq
         self.risk_disc = risk_disc
-        self._risk_transf_cover = risk_transf_cover
-        self._risk_transf_attach = risk_transf_attach
-        self._calc_residual = calc_residual
         self._interpolation_strategy = interpolation_strategy or AllLinearStrategy()
         self._impact_computation_strategy = (
             impact_computation_strategy or ImpactCalcComputation()
@@ -207,9 +187,6 @@ class RiskTrajectory:
                 interval_freq=self._interval_freq,
                 interpolation_strategy=self._interpolation_strategy,
                 impact_computation_strategy=self._impact_computation_strategy,
-                risk_transf_cover=self.risk_transf_cover,
-                risk_transf_attach=self.risk_transf_attach,
-                calc_residual=self._calc_residual,
             )
             for start_snapshot, end_snapshot in pairwise(
                 sorted(snapshots, key=lambda snap: snap.date)
