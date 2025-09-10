@@ -523,12 +523,12 @@ class CalcRiskPeriod:
     ### Fully interpolated metrics ###
 
     @lazy_property
-    def per_date_aai(self):
-        return self.calc_per_date_aais(self.per_date_eai)
-
-    @lazy_property
     def per_date_eai(self):
         return self.calc_eai()
+
+    @lazy_property
+    def per_date_aai(self):
+        return self.calc_per_date_aais(self.per_date_eai)
 
     @lazy_property
     def eai_gdf(self):
