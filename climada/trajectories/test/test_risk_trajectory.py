@@ -88,7 +88,7 @@ class TestRiskTrajectory(unittest.TestCase):
         )
         self.assertEqual(rt.start_date, self.mock_snapshot1.date)
         self.assertEqual(rt.end_date, self.mock_snapshot3.date)
-        self.assertIsNone(rt.risk_disc)
+        self.assertIsNone(rt._risk_disc)
         self.assertEqual(rt._interpolation_strategy, self.mock_interpolation_strategy)
         self.assertEqual(
             rt._impact_computation_strategy, self.mock_impact_computation_strategy
@@ -112,7 +112,7 @@ class TestRiskTrajectory(unittest.TestCase):
         )
         self.assertEqual(rt._interval_freq, "MS")
         self.assertEqual(rt._all_groups_name, "CustomAll")
-        self.assertEqual(rt.risk_disc, mock_disc)
+        self.assertEqual(rt._risk_disc, mock_disc)
         self.assertEqual(rt._risk_transf_cover, 0.5)
         self.assertEqual(rt._risk_transf_attach, 0.1)
 
@@ -220,7 +220,7 @@ class TestRiskTrajectory(unittest.TestCase):
     def test_generic_metrics_basic_flow(self, mock_npv_transform, mock_risk_periods):
         rt = RiskTrajectory(self.snapshots_list)
         rt._all_groups_name = "All"  # Ensure default
-        rt.risk_disc = self.mock_disc_rates  # For NPV transform check
+        rt._risk_disc = self.mock_disc_rates  # For NPV transform check
 
         # Mock CalcRiskPeriod instances returned by risk_periods property
         mock_calc_period1 = Mock()

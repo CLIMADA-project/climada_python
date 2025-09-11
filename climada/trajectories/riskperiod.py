@@ -29,9 +29,12 @@ approach is used: computation is only done when required, and then stored.
 import itertools
 import logging
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
+from scipy.sparse import csr_matrix
 
+from climada.engine.impact import Impact
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.measures.base import Measure
 from climada.trajectories.impact_calc_strat import (
@@ -40,29 +43,27 @@ from climada.trajectories.impact_calc_strat import (
 )
 from climada.trajectories.interpolation import (
     AllLinearStrategy,
+    InterpolationStrategy,
     InterpolationStrategyBase,
     linear_interp_arrays,
 )
 from climada.trajectories.snapshot import Snapshot
+from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
-
-logging.getLogger("climada.util.coordinates").setLevel(logging.WARNING)
-logging.getLogger("climada.entity.exposures.base").setLevel(logging.WARNING)
-logging.getLogger("climada.engine.impact_calc").setLevel(logging.WARNING)
 
 
 def lazy_property(method):
     # This function is used as a decorator for properties
-    # that require "heavy" computation and are not always needed
-    # if the property is none, it uses the corresponding computation method
-    # and stores the result in the corresponding private attribute
+    # that require "heavy" computation and are not always needed.
+    # When requested, if a property is none, it uses the corresponding
+    # computation method and caches the result in the corresponding
+    # private attribute
     attr_name = f"_{method.__name__}"
 
     @property
     def _lazy(self):
         if getattr(self, attr_name) is None:
-            # meas_n = self.measure.name if self.measure else "no_measure"
             # LOGGER.debug(
             #     f"Computing {method.__name__} for {self._snapshot0.date}-{self._snapshot1.date} with {meas_n}."
             # )
@@ -76,27 +77,23 @@ class CalcRiskPeriod:
     """Handles the computation of impacts for a risk period.
 
     This object handles the interpolations and computations of risk metrics in
-    between two given snapshots, along a DateTime index build on
-    `interval_freq` or `time_points`.
+    between two given snapshots, along a DateTimeIndex build from either a
+    `time_resolution` (which must be a valid "freq" string to build a DateTimeIndex)
+    and defaults to "AS-JAN" (start of the year) or `time_points` integer argument, in which case
+    the DateTimeIndex will have that many periods.
+
+    Note that most attribute like members are properties with their own docstring.
 
     Attributes
     ----------
 
-    date_idx: pd.DateTimeIndex
+    date_idx: pd.DatetimeIndex
         The date index for the different interpolated points between the two snapshots
     interpolation_strategy: InterpolationStrategy, optional
         The approach used to interpolate impact matrices in between the two snapshots, linear by default.
     impact_computation_strategy: ImpactComputationStrategy, optional
         The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots.
         Defaults to ImpactCalc
-    risk_transf_attach: float, optional
-        A global attachement of risk transfer to apply. Note that this is different (and not exclusive) from the attachement
-        that can be defined in the `Exposures` object. Defaults to None.
-    risk_transf_cover: float, optional
-        A global cover of risk transfer to apply. See `risk_transf_attach` above. Defaults to None.
-    calc_residual: bool, optional
-        A boolean stating whether the residual (True) or transfered risk (False) is
-        retained when applying a global risk transfer. Defaults to False.
     measure: Measure, optional
         The measure to apply to both snapshots. Defaults to None.
 
@@ -110,11 +107,39 @@ class CalcRiskPeriod:
         self,
         snapshot0: Snapshot,
         snapshot1: Snapshot,
-        interval_freq: str | None = "AS-JAN",
+        time_resolution: str | None = "AS-JAN",
         time_points: int | None = None,
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
+        """Initialize a new `CalcRiskPeriod`
+
+        This initializes and instantiate a new CalcRiskPeriod object. No heavy
+        computation is done at that point.
+
+        Parameters
+        ----------
+        snapshot0 : Snapshot
+            The `Snapshot` at the start of the risk period.
+        snapshot1 : Snapshot
+            The `Snapshot` at the end of the risk period.
+        time_resolution : str, optional
+            One of pandas date offset strings or corresponding objects. See :func:`pandas.date_range`.
+        time_points : int, optional
+            Number of periods to generate for the DatetimeIndex.
+        interpolation_strategy: InterpolationStrategy, optional
+            The approach used to interpolate impact matrices in between the two snapshots, linear by default.
+        impact_computation_strategy: ImpactComputationStrategy, optional
+            The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots.
+            Defaults to ImpactCalc
+
+        Notes
+        -----
+
+        If both `time_points` and `freq` are given, a consistency check between the two is made.
+
+        """
+
         LOGGER.debug("Instantiating new CalcRiskPeriod.")
         self._snapshot0 = snapshot0
         self._snapshot1 = snapshot1
@@ -122,7 +147,7 @@ class CalcRiskPeriod:
             date1=snapshot0.date,
             date2=snapshot1.date,
             periods=time_points,
-            freq=interval_freq,
+            freq=time_resolution,
             name="date",
         )
         self.interpolation_strategy = interpolation_strategy or AllLinearStrategy()
@@ -132,13 +157,13 @@ class CalcRiskPeriod:
         self.measure = None  # Only possible to set with apply_measure to make sure snapshots are consistent
 
         self._group_id_E0 = (
-            self.snapshot0.exposure.gdf["group_id"].values
-            if "group_id" in self.snapshot0.exposure.gdf.columns
+            self.snapshot_start.exposure.gdf["group_id"].values
+            if "group_id" in self.snapshot_start.exposure.gdf.columns
             else np.array([])
         )
         self._group_id_E1 = (
-            self.snapshot1.exposure.gdf["group_id"].values
-            if "group_id" in self.snapshot1.exposure.gdf.columns
+            self.snapshot_end.exposure.gdf["group_id"].values
+            if "group_id" in self.snapshot_end.exposure.gdf.columns
             else np.array([])
         )
         self._groups_id = np.unique(
@@ -146,6 +171,7 @@ class CalcRiskPeriod:
         )
 
     def _reset_impact_data(self):
+        """Util method that resets computed data, for instance when changing the time resolution."""
         for fut in list(itertools.product([0, 1], repeat=3)):
             setattr(self, f"_E{fut[0]}H{fut[1]}V{fut[2]}", None)
 
@@ -167,8 +193,7 @@ class CalcRiskPeriod:
         freq: str | None = None,
         name: str | None = None,
     ) -> pd.DatetimeIndex:
-        """
-        Generate a date range index based on the provided parameters.
+        """Generate a date range index based on the provided parameters.
 
         Parameters
         ----------
@@ -208,7 +233,7 @@ class CalcRiskPeriod:
         )
         if periods is not None and len(ret) != periods:
             raise ValueError(
-                "Number of periods and frequency given to date_range are inconsistant"
+                "Number of periods and frequency given to date_range are inconsistent."
             )
 
         if pd.infer_freq(ret) != freq:
@@ -219,15 +244,18 @@ class CalcRiskPeriod:
         return ret
 
     @property
-    def snapshot0(self):
+    def snapshot_start(self) -> Snapshot:
+        """The `Snapshot` at the start of the risk period."""
         return self._snapshot0
 
     @property
-    def snapshot1(self):
+    def snapshot_end(self) -> Snapshot:
+        """The `Snapshot` at the end of the risk period."""
         return self._snapshot1
 
     @property
-    def date_idx(self):
+    def date_idx(self) -> pd.DatetimeIndex:
+        """The pandas DatetimeIndex representing the time dimension of the risk period."""
         return self._date_idx
 
     @date_idx.setter
@@ -237,11 +265,12 @@ class CalcRiskPeriod:
 
         self._date_idx = value.normalize()  # Avoids weird hourly data
         self._time_points = len(self.date_idx)
-        self._interval_freq = pd.infer_freq(self.date_idx)
+        self._time_resolution = pd.infer_freq(self.date_idx)
         self._reset_impact_data()
 
     @property
-    def time_points(self):
+    def time_points(self) -> int:
+        """The numbers of different time points (dates) in the risk period."""
         return self._time_points
 
     @time_points.setter
@@ -250,22 +279,24 @@ class CalcRiskPeriod:
             raise ValueError("Not an int")
 
         self.date_idx = pd.date_range(
-            self.snapshot0.date, self.snapshot1.date, periods=value, name="date"
+            self.snapshot_start.date, self.snapshot_end.date, periods=value, name="date"
         )
 
     @property
-    def interval_freq(self):
-        return self._interval_freq
+    def time_resolution(self) -> str:
+        """The time resolution of the risk periods, expressed as a pandas interval frequency string."""
+        return self._time_resolution
 
-    @interval_freq.setter
-    def interval_freq(self, value, /):
+    @time_resolution.setter
+    def time_resolution(self, value, /):
         freq = pd.tseries.frequencies.to_offset(value)
         self.date_idx = pd.date_range(
-            self.snapshot0.date, self.snapshot1.date, freq=freq, name="date"
+            self.snapshot_start.date, self.snapshot_end.date, freq=freq, name="date"
         )
 
     @property
-    def interpolation_strategy(self):
+    def interpolation_strategy(self) -> InterpolationStrategy:
+        """The approach used to interpolate impact matrices in between the two snapshots."""
         return self._interpolation_strategy
 
     @interpolation_strategy.setter
@@ -277,7 +308,8 @@ class CalcRiskPeriod:
         self._reset_impact_data()
 
     @property
-    def impact_computation_strategy(self):
+    def impact_computation_strategy(self) -> ImpactComputationStrategy:
+        """The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots."""
         return self._impact_computation_strategy
 
     @impact_computation_strategy.setter
@@ -288,61 +320,69 @@ class CalcRiskPeriod:
         self._impact_computation_strategy = value
         self._reset_impact_data()
 
-    ##### Impact objects cube #####
+    ##### Impact objects cube / Risk Cube #####
 
     @lazy_property
-    def E0H0V0(self):
+    def E0H0V0(self) -> Impact:
+        """Impact object corresponding to starting exposure, starting hazard and starting vulnerability."""
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0, self.snapshot1, (0, 0, 0)
+            self.snapshot_start, self.snapshot_end, (0, 0, 0)
         )
 
     @lazy_property
-    def E1H0V0(self):
+    def E1H0V0(self) -> Impact:
+        """Impact object corresponding to future exposure, starting hazard and starting vulnerability."""
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0,
-            self.snapshot1,
+            self.snapshot_start,
+            self.snapshot_end,
             (1, 0, 0),
         )
 
     @lazy_property
-    def E0H1V0(self):
+    def E0H1V0(self) -> Impact:
+        """Impact object corresponding to starting exposure, future hazard and starting vulnerability."""
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0, self.snapshot1, (0, 1, 0)
+            self.snapshot_start, self.snapshot_end, (0, 1, 0)
         )
 
     @lazy_property
-    def E1H1V0(self):
+    def E1H1V0(self) -> Impact:
+        """Impact object corresponding to future exposure, future hazard and starting vulnerability."""
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0, self.snapshot1, (1, 1, 0)
+            self.snapshot_start, self.snapshot_end, (1, 1, 0)
         )
 
     @lazy_property
-    def E0H0V1(self):
+    def E0H0V1(self) -> Impact:
+        """Impact object corresponding to starting exposure, starting hazard and future vulnerability."""
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0, self.snapshot1, (0, 0, 1)
+            self.snapshot_start, self.snapshot_end, (0, 0, 1)
         )
 
     @lazy_property
-    def E1H0V1(self):
+    def E1H0V1(self) -> Impact:
+        """Impact object corresponding to future exposure, starting hazard and future vulnerability."""
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0,
-            self.snapshot1,
+            self.snapshot_start,
+            self.snapshot_end,
             (1, 0, 1),
         )
 
     @lazy_property
-    def E0H1V1(self):
+    def E0H1V1(self) -> Impact:
+        """Impact object corresponding to starting exposure, future hazard and future vulnerability."""
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0,
-            self.snapshot1,
+            self.snapshot_start,
+            self.snapshot_end,
             (0, 1, 1),
         )
 
     @lazy_property
-    def E1H1V1(self):
+    def E1H1V1(self) -> Impact:
+        """Impact object corresponding to future exposure, future hazard and future vulnerability."""
         return self.impact_computation_strategy.compute_impacts(
-            self.snapshot0,
-            self.snapshot1,
+            self.snapshot_start,
+            self.snapshot_end,
             (1, 1, 1),
         )
 
@@ -351,26 +391,30 @@ class CalcRiskPeriod:
     ### Impact Matrices arrays ####
 
     @lazy_property
-    def imp_mats_H0V0(self):
-        return self.interpolation_strategy.interp_exposure_dim(
+    def imp_mats_H0V0(self) -> list:
+        """List of `time_points` impact matrices with changing exposure, starting hazard and starting vulnerability."""
+        return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H0V0.imp_mat, self.E1H0V0.imp_mat, self.time_points
         )
 
     @lazy_property
-    def imp_mats_H1V0(self):
-        return self.interpolation_strategy.interp_exposure_dim(
+    def imp_mats_H1V0(self) -> list:
+        """List of `time_points` impact matrices with changing exposure, future hazard and starting vulnerability."""
+        return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H1V0.imp_mat, self.E1H1V0.imp_mat, self.time_points
         )
 
     @lazy_property
-    def imp_mats_H0V1(self):
-        return self.interpolation_strategy.interp_exposure_dim(
+    def imp_mats_H0V1(self) -> list:
+        """List of `time_points` impact matrices with changing exposure, starting hazard and future vulnerability."""
+        return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H0V1.imp_mat, self.E1H0V1.imp_mat, self.time_points
         )
 
     @lazy_property
-    def imp_mats_H1V1(self):
-        return self.interpolation_strategy.interp_exposure_dim(
+    def imp_mats_H1V1(self) -> list:
+        """List of `time_points` impact matrices with changing exposure, future hazard and future vulnerability."""
+        return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H1V1.imp_mat, self.E1H1V1.imp_mat, self.time_points
         )
 
@@ -379,27 +423,31 @@ class CalcRiskPeriod:
     ########## Base EAI ###########
 
     @lazy_property
-    def per_date_eai_H0V0(self):
+    def per_date_eai_H0V0(self) -> np.ndarray:
+        """Expected annual impacts for changing exposure, starting hazard and starting vulnerability."""
         return self.calc_per_date_eais(
-            self.imp_mats_H0V0, self.snapshot0.hazard.frequency
+            self.imp_mats_H0V0, self.snapshot_start.hazard.frequency
         )
 
     @lazy_property
-    def per_date_eai_H1V0(self):
+    def per_date_eai_H1V0(self) -> np.ndarray:
+        """Expected annual impacts for changing exposure, future hazard and starting vulnerability."""
         return self.calc_per_date_eais(
-            self.imp_mats_H1V0, self.snapshot1.hazard.frequency
+            self.imp_mats_H1V0, self.snapshot_end.hazard.frequency
         )
 
     @lazy_property
-    def per_date_eai_H0V1(self):
+    def per_date_eai_H0V1(self) -> np.ndarray:
+        """Expected annual impacts for changing exposure, starting hazard and future vulnerability."""
         return self.calc_per_date_eais(
-            self.imp_mats_H0V1, self.snapshot0.hazard.frequency
+            self.imp_mats_H0V1, self.snapshot_start.hazard.frequency
         )
 
     @lazy_property
-    def per_date_eai_H1V1(self):
+    def per_date_eai_H1V1(self) -> np.ndarray:
+        """Expected annual impacts for changing exposure, future hazard and future vulnerability."""
         return self.calc_per_date_eais(
-            self.imp_mats_H1V1, self.snapshot1.hazard.frequency
+            self.imp_mats_H1V1, self.snapshot_end.hazard.frequency
         )
 
     ##################################
@@ -407,43 +455,51 @@ class CalcRiskPeriod:
     ######### Specific AAIs ##########
 
     @lazy_property
-    def per_date_aai_H0V0(self):
+    def per_date_aai_H0V0(self) -> np.ndarray:
+        """Average annual impacts for changing exposure, starting hazard and starting vulnerability."""
         return self.calc_per_date_aais(self.per_date_eai_H0V0)
 
     @lazy_property
-    def per_date_aai_H1V0(self):
+    def per_date_aai_H1V0(self) -> np.ndarray:
+        """Average annual impacts for changing exposure, future hazard and starting vulnerability."""
         return self.calc_per_date_aais(self.per_date_eai_H1V0)
 
     @lazy_property
-    def per_date_aai_H0V1(self):
+    def per_date_aai_H0V1(self) -> np.ndarray:
+        """Average annual impacts for changing exposure, starting hazard and future vulnerability."""
         return self.calc_per_date_aais(self.per_date_eai_H0V1)
 
     @lazy_property
-    def per_date_aai_H1V1(self):
+    def per_date_aai_H1V1(self) -> np.ndarray:
+        """Average annual impacts for changing exposure, future hazard and future vulnerability."""
         return self.calc_per_date_aais(self.per_date_eai_H1V1)
 
     #################################
 
     ######### Specific RPs  #########
 
-    def per_date_return_periods_H0V0(self, return_periods) -> np.ndarray:
+    def per_date_return_periods_H0V0(self, return_periods: list[int]) -> np.ndarray:
+        """Estimated impacts per dates for given return periods, with changing exposure, starting hazard and starting vulnerability."""
         return self.calc_per_date_rps(
-            self.imp_mats_H0V0, self.snapshot0.hazard.frequency, return_periods
+            self.imp_mats_H0V0, self.snapshot_start.hazard.frequency, return_periods
         )
 
-    def per_date_return_periods_H1V0(self, return_periods) -> np.ndarray:
+    def per_date_return_periods_H1V0(self, return_periods: list[int]) -> np.ndarray:
+        """Estimated impacts per dates for given return periods, with changing exposure, future hazard and starting vulnerability."""
         return self.calc_per_date_rps(
-            self.imp_mats_H1V0, self.snapshot1.hazard.frequency, return_periods
+            self.imp_mats_H1V0, self.snapshot_end.hazard.frequency, return_periods
         )
 
-    def per_date_return_periods_H0V1(self, return_periods) -> np.ndarray:
+    def per_date_return_periods_H0V1(self, return_periods: list[int]) -> np.ndarray:
+        """Estimated impacts per dates for given return periods, with changing exposure, starting hazard and future vulnerability."""
         return self.calc_per_date_rps(
-            self.imp_mats_H0V1, self.snapshot0.hazard.frequency, return_periods
+            self.imp_mats_H0V1, self.snapshot_start.hazard.frequency, return_periods
         )
 
-    def per_date_return_periods_H1V1(self, return_periods) -> np.ndarray:
+    def per_date_return_periods_H1V1(self, return_periods: list[int]) -> np.ndarray:
+        """Estimated impacts per dates for given return periods, with changing exposure, future hazard and future vulnerability."""
         return self.calc_per_date_rps(
-            self.imp_mats_H1V1, self.snapshot1.hazard.frequency, return_periods
+            self.imp_mats_H1V1, self.snapshot_end.hazard.frequency, return_periods
         )
 
     ##################################
@@ -451,45 +507,52 @@ class CalcRiskPeriod:
     ### Fully interpolated metrics ###
 
     @lazy_property
-    def per_date_eai(self):
+    def per_date_eai(self) -> np.ndarray:
+        """Expected annual impacts per date with changing exposure, changing hazard and changing vulnerability"""
         return self.calc_eai()
 
     @lazy_property
-    def per_date_aai(self):
+    def per_date_aai(self) -> np.ndarray:
+        """Average annual impacts per date with changing exposure, changing hazard and changing vulnerability"""
         return self.calc_per_date_aais(self.per_date_eai)
 
     @lazy_property
-    def eai_gdf(self):
+    def eai_gdf(self) -> gpd.GeoDataFrame:
+        """Convenience function returning a GeoDataFrame (with both datetime and coordinates) from `per_date_eai`.
+
+        Notes
+        -----
+
+        The GeoDataFrame from the starting snapshot is used as a basis (notably for `value` and `group_id`).
+        """
         return self.calc_eai_gdf()
 
     ####################################
 
     ### Metrics from impact matrices ###
 
-    @classmethod
-    def calc_per_date_eais(cls, imp_mats, frequency) -> np.ndarray:
+    # These methods might go in a utils file instead, to be reused
+    # for a no interpolation case (and maybe the timeseries?)
+
+    @staticmethod
+    def calc_per_date_eais(
+        imp_mats: list[csr_matrix], frequency: np.ndarray
+    ) -> np.ndarray:
         """
-        Calculate per_date expected average impact (EAI) values for two scenarios.
+        Calculate expected average impact (EAI) values from a list of impact matrices corresponding
+        to impacts at different dates (with possible changes along exposure, hazard and vulnerability).
 
         Parameters
         ----------
-        imp_mats_0 : list of np.ndarray
-            List of interpolated impact matrices for scenario 0.
-        imp_mats_1 : list of np.ndarray
-            List of interpolated impact matrices for scenario 1.
-        frequency_0 : np.ndarray
-            Frequency values associated with scenario 0.
-        frequency_1 : np.ndarray
-            Frequency values associated with scenario 1.
+        imp_mats : list of np.ndarray
+            List of impact matrices.
+        frequency : np.ndarray
+            Hazard frequency values.
 
         Returns
         -------
-        tuple
-            Tuple containing:
-            - per_date_eai_exp_0 : list of float
-                per date expected annual impacts for scenario 0.
-            - per_date_eai_exp_1 : list of float
-                per date expected annual impacts for scenario 1.
+        np.ndarray
+            2D array of EAI (1D) for each dates.
         """
         per_date_eai_exp = np.array(
             [ImpactCalc.eai_exp_from_mat(imp_mat, frequency) for imp_mat in imp_mats]
@@ -497,25 +560,20 @@ class CalcRiskPeriod:
         return per_date_eai_exp
 
     @staticmethod
-    def calc_per_date_aais(per_date_eai_exp) -> np.ndarray:
+    def calc_per_date_aais(per_date_eai_exp: np.ndarray) -> np.ndarray:
         """
-        Calculate per_date aggregate annual impact (AAI) values for two scenarios.
+        Calculate per_date aggregate annual impact (AAI) values resulting from a list arrays corresponding
+        to EAI at different dates (with possible changes along exposure, hazard and vulnerability).
 
         Parameters
         ----------
-        per_date_eai_exp_0 : list of float
-            Per_Date expected annual impacts for scenario 0.
-        per_date_eai_exp_1 : list of float
-            Per_Date expected annual impacts for scenario 1.
+        per_date_eai_exp: np.ndarray
+            EAIs arrays.
 
         Returns
         -------
-        tuple
-            Tuple containing:
-            - per_date_aai_0 : list of float
-                Aggregate annual impact values for scenario 0.
-            - per_date_aai_1 : list of float
-                Aggregate annual impact values for scenario 1.
+        np.ndarray
+            1D array of AAI (0D) for each dates.
         """
         per_date_aai = np.array(
             [ImpactCalc.aai_agg_from_eai_exp(eai_exp) for eai_exp in per_date_eai_exp]
@@ -523,31 +581,29 @@ class CalcRiskPeriod:
         return per_date_aai
 
     @classmethod
-    def calc_per_date_rps(cls, imp_mats, frequency, return_periods) -> np.ndarray:
+    def calc_per_date_rps(
+        cls,
+        imp_mats: list[csr_matrix],
+        frequency: np.ndarray,
+        return_periods: list[int],
+    ) -> np.ndarray:
         """
-        Calculate per_date return period impact values for two scenarios.
+        Calculate per date return period impact values from a list of impact matrices corresponding
+        to impacts at different dates (with possible changes along exposure, hazard and vulnerability).
 
         Parameters
         ----------
-        imp_mats_0 : list of np.ndarray
-            List of interpolated impact matrices for scenario 0.
-        imp_mats_1 : list of np.ndarray
-            List of interpolated impact matrices for scenario 1.
-        frequency_0 : np.ndarray
-            Frequency values for scenario 0.
-        frequency_1 : np.ndarray
-            Frequency values for scenario 1.
+        imp_mats: list of scipy.crs_matrix
+            List of impact matrices.
+        frequency: np.ndarray
+            Frequency values.
         return_periods : list of int
             Return periods to calculate impact values for.
 
         Returns
         -------
-        tuple
-            Tuple containing:
-            - rp_0 : list of np.ndarray
-                Per_Date return period impact values for scenario 0.
-            - rp_1 : list of np.ndarray
-                Per_Date return period impact values for scenario 1.
+        np.ndarray
+            2D array of impacts per return periods (1D) for each dates.
         """
         rp = np.array(
             [
@@ -557,22 +613,27 @@ class CalcRiskPeriod:
         )
         return rp
 
-    @classmethod
-    def calc_freq_curve(cls, imp_mat_intrpl, frequency, return_per=None) -> np.ndarray:
+    @staticmethod
+    def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None) -> np.ndarray:
         """
-        Calculate the frequency curve
+        Calculate the estimated impacts for given return periods.
 
-        Parameters:
-        imp_mat_intrpl (np.array): The interpolated impact matrix
-        frequency (np.array): The frequency of the hazard
-        return_per (np.array): The return period
+        Parameters
+        ----------
 
-        Returns:
-        ifc_return_per (np.array): The impact exceeding frequency
-        ifc_impact (np.array): The impact exceeding the return period
+        imp_mat_intrpl: scipy.csr_matrix
+            An impact matrix.
+        frequency: np.ndarray
+            The frequency of the hazard.
+        return_per: np.ndarray
+            The return periods to compute impacts for.
+
+        Returns
+        -------
+        np.ndarray
+           The estimated impacts for the different return periods.
         """
 
-        # Calculate the at_event make the np.array
         at_event = np.sum(imp_mat_intrpl, axis=1).A1
 
         # Sort descendingly the impacts per events
@@ -594,30 +655,32 @@ class CalcRiskPeriod:
 
     ##### Interpolation of metrics #####
 
-    def calc_eai(self):
+    def calc_eai(self) -> np.ndarray:
+        """Compute the EAIs at each dates of the risk period (including changes in exposure, hazard and vulnerability)."""
         per_date_eai_H0V0, per_date_eai_H1V0, per_date_eai_H0V1, per_date_eai_H1V1 = (
             self.per_date_eai_H0V0,
             self.per_date_eai_H1V0,
             self.per_date_eai_H0V1,
             self.per_date_eai_H1V1,
         )
-        per_date_eai_V0 = self.interpolation_strategy.interp_hazard_dim(
+        per_date_eai_V0 = self.interpolation_strategy.interp_over_hazard_dim(
             per_date_eai_H0V0, per_date_eai_H1V0
         )
-        per_date_eai_V1 = self.interpolation_strategy.interp_hazard_dim(
+        per_date_eai_V1 = self.interpolation_strategy.interp_over_hazard_dim(
             per_date_eai_H0V1, per_date_eai_H1V1
         )
-        per_date_eai = self.interpolation_strategy.interp_vulnerability_dim(
+        per_date_eai = self.interpolation_strategy.interp_over_vulnerability_dim(
             per_date_eai_V0, per_date_eai_V1
         )
         return per_date_eai
 
-    def calc_eai_gdf(self):
+    def calc_eai_gdf(self) -> gpd.GeoDataFrame:
+        """Merges the per date EAIs of the risk period with the GeoDataframe of the exposure of the starting snapshot."""
         df = pd.DataFrame(self.per_date_eai, index=self.date_idx)
         df = df.reset_index().melt(
             id_vars="date", var_name="coord_id", value_name="risk"
         )
-        eai_gdf = self.snapshot0.exposure.gdf[["group_id"]]
+        eai_gdf = self.snapshot_start.exposure.gdf[["group_id"]]
         eai_gdf["coord_id"] = eai_gdf.index
         eai_gdf = eai_gdf.merge(df, on="coord_id")
         eai_gdf = eai_gdf.rename(columns={"group_id": "group"})
@@ -626,7 +689,8 @@ class CalcRiskPeriod:
         eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"
         return eai_gdf
 
-    def calc_aai_metric(self):
+    def calc_aai_metric(self) -> pd.DataFrame:
+        """Compute a DataFrame of the AAI at each dates of the risk period (including changes in exposure, hazard and vulnerability)."""
         aai_df = pd.DataFrame(
             index=self.date_idx, columns=["risk"], data=self.per_date_aai
         )
@@ -638,7 +702,14 @@ class CalcRiskPeriod:
         aai_df.reset_index(inplace=True)
         return aai_df
 
-    def calc_aai_per_group_metric(self):
+    def calc_aai_per_group_metric(self) -> pd.DataFrame:
+        """Compute a DataFrame of the AAI distinguised per group id in the exposures, at each dates of the risk period (including changes in exposure, hazard and vulnerability).
+
+        Notes
+        -----
+
+        If group id changes between starting and ending snapshots of the risk period, the AAIs are linearly interpolated (with a warning for transparency).
+        """
         if len(self._group_id_E0) < 1 or len(self._group_id_E1) < 1:
             LOGGER.warning(
                 "No group id defined in at least one of the Exposures object. Per group aai will be empty."
@@ -671,21 +742,30 @@ class CalcRiskPeriod:
         )
         return aai_per_group_df
 
-    def calc_return_periods_metric(self, return_periods):
-        # maybe wrong, to be reworked by concatenating imp_mats first
+    def calc_return_periods_metric(self, return_periods: list[int]) -> pd.DataFrame:
+        """Compute a DataFrame of the estimated impacts for a list of return periods, at each dates of the risk period (including changes in exposure, hazard and vulnerability).
+
+        Parameters
+        ----------
+
+        return_periods : list of int
+            The return periods to estimate impacts for.
+        """
+
+        # currently mathematicaly wrong, but approximatively correct, to be reworked when concatenating the impact matrices for the interpolation
         per_date_rp_H0V0, per_date_rp_H1V0, per_date_rp_H0V1, per_date_rp_H1V1 = (
             self.per_date_return_periods_H0V0(return_periods),
             self.per_date_return_periods_H1V0(return_periods),
             self.per_date_return_periods_H0V1(return_periods),
             self.per_date_return_periods_H1V1(return_periods),
         )
-        per_date_rp_V0 = self.interpolation_strategy.interp_hazard_dim(
+        per_date_rp_V0 = self.interpolation_strategy.interp_over_hazard_dim(
             per_date_rp_H0V0, per_date_rp_H1V0
         )
-        per_date_rp_V1 = self.interpolation_strategy.interp_hazard_dim(
+        per_date_rp_V1 = self.interpolation_strategy.interp_over_hazard_dim(
             per_date_rp_H0V1, per_date_rp_H1V1
         )
-        per_date_rp = self.interpolation_strategy.interp_vulnerability_dim(
+        per_date_rp = self.interpolation_strategy.interp_over_vulnerability_dim(
             per_date_rp_V0, per_date_rp_V1
         )
         rp_df = pd.DataFrame(
@@ -699,11 +779,12 @@ class CalcRiskPeriod:
         rp_df["measure"] = self.measure.name if self.measure else "no_measure"
         return rp_df
 
-    def calc_risk_components_metric(self):
-        per_date_aai_V0 = self.interpolation_strategy.interp_hazard_dim(
+    def calc_risk_components_metric(self) -> pd.DataFrame:
+        """Compute a DataFrame of the individual components of risk (impact), at each dates of the risk period (including changes in exposure, hazard and vulnerability)."""
+        per_date_aai_V0 = self.interpolation_strategy.interp_over_hazard_dim(
             self.per_date_aai_H0V0, self.per_date_aai_H1V0
         )
-        per_date_aai_H0 = self.interpolation_strategy.interp_vulnerability_dim(
+        per_date_aai_H0 = self.interpolation_strategy.interp_over_vulnerability_dim(
             self.per_date_aai_H0V0, self.per_date_aai_H0V1
         )
         df = pd.DataFrame(
@@ -743,14 +824,30 @@ class CalcRiskPeriod:
         df["measure"] = self.measure.name if self.measure else "no_measure"
         return df
 
-    def apply_measure(self, measure: Measure):
-        snap0 = self.snapshot0.apply_measure(measure)
-        snap1 = self.snapshot1.apply_measure(measure)
+    def apply_measure(self, measure: Measure) -> "CalcRiskPeriod":
+        """Creates a new `CalcRiskPeriod` object with a measure.
+
+        The given measure is applied to both snapshot of the risk period.
+
+        Parameters
+        ----------
+        measure : Measure
+            The measure to apply.
+
+        Returns
+        -------
+
+        CalcRiskPeriod
+            The risk period with given measure applied.
+
+        """
+        snap0 = self.snapshot_start.apply_measure(measure)
+        snap1 = self.snapshot_end.apply_measure(measure)
 
         risk_period = CalcRiskPeriod(
             snap0,
             snap1,
-            self.interval_freq,
+            self.time_resolution,
             self.time_points,
             self.interpolation_strategy,
             self.impact_computation_strategy,

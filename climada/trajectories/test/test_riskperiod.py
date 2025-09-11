@@ -115,7 +115,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.calc_risk_period = CalcRiskPeriod(
             self.mock_snapshot0,
             self.mock_snapshot1,
-            interval_freq="AS-JAN",
+            time_resolution="AS-JAN",
             interpolation_strategy=AllLinearStrategy(),
             impact_computation_strategy=ImpactCalcComputation(),
             # These will have to be tested when implemented
@@ -125,9 +125,9 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         )
 
     def test_init(self):
-        self.assertEqual(self.calc_risk_period.snapshot0, self.mock_snapshot0)
-        self.assertEqual(self.calc_risk_period.snapshot1, self.mock_snapshot1)
-        self.assertEqual(self.calc_risk_period.interval_freq, "AS-JAN")
+        self.assertEqual(self.calc_risk_period.snapshot_start, self.mock_snapshot0)
+        self.assertEqual(self.calc_risk_period.snapshot_end, self.mock_snapshot1)
+        self.assertEqual(self.calc_risk_period.time_resolution, "AS-JAN")
         self.assertEqual(
             self.calc_risk_period.time_points, self.future_date - self.present_date + 1
         )
@@ -199,8 +199,8 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.time_points = "1"
 
     def test_set_interval_freq(self):
-        self.calc_risk_period.interval_freq = "MS"
-        self.assertEqual(self.calc_risk_period.interval_freq, "MS")
+        self.calc_risk_period.time_resolution = "MS"
+        self.assertEqual(self.calc_risk_period.time_resolution, "MS")
         pd.testing.assert_index_equal(
             self.calc_risk_period.date_idx,
             pd.DatetimeIndex(
@@ -318,8 +318,8 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         mock_impact_compute.compute_impacts.assert_has_calls(
             [
                 call(
-                    self.calc_risk_period.snapshot0,
-                    self.calc_risk_period.snapshot1,
+                    self.calc_risk_period.snapshot_start,
+                    self.calc_risk_period.snapshot_end,
                     fut,
                     self.calc_risk_period.risk_transf_attach,
                     self.calc_risk_period.risk_transf_cover,
@@ -388,7 +388,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(result, 1)
         mock_calc_per_date_eais.assert_called_with(
             self.calc_risk_period.imp_mats_H0V0,
-            self.calc_risk_period.snapshot0.hazard.frequency,
+            self.calc_risk_period.snapshot_start.hazard.frequency,
         )
 
     @patch.object(CalcRiskPeriod, "calc_per_date_eais", return_value=1)
@@ -397,7 +397,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(result, 1)
         mock_calc_per_date_eais.assert_called_with(
             self.calc_risk_period.imp_mats_H1V0,
-            self.calc_risk_period.snapshot1.hazard.frequency,
+            self.calc_risk_period.snapshot_end.hazard.frequency,
         )
 
     @patch.object(CalcRiskPeriod, "calc_per_date_aais", return_value=1)
@@ -422,7 +422,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(result, 1)
         mock_calc_per_date_rps.assert_called_with(
             self.calc_risk_period.imp_mats_H0V0,
-            self.calc_risk_period.snapshot0.hazard.frequency,
+            self.calc_risk_period.snapshot_start.hazard.frequency,
             [10, 50],
         )
 
@@ -432,7 +432,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(result, 1)
         mock_calc_per_date_rps.assert_called_with(
             self.calc_risk_period.imp_mats_H1V0,
-            self.calc_risk_period.snapshot1.hazard.frequency,
+            self.calc_risk_period.snapshot_end.hazard.frequency,
             [10, 50],
         )
 
@@ -442,7 +442,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(result, 1)
         mock_calc_per_date_eais.assert_called_with(
             self.calc_risk_period.imp_mats_H0V1,
-            self.calc_risk_period.snapshot0.hazard.frequency,
+            self.calc_risk_period.snapshot_start.hazard.frequency,
         )
 
     @patch.object(CalcRiskPeriod, "calc_per_date_eais", return_value=1)
@@ -451,7 +451,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(result, 1)
         mock_calc_per_date_eais.assert_called_with(
             self.calc_risk_period.imp_mats_H1V1,
-            self.calc_risk_period.snapshot1.hazard.frequency,
+            self.calc_risk_period.snapshot_end.hazard.frequency,
         )
 
     @patch.object(CalcRiskPeriod, "calc_per_date_aais", return_value=1)
@@ -476,7 +476,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(result, 1)
         mock_calc_per_date_rps.assert_called_with(
             self.calc_risk_period.imp_mats_H0V1,
-            self.calc_risk_period.snapshot0.hazard.frequency,
+            self.calc_risk_period.snapshot_start.hazard.frequency,
             [10, 50],
         )
 
@@ -486,7 +486,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(result, 1)
         mock_calc_per_date_rps.assert_called_with(
             self.calc_risk_period.imp_mats_H1V1,
-            self.calc_risk_period.snapshot1.hazard.frequency,
+            self.calc_risk_period.snapshot_end.hazard.frequency,
             [10, 50],
         )
 

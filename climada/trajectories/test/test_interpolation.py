@@ -207,7 +207,7 @@ class TestInterpolationStrategies(unittest.TestCase):
             mock_exposure, linear_interp_arrays, linear_interp_arrays
         )
 
-        result = strategy.interp_exposure_dim(
+        result = strategy.interp_over_exposure_dim(
             self.dummy_matrix_0, self.dummy_matrix_1, self.interpolation_range
         )
         mock_exposure.assert_called_once_with(
@@ -224,7 +224,7 @@ class TestInterpolationStrategies(unittest.TestCase):
         with self.assertRaisesRegex(
             ValueError, "Tried to interpolate impact matrices of different shape"
         ):
-            strategy.interp_exposure_dim(
+            strategy.interp_over_exposure_dim(
                 self.dummy_matrix_0, np.array([[1]]), self.interpolation_range
             )
         mock_exposure.assert_called_once()  # Ensure it was called
@@ -235,7 +235,9 @@ class TestInterpolationStrategies(unittest.TestCase):
             linear_interp_imp_mat, mock_hazard, linear_interp_arrays
         )
 
-        result = strategy.interp_hazard_dim(self.dummy_metric_0, self.dummy_metric_1)
+        result = strategy.interp_over_hazard_dim(
+            self.dummy_metric_0, self.dummy_metric_1
+        )
         mock_hazard.assert_called_once_with(self.dummy_metric_0, self.dummy_metric_1)
         np.testing.assert_array_equal(result, np.array([1, 2, 3]))
 
@@ -245,7 +247,7 @@ class TestInterpolationStrategies(unittest.TestCase):
             linear_interp_imp_mat, linear_interp_arrays, mock_vulnerability
         )
 
-        result = strategy.interp_vulnerability_dim(
+        result = strategy.interp_over_vulnerability_dim(
             self.dummy_metric_0, self.dummy_metric_1
         )
         mock_vulnerability.assert_called_once_with(
@@ -279,7 +281,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         expected_hazard_interp = linear_interp_arrays(
             self.dummy_metric_0, self.dummy_metric_1
         )
-        result_hazard = strategy.interp_hazard_dim(
+        result_hazard = strategy.interp_over_hazard_dim(
             self.dummy_metric_0, self.dummy_metric_1
         )
         np.testing.assert_allclose(
@@ -290,7 +292,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         expected_vulnerability_interp = linear_interp_arrays(
             self.dummy_metric_0, self.dummy_metric_1
         )
-        result_vulnerability = strategy.interp_vulnerability_dim(
+        result_vulnerability = strategy.interp_over_vulnerability_dim(
             self.dummy_metric_0, self.dummy_metric_1
         )
         np.testing.assert_allclose(
@@ -301,7 +303,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         )
 
         # Test exposure interpolation (using mock for linear_interp_imp_mat)
-        result_exposure = strategy.interp_exposure_dim(
+        result_exposure = strategy.interp_over_exposure_dim(
             self.dummy_matrix_0, self.dummy_matrix_1, self.interpolation_range
         )
         # Verify the structure/first/last elements of the mock output
@@ -322,7 +324,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         expected_hazard_interp = linear_interp_arrays(
             self.dummy_metric_0, self.dummy_metric_1
         )
-        result_hazard = strategy.interp_hazard_dim(
+        result_hazard = strategy.interp_over_hazard_dim(
             self.dummy_metric_0, self.dummy_metric_1
         )
         np.testing.assert_allclose(
@@ -333,7 +335,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         expected_vulnerability_interp = linear_interp_arrays(
             self.dummy_metric_0, self.dummy_metric_1
         )
-        result_vulnerability = strategy.interp_vulnerability_dim(
+        result_vulnerability = strategy.interp_over_vulnerability_dim(
             self.dummy_metric_0, self.dummy_metric_1
         )
         np.testing.assert_allclose(
@@ -344,7 +346,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         )
 
         # Test exposure interpolation (using mock for exponential_interp_imp_mat)
-        result_exposure = strategy.interp_exposure_dim(
+        result_exposure = strategy.interp_over_exposure_dim(
             self.dummy_matrix_0, self.dummy_matrix_1, self.interpolation_range, rate=1.1
         )
         # Verify the structure/first/last elements of the mock output
