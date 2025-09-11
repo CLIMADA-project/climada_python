@@ -114,7 +114,7 @@ def is_geo_coords(lat, lon):
     # and extent are smaller than 180 and 360 respectively
     return (
         lat.min() >= -91 and lat.max() <= 91 and lon.min() >= -541 and lon.max() <= 541
-    ) and ((lat.max() - lat.min()) <= 181 and (lon.max() - lon.min()) <= 361)
+    ) and ((lat.max() - lat.min()) <= 181 and ((lon.max() - lon.min()) <= 541))
 
 
 def check_if_geo_coords(lat, lon):
