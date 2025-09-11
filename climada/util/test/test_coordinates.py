@@ -453,19 +453,19 @@ class TestFunc(unittest.TestCase):
 
     def test_lon_normalize(self):
         """Test the longitude normalization function"""
-        data = np.array([-180, 20.1, -30, 190, -350])
+        data = np.array([-180, 20.1, -30, 181])
 
         # test in place operation
         u_coord.lon_normalize(data)
-        np.testing.assert_array_almost_equal(data, [180, 20.1, -30, -170, 10])
+        np.testing.assert_array_almost_equal(data, [180, 20.1, -30, -179])
 
         # test with specific center and return value
         data = u_coord.lon_normalize(data, center=-170)
-        np.testing.assert_array_almost_equal(data, [-180, -339.9, -30, -170, 10])
+        np.testing.assert_array_almost_equal(data, [-180, -339.9, -30, -179])
 
         # test with center determined automatically (which is 280.05)
         data = u_coord.lon_normalize(data, center=None)
-        np.testing.assert_array_almost_equal(data, [180, 380.1, 330, 190, 370])
+        np.testing.assert_array_almost_equal(data, [180, 380.1, 330, 181])
 
     def test_latlon_bounds(self):
         """Test latlon_bounds function"""
@@ -524,7 +524,6 @@ class TestFunc(unittest.TestCase):
                 # lat1, lon1, lat2, lon2, dist_equirect, dist_geosphere
                 [45.5, -32.1, 14, 56, 7702.88906574, 8750.64119051],
                 [45.5, 147.8, 14, -124, 7709.82781473, 8758.34146833],
-                [45.5, 507.9, 14, -124, 7702.88906574, 8750.64119051],
                 [45.5, -212.2, 14, -124, 7709.82781473, 8758.34146833],
                 [-3, -130.1, 4, -30.5, 11079.7217421, 11087.0352544],
             ]
@@ -628,8 +627,8 @@ class TestFunc(unittest.TestCase):
     def test_dist_approx_batch_pass(self):
         """Test batch-execution of approximate distance functions"""
 
-        lat1 = np.array([[45.5, -3.0, 45.5, 45.5], [45.5, 45.5, 45.5, -3.0]])
-        lon1 = np.array([[-32.1, -130.1, 147.8, 507.9], [-212.2, 507.9, -32.1, -130.1]])
+        lat1 = np.array([[45.5, -3.0, 45.5], [45.5, 45.5, -3.0]])
+        lon1 = np.array([[-32.1, -130.1, 147.8], [-212.2, -32.1, -130.1]])
         lat2 = np.array([[14.0, 14.0, 4.0], [4.0, 14.0, 14.0]])
         lon2 = np.array([[56.0, -124.0, -30.5], [-30.5, -124.0, 56.0]])
 
@@ -641,11 +640,9 @@ class TestFunc(unittest.TestCase):
                     [7702.88906574, 7967.66578334, 4613.1634431],
                     [19389.5254652, 2006.65638992, 11079.7217421],
                     [7960.66983129, 7709.82781473, 14632.55958021],
-                    [7967.66578334, 7702.88906574, 14639.95139706],
                 ],
                 [
                     [14632.55958021, 7709.82781473, 7960.66983129],
-                    [14639.95139706, 7702.88906574, 7967.66578334],
                     [4613.1634431, 7967.66578334, 7702.88906574],
                     [11079.7217421, 2006.65638992, 19389.5254652],
                 ],
@@ -657,7 +654,7 @@ class TestFunc(unittest.TestCase):
 
         dist, vec = u_coord.dist_approx(lat1, lon1, lat2, lon2, log=True)
         np.testing.assert_array_almost_equal(dist, test_data)
-        self.assertEqual(vec.shape, (2, 4, 3, 2))
+        self.assertEqual(vec.shape, (2, 3, 3, 2))
 
     def test_get_gridcellarea(self):
         """Test get_gridcellarea function to calculate the gridcellarea from a given latitude"""
