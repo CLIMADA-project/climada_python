@@ -123,6 +123,7 @@ def impact_yearset_from_sampling_vect(
 
     # compute impact per sampled_year
     imp_per_year = compute_imp_per_year(imp, sampling_vect)
+    frequency = np.ones(len(sampled_years)) / len(sampled_years)
 
     if correction_fac:  # adjust for sampling error
         correction_factor = calculate_correction_fac(imp_per_year, imp)
@@ -137,10 +138,10 @@ def impact_yearset_from_sampling_vect(
         event_id=np.arange(1, len(sampled_years) + 1),
         unit=imp.unit,
         haz_type=imp.haz_type,
-        frequency=np.ones(len(sampled_years)) / len(sampled_years),
+        frequency=frequency,
+        frequency_unit="1/year",
+        aai_agg=np.sum(frequency * imp_per_year),
     )
-
-    yimp.aai_agg = np.sum(yimp.frequency * yimp.at_event)
 
     return yimp
 
