@@ -113,8 +113,6 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertEqual(rt._interval_freq, "MS")
         self.assertEqual(rt._all_groups_name, "CustomAll")
         self.assertEqual(rt._risk_disc, mock_disc)
-        self.assertEqual(rt._risk_transf_cover, 0.5)
-        self.assertEqual(rt._risk_transf_attach, 0.1)
 
     ## Test Properties (`@property` and `@setter`)
     def test_default_rp_getter_setter(self):
@@ -157,22 +155,16 @@ class TestRiskTrajectory(unittest.TestCase):
                 call(
                     self.mock_snapshot1,
                     self.mock_snapshot2,
-                    interval_freq="YS",
+                    time_resolution="YS",
                     interpolation_strategy=self.mock_interpolation_strategy,
                     impact_computation_strategy=self.mock_impact_computation_strategy,
-                    risk_transf_cover=None,
-                    risk_transf_attach=None,
-                    calc_residual=True,
                 ),
                 call(
                     self.mock_snapshot2,
                     self.mock_snapshot3,
-                    interval_freq="YS",
+                    time_resolution="YS",
                     interpolation_strategy=self.mock_interpolation_strategy,
                     impact_computation_strategy=self.mock_impact_computation_strategy,
-                    risk_transf_cover=None,
-                    risk_transf_attach=None,
-                    calc_residual=True,
                 ),
             ]
         )
@@ -912,12 +904,16 @@ class TestRiskTrajectory(unittest.TestCase):
 
         # Call the method
         fig, ax = rt.plot_per_date_waterfall(
-            start_date=datetime.date(2023, 1, 1), end_date=datetime.date(2023, 1, 2)
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2023, 1, 2),
+            npv=True,
         )
 
         # Assertions
         mock_calc_data.assert_called_once_with(
-            start_date=datetime.date(2023, 1, 1), end_date=datetime.date(2023, 1, 2)
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2023, 1, 2),
+            npv=True,
         )
         mock_ax.stackplot.assert_called_once()
         self.assertEqual(
@@ -980,12 +976,16 @@ class TestRiskTrajectory(unittest.TestCase):
 
         # Call the method
         ax = rt.plot_waterfall(
-            start_date=datetime.date(2023, 1, 1), end_date=datetime.date(2024, 1, 1)
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2024, 1, 1),
+            npv=True,
         )
 
         # Assertions
         mock_calc_data.assert_called_once_with(
-            start_date=datetime.date(2023, 1, 1), end_date=datetime.date(2024, 1, 1)
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2024, 1, 1),
+            npv=True,
         )
         mock_ax.bar.assert_called_once()
         # Verify the bar arguments are correct for the end_date data
@@ -1027,16 +1027,16 @@ class TestRiskTrajectory(unittest.TestCase):
     def test_get_risk_periods(self):
         # Create dummy CalcRiskPeriod mocks with specific dates
         mock_rp1 = Mock()
-        mock_rp1.snapshot0.date = datetime.date(2020, 1, 1)
-        mock_rp1.snapshot1.date = datetime.date(2021, 1, 1)
+        mock_rp1.snapshot_start.date = datetime.date(2020, 1, 1)
+        mock_rp1.snapshot_end.date = datetime.date(2021, 1, 1)
 
         mock_rp2 = Mock()
-        mock_rp2.snapshot0.date = datetime.date(2021, 1, 1)
-        mock_rp2.snapshot1.date = datetime.date(2022, 1, 1)
+        mock_rp2.snapshot_start.date = datetime.date(2021, 1, 1)
+        mock_rp2.snapshot_end.date = datetime.date(2022, 1, 1)
 
         mock_rp3 = Mock()
-        mock_rp3.snapshot0.date = datetime.date(2022, 1, 1)
-        mock_rp3.snapshot1.date = datetime.date(2023, 1, 1)
+        mock_rp3.snapshot_start.date = datetime.date(2022, 1, 1)
+        mock_rp3.snapshot_end.date = datetime.date(2023, 1, 1)
 
         all_risk_periods = [mock_rp1, mock_rp2, mock_rp3]
 
