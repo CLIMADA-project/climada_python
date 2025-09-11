@@ -103,8 +103,12 @@ def is_geo_coords(lat, lon):
     test : bool
         True if lat/lon ranges seem to be in the geographic coordinates range, otherwise False.
     """
-    lat = np.asarray(lat)
-    lon = np.array(lon)
+    lat = (
+        np.asarray(lat) if np.asarray(lat).size > 0 else np.array([0])
+    )  # replace empty arrays with zeros to avoid errors
+    lon = (
+        np.array(lon) if np.array(lon).size > 0 else np.array([0])
+    )  # by default, we consider empty arrays as valid geo coords
 
     # Check if latitude is within -90 to 90 and longitude is within -540 to 540
     # and extent are smaller than 180 and 360 respectively
@@ -232,6 +236,8 @@ def lon_normalize(lon, center=0.0):
         Normalized longitudinal coordinates. Since the input `lon` is modified in place (!), the
         returned array is the same Python object (instead of a copy).
     """
+    # first check that coords are indeed degree values
+    check_if_geo_coords(0, lon)
     if center is None:
         center = 0.5 * sum(lon_bounds(lon))
     bounds = (center - 180, center + 180)
