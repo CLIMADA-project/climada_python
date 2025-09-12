@@ -104,13 +104,13 @@ class TestRiskTrajectory(unittest.TestCase):
         mock_disc = Mock(spec=DiscRates)
         rt = RiskTrajectory(
             self.snapshots_list,
-            interval_freq="MS",
+            time_resolution="MS",
             all_groups_name="CustomAll",
             risk_disc=mock_disc,
             interpolation_strategy=Mock(),
             impact_computation_strategy=Mock(),
         )
-        self.assertEqual(rt._interval_freq, "MS")
+        self.assertEqual(rt._time_resolution, "MS")
         self.assertEqual(rt._all_groups_name, "CustomAll")
         self.assertEqual(rt._risk_disc, mock_disc)
 

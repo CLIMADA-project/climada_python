@@ -27,6 +27,7 @@ import logging
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
+import matplotlib.ticker as ticker
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
@@ -38,6 +39,7 @@ from climada.trajectories.riskperiod import (
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
+from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
@@ -60,7 +62,7 @@ class RiskTrajectory:
         self,
         snapshots_list: list[Snapshot],
         *,
-        interval_freq: str = "YS",
+        time_resolution: str = "YS",
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
         interpolation_strategy: InterpolationStrategyBase | None = None,
@@ -73,7 +75,7 @@ class RiskTrajectory:
         self._default_rp = DEFAULT_RP
         self.start_date = min([snapshot.date for snapshot in snapshots_list])
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
-        self._interval_freq = interval_freq
+        self._time_resolution = time_resolution
         self._risk_disc = risk_disc
         self._interpolation_strategy = interpolation_strategy or AllLinearStrategy()
         self._impact_computation_strategy = (
@@ -169,7 +171,7 @@ class RiskTrajectory:
             CalcRiskPeriod(
                 start_snapshot,
                 end_snapshot,
-                time_resolution=self._interval_freq,
+                time_resolution=self._time_resolution,
                 interpolation_strategy=self._interpolation_strategy,
                 impact_computation_strategy=self._impact_computation_strategy,
             )
@@ -238,7 +240,8 @@ class RiskTrajectory:
         tmp = []
         for calc_period in self.risk_periods:
             # Call the specified method on the calc_period object
-            tmp.append(getattr(calc_period, metric_meth)(**kwargs))
+            with log_level(level="WARNING", name_prefix="climada"):
+                tmp.append(getattr(calc_period, metric_meth)(**kwargs))
 
         # Notably for per_group_aai being None:
         try:
@@ -257,7 +260,7 @@ class RiskTrajectory:
                 tmp = tmp.set_index(["coord_id"], append=True)
 
             # When more than 2 snapshots, there are duplicated rows, we need to remove them.
-            tmp = tmp[~tmp.index.duplicated(keep="last")]
+            tmp = tmp[~tmp.index.duplicated(keep="first")]
             tmp = tmp.reset_index()
             tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
             tmp["group"] = tmp["group"].fillna(self._all_groups_name)
@@ -307,7 +310,7 @@ class RiskTrajectory:
     def eai_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
         """Return the estimated annual impacts at each exposure point for each date.
 
-        This method computes and return a `GeoDataFrame` with eai metric
+        This method computes and return a `DataFrame` with eai metric
         (for each exposure point) for each date.
 
         Parameters
@@ -393,12 +396,46 @@ class RiskTrajectory:
 
         """
 
-        return self._compute_metrics(
+        tmp = self._compute_metrics(
             npv=npv,
             metric_name="risk_components",
             metric_meth="calc_risk_components_metric",
             **kwargs,
         )
+
+        # If there is more than one Snapshot, we need to update the
+        # components from previous periods for for continuity
+        # and to set the base risk from the first period
+        if len(self._snapshots) > 2:
+            tmp.set_index(["group", "date", "measure", "metric"], inplace=True)
+            start_dates = [snap.date for snap in self._snapshots[:-1]]
+            end_dates = [snap.date for snap in self._snapshots[1:]]
+            periods_dates = list(zip(start_dates, end_dates))
+            tmp.loc[pd.IndexSlice[:, :, :, "base risk"]] = tmp.loc[
+                pd.IndexSlice[:, str(self.start_date), :, "base risk"]
+            ].values
+            for p2 in periods_dates[1:]:
+                for metric in [
+                    "exposure contribution",
+                    "hazard contribution",
+                    "vulnerability contribution",
+                    "interaction contribution",
+                ]:
+                    mask_last_previous = (
+                        tmp.index.get_level_values(1).date == p2[0]
+                    ) & (tmp.index.get_level_values(3) == metric)
+                    mask_to_update = (
+                        (tmp.index.get_level_values(1).date > p2[0])
+                        & (tmp.index.get_level_values(1).date <= p2[1])
+                        & (tmp.index.get_level_values(3) == metric)
+                    )
+
+                    tmp.loc[mask_to_update, "risk"] += tmp.loc[
+                        mask_last_previous, "risk"
+                    ].iloc[0]
+
+        tmp.reset_index(inplace=True)
+        return tmp
 
     def per_date_risk_metrics(
         self,
@@ -605,6 +642,7 @@ class RiskTrajectory:
                 "interaction contribution",
             ]
         ]
+        risk_component["base risk"] = risk_component.iloc[0]["base risk"]
         # risk_component.plot(x="date", ax=ax, kind="bar", stacked=True)
         ax.stackplot(
             risk_component.index,
@@ -624,7 +662,7 @@ class RiskTrajectory:
 
         ax.xaxis.set_major_locator(locator)
         ax.xaxis.set_major_formatter(formatter)
-
+        ax.yaxis.set_major_formatter(ticker.EngFormatter())
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
         ax.set_ylim(0.0, 1.1 * ax.get_ylim()[1])
@@ -672,10 +710,10 @@ class RiskTrajectory:
 
         labels = [
             f"Risk {start_date}",
-            f"Exposure {end_date}",
-            f"Hazard {end_date}",
-            f"Vulnerability {end_date}",
-            f"Interaction {end_date}",
+            f"Exposure contribution {end_date}",
+            f"Hazard contribution {end_date}",
+            f"Vulnerability contribution {end_date}",
+            f"Interaction contribution {end_date}",
             f"Total Risk {end_date}",
         ]
         values = [
@@ -726,8 +764,8 @@ class RiskTrajectory:
 
         # Construct y-axis label and title based on parameters
         value_label = "USD"
-        title_label = f"Risk at {start_date} and {end_date} (Average impact)"
-
+        title_label = f"Evolution of the components of risk between {start_date} and {end_date} (Average impact)"
+        ax.yaxis.set_major_formatter(ticker.EngFormatter())
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
         ax.set_ylim(0.0, 1.1 * ax.get_ylim()[1])

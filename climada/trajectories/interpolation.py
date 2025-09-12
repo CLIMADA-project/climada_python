@@ -231,11 +231,16 @@ class AllLinearStrategy(InterpolationStrategyBase):
         self.vulnerability_interp = linear_interp_arrays
 
 
-class ExponentialExposureInterpolation(InterpolationStrategyBase):
+class ExponentialExposureStrategy(InterpolationStrategyBase):
     """Exponential interpolation strategy."""
 
-    def __init__(self) -> None:
+    def __init__(self, rate) -> None:
         super().__init__()
-        self.exposure_interp = exponential_interp_imp_mat
+        self.rate = rate
+        self.exposure_interp = (
+            lambda mat_start, mat_end, points: exponential_interp_imp_mat(
+                mat_start, mat_end, points, self.rate
+            )
+        )
         self.hazard_interp = linear_interp_arrays
         self.vulnerability_interp = linear_interp_arrays

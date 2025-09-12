@@ -29,7 +29,7 @@ from scipy.sparse import csr_matrix
 
 from climada.trajectories.interpolation import (
     AllLinearStrategy,
-    ExponentialExposureInterpolation,
+    ExponentialExposureStrategy,
     InterpolationStrategy,
     exponential_interp_arrays,
     exponential_interp_imp_mat,
@@ -315,7 +315,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         np.testing.assert_allclose(result_exposure[2].data, self.dummy_matrix_1.data)
 
     def test_ExponentialExposureInterpolation_init_and_methods(self):
-        strategy = ExponentialExposureInterpolation()
+        strategy = ExponentialExposureStrategy()
         self.assertEqual(strategy.exposure_interp, exponential_interp_imp_mat)
         self.assertEqual(strategy.hazard_interp, linear_interp_arrays)
         self.assertEqual(strategy.vulnerability_interp, linear_interp_arrays)
