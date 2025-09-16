@@ -30,7 +30,7 @@ Removed:
 - Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
 
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
-- Added optional `attrs` parameter to `Exposures.from_raster` method to set additional object properties through the  method's `Exposures.__init__` call.
+- Added optional `attrs` parameter to `Exposures.from_raster` method to set additional object properties through the method's `Exposures.__init__` call.
 
 ### Changed
 

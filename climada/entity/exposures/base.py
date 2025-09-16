@@ -736,17 +736,13 @@ class Exposures:
             resampling
             function used for reprojection to dst_crs
         attrs : dict
-            dictionary giving kwargs passed to the Exposures class. Keys must
-            be in the Exposures._metadata list, i.e. "description", "ref_year",
-            "value_unit"
+            dictionary of kwargs passed to the resulting Exposures.__init__
 
         returns
         --------
         Exposures
         """
-        if not attrs:
-            attrs = {}
-        attrs = {key: attrs[key] for key in set(attrs) & set(cls._metadata)}
+        attrs = attrs or {}
 
         meta, value = u_coord.read_raster(
             file_name,
