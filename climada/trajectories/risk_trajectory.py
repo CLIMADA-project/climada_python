@@ -534,15 +534,19 @@ class RiskTrajectory:
         ## I'm thinking this does not work with RPs... As you can't just sum impacts
         ## Not sure what to do with it. -> Fixed I take the avg RP impact of the period
         def conditional_agg(group):
-            if "rp" in group.name[2]:
-                return group.mean()
-            else:
+            try:
+                if "rp" in group.name[2]:
+                    return group.mean()
+                else:
+                    return group.sum()
+            except IndexError:
                 return group.sum()
+
+        df_sorted = df.sort_values(by=grouper + ["date"])
 
         if "group" in df.columns and "group" not in grouper:
             grouper = ["group"] + grouper
 
-        df_sorted = df.sort_values(by=cls._grouper + ["date"])
         # Apply the function to identify continuous periods
         df_periods = df_sorted.groupby(
             grouper, dropna=False, group_keys=False, observed=True
