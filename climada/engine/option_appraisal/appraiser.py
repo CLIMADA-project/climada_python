@@ -155,11 +155,14 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
     def _date_to_period_agg(
         cls,
         df: pd.DataFrame,
+        grouper: list[str] | None = None,
         time_unit="year",
         colname: str | list[str] | None = None,
     ) -> pd.DataFrame | pd.Series:
         colname = cls._risk_vars if colname is None else colname
-        return super()._date_to_period_agg(df, time_unit, colname)
+        if grouper is None:
+            grouper = cls._grouper
+        return super()._date_to_period_agg(df, grouper, time_unit, colname)
 
     def per_date_CB(
         self,
@@ -194,8 +197,10 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
         metrics_df = self.per_period_risk_metrics(metrics, **kwargs)
         cost_df = self._calc_per_measure_annual_cash_flows(npv)
         cost_df = self._date_to_period_agg(
-            cost_df,
+            cost_df, grouper=["measure"], colname="measure net cost"
         )
+        metrics_df = metrics_df.merge(cost_df, on=["period", "measure"], how="outer")
+        metrics_df["measure net cost"] = metrics_df["measure net cost"].fillna(0.0)
         if not include_no_measure:
             metrics_df = metrics_df[metrics_df["measure"] != "no_measure"]
 
