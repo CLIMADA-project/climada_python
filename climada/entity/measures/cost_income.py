@@ -280,7 +280,7 @@ class CostIncome:
         return ax
 
     def calc_cashflows(
-        self, impl_date: datetime, start_date: datetime, end_date: datetime, disc=None
+        self, impl_date: date, start_date: date, end_date: date, disc=None
     ) -> pd.DataFrame:
         """
         Calculate the cash flows over a given period and return them as a DataFrame.

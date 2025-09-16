@@ -47,7 +47,7 @@ tqdm.pandas()
 LOGGER = logging.getLogger(__name__)
 
 
-class MeasuresAppraiser(RiskTrajectory):
+class AdaptationTrajectoryAppraiser(RiskTrajectory):
     # TODO: To reflect on:
     # - Do we want "_planned", "_npv", "_total", "_single_measure" as parameter attributes instead of arguments?
     # - Do we keep "combo_all" ?
@@ -57,7 +57,6 @@ class MeasuresAppraiser(RiskTrajectory):
         "averted risk",
         "risk",
         "measure net cost",
-        "benefit minus cost",
     ]
 
     def __init__(
@@ -65,13 +64,10 @@ class MeasuresAppraiser(RiskTrajectory):
         snapshots_list: list[Snapshot],
         *,
         measure_set: MeasureSet,
-        interval_freq: str = "AS-JAN",
+        time_resolution: str = "YS",
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
         cost_disc: DiscRates | None = None,
-        risk_transf_cover=None,
-        risk_transf_attach=None,
-        calc_residual: bool = True,
         interpolation_strategy: InterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
@@ -79,12 +75,9 @@ class MeasuresAppraiser(RiskTrajectory):
         self.measure_set = copy.deepcopy(measure_set)
         super().__init__(
             snapshots_list,
-            interval_freq=interval_freq,
+            time_resolution=time_resolution,
             all_groups_name=all_groups_name,
             risk_disc=risk_disc,
-            risk_transf_cover=risk_transf_cover,
-            risk_transf_attach=risk_transf_attach,
-            calc_residual=calc_residual,
             interpolation_strategy=interpolation_strategy,
             impact_computation_strategy=impact_computation_strategy,
         )
@@ -123,9 +116,8 @@ class MeasuresAppraiser(RiskTrajectory):
             no_measures["reference risk"] = no_measures["risk"]
             no_measures["averted risk"] = 0.0
             no_measures["measure net cost"] = 0.0
-            no_measures["benefit minus cost"] = 0.0
             LOGGER.debug(f"Computing cash flow for: {metric_name}.")
-            cash_flow_metrics = self._calc_per_measure_annual_cash_flows()
+            cash_flow_metrics = self._calc_per_measure_annual_cash_flows(npv)
             LOGGER.debug(f"Merging with base metric: {metric_name}.")
             base_metrics = base_metrics.merge(
                 cash_flow_metrics[["date", "measure", "measure net cost"]],
@@ -133,10 +125,6 @@ class MeasuresAppraiser(RiskTrajectory):
             )
             LOGGER.debug(f"Merging with no measure: {metric_name}.")
             base_metrics = pd.concat([no_measures, base_metrics])
-
-            averted_risk = base_metrics["averted risk"]
-            cash_flow_metrics = base_metrics["measure net cost"]
-            base_metrics["benefit minus cost"] = averted_risk - cash_flow_metrics
 
             if measures is not None:
                 base_metrics = base_metrics.loc[
@@ -175,8 +163,17 @@ class MeasuresAppraiser(RiskTrajectory):
         colname = cls._risk_vars if colname is None else colname
         return super()._per_period_risk(df, time_unit, colname)
 
-    def per_date_CB(self, metrics=None, **kwargs) -> pd.DataFrame | pd.Series:
+    def per_date_CB(
+        self,
+        metrics: list[str] = ["aai", "return_periods", "aai_per_group"],
+        include_no_measure=False,
+        **kwargs,
+    ) -> pd.DataFrame | pd.Series:
         metrics_df = self.per_date_risk_metrics(metrics, **kwargs)
+        if not include_no_measure:
+            metrics_df = metrics_df[metrics_df["measure"] != "no_measure"]
+
+        metrics_df.rename(columns={"risk": "residual risk"}, inplace=True)
         metrics_df["cumulated measure cost"] = metrics_df.groupby(
             ["group", "measure", "metric"], observed=True
         )["measure net cost"].cumsum()
@@ -190,21 +187,27 @@ class MeasuresAppraiser(RiskTrajectory):
         return metrics_df
 
     def per_period_CB(
-        self, metrics: list[str] = ["aai", "return_periods", "aai_per_group"], **kwargs
+        self,
+        metrics: list[str] = ["aai", "return_periods", "aai_per_group"],
+        include_no_measure=False,
+        **kwargs,
     ) -> pd.DataFrame | pd.Series:
         metrics_df = self.per_period_risk_metrics(metrics=metrics, **kwargs)
+        if not include_no_measure:
+            metrics_df = metrics_df[metrics_df["measure"] != "no_measure"]
+
         return metrics_df
 
-    def _calc_per_measure_annual_cash_flows(self):
+    def _calc_per_measure_annual_cash_flows(self, npv: bool):
         res = []
         for meas_name, measure in self.measure_set.measures().items():
             need_agg = False
-            if measure.cost_income.freq != self._interval_freq:
+            if measure.cost_income.freq != self._time_resolution:
                 need_agg = True
                 warnings.warn(
                     (
                         f"{meas_name} has a different CostIncome interval frequency ({measure.cost_income.freq}) "
-                        f"than the MeasureAppraiser ({self._interval_freq}). "
+                        f"than the MeasureAppraiser ({self._time_resolution}). "
                         f"Cash flows will be aggregated to {measure.cost_income.freq} "
                         "but this **may** lead to inconsistencies."
                     ),
@@ -215,7 +218,7 @@ class MeasuresAppraiser(RiskTrajectory):
                 impl_date=self.start_date,
                 start_date=self.start_date,
                 end_date=self.end_date,
-                disc=self.cost_disc,
+                disc=self.cost_disc if npv else None,
             )
             if need_agg:
                 df = df.groupby(df["date"].dt.year, as_index=False).agg(
@@ -227,12 +230,6 @@ class MeasuresAppraiser(RiskTrajectory):
         df["net"] *= -1
         df = df.rename(columns={"net": "measure net cost"})
         return df
-
-    def _calc_cb(self, base_metrics: pd.DataFrame):
-        averted_risk = base_metrics["averted risk"]
-        cash_flow_metrics = base_metrics["measure net cost"]
-        base_metrics["benefit minus cost"] = averted_risk - cash_flow_metrics
-        return base_metrics
 
     def _calc_waterfall_CB_plot_data(
         self,
@@ -489,7 +486,7 @@ class MeasuresAppraiser(RiskTrajectory):
         return axs
 
 
-class PlannedMeasuresAppraiser(MeasuresAppraiser):
+class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
     def __init__(
         self,
         snapshots_list: list[Snapshot],
@@ -502,9 +499,6 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
         cost_disc: DiscRates | None = None,
-        risk_transf_cover=None,
-        risk_transf_attach=None,
-        calc_residual: bool = True,
         interpolation_strategy: InterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
@@ -522,13 +516,10 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
         super().__init__(
             snapshots_list,
             measure_set=measure_set,
-            interval_freq=interval_freq,
+            time_resolution=interval_freq,
             all_groups_name=all_groups_name,
             risk_disc=risk_disc,
             cost_disc=cost_disc,
-            risk_transf_cover=risk_transf_cover,
-            risk_transf_attach=risk_transf_attach,
-            calc_residual=calc_residual,
             interpolation_strategy=interpolation_strategy,
             impact_computation_strategy=impact_computation_strategy,
         )
@@ -599,12 +590,12 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
         for meas_name, (start, end) in self.planner.items():
             need_agg = False
             measure = self.measure_set.measures()[meas_name]
-            if measure.cost_income.freq != self._interval_freq:
+            if measure.cost_income.freq != self._time_resolution:
                 need_agg = True
                 warnings.warn(
                     (
                         f"{meas_name} has a different CostIncome interval frequency ({measure.cost_income.freq}) "
-                        f"than the MeasureAppraiser ({self._interval_freq}). "
+                        f"than the MeasureAppraiser ({self._time_resolution}). "
                         f"Cash flows will be aggregated to {measure.cost_income.freq} "
                         "but this **may** lead to inconsistencies."
                     ),
@@ -873,52 +864,6 @@ class PlannedMeasuresAppraiser(MeasuresAppraiser):
         ax.set_title(title_label, pad=20)
 
         return ax
-
-
-# class AdaptationPlansAppraiser:
-#     def __init__(
-#         self,
-#         snapshots: SnapshotsCollection,
-#         measure_set: MeasureSet,
-#         plans: list[dict[str, tuple[int, int]]],
-#         use_net_present_value: bool = True,
-#         cost_disc: DiscRates | None = None,
-#         risk_disc: DiscRates | None = None,
-#         metrics: list[str] = ["aai", "eai", "rp"],
-#         return_periods: list[int] = [100, 500, 1000],
-#     ):
-#         self._use_npv = use_net_present_value
-#         self.plans = [
-#             _PlannedMeasuresAppraiser(
-#                 snapshots=snapshots,
-#                 measure_set=measure_set,
-#                 planner=plan,
-#                 cost_disc=cost_disc,
-#                 risk_disc=risk_disc,
-#                 metrics=metrics,
-#                 return_periods=return_periods,
-#             )
-#             for plan in plans
-#         ]
-
-#     def calc_CB(
-#         self,
-#     ):
-#         res = []
-#         for plan in self.plans:
-#             planner = plan.planner
-#             df = plan.calc_CB(net_present_value=self._use_npv, dately=True)
-#             df = df.drop("date", axis=1)
-#             df = df.groupby(["group", "metric"], as_index=False).sum(numeric_only=True)
-#             df["plan"] = format_periods_dict(planner)
-#             res.append(df)
-
-#         return (
-#             pd.concat(res)
-#             .set_index(["plan", "group", "metric"])
-#             .reset_index()
-#             .sort_values(["metric", "plan"])
-#         )
 
 
 def format_periods_dict(periods_dict):
