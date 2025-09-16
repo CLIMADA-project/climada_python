@@ -578,7 +578,7 @@ class RiskTrajectory:
         df_periods = pd.merge(
             df_periods_dates[grouper + ["period"]], df_periods, on=grouper
         )
-        # df_periods = df_periods.drop(["period_id", "start_date", "end_date"], axis=1)
+        df_periods = df_periods.drop(["period_id"], axis=1)
         return df_periods[
             ["period"] + [col for col in df_periods.columns if col != "period"]
         ]
