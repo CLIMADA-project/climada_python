@@ -288,7 +288,7 @@ class RiskTrajectory:
         df = self._generic_metrics(
             npv=npv, metric_name=metric_name, metric_meth=metric_meth, **kwargs
         )
-        return self._per_period_risk(df)
+        return self._date_to_period_agg(df)
 
     def _compute_metrics(
         self, metric_name: str, metric_meth: str, npv: bool = True, **kwargs
@@ -507,7 +507,7 @@ class RiskTrajectory:
         ]
 
     @classmethod
-    def _per_period_risk(
+    def _date_to_period_agg(
         cls,
         df: pd.DataFrame,
         time_unit: str = "year",
@@ -588,7 +588,7 @@ class RiskTrajectory:
     ) -> pd.DataFrame | pd.Series:
         """Returns a tidy dataframe of the risk metrics with the total for each different period."""
         df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
-        return self._per_period_risk(df, **kwargs)
+        return self._date_to_period_agg(df, **kwargs)
 
     def _calc_waterfall_plot_data(
         self,
