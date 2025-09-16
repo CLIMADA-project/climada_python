@@ -660,7 +660,7 @@ class TestRiskTrajectory(unittest.TestCase):
             }
         )
         result_df = RiskTrajectory._date_to_period_agg(
-            df_input, colname=["base risk", "exposure contribution"]
+            df_input, col_agg_dict=["base risk", "exposure contribution"]
         )
 
         expected_df = pd.DataFrame(

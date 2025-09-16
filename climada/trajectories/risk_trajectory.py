@@ -288,7 +288,7 @@ class RiskTrajectory:
         df = self._generic_metrics(
             npv=npv, metric_name=metric_name, metric_meth=metric_meth, **kwargs
         )
-        return self._date_to_period_agg(df)
+        return self._date_to_period_agg(df, grouper=self._grouper)
 
     def _compute_metrics(
         self, metric_name: str, metric_meth: str, npv: bool = True, **kwargs
@@ -506,10 +506,26 @@ class RiskTrajectory:
             )
         ]
 
+    @staticmethod
+    def identify_continuous_periods(group, time_unit):
+        # Calculate the difference between consecutive dates
+        if time_unit == "year":
+            group["date_diff"] = group["date"].dt.year.diff()
+        if time_unit == "month":
+            group["date_diff"] = group["date"].dt.month.diff()
+        if time_unit == "day":
+            group["date_diff"] = group["date"].dt.day.diff()
+        if time_unit == "hour":
+            group["date_diff"] = group["date"].dt.hour.diff()
+        # Identify breaks in continuity
+        group["period_id"] = (group["date_diff"] != 1).cumsum()
+        return group
+
     @classmethod
     def _date_to_period_agg(
         cls,
         df: pd.DataFrame,
+        grouper: list[str],
         time_unit: str = "year",
         colname: str | list[str] = "risk",
     ) -> pd.DataFrame | pd.Series:
@@ -517,28 +533,12 @@ class RiskTrajectory:
 
         ## I'm thinking this does not work with RPs... As you can't just sum impacts
         ## Not sure what to do with it. -> Fixed I take the avg RP impact of the period
-
-        def identify_continuous_periods(group, time_unit):
-            # Calculate the difference between consecutive dates
-            if time_unit == "year":
-                group["date_diff"] = group["date"].dt.year.diff()
-            if time_unit == "month":
-                group["date_diff"] = group["date"].dt.month.diff()
-            if time_unit == "day":
-                group["date_diff"] = group["date"].dt.day.diff()
-            if time_unit == "hour":
-                group["date_diff"] = group["date"].dt.hour.diff()
-            # Identify breaks in continuity
-            group["period_id"] = (group["date_diff"] != 1).cumsum()
-            return group
-
         def conditional_agg(group):
             if "rp" in group.name[2]:
                 return group.mean()
             else:
                 return group.sum()
 
-        grouper = cls._grouper
         if "group" in df.columns and "group" not in grouper:
             grouper = ["group"] + grouper
 
@@ -546,7 +546,7 @@ class RiskTrajectory:
         # Apply the function to identify continuous periods
         df_periods = df_sorted.groupby(
             grouper, dropna=False, group_keys=False, observed=True
-        ).apply(identify_continuous_periods, time_unit)
+        ).apply(cls.identify_continuous_periods, time_unit)
 
         if isinstance(colname, str):
             colname = [colname]
@@ -572,7 +572,7 @@ class RiskTrajectory:
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)[
                 colname
             ]
-            .apply(lambda group: conditional_agg(group))
+            .apply(conditional_agg)
             .reset_index()
         )
         df_periods = pd.merge(
@@ -588,7 +588,7 @@ class RiskTrajectory:
     ) -> pd.DataFrame | pd.Series:
         """Returns a tidy dataframe of the risk metrics with the total for each different period."""
         df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
-        return self._date_to_period_agg(df, **kwargs)
+        return self._date_to_period_agg(df, grouper=self._grouper, **kwargs)
 
     def _calc_waterfall_plot_data(
         self,
