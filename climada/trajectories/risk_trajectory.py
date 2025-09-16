@@ -516,7 +516,7 @@ class RiskTrajectory:
         """Groups per date risk metric to periods."""
 
         ## I'm thinking this does not work with RPs... As you can't just sum impacts
-        ## Not sure what to do with it.
+        ## Not sure what to do with it. -> Fixed I take the avg RP impact of the period
 
         def identify_continuous_periods(group, time_unit):
             # Calculate the difference between consecutive dates
@@ -531,6 +531,12 @@ class RiskTrajectory:
             # Identify breaks in continuity
             group["period_id"] = (group["date_diff"] != 1).cumsum()
             return group
+
+        def conditional_agg(group):
+            if "rp" in group.name[2]:
+                return group.mean()
+            else:
+                return group.sum()
 
         grouper = cls._grouper
         if "group" in df.columns and "group" not in grouper:
@@ -549,21 +555,30 @@ class RiskTrajectory:
             "start_date": pd.NamedAgg(column="date", aggfunc="min"),
             "end_date": pd.NamedAgg(column="date", aggfunc="max"),
         }
-        for col in colname:
-            agg_dict[col] = pd.NamedAgg(column=col, aggfunc="sum")
-        # Group by the identified periods and calculate start and end dates
-        df_periods = (
+
+        df_periods_dates = (
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)
             .agg(**agg_dict)
             .reset_index()
         )
 
-        df_periods["period"] = (
-            df_periods["start_date"].astype(str)
+        df_periods_dates["period"] = (
+            df_periods_dates["start_date"].astype(str)
             + " to "
-            + df_periods["end_date"].astype(str)
+            + df_periods_dates["end_date"].astype(str)
         )
-        df_periods = df_periods.drop(["period_id", "start_date", "end_date"], axis=1)
+
+        df_periods = (
+            df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)[
+                colname
+            ]
+            .apply(lambda group: conditional_agg(group))
+            .reset_index()
+        )
+        df_periods = pd.merge(
+            df_periods_dates[grouper + ["period"]], df_periods, on=grouper
+        )
+        # df_periods = df_periods.drop(["period_id", "start_date", "end_date"], axis=1)
         return df_periods[
             ["period"] + [col for col in df_periods.columns if col != "period"]
         ]
