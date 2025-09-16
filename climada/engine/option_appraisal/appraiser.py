@@ -48,15 +48,10 @@ LOGGER = logging.getLogger(__name__)
 
 
 class AdaptationTrajectoryAppraiser(RiskTrajectory):
-    # TODO: To reflect on:
-    # - Do we want "_planned", "_npv", "_total", "_single_measure" as parameter attributes instead of arguments?
-    # - Do we keep "combo_all" ?
-    _grouper = ["measure", "group", "metric"]
     _risk_vars = [
         "reference risk",
         "averted risk",
         "risk",
-        "measure net cost",
     ]
 
     def __init__(
@@ -157,11 +152,14 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
         )
 
     @classmethod
-    def _per_period_risk(
-        cls, df: pd.DataFrame, time_unit="year", colname=None
+    def _date_to_period_agg(
+        cls,
+        df: pd.DataFrame,
+        time_unit="year",
+        colname: str | list[str] | None = None,
     ) -> pd.DataFrame | pd.Series:
         colname = cls._risk_vars if colname is None else colname
-        return super()._per_period_risk(df, time_unit, colname)
+        return super()._date_to_period_agg(df, time_unit, colname)
 
     def per_date_CB(
         self,
@@ -192,7 +190,9 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
         include_no_measure=False,
         **kwargs,
     ) -> pd.DataFrame | pd.Series:
-        metrics_df = self.per_period_risk_metrics(metrics=metrics, **kwargs)
+        df = self.per_date_risk_metrics(metrics)
+        metrics_df = self._date_to_period_agg(df)
+        cost_df = df.groupby
         if not include_no_measure:
             metrics_df = metrics_df[metrics_df["measure"] != "no_measure"]
 
