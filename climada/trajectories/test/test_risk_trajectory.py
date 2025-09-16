@@ -631,7 +631,7 @@ class TestRiskTrajectory(unittest.TestCase):
                 "risk": [100.0, 200.0, 300.0, 50.0],
             }
         )
-        result_df = RiskTrajectory._per_period_risk(df_input)
+        result_df = RiskTrajectory._date_to_period_agg(df_input)
 
         expected_df = pd.DataFrame(
             {
@@ -659,7 +659,7 @@ class TestRiskTrajectory(unittest.TestCase):
                 "exposure contribution": [5.0, 8.0],
             }
         )
-        result_df = RiskTrajectory._per_period_risk(
+        result_df = RiskTrajectory._date_to_period_agg(
             df_input, colname=["base risk", "exposure contribution"]
         )
 
@@ -686,7 +686,9 @@ class TestRiskTrajectory(unittest.TestCase):
             }
         )
         # Test with 'month' time_unit
-        result_df_month = RiskTrajectory._per_period_risk(df_input, time_unit="month")
+        result_df_month = RiskTrajectory._date_to_period_agg(
+            df_input, time_unit="month"
+        )
         expected_df_month = pd.DataFrame(
             {
                 "period": ["2023-01-01 to 2023-03-01"],
@@ -710,7 +712,7 @@ class TestRiskTrajectory(unittest.TestCase):
                 "risk": [10.0, 20.0, 40.0],
             }
         )
-        result_df_gap = RiskTrajectory._per_period_risk(df_gap, time_unit="month")
+        result_df_gap = RiskTrajectory._date_to_period_agg(df_gap, time_unit="month")
         expected_df_gap = pd.DataFrame(
             {
                 "period": ["2023-01-01 to 2023-02-01", "2023-04-01 to 2023-04-01"],
