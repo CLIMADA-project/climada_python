@@ -187,12 +187,15 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
     def per_period_CB(
         self,
         metrics: list[str] = ["aai", "return_periods", "aai_per_group"],
+        npv: bool = True,
         include_no_measure=False,
         **kwargs,
     ) -> pd.DataFrame | pd.Series:
-        df = self.per_date_risk_metrics(metrics)
-        metrics_df = self._date_to_period_agg(df)
-        cost_df = df.groupby
+        metrics_df = self.per_period_risk_metrics(metrics, **kwargs)
+        cost_df = self._calc_per_measure_annual_cash_flows(npv)
+        cost_df = self._date_to_period_agg(
+            cost_df,
+        )
         if not include_no_measure:
             metrics_df = metrics_df[metrics_df["measure"] != "no_measure"]
 
