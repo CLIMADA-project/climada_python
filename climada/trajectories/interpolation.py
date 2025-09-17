@@ -25,6 +25,7 @@ from abc import ABC
 from typing import Callable
 
 import numpy as np
+from scipy import sparse
 
 LOGGER = logging.getLogger(__name__)
 
@@ -120,13 +121,33 @@ class InterpolationStrategyBase(ABC):
     hazard_interp: Callable
     vulnerability_interp: Callable
 
-    def interp_exposure_dim(
+    def interp_over_exposure_dim(
         self, imp_E0, imp_E1, interpolation_range: int, **kwargs
-    ) -> list:
-        """Interpolates along the exposure change between two impact matrices.
+    ) -> list[sparse.csr_matrix]:
+        """Returns a list of `interpolation_range` matrices interpolated between
+        `mat_start` and `mat_end` using the interpolation strategy defined for exposure.
 
-        Returns a list of `interpolation_range` matrices linearly interpolated between
-        `mat_start` and `mat_end`.
+        Parameters
+        ----------
+        imp_E0 : scipy.csr_matrix
+            A sparse matrix of the impacts at the start of the range.
+        imp_E1 : scipy.csr_matrix
+            A sparse matrix of the impacts at the end of the range.
+        interpolation_range : int
+            The number of time points to interpolate in between the two matrices
+        kwargs : dict
+            Keyword arguments to pass to the interpolation function (e.g. rate for exponential interpolation)
+
+        Returns
+        -------
+        list
+            A list of interpolated impact matrices between `imp_E0` and `imp_E1`.
+
+        Raises
+        ------
+        ValueError
+            A ValueError is raised if the shape of the impact matrices are different.
+
         """
         try:
             res = self.exposure_interp(imp_E0, imp_E1, interpolation_range, **kwargs)
@@ -140,17 +161,60 @@ class InterpolationStrategyBase(ABC):
 
         return res
 
-    def interp_hazard_dim(self, metric_0, metric_1, **kwargs) -> np.ndarray:
+    def interp_over_hazard_dim(
+        self, metric_0: np.ndarray, metric_1: np.ndarray, **kwargs
+    ) -> np.ndarray:
+        """Interpolates from two arrays of metrics, following the defined interpolation strategy for the hazard dimension.
+
+        Parameters
+        ----------
+        metric_0 : np.ndarray
+            The first array of metrics
+        metric_1 : np.ndarray
+            The second array of metrics
+        kwargs : dict
+            Keyword arguments to pass to the interpolation function (e.g. rate for exponential interpolation)
+
+        Returns
+        -------
+        np.ndarray
+            The resulting interpolated array.
+
+        """
         return self.hazard_interp(metric_0, metric_1, **kwargs)
 
-    def interp_vulnerability_dim(self, metric_0, metric_1, **kwargs) -> np.ndarray:
+    def interp_over_vulnerability_dim(
+        self, metric_0: np.ndarray, metric_1: np.ndarray, **kwargs
+    ) -> np.ndarray:
+        """Interpolates from two arrays of metrics, following the defined interpolation strategy for the vulnerability dimension.
+
+        Parameters
+        ----------
+        metric_0 : np.ndarray
+            The first array of metrics
+        metric_1 : np.ndarray
+            The second array of metrics
+        kwargs : dict
+            Keyword arguments to pass to the interpolation function (e.g. rate for exponential interpolation)
+
+        Returns
+        -------
+        np.ndarray
+            The resulting interpolated array.
+
+        """
         return self.vulnerability_interp(metric_0, metric_1, **kwargs)
 
 
 class InterpolationStrategy(InterpolationStrategyBase):
     """Interface for interpolation strategies."""
 
-    def __init__(self, exposure_interp, hazard_interp, vulnerability_interp) -> None:
+    def __init__(
+        self,
+        exposure_interp: Callable,
+        hazard_interp: Callable,
+        vulnerability_interp: Callable,
+    ) -> None:
         super().__init__()
         self.exposure_interp = exposure_interp
         self.hazard_interp = hazard_interp
@@ -167,11 +231,16 @@ class AllLinearStrategy(InterpolationStrategyBase):
         self.vulnerability_interp = linear_interp_arrays
 
 
-class ExponentialExposureInterpolation(InterpolationStrategyBase):
+class ExponentialExposureStrategy(InterpolationStrategyBase):
     """Exponential interpolation strategy."""
 
-    def __init__(self) -> None:
+    def __init__(self, rate) -> None:
         super().__init__()
-        self.exposure_interp = exponential_interp_imp_mat
+        self.rate = rate
+        self.exposure_interp = (
+            lambda mat_start, mat_end, points: exponential_interp_imp_mat(
+                mat_start, mat_end, points, self.rate
+            )
+        )
         self.hazard_interp = linear_interp_arrays
         self.vulnerability_interp = linear_interp_arrays

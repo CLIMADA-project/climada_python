@@ -39,9 +39,9 @@ class ImpactComputationStrategy(ABC):
         snapshot0: Snapshot,
         snapshot1: Snapshot,
         future: tuple[int, int, int],
-        risk_transf_attach: float | None,
-        risk_transf_cover: float | None,
-        calc_residual: bool,
+        risk_transf_attach: float | None = None,
+        risk_transf_cover: float | None = None,
+        calc_residual: bool = True,
     ) -> Impact:
         """Method used to compute impact from the snapshots."""
 
@@ -54,8 +54,8 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         snapshot0: Snapshot,
         snapshot1: Snapshot,
         future: tuple[int, int, int],
-        risk_transf_attach: float | None,
-        risk_transf_cover: float | None,
+        risk_transf_attach: float | None = None,
+        risk_transf_cover: float | None = None,
         calc_residual: bool = False,
     ):
         impact = self.compute_impacts_pre_transfer(snapshot0, snapshot1, future)

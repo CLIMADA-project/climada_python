@@ -22,9 +22,6 @@ unit tests for risk_trajectory
 
 import datetime
 import unittest
-
-# Dummy Measure Enum for testing
-from enum import Enum
 from itertools import product
 from unittest.mock import Mock, PropertyMock, call, patch
 
@@ -46,21 +43,9 @@ from climada.trajectories.risk_trajectory import (
 )
 from climada.trajectories.riskperiod import (  # ImpactComputationStrategy, # If needed to mock its base class directly
     AllLinearStrategy,
-    CalcRiskPeriod,
     ImpactCalcComputation,
 )
 from climada.trajectories.snapshot import Snapshot
-
-
-class Measure(Enum):
-    SOME_MEASURE = 1
-    ANOTHER_MEASURE = 2
-    NO_MEASURE = 3  # For cases with no measure
-
-
-# --- Helper functions or classes for common mock objects ---
-# You might want to define some reusable mock setups if they are complex
-# E.g., a mock Snapshot or CalcRiskPeriod that always returns consistent data
 
 
 class TestRiskTrajectory(unittest.TestCase):
@@ -103,10 +88,7 @@ class TestRiskTrajectory(unittest.TestCase):
         )
         self.assertEqual(rt.start_date, self.mock_snapshot1.date)
         self.assertEqual(rt.end_date, self.mock_snapshot3.date)
-        self.assertIsNone(rt.risk_disc)
-        self.assertIsNone(rt._risk_transf_cover)
-        self.assertIsNone(rt._risk_transf_attach)
-        self.assertTrue(rt._calc_residual)
+        self.assertIsNone(rt._risk_disc)
         self.assertEqual(rt._interpolation_strategy, self.mock_interpolation_strategy)
         self.assertEqual(
             rt._impact_computation_strategy, self.mock_impact_computation_strategy
@@ -122,21 +104,15 @@ class TestRiskTrajectory(unittest.TestCase):
         mock_disc = Mock(spec=DiscRates)
         rt = RiskTrajectory(
             self.snapshots_list,
-            interval_freq="MS",
+            time_resolution="MS",
             all_groups_name="CustomAll",
             risk_disc=mock_disc,
-            risk_transf_cover=0.5,
-            risk_transf_attach=0.1,
-            calc_residual=False,
             interpolation_strategy=Mock(),
             impact_computation_strategy=Mock(),
         )
-        self.assertEqual(rt._interval_freq, "MS")
+        self.assertEqual(rt._time_resolution, "MS")
         self.assertEqual(rt._all_groups_name, "CustomAll")
-        self.assertEqual(rt.risk_disc, mock_disc)
-        self.assertEqual(rt._risk_transf_cover, 0.5)
-        self.assertEqual(rt._risk_transf_attach, 0.1)
-        self.assertFalse(rt._calc_residual)
+        self.assertEqual(rt._risk_disc, mock_disc)
 
     ## Test Properties (`@property` and `@setter`)
     def test_default_rp_getter_setter(self):
@@ -157,24 +133,6 @@ class TestRiskTrajectory(unittest.TestCase):
             rt.default_rp = "not a list"
         with self.assertRaises(ValueError):
             rt.default_rp = [10, "not an int"]
-
-    @patch("climada.trajectories.risk_trajectory.RiskTrajectory._reset_metrics")
-    def test_risk_transf_cover_setter(self, mock_reset_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
-        rt._risk_period_up_to_date = True  # Simulate old state
-        rt.risk_transf_cover = 0.5
-        self.assertEqual(rt._risk_transf_cover, 0.5)
-        self.assertFalse(rt._risk_period_up_to_date)  # Should be set to False
-        mock_reset_metrics.assert_called_once()  # Should call reset_metrics
-
-    @patch("climada.trajectories.risk_trajectory.RiskTrajectory._reset_metrics")
-    def test_risk_transf_attach_setter(self, mock_reset_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
-        rt._risk_period_up_to_date = True  # Simulate old state
-        rt.risk_transf_attach = 0.1
-        self.assertEqual(rt._risk_transf_attach, 0.1)
-        self.assertFalse(rt._risk_period_up_to_date)  # Should be set to False
-        mock_reset_metrics.assert_called_once()  # Should call reset_metrics
 
     # --- Test Core Risk Period Calculation (`risk_periods` property and `_calc_risk_periods`) ---
     # This is critical as many other methods depend on it.
@@ -197,22 +155,16 @@ class TestRiskTrajectory(unittest.TestCase):
                 call(
                     self.mock_snapshot1,
                     self.mock_snapshot2,
-                    interval_freq="YS",
+                    time_resolution="YS",
                     interpolation_strategy=self.mock_interpolation_strategy,
                     impact_computation_strategy=self.mock_impact_computation_strategy,
-                    risk_transf_cover=None,
-                    risk_transf_attach=None,
-                    calc_residual=True,
                 ),
                 call(
                     self.mock_snapshot2,
                     self.mock_snapshot3,
-                    interval_freq="YS",
+                    time_resolution="YS",
                     interpolation_strategy=self.mock_interpolation_strategy,
                     impact_computation_strategy=self.mock_impact_computation_strategy,
-                    risk_transf_cover=None,
-                    risk_transf_attach=None,
-                    calc_residual=True,
                 ),
             ]
         )
@@ -260,7 +212,7 @@ class TestRiskTrajectory(unittest.TestCase):
     def test_generic_metrics_basic_flow(self, mock_npv_transform, mock_risk_periods):
         rt = RiskTrajectory(self.snapshots_list)
         rt._all_groups_name = "All"  # Ensure default
-        rt.risk_disc = self.mock_disc_rates  # For NPV transform check
+        rt._risk_disc = self.mock_disc_rates  # For NPV transform check
 
         # Mock CalcRiskPeriod instances returned by risk_periods property
         mock_calc_period1 = Mock()
@@ -679,7 +631,7 @@ class TestRiskTrajectory(unittest.TestCase):
                 "risk": [100.0, 200.0, 300.0, 50.0],
             }
         )
-        result_df = RiskTrajectory._per_period_risk(df_input)
+        result_df = RiskTrajectory._date_to_period_agg(df_input)
 
         expected_df = pd.DataFrame(
             {
@@ -707,8 +659,8 @@ class TestRiskTrajectory(unittest.TestCase):
                 "exposure contribution": [5.0, 8.0],
             }
         )
-        result_df = RiskTrajectory._per_period_risk(
-            df_input, colname=["base risk", "exposure contribution"]
+        result_df = RiskTrajectory._date_to_period_agg(
+            df_input, col_agg_dict=["base risk", "exposure contribution"]
         )
 
         expected_df = pd.DataFrame(
@@ -734,7 +686,9 @@ class TestRiskTrajectory(unittest.TestCase):
             }
         )
         # Test with 'month' time_unit
-        result_df_month = RiskTrajectory._per_period_risk(df_input, time_unit="month")
+        result_df_month = RiskTrajectory._date_to_period_agg(
+            df_input, time_unit="month"
+        )
         expected_df_month = pd.DataFrame(
             {
                 "period": ["2023-01-01 to 2023-03-01"],
@@ -758,7 +712,7 @@ class TestRiskTrajectory(unittest.TestCase):
                 "risk": [10.0, 20.0, 40.0],
             }
         )
-        result_df_gap = RiskTrajectory._per_period_risk(df_gap, time_unit="month")
+        result_df_gap = RiskTrajectory._date_to_period_agg(df_gap, time_unit="month")
         expected_df_gap = pd.DataFrame(
             {
                 "period": ["2023-01-01 to 2023-02-01", "2023-04-01 to 2023-04-01"],
@@ -952,12 +906,16 @@ class TestRiskTrajectory(unittest.TestCase):
 
         # Call the method
         fig, ax = rt.plot_per_date_waterfall(
-            start_date=datetime.date(2023, 1, 1), end_date=datetime.date(2023, 1, 2)
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2023, 1, 2),
+            npv=True,
         )
 
         # Assertions
         mock_calc_data.assert_called_once_with(
-            start_date=datetime.date(2023, 1, 1), end_date=datetime.date(2023, 1, 2)
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2023, 1, 2),
+            npv=True,
         )
         mock_ax.stackplot.assert_called_once()
         self.assertEqual(
@@ -1020,12 +978,16 @@ class TestRiskTrajectory(unittest.TestCase):
 
         # Call the method
         ax = rt.plot_waterfall(
-            start_date=datetime.date(2023, 1, 1), end_date=datetime.date(2024, 1, 1)
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2024, 1, 1),
+            npv=True,
         )
 
         # Assertions
         mock_calc_data.assert_called_once_with(
-            start_date=datetime.date(2023, 1, 1), end_date=datetime.date(2024, 1, 1)
+            start_date=datetime.date(2023, 1, 1),
+            end_date=datetime.date(2024, 1, 1),
+            npv=True,
         )
         mock_ax.bar.assert_called_once()
         # Verify the bar arguments are correct for the end_date data
@@ -1067,16 +1029,16 @@ class TestRiskTrajectory(unittest.TestCase):
     def test_get_risk_periods(self):
         # Create dummy CalcRiskPeriod mocks with specific dates
         mock_rp1 = Mock()
-        mock_rp1.snapshot0.date = datetime.date(2020, 1, 1)
-        mock_rp1.snapshot1.date = datetime.date(2021, 1, 1)
+        mock_rp1.snapshot_start.date = datetime.date(2020, 1, 1)
+        mock_rp1.snapshot_end.date = datetime.date(2021, 1, 1)
 
         mock_rp2 = Mock()
-        mock_rp2.snapshot0.date = datetime.date(2021, 1, 1)
-        mock_rp2.snapshot1.date = datetime.date(2022, 1, 1)
+        mock_rp2.snapshot_start.date = datetime.date(2021, 1, 1)
+        mock_rp2.snapshot_end.date = datetime.date(2022, 1, 1)
 
         mock_rp3 = Mock()
-        mock_rp3.snapshot0.date = datetime.date(2022, 1, 1)
-        mock_rp3.snapshot1.date = datetime.date(2023, 1, 1)
+        mock_rp3.snapshot_start.date = datetime.date(2022, 1, 1)
+        mock_rp3.snapshot_end.date = datetime.date(2023, 1, 1)
 
         all_risk_periods = [mock_rp1, mock_rp2, mock_rp3]
 
@@ -1091,39 +1053,6 @@ class TestRiskTrajectory(unittest.TestCase):
         result = RiskTrajectory._get_risk_periods(
             all_risk_periods, datetime.date(2021, 6, 1), datetime.date(2022, 6, 1)
         )
-        # The condition `start_date >= period.snapshot0.date or end_date <= period.snapshot1.date`
-        # means it includes periods that *overlap* with the range, not strictly *within*.
-        # So for 2021-06-01 to 2022-06-01:
-        # rp1: (2020-01-01 to 2021-01-01) -> end_date (2022-06-01) is not <= 2021-01-01. start_date (2021-06-01) is not >= 2020-01-01. So this condition is OR.
-        # This condition seems to be designed to return periods that are *outside* or *partially outside* the range,
-        # which is counter-intuitive for "get_risk_periods". Let's re-evaluate the original logic.
-
-        # Original condition: start_date >= period.snapshot0.date or end_date <= period.snapshot1.date
-        # This condition is true if the query start date is after or equal to period's start date
-        # OR if the query end date is before or equal to period's end date.
-        # This is essentially: (period_starts_before_or_at_query_start) OR (period_ends_after_or_at_query_end)
-        # This seems to be a filter for periods that are *partially or fully contained* by the query range,
-        # or that *start before* the query range, or *end after* the query range.
-        # It's an "overlapping or encompassing" filter.
-
-        # Let's test with the provided dates and the OR condition
-        # Range: 2021-06-01 to 2022-06-01
-        # mock_rp1 (2020-01-01 to 2021-01-01):
-        #   start_date (2021-06-01) >= period.snapshot0.date (2020-01-01) -> True
-        #   end_date (2022-06-01) <= period.snapshot1.date (2021-01-01) -> False
-        #   Result: True (due to OR) -> mock_rp1 IS included. This is correct based on the code, but unusual for 'get_risk_periods'.
-
-        # mock_rp2 (2021-01-01 to 2022-01-01):
-        #   start_date (2021-06-01) >= period.snapshot0.date (2021-01-01) -> True
-        #   end_date (2022-06-01) <= period.snapshot1.date (2022-01-01) -> False
-        #   Result: True (due to OR) -> mock_rp2 IS included.
-
-        # mock_rp3 (2022-01-01 to 2023-01-01):
-        #   start_date (2021-06-01) >= period.snapshot0.date (2022-01-01) -> False
-        #   end_date (2022-06-01) <= period.snapshot1.date (2023-01-01) -> True
-        #   Result: True (due to OR) -> mock_rp3 IS included.
-
-        # Based on the current logic, all periods should be returned given these examples.
         result = RiskTrajectory._get_risk_periods(
             all_risk_periods, datetime.date(2021, 6, 1), datetime.date(2022, 6, 1)
         )
@@ -1140,13 +1069,6 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertEqual(len(result), 3)
         self.assertListEqual(result, all_risk_periods)
 
-        # This method's logic seems to include all periods unless a period is strictly *outside* the given range,
-        # which is not what the current condition `(start_date >= period.snapshot0.date or end_date <= period.snapshot1.date)` does.
-        # It seems the intent might be `period.snapshot0.date < end_date and period.snapshot1.date > start_date` for true overlap.
-        # However, testing against the *current implementation* is the goal of unit testing.
-        # So these tests reflect the current (potentially unusual) behavior.
 
-
-# To run the tests
 if __name__ == "__main__":
     unittest.main(argv=["first-arg-is-ignored"], exit=False)

@@ -62,6 +62,23 @@ class Snapshot:
         impfset: ImpactFuncSet,
         date: int | datetime.date | str,
     ) -> None:
+        """Initialise a new `Snapshot`
+
+        This deepcopies the provided exposure, hazard and impfset, and coerces
+        the given date to a datetime object.
+
+        Parameters
+        ----------
+        exposure : Exposures
+        hazard : Hazard
+        impfset : ImpactFuncSet
+        date : int | datetime.date | str
+            The date of the Snapshot, it can be an integer representing a year,
+            a datetime object or a string representation of a datetime object
+            with format YYYY-MM-DD.
+
+        """
+
         self._exposure = copy.deepcopy(exposure)
         self._hazard = copy.deepcopy(hazard)
         self._impfset = copy.deepcopy(impfset)
@@ -100,7 +117,7 @@ class Snapshot:
         else:
             raise TypeError("date_arg must be an int, str, or datetime.date")
 
-    def apply_measure(self, measure: Measure):
+    def apply_measure(self, measure: Measure) -> "Snapshot":
         """Create a new snapshot from a measure
 
         This methods creates a new `Snapshot` object by applying a measure on
@@ -109,7 +126,11 @@ class Snapshot:
         Parameters
         ----------
         measure : Measure
-            The measure to be applied to the snapshot
+            The measure to be applied to the snapshot.
+
+        Returns
+        -------
+            The Snapshot with the measure applied.
 
         """
 
