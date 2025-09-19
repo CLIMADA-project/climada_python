@@ -1390,23 +1390,15 @@ class TestFuncs(unittest.TestCase):
 
         tc_tracks = tc.TCTracks([track])
 
-        hist_abs, *_ = tc.compute_track_density(
-            tc_tracks,
-            res=10,
-            norm=None,
+        hist_abs, _, _ = tc_tracks.compute_track_density(res=10)
+        hist_wind_min, _, _ = tc_tracks.compute_track_density(
+            res=10, wind_min=11, wind_max=None
         )
-        # hist_norm, *_ = tc.compute_track_density(tc_tracks, res=10, density=True)
-        hist_wind_min, *_ = tc.compute_track_density(
-            tc_tracks, res=10, norm=None, wind_min=11, wind_max=None
+        hist_wind_max, _, _ = tc_tracks.compute_track_density(
+            res=10, wind_min=None, wind_max=30
         )
-        hist_wind_max, *_ = tc.compute_track_density(
-            tc_tracks, res=10, norm=None, wind_min=None, wind_max=30
-        )
-        hist_wind_max, *_ = tc.compute_track_density(
-            tc_tracks, res=10, norm=None, wind_min=None, wind_max=30
-        )
-        hist_wind_both, *_ = tc.compute_track_density(
-            tc_tracks, res=10, norm=None, wind_min=11, wind_max=29
+        hist_wind_both, _, _ = tc_tracks.compute_track_density(
+            res=10, wind_min=11, wind_max=29
         )
         self.assertEqual(hist_abs.shape, (17, 35))
         self.assertEqual(hist_abs.sum(), 4)
@@ -1415,14 +1407,6 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(hist_wind_both.sum(), 2)
         # the track defined above occupy positions 0 to 4
         np.testing.assert_array_equal(hist_abs[0, 0:4], [1, 1, 1, 1])
-
-    def test_normalize_hist(self):
-        """test the correct normalization of a 2D matrix by grid cell area and sum of
-        values of the matrix."""
-
-        M = np.ones((10, 10))
-        M_norm = tc.normalize_hist(res=10, hist_count=M, norm="sum")
-        np.testing.assert_array_equal(M, M_norm * 100)
 
     def test_compute_genesis_density(self):
         """Check that the correct number of grid point is computed per grid cell for the starting
@@ -1457,7 +1441,7 @@ class TestFuncs(unittest.TestCase):
         tc_tracks = tc.TCTracks([track])
         lat_bins = np.linspace(-90, 90, int(180 / res))
         lon_bins = np.linspace(-180, 180, int(360 / res))
-        hist = tc.compute_genesis_density(
+        hist = tc._compute_genesis_density(
             tc_track=tc_tracks, lat_bins=lat_bins, lon_bins=lon_bins
         )
         self.assertEqual(hist.shape, (17, 35))
