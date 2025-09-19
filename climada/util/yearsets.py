@@ -25,7 +25,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def impact_yearset(
-    imp, sampled_years, lam=None, correction_fac=False, with_replacement=True, seed=None
+    imp, sampled_years, lam=None, correction_fac=True, with_replacement=False, seed=None
 ):
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
     in the sampled_years list by sampling events from the impact received as input with a
@@ -45,13 +45,13 @@ def impact_yearset(
             events per year. If no lambda value is given, the default lam = sum(imp.frequency)
             is used. Default is None.
         correction_fac : boolean, optional
-            If True a correction factor is applied to the resulting yimp. It is
+            If True, a correction factor is applied to the resulting yimp. It is
             scaled in such a way that the expected annual impact (eai) of the yimp
-            equals the eai of the input impact. Defaults to False.
+            equals the eai of the input impact. Defaults to True.
         with_replacement : bool, optional
             If True, impact events are sampled with replacement. If False, events are sampled
             without replacement. Sampling without replacement can yield distorted samples if
-            frequencies of different events are unqual. Defaults to True.
+            frequencies of different events are unqual. Defaults to False.
         seed : Any, optional
             seed for the default bit generator
             default: None
@@ -86,7 +86,7 @@ def impact_yearset(
 
 
 def impact_yearset_from_sampling_vect(
-    imp, sampled_years, sampling_vect, correction_fac=False
+    imp, sampled_years, sampling_vect, correction_fac=True
 ):
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
     in the sampled_years list by sampling events from the impact received as input following
@@ -112,7 +112,7 @@ def impact_yearset_from_sampling_vect(
         correction_fac : boolean, optional
             If True a correction factor is applied to the resulting yimp. It is
             scaled in such a way that the expected annual impact (eai) of the yimp
-            equals the eai of the input impact. Defaults to False.
+            equals the eai of the input impact. Defaults to True.
 
     Returns
     -------
@@ -170,7 +170,7 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
     return np.round(np.random.poisson(lam=lam, size=n_sampled_years)).astype("int")
 
 
-def sample_events(events_per_year, freqs_orig, with_replacement=True, seed=None):
+def sample_events(events_per_year, freqs_orig, with_replacement=False, seed=None):
     """Sample events uniformely from an array (indices_orig) without replacement
     (if sum(events_per_year) > n_input_events the input events are repeated
     (tot_n_events/n_input_events) times, by ensuring that the same events doens't
@@ -185,7 +185,7 @@ def sample_events(events_per_year, freqs_orig, with_replacement=True, seed=None)
         with_replacement : bool, optional
             If True, impact events are sampled with replacement. If False, events are sampled
             without replacement. Sampling without replacement can yield distorted samples if
-            frequencies of different events are unqual. Defaults to True.
+            frequencies of different events are unqual. Defaults to False.
         seed : Any, optional
             seed for the default bit generator.
             Default: None
@@ -209,7 +209,7 @@ def sample_events(events_per_year, freqs_orig, with_replacement=True, seed=None)
             LOGGER.warning(
                 "The frequencies of the different events are not equal. This can lead to "
                 "distorted sampling if the frequencies vary significantly. To avoid this, "
-                "please set with_replacement=True to sample with replacement instead."
+                "please set `with_replacement=True` to sample with replacement instead."
             )
 
         indices = indices_orig
@@ -226,7 +226,7 @@ def sample_events(events_per_year, freqs_orig, with_replacement=True, seed=None)
                 )
 
             # if not enough events remaining, append original events
-            if len(indices) < amount_events or len(indices) == 0:
+            if len(np.unique(indices)) < amount_events or len(indices) == 0:
                 indices = np.append(indices, indices_orig)
                 freqs = np.append(freqs, freqs_orig)
 
