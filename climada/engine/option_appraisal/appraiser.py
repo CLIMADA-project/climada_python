@@ -112,7 +112,7 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
             no_measures["averted risk"] = 0.0
             no_measures["measure net cost"] = 0.0
             LOGGER.debug(f"Computing cash flow for: {metric_name}.")
-            cash_flow_metrics = self._calc_per_measure_annual_cash_flows(npv)
+            cash_flow_metrics = self.annual_cash_flows(npv)
             LOGGER.debug(f"Merging with base metric: {metric_name}.")
             base_metrics = base_metrics.merge(
                 cash_flow_metrics[["date", "measure", "measure net cost"]],
@@ -195,7 +195,7 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
         **kwargs,
     ) -> pd.DataFrame | pd.Series:
         metrics_df = self.per_period_risk_metrics(metrics, **kwargs)
-        cost_df = self._calc_per_measure_annual_cash_flows(npv)
+        cost_df = self.annual_cash_flows(npv)
         cost_df = self._date_to_period_agg(
             cost_df, grouper=["measure"], colname="measure net cost"
         )
@@ -206,7 +206,7 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
 
         return metrics_df
 
-    def _calc_per_measure_annual_cash_flows(self, npv: bool):
+    def annual_cash_flows(self, npv: bool):
         res = []
         for meas_name, measure in self.measure_set.measures().items():
             need_agg = False
@@ -593,7 +593,7 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
 
         return base_metrics[mask].reset_index().sort_values("date")
 
-    def _calc_per_measure_annual_cash_flows(self):
+    def _calc_per_measure_annual_cash_flows(self, npv: bool):
         res = []
         for meas_name, (start, end) in self.planner.items():
             need_agg = False
@@ -614,7 +614,7 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
                 impl_date=start,
                 start_date=start,
                 end_date=end,
-                disc=self.cost_disc,
+                disc=self.cost_disc if npv else None,
             )
             if need_agg:
                 df = df.groupby(df["date"].dt.year, as_index=False).agg(
@@ -633,24 +633,6 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
         df["net"] *= -1
         df = df.rename(columns={"net": "measure net cost"})
         return df
-
-    def _calc_waterfall_CB_plot_data(
-        self,
-        start_date: datetime.date | None = None,
-        end_date: datetime.date | None = None,
-        npv: bool = True,
-    ):
-        start_date = self.start_date if start_date is None else start_date
-        end_date = self.end_date if end_date is None else end_date
-        risk_components = self.risk_components_metrics(npv)
-        risk_components = risk_components.loc[
-            (risk_components["date"].dt.date >= start_date)
-            & (risk_components["date"].dt.date <= end_date)
-        ]
-        risk_components = risk_components.set_index(["date", "measure", "metric"])[
-            ["risk", "reference risk", "averted risk", "measure net cost"]
-        ].unstack()
-        return risk_components
 
     def plot_per_date_waterfall_CB(
         self,
