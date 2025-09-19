@@ -30,6 +30,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
+from matplotlib import ticker
 from pandas.api.types import is_numeric_dtype
 from tqdm import tqdm
 
@@ -294,24 +295,10 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
         end_date = self.end_date if end_date is None else end_date
         df = self._calc_waterfall_CB_plot_data(start_date=start_date, end_date=end_date)
         df = df.swaplevel()
-        metrics = [
-            "base risk",
-            "exposure contribution",
-            "hazard contribution",
-            "vulnerability contribution",
-            "interaction contribution",
-        ]
-        colors = {
-            "base risk": "tab:blue",
-            "exposure contribution": "tab:orange",
-            "hazard contribution": "tab:green",
-            "vulnerability contribution": "tab:red",
-            "interaction contribution": "tab:purple",
-        }
-        hatch_style = "///"
-
         # Unique measures
         measures = df.index.get_level_values(0).unique()
+
+        value_label = "USD"
 
         _, axs = plt.subplots(
             1 + len(measures),
@@ -343,18 +330,8 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
 
             ax.xaxis.set_major_locator(locator)
             ax.xaxis.set_major_formatter(formatter)
-
-            # # Custom legend to add hatch explanation
-            # handles = [mpatches.Patch(facecolor=colors[m], label=m) for m in metrics]
-            # handles.append(
-            #     mpatches.Patch(
-            #         facecolor="white",
-            #         edgecolor="tab:olive",
-            #         hatch=hatch_style,
-            #         label="averted with measure",
-            #     )
-            # )
-            # handles.append(mpatches.Patch(facecolor="tab:cyan", label="residual risk"))
+            ax.yaxis.set_major_formatter(ticker.EngFormatter())
+            ax.set_ylabel(value_label)
             ax.legend()
 
         return axs
