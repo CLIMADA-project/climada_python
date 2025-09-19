@@ -3,43 +3,47 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - bottleneck>=1.4
+  - bayesian-optimization>=1.5,<2.0
+  - bottleneck>=1.5
   - cartopy>=0.24
   - cfgrib>=0.9
   - contextily>=1.6
-  - dask>=2025.2
-  - eccodes>=2.40
+  - dask>=2025.5
+  - deprecation>=2.1
+  - eccodes>=2.41
+  - fiona>=1.10
   - gdal>=3.10
-  - geopandas>=0.14,<1.0  # geopandas 1.0 does not depend on fiona anymore, hence fiona would need to be added as dependency
-  - h5py>=3.12
+  - geopandas>=0.14
+  - h5py>=3.13
   - haversine>=2.9
   - matplotlib-base>=3.10
   - netcdf4>=1.7
   - numba>=0.61
   - numexpr>=2.10
-  - openpyxl>=3.1
-  - osm-flex>=1.1
-  - pandas>=2.1,<2.2  # 2.2 is not compatible with the default pytables=3.7 and yields a very high deprecation warning number through geopandas
-  - pandas-datareader>=0.10
+  - openpyxl>=3.0
+  - osm-flex>=1.1  # this is only required for running the tutorials, not for the CLIMADA package itself
+  - pandas>=2.1
   - pathos>=0.3
+  - peewee>=3.17
   - pint>=0.24
   - pip
+  - pyarrow>=20.0
   - pycountry>=24.6
   - pyproj>=3.7
-  - pytables>=3.10
+  - pytables>=3.10  # this is the name of the pypi 'tables' package on conda-forge
   - pyxlsb>=1.0
   - rasterio>=1.4
   - requests>=2.32
-  - rtree>=1.3,<1.4  # 1.4.0 doesn't pass the `pip check`
+  - rtree>=1.3
   - salib>=1.5
+  - scikit-learn>=1.7
+  - scipy>=1.14
   - seaborn>=0.13
-  - scikit-learn>=1.6
-  - scipy>=1.14,<1.15  # 1.15 is not compatible with climada_petals, climada_petals.engine.test.test_supplychain fails with "'Series' has no attribute 'nonzero'"
-  - sparse>=0.15
+  - sparse>=0.17
   - statsmodels>=0.14
   - tabulate>=0.9
   - tqdm>=4.67
   - unittest-xml-reporting>=3.2
-  - xarray>=2025.1
+  - xarray>=2025.6
   - xlrd>=2.0
   - xlsxwriter>=3.2

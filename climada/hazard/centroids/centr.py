@@ -23,7 +23,7 @@ import copy
 import logging
 import warnings
 from pathlib import Path
-from typing import Any, Literal, Union
+from typing import Any, Literal, Optional, Union
 
 import cartopy
 import cartopy.crs as ccrs
@@ -52,21 +52,7 @@ EXP_SPECIFIC_COLS = ["value", "impf_", "centr_", "cover", "deductible"]
 
 
 class Centroids:
-    """Contains vector centroids as a GeoDataFrame
-
-    Attributes
-    ----------
-    lat : np.array
-        Latitudinal coordinates in the specified CRS (can be any unit).
-    lon : np.array
-        Longitudinal coordinates in the specified CRS (can be any unit).
-    crs : pyproj.CRS
-        Coordinate reference system. Default: EPSG:4326 (WGS84)
-    region_id : np.array, optional
-        Numeric country (or region) codes. Default: None
-    on_land : np.array, optional
-        Boolean array indicating on land (True) or off shore (False). Default: None
-    """
+    """Contains vector centroids as a GeoDataFrame"""
 
     def __init__(
         self,
@@ -116,13 +102,13 @@ class Centroids:
             self.set_on_land(source=on_land, overwrite=True)
 
     @property
-    def lat(self):
-        """Return latitudes"""
+    def lat(self) -> np.array:
+        """Latitudinal coordinates in the specified CRS (can be any unit)."""
         return self.gdf.geometry.y.values
 
     @property
-    def lon(self):
-        """Return longitudes"""
+    def lon(self) -> np.array:
+        """Longitudinal coordinates in the specified CRS (can be any unit)."""
         return self.gdf.geometry.x.values
 
     @property
@@ -131,8 +117,8 @@ class Centroids:
         return self.gdf["geometry"]
 
     @property
-    def on_land(self):
-        """Get the on_land property"""
+    def on_land(self) -> Optional[np.array]:
+        """Boolean array indicating on land (True) or off shore (False). Default: None"""
         if "on_land" not in self.gdf:
             return None
         if self.gdf["on_land"].isna().all():
@@ -140,8 +126,8 @@ class Centroids:
         return self.gdf["on_land"].values
 
     @property
-    def region_id(self):
-        """Get the assigned region_id"""
+    def region_id(self) -> Optional[np.array]:
+        """Numeric country (or region) codes. Default: None"""
         if "region_id" not in self.gdf:
             return None
         if self.gdf["region_id"].isna().all():
@@ -149,8 +135,8 @@ class Centroids:
         return self.gdf["region_id"].values
 
     @property
-    def crs(self):
-        """Get the crs"""
+    def crs(self) -> CRS:
+        """Coordinate reference system. Default: EPSG:4326 (WGS84)"""
         return self.gdf.crs
 
     @property
@@ -191,9 +177,13 @@ class Centroids:
 
         try:
             pd.testing.assert_frame_equal(self.gdf, other.gdf, check_like=True)
-            return True
         except AssertionError:
             return False
+
+        if not (self.gdf.geometry == other.gdf.geometry).all():
+            return False
+
+        return True
 
     def to_default_crs(self, inplace=True):
         """Project the current centroids to the default CRS (epsg4326)
@@ -497,11 +487,11 @@ class Centroids:
         -------
         ax : cartopy.mpl.geoaxes.GeoAxes instance
         """
-        if axis == None:
+        if axis is None:
             fig, axis = plt.subplots(
                 figsize=figsize, subplot_kw={"projection": ccrs.PlateCarree()}
             )
-        if type(axis) != cartopy.mpl.geoaxes.GeoAxes:
+        if type(axis) is not cartopy.mpl.geoaxes.GeoAxes:
             raise AttributeError(
                 f"The axis provided is of type: {type(axis)} "
                 "The function requires a cartopy.mpl.geoaxes.GeoAxes."
@@ -920,23 +910,40 @@ class Centroids:
             (path and) file name to write to.
         """
         LOGGER.info("Writing %s", file_name)
-        store = pd.HDFStore(file_name, mode=mode)
-        pandas_df = pd.DataFrame(self.gdf)
-        for col in pandas_df.columns:
-            if str(pandas_df[col].dtype) == "geometry":
-                pandas_df[col] = np.asarray(self.gdf[col])
+        xycols = []
+        wkbcols = []
+        store = pd.HDFStore(file_name, mode=mode, complevel=9)
+        try:
+            pandas_df = pd.DataFrame(self.gdf)
+            # we replace all columns of type geometry
+            # - with according x and y columns if they are strictly `Point`s
+            # - with wkb values if they have other shapes
+            # this saves a lot of time and disk space
+            for col in pandas_df.columns:
+                if str(pandas_df[col].dtype) == "geometry":
+                    if (self.gdf[col].geom_type == "Point").all():
+                        pandas_df[col + ".x"] = self.gdf[col].x
+                        pandas_df[col + ".y"] = self.gdf[col].y
+                        pandas_df.drop(columns=[col], inplace=True)
+                        xycols.append(col)
+                    else:
+                        pandas_df[col] = self.gdf[col].to_wkb()
+                        wkbcols.append(col)
 
-        # Avoid pandas PerformanceWarning when writing HDF5 data
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
-            # Write dataframe
-            store.put("centroids", pandas_df)
+            # Avoid pandas PerformanceWarning when writing HDF5 data
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", category=pd.errors.PerformanceWarning)
+                # Write dataframe
+                store.put("centroids", pandas_df)
 
-        store.get_storer("centroids").attrs.metadata = {
-            "crs": CRS.from_user_input(self.crs).to_wkt()
-        }
-
-        store.close()
+            centroids_metadata = {"crs": CRS.from_user_input(self.crs).to_wkt()}
+            if xycols:
+                centroids_metadata["xy_columns"] = xycols
+            if wkbcols:
+                centroids_metadata["wkb_columns"] = wkbcols
+            store.get_storer("centroids").attrs.metadata = centroids_metadata
+        finally:
+            store.close()
 
     @classmethod
     def from_hdf5(cls, file_name):
@@ -964,7 +971,21 @@ class Centroids:
                 # in previous versions of CLIMADA and/or geopandas,
                 # the CRS was stored in '_crs'/'crs'
                 crs = metadata.get("crs")
-                gdf = gpd.GeoDataFrame(store["centroids"], crs=crs)
+                gdf = gpd.GeoDataFrame(store["centroids"])
+                with warnings.catch_warnings():
+                    # setting a column named 'geometry' triggers a future warning
+                    # with geopandas 0.14
+                    warnings.simplefilter(action="ignore", category=FutureWarning)
+
+                    for xycol in metadata.get("xy_columns", []):
+                        gdf[xycol] = gpd.points_from_xy(
+                            x=gdf[xycol + ".x"], y=gdf[xycol + ".y"], crs=crs
+                        )
+                        gdf.drop(columns=[xycol + ".x", xycol + ".y"], inplace=True)
+                    for wkbcol in metadata.get("wkb_columns", []):
+                        gdf[wkbcol] = gpd.GeoSeries.from_wkb(gdf[wkbcol], crs=crs)
+                gdf.set_geometry("geometry", inplace=True)
+
         except TypeError:
             with h5py.File(file_name, "r") as data:
                 gdf = cls._gdf_from_legacy_hdf5(data.get("centroids"))

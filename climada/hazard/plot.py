@@ -26,7 +26,6 @@ import cartopy.feature as cfeature
 import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
-from deprecation import deprecated
 
 import climada.util.plot as u_plot
 
@@ -40,36 +39,32 @@ class HazardPlot:
     Contains all plotting methods of the Hazard class
     """
 
-    @deprecated(
-        details="The use of Hazard.plot_rp_intensity is deprecated."
-        "Use Hazard.local_exceedance_intensity and util.plot.plot_from_gdf instead."
-    )
     def plot_rp_intensity(
         self,
         return_periods=(25, 50, 100, 250),
-        smooth=True,
         axis=None,
-        figsize=(9, 13),
-        adapt_fontsize=True,
+        mask_distance=0.03,
+        kwargs_local_exceedance_intensity=None,
         **kwargs,
     ):
         """
-        This function is deprecated,
-        use Impact.local_exceedance_impact and util.plot.plot_from_gdf instead.
-
         Compute and plot hazard exceedance intensity maps for different
-        return periods. Calls local_exceedance_inten.
+        return periods. Calls local_exceedance_intensity. For handling large data sets and for
+        further options, see Notes.
 
         Parameters
         ----------
         return_periods: tuple(int), optional
             return periods to consider
-        smooth: bool, optional
-            smooth plot to plot.RESOLUTIONxplot.RESOLUTION
         axis: matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
-        figsize: tuple, optional
-            figure size for plt.subplots
+        kwargs_local_exceedance_intensity: dict
+            Dictionary of keyword arguments for the method hazard.local_exceedance_intensity.
+        mask_distance: float, optional
+            Only regions are plotted that are closer to any of the data points than this distance,
+            relative to overall plot size. For instance, to only plot values
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs: optional
             arguments for pcolormesh matplotlib function used in event plots
 
@@ -77,25 +72,40 @@ class HazardPlot:
         -------
         axis, inten_stats:  matplotlib.axes._subplots.AxesSubplot, np.ndarray
             intenstats is return_periods.size x num_centroids
+
+        See Also
+        ---------
+        hazard.local_exceedance_intensity: method to calculate local exceedance frequencies.
+
+         Notes
+         -----
+         For handling large data, and for more fleixble options in the exceedance
+         intensity computation and in the plotting, we recommend to use
+         gdf, title, labels = hazard.local_exceedance_intensity() and
+         util.plot.plot_from_gdf(gdf, title, labels) instead.
         """
-        inten_stats = self.local_exceedance_intensity(return_periods)[0].values[:, 1:].T
-        inten_stats = inten_stats.astype(float)
-        colbar_name = "Intensity (" + self.units + ")"
-        title = list()
-        for ret in return_periods:
-            title.append("Return period: " + str(ret) + " years")
-        axis = u_plot.geo_im_from_array(
+        LOGGER.info(
+            "Some errors in the previous calculation of local exceedance intensities have been "
+            "corrected, see Hazard.local_exceedance_intensity. To reproduce data with the "
+            "previous calculation, use CLIMADA v5.0.0 or less."
+        )
+
+        if kwargs_local_exceedance_intensity is None:
+            kwargs_local_exceedance_intensity = {}
+
+        inten_stats, title, column_labels = self.local_exceedance_intensity(
+            return_periods, **kwargs_local_exceedance_intensity
+        )
+
+        axis = u_plot.plot_from_gdf(
             inten_stats,
-            self.centroids.coord,
-            colbar_name,
             title,
-            smooth=smooth,
-            axes=axis,
-            figsize=figsize,
-            adapt_fontsize=adapt_fontsize,
+            column_labels,
+            axis=axis,
+            mask_distance=mask_distance,
             **kwargs,
         )
-        return axis, inten_stats
+        return axis, inten_stats.values[:, 1:].T.astype(float)
 
     def plot_intensity(
         self,
@@ -104,6 +114,7 @@ class HazardPlot:
         smooth=True,
         axis=None,
         adapt_fontsize=True,
+        mask_distance=0.03,
         **kwargs,
     ):
         """Plot intensity values for a selected event or centroid.
@@ -127,6 +138,11 @@ class HazardPlot:
             in module `climada.util.plot`)
         axis: matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        mask_distance: float, optional
+            Only regions are plotted that are closer to any of the data points than this distance,
+            relative to overall plot size. For instance, to only plot values
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs: optional
             arguments for pcolormesh matplotlib function
             used in event plots or for plot function used in centroids plots
@@ -152,6 +168,7 @@ class HazardPlot:
                 crs_epsg,
                 axis,
                 adapt_fontsize=adapt_fontsize,
+                mask_distance=mask_distance,
                 **kwargs,
             )
         if centr is not None:
@@ -313,6 +330,11 @@ class HazardPlot:
             in module `climada.util.plot`)
         axis: matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
+        mask_distance: float, optional
+            Relative distance (with respect to maximal map extent in longitude or latitude) to data
+            points above which plot should not display values. For instance, to only plot values
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs: optional
             arguments for pcolormesh matplotlib function
             used in event plots or for plot function used in centroids plots
@@ -330,7 +352,13 @@ class HazardPlot:
             if isinstance(event, str):
                 event = self.get_event_id(event)
             return self._event_plot(
-                event, self.fraction, col_label, smooth, axis, **kwargs
+                event,
+                self.fraction,
+                col_label,
+                smooth,
+                axis,
+                mask_distance=mask_distance,
+                **kwargs,
             )
         if centr is not None:
             if isinstance(centr, tuple):
@@ -349,6 +377,7 @@ class HazardPlot:
         axis=None,
         figsize=(9, 13),
         adapt_fontsize=True,
+        mask_distance=0.03,
         **kwargs,
     ):
         """Plot an event of the input matrix.
@@ -370,6 +399,11 @@ class HazardPlot:
             axis to use
         figsize: tuple, optional
             figure size for plt.subplots
+        mask_distance: float, optional
+            Only regions are plotted that are closer to any of the data points than this distance,
+            relative to overall plot size. For instance, to only plot values
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs: optional
             arguments for pcolormesh matplotlib function
 
@@ -417,6 +451,7 @@ class HazardPlot:
             figsize=figsize,
             proj=crs_espg,
             adapt_fontsize=adapt_fontsize,
+            mask_distance=mask_distance,
             **kwargs,
         )
 

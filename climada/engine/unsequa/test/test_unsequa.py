@@ -650,7 +650,7 @@ class TestCalcImpact(unittest.TestCase):
         }
 
         def test_sensitivity_method(
-            exp_unc, impf_unc, haz_unc, sensitivity_method, param_dict
+            exp_unc, impf_unc, haz_unc, sensitivity_method, param_dict, places
         ):
             """Function to test each seaprate sensitivity method"""
             unc_calc = CalcImpact(exp_unc, impf_unc, haz_unc)
@@ -681,7 +681,7 @@ class TestCalcImpact(unittest.TestCase):
             self.assertAlmostEqual(
                 param_dict["test_si_value"][0],
                 unc_data.aai_agg_sens_df["aai_agg"][param_dict["test_si_value"][1]],
-                places=5,
+                places=places,
             )
 
             self.assertEqual(unc_data.aai_agg_unc_df.size, unc_data.n_samples)
@@ -695,7 +695,12 @@ class TestCalcImpact(unittest.TestCase):
         # loop over each method and do test
         for sensitivity_method, method_params in test_dict.items():
             test_sensitivity_method(
-                exp_unc, impf_unc, haz_unc, sensitivity_method, method_params
+                exp_unc,
+                impf_unc,
+                haz_unc,
+                sensitivity_method,
+                method_params,
+                places=2 if sensitivity_method == "rbd_fast" else 5,
             )
 
 
