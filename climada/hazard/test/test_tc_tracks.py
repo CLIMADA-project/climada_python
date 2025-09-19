@@ -883,24 +883,24 @@ class TestFuncs(unittest.TestCase):
         # all basin
         dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=False)
 
-        self.assertEqual(len(dict_basins["NA"]), 1)
-        self.assertEqual(len(dict_basins["EP"]), 2)
-        self.assertEqual(len(dict_basins["WP"]), 2)
-        self.assertEqual(len(dict_basins["NI"]), 0)
-        self.assertEqual(len(dict_basins["SI"]), 1)
-        self.assertEqual(len(dict_basins["SP"]), 0)
-        self.assertEqual(len(tracks_outside_basin), 0)
+        self.assertEqual(len(dict_basins["NA"].data), 1)
+        self.assertEqual(len(dict_basins["EP"].data), 2)
+        self.assertEqual(len(dict_basins["WP"].data), 2)
+        self.assertEqual(len(dict_basins["NI"].data), 0)
+        self.assertEqual(len(dict_basins["SI"].data), 1)
+        self.assertEqual(len(dict_basins["SP"].data), 0)
+        self.assertEqual(len(tracks_outside_basin.data), 0)
 
         # only origin basin
         dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=True)
 
-        self.assertEqual(len(dict_basins["NA"]), 0)
-        self.assertEqual(len(dict_basins["EP"]), 2)
-        self.assertEqual(len(dict_basins["WP"]), 2)
-        self.assertEqual(len(dict_basins["NI"]), 0)
-        self.assertEqual(len(dict_basins["SI"]), 1)
-        self.assertEqual(len(dict_basins["SP"]), 0)
-        self.assertEqual(len(tracks_outside_basin), 0)
+        self.assertEqual(len(dict_basins["NA"].data), 0)
+        self.assertEqual(len(dict_basins["EP"].data), 2)
+        self.assertEqual(len(dict_basins["WP"].data), 2)
+        self.assertEqual(len(dict_basins["NI"].data), 0)
+        self.assertEqual(len(dict_basins["SI"].data), 1)
+        self.assertEqual(len(dict_basins["SP"].data), 0)
+        self.assertEqual(len(tracks_outside_basin.data), 0)
 
     def test_get_extent(self):
         """Test extent/bounds attributes."""

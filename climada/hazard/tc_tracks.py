@@ -286,11 +286,6 @@ class Basin_bounds_storm(Enum):
     )
 
 
-BASINS_GDF = gpd.GeoDataFrame(
-    {"basin": b, "geometry": b.value} for b in Basin_bounds_storm
-)
-
-
 class TCTracks:
     """Contains tropical cyclone tracks.
 
@@ -421,6 +416,27 @@ class TCTracks:
         return out
 
     def get_basins(track):
+        """Identify the tropical-cyclone basins crossed by a single track.
+
+        The function appends the latitude and longitude coordinates of the input track
+        into a GeoDataFrame of point geometries and performs a spatial join with the
+        global BASINS_GDF polygons (each representing a tropical-cyclone basin).
+        It returns the basin name(s) for every point along the track.
+
+        Parameters
+        ----------
+        track : xarray.Dataset
+            Tropical cyclone track
+        Returns
+        -------
+        pandas.Series
+            A Series of basin identifiers (e.g., "NA", "EP", "WP", …), one for each
+            track point.  Points that fall outside any basin have a value of ``NaN``.
+            The index matches the index of the input track coordinates."""
+
+        BASINS_GDF = gpd.GeoDataFrame(
+            {"basin": b, "geometry": b.value} for b in Basin_bounds_storm
+        )
 
         track_coordinates = gpd.GeoDataFrame(
             geometry=gpd.points_from_xy(track.lon, track.lat)
@@ -471,7 +487,14 @@ class TCTracks:
                 else:
                     tracks_outside_basin.append(track)
 
-        return basins_dict, tracks_outside_basin
+        # return TCTracks objetcs
+        for basin in Basin_bounds_storm:
+            if not basins_dict[basin.name]:
+                basins_dict[basin.name] = TCTracks([])
+            else:
+                basins_dict[basin.name] = TCTracks(basins_dict[basin.name])
+
+        return basins_dict, TCTracks(tracks_outside_basin)
 
     def subset_year(
         self,
