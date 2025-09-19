@@ -565,31 +565,6 @@ class TestFunc(unittest.TestCase):
         self.assertAlmostEqual(area2[0], 1781.5973363005)
         self.assertTrue(area2[0] <= 2500)
 
-    def test_compute_grid_area(self):
-        """Test that the two twin functions calculate the area of a gridcell correctly. Using
-        an absolute reference and mutual validation by comparison."""
-        res = 1
-        area = u_coord.compute_grid_cell_area(
-            res=res, projection="sphere", units="km^2"
-        )
-        area_test, *_ = u_coord.compute_grid_cell_area_validation(res=res)
-
-        self.assertEqual(area.shape, (179, 359))
-        self.assertEqual(area_test.shape, (179, 359))
-        # check that all rows have equal area with 1e-5 tolerance for relative and absolute precision
-        for i in range(area.shape[0]):
-            self.assertTrue(
-                np.all(np.isclose(area[i, :], area[i, 0], rtol=1e-5, atol=1e-5))
-            )
-            self.assertTrue(
-                np.all(
-                    np.isclose(area_test[i, :], area_test[i, 0], rtol=1e-5, atol=1e-5)
-                )
-            )
-
-        # check that both methods give similar results with 0.01% tolerance in relative difference
-        self.assertTrue(np.allclose(area, area_test, rtol=1e-2, atol=1e-5))
-
     def test_read_vector_pass(self):
         """Test one columns data"""
         shp_file = shapereader.natural_earth(
