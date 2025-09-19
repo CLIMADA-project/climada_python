@@ -361,78 +361,101 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
 
     def plot_waterfall_CB(
         self,
-        start_date: datetime.date | None = None,
-        end_date: datetime.date | None = None,
+        risk_reference_date: datetime.date | None = None,
+        measure_effect_date: datetime.date | None = None,
+        npv: bool = True,
         measures: list[str] | None = None,
     ):
-        start_date = self.start_date if start_date is None else start_date
-        end_date = self.end_date if end_date is None else end_date
-        risk_component = self._calc_waterfall_CB_plot_data(
-            start_date=start_date, end_date=end_date
+        risk_reference_date = (
+            self.start_date if measure_effect_date is None else risk_reference_date
         )
+        measure_effect_date = (
+            self.end_date if measure_effect_date is None else measure_effect_date
+        )
+        risk_component = self.risk_components_metrics(npv)
+        risk_component = risk_component.set_index("date").loc[
+            [risk_reference_date, measure_effect_date]
+        ]
         meas = (
-            list(
-                np.setdiff1d(
-                    risk_component.index.get_level_values(1).unique(), ["no_measure"]
-                )
-            )
+            np.setdiff1d(risk_component.measure.unique(), ["no_measure"])
             if measures is None
             else measures
         )
-        num_cols = 3 if 3 < len(meas) else len(meas)
+        num_cols = 2 if 2 < len(meas) else len(meas)
         num_rows = len(meas) // num_cols
+        risk_component = risk_component.loc[risk_component["measure"].isin(meas)]
+        risk_component.set_index(["measure", "metric"], inplace=True, append=True)
         fig, axs = plt.subplots(
             num_rows, num_cols, figsize=(num_cols * 8, num_rows * 5)
         )
 
         labels = [
-            "Risk",
-            "Averted Risk",
-            "Residual risk",
-            # "Measure cost",
-            # "Cost benefit",
+            f"Base Risk in {risk_reference_date}",
+            "Exposure contribution",
+            "Hazard contribution",
+            "Vulnerability contribution",
+            "Interaction contribution",
+            f"Total risk in {measure_effect_date}",
         ]
-        # measure_costs = risk_component.loc[:,("measure net cost","base risk")].unstack().sum()
-        average_risk = (
-            risk_component.groupby(level=1)
-            .mean()
-            .stack()
-            .groupby(level=0)
-            .agg(
-                {
-                    "averted risk": "sum",
-                    "measure net cost": "first",
-                    "reference risk": "sum",
-                    "risk": "sum",
-                }
-            )
-        )
-        # risk_component = risk_component.loc[str(end_date)]
+        reference_risk = risk_component.loc[
+            (str(risk_reference_date), meas[0], "base risk"), "reference risk"
+        ]
+        base_risk_when_measure_effect = risk_component.loc[
+            (str(measure_effect_date), meas[0]), "reference risk"
+        ].sum()
 
         for i, measure in enumerate(meas):
-            m_average_risk = average_risk.loc[measure]
+            exposure_contribution = risk_component.loc[
+                (str(measure_effect_date), measure, "exposure contribution"),
+                "reference risk",
+            ]
+            hazard_contribution = risk_component.loc[
+                (str(measure_effect_date), measure, "hazard contribution"),
+                "reference risk",
+            ]
+            vulnerability_contribution = risk_component.loc[
+                (str(measure_effect_date), measure, "vulnerability contribution"),
+                "reference risk",
+            ]
+            interaction_contribution = risk_component.loc[
+                (str(measure_effect_date), measure, "interaction contribution"),
+                "reference risk",
+            ]
+            averted_risk = risk_component.loc[
+                (str(measure_effect_date), measure), "averted risk"
+            ].sum()
             values = [
-                m_average_risk["reference risk"],
-                m_average_risk["averted risk"],
-                m_average_risk["reference risk"] - m_average_risk["averted risk"],
-                # m_average_risk["measure net cost"],
-                # m_average_risk["averted risk"] - m_average_risk["measure net cost"],
+                reference_risk,
+                exposure_contribution,
+                hazard_contribution,
+                vulnerability_contribution,
+                interaction_contribution,
+                base_risk_when_measure_effect,
             ]
             bottoms = [
                 0.0,
-                m_average_risk["reference risk"] - m_average_risk["averted risk"],
+                reference_risk,
+                reference_risk + exposure_contribution,
+                reference_risk + exposure_contribution + hazard_contribution,
+                reference_risk
+                + exposure_contribution
+                + hazard_contribution
+                + vulnerability_contribution,
                 0.0,
-                # m_average_risk["reference risk"] - m_average_risk["averted risk"],
-                # m_average_risk["reference risk"]
-                # - m_average_risk["averted risk"]
-                # + m_average_risk["measure net cost"],
             ]
             axs[i].bar(
                 labels,
                 values,
                 bottom=bottoms,
                 edgecolor="black",
-                color=["tab:blue", "tab:olive", "tab:cyan", "tab:brown", "tab:pink"],
+                color=[
+                    "tab:blue",
+                    "tab:olive",
+                    "tab:cyan",
+                    "tab:brown",
+                    "tab:pink",
+                    "tab:blue",
+                ],
             )
             for j in range(len(values)):
                 axs[i].text(
@@ -449,48 +472,30 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
             axs[i].spines["right"].set_visible(False)
             axs[i].set_yticks([])
             axs[i].set_title(f"{measure}")
-            axs[i].annotate(
-                "",
-                xy=(
-                    1,
-                    (m_average_risk["reference risk"] - m_average_risk["averted risk"]),
-                ),
-                xycoords="data",
-                xytext=(1, m_average_risk["reference risk"]),
-                textcoords="data",
-                arrowprops=dict(color="red", lw=2, shrink=0.1, width=12),
+
+            arrow = mpatches.FancyArrowPatch(
+                (5, base_risk_when_measure_effect),
+                (5, base_risk_when_measure_effect - averted_risk),
+                mutation_scale=50,
+                color="red",
             )
-
-            # axs[i].annotate(
-            #     "",
-            #     xy=(
-            #         3,
-            #         m_average_risk["measure net cost"]
-            #         + (
-            #             m_average_risk["reference risk"]
-            #             - m_average_risk["averted risk"]
-            #         ),
-            #     ),
-            #     xycoords="data",
-            #     xytext=(
-            #         3,
-            #         (m_average_risk["reference risk"] - m_average_risk["averted risk"]),
-            #     ),
-            #     textcoords="data",
-            #     arrowprops=dict(color="red", lw=2, shrink=0.1, width=12),
-            # )
-
+            axs[i].text(
+                x=5,
+                y=(2 * base_risk_when_measure_effect - averted_risk) / 2,
+                s="Averted",
+                rotation=90,
+                ha="center",
+                va="center",
+            )
+            axs[i].add_patch(arrow)
             # Construct y-axis label and title based on parameters
             value_label = "USD (Average annual value)"
             axs[i].set_ylabel(value_label)
             axs[i].tick_params(
                 axis="x",
-                labelrotation=0,
+                labelrotation=90,
             )
-
-        title_label = f"Measures cost benefit (Averaged values over {start_date} to {end_date} period)"
-        fig.suptitle(title_label)
-
+        plt.tight_layout()
         return axs
 
 
