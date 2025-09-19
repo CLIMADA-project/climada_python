@@ -22,7 +22,12 @@ Test files_handler module.
 import unittest
 from pathlib import Path
 
-from climada.util.constants import DEMO_DIR, ENT_TEMPLATE_XLS, GLB_CENTROIDS_MAT
+from climada.util.constants import (
+    DEMO_DIR,
+    ENT_TEMPLATE_XLS,
+    GLB_CENTROIDS_MAT,
+    SYSTEM_DIR,
+)
 from climada.util.files_handler import (
     download_file,
     get_extension,
@@ -107,7 +112,8 @@ class TestGetFileNames(unittest.TestCase):
     def test_wrong_argument(self):
         """If the input contains a non-existing file, an empyt directory or a pattern that is not
         matched, the method should raise a ValueError."""
-        empty_dir = DEMO_DIR.parent
+        empty_dir = SYSTEM_DIR / "exposures"
+        self.assertTrue(empty_dir.is_dir)
         with self.assertRaises(ValueError) as ve:
             get_file_names(str(empty_dir))
         self.assertIn("no files", str(ve.exception))

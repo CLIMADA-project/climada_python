@@ -1,3 +1,91 @@
 [build-system]
-requires = ["setuptools >= 64"]
+requires = ["setuptools >= 64", "setuptools_scm >= 8"]
 build-backend = "setuptools.build_meta"
+
+[project]
+name = "climada"
+version = "6.0.2-dev"
+description = "Framework for climate risk assessment and adaptation option appraisal"
+readme = "README.md"
+requires-python = ">=3.10,<3.13"
+license = { text = "GNU General Public License v3 (GPLv3)" }
+authors = [
+    { name = "ETH", email = "climada-info@sympa.ethz.ch" }
+]
+keywords = ["climate", "adaptation"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Topic :: Scientific/Engineering :: Atmospheric Science",
+    "Topic :: Scientific/Engineering :: GIS",
+    "Topic :: Scientific/Engineering :: Mathematics"
+]
+dependencies = [
+    "bayesian-optimization",
+    "bottleneck",
+    "cartopy",
+    "cfgrib",
+    "contextily",
+    "dask",
+    "deprecation",
+    "fiona",
+    "gdal",
+    "geopandas",
+    "h5py",
+    "haversine",
+    "matplotlib",
+    "netcdf4",
+    "numba",
+    "openpyxl",
+    "overpy",
+    "pandas",
+    "pathos",
+    "peewee",
+    "pillow",
+    "pint",
+    "pyarrow",
+    "pycountry",
+    "pyproj",
+    "rasterio",
+    "salib",
+    "scikit-learn",
+    "seaborn",
+    "sparse",
+    "statsmodels",
+    "tables",
+    "tabulate",
+    "tqdm",
+    "xarray",
+    "xlrd",
+    "xlsxwriter"
+]
+
+[project.optional-dependencies]
+doc = [
+    "ipython",
+    "myst-nb",
+    "readthedocs-sphinx-ext>=2.2",
+    "sphinx",
+    "sphinx-book-theme",
+    "sphinx-markdown-tables",
+    "sphinx-design",
+    "sphinx-mdinclude"
+]
+dev = [
+    "ipython",
+    "mccabe>=0.6",
+    "pylint>=3.0",
+    "pytest",
+    "pytest-cov",
+    "pytest-subtests",
+    "pre-commit"
+]
+
+[project.urls]
+Homepage = "https://github.com/CLIMADA-project/climada_python"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+include = ["climada*"]
