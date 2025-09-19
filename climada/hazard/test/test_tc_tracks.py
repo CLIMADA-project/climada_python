@@ -50,6 +50,31 @@ TEST_TRACK_FAST = DATA_DIR.joinpath("FAST_test_tracks.nc")
 TEST_TRACK_STORM = DATA_DIR.joinpath("storm_test_tracks.txt")
 TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath("tracks-antimeridian")
 TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath("tctracks_hdf5_legacy.nc")
+TRACK_DENSITY_FUNCS = xr.Dataset(
+    {
+        "time_step": ("time", np.timedelta64(1, "h") * np.arange(4)),
+        "max_sustained_wind": ("time", [10, 20, 30, 20]),
+        "central_pressure": ("time", [1, 1, 1, 1]),
+        "radius_max_wind": ("time", [1, 1, 1, 1]),
+        "environnmental_pressure": ("time", [1, 1, 1, 1]),
+        "basin": ("time", ["NA", "NA", "NA", "NA"]),
+    },
+    coords={
+        "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12H")),
+        "lat": ("time", [-90, -89, -88, -87]),
+        "lon": ("time", [-179, -169, -159, -149]),
+    },
+    attrs={
+        "max_sustained_wind_unit": "m/s",
+        "central_pressure_unit": "hPa",
+        "name": "storm_0",
+        "sid": "0",
+        "orig_event_flag": True,
+        "data_provider": "FAST",
+        "id_no": "0",
+        "category": "1",
+    },
+)
 
 
 class TestIbtracs(unittest.TestCase):
@@ -1370,36 +1395,9 @@ class TestFuncs(unittest.TestCase):
 
     def test_compute_density_tracks(self):
         """Test `compute_track_density` to ensure proper density count."""
-        # create track
-        track = xr.Dataset(
-            {
-                "time_step": ("time", np.timedelta64(1, "h") * np.arange(4)),
-                "max_sustained_wind": ("time", [10, 20, 30, 20]),
-                "central_pressure": ("time", [1, 1, 1, 1]),
-                "radius_max_wind": ("time", [1, 1, 1, 1]),
-                "environnmental_pressure": ("time", [1, 1, 1, 1]),
-                "basin": ("time", ["NA", "NA", "NA", "NA"]),
-            },
-            coords={
-                "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12H")),
-                "lat": ("time", [-90, -90, -90, -90]),
-                "lon": ("time", [-179, -169, -159, -149]),
-            },
-            attrs={
-                "max_sustained_wind_unit": "m/s",
-                "central_pressure_unit": "hPa",
-                "name": "storm_0",
-                "sid": "0",
-                "orig_event_flag": True,
-                "data_provider": "FAST",
-                "id_no": "0",
-                "category": "1",
-            },
-        )
+        tc_tracks = tc.TCTracks([TRACK_DENSITY_FUNCS])
 
-        tc_tracks = tc.TCTracks([track])
-
-        hist_abs, _, _ = tc_tracks.compute_track_density(res=10)
+        hist, _, _ = tc_tracks.compute_track_density(res=10)
         hist_wind_min, _, _ = tc_tracks.compute_track_density(
             res=10, wind_min=11, wind_max=None
         )
@@ -1409,45 +1407,20 @@ class TestFuncs(unittest.TestCase):
         hist_wind_both, _, _ = tc_tracks.compute_track_density(
             res=10, wind_min=11, wind_max=29
         )
-        self.assertEqual(hist_abs.shape, (17, 35))
-        self.assertEqual(hist_abs.sum(), 4)
+        self.assertEqual(hist.shape, (17, 35))
+        self.assertEqual(hist.sum(), 4)
         self.assertEqual(hist_wind_min.sum(), 3)
         self.assertEqual(hist_wind_max.sum(), 4)
         self.assertEqual(hist_wind_both.sum(), 2)
         # the track defined above occupy positions 0 to 4
-        np.testing.assert_array_equal(hist_abs[0, 0:4], [1, 1, 1, 1])
+        np.testing.assert_array_equal(hist[0, 0:4], [1, 1, 1, 1])
 
     def test_compute_genesis_density(self):
         """Check that the correct number of grid point is computed per grid cell for the starting
         location of cyclone tracks"""
-        # create track
-        track = xr.Dataset(
-            {
-                "time_step": ("time", np.timedelta64(1, "h") * np.arange(4)),
-                "max_sustained_wind": ("time", [10, 20, 30, 20]),
-                "central_pressure": ("time", [1, 1, 1, 1]),
-                "radius_max_wind": ("time", [1, 1, 1, 1]),
-                "environnmental_pressure": ("time", [1, 1, 1, 1]),
-                "basin": ("time", ["NA", "NA", "NA", "NA"]),
-            },
-            coords={
-                "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12H")),
-                "lat": ("time", [-90, -89, -88, -87]),
-                "lon": ("time", [-179, -169, -159, -149]),
-            },
-            attrs={
-                "max_sustained_wind_unit": "m/s",
-                "central_pressure_unit": "hPa",
-                "name": "storm_0",
-                "sid": "0",
-                "orig_event_flag": True,
-                "data_provider": "FAST",
-                "id_no": "0",
-                "category": "1",
-            },
-        )
+
         res = 10
-        tc_tracks = tc.TCTracks([track])
+        tc_tracks = tc.TCTracks([TRACK_DENSITY_FUNCS])
         lat_bins = np.linspace(-90, 90, int(180 / res))
         lon_bins = np.linspace(-180, 180, int(360 / res))
         hist = tc._compute_genesis_density(
@@ -1456,6 +1429,14 @@ class TestFuncs(unittest.TestCase):
         self.assertEqual(hist.shape, (17, 35))
         self.assertEqual(hist.sum(), 1)
         self.assertEqual(hist[0, 0], 1)
+
+    def test_plot_track_density(self):
+        """Very basic check that the plotting function runs."""
+        # compute track density
+        tc_tracks = tc.TCTracks([TRACK_DENSITY_FUNCS])
+        hist, _, _ = tc_tracks.compute_track_density(res=10)
+        # plot track density
+        tc.plot_track_density(hist=hist)
 
 
 # Execute Tests
