@@ -79,7 +79,7 @@ class CalcRiskPeriod:
     This object handles the interpolations and computations of risk metrics in
     between two given snapshots, along a DateTimeIndex build from either a
     `time_resolution` (which must be a valid "freq" string to build a DateTimeIndex)
-    and defaults to "AS-JAN" (start of the year) or `time_points` integer argument, in which case
+    and defaults to "Y" (start of the year) or `time_points` integer argument, in which case
     the DateTimeIndex will have that many periods.
 
     Note that most attribute like members are properties with their own docstring.
@@ -87,7 +87,7 @@ class CalcRiskPeriod:
     Attributes
     ----------
 
-    date_idx: pd.DatetimeIndex
+    date_idx: pd.PeriodIndex
         The date index for the different interpolated points between the two snapshots
     interpolation_strategy: InterpolationStrategy, optional
         The approach used to interpolate impact matrices in between the two snapshots, linear by default.
@@ -107,7 +107,7 @@ class CalcRiskPeriod:
         self,
         snapshot0: Snapshot,
         snapshot1: Snapshot,
-        time_resolution: str | None = "AS-JAN",
+        time_resolution: str | None = "Y",
         time_points: int | None = None,
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
@@ -126,7 +126,7 @@ class CalcRiskPeriod:
         time_resolution : str, optional
             One of pandas date offset strings or corresponding objects. See :func:`pandas.date_range`.
         time_points : int, optional
-            Number of periods to generate for the DatetimeIndex.
+            Number of periods to generate for the PeriodIndex.
         interpolation_strategy: InterpolationStrategy, optional
             The approach used to interpolate impact matrices in between the two snapshots, linear by default.
         impact_computation_strategy: ImpactComputationStrategy, optional
@@ -192,7 +192,7 @@ class CalcRiskPeriod:
         periods: int | None = None,
         freq: str | None = None,
         name: str | None = None,
-    ) -> pd.DatetimeIndex:
+    ) -> pd.PeriodIndex:
         """Generate a date range index based on the provided parameters.
 
         Parameters
@@ -210,8 +210,8 @@ class CalcRiskPeriod:
 
         Returns
         -------
-        pd.DatetimeIndex
-            A DatetimeIndex representing the date range.
+        pd.PeriodIndex
+            A PeriodIndex representing the date range.
 
         Raises
         ------
@@ -223,22 +223,21 @@ class CalcRiskPeriod:
         else:
             points = periods
 
-        ret = pd.date_range(
+        ret = pd.period_range(
             date1,
             date2,
             periods=points,
             freq=freq,  # type: ignore
             name=name,
-            normalize=True,
         )
         if periods is not None and len(ret) != periods:
             raise ValueError(
                 "Number of periods and frequency given to date_range are inconsistent."
             )
 
-        if pd.infer_freq(ret) != freq:
+        if ret.freq != freq:
             LOGGER.debug(
-                f"Given interval frequency ( {pd.infer_freq(ret)} ) and infered interval frequency differ ( {freq} )."
+                f"Given interval frequency ( {ret.freq} ) and infered interval frequency differ ( {freq} )."
             )
 
         return ret
@@ -254,18 +253,18 @@ class CalcRiskPeriod:
         return self._snapshot1
 
     @property
-    def date_idx(self) -> pd.DatetimeIndex:
-        """The pandas DatetimeIndex representing the time dimension of the risk period."""
+    def date_idx(self) -> pd.PeriodIndex:
+        """The pandas PeriodIndex representing the time dimension of the risk period."""
         return self._date_idx
 
     @date_idx.setter
     def date_idx(self, value, /):
-        if not isinstance(value, pd.DatetimeIndex):
-            raise ValueError("Not a DatetimeIndex")
+        if not isinstance(value, pd.PeriodIndex):
+            raise ValueError("Not a PeriodIndex")
 
-        self._date_idx = value.normalize()  # Avoids weird hourly data
+        self._date_idx = value  # Avoids weird hourly data
         self._time_points = len(self.date_idx)
-        self._time_resolution = pd.infer_freq(self.date_idx)
+        self._time_resolution = self.date_idx.freq
         self._reset_impact_data()
 
     @property
