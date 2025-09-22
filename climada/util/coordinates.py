@@ -103,18 +103,25 @@ def is_geo_coords(lat, lon):
     test : bool
         True if lat/lon ranges seem to be in the geographic coordinates range, otherwise False.
     """
-    lat = (
-        np.asarray(lat) if np.asarray(lat).size > 0 else np.array([0])
-    )  # replace empty arrays with zeros to avoid errors
-    lon = (
-        np.array(lon) if np.array(lon).size > 0 else np.array([0])
-    )  # by default, we consider empty arrays as valid geo coords
+    lat = np.asarray(lat)
+    lon = np.array(lon)
+    # by default, we consider empty arrays and all-nans arrays as valid geo coords
+    if lat.size == 0 or np.all(np.isnan(lat)):
+        lat = np.array([0])
+    if lon.size == 0 or np.all(np.isnan(lon)):
+        lon = np.array([0])
 
     # Check if latitude is within -90 to 90 and longitude is within -540 to 540
     # and extent are smaller than 180 and 360 respectively
     return (
-        lat.min() >= -91 and lat.max() <= 91 and lon.min() >= -541 and lon.max() <= 541
-    ) and ((lat.max() - lat.min()) <= 181 and ((lon.max() - lon.min()) <= 541))
+        np.nanmin(lat) >= -91
+        and np.nanmax(lat) <= 91
+        and np.nanmin(lon) >= -541
+        and np.nanmax(lon) <= 541
+    ) and (
+        (np.nanmax(lat) - np.nanmin(lat)) <= 181
+        and ((np.nanmax(lon) - np.nanmin(lon)) <= 541)
+    )
 
 
 def check_if_geo_coords(lat, lon):
