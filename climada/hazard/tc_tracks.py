@@ -28,7 +28,6 @@ import logging
 import re
 import shutil
 import warnings
-from operator import itemgetter
 from pathlib import Path
 from typing import List, Optional
 
@@ -347,7 +346,8 @@ class TCTracks:
         Raises:
         -------
         ValueError
-            - If there's a mismatch between `start_*` and `end_*` values (e.g., one is set to `True` while the other is `False`).
+            - If there's a mismatch between `start_*` and `end_*` values (e.g., one is set to
+              `True` while the other is `False`).
             - If no tracks are found within the specified date range.
             - If `start_date` or `end_date` are incorrectly ordered (start > end).
 
@@ -611,7 +611,7 @@ class TCTracks:
         """
         if correct_pres:
             LOGGER.warning(
-                "`correct_pres` is deprecated. " "Use `estimate_missing` instead."
+                "`correct_pres` is deprecated. Use `estimate_missing` instead."
             )
             estimate_missing = True
         if estimate_missing and not rescale_windspeeds:
@@ -662,7 +662,6 @@ class TCTracks:
                             ", ..." if len(invalid_sids) > 5 else ".",
                         )
                     )
-                    storm_id = list(np.array(storm_id)[~invalid_mask])
                 storm_id_encoded = [i.encode() for i in storm_id]
                 non_existing_mask = ~np.isin(storm_id_encoded, ibtracs_ds.sid.values)
                 if np.count_nonzero(non_existing_mask) > 0:
@@ -673,9 +672,6 @@ class TCTracks:
                             ", ".join(non_existing_sids[:5]),
                             ", ..." if len(non_existing_sids) > 5 else ".",
                         )
-                    )
-                    storm_id_encoded = list(
-                        np.array(storm_id_encoded)[~non_existing_mask]
                     )
                 match &= ibtracs_ds.sid.isin(storm_id_encoded)
             if year_range is not None:
@@ -688,9 +684,9 @@ class TCTracks:
                 if np.count_nonzero(match) == 0:
                     LOGGER.info("No tracks in basin %s.", basin)
             if genesis_basin is not None:
-                # Here, we only filter for the basin at *any* eye position. We will filter again later
-                # for the basin of the *first* eye position, but only after restricting to the valid
-                # time steps in the data.
+                # Here, we only filter for the basin at *any* eye position. We will filter again
+                # later for the basin of the *first* eye position, but only after restricting to
+                # the valid time steps in the data.
                 match &= (ibtracs_ds.basin == genesis_basin.encode()).any(
                     dim="date_time"
                 )
@@ -753,8 +749,9 @@ class TCTracks:
                 )
 
                 if tc_var == "lon":
-                    # Most IBTrACS longitudes are either normalized to [-180, 180] or to [0, 360], but
-                    # some aren't normalized at all, so we have to make sure that the values are okay:
+                    # Most IBTrACS longitudes are either normalized to [-180, 180] or to [0, 360],
+                    # but some aren't normalized at all, so we have to make sure that the values
+                    # are okay:
                     lons = ibtracs_ds[tc_var].values.copy()
                     lon_valid_mask = np.isfinite(lons)
                     lons[lon_valid_mask] = u_coord.lon_normalize(
@@ -972,8 +969,8 @@ class TCTracks:
                 ] + additional_variables:
                     values = track_ds[varname].data
                     if track_ds[varname].dtype.kind == "S":
-                        # This converts the `bytes` (dtype "|S*") in IBTrACS to the more common `str`
-                        # objects (dtype "<U*") that we use in CLIMADA.
+                        # This converts the `bytes` (dtype "|S*") in IBTrACS to the more common
+                        # `str` objects (dtype "<U*") that we use in CLIMADA.
                         values = values.astype(str)
                     if values.ndim == 0:
                         attrs[varname] = values.item()
@@ -1300,8 +1297,8 @@ class TCTracks:
         >>> # or, alternatively,
         >>> years = [int(tr.attrs['sid'].split("-")[-2]) for tr in tc_tracks.data]
 
-        If a windfield is generated from these tracks using the method ``TropCylcone.from_tracks()``,
-        the following should be considered:
+        If a windfield is generated from these tracks using the method
+        ``TropCylcone.from_tracks()``, the following should be considered:
 
         1. The frequencies will be set to ``1`` for each storm. Thus, in order to compute annual
            values, the frequencies of the TropCylone should be changed to ``1/number of years``.
@@ -2048,7 +2045,7 @@ class TCTracks:
             return track
         if track["time"].size < 2:
             LOGGER.warning(
-                "Track interpolation not done. " "Not enough elements for %s",
+                "Track interpolation not done. Not enough elements for %s",
                 track.name,
             )
             track_int = track
@@ -2101,12 +2098,12 @@ class TCTracks:
         wind_max: float = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Compute tropical cyclone track density. Before using this function,
-        apply the same temporal resolution to all tracks by calling :py:meth:`equal_timestep` on the
-        TCTrack object. Due to the computational cost of the this function, it is not recommended to
-        use a grid resolution higher tha 0.1°. First, this function creates 2D bins of the specified
-        resolution (e.g. 1° x 1°). Second, since tracks are not lines but a series of points, it counts
-        the number of points per bin. Lastly, it returns the absolute count per bin.
-        To plot the output of this function use :py:meth:`plot_track_density`.
+        apply the same temporal resolution to all tracks by calling :py:meth:`equal_timestep` on
+        the TCTrack object. Due to the computational cost of the this function, it is not
+        recommended to use a grid resolution higher tha 0.1°. First, this function creates 2D bins
+        of the specified resolution (e.g. 1° x 1°). Second, since tracks are not lines but a series
+        of points, it counts the number of points per bin. Lastly, it returns the absolute count
+        per bin. To plot the output of this function use :py:meth:`plot_track_density`.
 
         Parameters:
         ----------
@@ -2130,8 +2127,8 @@ class TCTracks:
         Returns:
         -------
         hist_count: np.ndarray
-            2D matrix containing the the absolute count per grid cell of track point or the normalized
-            number of track points, depending on the norm parameter.
+            2D matrix containing the the absolute count per grid cell of track point or the
+            normalized number of track points, depending on the norm parameter.
         lat_bins: np.ndarray
             latitude bins in which the point were counted
         lon_bins: np.ndarray
@@ -2399,8 +2396,8 @@ def _raise_if_legacy_or_unknown_hdf5_format(file_name):
             # The legacy format only has data in the subgroups, not in the root.
             # => This cannot be the legacy file format!
             return
-        # After this line, it is sure that the format is not supported (since there is no data in the
-        # root group). Before raising an exception, we double-check if it is the legacy format.
+        # After this line, it is sure that the format is not supported (since there is no data in
+        # the root group). Before raising an exception, we double-check if it is the legacy format.
         try:
             # Check if the file has groups 'track{i}' by trying to access the first group.
             with xr.open_dataset(file_name, group="track0") as ds_track:

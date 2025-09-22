@@ -46,8 +46,7 @@ import shapely.ops
 import shapely.vectorized
 import shapely.wkt
 from cartopy.io import shapereader
-from pyproj import Geod
-from shapely.geometry import MultiPolygon, Point, Polygon, box
+from shapely.geometry import MultiPolygon, Point, box
 from sklearn.neighbors import BallTree
 
 import climada.util.hdf5_handler as u_hdf5
