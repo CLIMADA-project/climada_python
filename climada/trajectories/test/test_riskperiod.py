@@ -115,7 +115,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.calc_risk_period = CalcRiskPeriod(
             self.mock_snapshot_start,
             self.mock_snapshot_end,
-            time_resolution="AS-JAN",
+            time_resolution="Y",
             interpolation_strategy=AllLinearStrategy(),
             impact_computation_strategy=ImpactCalcComputation(),
             # These will have to be tested when implemented
@@ -127,7 +127,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.calc_risk_period.snapshot_start, self.mock_snapshot_start)
         self.assertEqual(self.calc_risk_period.snapshot_end, self.mock_snapshot_end)
-        self.assertEqual(self.calc_risk_period.time_resolution, "AS-JAN")
+        self.assertEqual(self.calc_risk_period.time_resolution, "Y")
         self.assertEqual(
             self.calc_risk_period.time_points, self.future_date - self.present_date + 1
         )
@@ -145,7 +145,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period._group_id_E1,
             self.mock_snapshot_end.exposure.gdf["group_id"].values,
         )
-        self.assertIsInstance(self.calc_risk_period.date_idx, pd.DatetimeIndex)
+        self.assertIsInstance(self.calc_risk_period.date_idx, pd.PeriodIndex)
         self.assertEqual(
             len(self.calc_risk_period.date_idx),
             self.future_date - self.present_date + 1,
@@ -175,8 +175,8 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(len(self.calc_risk_period.date_idx), 10)
         pd.testing.assert_index_equal(
             self.calc_risk_period.date_idx,
-            pd.DatetimeIndex(
-                pd.DatetimeIndex(
+            pd.PeriodIndex(
+                pd.PeriodIndex(
                     [
                         "2020-01-01",
                         "2020-07-22",
@@ -203,8 +203,8 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(self.calc_risk_period.time_resolution, "MS")
         pd.testing.assert_index_equal(
             self.calc_risk_period.date_idx,
-            pd.DatetimeIndex(
-                pd.DatetimeIndex(
+            pd.PeriodIndex(
+                pd.PeriodIndex(
                     [
                         "2020-01-01",
                         "2020-02-01",
@@ -599,7 +599,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.calc_risk_period.per_date_aai_H0V1 = np.array([2, 3, 9])
         self.calc_risk_period.per_date_aai_H1V1 = np.array([4, 6, 24])
 
-        self.calc_risk_period.date_idx = pd.DatetimeIndex(
+        self.calc_risk_period.date_idx = pd.PeriodIndex(
             ["2020-01-01", "2025-01-01", "2030-01-01"], name="date"
         )
         self.calc_risk_period.snapshot_start.exposure.gdf = gpd.GeoDataFrame(
@@ -700,7 +700,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.calc_risk_period._groups_id = np.array([1, 2])
         self.calc_risk_period.eai_gdf = pd.DataFrame(
             {
-                "date": pd.DatetimeIndex(
+                "date": pd.PeriodIndex(
                     ["2020-01-01"] * 3 + ["2025-01-01"] * 3 + ["2030-01-01"] * 3,
                     name="date",
                 ),

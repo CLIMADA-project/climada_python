@@ -29,6 +29,7 @@ import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import matplotlib.ticker as ticker
 import pandas as pd
+from pandas.tseries.frequencies import to_offset
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.trajectories.interpolation import InterpolationStrategyBase
@@ -62,7 +63,7 @@ class RiskTrajectory:
         self,
         snapshots_list: list[Snapshot],
         *,
-        time_resolution: str = "YS",
+        time_resolution: str = "Y",
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
         interpolation_strategy: InterpolationStrategyBase | None = None,
@@ -409,7 +410,10 @@ class RiskTrajectory:
         if len(self._snapshots) > 2:
             tmp.set_index(["group", "date", "measure", "metric"], inplace=True)
             start_dates = [snap.date for snap in self._snapshots[:-1]]
-            end_dates = [snap.date for snap in self._snapshots[1:]]
+            end_dates = [
+                snap.date - to_offset(self._time_resolution)
+                for snap in self._snapshots[1:]
+            ]
             periods_dates = list(zip(start_dates, end_dates))
             tmp.loc[pd.IndexSlice[:, :, :, "base risk"]] = tmp.loc[
                 pd.IndexSlice[:, str(self.start_date), :, "base risk"]
@@ -435,7 +439,7 @@ class RiskTrajectory:
                     ].iloc[0]
 
         tmp.reset_index(inplace=True)
-        return tmp
+        return tmp.drop("index", axis=1, errors="ignore")
 
     def per_date_risk_metrics(
         self,
@@ -486,6 +490,7 @@ class RiskTrajectory:
         risk_periods: list[CalcRiskPeriod],
         start_date: datetime.date,
         end_date: datetime.date,
+        strict: bool = True,
     ):
         """Returns risk periods from the given list that are within `start_date` and `end_date`.
 
@@ -495,16 +500,28 @@ class RiskTrajectory:
             The list of risk periods to look through
         start_date : datetime.date
         end_date : datetime.date
-
+        strict: bool, default True
+            If true, only returns periods stricly within start and end dates. Else,
+            returns periods that have an overlap within start and end.
         """
-        return [
-            period
-            for period in risk_periods
-            if (
-                start_date <= period.snapshot_start.date
-                or end_date >= period.snapshot_end.date
-            )
-        ]
+        if strict:
+            return [
+                period
+                for period in risk_periods
+                if (
+                    start_date <= period.snapshot_start.date
+                    and end_date >= period.snapshot_end.date
+                )
+            ]
+        else:
+            return [
+                period
+                for period in risk_periods
+                if not (
+                    start_date >= period.snapshot_end.date
+                    or end_date <= period.snapshot_start.date
+                )
+            ]
 
     @staticmethod
     def identify_continuous_periods(group, time_unit):
@@ -605,8 +622,8 @@ class RiskTrajectory:
         end_date = self.end_date if end_date is None else end_date
         risk_components = self.risk_components_metrics(npv)
         risk_components = risk_components.loc[
-            (risk_components["date"].dt.date >= start_date)
-            & (risk_components["date"].dt.date <= end_date)
+            (risk_components["date"] >= str(start_date))
+            & (risk_components["date"] <= str(end_date))
         ]
         risk_components = risk_components.set_index(["date", "metric"])[
             "risk"
@@ -664,7 +681,7 @@ class RiskTrajectory:
         risk_component["base risk"] = risk_component.iloc[0]["base risk"]
         # risk_component.plot(x="date", ax=ax, kind="bar", stacked=True)
         ax.stackplot(
-            risk_component.index,
+            risk_component.index.to_timestamp(),
             [risk_component[col] for col in risk_component.columns],
             labels=risk_component.columns,
         )
@@ -717,6 +734,8 @@ class RiskTrajectory:
         """
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
+        start_date_p = pd.to_datetime(start_date).to_period(self._time_resolution)
+        end_date_p = pd.to_datetime(end_date).to_period(self._time_resolution)
         risk_component = self._calc_waterfall_plot_data(
             start_date=start_date, end_date=end_date, npv=npv
         )
@@ -724,16 +743,16 @@ class RiskTrajectory:
             _, ax = plt.subplots(figsize=(8, 5))
 
         risk_component = risk_component.loc[
-            (risk_component.index.date == end_date)
+            (risk_component.index == str(end_date))
         ].squeeze()
 
         labels = [
-            f"Risk {start_date}",
-            f"Exposure contribution {end_date}",
-            f"Hazard contribution {end_date}",
-            f"Vulnerability contribution {end_date}",
-            f"Interaction contribution {end_date}",
-            f"Total Risk {end_date}",
+            f"Risk {start_date_p}",
+            f"Exposure contribution {end_date_p}",
+            f"Hazard contribution {end_date_p}",
+            f"Vulnerability contribution {end_date_p}",
+            f"Interaction contribution {end_date_p}",
+            f"Total Risk {end_date_p}",
         ]
         values = [
             risk_component["base risk"],
@@ -783,7 +802,7 @@ class RiskTrajectory:
 
         # Construct y-axis label and title based on parameters
         value_label = "USD"
-        title_label = f"Evolution of the components of risk between {start_date} and {end_date} (Average impact)"
+        title_label = f"Evolution of the components of risk between {start_date_p} and {end_date_p} (Average impact)"
         ax.yaxis.set_major_formatter(ticker.EngFormatter())
         ax.set_title(title_label)
         ax.set_ylabel(value_label)

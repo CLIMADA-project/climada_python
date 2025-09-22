@@ -155,14 +155,14 @@ class TestRiskTrajectory(unittest.TestCase):
                 call(
                     self.mock_snapshot1,
                     self.mock_snapshot2,
-                    time_resolution="YS",
+                    time_resolution="Y",
                     interpolation_strategy=self.mock_interpolation_strategy,
                     impact_computation_strategy=self.mock_impact_computation_strategy,
                 ),
                 call(
                     self.mock_snapshot2,
                     self.mock_snapshot3,
-                    time_resolution="YS",
+                    time_resolution="Y",
                     interpolation_strategy=self.mock_interpolation_strategy,
                     impact_computation_strategy=self.mock_impact_computation_strategy,
                 ),
