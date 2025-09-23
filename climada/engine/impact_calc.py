@@ -123,7 +123,7 @@ class ImpactCalc:
             >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
             >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
             >>> #Adjust threshold and distance to centroids/exposure resolution
-            >>> exp.assign_centroids(hazard, threshold=1.5, distance='haversine')
+            >>> exp.assign_centroids(hazard, threshold=1.5, distance='euclidean')
             >>> impcalc = ImpactCal(exp, impfset, haz)
             >>> imp = impcalc.impact(insured=True, assign_centroids=False)
             >>> imp.aai_agg
