@@ -44,6 +44,7 @@ geographic coordinates as input (e.g. `util.coordinates.dist_to_coast`, `util.co
 - `Exposures.write_hdf5` pickles geometry data in WKB format, which is faster and more sustainable. [#1051](https://github.com/CLIMADA-project/climada_python/pull/1051)
 - The online documentation has been completely overhauled, now uses PyData theme: [#977](https://github.com/CLIMADA-project/climada_python/pull/977)
 - Add `climada.hazard.xarray` module with helper structures for reading Hazard objects from `xarray` data [#1063](https://github.com/CLIMADA-project/climada_python/pull/1063)
+- The output of the `impact_yearset` was changed to only contain attributes corresponding to the yearly impact set. The application of the correction factor and the frequency of the resulting yearly impact object are corrected. [#1075](https://github.com/CLIMADA-project/climada_python/pull/1075)
 
 ### Fixed
 
