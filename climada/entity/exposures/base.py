@@ -618,7 +618,7 @@ class Exposures:
             the index `-1` is assigned.
             Set `threshold` to 0, to disable nearest neighbor matching and enforce
             exact matching.
-            Default: twice the highest resolution of the hazard centroids
+            Default: twice the highest resolution (smallest distance between any two nearest neighbours) of the hazard centroids
         overwrite: bool
             If True, overwrite centroids already present. If False, do
             not assign new centroids. Default is True.
