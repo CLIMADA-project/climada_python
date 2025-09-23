@@ -418,10 +418,16 @@ class TCTracks:
     def get_basins(track):
         """Identify the tropical-cyclone basins crossed by a single track.
 
-        The function appends the latitude and longitude coordinates of the input track
-        into a GeoDataFrame of point geometries and performs a spatial join with the
-        global BASINS_GDF polygons (each representing a tropical-cyclone basin).
-        It returns the basin name(s) for every point along the track.
+        Provides the basin name for every point along the track.
+        The basins are defined according to the STORM definition:
+        https://www.nature.com/articles/s41597-020-0381-2
+        The names are:
+        WP: West Pacific
+        NA: North Atlantic
+        NI: North Indian
+        SP: South Pacific
+        SI: South Indian
+        EP: East Pacific
 
         Parameters
         ----------
