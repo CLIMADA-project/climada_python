@@ -488,7 +488,7 @@ class TCTracks:
                     tracks_outside_basin.append(track)
 
         # return TCTracks objetcs
-        for basin in Basin_bounds_storm:
+        for basin in BasinBoundsStorm:
             if not basins_dict[basin.name]:
                 basins_dict[basin.name] = TCTracks([])
             else:
