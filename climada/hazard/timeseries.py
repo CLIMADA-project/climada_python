@@ -28,6 +28,12 @@ import logging
 # import h5py
 import numpy as np
 
+# import pandas as pd
+# import rasterio
+# import xarray as xr
+# from deprecation import deprecated
+from scipy import sparse
+
 # import climada.util.constants as u_const
 # import climada.util.coordinates as u_coord
 # import climada.util.hdf5_handler as u_hdf5
@@ -38,12 +44,6 @@ from climada.hazard.base import Hazard
 # import warnings
 # from collections.abc import Collection
 # from typing import Any, Dict, Optional, Union
-
-# import pandas as pd
-# import rasterio
-# import xarray as xr
-# from deprecation import deprecated
-# from scipy import sparse
 
 
 # from .xarray import HazardXarrayReader
@@ -104,6 +104,7 @@ class HazardTimeSeries(Hazard):
         n_timeseries,
         timesteps,
         seasonality=None,
+        intensity_increase=None,
         seed=None,
         # time_correlation=0,
     ):
@@ -196,7 +197,25 @@ class HazardTimeSeries(Hazard):
         ]
 
         sampled_hazard = [hazard.select(event_id=[j]) for j in id_hazard]
-        sampled_hazard = Hazard.concat(sampled_hazard)  # TBD check if ids coincide
+        sampled_hazard = Hazard.concat(sampled_hazard)
+
+        # change intensity
+        if intensity_increase is not None:
+            intensity_factor = [
+                list(
+                    [intensity_increase[i_timestep]]
+                    * n_events_per_timestep[i_timeseries, i_timestep]
+                )
+                for i_timeseries in range(n_timeseries)
+                for i_timestep, timestep in enumerate(timesteps)
+            ]
+            intensity_factor = np.array(
+                [item for sublist in intensity_factor for item in sublist]
+            )
+
+            sampled_hazard.intensity = (
+                sparse.diags(intensity_factor) @ sampled_hazard.intensity
+            )
 
         return cls(
             intensity=sampled_hazard.intensity,
@@ -246,8 +265,9 @@ def _sample_independent_nevents_per_time_series_bin(
             raise ValueError(
                 f"Number of timesteps {n_timesteps} must be equal to the length of weights {len(weights)}."
             )
-        normalized_weights = np.array(weights) / sum(weights) * len(weights)
-        frequency_per_step = normalized_weights * mean_frequency
+        # normalized_weights = np.array(weights) / sum(weights) * len(weights)
+        # frequency_per_step = normalized_weights * mean_frequency
+        frequency_per_step = weights * mean_frequency
     else:
         frequency_per_step = np.full(n_timesteps, mean_frequency)
 
