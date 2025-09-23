@@ -32,7 +32,7 @@ Removed:
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
 
 ### Changed
-
+- Changed default distance threshold for nearest neighbor matching in `util.coordinates.match_coordinates` from a fixed value of 100km to twice the highest resolution of the coords_to_assign [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080).
 - Changed the default mask_distance in `util.plot.geo_im_from_array` to 0.03 to avoid white gaps in gridded hazard data with comparably low resolution (>80 centroids per axis) [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
 - Increased speed of `util.plot.add_shapes` by avoiding for loops, substantially speeding up `Hazard.plot_intensity` and other functions. [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
 - Update `util.coordinates.match_centroids`, `util.coordinates.match_coordinates`, so that they also
