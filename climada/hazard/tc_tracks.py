@@ -444,8 +444,11 @@ class TCTracks:
             {"basin": b, "geometry": b.value} for b in BasinBoundsStorm
         )
 
+        # convert 0-360 to -180 +180 longitude
+        lon = u_coord.lon_normalize(track.lon)
+
         track_coordinates = gpd.GeoDataFrame(
-            geometry=gpd.points_from_xy(track.lon, track.lat)
+            geometry=gpd.points_from_xy(lon, track.lat)
         )
         return track_coordinates.sjoin(basins_gdf, how="left", predicate="within").basin
 
@@ -481,7 +484,7 @@ class TCTracks:
             # if only origin basin is of interest (origin = True)
             if origin:
                 origin_basin = TCTracks.get_basins(track)[0]
-                if origin_basin:
+                if not isinstance(origin_basin, float):  # nan are evaluated as floats
                     basins_dict[origin_basin.name].append(track)
                 else:
                     tracks_outside_basin.append(track)
