@@ -74,7 +74,7 @@ class TestHazardTimeSeries(unittest.TestCase):
             n_timeseries=2,
             timesteps=timesteps,
             seasonality=None,
-            intensity_increase=None,
+            intensity_change=None,
             seed=42,
         )
         self.assertIsInstance(hts, HazardTimeSeries)
@@ -85,13 +85,13 @@ class TestHazardTimeSeries(unittest.TestCase):
         hazard = dummy_hazard()
         hazard.frequency_unit = "1/year"
         timesteps = np.array([737000, 737001, 737002])
-        intensity_increase = np.array([1.0, 2.0, 3.0])
+        intensity_change = np.array([1.0, 2.0, 3.0])
         hts = HazardTimeSeries.sample_from_hazard_set(
             hazard=hazard,
             n_timeseries=2,
             timesteps=timesteps,
             seasonality=None,
-            intensity_increase=intensity_increase,
+            intensity_change=intensity_change,
             seed=42,
         )
         self.assertIsInstance(hts, HazardTimeSeries)

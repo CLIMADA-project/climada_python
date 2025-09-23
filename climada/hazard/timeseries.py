@@ -104,7 +104,7 @@ class HazardTimeSeries(Hazard):
         n_timeseries,
         timesteps,
         seasonality=None,
-        intensity_increase=None,
+        intensity_change=None,
         seed=None,
         # time_correlation=0,
     ):
@@ -200,10 +200,10 @@ class HazardTimeSeries(Hazard):
         sampled_hazard = Hazard.concat(sampled_hazard)
 
         # change intensity
-        if intensity_increase is not None:
+        if intensity_change is not None:
             intensity_factor = [
                 list(
-                    [intensity_increase[i_timestep]]
+                    [intensity_change[i_timestep]]
                     * n_events_per_timestep[i_timeseries, i_timestep]
                 )
                 for i_timeseries in range(n_timeseries)
