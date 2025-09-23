@@ -875,6 +875,90 @@ class TestFuncs(unittest.TestCase):
         ):
             tc_test.subset_year((2100, False, False), (2150, False, False))
 
+    def test_subset_basin(self):
+        """test the correct splitting of a single tc object into different tc objets by basin"""
+
+        # EMMANUEL tracks
+        tc_test = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL)
+
+        # all basins
+        dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=False)
+
+        self.assertEqual(len(dict_basins["NA"].data), 1)
+        self.assertEqual(len(dict_basins["EP"].data), 2)
+        self.assertEqual(len(dict_basins["WP"].data), 2)
+        self.assertEqual(len(dict_basins["NI"].data), 0)
+        self.assertEqual(len(dict_basins["SI"].data), 1)
+        self.assertEqual(len(dict_basins["SP"].data), 0)
+        self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # only origin basin
+        dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=True)
+
+        self.assertEqual(len(dict_basins["NA"].data), 0)
+        self.assertEqual(len(dict_basins["EP"].data), 2)
+        self.assertEqual(len(dict_basins["WP"].data), 2)
+        self.assertEqual(len(dict_basins["NI"].data), 0)
+        self.assertEqual(len(dict_basins["SI"].data), 1)
+        self.assertEqual(len(dict_basins["SP"].data), 0)
+        self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # STORM tracks
+        tc_test = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM)
+        # only origin basin (True) and all crossed basins (False)
+        for bool in [True, False]:
+            dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=bool)
+
+            self.assertEqual(len(dict_basins["NA"].data), 0)
+            self.assertEqual(len(dict_basins["EP"].data), 6)
+            self.assertEqual(len(dict_basins["WP"].data), 0)
+            self.assertEqual(len(dict_basins["NI"].data), 0)
+            self.assertEqual(len(dict_basins["SI"].data), 0)
+            self.assertEqual(len(dict_basins["SP"].data), 0)
+            self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # FAST tracks
+        tc_test = tc.TCTracks.from_FAST(TEST_TRACK_FAST)
+        # only origin basin (True) and all crossed basins (False)
+        for bool in [True, False]:
+            dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=bool)
+
+            self.assertEqual(len(dict_basins["NA"].data), 5)
+            self.assertEqual(len(dict_basins["EP"].data), 0)
+            self.assertEqual(len(dict_basins["WP"].data), 0)
+            self.assertEqual(len(dict_basins["NI"].data), 0)
+            self.assertEqual(len(dict_basins["SI"].data), 0)
+            self.assertEqual(len(dict_basins["SP"].data), 0)
+            self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # CHAZ tracks
+        tc_test = tc.TCTracks.from_simulations_chaz(TEST_TRACK_CHAZ)
+        # only origin basin (True) and all crossed basins (False)
+        for bool in [True, False]:
+            dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=True)
+
+            self.assertEqual(len(dict_basins["NA"].data), 0)
+            self.assertEqual(len(dict_basins["EP"].data), 0)
+            self.assertEqual(len(dict_basins["WP"].data), 0)
+            self.assertEqual(len(dict_basins["NI"].data), 0)
+            self.assertEqual(len(dict_basins["SI"].data), 6)
+            self.assertEqual(len(dict_basins["SP"].data), 7)
+            self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # GETTELMAN tracks
+        tc_test = tc.TCTracks.from_gettelman(TEST_TRACK_GETTELMAN)
+        # only origin basin (True) and all crossed basins (False)
+        for bool in [True, False]:
+            dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=True)
+
+            self.assertEqual(len(dict_basins["NA"].data), 0)
+            self.assertEqual(len(dict_basins["EP"].data), 0)
+            self.assertEqual(len(dict_basins["WP"].data), 2)
+            self.assertEqual(len(dict_basins["NI"].data), 1)
+            self.assertEqual(len(dict_basins["SI"].data), 0)
+            self.assertEqual(len(dict_basins["SP"].data), 0)
+            self.assertEqual(len(tracks_outside_basin.data), 0)
+
     def test_get_extent(self):
         """Test extent/bounds attributes."""
         storms = ["1988169N14259", "2002073S16161", "2002143S07157"]
