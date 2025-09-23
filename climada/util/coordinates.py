@@ -1620,7 +1620,7 @@ def _nearest_neighbor_euclidean(
     threshold : float
         Assignement threshold in units of the provided crs.
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
-    check_antimedirian: bool, optional
+    check_antimeridian: bool, optional
         If True, the nearest neighbor in a strip with lon size equal to threshold around the
         antimeridian is recomputed using the Haversine distance. The antimeridian is guessed from
         both coordinates and centroids, and is assumed equal to 0.5*(lon_max+lon_min) + 180.
