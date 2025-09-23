@@ -434,14 +434,14 @@ class TCTracks:
             track point.  Points that fall outside any basin have a value of ``NaN``.
             The index matches the index of the input track coordinates."""
 
-        BASINS_GDF = gpd.GeoDataFrame(
-            {"basin": b, "geometry": b.value} for b in Basin_bounds_storm
+        basins_gdf = gpd.GeoDataFrame(
+            {"basin": b, "geometry": b.value} for b in BasinBoundsStorm
         )
 
         track_coordinates = gpd.GeoDataFrame(
             geometry=gpd.points_from_xy(track.lon, track.lat)
         )
-        return track_coordinates.sjoin(BASINS_GDF, how="left", predicate="within").basin
+        return track_coordinates.sjoin(basins_gdf, how="left", predicate="within").basin
 
     def subset_by_basin(self, origin: bool = False):
         """Subset all tropical cyclones tracks by basin.
