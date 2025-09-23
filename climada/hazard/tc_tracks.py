@@ -195,7 +195,7 @@ Bloemendaal et al. (2020): Generation of a global synthetic tropical cyclone haz
 dataset using STORM. Scientific Data 7(1): 40."""
 
 
-class Basin_bounds_storm(Enum):
+class BasinBoundsStorm(Enum):
     """
     Store tropical cyclones basin geographical extent.
     The boundaries of the basin are represented as a polygon (using the `shapely` Polygon object)
