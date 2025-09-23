@@ -2127,7 +2127,7 @@ class TCTracks:
         Returns:
         -------
         hist_count: np.ndarray
-            2D matrix containing the the absolute count per grid cell of track point or the
+            2D matrix containing the absolute count per grid cell of track point or the
             normalized number of track points, depending on the norm parameter.
         lat_bins: np.ndarray
             latitude bins in which the point were counted
