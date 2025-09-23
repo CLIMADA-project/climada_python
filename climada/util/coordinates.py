@@ -1240,7 +1240,7 @@ def match_coordinates(
     distance : str, optional
         Distance to use for non-exact matching. Possible values are "euclidean", "haversine" and
         "approx". Default: "euclidean"
-    crs : str or pyproj crs, optinal
+    crs : str or pyproj crs, optional
         Coordinate reference system (crs) of the input coordinates.
         Default: EPSG:4326 (degrees lat/lon)
     threshold : float, optional
