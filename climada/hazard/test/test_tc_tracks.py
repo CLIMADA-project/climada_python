@@ -1427,8 +1427,12 @@ class TestFuncs(unittest.TestCase):
             tc_track=tc_tracks, lat_bins=lat_bins, lon_bins=lon_bins
         )
         self.assertEqual(hist.shape, (17, 35))
-        self.assertEqual(hist.sum(), 1)
-        self.assertEqual(hist[0, 0], 1)
+        self.assertEqual(
+            hist.sum(), 1
+        )  # there is only track so only one starting point
+        self.assertEqual(
+            hist[0, 0], 1
+        )  # the starting location is in the grid cell top left
 
     def test_plot_track_density(self):
         """Very basic check that the plotting function runs."""

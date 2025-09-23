@@ -2100,10 +2100,12 @@ class TCTracks:
         """Compute tropical cyclone track density. Before using this function,
         apply the same temporal resolution to all tracks by calling :py:meth:`equal_timestep` on
         the TCTrack object. Due to the computational cost of the this function, it is not
-        recommended to use a grid resolution higher tha 0.1°. First, this function creates 2D bins
-        of the specified resolution (e.g. 1° x 1°). Second, since tracks are not lines but a series
-        of points, it counts the number of points per bin. Lastly, it returns the absolute count
-        per bin. To plot the output of this function use :py:meth:`plot_track_density`.
+        recommended to use a grid resolution higher tha 0.1°. Also note that the time step (in hours)
+        must be equal or smaller than your desired resolution (in degrees) divided by 1.1.
+        First, this function creates 2D bins of the specified resolution (e.g. 1° x 1°). Second,
+        since tracks are not lines but a series of points, it counts the number of points per bin. Lastly,
+        it returns the absolute count per bin. To plot the output of this function,
+        use :py:meth:`plot_track_density`.
 
         Parameters:
         ----------
@@ -2127,8 +2129,7 @@ class TCTracks:
         Returns:
         -------
         hist_count: np.ndarray
-            2D matrix containing the absolute count per grid cell of track point or the
-            normalized number of track points, depending on the norm parameter.
+            2D matrix containing the absolute count per grid cell of track point.
         lat_bins: np.ndarray
             latitude bins in which the point were counted
         lon_bins: np.ndarray
@@ -2138,20 +2139,20 @@ class TCTracks:
         --------
         >>> tc_tracks = TCTrack.from_ibtracs_netcdf("path_to_file")
         >>> tc_tracks.equal_timestep(time_step_h = 1)
-        >>> hist_count, _, _ = compute_track_density(tc_track = tc_tracks, res = 1)
+        >>> hist_count, _, _ = compute_track_density(tc_track = tc_tracks, res = 2)
         >>> ax = plot_track_density(hist_count)
 
         """
 
         limit_ratio: float = (
-            1.12 * 1.1
-        )  # record tc speed 112km/h -> 1.12°/h + 10% margin
+            1 * 1.1
+        )  # record tc speed 112km/h -> 1°/h + 10% margin = 1.1°/h
         time_value: float = self.data[0].time_step[0].values.astype(float)
 
         if time_value > (res / limit_ratio):
             warnings.warn(
                 "The time step is too big for the current resolution. For the desired resolution, \n"
-                f"apply a time step of {res/limit_ratio}h."
+                f"apply a time step equal or lower than {res/limit_ratio}h."
             )
         elif res < 0.1:
             warnings.warn(
@@ -2251,7 +2252,9 @@ def plot_track_density(
     hist: np.ndarray,
     axis=None,
     projection=ccrs.Mollweide(),
-    add_features: dict = None,
+    land: bool = True,
+    coastline: bool = True,
+    borders: bool = False,
     title: str = None,
     figsize=(12, 6),
     div_cmap=False,
@@ -2275,9 +2278,12 @@ def plot_track_density(
         Existing Cartopy axis.
     projection: cartopy.crs, optional
         Projection for the map.
-    add_features: dict
-        Dictionary of map features to add. Keys can be 'land', 'coastline', 'borders', and
-        'lakes'. Values are Booleans indicating whether to include each feature.
+    land: bool, Default True
+        If True it adds the land on the map
+    coastline: bool, Default True
+        If True it adds the coastline on the map
+    border: bool, Default False
+        If True it adds the borders on the map
     title: str
         Title of the plot.
     figsize: tuple
@@ -2305,27 +2311,15 @@ def plot_track_density(
     ...     cbar_kwargs={'shrink': 0.8,
                         'label': 'Cyclone Density [n° tracks / km²]',
                         'pad': 0.1},
-    ...     add_features={
-    ...         'land': True,
-    ...         'coastline': True,
-    ...         'borders': False,
-    ...         'lakes': False
-    ...     },
+    ...     land = True,
+    ...     coastline = True,
+    ...     borders = False,
     ...     title='My Tropical Cyclone Track Density Map',
     ...     figsize=(10, 5),
     ...     levels=20
     ... )
 
     """
-
-    # Default features
-    default_features = {
-        "land": True,
-        "coastline": True,
-        "borders": False,
-        "lakes": False,
-    }
-    add_features = add_features or default_features
 
     # Sample data
     lon = np.linspace(-180, 180, hist.shape[1])
@@ -2336,7 +2330,7 @@ def plot_track_density(
         _, axis = plt.subplots(figsize=figsize, subplot_kw={"projection": projection})
 
     # Add requested features
-    if add_features.get("land", False):
+    if land:
         land = cfeature.NaturalEarthFeature(
             category="physical",
             name="land",
@@ -2345,12 +2339,10 @@ def plot_track_density(
             alpha=0.6,
         )
         axis.add_feature(land)
-    if add_features.get("coastline", False):
+    if coastline:
         axis.add_feature(cfeature.COASTLINE, linewidth=0.5)
-    if add_features.get("borders", False):
+    if borders:
         axis.add_feature(cfeature.BORDERS, linestyle=":")
-    if add_features.get("lakes", False):
-        axis.add_feature(cfeature.LAKES, alpha=0.4, edgecolor="black")
 
     if div_cmap:
         norm = mcolors.TwoSlopeNorm(

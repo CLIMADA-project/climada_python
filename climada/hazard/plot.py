@@ -21,9 +21,6 @@ Define Hazard Plotting Methods.
 
 import logging
 
-import cartopy.crs as ccrs
-import cartopy.feature as cfeature
-import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import numpy as np
 
