@@ -16,8 +16,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This file implements risk trajectory objects, to allow a better evaluation
-of risk in between two points in time (snapshots).
+This file implements interpolated risk trajectory objects, to allow a better evaluation
+of risk in between points in time (snapshots).
 
 """
 
@@ -35,20 +35,18 @@ from climada.entity.disc_rates.base import DiscRates
 from climada.trajectories.interpolation import InterpolationStrategyBase
 from climada.trajectories.riskperiod import (
     AllLinearStrategy,
-    CalcRiskPeriod,
+    CalcRiskMetricsPeriod,
     ImpactCalcComputation,
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
+from climada.trajectories.trajectory import RiskTrajectory
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
-POSSIBLE_METRICS = ["eai", "aai", "return_periods", "risk_components", "aai_per_group"]
-DEFAULT_RP = [50, 100, 500]
 
-
-class RiskTrajectory:
+class InterpolatedRiskTrajectory(RiskTrajectory):
     """Calculates risk trajectories over a series of snapshots.
 
     This class computes risk metrics over a series of snapshots,
@@ -58,6 +56,15 @@ class RiskTrajectory:
 
     _grouper = ["measure", "metric"]
     """Results dataframe grouper"""
+
+    POSSIBLE_METRICS = [
+        "eai",
+        "aai",
+        "return_periods",
+        "risk_components",
+        "aai_per_group",
+    ]
+    DEFAULT_RP = [50, 100, 500]
 
     def __init__(
         self,
@@ -69,78 +76,31 @@ class RiskTrajectory:
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        self._reset_metrics()
+        super().__init__(
+            snapshots_list,
+            all_groups_name=all_groups_name,
+            risk_disc=risk_disc,
+            impact_computation_strategy=impact_computation_strategy,
+        )
         self._risk_period_up_to_date: bool = False
-        self._snapshots = snapshots_list
-        self._all_groups_name = all_groups_name
-        self._default_rp = DEFAULT_RP
         self.start_date = min([snapshot.date for snapshot in snapshots_list])
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
         self._time_resolution = time_resolution
-        self._risk_disc = risk_disc
         self._interpolation_strategy = interpolation_strategy or AllLinearStrategy()
-        self._impact_computation_strategy = (
-            impact_computation_strategy or ImpactCalcComputation()
-        )
         self._risk_periods_calculators = None
 
-    def _reset_metrics(self):
-        for metric in POSSIBLE_METRICS:
-            setattr(self, "_" + metric + "_metrics", None)
-
-        self._all_risk_metrics = None
-
     @property
-    def default_rp(self) -> list[int]:
-        """The default return period values to use when computing risk period metrics.
-
-        Notes
-        -----
-
-        Changing its value resets the corresponding metric.
-        """
-        return self._default_rp
-
-    @default_rp.setter
-    def default_rp(self, value):
-        if not isinstance(value, list):
-            raise ValueError("Return periods need to be a list of int.")
-        if any(not isinstance(i, int) for i in value):
-            raise ValueError("Return periods need to be a list of int.")
-        self._return_periods_metrics = None
-        self._all_risk_metrics = None
-        self._default_rp = value
-
-    @property
-    def risk_disc(self) -> DiscRates | None:
-        """The discount rate applied to compute net present values.
-        None means no discount rate.
-
-        Notes
-        -----
-
-        Changing its value resets the metrics.
-        """
-        return self._risk_disc
-
-    @risk_disc.setter
-    def risk_disc(self, value, /):
-        if not isinstance(value, DiscRates):
-            raise ValueError("Risk discount needs to be a `DiscRates` object.")
-
-        self._reset_metrics()
-        self._risk_disc = value
-
-    @property
-    def risk_periods(self) -> list[CalcRiskPeriod]:
-        """The computed risk periods from the snapshots."""
+    def _risk_periods(self) -> list[CalcRiskMetricsPeriod]:
+        """The risk periods computing objects."""
         if self._risk_periods_calculators is None or not self._risk_period_up_to_date:
             self._risk_periods_calculators = self._calc_risk_periods(self._snapshots)
             self._risk_period_up_to_date = True
 
         return self._risk_periods_calculators
 
-    def _calc_risk_periods(self, snapshots: list[Snapshot]) -> list[CalcRiskPeriod]:
+    def _calc_risk_periods(
+        self, snapshots: list[Snapshot]
+    ) -> list[CalcRiskMetricsPeriod]:
         """Creates the `CalcRiskPeriod` objects corresponding to a given list of snapshots."""
 
         def pairwise(container: list):
@@ -169,7 +129,7 @@ class RiskTrajectory:
         LOGGER.debug(f"{self.__class__.__name__}: Calc risk periods")
         # impfset = self._merge_impfset(snapshots)
         return [
-            CalcRiskPeriod(
+            CalcRiskMetricsPeriod(
                 start_snapshot,
                 end_snapshot,
                 time_resolution=self._time_resolution,
@@ -181,65 +141,27 @@ class RiskTrajectory:
             )
         ]
 
-    @classmethod
-    def npv_transform(cls, df: pd.DataFrame, risk_disc: DiscRates) -> pd.DataFrame:
-        """Apply discount rate to a metric `DataFrame`.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            The `DataFrame` of the metric to discount.
-        risk_disc : DiscRate
-            The discount rate to apply.
-
-        Returns
-        -------
-        pd.DataFrame
-            The discounted risk metric.
-
-
-        """
-
-        def _npv_group(group, disc):
-            start_date = group.index.get_level_values("date").min()
-            return calc_npv_cash_flows(group, start_date, disc)
-
-        df = df.set_index("date")
-        grouper = cls._grouper
-        if "group" in df.columns:
-            grouper = ["group"] + grouper
-
-        df["risk"] = df.groupby(
-            grouper,
-            dropna=False,
-            as_index=False,
-            group_keys=False,
-            observed=True,
-        )["risk"].transform(_npv_group, risk_disc)
-        df = df.reset_index()
-        return df
-
     def _generic_metrics(
         self,
         npv: bool = True,
         metric_name: str | None = None,
         metric_meth: str | None = None,
         **kwargs,
-    ) -> pd.DataFrame:
+    ) -> pd.DataFrame | None:
         """Generic method to compute metrics based on the provided metric name and method."""
         if metric_name is None or metric_meth is None:
             raise ValueError("Both metric_name and metric_meth must be provided.")
 
-        if metric_name not in POSSIBLE_METRICS:
+        if metric_name not in self.POSSIBLE_METRICS:
             raise NotImplementedError(
-                f"{metric_name} not implemented ({POSSIBLE_METRICS})."
+                f"{metric_name} not implemented ({self.POSSIBLE_METRICS})."
             )
 
         # Construct the attribute name for storing the metric results
         attr_name = f"_{metric_name}_metrics"
 
         tmp = []
-        for calc_period in self.risk_periods:
+        for calc_period in self._risk_periods:
             # Call the specified method on the calc_period object
             with log_level(level="WARNING", name_prefix="climada"):
                 tmp.append(getattr(calc_period, metric_meth)(**kwargs))
@@ -487,7 +409,7 @@ class RiskTrajectory:
 
     @staticmethod
     def _get_risk_periods(
-        risk_periods: list[CalcRiskPeriod],
+        risk_periods: list[CalcRiskMetricsPeriod],
         start_date: datetime.date,
         end_date: datetime.date,
         strict: bool = True,
@@ -813,53 +735,3 @@ class RiskTrajectory:
         )
 
         return ax
-
-
-def calc_npv_cash_flows(
-    cash_flows: pd.DataFrame,
-    start_date: datetime.date,
-    disc: DiscRates | None = None,
-):
-    """Apply discount rate to cash flows.
-
-    If it is defined, applies a discount rate `disc` to a given cash flow
-    `cash_flows` assuming present year corresponds to `start_date`.
-
-    Parameters
-    ----------
-    cash_flows : pd.DataFrame
-        The cash flow to apply the discount rate to.
-    start_date : datetime.date
-        The date representing the present.
-    end_date : datetime.date, optional
-    disc : DiscRates, optional
-        The discount rate to apply.
-
-    Returns
-    -------
-
-    A dataframe (copy) of `cash_flows` where values are discounted according to `disc`
-    """
-
-    if not disc:
-        return cash_flows
-
-    if not isinstance(cash_flows.index, pd.DatetimeIndex):
-        raise ValueError("cash_flows must be a pandas Series with a datetime index")
-
-    df = cash_flows.to_frame(name="cash_flow")
-    df["year"] = df.index.year
-
-    # Merge with the discount rates based on the year
-    tmp = df.merge(
-        pd.DataFrame({"year": disc.years, "rate": disc.rates}), on="year", how="left"
-    )
-    tmp.index = df.index
-    df = tmp.copy()
-    start = pd.Timestamp(start_date)
-    df["discount_factor"] = (1 / (1 + df["rate"])) ** ((df.index - start).days // 365)
-
-    # Apply the discount factors to the cash flows
-    df["npv_cash_flow"] = df["cash_flow"] * df["discount_factor"]
-
-    return df["npv_cash_flow"]
