@@ -41,7 +41,7 @@ class CostIncome:
         cost_yearly_growth_rate: float = 0.0,
         income_yearly_growth_rate: float = 0.0,
         custom_cash_flows: Optional[pd.DataFrame] = None,
-        freq: str = "YS",
+        freq: str = "Y",
     ):
         self.freq = freq  # CostIncome._freq_to_days(freq)
         self.mkt_price_year = datetime(mkt_price_year, 1, 1)
@@ -145,12 +145,12 @@ class CostIncome:
             the net cash flows, costs, and incomes over the given period
         """
         impl_date = pd.Timestamp(impl_date)
-        dates = pd.date_range(start=start_date, end=end_date, freq=self.freq)
+        dates = pd.period_range(start=start_date, end=end_date, freq=self.freq)
 
         net_list, cost_list, income_list = [], [], []
 
         for d in dates:
-            net, cost, income = self._calc_cash_flow_at_date(impl_date, d)
+            net, cost, income = self._calc_cash_flow_at_date(impl_date, d.start_time)
             net_list.append(net)
             cost_list.append(cost)
             income_list.append(income)
@@ -312,7 +312,7 @@ class CostIncome:
         )
 
         # Add the cash flows to the DataFrame
-        date_range = pd.date_range(start=start_date, end=end_date, freq=self.freq)
+        date_range = pd.period_range(start=start_date, end=end_date, freq=self.freq)
         cash_flows["date"] = date_range
         cash_flows["net"] = net_cash_flows
         cash_flows["cost"] = costs

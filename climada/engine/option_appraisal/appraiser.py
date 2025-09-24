@@ -60,7 +60,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         snapshots_list: list[Snapshot],
         *,
         measure_set: MeasureSet,
-        time_resolution: str = "YS",
+        time_resolution: str = "Y",
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
         cost_disc: DiscRates | None = None,
@@ -194,7 +194,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         **kwargs,
     ) -> pd.DataFrame | pd.Series:
         metrics_df = self.per_period_risk_metrics(metrics, **kwargs)
-        cost_df = self.annual_cash_flows(npv)
+        cost_df = self.annual_cash_flows()
         cost_df = self._date_to_period_agg(
             cost_df, grouper=["measure"], colname="measure net cost"
         )
