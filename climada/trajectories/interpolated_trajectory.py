@@ -190,7 +190,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         metric_name: str | None = None,
         metric_meth: str | None = None,
         **kwargs,
-    ) -> pd.DataFrame | None:
+    ) -> pd.DataFrame:
         """Generic method to compute metrics based on the provided metric name and method."""
         if metric_name is None or metric_meth is None:
             raise ValueError("Both metric_name and metric_meth must be provided.")
@@ -218,10 +218,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         try:
             tmp = pd.concat(tmp)
             if len(tmp) == 0:
-                return None
+                return pd.DataFrame()
         except ValueError as e:
             if str(e) == "All objects passed were None":
-                return None
+                return pd.DataFrame()
             else:
                 raise e
 
