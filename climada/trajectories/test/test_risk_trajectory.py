@@ -514,7 +514,7 @@ class TestRiskTrajectory(unittest.TestCase):
                     index=[pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")],
                 ),
             ]
-            result_df = InterpolatedRiskTrajectory.npv_transform(
+            result_df = InterpolatedRiskTrajectory._npv_transform(
                 df_input.copy(), self.mock_disc_rates
             )
             # Assertions for mock calls
@@ -595,7 +595,7 @@ class TestRiskTrajectory(unittest.TestCase):
                     [150.0 * (1 / (1 + 0.01)) ** 0], index=[pd.Timestamp("2023-01-01")]
                 ),
             ]
-            result_df = InterpolatedRiskTrajectory.npv_transform(
+            result_df = InterpolatedRiskTrajectory._npv_transform(
                 df_input.copy(), self.mock_disc_rates
             )
 

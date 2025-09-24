@@ -144,10 +144,14 @@ class CalcRiskMetricsPoints:
             id_vars="date", var_name="coord_id", value_name="risk"
         )
         eai_gdf = pd.concat(
-            [snap.exposure.gdf[["group_id"]] for snap in self.snapshots]
+            [
+                snap.exposure.gdf.reset_index(names=["coord_id"]).assign(
+                    date=pd.to_datetime(snap.date)
+                )[["date", "coord_id", "group_id"]]
+                for snap in self.snapshots
+            ]
         )
-        eai_gdf["coord_id"] = eai_gdf.index
-        eai_gdf = eai_gdf.merge(df, on="coord_id")
+        eai_gdf = eai_gdf.merge(df, on=["date", "coord_id"])
         eai_gdf = eai_gdf.rename(columns={"group_id": "group"})
         eai_gdf["group"] = pd.Categorical(eai_gdf["group"], categories=self._groups_id)
         eai_gdf["metric"] = "eai"
@@ -837,8 +841,8 @@ class CalcRiskMetricsPeriod:
         rp_df["measure"] = self.measure.name if self.measure else "no_measure"
         return rp_df
 
-    def calc_risk_components_metric(self) -> pd.DataFrame:
-        """Compute a DataFrame of the individual components of risk (impact), at each dates of the risk period (including changes in exposure, hazard and vulnerability)."""
+    def calc_risk_contributions_metric(self) -> pd.DataFrame:
+        """Compute a DataFrame of the individual contributions of risk (impact), at each dates of the risk period (including changes in exposure, hazard and vulnerability)."""
         per_date_aai_V0 = self.interpolation_strategy.interp_over_hazard_dim(
             self.per_date_aai_H0V0, self.per_date_aai_H1V0
         )

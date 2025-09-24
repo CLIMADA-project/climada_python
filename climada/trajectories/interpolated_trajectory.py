@@ -36,7 +36,6 @@ from climada.trajectories.interpolation import InterpolationStrategyBase
 from climada.trajectories.riskperiod import (
     AllLinearStrategy,
     CalcRiskMetricsPeriod,
-    ImpactCalcComputation,
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
@@ -61,7 +60,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         "eai",
         "aai",
         "return_periods",
-        "risk_components",
+        "risk_contributions",
         "aai_per_group",
     ]
     DEFAULT_RP = [50, 100, 500]
@@ -270,13 +269,13 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
 
     def return_periods_metrics(
-        self, return_periods, npv: bool = True, **kwargs
+        self, return_periods=None, npv: bool = True, **kwargs
     ) -> pd.DataFrame:
         return self._compute_metrics(
             npv=npv,
             metric_name="return_periods",
             metric_meth="calc_return_periods_metric",
-            return_periods=return_periods,
+            return_periods=return_periods if return_periods else self.default_rp,
             **kwargs,
         )
 
@@ -300,10 +299,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             **kwargs,
         )
 
-    def risk_components_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
-        """Return the "components" of change in future risk (Exposure and Hazard)
+    def risk_contributions_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
+        """Return the "contributions" of change in future risk (Exposure and Hazard)
 
-        This method returns the components of the change in risk at each date:
+        This method returns the contributions of the change in risk at each date:
 
            - The 'base risk', i.e., the risk without change in hazard or exposure, compared to trajectory's earliest date.
            - The 'exposure contribution', i.e., the additional risks due to change in exposure (only)
@@ -321,13 +320,13 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         tmp = self._compute_metrics(
             npv=npv,
-            metric_name="risk_components",
-            metric_meth="calc_risk_components_metric",
+            metric_name="risk_contributions",
+            metric_meth="calc_risk_contributions_metric",
             **kwargs,
         )
 
         # If there is more than one Snapshot, we need to update the
-        # components from previous periods for for continuity
+        # contributions from previous periods for for continuity
         # and to set the base risk from the first period
         if len(self._snapshots) > 2:
             tmp.set_index(["group", "date", "measure", "metric"], inplace=True)
@@ -446,7 +445,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             ]
 
     @staticmethod
-    def identify_continuous_periods(group, time_unit):
+    def _identify_continuous_periods(group, time_unit):
         # Calculate the difference between consecutive dates
         if time_unit == "year":
             group["date_diff"] = group["date"].dt.year.diff()
@@ -489,7 +488,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         # Apply the function to identify continuous periods
         df_periods = df_sorted.groupby(
             grouper, dropna=False, group_keys=False, observed=True
-        ).apply(cls.identify_continuous_periods, time_unit)
+        ).apply(cls._identify_continuous_periods, time_unit)
 
         if isinstance(colname, str):
             colname = [colname]
@@ -542,17 +541,17 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         """Compute the required data for the waterfall plot between `start_date` and `end_date`."""
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        risk_components = self.risk_components_metrics(npv)
-        risk_components = risk_components.loc[
-            (risk_components["date"] >= str(start_date))
-            & (risk_components["date"] <= str(end_date))
+        risk_contributions = self.risk_contributions_metrics(npv)
+        risk_contributions = risk_contributions.loc[
+            (risk_contributions["date"] >= str(start_date))
+            & (risk_contributions["date"] <= str(end_date))
         ]
-        risk_components = risk_components.set_index(["date", "metric"])[
+        risk_contributions = risk_contributions.set_index(["date", "metric"])[
             "risk"
         ].unstack()
-        return risk_components
+        return risk_contributions
 
-    def plot_per_date_waterfall(
+    def plot_time_waterfall(
         self,
         ax=None,
         start_date: datetime.date | None = None,
@@ -560,12 +559,12 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         figsize=(12, 6),
         npv=True,
     ):
-        """Plot a waterfall chart of risk components over a specified date range.
+        """Plot a waterfall chart of risk contributions over a specified date range.
 
         This method generates a stacked bar chart to visualize the
-        risk components between specified start and end dates, for each date in between.
+        risk contributions between specified start and end dates, for each date in between.
         If no dates are provided, it defaults to the start and end dates of the risk trajectory.
-        See the notes on how risk is attributed to each components.
+        See the notes on how risk is attributed to each contributions.
 
         Parameters
         ----------
@@ -588,10 +587,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             fig = ax.figure  # get parent figure from the axis
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        risk_component = self._calc_waterfall_plot_data(
+        risk_contribution = self._calc_waterfall_plot_data(
             start_date=start_date, end_date=end_date, npv=npv
         )
-        risk_component = risk_component[
+        risk_contribution = risk_contribution[
             [
                 "base risk",
                 "exposure contribution",
@@ -600,17 +599,17 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 "interaction contribution",
             ]
         ]
-        risk_component["base risk"] = risk_component.iloc[0]["base risk"]
-        # risk_component.plot(x="date", ax=ax, kind="bar", stacked=True)
+        risk_contribution["base risk"] = risk_contribution.iloc[0]["base risk"]
+        # risk_contribution.plot(x="date", ax=ax, kind="bar", stacked=True)
         ax.stackplot(
-            risk_component.index.to_timestamp(),
-            [risk_component[col] for col in risk_component.columns],
-            labels=risk_component.columns,
+            risk_contribution.index.to_timestamp(),
+            [risk_contribution[col] for col in risk_contribution.columns],
+            labels=risk_contribution.columns,
         )
         ax.legend()
-        # bottom = [0] * len(risk_component)
-        # for col in risk_component.columns:
-        #     bottom =  [b + v for b, v in zip(bottom, risk_component[col])]
+        # bottom = [0] * len(risk_contribution)
+        # for col in risk_contribution.columns:
+        #     bottom =  [b + v for b, v in zip(bottom, risk_contribution[col])]
         # Construct y-axis label and title based on parameters
         value_label = "USD"
         title_label = f"Risk between {start_date} and {end_date} (Average impact)"
@@ -633,9 +632,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         end_date: datetime.date | None = None,
         npv=True,
     ):
-        """Plot a waterfall chart of risk components between two dates.
+        """Plot a waterfall chart of risk contributions between two dates.
 
-        This method generates a waterfall plot to visualize the changes in risk components
+        This method generates a waterfall plot to visualize the changes in risk contributions
         between a specified start and end date. If no dates are provided, it defaults to
         the start and end dates of the risk trajectory.
 
@@ -658,14 +657,14 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         end_date = self.end_date if end_date is None else end_date
         start_date_p = pd.to_datetime(start_date).to_period(self._time_resolution)
         end_date_p = pd.to_datetime(end_date).to_period(self._time_resolution)
-        risk_component = self._calc_waterfall_plot_data(
+        risk_contribution = self._calc_waterfall_plot_data(
             start_date=start_date, end_date=end_date, npv=npv
         )
         if ax is None:
             _, ax = plt.subplots(figsize=(8, 5))
 
-        risk_component = risk_component.loc[
-            (risk_component.index == str(end_date))
+        risk_contribution = risk_contribution.loc[
+            (risk_contribution.index == str(end_date))
         ].squeeze()
 
         labels = [
@@ -677,24 +676,24 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             f"Total Risk {end_date_p}",
         ]
         values = [
-            risk_component["base risk"],
-            risk_component["exposure contribution"],
-            risk_component["hazard contribution"],
-            risk_component["vulnerability contribution"],
-            risk_component["interaction contribution"],
-            risk_component.sum(),
+            risk_contribution["base risk"],
+            risk_contribution["exposure contribution"],
+            risk_contribution["hazard contribution"],
+            risk_contribution["vulnerability contribution"],
+            risk_contribution["interaction contribution"],
+            risk_contribution.sum(),
         ]
         bottoms = [
             0.0,
-            risk_component["base risk"],
-            risk_component["base risk"] + risk_component["exposure contribution"],
-            risk_component["base risk"]
-            + risk_component["exposure contribution"]
-            + risk_component["hazard contribution"],
-            risk_component["base risk"]
-            + risk_component["exposure contribution"]
-            + risk_component["hazard contribution"]
-            + risk_component["vulnerability contribution"],
+            risk_contribution["base risk"],
+            risk_contribution["base risk"] + risk_contribution["exposure contribution"],
+            risk_contribution["base risk"]
+            + risk_contribution["exposure contribution"]
+            + risk_contribution["hazard contribution"],
+            risk_contribution["base risk"]
+            + risk_contribution["exposure contribution"]
+            + risk_contribution["hazard contribution"]
+            + risk_contribution["vulnerability contribution"],
             0.0,
         ]
 
@@ -724,7 +723,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         # Construct y-axis label and title based on parameters
         value_label = "USD"
-        title_label = f"Evolution of the components of risk between {start_date_p} and {end_date_p} (Average impact)"
+        title_label = f"Evolution of the contributions of risk between {start_date_p} and {end_date_p} (Average impact)"
         ax.yaxis.set_major_formatter(ticker.EngFormatter())
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
