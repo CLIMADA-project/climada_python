@@ -79,13 +79,11 @@ class CalcRiskMetricsPoints:
     def __init__(
         self,
         snapshots: list[Snapshot],
-        impact_computation_strategy: ImpactComputationStrategy | None = None,
+        impact_computation_strategy: ImpactComputationStrategy,
     ) -> None:
         self._reset_impact_data()
         self.snapshots = snapshots
-        self.impact_computation_strategy = (
-            impact_computation_strategy or ImpactCalcComputation()
-        )
+        self.impact_computation_strategy = impact_computation_strategy
         self._date_idx = pd.DatetimeIndex(
             [snap.date for snap in self.snapshots], name="date"
         )
@@ -279,10 +277,9 @@ class CalcRiskMetricsPeriod:
         self,
         snapshot0: Snapshot,
         snapshot1: Snapshot,
-        time_resolution: str | None = None,
-        time_points: int | None = None,
-        interpolation_strategy: InterpolationStrategyBase | None = None,
-        impact_computation_strategy: ImpactComputationStrategy | None = None,
+        time_resolution: str,
+        interpolation_strategy: InterpolationStrategyBase,
+        impact_computation_strategy: ImpactComputationStrategy,
     ):
         """Initialize a new `CalcRiskPeriod`
 
@@ -296,7 +293,7 @@ class CalcRiskMetricsPeriod:
         snapshot1 : Snapshot
             The `Snapshot` at the end of the risk period.
         time_resolution : str, optional
-            One of pandas date offset strings or corresponding objects. See :func:`pandas.date_range`.
+            One of pandas date offset strings or corresponding objects. See :func:`pandas.period_range`.
         time_points : int, optional
             Number of periods to generate for the PeriodIndex.
         interpolation_strategy: InterpolationStrategy, optional
@@ -318,14 +315,11 @@ class CalcRiskMetricsPeriod:
         self.date_idx = self._set_date_idx(
             date1=snapshot0.date,
             date2=snapshot1.date,
-            periods=time_points,
             freq=time_resolution,
             name="date",
         )
-        self.interpolation_strategy = interpolation_strategy or AllLinearStrategy()
-        self.impact_computation_strategy = (
-            impact_computation_strategy or ImpactCalcComputation()
-        )
+        self.interpolation_strategy = interpolation_strategy
+        self.impact_computation_strategy = impact_computation_strategy
         self.measure = None  # Only possible to set with apply_measure to make sure snapshots are consistent
 
         self._group_id_E0 = (
@@ -361,7 +355,6 @@ class CalcRiskMetricsPeriod:
     def _set_date_idx(
         date1: str | pd.Timestamp,
         date2: str | pd.Timestamp,
-        periods: int | None = None,
         freq: str | None = None,
         name: str | None = None,
     ) -> pd.PeriodIndex:
@@ -388,30 +381,14 @@ class CalcRiskMetricsPeriod:
         Raises
         ------
         ValueError
-            If the number of periods and frequency given to date_range are inconsistent.
+            If the number of periods and frequency given to period_range are inconsistent.
         """
-        if periods is not None and freq is not None:
-            points = None
-        else:
-            points = periods
-
         ret = pd.period_range(
             date1,
             date2,
-            periods=points,
             freq=freq,  # type: ignore
             name=name,
         )
-        if periods is not None and len(ret) != periods:
-            raise ValueError(
-                "Number of periods and frequency given to date_range are inconsistent."
-            )
-
-        if ret.freq != freq:
-            LOGGER.debug(
-                f"Given interval frequency ( {ret.freq} ) and infered interval frequency differ ( {freq} )."
-            )
-
         return ret
 
     @property
@@ -444,15 +421,6 @@ class CalcRiskMetricsPeriod:
         """The numbers of different time points (dates) in the risk period."""
         return self._time_points
 
-    @time_points.setter
-    def time_points(self, value, /):
-        if not isinstance(value, int):
-            raise ValueError("Not an int")
-
-        self.date_idx = pd.date_range(
-            self.snapshot_start.date, self.snapshot_end.date, periods=value, name="date"
-        )
-
     @property
     def time_resolution(self) -> str:
         """The time resolution of the risk periods, expressed as a pandas interval frequency string."""
@@ -461,7 +429,7 @@ class CalcRiskMetricsPeriod:
     @time_resolution.setter
     def time_resolution(self, value, /):
         freq = pd.tseries.frequencies.to_offset(value)
-        self.date_idx = pd.date_range(
+        self.date_idx = pd.period_range(
             self.snapshot_start.date, self.snapshot_end.date, freq=freq, name="date"
         )
 

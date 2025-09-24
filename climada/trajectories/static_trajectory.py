@@ -26,6 +26,7 @@ import logging
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.impact_calc_strat import ImpactCalcComputation
 from climada.trajectories.riskperiod import (
     CalcRiskMetricsPoints,
     ImpactComputationStrategy,
@@ -51,7 +52,6 @@ class StaticRiskTrajectory(RiskTrajectory):
         "return_periods",
         "aai_per_group",
     ]
-    DEFAULT_RP = [50, 100, 500]
 
     def __init__(
         self,
@@ -65,16 +65,28 @@ class StaticRiskTrajectory(RiskTrajectory):
             snapshots_list,
             all_groups_name=all_groups_name,
             risk_disc=risk_disc,
-            impact_computation_strategy=impact_computation_strategy,
         )
-        self._calc_risk_metrics = CalcRiskMetricsPoints(
+        self._risk_metrics_calculators = CalcRiskMetricsPoints(
             self._snapshots,
-            impact_computation_strategy=self._impact_computation_strategy,
+            impact_computation_strategy=impact_computation_strategy
+            or ImpactCalcComputation(),
         )
+
+    @property
+    def impact_computation_strategy(self) -> ImpactComputationStrategy:
+        """The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots."""
+        return self._risk_metrics_calculators.impact_computation_strategy
+
+    @impact_computation_strategy.setter
+    def impact_computation_strategy(self, value, /):
+        if not isinstance(value, ImpactComputationStrategy):
+            raise ValueError("Not an interpolation strategy")
+
+        self._reset_metrics()
+        self._risk_metrics_calculators.impact_computation_strategy = value
 
     def _generic_metrics(
         self,
-        npv: bool = True,
         metric_name: str | None = None,
         metric_meth: str | None = None,
         **kwargs,
@@ -93,16 +105,16 @@ class StaticRiskTrajectory(RiskTrajectory):
 
         tmp = []
         with log_level(level="WARNING", name_prefix="climada"):
-            tmp.append(getattr(self._calc_risk_metrics, metric_meth)(**kwargs))
+            tmp.append(getattr(self._risk_metrics_calculators, metric_meth)(**kwargs))
 
         # Notably for per_group_aai being None:
         try:
             tmp = pd.concat(tmp)
             if len(tmp) == 0:
-                return None
+                return pd.DataFrame()
         except ValueError as e:
             if str(e) == "All objects passed were None":
-                return None
+                return pd.DataFrame()
             else:
                 raise e
 
@@ -128,29 +140,12 @@ class StaticRiskTrajectory(RiskTrajectory):
             ]
             setattr(self, attr_name, tmp)
 
-            if npv and self._risk_disc:
+            if self._risk_disc:
                 return self.npv_transform(getattr(self, attr_name), self._risk_disc)
 
             return getattr(self, attr_name)
 
-    def _compute_metrics(
-        self, metric_name: str, metric_meth: str, npv: bool = True, **kwargs
-    ) -> pd.DataFrame:
-        """Helper method to compute metrics.
-
-        Notes
-        -----
-
-        This method exists for the sake of the children option appraisal classes, for which
-        `_generic_metrics` can have an additional keyword argument and call and extend on its
-        parent method, while this method can stay the same.
-        """
-        df = self._generic_metrics(
-            npv=npv, metric_name=metric_name, metric_meth=metric_meth, **kwargs
-        )
-        return df
-
-    def eai_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
+    def eai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the estimated annual impacts at each exposure point for each date.
 
         This method computes and return a `DataFrame` with eai metric
@@ -169,11 +164,11 @@ class StaticRiskTrajectory(RiskTrajectory):
 
         """
         df = self._compute_metrics(
-            npv=npv, metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
+            metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
         )
         return df
 
-    def aai_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
+    def aai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the average annual impacts for each date.
 
         This method computes and return a `DataFrame` with aai metric for each date.
@@ -186,21 +181,18 @@ class StaticRiskTrajectory(RiskTrajectory):
         """
 
         return self._compute_metrics(
-            npv=npv, metric_name="aai", metric_meth="calc_aai_metric", **kwargs
+            metric_name="aai", metric_meth="calc_aai_metric", **kwargs
         )
 
-    def return_periods_metrics(
-        self, return_periods, npv: bool = True, **kwargs
-    ) -> pd.DataFrame:
+    def return_periods_metrics(self, **kwargs) -> pd.DataFrame:
         return self._compute_metrics(
-            npv=npv,
             metric_name="return_periods",
             metric_meth="calc_return_periods_metric",
-            return_periods=return_periods,
+            return_periods=self.return_periods,
             **kwargs,
         )
 
-    def aai_per_group_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
+    def aai_per_group_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the average annual impacts for each exposure group ID.
 
         This method computes and return a `DataFrame` with aai metric for each
@@ -214,7 +206,6 @@ class StaticRiskTrajectory(RiskTrajectory):
         """
 
         return self._compute_metrics(
-            npv=npv,
             metric_name="aai_per_group",
             metric_meth="calc_aai_per_group_metric",
             **kwargs,
@@ -223,8 +214,6 @@ class StaticRiskTrajectory(RiskTrajectory):
     def per_date_risk_metrics(
         self,
         metrics: list[str] | None = None,
-        return_periods: list[int] | None = None,
-        npv: bool = True,
     ) -> pd.DataFrame | pd.Series:
         """Returns a DataFrame of risk metrics for each dates
 
@@ -254,12 +243,11 @@ class StaticRiskTrajectory(RiskTrajectory):
         metrics = (
             ["aai", "return_periods", "aai_per_group"] if metrics is None else metrics
         )
-        return_periods = return_periods if return_periods else self.default_rp
         if "aai" in metrics:
-            metrics_df.append(self.aai_metrics(npv))
+            metrics_df.append(self.aai_metrics())
         if "return_periods" in metrics:
-            metrics_df.append(self.return_periods_metrics(return_periods, npv))
+            metrics_df.append(self.return_periods_metrics())
         if "aai_per_group" in metrics:
-            metrics_df.append(self.aai_per_group_metrics(npv))
+            metrics_df.append(self.aai_per_group_metrics())
 
         return pd.concat(metrics_df)

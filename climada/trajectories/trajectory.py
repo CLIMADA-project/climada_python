@@ -42,7 +42,7 @@ class RiskTrajectory(ABC):
     """Results dataframe grouper"""
 
     POSSIBLE_METRICS = []
-    DEFAULT_RP = []
+    DEFAULT_RP = [20, 50, 100]
 
     def __init__(
         self,
@@ -50,46 +50,57 @@ class RiskTrajectory(ABC):
         *,
         all_groups_name: str = "All",
         risk_disc: DiscRates | None = None,
-        impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
         self._reset_metrics()
         self._snapshots = snapshots_list
         self._all_groups_name = all_groups_name
-        self._default_rp = self.DEFAULT_RP
+        self._return_periods = self.DEFAULT_RP
         self.start_date = min([snapshot.date for snapshot in snapshots_list])
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
         self._risk_disc = risk_disc
-        self._impact_computation_strategy = (
-            impact_computation_strategy or ImpactCalcComputation()
-        )
-        self._risk_periods_calculators = None
 
     def _reset_metrics(self):
         for metric in self.POSSIBLE_METRICS:
             setattr(self, "_" + metric + "_metrics", None)
 
-        self._all_risk_metrics = None
+    def _generic_metrics(self, metric_name: str, **kwargs) -> pd.DataFrame: ...
+
+    def _compute_metrics(
+        self, metric_name: str, metric_meth: str, **kwargs
+    ) -> pd.DataFrame:
+        """Helper method to compute metrics.
+
+        Notes
+        -----
+
+        This method exists for the sake of the children option appraisal classes, for which
+        `_generic_metrics` can have an additional keyword argument and call and extend on its
+        parent method, while this method can stay the same.
+        """
+        df = self._generic_metrics(
+            metric_name=metric_name, metric_meth=metric_meth, **kwargs
+        )
+        return df
 
     @property
-    def default_rp(self) -> list[int]:
-        """The default return period values to use when computing risk period metrics.
+    def return_periods(self) -> list[int]:
+        """The return period values to use when computing risk period metrics.
 
         Notes
         -----
 
         Changing its value resets the corresponding metric.
         """
-        return self._default_rp
+        return self._return_periods
 
-    @default_rp.setter
-    def default_rp(self, value):
+    @return_periods.setter
+    def return_periods(self, value, /):
         if not isinstance(value, list):
             raise ValueError("Return periods need to be a list of int.")
         if any(not isinstance(i, int) for i in value):
             raise ValueError("Return periods need to be a list of int.")
         self._return_periods_metrics = None
-        self._all_risk_metrics = None
-        self._default_rp = value
+        self._return_periods = value
 
     @property
     def risk_disc(self) -> DiscRates | None:
