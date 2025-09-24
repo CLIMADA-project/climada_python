@@ -83,7 +83,7 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         calc_residual: bool,
     ):
         """Apply risk transfer to the calculated impacts."""
-        if risk_transf_attach is not None and risk_transf_cover is not None:
+        if risk_transf_attach is not None or risk_transf_cover is not None:
             impact.imp_mat = self.calculate_residual_or_risk_transfer_impact_matrix(
                 impact.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
             )
@@ -138,6 +138,8 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         # Calculate the total impact per event
         total_at_event = imp_mat.sum(axis=1).A1
         # Risk layer at event
+        attachement = 0 if attachement is None else attachement
+        cover = total_at_event if cover is None else cover
         transfer_at_event = np.minimum(
             np.maximum(total_at_event - attachement, 0), cover
         )
