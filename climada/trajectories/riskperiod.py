@@ -878,7 +878,6 @@ class CalcRiskMetricsPeriod:
             snap0,
             snap1,
             self.time_resolution,
-            self.time_points,
             self.interpolation_strategy,
             self.impact_computation_strategy,
         )
