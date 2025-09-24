@@ -37,9 +37,9 @@ from tqdm import tqdm
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
 from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
+from climada.trajectories.interpolated_trajectory import InterpolatedRiskTrajectory
 from climada.trajectories.interpolation import InterpolationStrategy
-from climada.trajectories.risk_trajectory import RiskTrajectory
-from climada.trajectories.riskperiod import CalcRiskPeriod
+from climada.trajectories.riskperiod import CalcRiskMetricsPeriod, CalcRiskPeriod
 from climada.trajectories.snapshot import Snapshot
 
 # from pandas.core.frame import ValueKeyFunc
@@ -48,7 +48,7 @@ tqdm.pandas()
 LOGGER = logging.getLogger(__name__)
 
 
-class AdaptationTrajectoryAppraiser(RiskTrajectory):
+class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
     _risk_vars = [
         "reference risk",
         "averted risk",
@@ -77,34 +77,32 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
             interpolation_strategy=interpolation_strategy,
             impact_computation_strategy=impact_computation_strategy,
         )
+        self._risk_metrics_calculators += self._add_adaptation_metrics_calculators(
+            self._risk_metrics_calculators, measure_set
+        )
 
-    def _calc_risk_periods(self, snapshots: list[Snapshot]):
-        LOGGER.debug(f"{self.__class__.__name__}: Calc risk periods")
-        risk_periods = super()._calc_risk_periods(snapshots)
-        risk_periods += self._calc_measure_periods(risk_periods)
-        return risk_periods
-
-    def _calc_measure_periods(self, risk_periods: list[CalcRiskPeriod]):
-        LOGGER.debug(f"{self.__class__.__name__}: Calc risk periods with measures")
-        res = []
-        for _, measure in self.measure_set.measures().items():
+    @staticmethod
+    def _add_adaptation_metrics_calculators(
+        risk_metrics_calculators, measure_set: MeasureSet
+    ) -> list[CalcRiskMetricsPeriod]:
+        adapt_calc = []
+        for _, measure in measure_set.measures().items():
             LOGGER.debug(f"Creating measures risk_period for measure {measure.name}")
             meas_p = [
-                risk_period.apply_measure(measure) for risk_period in risk_periods
+                rmcalc.apply_measure(measure) for rmcalc in risk_metrics_calculators
             ]
-            res += meas_p
-        return res
+            adapt_calc += meas_p
+        return adapt_calc
 
     def _generic_metrics(
         self,
-        npv=True,
         metric_name=None,
         metric_meth=None,
         measures: list[str] | None = None,
         **kwargs,
     ):
         LOGGER.debug(f"Computing base metric: {metric_name}.")
-        base_metrics = super()._generic_metrics(npv, metric_name, metric_meth, **kwargs)
+        base_metrics = super()._generic_metrics(metric_name, metric_meth, **kwargs)
         if base_metrics is not None:
             LOGGER.debug(f"Computing averted risk for: {metric_name}.")
             base_metrics = self._calc_averted(base_metrics)
@@ -113,7 +111,7 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
             no_measures["averted risk"] = 0.0
             no_measures["measure net cost"] = 0.0
             LOGGER.debug(f"Computing cash flow for: {metric_name}.")
-            cash_flow_metrics = self.annual_cash_flows(npv)
+            cash_flow_metrics = self.annual_cash_flows()
             LOGGER.debug(f"Merging with base metric: {metric_name}.")
             base_metrics = base_metrics.merge(
                 cash_flow_metrics[["date", "measure", "measure net cost"]],
@@ -207,7 +205,7 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
 
         return metrics_df
 
-    def annual_cash_flows(self, npv: bool):
+    def annual_cash_flows(self):
         res = []
         for meas_name, measure in self.measure_set.measures().items():
             need_agg = False
@@ -227,7 +225,7 @@ class AdaptationTrajectoryAppraiser(RiskTrajectory):
                 impl_date=self.start_date,
                 start_date=self.start_date,
                 end_date=self.end_date,
-                disc=self.cost_disc if npv else None,
+                disc=self.cost_disc,
             )
             if need_agg:
                 df = df.groupby(df["date"].dt.year, as_index=False).agg(
