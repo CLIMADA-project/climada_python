@@ -29,7 +29,6 @@ import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import seaborn as sns
 from matplotlib import ticker
 from pandas.api.types import is_numeric_dtype
 from tqdm import tqdm
@@ -39,7 +38,7 @@ from climada.entity.measures.measure_set import MeasureSet
 from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
 from climada.trajectories.interpolated_trajectory import InterpolatedRiskTrajectory
 from climada.trajectories.interpolation import InterpolationStrategy
-from climada.trajectories.riskperiod import CalcRiskMetricsPeriod, CalcRiskPeriod
+from climada.trajectories.riskperiod import CalcRiskMetricsPeriod
 from climada.trajectories.snapshot import Snapshot
 
 # from pandas.core.frame import ValueKeyFunc
@@ -67,7 +66,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         interpolation_strategy: InterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        self.cost_disc = cost_disc
+        self._cost_disc = cost_disc
         self.measure_set = copy.deepcopy(measure_set)
         super().__init__(
             snapshots_list,
@@ -94,13 +93,33 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
             adapt_calc += meas_p
         return adapt_calc
 
+    @property
+    def cost_disc(self) -> DiscRates | None:
+        """The discount rate applied to compute net present values of costs.
+        None means no discount rate.
+
+        Notes
+        -----
+
+        Changing its value resets the metrics.
+        """
+        return self._cost_disc
+
+    @cost_disc.setter
+    def cost_disc(self, value, /):
+        if not isinstance(value, DiscRates):
+            raise ValueError("Risk discount needs to be a `DiscRates` object.")
+
+        self._reset_metrics()
+        self._cost_disc = value
+
     def _generic_metrics(
         self,
         metric_name=None,
         metric_meth=None,
         measures: list[str] | None = None,
         **kwargs,
-    ):
+    ) -> pd.DataFrame:
         LOGGER.debug(f"Computing base metric: {metric_name}.")
         base_metrics = super()._generic_metrics(metric_name, metric_meth, **kwargs)
         if base_metrics is not None:
@@ -146,9 +165,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
 
         return base_metrics.groupby(
             ["group", "metric", "date"], group_keys=False, dropna=False, observed=False
-        ).progress_apply(
-            subtract_no_measure, no_measure=no_measures_metrics, merger=merger
-        )
+        ).apply(subtract_no_measure, no_measure=no_measures_metrics, merger=merger)
 
     @classmethod
     def _date_to_period_agg(
@@ -157,7 +174,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         grouper: list[str] | None = None,
         time_unit="year",
         colname: str | list[str] | None = None,
-    ) -> pd.DataFrame | pd.Series:
+    ) -> pd.DataFrame:
         colname = cls._risk_vars if colname is None else colname
         if grouper is None:
             grouper = cls._grouper
@@ -209,12 +226,12 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         res = []
         for meas_name, measure in self.measure_set.measures().items():
             need_agg = False
-            if measure.cost_income.freq != self._time_resolution:
+            if measure.cost_income.freq != self.time_resolution:
                 need_agg = True
                 warnings.warn(
                     (
                         f"{meas_name} has a different CostIncome interval frequency ({measure.cost_income.freq}) "
-                        f"than the MeasureAppraiser ({self._time_resolution}). "
+                        f"than the MeasureAppraiser ({self.time_resolution}). "
                         f"Cash flows will be aggregated to {measure.cost_income.freq} "
                         "but this **may** lead to inconsistencies."
                     ),
@@ -242,32 +259,31 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         self,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
-        npv: bool = True,
     ):
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        risk_components = self.risk_components_metrics(npv)
-        risk_components = risk_components.loc[
-            (risk_components["date"].dt.date >= start_date)
-            & (risk_components["date"].dt.date <= end_date)
-            & (risk_components["measure"] != "no_measure")
+        risk_contributions = self.risk_contributions_metrics()
+        risk_contributions = risk_contributions.loc[
+            (risk_contributions["date"].dt.date >= start_date)
+            & (risk_contributions["date"].dt.date <= end_date)
+            & (risk_contributions["measure"] != "no_measure")
         ]
-        risk_components = risk_components.set_index(["date", "measure", "metric"])[
-            ["risk", "reference risk", "averted risk", "measure net cost"]
-        ].unstack()
-        return risk_components
+        risk_contributions = risk_contributions.set_index(
+            ["date", "measure", "metric"]
+        )[["risk", "reference risk", "averted risk", "measure net cost"]].unstack()
+        return risk_contributions
 
     def plot_per_date_waterfall_CB(
         self,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
     ):
-        """Plot a waterfall chart of risk components over a specified date range.
+        """Plot a waterfall chart of risk contributions over a specified date range.
 
         This method generates a stacked bar chart to visualize the
-        risk components between specified start and end dates, for each date in between.
+        risk contributions between specified start and end dates, for each date in between.
         If no dates are provided, it defaults to the start and end dates of the risk trajectory.
-        See the notes on how risk is attributed to each components.
+        See the notes on how risk is attributed to each contributions.
 
         Parameters
         ----------
@@ -285,7 +301,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
 
         Notes
         -----
-        The "risk components" are plotted such that the increase in risk due to the hazard component
+        The "risk contributions" are plotted such that the increase in risk due to the hazard contribution
         really denotes the difference between the risk associated with both future exposure and hazard
         compared to the risk associated with future exposure and present hazard.
         """
@@ -305,7 +321,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
             sharex=False,
             sharey=False,
         )
-        self.plot_per_date_waterfall(ax=axs[0])
+        self.plot_time_waterfall(ax=axs[0])
 
         for i, measure in enumerate(measures):
             ax = axs[i + 1]
@@ -338,7 +354,6 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         self,
         risk_reference_date: datetime.date | None = None,
         measure_effect_date: datetime.date | None = None,
-        npv: bool = True,
         measures: list[str] | None = None,
     ):
         risk_reference_date = (
@@ -347,19 +362,21 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         measure_effect_date = (
             self.end_date if measure_effect_date is None else measure_effect_date
         )
-        risk_component = self.risk_components_metrics(npv)
-        risk_component = risk_component.set_index("date").loc[
+        risk_contribution = self.risk_contributions_metrics()
+        risk_contribution = risk_contribution.set_index("date").loc[
             [risk_reference_date, measure_effect_date]
         ]
         meas = (
-            np.setdiff1d(risk_component.measure.unique(), ["no_measure"])
+            np.setdiff1d(risk_contribution.measure.unique(), ["no_measure"])
             if measures is None
             else measures
         )
         num_cols = 2 if 2 < len(meas) else len(meas)
         num_rows = len(meas) // num_cols
-        risk_component = risk_component.loc[risk_component["measure"].isin(meas)]
-        risk_component.set_index(["measure", "metric"], inplace=True, append=True)
+        risk_contribution = risk_contribution.loc[
+            risk_contribution["measure"].isin(meas)
+        ]
+        risk_contribution.set_index(["measure", "metric"], inplace=True, append=True)
         fig, axs = plt.subplots(
             num_rows, num_cols, figsize=(num_cols * 8, num_rows * 5)
         )
@@ -372,31 +389,31 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
             "Interaction contribution",
             f"Total risk in {measure_effect_date}",
         ]
-        reference_risk = risk_component.loc[
+        reference_risk = risk_contribution.loc[
             (str(risk_reference_date), meas[0], "base risk"), "reference risk"
         ]
-        base_risk_when_measure_effect = risk_component.loc[
+        base_risk_when_measure_effect = risk_contribution.loc[
             (str(measure_effect_date), meas[0]), "reference risk"
         ].sum()
 
         for i, measure in enumerate(meas):
-            exposure_contribution = risk_component.loc[
+            exposure_contribution = risk_contribution.loc[
                 (str(measure_effect_date), measure, "exposure contribution"),
                 "reference risk",
             ]
-            hazard_contribution = risk_component.loc[
+            hazard_contribution = risk_contribution.loc[
                 (str(measure_effect_date), measure, "hazard contribution"),
                 "reference risk",
             ]
-            vulnerability_contribution = risk_component.loc[
+            vulnerability_contribution = risk_contribution.loc[
                 (str(measure_effect_date), measure, "vulnerability contribution"),
                 "reference risk",
             ]
-            interaction_contribution = risk_component.loc[
+            interaction_contribution = risk_contribution.loc[
                 (str(measure_effect_date), measure, "interaction contribution"),
                 "reference risk",
             ]
-            averted_risk = risk_component.loc[
+            averted_risk = risk_contribution.loc[
                 (str(measure_effect_date), measure), "averted risk"
             ].sum()
             values = [
@@ -578,12 +595,12 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
         for meas_name, (start, end) in self.planner.items():
             need_agg = False
             measure = self.measure_set.measures()[meas_name]
-            if measure.cost_income.freq != self._time_resolution:
+            if measure.cost_income.freq != self.time_resolution:
                 need_agg = True
                 warnings.warn(
                     (
                         f"{meas_name} has a different CostIncome interval frequency ({measure.cost_income.freq}) "
-                        f"than the MeasureAppraiser ({self._time_resolution}). "
+                        f"than the MeasureAppraiser ({self.time_resolution}). "
                         f"Cash flows will be aggregated to {measure.cost_income.freq} "
                         "but this **may** lead to inconsistencies."
                     ),
@@ -729,7 +746,7 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
     ):
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        risk_component = self._calc_waterfall_CB_plot_data(
+        risk_contribution = self._calc_waterfall_CB_plot_data(
             start_date=start_date, end_date=end_date
         )
         fig, ax = plt.subplots(figsize=(8, 5))
@@ -741,9 +758,9 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
             "Measure cost",
             "Cost benefit",
         ]
-        # measure_costs = risk_component.loc[:,("measure net cost","base risk")].unstack().sum()
+        # measure_costs = risk_contribution.loc[:,("measure net cost","base risk")].unstack().sum()
         average_risk = (
-            risk_component.mean()
+            risk_contribution.mean()
             .unstack()
             .T.agg(
                 {
@@ -754,7 +771,7 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
                 }
             )
         )
-        # risk_component = risk_component.loc[str(end_date)]
+        # risk_contribution = risk_contribution.loc[str(end_date)]
 
         m_average_risk = average_risk.copy()
         values = [
