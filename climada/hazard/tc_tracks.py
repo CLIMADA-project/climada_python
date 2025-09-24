@@ -35,12 +35,13 @@ from typing import List, Optional
 
 # additional libraries
 import cartopy.crs as ccrs
+import cartopy.feature as cfeature
 import cftime
 import geopandas as gpd
 import matplotlib.cm as cm_mp
+import matplotlib.colors as mcolors
 import matplotlib.pyplot as plt
 import netCDF4 as nc
-import numba
 import numpy as np
 import pandas as pd
 import pathos
@@ -54,6 +55,7 @@ from matplotlib.lines import Line2D
 from shapely.geometry import LineString, MultiLineString, Point, Polygon
 from shapely.ops import unary_union
 from sklearn.metrics import DistanceMetric
+from tqdm import tqdm
 
 import climada.hazard.tc_tracks_synth
 import climada.util.coordinates as u_coord
@@ -528,7 +530,8 @@ class TCTracks:
         Raises:
         -------
         ValueError
-            - If there's a mismatch between `start_*` and `end_*` values (e.g., one is set to `True` while the other is `False`).
+            - If there's a mismatch between `start_*` and `end_*` values (e.g., one is set to
+              `True` while the other is `False`).
             - If no tracks are found within the specified date range.
             - If `start_date` or `end_date` are incorrectly ordered (start > end).
 
@@ -792,7 +795,7 @@ class TCTracks:
         """
         if correct_pres:
             LOGGER.warning(
-                "`correct_pres` is deprecated. " "Use `estimate_missing` instead."
+                "`correct_pres` is deprecated. Use `estimate_missing` instead."
             )
             estimate_missing = True
         if estimate_missing and not rescale_windspeeds:
@@ -843,7 +846,6 @@ class TCTracks:
                             ", ..." if len(invalid_sids) > 5 else ".",
                         )
                     )
-                    storm_id = list(np.array(storm_id)[~invalid_mask])
                 storm_id_encoded = [i.encode() for i in storm_id]
                 non_existing_mask = ~np.isin(storm_id_encoded, ibtracs_ds.sid.values)
                 if np.count_nonzero(non_existing_mask) > 0:
@@ -854,9 +856,6 @@ class TCTracks:
                             ", ".join(non_existing_sids[:5]),
                             ", ..." if len(non_existing_sids) > 5 else ".",
                         )
-                    )
-                    storm_id_encoded = list(
-                        np.array(storm_id_encoded)[~non_existing_mask]
                     )
                 match &= ibtracs_ds.sid.isin(storm_id_encoded)
             if year_range is not None:
@@ -869,9 +868,9 @@ class TCTracks:
                 if np.count_nonzero(match) == 0:
                     LOGGER.info("No tracks in basin %s.", basin)
             if genesis_basin is not None:
-                # Here, we only filter for the basin at *any* eye position. We will filter again later
-                # for the basin of the *first* eye position, but only after restricting to the valid
-                # time steps in the data.
+                # Here, we only filter for the basin at *any* eye position. We will filter again
+                # later for the basin of the *first* eye position, but only after restricting to
+                # the valid time steps in the data.
                 match &= (ibtracs_ds.basin == genesis_basin.encode()).any(
                     dim="date_time"
                 )
@@ -934,8 +933,9 @@ class TCTracks:
                 )
 
                 if tc_var == "lon":
-                    # Most IBTrACS longitudes are either normalized to [-180, 180] or to [0, 360], but
-                    # some aren't normalized at all, so we have to make sure that the values are okay:
+                    # Most IBTrACS longitudes are either normalized to [-180, 180] or to [0, 360],
+                    # but some aren't normalized at all, so we have to make sure that the values
+                    # are okay:
                     lons = ibtracs_ds[tc_var].values.copy()
                     lon_valid_mask = np.isfinite(lons)
                     lons[lon_valid_mask] = u_coord.lon_normalize(
@@ -1153,8 +1153,8 @@ class TCTracks:
                 ] + additional_variables:
                     values = track_ds[varname].data
                     if track_ds[varname].dtype.kind == "S":
-                        # This converts the `bytes` (dtype "|S*") in IBTrACS to the more common `str`
-                        # objects (dtype "<U*") that we use in CLIMADA.
+                        # This converts the `bytes` (dtype "|S*") in IBTrACS to the more common
+                        # `str` objects (dtype "<U*") that we use in CLIMADA.
                         values = values.astype(str)
                     if values.ndim == 0:
                         attrs[varname] = values.item()
@@ -1481,8 +1481,8 @@ class TCTracks:
         >>> # or, alternatively,
         >>> years = [int(tr.attrs['sid'].split("-")[-2]) for tr in tc_tracks.data]
 
-        If a windfield is generated from these tracks using the method ``TropCylcone.from_tracks()``,
-        the following should be considered:
+        If a windfield is generated from these tracks using the method
+        ``TropCylcone.from_tracks()``, the following should be considered:
 
         1. The frequencies will be set to ``1`` for each storm. Thus, in order to compute annual
            values, the frequencies of the TropCylone should be changed to ``1/number of years``.
@@ -2229,7 +2229,7 @@ class TCTracks:
             return track
         if track["time"].size < 2:
             LOGGER.warning(
-                "Track interpolation not done. " "Not enough elements for %s",
+                "Track interpolation not done. Not enough elements for %s",
                 track.name,
             )
             track_int = track
@@ -2272,6 +2272,284 @@ class TCTracks:
             track_land_params(track_int, land_geom)
         return track_int
 
+    def compute_track_density(
+        self,
+        res: int = 5,
+        bounds: tuple = None,
+        genesis: bool = False,
+        filter_tracks: bool = True,
+        wind_min: float = None,
+        wind_max: float = None,
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        """Compute tropical cyclone track density. Before using this function,
+        apply the same temporal resolution to all tracks by calling :py:meth:`equal_timestep` on
+        the TCTrack object. Due to the computational cost of the this function, it is not
+        recommended to use a grid resolution higher tha 0.1°. Also note that the time step (in hours)
+        must be equal or smaller than your desired resolution (in degrees) divided by 1.1.
+        First, this function creates 2D bins of the specified resolution (e.g. 1° x 1°). Second,
+        since tracks are not lines but a series of points, it counts the number of points per bin. Lastly,
+        it returns the absolute count per bin. To plot the output of this function,
+        use :py:meth:`plot_track_density`.
+
+        Parameters:
+        ----------
+        tc_track: TCTracks object
+            track object containing a list of all tracks
+        res: int (optional), default: 5°
+            resolution in degrees of the grid bins in which the density will be computed
+        bounds: tuple, (optional) dafault: None
+            (lon_min, lat_min, lon_max, lat_max) latitude and longitude bounds.
+        genesis: bool, (optional) default = False
+            If true the function computes the track density of only the genesis location of tracks
+        filter_tracks: bool (optional) default: True
+            If True the track density is computed as the number of different tracks crossing a grid
+            cell. If False, the track density takes into account how long the track stayed in each
+            grid cell. Hence slower tracks increase the density if the parameter is set to False.
+        wind_min: float (optional), default: None
+            Minimum wind speed above which to select tracks (inclusive).
+        wind_max: float (optional), default: None
+            Maximal wind speed below which to select tracks (exclusive if wind_min is also provided,
+            otherwise inclusive).
+        Returns:
+        -------
+        hist_count: np.ndarray
+            2D matrix containing the absolute count per grid cell of track point.
+        lat_bins: np.ndarray
+            latitude bins in which the point were counted
+        lon_bins: np.ndarray
+            longitude bins in which the point were counted
+
+        Example:
+        --------
+        >>> tc_tracks = TCTrack.from_ibtracs_netcdf("path_to_file")
+        >>> tc_tracks.equal_timestep(time_step_h = 1)
+        >>> hist_count, _, _ = compute_track_density(tc_track = tc_tracks, res = 2)
+        >>> ax = plot_track_density(hist_count)
+
+        """
+
+        limit_ratio: float = (
+            1 * 1.1
+        )  # record tc speed 112km/h -> 1°/h + 10% margin = 1.1°/h
+        time_value: float = self.data[0].time_step[0].values.astype(float)
+
+        if time_value > (res / limit_ratio):
+            warnings.warn(
+                "The time step is too big for the current resolution. For the desired resolution, \n"
+                f"apply a time step equal or lower than {res/limit_ratio}h."
+            )
+        elif res < 0.1:
+            warnings.warn(
+                "The resolution is too high. The computation might take several minutes \n"
+                "to hours. Consider using a resolution below 0.1°."
+            )
+
+        # define grid resolution and bounds for density computation
+        if not bounds:
+            lon_min, lat_min, lon_max, lat_max = -180, -90, 180, 90
+        else:
+            lon_min, lat_min, lon_max, lat_max = (
+                bounds[0],
+                bounds[1],
+                bounds[2],
+                bounds[3],
+            )
+
+        lat_bins: np.ndarray = np.linspace(lat_min, lat_max, int(180 / res))
+        lon_bins: np.ndarray = np.linspace(lon_min, lon_max, int(360 / res))
+
+        # compute 2D density
+        if genesis:
+            hist_count = _compute_genesis_density(
+                tc_track=self, lat_bins=lat_bins, lon_bins=lon_bins
+            )
+        else:
+            hist_count = np.zeros((len(lat_bins) - 1, len(lon_bins) - 1))
+            for track in tqdm(self.data, desc="Processing Tracks"):
+
+                # select according to wind speed
+                wind_speed = track.max_sustained_wind.values
+                if wind_min and wind_max:
+                    index = np.where(
+                        (wind_speed >= wind_min) & (wind_speed < wind_max)
+                    )[0]
+                elif wind_min and not wind_max:
+                    index = np.where(wind_speed >= wind_min)[0]
+                elif wind_max and not wind_min:
+                    index = np.where(wind_speed <= wind_max)[0]
+                else:
+                    index = slice(None)  # select all the track
+
+                # compute 2D density
+                hist_new, _, _ = np.histogram2d(
+                    track.lat.values[index],
+                    track.lon.values[index],
+                    bins=[lat_bins, lon_bins],
+                    density=False,
+                )
+                if filter_tracks:
+                    hist_new[hist_new > 1] = 1
+
+                hist_count += hist_new
+
+        return hist_count, lat_bins, lon_bins
+
+
+def _compute_genesis_density(
+    tc_track: TCTracks, lat_bins: np.ndarray, lon_bins: np.ndarray
+) -> np.ndarray:
+    """Compute the density of track genesis locations. This function works under the hood
+    of :py:meth:`compute_track_density`. If it is called with the parameter genesis = True,
+    the function return the number of genesis points per grid cell.
+
+    Parameters:
+    -----------
+
+    tc_track: TCT track object
+        TC track object containing a list of all tracks.
+    lat_bins: 1D np.array
+        array containg the latitude bins.
+    lon_bins: 1D np.array
+        array containg the longitude bins.
+
+    Returns:
+    --------
+    hist_count: 2D np.array
+        array containing the number of genesis points per grid cell
+    """
+    # Extract the first lat and lon from each dataset
+    first_lats = np.array([ds.lat.values[0] for ds in tc_track.data])
+    first_lons = np.array([ds.lon.values[0] for ds in tc_track.data])
+
+    # compute 2D density of genesis points
+    hist_count, _, _ = np.histogram2d(
+        first_lats,
+        first_lons,
+        bins=[lat_bins, lon_bins],
+        density=False,
+    )
+
+    return hist_count
+
+
+def plot_track_density(
+    hist: np.ndarray,
+    axis=None,
+    projection=ccrs.Mollweide(),
+    land: bool = True,
+    coastline: bool = True,
+    borders: bool = False,
+    title: str = None,
+    figsize=(12, 6),
+    div_cmap=False,
+    cbar=True,
+    cbar_kwargs: dict = {
+        "orientation": "horizontal",
+        "pad": 0.05,
+        "shrink": 0.8,
+        "label": "n° tracks per 1° x 1° grid cell",
+    },
+    **kwargs,
+):
+    """
+    Plot the track density of tropical cyclone tracks on a customizable world map.
+
+    Parameters:
+    ----------
+    hist: np.ndarray
+        2D histogram of track density.
+    axis: GeoAxes, optional
+        Existing Cartopy axis.
+    projection: cartopy.crs, optional
+        Projection for the map.
+    land: bool, Default True
+        If True it adds the land on the map
+    coastline: bool, Default True
+        If True it adds the coastline on the map
+    border: bool, Default False
+        If True it adds the borders on the map
+    title: str
+        Title of the plot.
+    figsize: tuple
+        Figure size when creating a new figure.
+    div_cmap: bool, default = False
+        If True, the colormap will be centered to 0.
+    cbar: bool, Default = True
+        If True, the color bar is added
+    cbar_kwargs: dict
+        dictionary containing keyword arguments passed to cbar
+    kwargs:
+        Additional keyword arguments passed to `ax.contourf`.
+
+    Returns:
+    -------
+    axis: GeoAxes
+        The plot axis.
+
+
+    Example:
+    --------
+    >>> axis = plot_track_density(
+    ...     hist=hist,
+    ...     cmap='Spectral_r',
+    ...     cbar_kwargs={'shrink': 0.8,
+                        'label': 'Cyclone Density [n° tracks / km²]',
+                        'pad': 0.1},
+    ...     land = True,
+    ...     coastline = True,
+    ...     borders = False,
+    ...     title='My Tropical Cyclone Track Density Map',
+    ...     figsize=(10, 5),
+    ...     levels=20
+    ... )
+
+    """
+
+    # Sample data
+    lon = np.linspace(-180, 180, hist.shape[1])
+    lat = np.linspace(-90, 90, hist.shape[0])
+
+    # Create figure and axis if not provided
+    if axis is None:
+        _, axis = plt.subplots(figsize=figsize, subplot_kw={"projection": projection})
+
+    # Add requested features
+    if land:
+        land = cfeature.NaturalEarthFeature(
+            category="physical",
+            name="land",
+            scale="50m",
+            facecolor="lightgrey",
+            alpha=0.6,
+        )
+        axis.add_feature(land)
+    if coastline:
+        axis.add_feature(cfeature.COASTLINE, linewidth=0.5)
+    if borders:
+        axis.add_feature(cfeature.BORDERS, linestyle=":")
+
+    if div_cmap:
+        norm = mcolors.TwoSlopeNorm(
+            vmin=np.nanmin(hist), vcenter=0, vmax=np.nanmax(hist)
+        )
+        kwargs["norm"] = norm
+
+    # contourf = axis.contourf(lon, lat, hist, transform=ccrs.PlateCarree(), **kwargs)
+    contourf = axis.imshow(
+        hist,
+        extent=[lon.min(), lon.max(), lat.min(), lat.max()],
+        transform=ccrs.PlateCarree(),
+        origin="lower",
+        **kwargs,
+    )
+
+    if cbar:
+        plt.colorbar(contourf, ax=axis, **cbar_kwargs)
+    if title:
+        axis.set_title(title, fontsize=16)
+
+    return axis
+
 
 def _raise_if_legacy_or_unknown_hdf5_format(file_name):
     """Raise an exception if the HDF5 format of the file is not supported
@@ -2294,8 +2572,8 @@ def _raise_if_legacy_or_unknown_hdf5_format(file_name):
             # The legacy format only has data in the subgroups, not in the root.
             # => This cannot be the legacy file format!
             return
-        # After this line, it is sure that the format is not supported (since there is no data in the
-        # root group). Before raising an exception, we double-check if it is the legacy format.
+        # After this line, it is sure that the format is not supported (since there is no data in
+        # the root group). Before raising an exception, we double-check if it is the legacy format.
         try:
             # Check if the file has groups 'track{i}' by trying to access the first group.
             with xr.open_dataset(file_name, group="track0") as ds_track:
