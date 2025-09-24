@@ -27,6 +27,9 @@ import numpy as np
 
 from climada.engine.impact import Impact
 from climada.engine.impact_calc import ImpactCalc
+from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+from climada.hazard.base import Hazard
 from climada.trajectories.snapshot import Snapshot
 
 
@@ -36,9 +39,9 @@ class ImpactComputationStrategy(ABC):
     @abstractmethod
     def compute_impacts(
         self,
-        snapshot0: Snapshot,
-        snapshot1: Snapshot,
-        future: tuple[int, int, int],
+        exp: Exposures,
+        haz: Hazard,
+        vul: ImpactFuncSet,
         risk_transf_attach: float | None = None,
         risk_transf_cover: float | None = None,
         calc_residual: bool = True,
@@ -51,14 +54,14 @@ class ImpactCalcComputation(ImpactComputationStrategy):
 
     def compute_impacts(
         self,
-        snapshot0: Snapshot,
-        snapshot1: Snapshot,
-        future: tuple[int, int, int],
+        exp: Exposures,
+        haz: Hazard,
+        vul: ImpactFuncSet,
         risk_transf_attach: float | None = None,
         risk_transf_cover: float | None = None,
         calc_residual: bool = False,
     ):
-        impact = self.compute_impacts_pre_transfer(snapshot0, snapshot1, future)
+        impact = self.compute_impacts_pre_transfer(exp, haz, vul)
         self._apply_risk_transfer(
             impact, risk_transf_attach, risk_transf_cover, calc_residual
         )
@@ -66,13 +69,10 @@ class ImpactCalcComputation(ImpactComputationStrategy):
 
     def compute_impacts_pre_transfer(
         self,
-        snapshot0: Snapshot,
-        snapshot1: Snapshot,
-        future: tuple[int, int, int],
+        exp: Exposures,
+        haz: Hazard,
+        vul: ImpactFuncSet,
     ) -> Impact:
-        exp = snapshot1.exposure if future[0] else snapshot0.exposure
-        haz = snapshot1.hazard if future[1] else snapshot0.hazard
-        vul = snapshot1.impfset if future[2] else snapshot0.impfset
         return ImpactCalc(exposures=exp, impfset=vul, hazard=haz).impact()
 
     def _apply_risk_transfer(
@@ -83,7 +83,7 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         calc_residual: bool,
     ):
         """Apply risk transfer to the calculated impacts."""
-        if risk_transf_attach is not None and risk_transf_cover is not None:
+        if risk_transf_attach is not None or risk_transf_cover is not None:
             impact.imp_mat = self.calculate_residual_or_risk_transfer_impact_matrix(
                 impact.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
             )
@@ -138,6 +138,8 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         # Calculate the total impact per event
         total_at_event = imp_mat.sum(axis=1).A1
         # Risk layer at event
+        attachement = 0 if attachement is None else attachement
+        cover = total_at_event if cover is None else cover
         transfer_at_event = np.minimum(
             np.maximum(total_at_event - attachement, 0), cover
         )

@@ -16,8 +16,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This file implements risk trajectory objects, to allow a better evaluation
-of risk in between two points in time (snapshots).
+This file implements interpolated risk trajectory objects, to allow a better evaluation
+of risk in between points in time (snapshots).
 
 """
 
@@ -27,28 +27,26 @@ import logging
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
-import matplotlib.ticker as ticker
+import matplotlib.ticker as mticker
 import pandas as pd
 from pandas.tseries.frequencies import to_offset
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.impact_calc_strat import ImpactCalcComputation
 from climada.trajectories.interpolation import InterpolationStrategyBase
 from climada.trajectories.riskperiod import (
     AllLinearStrategy,
-    CalcRiskPeriod,
-    ImpactCalcComputation,
+    CalcRiskMetricsPeriod,
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
+from climada.trajectories.trajectory import RiskTrajectory
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
-POSSIBLE_METRICS = ["eai", "aai", "return_periods", "risk_components", "aai_per_group"]
-DEFAULT_RP = [50, 100, 500]
 
-
-class RiskTrajectory:
+class InterpolatedRiskTrajectory(RiskTrajectory):
     """Calculates risk trajectories over a series of snapshots.
 
     This class computes risk metrics over a series of snapshots,
@@ -58,6 +56,14 @@ class RiskTrajectory:
 
     _grouper = ["measure", "metric"]
     """Results dataframe grouper"""
+
+    POSSIBLE_METRICS = [
+        "eai",
+        "aai",
+        "return_periods",
+        "risk_contributions",
+        "aai_per_group",
+    ]
 
     def __init__(
         self,
@@ -69,78 +75,77 @@ class RiskTrajectory:
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        self._reset_metrics()
-        self._risk_period_up_to_date: bool = False
-        self._snapshots = snapshots_list
-        self._all_groups_name = all_groups_name
-        self._default_rp = DEFAULT_RP
+        super().__init__(
+            snapshots_list,
+            all_groups_name=all_groups_name,
+            risk_disc=risk_disc,
+        )
+        self._risk_metrics_up_to_date: bool = False
         self.start_date = min([snapshot.date for snapshot in snapshots_list])
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
-        self._time_resolution = time_resolution
-        self._risk_disc = risk_disc
-        self._interpolation_strategy = interpolation_strategy or AllLinearStrategy()
-        self._impact_computation_strategy = (
-            impact_computation_strategy or ImpactCalcComputation()
+        self._risk_metrics_calculators = self._reset_risk_metrics_calculators(
+            self._snapshots,
+            time_resolution,
+            interpolation_strategy or AllLinearStrategy(),
+            impact_computation_strategy or ImpactCalcComputation(),
         )
-        self._risk_periods_calculators = None
-
-    def _reset_metrics(self):
-        for metric in POSSIBLE_METRICS:
-            setattr(self, "_" + metric + "_metrics", None)
-
-        self._all_risk_metrics = None
 
     @property
-    def default_rp(self) -> list[int]:
-        """The default return period values to use when computing risk period metrics.
+    def interpolation_strategy(self) -> InterpolationStrategyBase:
+        """The approach used to interpolate impact matrices in between the two snapshots."""
+        return self._risk_metrics_calculators[0].interpolation_strategy
+
+    @interpolation_strategy.setter
+    def interpolation_strategy(self, value, /):
+        if not isinstance(value, InterpolationStrategyBase):
+            raise ValueError("Not an interpolation strategy")
+
+        self._reset_metrics()
+        for rmcalc in self._risk_metrics_calculators:
+            rmcalc.interpolation_strategy = value
+
+    @property
+    def impact_computation_strategy(self) -> ImpactComputationStrategy:
+        """The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots."""
+        return self._risk_metrics_calculators[0].impact_computation_strategy
+
+    @impact_computation_strategy.setter
+    def impact_computation_strategy(self, value, /):
+        if not isinstance(value, ImpactComputationStrategy):
+            raise ValueError("Not an interpolation strategy")
+
+        self._reset_metrics()
+        for rmcalc in self._risk_metrics_calculators:
+            rmcalc.impact_computation_strategy = value
+
+    @property
+    def time_resolution(self) -> str:
+        """The return period values to use when computing risk period metrics.
 
         Notes
         -----
 
         Changing its value resets the corresponding metric.
         """
-        return self._default_rp
+        return self._risk_metrics_calculators[0].time_resolution
 
-    @default_rp.setter
-    def default_rp(self, value):
-        if not isinstance(value, list):
-            raise ValueError("Return periods need to be a list of int.")
-        if any(not isinstance(i, int) for i in value):
-            raise ValueError("Return periods need to be a list of int.")
-        self._return_periods_metrics = None
-        self._all_risk_metrics = None
-        self._default_rp = value
-
-    @property
-    def risk_disc(self) -> DiscRates | None:
-        """The discount rate applied to compute net present values.
-        None means no discount rate.
-
-        Notes
-        -----
-
-        Changing its value resets the metrics.
-        """
-        return self._risk_disc
-
-    @risk_disc.setter
-    def risk_disc(self, value, /):
-        if not isinstance(value, DiscRates):
-            raise ValueError("Risk discount needs to be a `DiscRates` object.")
-
+    @time_resolution.setter
+    def time_resolution(self, value, /):
+        if not isinstance(value, str):
+            raise ValueError(
+                'time_resolution should be a valid pandas Period frequency string (e.g., `"Y"`, `"M"`, `"D"`).'
+            )
         self._reset_metrics()
-        self._risk_disc = value
+        for rmcalc in self._risk_metrics_calculators:
+            rmcalc.time_resolution = value
 
-    @property
-    def risk_periods(self) -> list[CalcRiskPeriod]:
-        """The computed risk periods from the snapshots."""
-        if self._risk_periods_calculators is None or not self._risk_period_up_to_date:
-            self._risk_periods_calculators = self._calc_risk_periods(self._snapshots)
-            self._risk_period_up_to_date = True
-
-        return self._risk_periods_calculators
-
-    def _calc_risk_periods(self, snapshots: list[Snapshot]) -> list[CalcRiskPeriod]:
+    @staticmethod
+    def _reset_risk_metrics_calculators(
+        snapshots: list[Snapshot],
+        time_resolution,
+        interpolation_strategy,
+        impact_computation_strategy,
+    ) -> list[CalcRiskMetricsPeriod]:
         """Creates the `CalcRiskPeriod` objects corresponding to a given list of snapshots."""
 
         def pairwise(container: list):
@@ -166,80 +171,45 @@ class RiskTrajectory:
             next(b, None)
             return zip(a, b)
 
-        LOGGER.debug(f"{self.__class__.__name__}: Calc risk periods")
         # impfset = self._merge_impfset(snapshots)
         return [
-            CalcRiskPeriod(
+            CalcRiskMetricsPeriod(
                 start_snapshot,
                 end_snapshot,
-                time_resolution=self._time_resolution,
-                interpolation_strategy=self._interpolation_strategy,
-                impact_computation_strategy=self._impact_computation_strategy,
+                time_resolution=time_resolution,
+                interpolation_strategy=interpolation_strategy,
+                impact_computation_strategy=impact_computation_strategy,
             )
             for start_snapshot, end_snapshot in pairwise(
                 sorted(snapshots, key=lambda snap: snap.date)
             )
         ]
 
-    @classmethod
-    def npv_transform(cls, df: pd.DataFrame, risk_disc: DiscRates) -> pd.DataFrame:
-        """Apply discount rate to a metric `DataFrame`.
-
-        Parameters
-        ----------
-        df : pd.DataFrame
-            The `DataFrame` of the metric to discount.
-        risk_disc : DiscRate
-            The discount rate to apply.
-
-        Returns
-        -------
-        pd.DataFrame
-            The discounted risk metric.
-
-
-        """
-
-        def _npv_group(group, disc):
-            start_date = group.index.get_level_values("date").min()
-            return calc_npv_cash_flows(group, start_date, disc)
-
-        df = df.set_index("date")
-        grouper = cls._grouper
-        if "group" in df.columns:
-            grouper = ["group"] + grouper
-
-        df["risk"] = df.groupby(
-            grouper,
-            dropna=False,
-            as_index=False,
-            group_keys=False,
-            observed=True,
-        )["risk"].transform(_npv_group, risk_disc)
-        df = df.reset_index()
-        return df
-
     def _generic_metrics(
         self,
-        npv: bool = True,
         metric_name: str | None = None,
         metric_meth: str | None = None,
         **kwargs,
-    ) -> pd.DataFrame:
+    ) -> pd.DataFrame | None:
         """Generic method to compute metrics based on the provided metric name and method."""
         if metric_name is None or metric_meth is None:
             raise ValueError("Both metric_name and metric_meth must be provided.")
 
-        if metric_name not in POSSIBLE_METRICS:
+        if metric_name not in self.POSSIBLE_METRICS:
             raise NotImplementedError(
-                f"{metric_name} not implemented ({POSSIBLE_METRICS})."
+                f"{metric_name} not implemented ({self.POSSIBLE_METRICS})."
             )
 
         # Construct the attribute name for storing the metric results
         attr_name = f"_{metric_name}_metrics"
 
+        if getattr(self, attr_name) is not None:
+            LOGGER.debug(f"Returning cached {attr_name}")
+            return getattr(self, attr_name)
+
+        LOGGER.debug(f"Computing {attr_name}")
         tmp = []
-        for calc_period in self.risk_periods:
+        for calc_period in self._risk_metrics_calculators:
             # Call the specified method on the calc_period object
             with log_level(level="WARNING", name_prefix="climada"):
                 tmp.append(getattr(calc_period, metric_meth)(**kwargs))
@@ -277,48 +247,26 @@ class RiskTrajectory:
             ]
             setattr(self, attr_name, tmp)
 
-            if npv and self._risk_disc:
+            if self._risk_disc:
                 return self.npv_transform(getattr(self, attr_name), self._risk_disc)
 
             return getattr(self, attr_name)
 
     def _compute_period_metrics(
-        self, metric_name: str, metric_meth: str, npv: bool = True, **kwargs
+        self, metric_name: str, metric_meth: str, **kwargs
     ) -> pd.DataFrame:
         """Helper method to compute total metrics per period (i.e. whole ranges between pairs of consecutive snapshots)."""
         df = self._generic_metrics(
-            npv=npv, metric_name=metric_name, metric_meth=metric_meth, **kwargs
+            metric_name=metric_name, metric_meth=metric_meth, **kwargs
         )
         return self._date_to_period_agg(df, grouper=self._grouper)
 
-    def _compute_metrics(
-        self, metric_name: str, metric_meth: str, npv: bool = True, **kwargs
-    ) -> pd.DataFrame:
-        """Helper method to compute metrics.
-
-        Notes
-        -----
-
-        This method exists for the sake of the children option appraisal classes, for which
-        `_generic_metrics` can have an additional keyword argument and call and extend on its
-        parent method, while this method can stay the same.
-        """
-        df = self._generic_metrics(
-            npv=npv, metric_name=metric_name, metric_meth=metric_meth, **kwargs
-        )
-        return df
-
-    def eai_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
+    def eai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the estimated annual impacts at each exposure point for each date.
 
         This method computes and return a `DataFrame` with eai metric
         (for each exposure point) for each date.
 
-        Parameters
-        ----------
-        npv : bool
-            Whether to apply the (risk) discount rate if it is defined.
-            Defaults to `True`.
 
         Notes
         -----
@@ -327,61 +275,47 @@ class RiskTrajectory:
 
         """
         df = self._compute_metrics(
-            npv=npv, metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
+            metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
         )
         return df
 
-    def aai_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
+    def aai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the average annual impacts for each date.
 
         This method computes and return a `DataFrame` with aai metric for each date.
 
-        Parameters
-        ----------
-        npv : bool
-            Whether to apply the (risk) discount rate if it is defined.
-            Defaults to `True`.
         """
 
         return self._compute_metrics(
-            npv=npv, metric_name="aai", metric_meth="calc_aai_metric", **kwargs
+            metric_name="aai", metric_meth="calc_aai_metric", **kwargs
         )
 
-    def return_periods_metrics(
-        self, return_periods, npv: bool = True, **kwargs
-    ) -> pd.DataFrame:
+    def return_periods_metrics(self, **kwargs) -> pd.DataFrame:
         return self._compute_metrics(
-            npv=npv,
             metric_name="return_periods",
             metric_meth="calc_return_periods_metric",
-            return_periods=return_periods,
+            return_periods=self.return_periods,
             **kwargs,
         )
 
-    def aai_per_group_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
+    def aai_per_group_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the average annual impacts for each exposure group ID.
 
         This method computes and return a `DataFrame` with aai metric for each
         of the exposure group defined by a group id, for each date.
 
-        Parameters
-        ----------
-        npv : bool
-            Whether to apply the (risk) discount rate if it is defined.
-            Defaults to `True`.
         """
 
         return self._compute_metrics(
-            npv=npv,
             metric_name="aai_per_group",
             metric_meth="calc_aai_per_group_metric",
             **kwargs,
         )
 
-    def risk_components_metrics(self, npv: bool = True, **kwargs) -> pd.DataFrame:
-        """Return the "components" of change in future risk (Exposure and Hazard)
+    def risk_contributions_metrics(self, **kwargs) -> pd.DataFrame:
+        """Return the "contributions" of change in future risk (Exposure and Hazard)
 
-        This method returns the components of the change in risk at each date:
+        This method returns the contributions of the change in risk at each date:
 
            - The 'base risk', i.e., the risk without change in hazard or exposure, compared to trajectory's earliest date.
            - The 'exposure contribution', i.e., the additional risks due to change in exposure (only)
@@ -389,29 +323,23 @@ class RiskTrajectory:
            - The 'vulnerability contribution', i.e., the additional risks due to change in vulnerability (only)
            - The 'interaction contribution', i.e., the additional risks due to the interaction term
 
-        Parameters
-        ----------
-        npv : bool
-            Whether to apply the (risk) discount rate if it is defined.
-            Defaults to `True`.
 
         """
 
         tmp = self._compute_metrics(
-            npv=npv,
-            metric_name="risk_components",
-            metric_meth="calc_risk_components_metric",
+            metric_name="risk_contributions",
+            metric_meth="calc_risk_contributions_metric",
             **kwargs,
         )
 
         # If there is more than one Snapshot, we need to update the
-        # components from previous periods for for continuity
+        # contributions from previous periods for for continuity
         # and to set the base risk from the first period
         if len(self._snapshots) > 2:
             tmp.set_index(["group", "date", "measure", "metric"], inplace=True)
             start_dates = [snap.date for snap in self._snapshots[:-1]]
             end_dates = [
-                snap.date - to_offset(self._time_resolution)
+                snap.date - to_offset(self.time_resolution)
                 for snap in self._snapshots[1:]
             ]
             periods_dates = list(zip(start_dates, end_dates))
@@ -444,8 +372,6 @@ class RiskTrajectory:
     def per_date_risk_metrics(
         self,
         metrics: list[str] | None = None,
-        return_periods: list[int] | None = None,
-        npv: bool = True,
     ) -> pd.DataFrame | pd.Series:
         """Returns a DataFrame of risk metrics for each dates
 
@@ -475,19 +401,18 @@ class RiskTrajectory:
         metrics = (
             ["aai", "return_periods", "aai_per_group"] if metrics is None else metrics
         )
-        return_periods = return_periods if return_periods else self.default_rp
         if "aai" in metrics:
-            metrics_df.append(self.aai_metrics(npv))
+            metrics_df.append(self.aai_metrics())
         if "return_periods" in metrics:
-            metrics_df.append(self.return_periods_metrics(return_periods, npv))
+            metrics_df.append(self.return_periods_metrics())
         if "aai_per_group" in metrics:
-            metrics_df.append(self.aai_per_group_metrics(npv))
+            metrics_df.append(self.aai_per_group_metrics())
 
         return pd.concat(metrics_df)
 
     @staticmethod
     def _get_risk_periods(
-        risk_periods: list[CalcRiskPeriod],
+        risk_periods: list[CalcRiskMetricsPeriod],
         start_date: datetime.date,
         end_date: datetime.date,
         strict: bool = True,
@@ -524,7 +449,7 @@ class RiskTrajectory:
             ]
 
     @staticmethod
-    def identify_continuous_periods(group, time_unit):
+    def _identify_continuous_periods(group, time_unit):
         # Calculate the difference between consecutive dates
         if time_unit == "year":
             group["date_diff"] = group["date"].dt.year.diff()
@@ -545,7 +470,7 @@ class RiskTrajectory:
         grouper: list[str],
         time_unit: str = "year",
         colname: str | list[str] = "risk",
-    ) -> pd.DataFrame | pd.Series:
+    ) -> pd.DataFrame:
         """Groups per date risk metric to periods."""
 
         ## I'm thinking this does not work with RPs... As you can't just sum impacts
@@ -567,7 +492,7 @@ class RiskTrajectory:
         # Apply the function to identify continuous periods
         df_periods = df_sorted.groupby(
             grouper, dropna=False, group_keys=False, observed=True
-        ).apply(cls.identify_continuous_periods, time_unit)
+        ).apply(cls._identify_continuous_periods, time_unit)
 
         if isinstance(colname, str):
             colname = [colname]
@@ -606,7 +531,7 @@ class RiskTrajectory:
 
     def per_period_risk_metrics(
         self, metrics: list[str] = ["aai", "return_periods", "aai_per_group"], **kwargs
-    ) -> pd.DataFrame | pd.Series:
+    ) -> pd.DataFrame:
         """Returns a tidy dataframe of the risk metrics with the total for each different period."""
         df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
         return self._date_to_period_agg(df, grouper=self._grouper, **kwargs)
@@ -615,38 +540,33 @@ class RiskTrajectory:
         self,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
-        npv: bool = True,
     ):
         """Compute the required data for the waterfall plot between `start_date` and `end_date`."""
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        risk_components = self.risk_components_metrics(npv)
-        risk_components = risk_components.loc[
-            (risk_components["date"] >= str(start_date))
-            & (risk_components["date"] <= str(end_date))
+        risk_contributions = self.risk_contributions_metrics()
+        risk_contributions = risk_contributions.loc[
+            (risk_contributions["date"] >= str(start_date))
+            & (risk_contributions["date"] <= str(end_date))
         ]
-        risk_components = risk_components.loc[
-            risk_components["measure"] == "no_measure"
-        ]
-        risk_components = risk_components.set_index(["date", "metric"])[
+        risk_contributions = risk_contributions.set_index(["date", "metric"])[
             "risk"
         ].unstack()
-        return risk_components
+        return risk_contributions
 
-    def plot_per_date_waterfall(
+    def plot_time_waterfall(
         self,
         ax=None,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
         figsize=(12, 6),
-        npv=True,
     ):
-        """Plot a waterfall chart of risk components over a specified date range.
+        """Plot a waterfall chart of risk contributions over a specified date range.
 
         This method generates a stacked bar chart to visualize the
-        risk components between specified start and end dates, for each date in between.
+        risk contributions between specified start and end dates, for each date in between.
         If no dates are provided, it defaults to the start and end dates of the risk trajectory.
-        See the notes on how risk is attributed to each components.
+        See the notes on how risk is attributed to each contributions.
 
         Parameters
         ----------
@@ -669,10 +589,10 @@ class RiskTrajectory:
             fig = ax.figure  # get parent figure from the axis
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        risk_component = self._calc_waterfall_plot_data(
-            start_date=start_date, end_date=end_date, npv=npv
+        risk_contribution = self._calc_waterfall_plot_data(
+            start_date=start_date, end_date=end_date
         )
-        risk_component = risk_component[
+        risk_contribution = risk_contribution[
             [
                 "base risk",
                 "exposure contribution",
@@ -681,17 +601,17 @@ class RiskTrajectory:
                 "interaction contribution",
             ]
         ]
-        risk_component["base risk"] = risk_component.iloc[0]["base risk"]
-        # risk_component.plot(x="date", ax=ax, kind="bar", stacked=True)
+        risk_contribution["base risk"] = risk_contribution.iloc[0]["base risk"]
+        # risk_contribution.plot(x="date", ax=ax, kind="bar", stacked=True)
         ax.stackplot(
-            risk_component.index.to_timestamp(),
-            [risk_component[col] for col in risk_component.columns],
-            labels=risk_component.columns,
+            risk_contribution.index.to_timestamp(),
+            [risk_contribution[col] for col in risk_contribution.columns],
+            labels=risk_contribution.columns,
         )
         ax.legend()
-        # bottom = [0] * len(risk_component)
-        # for col in risk_component.columns:
-        #     bottom =  [b + v for b, v in zip(bottom, risk_component[col])]
+        # bottom = [0] * len(risk_contribution)
+        # for col in risk_contribution.columns:
+        #     bottom =  [b + v for b, v in zip(bottom, risk_contribution[col])]
         # Construct y-axis label and title based on parameters
         value_label = "USD"
         title_label = f"Risk between {start_date} and {end_date} (Average impact)"
@@ -701,7 +621,7 @@ class RiskTrajectory:
 
         ax.xaxis.set_major_locator(locator)
         ax.xaxis.set_major_formatter(formatter)
-        ax.yaxis.set_major_formatter(ticker.EngFormatter())
+        ax.yaxis.set_major_formatter(mticker.EngFormatter())
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
         ax.set_ylim(0.0, 1.1 * ax.get_ylim()[1])
@@ -712,11 +632,10 @@ class RiskTrajectory:
         ax=None,
         start_date: datetime.date | None = None,
         end_date: datetime.date | None = None,
-        npv=True,
     ):
-        """Plot a waterfall chart of risk components between two dates.
+        """Plot a waterfall chart of risk contributions between two dates.
 
-        This method generates a waterfall plot to visualize the changes in risk components
+        This method generates a waterfall plot to visualize the changes in risk contributions
         between a specified start and end date. If no dates are provided, it defaults to
         the start and end dates of the risk trajectory.
 
@@ -737,16 +656,16 @@ class RiskTrajectory:
         """
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        start_date_p = pd.to_datetime(start_date).to_period(self._time_resolution)
-        end_date_p = pd.to_datetime(end_date).to_period(self._time_resolution)
-        risk_component = self._calc_waterfall_plot_data(
-            start_date=start_date, end_date=end_date, npv=npv
+        start_date_p = pd.to_datetime(start_date).to_period(self.time_resolution)
+        end_date_p = pd.to_datetime(end_date).to_period(self.time_resolution)
+        risk_contribution = self._calc_waterfall_plot_data(
+            start_date=start_date, end_date=end_date
         )
         if ax is None:
             _, ax = plt.subplots(figsize=(8, 5))
 
-        risk_component = risk_component.loc[
-            (risk_component.index == str(end_date))
+        risk_contribution = risk_contribution.loc[
+            (risk_contribution.index == str(end_date))
         ].squeeze()
 
         labels = [
@@ -758,24 +677,24 @@ class RiskTrajectory:
             f"Total Risk {end_date_p}",
         ]
         values = [
-            risk_component["base risk"],
-            risk_component["exposure contribution"],
-            risk_component["hazard contribution"],
-            risk_component["vulnerability contribution"],
-            risk_component["interaction contribution"],
-            risk_component.sum(),
+            risk_contribution["base risk"],
+            risk_contribution["exposure contribution"],
+            risk_contribution["hazard contribution"],
+            risk_contribution["vulnerability contribution"],
+            risk_contribution["interaction contribution"],
+            risk_contribution.sum(),
         ]
         bottoms = [
             0.0,
-            risk_component["base risk"],
-            risk_component["base risk"] + risk_component["exposure contribution"],
-            risk_component["base risk"]
-            + risk_component["exposure contribution"]
-            + risk_component["hazard contribution"],
-            risk_component["base risk"]
-            + risk_component["exposure contribution"]
-            + risk_component["hazard contribution"]
-            + risk_component["vulnerability contribution"],
+            risk_contribution["base risk"],
+            risk_contribution["base risk"] + risk_contribution["exposure contribution"],
+            risk_contribution["base risk"]
+            + risk_contribution["exposure contribution"]
+            + risk_contribution["hazard contribution"],
+            risk_contribution["base risk"]
+            + risk_contribution["exposure contribution"]
+            + risk_contribution["hazard contribution"]
+            + risk_contribution["vulnerability contribution"],
             0.0,
         ]
 
@@ -805,8 +724,8 @@ class RiskTrajectory:
 
         # Construct y-axis label and title based on parameters
         value_label = "USD"
-        title_label = f"Evolution of the components of risk between {start_date_p} and {end_date_p} (Average impact)"
-        ax.yaxis.set_major_formatter(ticker.EngFormatter())
+        title_label = f"Evolution of the contributions of risk between {start_date_p} and {end_date_p} (Average impact)"
+        ax.yaxis.set_major_formatter(mticker.EngFormatter())
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
         ax.set_ylim(0.0, 1.1 * ax.get_ylim()[1])
@@ -816,53 +735,3 @@ class RiskTrajectory:
         )
 
         return ax
-
-
-def calc_npv_cash_flows(
-    cash_flows: pd.DataFrame,
-    start_date: datetime.date,
-    disc: DiscRates | None = None,
-):
-    """Apply discount rate to cash flows.
-
-    If it is defined, applies a discount rate `disc` to a given cash flow
-    `cash_flows` assuming present year corresponds to `start_date`.
-
-    Parameters
-    ----------
-    cash_flows : pd.DataFrame
-        The cash flow to apply the discount rate to.
-    start_date : datetime.date
-        The date representing the present.
-    end_date : datetime.date, optional
-    disc : DiscRates, optional
-        The discount rate to apply.
-
-    Returns
-    -------
-
-    A dataframe (copy) of `cash_flows` where values are discounted according to `disc`
-    """
-
-    if not disc:
-        return cash_flows
-
-    if not isinstance(cash_flows.index, pd.DatetimeIndex):
-        raise ValueError("cash_flows must be a pandas Series with a datetime index")
-
-    df = cash_flows.to_frame(name="cash_flow")
-    df["year"] = df.index.year
-
-    # Merge with the discount rates based on the year
-    tmp = df.merge(
-        pd.DataFrame({"year": disc.years, "rate": disc.rates}), on="year", how="left"
-    )
-    tmp.index = df.index
-    df = tmp.copy()
-    start = pd.Timestamp(start_date)
-    df["discount_factor"] = (1 / (1 + df["rate"])) ** ((df.index - start).days // 365)
-
-    # Apply the discount factors to the cash flows
-    df["npv_cash_flow"] = df["cash_flow"] * df["discount_factor"]
-
-    return df["npv_cash_flow"]

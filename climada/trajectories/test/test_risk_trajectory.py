@@ -39,7 +39,7 @@ from climada.trajectories.risk_trajectory import (
 from climada.trajectories.risk_trajectory import (
     DEFAULT_RP,
     POSSIBLE_METRICS,
-    RiskTrajectory,
+    InterpolatedRiskTrajectory,
 )
 from climada.trajectories.riskperiod import (  # ImpactComputationStrategy, # If needed to mock its base class directly
     AllLinearStrategy,
@@ -81,7 +81,7 @@ class TestRiskTrajectory(unittest.TestCase):
     ## Test `__init__` method
     def test_init_basic(self):
         # Test basic initialization with defaults
-        rt = RiskTrajectory(
+        rt = InterpolatedRiskTrajectory(
             self.snapshots_list,
             interpolation_strategy=self.mock_interpolation_strategy,
             impact_computation_strategy=self.mock_impact_computation_strategy,
@@ -102,7 +102,7 @@ class TestRiskTrajectory(unittest.TestCase):
     def test_init_with_custom_params(self):
         # Test initialization with custom parameters
         mock_disc = Mock(spec=DiscRates)
-        rt = RiskTrajectory(
+        rt = InterpolatedRiskTrajectory(
             self.snapshots_list,
             time_resolution="MS",
             all_groups_name="CustomAll",
@@ -116,7 +116,7 @@ class TestRiskTrajectory(unittest.TestCase):
 
     ## Test Properties (`@property` and `@setter`)
     def test_default_rp_getter_setter(self):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         self.assertEqual(rt.default_rp, DEFAULT_RP)
         rt.default_rp = [10, 20]
         self.assertEqual(rt.default_rp, [10, 20])
@@ -128,7 +128,7 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertIsNone(rt._all_risk_metrics)
 
     def test_default_rp_setter_validation(self):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         with self.assertRaises(ValueError):
             rt.default_rp = "not a list"
         with self.assertRaises(ValueError):
@@ -140,7 +140,7 @@ class TestRiskTrajectory(unittest.TestCase):
     @patch("climada.trajectories.risk_trajectory.CalcRiskPeriod", autospec=True)
     def test_risk_periods_lazy_computation(self, MockCalcRiskPeriod):
         # Test that _calc_risk_periods is called only once, lazily
-        rt = RiskTrajectory(
+        rt = InterpolatedRiskTrajectory(
             self.snapshots_list,
             interpolation_strategy=self.mock_interpolation_strategy,
             impact_computation_strategy=self.mock_impact_computation_strategy,
@@ -149,7 +149,7 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertIsNone(rt._risk_periods_calculators)
 
         # First access should trigger calculation
-        risk_periods = rt.risk_periods
+        risk_periods = rt._risk_periods
         MockCalcRiskPeriod.assert_has_calls(
             [
                 call(
@@ -174,7 +174,7 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertEqual(len(risk_periods), 2)  # N-1 periods for N snapshots
 
         # Second access should not trigger recalculation
-        rt.risk_periods
+        rt._risk_periods
         self.assertEqual(MockCalcRiskPeriod.call_count, 2)  # Still 2 calls
 
     @patch("climada.trajectories.risk_trajectory.CalcRiskPeriod", autospec=True)
@@ -185,9 +185,9 @@ class TestRiskTrajectory(unittest.TestCase):
             self.mock_snapshot1,
             self.mock_snapshot2,
         ]
-        rt = RiskTrajectory(unsorted_snapshots)
+        rt = InterpolatedRiskTrajectory(unsorted_snapshots)
         # Access the property to trigger calculation
-        _ = rt.risk_periods
+        _ = rt._risk_periods
         MockCalcRiskPeriod.assert_has_calls(
             [
                 call(
@@ -207,10 +207,10 @@ class TestRiskTrajectory(unittest.TestCase):
     # --- Test Generic Metric Computation (`_generic_metrics`) ---
     # This is a core internal method and deserves thorough testing.
 
-    @patch.object(RiskTrajectory, "risk_periods", new_callable=PropertyMock)
-    @patch.object(RiskTrajectory, "npv_transform", new_callable=Mock)
+    @patch.object(InterpolatedRiskTrajectory, "risk_periods", new_callable=PropertyMock)
+    @patch.object(InterpolatedRiskTrajectory, "npv_transform", new_callable=Mock)
     def test_generic_metrics_basic_flow(self, mock_npv_transform, mock_risk_periods):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt._all_groups_name = "All"  # Ensure default
         rt._risk_disc = self.mock_disc_rates  # For NPV transform check
 
@@ -284,10 +284,10 @@ class TestRiskTrajectory(unittest.TestCase):
             stored_df.reset_index(drop=True), expected_pre_npv_df.reset_index(drop=True)
         )
 
-    @patch.object(RiskTrajectory, "risk_periods", new_callable=PropertyMock)
-    @patch.object(RiskTrajectory, "npv_transform", new_callable=Mock)
+    @patch.object(InterpolatedRiskTrajectory, "risk_periods", new_callable=PropertyMock)
+    @patch.object(InterpolatedRiskTrajectory, "npv_transform", new_callable=Mock)
     def test_generic_metrics_no_npv(self, mock_npv_transform, mock_risk_periods):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         # Mock CalcRiskPeriod instances
         mock_calc_period1 = Mock()
         mock_risk_periods.return_value = [mock_calc_period1]
@@ -315,26 +315,26 @@ class TestRiskTrajectory(unittest.TestCase):
         pd.testing.assert_frame_equal(result, expected_df)
         pd.testing.assert_frame_equal(getattr(rt, "_aai_metrics"), expected_df)
 
-    @patch.object(RiskTrajectory, "risk_periods", new_callable=PropertyMock)
+    @patch.object(InterpolatedRiskTrajectory, "risk_periods", new_callable=PropertyMock)
     def test_generic_metrics_not_implemented_error(self, mock_risk_periods):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         with self.assertRaises(NotImplementedError):
             rt._generic_metrics(metric_name="non_existent", metric_meth="some_method")
 
-    @patch.object(RiskTrajectory, "risk_periods", new_callable=PropertyMock)
+    @patch.object(InterpolatedRiskTrajectory, "risk_periods", new_callable=PropertyMock)
     def test_generic_metrics_value_error_no_name_or_method(self, mock_risk_periods):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         with self.assertRaises(ValueError):
             rt._generic_metrics(metric_name=None, metric_meth="some_method")
         with self.assertRaises(ValueError):
             rt._generic_metrics(metric_name="aai", metric_meth=None)
 
-    @patch.object(RiskTrajectory, "risk_periods", new_callable=PropertyMock)
-    @patch.object(RiskTrajectory, "npv_transform", new_callable=Mock)
+    @patch.object(InterpolatedRiskTrajectory, "risk_periods", new_callable=PropertyMock)
+    @patch.object(InterpolatedRiskTrajectory, "npv_transform", new_callable=Mock)
     def test_generic_metrics_empty_concat_returns_None(
         self, mock_npv_transform, mock_risk_periods
     ):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         # Mock CalcRiskPeriod instances return None, mimicking `calc_aai_per_group_metric` possibly
         mock_calc_period1 = Mock()
         mock_calc_period2 = Mock()
@@ -350,12 +350,12 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertIsNone(result)
         self.assertIsNone(getattr(rt, "_aai_per_group_metrics"))  # Should also be None
 
-    @patch.object(RiskTrajectory, "risk_periods", new_callable=PropertyMock)
-    @patch.object(RiskTrajectory, "npv_transform", new_callable=Mock)
+    @patch.object(InterpolatedRiskTrajectory, "risk_periods", new_callable=PropertyMock)
+    @patch.object(InterpolatedRiskTrajectory, "npv_transform", new_callable=Mock)
     def test_generic_metrics_coord_id_handling(
         self, mock_npv_transform, mock_risk_periods
     ):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         mock_calc_period = Mock()
         mock_risk_periods.return_value = [mock_calc_period]
         mock_calc_period.calc_eai_gdf.return_value = pd.DataFrame(
@@ -394,25 +394,25 @@ class TestRiskTrajectory(unittest.TestCase):
     # These are mostly thin wrappers around _compute_metrics/_generic_metrics.
     # Focus on ensuring they call _compute_metrics with the correct arguments.
 
-    @patch.object(RiskTrajectory, "_compute_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
     def test_eai_metrics(self, mock_compute_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt.eai_metrics(npv=True, some_arg="test")
         mock_compute_metrics.assert_called_once_with(
             npv=True, metric_name="eai", metric_meth="calc_eai_gdf", some_arg="test"
         )
 
-    @patch.object(RiskTrajectory, "_compute_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
     def test_aai_metrics(self, mock_compute_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt.aai_metrics(npv=False, other_arg=123)
         mock_compute_metrics.assert_called_once_with(
             npv=False, metric_name="aai", metric_meth="calc_aai_metric", other_arg=123
         )
 
-    @patch.object(RiskTrajectory, "_compute_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
     def test_return_periods_metrics(self, mock_compute_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         test_rps = [10, 20]
         rt.return_periods_metrics(test_rps, npv=True, rp_arg="xyz")
         mock_compute_metrics.assert_called_once_with(
@@ -423,9 +423,9 @@ class TestRiskTrajectory(unittest.TestCase):
             rp_arg="xyz",
         )
 
-    @patch.object(RiskTrajectory, "_compute_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
     def test_aai_per_group_metrics(self, mock_compute_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt.aai_per_group_metrics(npv=False)
         mock_compute_metrics.assert_called_once_with(
             npv=False,
@@ -433,9 +433,9 @@ class TestRiskTrajectory(unittest.TestCase):
             metric_meth="calc_aai_per_group_metric",
         )
 
-    @patch.object(RiskTrajectory, "_compute_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
     def test_risk_components_metrics(self, mock_compute_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt.risk_components_metrics(npv=True)
         mock_compute_metrics.assert_called_once_with(
             npv=True,
@@ -514,7 +514,7 @@ class TestRiskTrajectory(unittest.TestCase):
                     index=[pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")],
                 ),
             ]
-            result_df = RiskTrajectory.npv_transform(
+            result_df = InterpolatedRiskTrajectory._npv_transform(
                 df_input.copy(), self.mock_disc_rates
             )
             # Assertions for mock calls
@@ -595,7 +595,7 @@ class TestRiskTrajectory(unittest.TestCase):
                     [150.0 * (1 / (1 + 0.01)) ** 0], index=[pd.Timestamp("2023-01-01")]
                 ),
             ]
-            result_df = RiskTrajectory.npv_transform(
+            result_df = InterpolatedRiskTrajectory._npv_transform(
                 df_input.copy(), self.mock_disc_rates
             )
 
@@ -631,7 +631,7 @@ class TestRiskTrajectory(unittest.TestCase):
                 "risk": [100.0, 200.0, 300.0, 50.0],
             }
         )
-        result_df = RiskTrajectory._date_to_period_agg(df_input)
+        result_df = InterpolatedRiskTrajectory._date_to_period_agg(df_input)
 
         expected_df = pd.DataFrame(
             {
@@ -659,7 +659,7 @@ class TestRiskTrajectory(unittest.TestCase):
                 "exposure contribution": [5.0, 8.0],
             }
         )
-        result_df = RiskTrajectory._date_to_period_agg(
+        result_df = InterpolatedRiskTrajectory._date_to_period_agg(
             df_input, col_agg_dict=["base risk", "exposure contribution"]
         )
 
@@ -686,7 +686,7 @@ class TestRiskTrajectory(unittest.TestCase):
             }
         )
         # Test with 'month' time_unit
-        result_df_month = RiskTrajectory._date_to_period_agg(
+        result_df_month = InterpolatedRiskTrajectory._date_to_period_agg(
             df_input, time_unit="month"
         )
         expected_df_month = pd.DataFrame(
@@ -712,7 +712,9 @@ class TestRiskTrajectory(unittest.TestCase):
                 "risk": [10.0, 20.0, 40.0],
             }
         )
-        result_df_gap = RiskTrajectory._date_to_period_agg(df_gap, time_unit="month")
+        result_df_gap = InterpolatedRiskTrajectory._date_to_period_agg(
+            df_gap, time_unit="month"
+        )
         expected_df_gap = pd.DataFrame(
             {
                 "period": ["2023-01-01 to 2023-02-01", "2023-04-01 to 2023-04-01"],
@@ -729,13 +731,13 @@ class TestRiskTrajectory(unittest.TestCase):
 
     # --- Test Combined Metrics (`per_date_risk_metrics`, `per_period_risk_metrics`) ---
 
-    @patch.object(RiskTrajectory, "aai_metrics")
-    @patch.object(RiskTrajectory, "return_periods_metrics")
-    @patch.object(RiskTrajectory, "aai_per_group_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "aai_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "return_periods_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "aai_per_group_metrics")
     def test_per_date_risk_metrics_defaults(
         self, mock_aai_per_group, mock_return_periods, mock_aai
     ):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         # Set up mock return values for each method
         mock_aai.return_value = pd.DataFrame({"metric": ["aai"], "risk": [100]})
         mock_return_periods.return_value = pd.DataFrame(
@@ -764,13 +766,13 @@ class TestRiskTrajectory(unittest.TestCase):
             result.reset_index(drop=True), expected_df.reset_index(drop=True)
         )
 
-    @patch.object(RiskTrajectory, "aai_metrics")
-    @patch.object(RiskTrajectory, "return_periods_metrics")
-    @patch.object(RiskTrajectory, "aai_per_group_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "aai_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "return_periods_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "aai_per_group_metrics")
     def test_per_date_risk_metrics_custom_metrics_and_rps(
         self, mock_aai_per_group, mock_return_periods, mock_aai
     ):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         mock_aai.return_value = pd.DataFrame({"metric": ["aai"], "risk": [100]})
         mock_return_periods.return_value = pd.DataFrame(
             {"metric": ["rp"], "risk": [50]}
@@ -793,12 +795,12 @@ class TestRiskTrajectory(unittest.TestCase):
             result.reset_index(drop=True), expected_df.reset_index(drop=True)
         )
 
-    @patch.object(RiskTrajectory, "per_date_risk_metrics")
-    @patch.object(RiskTrajectory, "_per_period_risk")
+    @patch.object(InterpolatedRiskTrajectory, "per_date_risk_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "_per_period_risk")
     def test_per_period_risk_metrics(
         self, mock_per_period_risk, mock_per_date_risk_metrics
     ):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         mock_date_df = pd.DataFrame({"metric": ["aai"], "risk": [100]})
         mock_per_date_risk_metrics.return_value = mock_date_df
         mock_per_period_risk.return_value = pd.DataFrame(
@@ -818,9 +820,9 @@ class TestRiskTrajectory(unittest.TestCase):
     # These methods primarily generate data for plotting or call plotting functions.
     # The actual plotting logic (matplotlib.pyplot calls) should be mocked.
 
-    @patch.object(RiskTrajectory, "risk_components_metrics")
+    @patch.object(InterpolatedRiskTrajectory, "risk_components_metrics")
     def test_calc_waterfall_plot_data(self, mock_risk_components_metrics):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt.start_date = datetime.date(2023, 1, 1)
         rt.end_date = datetime.date(2025, 1, 1)
 
@@ -877,11 +879,11 @@ class TestRiskTrajectory(unittest.TestCase):
     @patch("matplotlib.pyplot.subplots")
     @patch("matplotlib.dates.AutoDateLocator")
     @patch("matplotlib.dates.ConciseDateFormatter")
-    @patch.object(RiskTrajectory, "_calc_waterfall_plot_data")
+    @patch.object(InterpolatedRiskTrajectory, "_calc_waterfall_plot_data")
     def test_plot_per_date_waterfall(
         self, mock_calc_data, mock_formatter, mock_locator, mock_subplots
     ):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt.start_date = datetime.date(2023, 1, 1)
         rt.end_date = datetime.date(2023, 1, 2)
 
@@ -936,9 +938,9 @@ class TestRiskTrajectory(unittest.TestCase):
         self.assertEqual(ax, mock_ax)
 
     @patch("matplotlib.pyplot.subplots")
-    @patch.object(RiskTrajectory, "_calc_waterfall_plot_data")
+    @patch.object(InterpolatedRiskTrajectory, "_calc_waterfall_plot_data")
     def test_plot_waterfall(self, mock_calc_data, mock_subplots):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt.start_date = datetime.date(2023, 1, 1)
         rt.end_date = datetime.date(2024, 1, 1)
 
@@ -1014,7 +1016,7 @@ class TestRiskTrajectory(unittest.TestCase):
     # --- Test Private Helper Methods (`_reset_metrics`, `_get_risk_periods`) ---
 
     def test_reset_metrics(self):
-        rt = RiskTrajectory(self.snapshots_list)
+        rt = InterpolatedRiskTrajectory(self.snapshots_list)
         # Set some metrics to non-None values
         rt._eai_metrics = "dummy_eai"
         rt._aai_metrics = "dummy_aai"
@@ -1043,24 +1045,24 @@ class TestRiskTrajectory(unittest.TestCase):
         all_risk_periods = [mock_rp1, mock_rp2, mock_rp3]
 
         # Test case 1: Full range, all periods included
-        result = RiskTrajectory._get_risk_periods(
+        result = InterpolatedRiskTrajectory._get_risk_periods(
             all_risk_periods, datetime.date(2020, 1, 1), datetime.date(2023, 1, 1)
         )
         self.assertEqual(len(result), 3)
         self.assertListEqual(result, all_risk_periods)
 
         # Test case 2: Subset range
-        result = RiskTrajectory._get_risk_periods(
+        result = InterpolatedRiskTrajectory._get_risk_periods(
             all_risk_periods, datetime.date(2021, 6, 1), datetime.date(2022, 6, 1)
         )
-        result = RiskTrajectory._get_risk_periods(
+        result = InterpolatedRiskTrajectory._get_risk_periods(
             all_risk_periods, datetime.date(2021, 6, 1), datetime.date(2022, 6, 1)
         )
         self.assertEqual(len(result), 3)
         self.assertListEqual(result, all_risk_periods)
 
         # Test case 3: Dates completely outside the periods
-        result = RiskTrajectory._get_risk_periods(
+        result = InterpolatedRiskTrajectory._get_risk_periods(
             all_risk_periods, datetime.date(2025, 1, 1), datetime.date(2026, 1, 1)
         )
         # rp1: (2025 >= 2020) OR (2026 <= 2021) -> T OR F -> T
