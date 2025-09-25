@@ -190,7 +190,7 @@ class RiskTrajectory(ABC):
         if not disc_rates:
             return cash_flows
 
-        if not isinstance(cash_flows.index, pd.DatetimeIndex):
+        if not isinstance(cash_flows.index, pd.PeriodIndex):
             raise ValueError("cash_flows must be a pandas Series with a datetime index")
 
         df = cash_flows.to_frame(name="cash_flow")
