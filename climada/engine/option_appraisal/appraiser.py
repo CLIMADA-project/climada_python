@@ -498,7 +498,7 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
         planner: (
             dict[str, tuple[int, int]] | dict[str, tuple[datetime.date, datetime.date]]
         ),
-        interval_freq: str = "AS-JAN",
+        interval_freq: str = "YS",
         all_groups_name: str = "All",
         risk_disc_rates: DiscRates | None = None,
         cost_disc_rates: DiscRates | None = None,
@@ -537,15 +537,19 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
             # Not sure this works as intended (pbly could be simplified anyway)
             if len(measure_name_list) > 1:
                 measure = self.measure_set.combine(names=measure_name_list)
+                self.measure_set.append(measure)
             elif len(measure_name_list) == 1:
                 measure = self.measure_set._data[measure_name_list[0]]
             else:
                 measure = None
 
-            periods = self._get_risk_periods(risk_periods, start_date, end_date)
+            LOGGER.debug(f"Fetching risk_periods within {start_date} and {end_date}")
+            periods = self._get_risk_periods(
+                risk_periods, start_date, end_date, strict=False
+            )
             if measure:
                 LOGGER.debug(
-                    f"Creating measures risk_period for measure {measure.name}"
+                    f"Creating measures risk_period for measure {measure.name} on {periods}"
                 )
                 meas_periods = [period.apply_measure(measure) for period in periods]
                 res += meas_periods
@@ -637,7 +641,9 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
         # Unique measures
         start_date = self.start_date if start_date is None else start_date
         end_date = self.end_date if end_date is None else end_date
-        df = self._calc_waterfall_CB_plot_data(start_date=start_date, end_date=end_date)
+        df = self._calc_waterfall_CB_plot_data(
+            start_date=start_date, end_date=end_date, include_no_measure=True
+        )
         df = df.swaplevel()
         metrics = [
             "base risk",
@@ -655,7 +661,9 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
         }
         hatch_style = "///"
 
-        measures = df.index.get_level_values(0).unique().drop("no_measure")
+        measures = (
+            df.index.get_level_values(0).unique().drop("no_measure", errors="ignore")
+        )
         reference_risk = df["reference risk"].droplevel(0)
         _, axs = plt.subplots(
             3, 1, figsize=(14, 5 * len(measures)), sharex=True, sharey=False
