@@ -204,9 +204,8 @@ class RiskTrajectory(ABC):
         )
         tmp.index = df.index
         df = tmp.copy()
-        start = pd.Timestamp(start_date)
         df["discount_factor"] = (1 / (1 + df["rate"])) ** (
-            (df.index - start).days // 365
+            (df.index.year - start_date.year)
         )
 
         # Apply the discount factors to the cash flows
