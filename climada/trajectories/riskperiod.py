@@ -454,7 +454,7 @@ class CalcRiskMetricsPeriod:
     @impact_computation_strategy.setter
     def impact_computation_strategy(self, value, /):
         if not isinstance(value, ImpactComputationStrategy):
-            raise ValueError("Not an interpolation strategy")
+            raise ValueError("Not an impact computation strategy")
 
         self._impact_computation_strategy = value
         self._reset_impact_data()
@@ -878,7 +878,6 @@ class CalcRiskMetricsPeriod:
             snap0,
             snap1,
             self.time_resolution,
-            self.time_points,
             self.interpolation_strategy,
             self.impact_computation_strategy,
         )

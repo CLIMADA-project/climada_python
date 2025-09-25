@@ -88,7 +88,7 @@ class TestRiskTrajectory(unittest.TestCase):
         )
         self.assertEqual(rt.start_date, self.mock_snapshot1.date)
         self.assertEqual(rt.end_date, self.mock_snapshot3.date)
-        self.assertIsNone(rt._risk_disc)
+        self.assertIsNone(rt._risk_disc_rates)
         self.assertEqual(rt._interpolation_strategy, self.mock_interpolation_strategy)
         self.assertEqual(
             rt._impact_computation_strategy, self.mock_impact_computation_strategy
@@ -106,13 +106,13 @@ class TestRiskTrajectory(unittest.TestCase):
             self.snapshots_list,
             time_resolution="MS",
             all_groups_name="CustomAll",
-            risk_disc=mock_disc,
+            risk_disc_rates=mock_disc,
             interpolation_strategy=Mock(),
             impact_computation_strategy=Mock(),
         )
         self.assertEqual(rt._time_resolution, "MS")
         self.assertEqual(rt._all_groups_name, "CustomAll")
-        self.assertEqual(rt._risk_disc, mock_disc)
+        self.assertEqual(rt._risk_disc_rates, mock_disc)
 
     ## Test Properties (`@property` and `@setter`)
     def test_default_rp_getter_setter(self):
@@ -212,7 +212,7 @@ class TestRiskTrajectory(unittest.TestCase):
     def test_generic_metrics_basic_flow(self, mock_npv_transform, mock_risk_periods):
         rt = InterpolatedRiskTrajectory(self.snapshots_list)
         rt._all_groups_name = "All"  # Ensure default
-        rt._risk_disc = self.mock_disc_rates  # For NPV transform check
+        rt._risk_disc_rates = self.mock_disc_rates  # For NPV transform check
 
         # Mock CalcRiskPeriod instances returned by risk_periods property
         mock_calc_period1 = Mock()
@@ -267,7 +267,7 @@ class TestRiskTrajectory(unittest.TestCase):
             ["group", "date", "measure", "metric", "risk"]
         ]
         # npv_transform should be called with the correctly formatted (concatenated and ordered) DataFrame
-        # and the risk_disc attribute
+        # and the risk_disc_rates attribute
         mock_npv_transform.assert_called_once()
         pd.testing.assert_frame_equal(
             mock_npv_transform.call_args[0][0].reset_index(drop=True),

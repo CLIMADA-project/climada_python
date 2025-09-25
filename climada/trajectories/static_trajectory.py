@@ -32,7 +32,7 @@ from climada.trajectories.riskperiod import (
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
-from climada.trajectories.trajectory import RiskTrajectory
+from climada.trajectories.trajectory import DEFAULT_RP, RiskTrajectory
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
@@ -57,14 +57,16 @@ class StaticRiskTrajectory(RiskTrajectory):
         self,
         snapshots_list: list[Snapshot],
         *,
+        return_periods: list[int] = DEFAULT_RP,
         all_groups_name: str = "All",
-        risk_disc: DiscRates | None = None,
+        risk_disc_rates: DiscRates | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
         super().__init__(
             snapshots_list,
+            return_periods=return_periods,
             all_groups_name=all_groups_name,
-            risk_disc=risk_disc,
+            risk_disc_rates=risk_disc_rates,
         )
         self._risk_metrics_calculators = CalcRiskMetricsPoints(
             self._snapshots,
@@ -103,47 +105,34 @@ class StaticRiskTrajectory(RiskTrajectory):
         # Construct the attribute name for storing the metric results
         attr_name = f"_{metric_name}_metrics"
 
-        tmp = []
         with log_level(level="WARNING", name_prefix="climada"):
-            tmp.append(getattr(self._risk_metrics_calculators, metric_meth)(**kwargs))
+            tmp = getattr(self._risk_metrics_calculators, metric_meth)(**kwargs)
 
-        # Notably for per_group_aai being None:
-        try:
-            tmp = pd.concat(tmp)
-            if len(tmp) == 0:
-                return pd.DataFrame()
-        except ValueError as e:
-            if str(e) == "All objects passed were None":
-                return pd.DataFrame()
-            else:
-                raise e
+        tmp = tmp.set_index(["date", "group", "measure", "metric"])
+        if "coord_id" in tmp.columns:
+            tmp = tmp.set_index(["coord_id"], append=True)
 
-        else:
-            tmp = tmp.set_index(["date", "group", "measure", "metric"])
-            if "coord_id" in tmp.columns:
-                tmp = tmp.set_index(["coord_id"], append=True)
-
-            # When more than 2 snapshots, there are duplicated rows, we need to remove them.
-            tmp = tmp[~tmp.index.duplicated(keep="first")]
-            tmp = tmp.reset_index()
-            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
-            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
-            columns_to_front = ["group", "date", "measure", "metric"]
-            tmp = tmp[
-                columns_to_front
-                + [
-                    col
-                    for col in tmp.columns
-                    if col not in columns_to_front + ["group", "risk", "rp"]
-                ]
-                + ["risk"]
+        # When more than 2 snapshots, there are duplicated rows, we need to remove them.
+        tmp = tmp[~tmp.index.duplicated(keep="first")]
+        tmp = tmp.reset_index()
+        tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
+        tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+        columns_to_front = ["group", "date", "measure", "metric"]
+        tmp = tmp[
+            columns_to_front
+            + [
+                col
+                for col in tmp.columns
+                if col not in columns_to_front + ["group", "risk", "rp"]
             ]
-            setattr(self, attr_name, tmp)
+            + ["risk"]
+        ]
+        setattr(self, attr_name, tmp)
 
-            if self._risk_disc:
-                return self.npv_transform(getattr(self, attr_name), self._risk_disc)
+        if self._risk_disc_rates:
+            return self.npv_transform(getattr(self, attr_name), self._risk_disc_rates)
 
-            return getattr(self, attr_name)
+        return getattr(self, attr_name)
 
     def eai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the estimated annual impacts at each exposure point for each date.

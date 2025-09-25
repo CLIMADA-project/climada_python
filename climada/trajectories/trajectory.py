@@ -28,13 +28,11 @@ from abc import ABC
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.riskperiod import (
-    ImpactCalcComputation,
-    ImpactComputationStrategy,
-)
 from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
+
+DEFAULT_RP = [20, 50, 100]
 
 
 class RiskTrajectory(ABC):
@@ -42,22 +40,22 @@ class RiskTrajectory(ABC):
     """Results dataframe grouper"""
 
     POSSIBLE_METRICS = []
-    DEFAULT_RP = [20, 50, 100]
 
     def __init__(
         self,
         snapshots_list: list[Snapshot],
         *,
+        return_periods: list[int],
         all_groups_name: str = "All",
-        risk_disc: DiscRates | None = None,
+        risk_disc_rates: DiscRates | None = None,
     ):
         self._reset_metrics()
         self._snapshots = snapshots_list
         self._all_groups_name = all_groups_name
-        self._return_periods = self.DEFAULT_RP
+        self._return_periods = return_periods
         self.start_date = min([snapshot.date for snapshot in snapshots_list])
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
-        self._risk_disc = risk_disc
+        self._risk_disc_rates = risk_disc_rates
 
     def _reset_metrics(self):
         for metric in self.POSSIBLE_METRICS:
@@ -103,7 +101,7 @@ class RiskTrajectory(ABC):
         self._return_periods = value
 
     @property
-    def risk_disc(self) -> DiscRates | None:
+    def risk_disc_rates(self) -> DiscRates | None:
         """The discount rate applied to compute net present values.
         None means no discount rate.
 
@@ -112,25 +110,27 @@ class RiskTrajectory(ABC):
 
         Changing its value resets the metrics.
         """
-        return self._risk_disc
+        return self._risk_disc_rates
 
-    @risk_disc.setter
-    def risk_disc(self, value, /):
+    @risk_disc_rates.setter
+    def risk_disc_rates(self, value, /):
         if not isinstance(value, DiscRates):
             raise ValueError("Risk discount needs to be a `DiscRates` object.")
 
         self._reset_metrics()
-        self._risk_disc = value
+        self._risk_disc_rates = value
 
     @classmethod
-    def npv_transform(cls, df: pd.DataFrame, risk_disc: DiscRates) -> pd.DataFrame:
+    def npv_transform(
+        cls, df: pd.DataFrame, risk_disc_rates: DiscRates
+    ) -> pd.DataFrame:
         """Apply discount rate to a metric `DataFrame`.
 
         Parameters
         ----------
         df : pd.DataFrame
             The `DataFrame` of the metric to discount.
-        risk_disc : DiscRate
+        risk_disc_rates : DiscRate
             The discount rate to apply.
 
         Returns
@@ -156,7 +156,7 @@ class RiskTrajectory(ABC):
             as_index=False,
             group_keys=False,
             observed=True,
-        )["risk"].transform(_npv_group, risk_disc)
+        )["risk"].transform(_npv_group, risk_disc_rates)
         df = df.reset_index()
         return df
 
@@ -164,7 +164,7 @@ class RiskTrajectory(ABC):
     def _calc_npv_cash_flows(
         cash_flows: pd.DataFrame,
         start_date: datetime.date,
-        disc: DiscRates | None = None,
+        disc_rates: DiscRates | None = None,
     ):
         """Apply discount rate to cash flows.
 
@@ -187,7 +187,7 @@ class RiskTrajectory(ABC):
         A dataframe (copy) of `cash_flows` where values are discounted according to `disc`
         """
 
-        if not disc:
+        if not disc_rates:
             return cash_flows
 
         if not isinstance(cash_flows.index, pd.DatetimeIndex):
@@ -198,7 +198,7 @@ class RiskTrajectory(ABC):
 
         # Merge with the discount rates based on the year
         tmp = df.merge(
-            pd.DataFrame({"year": disc.years, "rate": disc.rates}),
+            pd.DataFrame({"year": disc_rates.years, "rate": disc_rates.rates}),
             on="year",
             how="left",
         )
