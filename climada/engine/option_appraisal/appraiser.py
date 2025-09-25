@@ -262,8 +262,8 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         end_date = self.end_date if end_date is None else end_date
         risk_contributions = self.risk_contributions_metrics()
         risk_contributions = risk_contributions.loc[
-            (risk_contributions["date"].dt.date >= start_date)
-            & (risk_contributions["date"].dt.date <= end_date)
+            (risk_contributions["date"] >= str(start_date))
+            & (risk_contributions["date"] <= str(end_date))
             & (risk_contributions["measure"] != "no_measure")
         ]
         risk_contributions = risk_contributions.set_index(
@@ -319,7 +319,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
             sharex=False,
             sharey=False,
         )
-        self.plot_time_waterfall(ax=axs[0])
+        self.plot_time_waterfall(ax=axs[0], start_date=start_date, end_date=end_date)
 
         for i, measure in enumerate(measures):
             ax = axs[i + 1]
@@ -329,7 +329,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
             averted = d.loc[:, "averted risk"].sum(axis=1)
             risk = d.loc[:, "risk"].sum(axis=1)
             ax.stackplot(
-                d.index,
+                d.index.to_timestamp(),
                 [risk, averted],
                 labels=["Residual risk", "Averted"],
                 colors=["purple", "pink"],
@@ -354,15 +354,17 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         measure_effect_date: datetime.date | None = None,
         measures: list[str] | None = None,
     ):
-        risk_reference_date = (
-            self.start_date if measure_effect_date is None else risk_reference_date
+        risk_reference_period = pd.Period(
+            self.start_date if measure_effect_date is None else risk_reference_date,
+            self.time_resolution,
         )
-        measure_effect_date = (
-            self.end_date if measure_effect_date is None else measure_effect_date
+        measure_effect_period = pd.Period(
+            self.end_date if measure_effect_date is None else measure_effect_date,
+            self.time_resolution,
         )
         risk_contribution = self.risk_contributions_metrics()
         risk_contribution = risk_contribution.set_index("date").loc[
-            [risk_reference_date, measure_effect_date]
+            [risk_reference_period, measure_effect_period]
         ]
         meas = (
             np.setdiff1d(risk_contribution.measure.unique(), ["no_measure"])
@@ -388,31 +390,31 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
             f"Total risk in {measure_effect_date}",
         ]
         reference_risk = risk_contribution.loc[
-            (str(risk_reference_date), meas[0], "base risk"), "reference risk"
+            (str(risk_reference_period), meas[0], "base risk"), "reference risk"
         ]
         base_risk_when_measure_effect = risk_contribution.loc[
-            (str(measure_effect_date), meas[0]), "reference risk"
+            (str(measure_effect_period), meas[0]), "reference risk"
         ].sum()
 
         for i, measure in enumerate(meas):
             exposure_contribution = risk_contribution.loc[
-                (str(measure_effect_date), measure, "exposure contribution"),
+                (str(measure_effect_period), measure, "exposure contribution"),
                 "reference risk",
             ]
             hazard_contribution = risk_contribution.loc[
-                (str(measure_effect_date), measure, "hazard contribution"),
+                (str(measure_effect_period), measure, "hazard contribution"),
                 "reference risk",
             ]
             vulnerability_contribution = risk_contribution.loc[
-                (str(measure_effect_date), measure, "vulnerability contribution"),
+                (str(measure_effect_period), measure, "vulnerability contribution"),
                 "reference risk",
             ]
             interaction_contribution = risk_contribution.loc[
-                (str(measure_effect_date), measure, "interaction contribution"),
+                (str(measure_effect_period), measure, "interaction contribution"),
                 "reference risk",
             ]
             averted_risk = risk_contribution.loc[
-                (str(measure_effect_date), measure), "averted risk"
+                (str(measure_effect_period), measure), "averted risk"
             ].sum()
             values = [
                 reference_risk,

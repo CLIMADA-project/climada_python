@@ -568,6 +568,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         risk_contributions = risk_contributions.loc[
             (risk_contributions["date"] >= str(start_date))
             & (risk_contributions["date"] <= str(end_date))
+            & (risk_contributions["measure"] == "no_measure")
         ]
         risk_contributions = risk_contributions.set_index(["date", "metric"])[
             "risk"
