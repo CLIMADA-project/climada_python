@@ -140,7 +140,7 @@ class Snapshot:
 
         LOGGER.debug(f"Applying measure {measure.name} on snapshot {id(self)}")
         snap = Snapshot(
-            *measure.apply(self.exposure, self.impfset, self.hazard), self.date
+            **measure.apply(self.exposure, self.impfset, self.hazard), date=self.date
         )
         snap._measure = measure
         return snap
