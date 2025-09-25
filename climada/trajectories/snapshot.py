@@ -67,6 +67,7 @@ class Snapshot:
 
     def __init__(
         self,
+        *,
         exposure: Exposures,
         hazard: Hazard,
         impfset: ImpactFuncSet,

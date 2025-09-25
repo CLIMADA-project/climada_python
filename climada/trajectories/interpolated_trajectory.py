@@ -246,6 +246,16 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 ]
                 + ["risk"]
             ]
+
+            if metric_name == "risk_contributions" and len(self._snapshots) > 2:
+                # If there is more than one Snapshot, we need to update the
+                # contributions from previous periods for continuity
+                # and to set the base risk from the first period
+                # This is not elegant, but we need the concatenated metrics from each period,
+                # so we can't do it in the calculators, and we need
+                # to do it before caching in the private attribute
+                tmp = self._risk_contributions_post_treatment(tmp)
+
             setattr(self, attr_name, tmp)
 
             if self._risk_disc_rates:
@@ -329,48 +339,55 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         """
 
-        tmp = self._compute_metrics(
+        return self._compute_metrics(
             metric_name="risk_contributions",
             metric_meth="calc_risk_contributions_metric",
             **kwargs,
         )
 
-        # If there is more than one Snapshot, we need to update the
-        # contributions from previous periods for continuity
-        # and to set the base risk from the first period
-        if len(self._snapshots) > 2:
-            tmp.set_index(["group", "date", "measure", "metric"], inplace=True)
-            start_dates = [snap.date for snap in self._snapshots[:-1]]
-            end_dates = [
-                snap.date - to_offset(self.time_resolution)
-                for snap in self._snapshots[1:]
+    def _risk_contributions_post_treatment(self, df) -> pd.DataFrame:
+        df.set_index(["group", "date", "measure", "metric"], inplace=True)
+        start_dates = [snap.date for snap in self._snapshots[:-1]]
+        end_dates = [
+            snap.date - to_offset(self.time_resolution) for snap in self._snapshots[1:]
+        ]
+        periods_dates = list(zip(start_dates, end_dates))
+        df.loc[pd.IndexSlice[:, :, :, "base risk"]] = df.loc[
+            pd.IndexSlice[
+                :,
+                pd.to_datetime(self.start_date).to_period(self.time_resolution),
+                :,
+                "base risk",
             ]
-            periods_dates = list(zip(start_dates, end_dates))
-            tmp.loc[pd.IndexSlice[:, :, :, "base risk"]] = tmp.loc[
-                pd.IndexSlice[:, str(self.start_date), :, "base risk"]
-            ].values
-            for p2 in periods_dates[1:]:
-                for metric in [
-                    "exposure contribution",
-                    "hazard contribution",
-                    "vulnerability contribution",
-                    "interaction contribution",
-                ]:
-                    mask_last_previous = (
-                        tmp.index.get_level_values(1).date == p2[0]
-                    ) & (tmp.index.get_level_values(3) == metric)
-                    mask_to_update = (
-                        (tmp.index.get_level_values(1).date > p2[0])
-                        & (tmp.index.get_level_values(1).date <= p2[1])
-                        & (tmp.index.get_level_values(3) == metric)
+        ].values
+        for p2 in periods_dates[1:]:
+            for metric in [
+                "exposure contribution",
+                "hazard contribution",
+                "vulnerability contribution",
+                "interaction contribution",
+            ]:
+                mask_last_previous = (
+                    df.index.get_level_values(1)
+                    == pd.to_datetime(p2[0]).to_period(self.time_resolution)
+                ) & (df.index.get_level_values(3) == metric)
+                mask_to_update = (
+                    (
+                        df.index.get_level_values(1)
+                        > pd.to_datetime(p2[0]).to_period(self.time_resolution)
                     )
+                    & (
+                        df.index.get_level_values(1)
+                        <= pd.to_datetime(p2[1]).to_period(self.time_resolution)
+                    )
+                    & (df.index.get_level_values(3) == metric)
+                )
 
-                    tmp.loc[mask_to_update, "risk"] += tmp.loc[
-                        mask_last_previous, "risk"
-                    ].iloc[0]
+                df.loc[mask_to_update, "risk"] += df.loc[
+                    mask_last_previous, "risk"
+                ].iloc[0]
 
-        tmp.reset_index(inplace=True)
-        return tmp.drop("index", axis=1, errors="ignore")
+        return df.reset_index()
 
     def per_date_risk_metrics(
         self,
