@@ -190,7 +190,7 @@ class RiskTrajectory(ABC):
         if not disc_rates:
             return cash_flows
 
-        if not isinstance(cash_flows.index, pd.DatetimeIndex):
+        if not isinstance(cash_flows.index, pd.PeriodIndex):
             raise ValueError("cash_flows must be a pandas Series with a datetime index")
 
         df = cash_flows.to_frame(name="cash_flow")
@@ -204,9 +204,8 @@ class RiskTrajectory(ABC):
         )
         tmp.index = df.index
         df = tmp.copy()
-        start = pd.Timestamp(start_date)
         df["discount_factor"] = (1 / (1 + df["rate"])) ** (
-            (df.index - start).days // 365
+            (df.index.year - start_date.year)
         )
 
         # Apply the discount factors to the cash flows
