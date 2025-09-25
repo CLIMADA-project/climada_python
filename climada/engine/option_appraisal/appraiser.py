@@ -22,7 +22,6 @@ import copy
 import datetime
 import logging
 import warnings
-from typing import Container, Iterable
 
 import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
@@ -41,7 +40,6 @@ from climada.trajectories.interpolation import InterpolationStrategy
 from climada.trajectories.riskperiod import CalcRiskMetricsPeriod
 from climada.trajectories.snapshot import Snapshot
 
-# from pandas.core.frame import ValueKeyFunc
 tqdm.pandas()
 
 LOGGER = logging.getLogger(__name__)
@@ -61,18 +59,18 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         measure_set: MeasureSet,
         time_resolution: str = "Y",
         all_groups_name: str = "All",
-        risk_disc: DiscRates | None = None,
-        cost_disc: DiscRates | None = None,
+        risk_disc_rates: DiscRates | None = None,
+        cost_disc_rates: DiscRates | None = None,
         interpolation_strategy: InterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        self._cost_disc = cost_disc
+        self._cost_disc_rates = cost_disc_rates
         self.measure_set = copy.deepcopy(measure_set)
         super().__init__(
             snapshots_list,
             time_resolution=time_resolution,
             all_groups_name=all_groups_name,
-            risk_disc=risk_disc,
+            risk_disc_rates=risk_disc_rates,
             interpolation_strategy=interpolation_strategy,
             impact_computation_strategy=impact_computation_strategy,
         )
@@ -94,7 +92,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         return adapt_calc
 
     @property
-    def cost_disc(self) -> DiscRates | None:
+    def cost_disc_rates(self) -> DiscRates | None:
         """The discount rate applied to compute net present values of costs.
         None means no discount rate.
 
@@ -103,15 +101,15 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
 
         Changing its value resets the metrics.
         """
-        return self._cost_disc
+        return self._cost_disc_rates
 
-    @cost_disc.setter
-    def cost_disc(self, value, /):
+    @cost_disc_rates.setter
+    def cost_disc_rates(self, value, /):
         if not isinstance(value, DiscRates):
             raise ValueError("Risk discount needs to be a `DiscRates` object.")
 
         self._reset_metrics()
-        self._cost_disc = value
+        self._cost_disc_rates = value
 
     def _generic_metrics(
         self,
@@ -242,7 +240,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
                 impl_date=self.start_date,
                 start_date=self.start_date,
                 end_date=self.end_date,
-                disc=self.cost_disc,
+                disc=self.cost_disc_rates,
             )
             if need_agg:
                 df = df.groupby(df["date"].dt.year, as_index=False).agg(
@@ -502,8 +500,8 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
         ),
         interval_freq: str = "AS-JAN",
         all_groups_name: str = "All",
-        risk_disc: DiscRates | None = None,
-        cost_disc: DiscRates | None = None,
+        risk_disc_rates: DiscRates | None = None,
+        cost_disc_rates: DiscRates | None = None,
         interpolation_strategy: InterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
@@ -523,8 +521,8 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
             measure_set=measure_set,
             time_resolution=interval_freq,
             all_groups_name=all_groups_name,
-            risk_disc=risk_disc,
-            cost_disc=cost_disc,
+            risk_disc_rates=risk_disc_rates,
+            cost_disc_rates=cost_disc_rates,
             interpolation_strategy=interpolation_strategy,
             impact_computation_strategy=impact_computation_strategy,
         )
@@ -611,7 +609,7 @@ class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
                 impl_date=start,
                 start_date=start,
                 end_date=end,
-                disc=self.cost_disc if npv else None,
+                disc=self.cost_disc_rates if npv else None,
             )
             if need_agg:
                 df = df.groupby(df["date"].dt.year, as_index=False).agg(
