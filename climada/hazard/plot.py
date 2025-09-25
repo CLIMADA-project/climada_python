@@ -175,15 +175,7 @@ class HazardPlot:
 
         raise ValueError("Provide one event id or one centroid id.")
 
-    def plot_fraction(
-        self,
-        event=None,
-        centr=None,
-        smooth=True,
-        axis=None,
-        mask_distance=0.03,
-        **kwargs,
-    ):
+    def plot_fraction(self, event=None, centr=None, smooth=True, axis=None, **kwargs):
         """Plot fraction values for a selected event or centroid.
 
         Parameters
