@@ -39,6 +39,17 @@ class Snapshot:
     """
     A snapshot of exposure, hazard, and impact function at a specific date.
 
+    Parameters
+    ----------
+    exposure : Exposures
+    hazard : Hazard
+    impfset : ImpactFuncSet
+    date : int | datetime.date | str
+        The date of the Snapshot, it can be an integer representing a year,
+        a datetime object or a string representation of a datetime object
+        with format YYYY-MM-DD.
+
+
     Attributes
     ----------
     date : datetime
@@ -62,28 +73,11 @@ class Snapshot:
         impfset: ImpactFuncSet,
         date: int | datetime.date | str,
     ) -> None:
-        """Initialise a new `Snapshot`
-
-        This deepcopies the provided exposure, hazard and impfset, and coerces
-        the given date to a datetime object.
-
-        Parameters
-        ----------
-        exposure : Exposures
-        hazard : Hazard
-        impfset : ImpactFuncSet
-        date : int | datetime.date | str
-            The date of the Snapshot, it can be an integer representing a year,
-            a datetime object or a string representation of a datetime object
-            with format YYYY-MM-DD.
-
-        """
-
         self._exposure = copy.deepcopy(exposure)
         self._hazard = copy.deepcopy(hazard)
         self._impfset = copy.deepcopy(impfset)
-        self.measure = None
-        self.date = self._convert_to_date(date)
+        self._measure = None
+        self._date = self._convert_to_date(date)
 
     @property
     def exposure(self) -> Exposures:
@@ -100,8 +94,19 @@ class Snapshot:
         """Impact function set data for the snapshot."""
         return self._impfset
 
+    @property
+    def measure(self) -> Measure | None:
+        """Impact function set data for the snapshot."""
+        return self._measure
+
+    @property
+    def date(self) -> datetime.date:
+        """Impact function set data for the snapshot."""
+        return self._date
+
     @staticmethod
     def _convert_to_date(date_arg) -> datetime.date:
+        """Convert date argument of type int or str to a datetime.date object."""
         if isinstance(date_arg, int):
             # Assume the integer represents a year
             return datetime.date(date_arg, 1, 1)
@@ -135,9 +140,8 @@ class Snapshot:
         """
 
         LOGGER.debug(f"Applying measure {measure.name} on snapshot {id(self)}")
-        exp_new, impfset_new, haz_new = measure.apply(
-            self.exposure, self.impfset, self.hazard
+        snap = Snapshot(
+            *measure.apply(self.exposure, self.impfset, self.hazard), self.date
         )
-        snap = Snapshot(exp_new, haz_new, impfset_new, self.date)
-        snap.measure = measure
+        snap._measure = measure
         return snap
