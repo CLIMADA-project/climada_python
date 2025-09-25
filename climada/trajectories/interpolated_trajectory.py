@@ -173,7 +173,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             next(b, None)
             return zip(a, b)
 
-        # impfset = self._merge_impfset(snapshots)
         return [
             CalcRiskMetricsPeriod(
                 start_snapshot,
@@ -210,11 +209,11 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             return getattr(self, attr_name)
 
         LOGGER.debug(f"Computing {attr_name}")
-        tmp = []
-        for calc_period in self._risk_metrics_calculators:
-            # Call the specified method on the calc_period object
-            with log_level(level="WARNING", name_prefix="climada"):
-                tmp.append(getattr(calc_period, metric_meth)(**kwargs))
+        with log_level(level="WARNING", name_prefix="climada"):
+            tmp = [
+                getattr(calc_period, metric_meth)(**kwargs)
+                for calc_period in self._risk_metrics_calculators
+            ]
 
         # Notably for per_group_aai being None:
         try:
@@ -337,7 +336,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
 
         # If there is more than one Snapshot, we need to update the
-        # contributions from previous periods for for continuity
+        # contributions from previous periods for continuity
         # and to set the base risk from the first period
         if len(self._snapshots) > 2:
             tmp.set_index(["group", "date", "measure", "metric"], inplace=True)

@@ -105,49 +105,34 @@ class StaticRiskTrajectory(RiskTrajectory):
         # Construct the attribute name for storing the metric results
         attr_name = f"_{metric_name}_metrics"
 
-        tmp = []
         with log_level(level="WARNING", name_prefix="climada"):
-            tmp.append(getattr(self._risk_metrics_calculators, metric_meth)(**kwargs))
+            tmp = getattr(self._risk_metrics_calculators, metric_meth)(**kwargs)
 
-        # Notably for per_group_aai being None:
-        try:
-            tmp = pd.concat(tmp)
-            if len(tmp) == 0:
-                return pd.DataFrame()
-        except ValueError as e:
-            if str(e) == "All objects passed were None":
-                return pd.DataFrame()
-            else:
-                raise e
+        tmp = tmp.set_index(["date", "group", "measure", "metric"])
+        if "coord_id" in tmp.columns:
+            tmp = tmp.set_index(["coord_id"], append=True)
 
-        else:
-            tmp = tmp.set_index(["date", "group", "measure", "metric"])
-            if "coord_id" in tmp.columns:
-                tmp = tmp.set_index(["coord_id"], append=True)
-
-            # When more than 2 snapshots, there are duplicated rows, we need to remove them.
-            tmp = tmp[~tmp.index.duplicated(keep="first")]
-            tmp = tmp.reset_index()
-            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
-            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
-            columns_to_front = ["group", "date", "measure", "metric"]
-            tmp = tmp[
-                columns_to_front
-                + [
-                    col
-                    for col in tmp.columns
-                    if col not in columns_to_front + ["group", "risk", "rp"]
-                ]
-                + ["risk"]
+        # When more than 2 snapshots, there are duplicated rows, we need to remove them.
+        tmp = tmp[~tmp.index.duplicated(keep="first")]
+        tmp = tmp.reset_index()
+        tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
+        tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+        columns_to_front = ["group", "date", "measure", "metric"]
+        tmp = tmp[
+            columns_to_front
+            + [
+                col
+                for col in tmp.columns
+                if col not in columns_to_front + ["group", "risk", "rp"]
             ]
-            setattr(self, attr_name, tmp)
+            + ["risk"]
+        ]
+        setattr(self, attr_name, tmp)
 
-            if self._risk_disc_rates:
-                return self.npv_transform(
-                    getattr(self, attr_name), self._risk_disc_rates
-                )
+        if self._risk_disc_rates:
+            return self.npv_transform(getattr(self, attr_name), self._risk_disc_rates)
 
-            return getattr(self, attr_name)
+        return getattr(self, attr_name)
 
     def eai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the estimated annual impacts at each exposure point for each date.
