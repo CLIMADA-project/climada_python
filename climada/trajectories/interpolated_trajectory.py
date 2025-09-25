@@ -40,7 +40,7 @@ from climada.trajectories.riskperiod import (
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
-from climada.trajectories.trajectory import RiskTrajectory
+from climada.trajectories.trajectory import DEFAULT_RP, RiskTrajectory
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
@@ -69,16 +69,18 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         self,
         snapshots_list: list[Snapshot],
         *,
+        return_periods: list[int] = DEFAULT_RP,
         time_resolution: str = "Y",
         all_groups_name: str = "All",
-        risk_disc: DiscRates | None = None,
+        risk_disc_rates: DiscRates | None = None,
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
         super().__init__(
             snapshots_list,
+            return_periods=return_periods,
             all_groups_name=all_groups_name,
-            risk_disc=risk_disc,
+            risk_disc_rates=risk_disc_rates,
         )
         self._risk_metrics_up_to_date: bool = False
         self.start_date = min([snapshot.date for snapshot in snapshots_list])
@@ -247,8 +249,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             ]
             setattr(self, attr_name, tmp)
 
-            if self._risk_disc:
-                return self.npv_transform(getattr(self, attr_name), self._risk_disc)
+            if self._risk_disc_rates:
+                return self.npv_transform(
+                    getattr(self, attr_name), self._risk_disc_rates
+                )
 
             return getattr(self, attr_name)
 

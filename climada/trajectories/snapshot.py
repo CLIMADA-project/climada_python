@@ -49,7 +49,6 @@ class Snapshot:
         a datetime object or a string representation of a datetime object
         with format YYYY-MM-DD.
 
-
     Attributes
     ----------
     date : datetime
