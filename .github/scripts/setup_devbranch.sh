@@ -10,14 +10,14 @@ git checkout develop
 git pull
 
 git checkout origin/main \
-    setup.py \
+    pyproject.toml \
     CHANGELOG.md \
     */_version.py
 
 release=`python .github/scripts/setup_devbranch.py`
 
 git add \
-    setup.py \
+    pyproject.toml \
     CHANGELOG.md \
     */_version.py
 
