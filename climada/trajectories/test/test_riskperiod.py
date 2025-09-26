@@ -41,7 +41,7 @@ from climada.hazard import Hazard
 # Import the CalcRiskPeriod class and other necessary classes/functions
 from climada.trajectories.riskperiod import (
     AllLinearStrategy,
-    CalcRiskPeriod,
+    CalcRiskMetricPeriod,
     ImpactCalcComputation,
     ImpactComputationStrategy,
     InterpolationStrategyBase,
@@ -112,10 +112,10 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         )
 
         # Create an instance of CalcRiskPeriod
-        self.calc_risk_period = CalcRiskPeriod(
+        self.calc_risk_period = CalcRiskMetricPeriod(
             self.mock_snapshot_start,
             self.mock_snapshot_end,
-            time_resolution="AS-JAN",
+            time_resolution="Y",
             interpolation_strategy=AllLinearStrategy(),
             impact_computation_strategy=ImpactCalcComputation(),
             # These will have to be tested when implemented
@@ -127,7 +127,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
     def test_init(self):
         self.assertEqual(self.calc_risk_period.snapshot_start, self.mock_snapshot_start)
         self.assertEqual(self.calc_risk_period.snapshot_end, self.mock_snapshot_end)
-        self.assertEqual(self.calc_risk_period.time_resolution, "AS-JAN")
+        self.assertEqual(self.calc_risk_period.time_resolution, "Y")
         self.assertEqual(
             self.calc_risk_period.time_points, self.future_date - self.present_date + 1
         )
@@ -145,7 +145,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period._group_id_E1,
             self.mock_snapshot_end.exposure.gdf["group_id"].values,
         )
-        self.assertIsInstance(self.calc_risk_period.date_idx, pd.DatetimeIndex)
+        self.assertIsInstance(self.calc_risk_period.date_idx, pd.PeriodIndex)
         self.assertEqual(
             len(self.calc_risk_period.date_idx),
             self.future_date - self.present_date + 1,
@@ -175,8 +175,8 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(len(self.calc_risk_period.date_idx), 10)
         pd.testing.assert_index_equal(
             self.calc_risk_period.date_idx,
-            pd.DatetimeIndex(
-                pd.DatetimeIndex(
+            pd.PeriodIndex(
+                pd.PeriodIndex(
                     [
                         "2020-01-01",
                         "2020-07-22",
@@ -203,8 +203,8 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
         self.assertEqual(self.calc_risk_period.time_resolution, "MS")
         pd.testing.assert_index_equal(
             self.calc_risk_period.date_idx,
-            pd.DatetimeIndex(
-                pd.DatetimeIndex(
+            pd.PeriodIndex(
+                pd.PeriodIndex(
                     [
                         "2020-01-01",
                         "2020-02-01",
@@ -300,7 +300,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
 
     # The computation are tested in the CalcImpactStrategy / InterpolationStrategyBase tests
     # Here we just make sure that the calling works
-    @patch.object(CalcRiskPeriod, "impact_computation_strategy")
+    @patch.object(CalcRiskMetricPeriod, "impact_computation_strategy")
     def test_impacts_arrays(self, mock_impact_compute):
         mock_impact_compute.compute_impacts.side_effect = [1, 2, 3, 4, 5, 6, 7, 8]
         self.assertEqual(self.calc_risk_period.E0H0V0, 1)
@@ -331,7 +331,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             ]
         )
 
-    @patch.object(CalcRiskPeriod, "interpolation_strategy")
+    @patch.object(CalcRiskMetricPeriod, "interpolation_strategy")
     def test_imp_mats_H0V0(self, mock_interpolate):
         mock_interpolate.interp_over_exposure_dim.return_value = 1
         result = self.calc_risk_period.imp_mats_H0V0
@@ -342,7 +342,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.time_points,
         )
 
-    @patch.object(CalcRiskPeriod, "interpolation_strategy")
+    @patch.object(CalcRiskMetricPeriod, "interpolation_strategy")
     def test_imp_mats_H1V0(self, mock_interpolate):
         mock_interpolate.interp_over_exposure_dim.return_value = 1
         result = self.calc_risk_period.imp_mats_H1V0
@@ -353,7 +353,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.time_points,
         )
 
-    @patch.object(CalcRiskPeriod, "interpolation_strategy")
+    @patch.object(CalcRiskMetricPeriod, "interpolation_strategy")
     def test_imp_mats_H0V1(self, mock_interpolate):
         mock_interpolate.interp_over_exposure_dim.return_value = 1
         result = self.calc_risk_period.imp_mats_H0V1
@@ -364,7 +364,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.time_points,
         )
 
-    @patch.object(CalcRiskPeriod, "interpolation_strategy")
+    @patch.object(CalcRiskMetricPeriod, "interpolation_strategy")
     def test_imp_mats_H1V1(self, mock_interpolate):
         mock_interpolate.interp_over_exposure_dim.return_value = 1
         result = self.calc_risk_period.imp_mats_H1V1
@@ -375,7 +375,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.time_points,
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_eais", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_eais", return_value=1)
     def test_per_date_eai_H0V0(self, mock_calc_per_date_eais):
         result = self.calc_risk_period.per_date_eai_H0V0
         self.assertEqual(result, 1)
@@ -384,7 +384,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.snapshot_start.hazard.frequency,
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_eais", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_eais", return_value=1)
     def test_per_date_eai_H1V0(self, mock_calc_per_date_eais):
         result = self.calc_risk_period.per_date_eai_H1V0
         self.assertEqual(result, 1)
@@ -393,7 +393,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.snapshot_end.hazard.frequency,
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_aais", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_aais", return_value=1)
     def test_per_date_aai_H0V0(self, mock_calc_per_date_aais):
         result = self.calc_risk_period.per_date_aai_H0V0
         self.assertEqual(result, 1)
@@ -401,7 +401,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.per_date_eai_H0V0
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_aais", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_aais", return_value=1)
     def test_per_date_aai_H1V0(self, mock_calc_per_date_aais):
         result = self.calc_risk_period.per_date_aai_H1V0
         self.assertEqual(result, 1)
@@ -409,7 +409,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.per_date_eai_H1V0
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_rps", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_rps", return_value=1)
     def test_per_date_return_periods_H0V0(self, mock_calc_per_date_rps):
         result = self.calc_risk_period.per_date_return_periods_H0V0([10, 50])
         self.assertEqual(result, 1)
@@ -419,7 +419,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             [10, 50],
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_rps", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_rps", return_value=1)
     def test_per_date_return_periods_H1V0(self, mock_calc_per_date_rps):
         result = self.calc_risk_period.per_date_return_periods_H1V0([10, 50])
         self.assertEqual(result, 1)
@@ -429,7 +429,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             [10, 50],
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_eais", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_eais", return_value=1)
     def test_per_date_eai_H0V1(self, mock_calc_per_date_eais):
         result = self.calc_risk_period.per_date_eai_H0V1
         self.assertEqual(result, 1)
@@ -438,7 +438,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.snapshot_start.hazard.frequency,
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_eais", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_eais", return_value=1)
     def test_per_date_eai_H1V1(self, mock_calc_per_date_eais):
         result = self.calc_risk_period.per_date_eai_H1V1
         self.assertEqual(result, 1)
@@ -447,7 +447,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.snapshot_end.hazard.frequency,
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_aais", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_aais", return_value=1)
     def test_per_date_aai_H0V1(self, mock_calc_per_date_aais):
         result = self.calc_risk_period.per_date_aai_H0V1
         self.assertEqual(result, 1)
@@ -455,7 +455,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.per_date_eai_H0V1
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_aais", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_aais", return_value=1)
     def test_per_date_aai_H1V1(self, mock_calc_per_date_aais):
         result = self.calc_risk_period.per_date_aai_H1V1
         self.assertEqual(result, 1)
@@ -463,7 +463,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             self.calc_risk_period.per_date_eai_H1V1
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_rps", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_rps", return_value=1)
     def test_per_date_return_periods_H0V1(self, mock_calc_per_date_rps):
         result = self.calc_risk_period.per_date_return_periods_H0V1([10, 50])
         self.assertEqual(result, 1)
@@ -473,7 +473,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             [10, 50],
         )
 
-    @patch.object(CalcRiskPeriod, "calc_per_date_rps", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_per_date_rps", return_value=1)
     def test_per_date_return_periods_H1V1(self, mock_calc_per_date_rps):
         result = self.calc_risk_period.per_date_return_periods_H1V1([10, 50])
         self.assertEqual(result, 1)
@@ -483,7 +483,7 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
             [10, 50],
         )
 
-    @patch.object(CalcRiskPeriod, "calc_eai_gdf", return_value=1)
+    @patch.object(CalcRiskMetricPeriod, "calc_eai_gdf", return_value=1)
     def test_eai_gdf(self, mock_calc_eai_gdf):
         result = self.calc_risk_period.eai_gdf
         mock_calc_eai_gdf.assert_called_once()
@@ -554,31 +554,31 @@ class TestCalcRiskPeriod_TopLevel(unittest.TestCase):
 class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
     def setUp(self):
         # Create mock objects for testing
-        self.calc_risk_period = MagicMock(spec=CalcRiskPeriod)
+        self.calc_risk_period = MagicMock(spec=CalcRiskMetricPeriod)
 
         # Little trick to bind the mocked object method to the real one
         self.calc_risk_period.calc_eai = types.MethodType(
-            CalcRiskPeriod.calc_eai, self.calc_risk_period
+            CalcRiskMetricPeriod.calc_eai, self.calc_risk_period
         )
 
         self.calc_risk_period.calc_eai_gdf = types.MethodType(
-            CalcRiskPeriod.calc_eai_gdf, self.calc_risk_period
+            CalcRiskMetricPeriod.calc_eai_gdf, self.calc_risk_period
         )
         self.calc_risk_period.calc_aai_metric = types.MethodType(
-            CalcRiskPeriod.calc_aai_metric, self.calc_risk_period
+            CalcRiskMetricPeriod.calc_aai_metric, self.calc_risk_period
         )
 
         self.calc_risk_period.calc_aai_per_group_metric = types.MethodType(
-            CalcRiskPeriod.calc_aai_per_group_metric, self.calc_risk_period
+            CalcRiskMetricPeriod.calc_aai_per_group_metric, self.calc_risk_period
         )
         self.calc_risk_period.calc_return_periods_metric = types.MethodType(
-            CalcRiskPeriod.calc_return_periods_metric, self.calc_risk_period
+            CalcRiskMetricPeriod.calc_return_periods_metric, self.calc_risk_period
         )
         self.calc_risk_period.calc_risk_components_metric = types.MethodType(
-            CalcRiskPeriod.calc_risk_components_metric, self.calc_risk_period
+            CalcRiskMetricPeriod.calc_risk_components_metric, self.calc_risk_period
         )
         self.calc_risk_period.apply_measure = types.MethodType(
-            CalcRiskPeriod.apply_measure, self.calc_risk_period
+            CalcRiskMetricPeriod.apply_measure, self.calc_risk_period
         )
 
         self.calc_risk_period.per_date_eai_H0V0 = np.array(
@@ -599,7 +599,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.calc_risk_period.per_date_aai_H0V1 = np.array([2, 3, 9])
         self.calc_risk_period.per_date_aai_H1V1 = np.array([4, 6, 24])
 
-        self.calc_risk_period.date_idx = pd.DatetimeIndex(
+        self.calc_risk_period.date_idx = pd.PeriodIndex(
             ["2020-01-01", "2025-01-01", "2030-01-01"], name="date"
         )
         self.calc_risk_period.snapshot_start.exposure.gdf = gpd.GeoDataFrame(
@@ -700,7 +700,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.calc_risk_period._groups_id = np.array([1, 2])
         self.calc_risk_period.eai_gdf = pd.DataFrame(
             {
-                "date": pd.DatetimeIndex(
+                "date": pd.PeriodIndex(
                     ["2020-01-01"] * 3 + ["2025-01-01"] * 3 + ["2030-01-01"] * 3,
                     name="date",
                 ),
@@ -839,7 +839,7 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
 
     @patch("climada.trajectories.riskperiod.CalcRiskPeriod")
     def test_apply_measure(self, mock_CalcRiskPeriod):
-        mock_CalcRiskPeriod.return_value = MagicMock(spec=CalcRiskPeriod)
+        mock_CalcRiskPeriod.return_value = MagicMock(spec=CalcRiskMetricPeriod)
         self.calc_risk_period.snapshot_start.apply_measure.return_value = 2
         self.calc_risk_period.snapshot_end.apply_measure.return_value = 3
         result = self.calc_risk_period.apply_measure(self.calc_risk_period.measure)

@@ -189,7 +189,7 @@ class Measure:
         new_impfs = self.impfset_map(new_impfs, year)
         # change hazard
         new_haz = self.haz_map(hazard, year)
-        return new_exp, new_impfs, new_haz
+        return {"exposure": new_exp, "impfset": new_impfs, "hazard": new_haz}
 
     def impact(self, exposures, impfset, hazard, year=None, **kwargs):
         from climada.engine import ImpactCalc
