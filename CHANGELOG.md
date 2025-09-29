@@ -32,6 +32,7 @@ Removed:
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
 
 ### Changed
+
 - Changed default distance threshold for nearest neighbor matching in `util.coordinates.match_coordinates` from a fixed value of 100km to twice the highest resolution of the coords_to_assign [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080).
 - Changed the default mask_distance in `util.plot.geo_im_from_array` to 0.03 to avoid white gaps in gridded hazard data with comparably low resolution (>80 centroids per axis) [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
 - Increased speed of `util.plot.add_shapes` by avoiding for loops, substantially speeding up `Hazard.plot_intensity` and other functions. [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
@@ -45,6 +46,7 @@ geographic coordinates as input (e.g. `util.coordinates.dist_to_coast`, `util.co
 - The online documentation has been completely overhauled, now uses PyData theme: [#977](https://github.com/CLIMADA-project/climada_python/pull/977)
 - Add `climada.hazard.xarray` module with helper structures for reading Hazard objects from `xarray` data [#1063](https://github.com/CLIMADA-project/climada_python/pull/1063)
 - The output of the `impact_yearset` was changed to only contain attributes corresponding to the yearly impact set. The application of the correction factor and the frequency of the resulting yearly impact object are corrected. [#1075](https://github.com/CLIMADA-project/climada_python/pull/1075)
+- `util.coordinates.get_resolution` always returns positive values, regardless of how the input coordinates' order [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080).
 
 ### Fixed
 

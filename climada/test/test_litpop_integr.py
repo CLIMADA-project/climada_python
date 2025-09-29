@@ -98,10 +98,10 @@ class TestLitPopExposures(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(ent.meta["crs"], "epsg:4326"))
         self.assertAlmostEqual(ent.meta["transform"][0], 0.08333333333333333)
         self.assertAlmostEqual(ent.meta["transform"][1], 0)
-        self.assertAlmostEqual(ent.meta["transform"][2], 5.9166666666666)
+        self.assertAlmostEqual(ent.meta["transform"][2], 5.91666666666666666)
         self.assertAlmostEqual(ent.meta["transform"][3], 0)
-        self.assertAlmostEqual(ent.meta["transform"][4], -0.08333333333333333)
-        self.assertAlmostEqual(ent.meta["transform"][5], 47.75)
+        self.assertAlmostEqual(ent.meta["transform"][4], 0.08333333333333333)
+        self.assertAlmostEqual(ent.meta["transform"][5], 45.8333333333333333)
 
     def test_switzerland30normPop_pass(self):
         """Create LitPop entity for Switzerland on 30 arcsec:"""
