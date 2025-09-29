@@ -12,12 +12,30 @@ Code freeze date: YYYY-MM-DD
 
 Added:
 
+- `bayesian-optimization` >=1.5,<2.0
+- `deprecation` >=2.1
 - `fiona` >=1.10
+- `peewee` >=3.17
+- `pyarrow` >=20.0
 
 Updated:
 
-- `geopandas` >=0.14,<1.0 → >=0.14
-- `pandas` >=2.1,<2.2 → >=2.1
+- `bayesian-optimization` =1.5 &rarr; nan
+- `bottleneck` >=1.4 &rarr; >=1.5
+- `dask` >=2025.2 &rarr; >=2025.5
+- `deprecation` =2.1 &rarr; nan
+- `eccodes` >=2.40 &rarr; >=2.41
+- `geopandas` >=0.14,<1.0 &rarr; >=0.14
+- `h5py` >=3.12 &rarr; >=3.13
+- `openpyxl` >=3.1 &rarr; >=3.0
+- `pandas` >=2.1,<2.2 &rarr; >=2.1
+- `peewee` =3.17 &rarr; nan
+- `pillow` =11.1 &rarr; =11.3
+- `rtree` >=1.3,<1.4 &rarr; >=1.3
+- `scikit-learn` >=1.6 &rarr; >=1.7
+- `scipy` >=1.14,<1.15 &rarr; >=1.14
+- `sparse` >=0.15 &rarr; >=0.17
+- `xarray` >=2025.1 &rarr; >=2025.6
 
 Removed:
 

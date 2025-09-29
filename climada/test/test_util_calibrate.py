@@ -161,12 +161,12 @@ class TestBayesianOptimizer(unittest.TestCase):
             ]
         )
         self.input = Input(
-            self.hazard,
-            self.exposure,
-            self.data,
-            self.impact_func_creator,
-            self.impact_to_dataframe,
-            mean_squared_error,
+            hazard=self.hazard,
+            exposure=self.exposure,
+            data=self.data,
+            impact_func_creator=self.impact_func_creator,
+            impact_to_dataframe=self.impact_to_dataframe,
+            cost_func=lambda x, y, w: mean_squared_error(x, y, sample_weight=w),
         )
 
     def test_single(self):
