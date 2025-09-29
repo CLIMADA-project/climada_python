@@ -537,28 +537,28 @@ class CalcRiskMetricsPeriod:
 
     ### Impact Matrices arrays ####
 
-    @lazy_property
+    @property
     def imp_mats_H0V0(self) -> list:
         """List of `time_points` impact matrices with changing exposure, starting hazard and starting vulnerability."""
         return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H0V0.imp_mat, self.E1H0V0.imp_mat, self.time_points
         )
 
-    @lazy_property
+    @property
     def imp_mats_H1V0(self) -> list:
         """List of `time_points` impact matrices with changing exposure, future hazard and starting vulnerability."""
         return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H1V0.imp_mat, self.E1H1V0.imp_mat, self.time_points
         )
 
-    @lazy_property
+    @property
     def imp_mats_H0V1(self) -> list:
         """List of `time_points` impact matrices with changing exposure, starting hazard and future vulnerability."""
         return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H0V1.imp_mat, self.E1H0V1.imp_mat, self.time_points
         )
 
-    @lazy_property
+    @property
     def imp_mats_H1V1(self) -> list:
         """List of `time_points` impact matrices with changing exposure, future hazard and future vulnerability."""
         return self.interpolation_strategy.interp_over_exposure_dim(
@@ -569,28 +569,28 @@ class CalcRiskMetricsPeriod:
 
     ########## Base EAI ###########
 
-    @lazy_property
+    @property
     def per_date_eai_H0V0(self) -> np.ndarray:
         """Expected annual impacts for changing exposure, starting hazard and starting vulnerability."""
         return calc_per_date_eais(
             self.imp_mats_H0V0, self.snapshot_start.hazard.frequency
         )
 
-    @lazy_property
+    @property
     def per_date_eai_H1V0(self) -> np.ndarray:
         """Expected annual impacts for changing exposure, future hazard and starting vulnerability."""
         return calc_per_date_eais(
             self.imp_mats_H1V0, self.snapshot_end.hazard.frequency
         )
 
-    @lazy_property
+    @property
     def per_date_eai_H0V1(self) -> np.ndarray:
         """Expected annual impacts for changing exposure, starting hazard and future vulnerability."""
         return calc_per_date_eais(
             self.imp_mats_H0V1, self.snapshot_start.hazard.frequency
         )
 
-    @lazy_property
+    @property
     def per_date_eai_H1V1(self) -> np.ndarray:
         """Expected annual impacts for changing exposure, future hazard and future vulnerability."""
         return calc_per_date_eais(
@@ -601,22 +601,22 @@ class CalcRiskMetricsPeriod:
 
     ######### Specific AAIs ##########
 
-    @lazy_property
+    @property
     def per_date_aai_H0V0(self) -> np.ndarray:
         """Average annual impacts for changing exposure, starting hazard and starting vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H0V0)
 
-    @lazy_property
+    @property
     def per_date_aai_H1V0(self) -> np.ndarray:
         """Average annual impacts for changing exposure, future hazard and starting vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H1V0)
 
-    @lazy_property
+    @property
     def per_date_aai_H0V1(self) -> np.ndarray:
         """Average annual impacts for changing exposure, starting hazard and future vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H0V1)
 
-    @lazy_property
+    @property
     def per_date_aai_H1V1(self) -> np.ndarray:
         """Average annual impacts for changing exposure, future hazard and future vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H1V1)
