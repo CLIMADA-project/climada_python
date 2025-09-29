@@ -37,15 +37,173 @@ from climada.entity.measures.measure_set import MeasureSet
 from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
 from climada.trajectories.interpolated_trajectory import InterpolatedRiskTrajectory
 from climada.trajectories.interpolation import InterpolationStrategy
-from climada.trajectories.riskperiod import CalcRiskMetricsPeriod
+from climada.trajectories.riskperiod import CalcRiskMetricsPeriod, CalcRiskMetricsPoints
 from climada.trajectories.snapshot import Snapshot
+from climada.trajectories.static_trajectory import StaticRiskTrajectory
+from climada.trajectories.trajectory import DEFAULT_RP
+from climada.util import log_level
 
 tqdm.pandas()
 
 LOGGER = logging.getLogger(__name__)
 
 
-class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
+class StaticAppraiser(StaticRiskTrajectory):
+    def __init__(
+        self,
+        snapshots_list: list[Snapshot],
+        *,
+        measure_set: MeasureSet,
+        return_periods: list[int] = DEFAULT_RP,
+        all_groups_name: str = "All",
+        risk_disc_rates: DiscRates | None = None,
+        cost_disc_rates: DiscRates | None = None,
+        impact_computation_strategy: ImpactComputationStrategy | None = None,
+    ):
+        self._cost_disc_rates = cost_disc_rates
+        self.measure_set = copy.deepcopy(measure_set)
+        super().__init__(
+            snapshots_list,
+            return_periods=return_periods,
+            all_groups_name=all_groups_name,
+            risk_disc_rates=risk_disc_rates,
+            impact_computation_strategy=impact_computation_strategy,
+        )
+        self._risk_metrics_calculators = self._add_adaptation_metrics_calculators(
+            self._risk_metrics_calculators, measure_set
+        )
+
+    @staticmethod
+    def _add_adaptation_metrics_calculators(
+        risk_metrics_calculators, measure_set: MeasureSet
+    ) -> list[CalcRiskMetricsPoints]:
+        calculators = [risk_metrics_calculators] + [
+            risk_metrics_calculators.apply_measure(meas)
+            for _, meas in measure_set.measures().items()
+        ]
+        return calculators
+
+    @property
+    def cost_disc_rates(self) -> DiscRates | None:
+        """The discount rate applied to compute net present values of costs.
+        None means no discount rate.
+
+        Notes
+        -----
+
+        Changing its value resets the metrics.
+        """
+        return self._cost_disc_rates
+
+    @cost_disc_rates.setter
+    def cost_disc_rates(self, value, /):
+        if not isinstance(value, DiscRates):
+            raise ValueError("Risk discount needs to be a `DiscRates` object.")
+
+        self._reset_metrics()
+        self._cost_disc_rates = value
+
+    def _generic_metrics(
+        self,
+        metric_name: str | None = None,
+        metric_meth: str | None = None,
+        measures: list[str] | None = None,
+        **kwargs,
+    ) -> pd.DataFrame:
+        """Generic method to compute metrics based on the provided metric name and method."""
+        if metric_name is None or metric_meth is None:
+            raise ValueError("Both metric_name and metric_meth must be provided.")
+
+        if metric_name not in self.POSSIBLE_METRICS:
+            raise NotImplementedError(
+                f"{metric_name} not implemented ({self.POSSIBLE_METRICS})."
+            )
+
+        # Construct the attribute name for storing the metric results
+        attr_name = f"_{metric_name}_metrics"
+
+        LOGGER.debug(f"Computing {attr_name}")
+        with log_level(level="WARNING", name_prefix="climada"):
+            tmp = [
+                getattr(calc_period, metric_meth)(**kwargs)
+                for calc_period in self._risk_metrics_calculators
+            ]
+
+        # Notably for per_group_aai being None:
+        try:
+            tmp = pd.concat(tmp)
+            if len(tmp) == 0:
+                return pd.DataFrame()
+        except ValueError as e:
+            if str(e) == "All objects passed were None":
+                return pd.DataFrame()
+            else:
+                raise e
+
+        else:
+            tmp = tmp.set_index(["date", "group", "measure", "metric"])
+            if "coord_id" in tmp.columns:
+                tmp = tmp.set_index(["coord_id"], append=True)
+
+            # When more than 2 snapshots, there are duplicated rows, we need to remove them.
+            tmp = tmp[~tmp.index.duplicated(keep="first")]
+            tmp = tmp.reset_index()
+            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
+            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+            columns_to_front = ["group", "date", "measure", "metric"]
+            tmp = tmp[
+                columns_to_front
+                + [
+                    col
+                    for col in tmp.columns
+                    if col not in columns_to_front + ["group", "risk", "rp"]
+                ]
+                + ["risk"]
+            ]
+
+            if self._risk_disc_rates:
+                tmp = self.npv_transform(
+                    getattr(self, attr_name), self._risk_disc_rates
+                )
+
+            LOGGER.debug(f"Computing averted risk for: {metric_name}.")
+            tmp = self._calc_averted(tmp)
+            # LOGGER.debug(f"Computing cash flow for: {metric_name}.")
+            # cash_flow_metrics = self.annual_cash_flows()
+            # LOGGER.debug(f"Merging with base metric: {metric_name}.")
+            # tmp = tmp.merge(
+            #     cash_flow_metrics[["date", "measure", "measure net cost"]],
+            #     on=["measure", "date"],
+            # )
+            # LOGGER.debug(f"Merging with no measure: {metric_name}.")
+            if measures is not None:
+                tmp = tmp.loc[tmp["measure"].isin(measures)].reset_index()
+
+            return tmp
+
+    @staticmethod
+    def _calc_averted(base_metrics: pd.DataFrame) -> pd.DataFrame:
+        def subtract_no_measure(group, no_measure, merger):
+            # Merge with no_measure to get the corresponding "no_measure" value
+            merged = group.merge(no_measure, on=merger, suffixes=("", "_no_measure"))
+            # Subtract the "no_measure" risk from the current risk
+            merged["reference risk"] = merged["risk_no_measure"]
+            merged["averted risk"] = merged["risk_no_measure"] - merged["risk"]
+            return merged[list(group.columns) + ["reference risk", "averted risk"]]
+
+        no_measures_metrics = base_metrics[
+            base_metrics["measure"] == "no_measure"
+        ].copy()
+        merger = ["group", "metric", "date"]
+        if "coord_id" in base_metrics.columns:
+            merger.append("coord_id")
+
+        return base_metrics.groupby(
+            ["group", "metric", "date"], group_keys=False, dropna=False, observed=False
+        ).apply(subtract_no_measure, no_measure=no_measures_metrics, merger=merger)
+
+
+class InterpolatedAppraiser(InterpolatedRiskTrajectory):
     _risk_vars = [
         "reference risk",
         "averted risk",
@@ -57,6 +215,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         snapshots_list: list[Snapshot],
         *,
         measure_set: MeasureSet,
+        return_periods: list[int] = DEFAULT_RP,
         time_resolution: str = "Y",
         all_groups_name: str = "All",
         risk_disc_rates: DiscRates | None = None,
@@ -69,6 +228,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         super().__init__(
             snapshots_list,
             time_resolution=time_resolution,
+            return_periods=return_periods,
             all_groups_name=all_groups_name,
             risk_disc_rates=risk_disc_rates,
             interpolation_strategy=interpolation_strategy,
@@ -491,7 +651,7 @@ class AdaptationTrajectoryAppraiser(InterpolatedRiskTrajectory):
         return axs
 
 
-class PlannedAdaptationAppraiser(AdaptationTrajectoryAppraiser):
+class PlannedAdaptationAppraiser(InterpolatedAppraiser):
     def __init__(
         self,
         snapshots_list: list[Snapshot],

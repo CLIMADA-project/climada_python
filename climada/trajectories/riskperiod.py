@@ -233,7 +233,7 @@ class CalcRiskMetricsPoints:
             The risk period with given measure applied.
 
         """
-        snapshots = [snap.apply(measure) for snap in self.snapshots]
+        snapshots = [snap.apply_measure(measure) for snap in self.snapshots]
         risk_period = CalcRiskMetricsPoints(
             snapshots,
             self.impact_computation_strategy,
