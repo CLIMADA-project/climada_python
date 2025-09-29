@@ -47,9 +47,9 @@ class Input:
         Hazard object to compute impacts from
     exposure : climada.Exposures
         Exposures object to compute impacts from
-    data : pandas.Dataframe
+    data : pandas.DataFrame
         The data to compare computed impacts to. Index: Event IDs matching the IDs of
-        ``hazard``. Columns: Arbitrary columns. NaN values in the data frame have
+        :py:attr:`hazard`. Columns: Arbitrary columns. NaN values in the data frame have
         special meaning: Corresponding impact values computed by the model are ignored
         in the calibration.
     impact_func_creator : Callable
@@ -64,8 +64,11 @@ class Input:
     cost_func : Callable
         Function that takes two ``pandas.Dataframe`` objects and returns the scalar
         "cost" between them. The optimization algorithm will try to minimize this
-        number. The first argument is the true/correct values (:py:attr:`data`), and the
-        second argument is the estimated/predicted values.
+        number. The first argument is the true/correct values (:py:attr:`data`), the
+        second argument is the estimated/predicted values, and the third argument is the
+        :py:attr:`data_weights`. The cost function is intended to operate on
+        ``numpy.ndarray`` objects.
+        Dataframes are transformed using :py:attr:`df_to_numpy`.
     bounds : Mapping (str, {Bounds, tuple(float, float)}), optional
         The bounds for the parameters. Keys: parameter names. Values:
         ``scipy.minimize.Bounds`` instance or tuple of minimum and maximum value.
@@ -85,6 +88,16 @@ class Input:
         :py:attr:`data`, insert this value. Defaults to NaN, in which case the impact
         from the model is ignored. Set this to zero to explicitly calibrate to zero
         impacts in these cases.
+    df_to_numpy : Callable, optional
+        A function that transforms a pandas.DataFrame into a numpy.ndarray to be
+        inserted into the :py:attr:`cost_func`. By default, this will flatten the data
+        frame.
+    data_weights : pandas.DataFrame, optional
+        Weights for each entry in :py:attr:`data`. Must have the exact same index and
+        columns. If ``None``, the weights will be ignored (equivalent to the same weight
+        for each event).
+    missing_weights_value : float, optional
+        Same as :py:attr:`missing_data_value`, but for :py:attr:`data_weights`.
     assign_centroids : bool, optional
         If ``True`` (default), assign the hazard centroids to the exposure when this
         object is created.
@@ -95,14 +108,19 @@ class Input:
     data: pd.DataFrame
     impact_func_creator: Callable[..., ImpactFuncSet]
     impact_to_dataframe: Callable[[Impact], pd.DataFrame]
-    cost_func: Callable[[pd.DataFrame, pd.DataFrame], Number]
+    cost_func: Callable[[np.ndarray, np.ndarray, np.ndarray | None], Number]
     bounds: Optional[Mapping[str, Union[Bounds, Tuple[Number, Number]]]] = None
     constraints: Optional[Union[ConstraintType, list[ConstraintType]]] = None
     impact_calc_kwds: Mapping[str, Any] = field(
         default_factory=lambda: {"assign_centroids": False}
     )
     missing_data_value: float = np.nan
-    assign_centroids: InitVar[bool] = True
+    df_to_numpy: Callable[[pd.DataFrame], np.ndarray] = (
+        lambda df: df.to_numpy().flatten()
+    )
+    data_weights: pd.DataFrame | None = field(default=None, kw_only=True)
+    missing_weights_value: float = field(default=0.0, kw_only=True)
+    assign_centroids: InitVar[bool] = field(default=True, kw_only=True)
 
     def __post_init__(self, assign_centroids):
         """Prepare input data"""
@@ -114,6 +132,17 @@ class Input:
                     "correctly indicate locations and indexes events."
                 )
             raise TypeError("'data' must be a pandas.DataFrame")
+
+        if self.data_weights is not None:
+            try:
+                pd.testing.assert_index_equal(self.data.index, self.data_weights.index)
+                pd.testing.assert_index_equal(
+                    self.data.columns, self.data_weights.columns
+                )
+            except AssertionError as err:
+                raise ValueError(
+                    "'data_weights' must have exact same index and columns as 'data'"
+                ) from err
 
         if assign_centroids:
             self.exposure.assign_centroids(self.hazard)
@@ -413,7 +442,9 @@ class Optimizer(ABC):
 
     input: Input
 
-    def _target_func(self, data: pd.DataFrame, predicted: pd.DataFrame) -> Number:
+    def _target_func(
+        self, data: np.ndarray, predicted: np.ndarray, weights: np.ndarray | None
+    ) -> Number:
         """Target function for the optimizer
 
         The default version of this function simply returns the value of the cost
@@ -421,18 +452,20 @@ class Optimizer(ABC):
 
         Parameters
         ----------
-        data : pandas.DataFrame
+        data : nd.ndarray
             The reference data used for calibration. By default, this is
             :py:attr:`Input.data`.
-        predicted : pandas.DataFrame
+        predicted : nd.ndarray
             The impact predicted by the data calibration after it has been transformed
             into a dataframe by :py:attr:`Input.impact_to_dataframe`.
+        weights : nd.ndarray
+            The relative weight for each data/entry pair.
 
         Returns
         -------
         The value of the target function for the optimizer.
         """
-        return self.input.cost_func(data, predicted)
+        return self.input.cost_func(data, predicted, weights)
 
     def _kwargs_to_impact_func_creator(self, *_, **kwargs) -> Dict[str, Any]:
         """Define how the parameters to :py:meth:`_opt_func` must be transformed
@@ -484,11 +517,29 @@ class Optimizer(ABC):
             hazard=self.input.hazard,
         ).impact(**self.input.impact_calc_kwds)
 
-        # Transform to DataFrame, align, and compute target function
+        # Transform to DataFrame and align
         data_aligned, impact_df_aligned = self.input.impact_to_aligned_df(
-            impact, fillna=0
+            impact, fillna=0.0
         )
-        return self._target_func(data_aligned, impact_df_aligned)
+
+        # Align weights
+        weights_aligned = None
+        if self.input.data_weights is not None:
+            weights_aligned, _ = self.input.data_weights.align(
+                data_aligned,
+                axis=None,
+                join="right",
+                copy=True,
+                fill_value=self.input.missing_weights_value,
+            )
+            weights_aligned = self.input.df_to_numpy(weights_aligned)
+
+        # Compute target function
+        return self._target_func(
+            self.input.df_to_numpy(data_aligned),
+            self.input.df_to_numpy(impact_df_aligned),
+            weights_aligned,
+        )
 
     @abstractmethod
     def run(self, **opt_kwargs) -> Output:
