@@ -228,7 +228,7 @@ class TestLitPopExposures(unittest.TestCase):
         self.assertEqual(ent.region_id[1], 438)
         self.assertEqual(ent.value_unit, "")
         self.assertAlmostEqual(ent.latitude.max(), 47.260416666666664)
-        self.assertAlmostEqual(ent.meta["transform"][4], -15 / 3600)
+        self.assertAlmostEqual(ent.meta["transform"][4], 15 / 3600)
 
     def test_Liechtenstein_30_pop_pass(self):
         """Create population count entity for Liechtenstein 2015:"""
