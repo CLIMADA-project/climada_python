@@ -12,12 +12,30 @@ Code freeze date: YYYY-MM-DD
 
 Added:
 
+- `bayesian-optimization` >=1.5,<2.0
+- `deprecation` >=2.1
 - `fiona` >=1.10
+- `peewee` >=3.17
+- `pyarrow` >=20.0
 
 Updated:
 
-- `geopandas` >=0.14,<1.0 → >=0.14
-- `pandas` >=2.1,<2.2 → >=2.1
+- `bayesian-optimization` =1.5 &rarr; nan
+- `bottleneck` >=1.4 &rarr; >=1.5
+- `dask` >=2025.2 &rarr; >=2025.5
+- `deprecation` =2.1 &rarr; nan
+- `eccodes` >=2.40 &rarr; >=2.41
+- `geopandas` >=0.14,<1.0 &rarr; >=0.14
+- `h5py` >=3.12 &rarr; >=3.13
+- `openpyxl` >=3.1 &rarr; >=3.0
+- `pandas` >=2.1,<2.2 &rarr; >=2.1
+- `peewee` =3.17 &rarr; nan
+- `pillow` =11.1 &rarr; =11.3
+- `rtree` >=1.3,<1.4 &rarr; >=1.3
+- `scikit-learn` >=1.6 &rarr; >=1.7
+- `scipy` >=1.14,<1.15 &rarr; >=1.14
+- `sparse` >=0.15 &rarr; >=0.17
+- `xarray` >=2025.1 &rarr; >=2025.6
 
 Removed:
 
@@ -30,8 +48,11 @@ Removed:
 - Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
 - Added util methods to handle crs coordinates consistently: `is_geo_coords`, `check_if_geo_coords`, `get_crs_unit`, `estimate_matching_threshold`, `degree_to_km`, and `km_to_degree` [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080)
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
+- Calibration of impact function ensembles in `climada.util.calibrate` [#1048](https://github.com/CLIMADA-project/climada_python/pull/1048)
+- Added optional `attrs` parameter to `Exposures.from_raster` method to set additional object properties through the method's `Exposures.__init__` call.
 
 ### Changed
+
 - Changed default distance threshold for nearest neighbor matching in `util.coordinates.match_coordinates` from a fixed value of 100km to twice the highest resolution of the coords_to_assign [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080).
 - Changed the default mask_distance in `util.plot.geo_im_from_array` to 0.03 to avoid white gaps in gridded hazard data with comparably low resolution (>80 centroids per axis) [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
 - Increased speed of `util.plot.add_shapes` by avoiding for loops, substantially speeding up `Hazard.plot_intensity` and other functions. [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
@@ -43,8 +64,10 @@ geographic coordinates as input (e.g. `util.coordinates.dist_to_coast`, `util.co
 - World Bank indicator data is now downloaded directly from their API via the function `download_world_bank_indicator`, instead of relying on the `pandas-datareader` package [#1033](https://github.com/CLIMADA-project/climada_python/pull/1033)
 - `Exposures.write_hdf5` pickles geometry data in WKB format, which is faster and more sustainable. [#1051](https://github.com/CLIMADA-project/climada_python/pull/1051)
 - The online documentation has been completely overhauled, now uses PyData theme: [#977](https://github.com/CLIMADA-project/climada_python/pull/977)
+- `Input` to impact function calibration tasks now supports adding weights to the data [#1048](https://github.com/CLIMADA-project/climada_python/pull/1048)
 - Add `climada.hazard.xarray` module with helper structures for reading Hazard objects from `xarray` data [#1063](https://github.com/CLIMADA-project/climada_python/pull/1063)
 - The output of the `impact_yearset` was changed to only contain attributes corresponding to the yearly impact set. The application of the correction factor and the frequency of the resulting yearly impact object are corrected. [#1075](https://github.com/CLIMADA-project/climada_python/pull/1075)
+- `util.coordinates.get_resolution` always returns positive values, regardless of how the input coordinates' order [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080).
 
 ### Fixed
 

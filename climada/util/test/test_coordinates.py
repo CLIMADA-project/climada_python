@@ -1913,6 +1913,9 @@ class TestRasterMeta(unittest.TestCase):
         res_lat, res_lon = u_coord.get_resolution(lat, lon)
         self.assertAlmostEqual(res_lat, 0.0833333333333)
         self.assertAlmostEqual(res_lon, 0.0833333333333)
+        res_lat, res_lon = u_coord.get_resolution(lat[::-1], lon[::-1])
+        self.assertAlmostEqual(res_lat, 0.0833333333333)
+        self.assertAlmostEqual(res_lon, 0.0833333333333)
 
     def test_get_resolution_large_pass(self):
         """Test _get_resolution method"""
