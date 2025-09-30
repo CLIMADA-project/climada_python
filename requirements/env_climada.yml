@@ -10,11 +10,11 @@ dependencies:
   - contextily>=1.6
   - dask>=2025.9
   - deprecation>=2.1
-  - eccodes>=2.42
+  - eccodes>=2.41
   - fiona>=1.10
   - gdal>=3.10
   - geopandas>=1.1
-  - h5py>=3.14
+  - h5py>=3.13
   - haversine>=2.9
   - matplotlib-base>=3.10
   - netcdf4>=1.7
@@ -25,7 +25,7 @@ dependencies:
   - pandas>=2.3
   - pathos>=0.3
   - peewee>=3.18
-  - pint>=0.25
+  - pint>=0.24
   - pip
   - pyarrow>=21.0
   - pycountry>=24.6
@@ -37,13 +37,13 @@ dependencies:
   - rtree>=1.4
   - salib>=1.5
   - scikit-learn>=1.7
-  - scipy>=1.16
+  - scipy>=1.15
   - seaborn>=0.13
   - sparse>=0.17
   - statsmodels>=0.14
   - tabulate>=0.9
   - tqdm>=4.67
   - unittest-xml-reporting>=3.2
-  - xarray>=2025.9
+  - xarray>=2025.6
   - xlrd>=2.0
   - xlsxwriter>=3.2

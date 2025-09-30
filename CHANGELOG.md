@@ -24,7 +24,6 @@ Updated:
 - `bottleneck` >=1.4 &rarr; >=1.5
 - `dask` >=2025.2 &rarr; >=2025.5
 - `deprecation` =2.1 &rarr; nan
-- `eccodes` >=2.40 &rarr; >=2.41
 - `geopandas` >=0.14,<1.0 &rarr; >=0.14
 - `h5py` >=3.12 &rarr; >=3.13
 - `openpyxl` >=3.1 &rarr; >=3.0
@@ -33,7 +32,7 @@ Updated:
 - `pillow` =11.1 &rarr; =11.3
 - `rtree` >=1.3,<1.4 &rarr; >=1.3
 - `scikit-learn` >=1.6 &rarr; >=1.7
-- `scipy` >=1.14,<1.15 &rarr; >=1.14
+- `scipy` >=1.14,<1.15 &rarr; >=1.15
 - `sparse` >=0.15 &rarr; >=0.17
 - `xarray` >=2025.1 &rarr; >=2025.6
 
