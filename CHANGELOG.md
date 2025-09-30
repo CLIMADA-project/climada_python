@@ -10,6 +10,22 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 6.1.0
+
+Release date: 2025-09-30
+
+### Dependency Changes
+
 Added:
 
 - `bayesian-optimization` >=1.5,<2.0
