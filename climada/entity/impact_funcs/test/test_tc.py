@@ -115,7 +115,7 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertEqual(impfs.size(), 10)
         self.assertEqual(impfs.get_ids()["TC"], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         self.assertEqual(impf_wp4.intensity_unit, "m/s")
-        self.assertEqual(impf_wp4.name, "North West Pacific (WP4)")
+        self.assertEqual(impf_wp4.name, "North West Pacific")
         self.assertAlmostEqual(v_halfs["WP2"], 188.4, places=7)
         self.assertAlmostEqual(v_halfs["ROW"], 110.1, places=7)
         self.assertListEqual(list(impf_wp4.intensity), list(np.arange(0, 121, 5)))
@@ -135,7 +135,7 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertEqual(impfs.size(), 10)
         self.assertEqual(impfs.get_ids()["TC"], [1, 2, 3, 4, 5, 6, 7, 8, 9, 10])
         self.assertEqual(impf_na1.intensity_unit, "m/s")
-        self.assertEqual(impf_na1.name, "Caribbean and Mexico (NA1)")
+        self.assertEqual(impf_na1.name, "Caribbean and Mexico")
         self.assertAlmostEqual(v_halfs["NA1"], 59.6, places=7)
         self.assertAlmostEqual(v_halfs["ROW"], 73.4, places=7)
         self.assertListEqual(list(impf_na1.intensity), list(np.arange(0, 121, 5)))
@@ -153,7 +153,7 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertEqual(impfs.size(), 10)
         self.assertEqual(impfs_p10.size(), 10)
         self.assertEqual(impf_si.intensity_unit, "m/s")
-        self.assertEqual(impf_si_p10.name, "South Indian (SI)")
+        self.assertEqual(impf_si_p10.name, "South Indian")
         self.assertAlmostEqual(impf_si_p10.mdd.max(), 0.99999999880, places=5)
         self.assertAlmostEqual(impf_si.calc_mdr(30), 0.01620503041, places=5)
         intensity = np.random.randint(26, impf_si.intensity.max())
@@ -167,6 +167,35 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertEqual(out[1], 2)
         self.assertListEqual(out[2], [124, 840])
         self.assertListEqual(out[3], ["CAN", "USA"])
+
+    def test_get_imf_id_regions_per_countries(self):
+        """Test get_impf_id_regions_per_countries()"""
+        ifs = ImpfSetTropCyclone()
+        impf_id_reg_id_reg_name = ifs.get_impf_id_regions_per_countries(
+            countries=["CHE"]
+        )
+
+        # the first element of impf_id_reg_id_reg_name [0] is the impact function id,
+        # the second [1] is the region id, the third [2] is the region name.
+        self.assertEqual(impf_id_reg_id_reg_name[0][0], 10)
+        self.assertEqual(impf_id_reg_id_reg_name[1][0], "ROW")
+        self.assertEqual(impf_id_reg_id_reg_name[2][0], "Rest of The World")
+        impf_id_reg_id_reg_name = ifs.get_impf_id_regions_per_countries(countries=[756])
+        self.assertEqual(impf_id_reg_id_reg_name[0][0], 10)
+        self.assertEqual(impf_id_reg_id_reg_name[1][0], "ROW")
+        self.assertEqual(impf_id_reg_id_reg_name[2][0], "Rest of The World")
+
+        impf_id_reg_id_reg_name = ifs.get_impf_id_regions_per_countries(
+            countries=["CHE", 268]
+        )
+        # CHE
+        self.assertEqual(impf_id_reg_id_reg_name[0][0], 10)
+        self.assertEqual(impf_id_reg_id_reg_name[1][0], "ROW")
+        self.assertEqual(impf_id_reg_id_reg_name[2][0], "Rest of The World")
+        # GEO (georgia, 268)
+        self.assertEqual(impf_id_reg_id_reg_name[0][1], 3)
+        self.assertEqual(impf_id_reg_id_reg_name[1][1], "NI")
+        self.assertEqual(impf_id_reg_id_reg_name[2][1], "North Indian")
 
 
 # Execute Tests

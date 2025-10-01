@@ -17,7 +17,7 @@ pip install -e $PETALS_DIR
 cp $PETALS_DIR/climada.conf climada.conf
 python script/jenkins/set_config.py test_directory $PETALS_DIR/climada_petals
 
-PYTHONPATH=.:$PYTHONPATH pytest --junitxml=tests_xml/tests.xml $PETALS_DIR/climada_petals
+PYTHONPATH=.:$PYTHONPATH python -m pytest --junitxml=tests_xml/tests.xml $PETALS_DIR/climada_petals
 
 git checkout climada.conf
 

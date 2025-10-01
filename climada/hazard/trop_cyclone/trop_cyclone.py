@@ -88,10 +88,8 @@ class TropCyclone(Hazard):
         For each event, the full velocity vectors at each centroid and track position in a sparse
         matrix of shape (npositions, ncentroids * 2) that can be reshaped to a full ndarray of
         shape (npositions, ncentroids, 2).
-    """
 
-    intensity_thres = DEF_INTENSITY_THRES
-    """intensity threshold for storage in m/s"""
+    """
 
     vars_opt = Hazard.vars_opt.union({"category"})
     """Name of the variables that are not needed to compute the impact."""
@@ -141,19 +139,6 @@ class TropCyclone(Hazard):
         self.category = category if category is not None else np.array([], int)
         self.basin = basin if basin is not None else []
         self.windfields = windfields if windfields is not None else []
-
-    def set_from_tracks(self, *args, **kwargs):
-        """This function is deprecated, use TropCyclone.from_tracks instead."""
-        LOGGER.warning(
-            "The use of TropCyclone.set_from_tracks is deprecated."
-            "Use TropCyclone.from_tracks instead."
-        )
-        if "intensity_thres" not in kwargs:
-            # some users modify the threshold attribute before calling `set_from_tracks`
-            kwargs["intensity_thres"] = self.intensity_thres
-        if self.pool is not None and "pool" not in kwargs:
-            kwargs["pool"] = self.pool
-        self.__dict__ = TropCyclone.from_tracks(*args, **kwargs).__dict__
 
     @classmethod
     def from_tracks(
@@ -381,7 +366,6 @@ class TropCyclone(Hazard):
         LOGGER.debug("Concatenate events.")
         haz = cls.concat(tc_haz_list)
         haz.pool = pool
-        haz.intensity_thres = intensity_thres
         LOGGER.debug("Compute frequency.")
         haz.frequency_from_tracks(tracks.data)
         return haz
@@ -709,7 +693,6 @@ class TropCyclone(Hazard):
         )
 
         new_haz = cls(haz_type=HAZ_TYPE)
-        new_haz.intensity_thres = intensity_thres
         new_haz.intensity = intensity_sparse
         if store_windfields:
             new_haz.windfields = [windfields_sparse]

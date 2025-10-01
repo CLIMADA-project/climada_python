@@ -1079,9 +1079,7 @@ class CostBenefit:
         # compute impact for each measure
         for measure in meas_set.get_measure(hazard.haz_type):
             LOGGER.debug("%s impact of measure %s.", when, measure.name)
-            imp_tmp, risk_transf = measure.calc_impact(
-                exposures, imp_fun_set, hazard, assign_centroids=False
-            )
+            imp_tmp, risk_transf = measure.calc_impact(exposures, imp_fun_set, hazard)
             impact_meas[measure.name] = dict()
             impact_meas[measure.name]["cost"] = (
                 measure.cost,

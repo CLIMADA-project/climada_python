@@ -1,6 +1,6 @@
 # This workflow will re-initialize the develop branch after a release was published
 
-# the version number of setup.py and _version.py will be taken from main, but have a "-dev" appendix
+# the version number of pyproject.toml and _version.py will be taken from main, but have a "-dev" appendix
 # the CHANGELOG.md file will be updated and have a vanila "Unreleased" section
 
 name: Post-release develop setup

@@ -605,7 +605,7 @@ def _calc_sens_df(method, problem_sa, sensitivity_kwargs, param_labels, X, unc_d
         ).ravel()
         sens_second_order_dict[submetric_name] = sens_second_order
 
-    sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=np.number)
+    sens_first_order_df = pd.DataFrame(sens_first_order_dict, dtype=float)
 
     if not sens_first_order_df.empty:
         si_names_first_order, param_names_first_order = _si_param_first(

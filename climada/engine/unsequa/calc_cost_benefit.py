@@ -398,7 +398,7 @@ def _map_costben_calc(
             ent_future=ent_fut,
             save_imp=False,
             assign_centroids=False,
-            **cost_benefit_kwargs
+            **cost_benefit_kwargs,
         )
         # Extract from climada.impact the chosen metrics
         uncertainty_values.append(

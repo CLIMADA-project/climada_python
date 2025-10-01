@@ -3,7 +3,7 @@
 
 The following preparation steps are executed:
 
-- update version numbers in _version.py and setup.py
+- update version numbers in _version.py and pyproject.toml
 - purge the "Unreleased" section of CHANGELOG.md and rename it to the new version number
 
 All changes are immediately commited to the repository.
@@ -117,10 +117,10 @@ def update_version(nvn):
     return update_file(file_with_version, regex, nvn)
 
 
-def update_setup(new_version_number):
-    """Update the setup.py file"""
-    file_with_version = "setup.py"
-    regex = r"(^\s+version\s*=\s*[\'\"]).*([\'\"]\s*,\s*$)"
+def update_pyproject(new_version_number):
+    """Update the pyproject.toml file"""
+    file_with_version = "pyproject.toml"
+    regex = r"(^version\s*=\s*[\'\"]).*([\'\"]\s*$)"
     return update_file(file_with_version, regex, new_version_number)
 
 
@@ -211,7 +211,7 @@ def prepare_new_release(level):
             raise
     new_version_number = bump_version_number(last_version_number, level)
 
-    update_setup(new_version_number).gitadd()
+    update_pyproject(new_version_number).gitadd()
     update_version(new_version_number).gitadd()
     update_changelog(new_version_number).gitadd()
 

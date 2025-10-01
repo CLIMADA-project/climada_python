@@ -13,18 +13,20 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle impact_yearsets
 """
 
-import copy
 import logging
 
 import numpy as np
 from numpy.random import default_rng
 
 import climada.util.dates_times as u_dt
+from climada.engine import Impact
 
 LOGGER = logging.getLogger(__name__)
 
 
-def impact_yearset(imp, sampled_years, lam=None, correction_fac=True, seed=None):
+def impact_yearset(
+    imp, sampled_years, lam=None, correction_fac=True, with_replacement=False, seed=None
+):
     """Create a yearset of impacts (yimp) containing a probabilistic impact for each year
     in the sampled_years list by sampling events from the impact received as input with a
     Poisson distribution centered around lam per year (lam = sum(imp.frequency)).
@@ -38,18 +40,21 @@ def impact_yearset(imp, sampled_years, lam=None, correction_fac=True, seed=None)
             impact object containing impacts per event
         sampled_years : list
             A list of years that shall be covered by the resulting yimp.
+        lam: float, optional
+            The parameter (i.e., the mean) of the Poisson distribution to sample the number of
+            events per year. If no lambda value is given, the default lam = sum(imp.frequency)
+            is used. Default is None.
+        correction_fac : boolean, optional
+            If True, a correction factor is applied to the resulting yimp. It is
+            scaled in such a way that the expected annual impact (eai) of the yimp
+            equals the eai of the input impact. Defaults to True.
+        with_replacement : bool, optional
+            If True, impact events are sampled with replacement. If False, events are sampled
+            without replacement. Sampling without replacement can yield distorted samples if
+            frequencies of different events are unqual. Defaults to False.
         seed : Any, optional
             seed for the default bit generator
             default: None
-
-    Optional parameters
-        lam: int
-            The applied Poisson distribution is centered around lam events per year.
-            If no lambda value is given, the default lam = sum(imp.frequency) is used.
-        correction_fac : boolean
-            If True a correction factor is applied to the resulting yimp. It is
-            scaled in such a way that the expected annual impact (eai) of the yimp
-            equals the eai of the input impact
 
     Returns
     -------
@@ -68,27 +73,13 @@ def impact_yearset(imp, sampled_years, lam=None, correction_fac=True, seed=None)
     if not lam:
         lam = np.sum(imp.frequency)
     events_per_year = sample_from_poisson(n_sampled_years, lam, seed=seed)
-    sampling_vect = sample_events(events_per_year, imp.frequency, seed=seed)
+    sampling_vect = sample_events(
+        events_per_year, imp.frequency, with_replacement=with_replacement, seed=seed
+    )
 
     # compute impact per sampled_year
-    imp_per_year = compute_imp_per_year(imp, sampling_vect)
-
-    # copy imp object as basis for the yimp object
-    yimp = copy.deepcopy(imp)
-
-    # save imp_per_year in yimp
-    if correction_fac:  # adjust for sampling error
-        yimp.at_event = imp_per_year / calculate_correction_fac(imp_per_year, imp)
-    else:
-        yimp.at_event = imp_per_year
-
-    # save calculations in yimp
-    yimp.event_id = np.arange(1, n_sampled_years + 1)
-    yimp.date = u_dt.str_to_date([str(date) + "-01-01" for date in sampled_years])
-    yimp.frequency = (
-        np.ones(n_sampled_years)
-        * sum(len(row) for row in sampling_vect)
-        / n_sampled_years
+    yimp = impact_yearset_from_sampling_vect(
+        imp, sampled_years, sampling_vect, correction_fac=correction_fac
     )
 
     return yimp, sampling_vect
@@ -118,12 +109,10 @@ def impact_yearset_from_sampling_vect(
             i.e. [yimp, sampling_vect] = climada_yearsets.impact_yearset(...)
             and can then be provided in this function to obtain the exact same sampling
             (also for a different imp object)
-
-    Optional parameter
-        correction_fac : boolean
+        correction_fac : boolean, optional
             If True a correction factor is applied to the resulting yimp. It is
             scaled in such a way that the expected annual impact (eai) of the yimp
-            equals the eai of the input impact
+            equals the eai of the input impact. Defaults to True.
 
     Returns
     -------
@@ -134,22 +123,24 @@ def impact_yearset_from_sampling_vect(
 
     # compute impact per sampled_year
     imp_per_year = compute_imp_per_year(imp, sampling_vect)
-
-    # copy imp object as basis for the yimp object
-    yimp = copy.deepcopy(imp)
+    frequency = np.ones(len(sampled_years)) / len(sampled_years)
 
     if correction_fac:  # adjust for sampling error
-        imp_per_year = imp_per_year / calculate_correction_fac(imp_per_year, imp)
+        correction_factor = calculate_correction_fac(imp_per_year, imp)
+        imp_per_year = imp_per_year.astype(float) * correction_factor
+        LOGGER.info("The correction factor is %s.", correction_factor)
 
-    # save calculations in yimp
-    yimp.at_event = imp_per_year
-    n_sampled_years = len(sampled_years)
-    yimp.event_id = np.arange(1, n_sampled_years + 1)
-    yimp.date = u_dt.str_to_date([str(date) + "-01-01" for date in sampled_years])
-    yimp.frequency = (
-        np.ones(n_sampled_years)
-        * sum(len(row) for row in sampling_vect)
-        / n_sampled_years
+    # create yearly impact object
+    yimp = Impact(
+        at_event=imp_per_year,
+        date=u_dt.str_to_date([str(date) + "-01-01" for date in sampled_years]),
+        event_name=np.arange(1, len(sampled_years) + 1),
+        event_id=np.arange(1, len(sampled_years) + 1),
+        unit=imp.unit,
+        haz_type=imp.haz_type,
+        frequency=frequency,
+        frequency_unit="1/year",
+        aai_agg=np.sum(frequency * imp_per_year),
     )
 
     return yimp
@@ -163,7 +154,8 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
         n_sampled_years : int
             The target number of years the impact yearset shall contain.
         lam: float
-            the applied Poisson distribution is centered around lambda events per year
+            The parameter (i.e., the mean) of the Poisson distribution to sample the number of
+            events per year.
         seed : int, optional
             seed for numpy.random, will be set if not None
             default: None
@@ -178,7 +170,7 @@ def sample_from_poisson(n_sampled_years, lam, seed=None):
     return np.round(np.random.poisson(lam=lam, size=n_sampled_years)).astype("int")
 
 
-def sample_events(events_per_year, freqs_orig, seed=None):
+def sample_events(events_per_year, freqs_orig, with_replacement=False, seed=None):
     """Sample events uniformely from an array (indices_orig) without replacement
     (if sum(events_per_year) > n_input_events the input events are repeated
     (tot_n_events/n_input_events) times, by ensuring that the same events doens't
@@ -190,6 +182,10 @@ def sample_events(events_per_year, freqs_orig, seed=None):
             Number of events per sampled year
         freqs_orig : np.ndarray
             Frequency of each input event
+        with_replacement : bool, optional
+            If True, impact events are sampled with replacement. If False, events are sampled
+            without replacement. Sampling without replacement can yield distorted samples if
+            frequencies of different events are unqual. Defaults to False.
         seed : Any, optional
             seed for the default bit generator.
             Default: None
@@ -203,47 +199,72 @@ def sample_events(events_per_year, freqs_orig, seed=None):
     """
 
     sampling_vect = []
-
     indices_orig = np.arange(len(freqs_orig))
+    rng = default_rng(seed)
 
-    freqs = freqs_orig
-    indices = indices_orig
-
-    # sample events for each sampled year
-    for amount_events in events_per_year:
-        # if there are not enough input events, choice with no replace will fail
-        if amount_events > len(freqs_orig):
-            raise ValueError(
-                f"cannot sample {amount_events} distinct events for a single year"
-                f" when there are only {len(freqs_orig)} input events"
+    # sample without replacement, works well if event frequencies are equal
+    if with_replacement is False:
+        # warn if frequencies of different events are not equal
+        if np.unique(freqs_orig).size != 1:
+            LOGGER.warning(
+                "The frequencies of the different events are not equal. This can lead to "
+                "distorted sampling if the frequencies vary significantly. To avoid this, "
+                "please set `with_replacement=True` to sample with replacement instead."
             )
 
-        # add the original indices and frequencies to the pool if there are less events
-        # in the pool than needed to fill the year one is sampling for
-        # or if the pool is empty (not covered in case amount_events is 0)
-        if len(np.unique(indices)) < amount_events or len(indices) == 0:
-            indices = np.append(indices, indices_orig)
-            freqs = np.append(freqs, freqs_orig)
+        indices = indices_orig
+        freqs = freqs_orig
 
-        # ensure that each event only occurs once per sampled year
-        unique_events = np.unique(indices, return_index=True)[0]
-        probab_dis = freqs[np.unique(indices, return_index=True)[1]] / (
-            np.sum(freqs[np.unique(indices, return_index=True)[1]])
-        )
+        # sample events for each sampled year
+        for amount_events in events_per_year:
+            # if there are not enough input events, choice with no replace will fail
+            if amount_events > len(freqs_orig):
+                raise ValueError(
+                    f"cannot sample {amount_events} distinct events for a single year"
+                    f" when there are only {len(freqs_orig)} input events. Set "
+                    "with_replacement=True if you want to sample with replacmeent."
+                )
 
-        # sample events
-        rng = default_rng(seed)
+            # if not enough events remaining, append original events
+            if len(np.unique(indices)) < amount_events or len(indices) == 0:
+                indices = np.append(indices, indices_orig)
+                freqs = np.append(freqs, freqs_orig)
+
+            # ensure that each event only occurs once per sampled year
+            unique_events = np.unique(indices, return_index=True)[0]
+            probab_dis = freqs[np.unique(indices, return_index=True)[1]] / (
+                np.sum(freqs[np.unique(indices, return_index=True)[1]])
+            )
+
+            # sample events
+            selected_events = rng.choice(
+                unique_events, size=amount_events, replace=False, p=probab_dis
+            ).astype("int")
+
+            # determine used events to remove them from sampling pool
+            idx_to_remove = [
+                np.where(indices == event)[0][0] for event in selected_events
+            ]
+            indices = np.delete(indices, idx_to_remove)
+            freqs = np.delete(freqs, idx_to_remove)
+
+            # save sampled events in sampling vector
+            sampling_vect.append(selected_events)
+
+    else:
+        # easier method if we allow for replacement sample with replacement
+        probab_dis = freqs_orig / sum(freqs_orig)
+
+        # sample events for each sampled year
         selected_events = rng.choice(
-            unique_events, size=amount_events, replace=False, p=probab_dis
+            indices_orig, size=sum(events_per_year), replace=True, p=probab_dis
         ).astype("int")
 
-        # determine used events to remove them from sampling pool
-        idx_to_remove = [np.where(indices == event)[0][0] for event in selected_events]
-        indices = np.delete(indices, idx_to_remove)
-        freqs = np.delete(freqs, idx_to_remove)
-
-        # save sampled events in sampling vector
-        sampling_vect.append(selected_events)
+        # group to list of lists
+        index = 0
+        for amount_events in events_per_year:
+            sampling_vect.append(selected_events[index : index + amount_events])
+            index += amount_events
 
     return sampling_vect
 
@@ -291,10 +312,9 @@ def calculate_correction_fac(imp_per_year, imp):
             The correction factor is calculated as imp_eai/yimp_eai
     """
 
-    yimp_eai = np.sum(imp_per_year) / len(imp_per_year)
+    yimp_eai = np.mean(imp_per_year)
     imp_eai = np.sum(imp.frequency * imp.at_event)
     correction_factor = imp_eai / yimp_eai
-    LOGGER.info("The correction factor amounts to %s", (correction_factor - 1) * 100)
 
     # if correction_factor > 0.1:
     #     tex = raw_input("Do you want to exclude small events?")

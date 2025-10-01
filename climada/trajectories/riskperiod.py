@@ -233,7 +233,7 @@ class CalcRiskMetricsPoints:
             The risk period with given measure applied.
 
         """
-        snapshots = [snap.apply(measure) for snap in self.snapshots]
+        snapshots = [snap.apply_measure(measure) for snap in self.snapshots]
         risk_period = CalcRiskMetricsPoints(
             snapshots,
             self.impact_computation_strategy,
@@ -537,28 +537,28 @@ class CalcRiskMetricsPeriod:
 
     ### Impact Matrices arrays ####
 
-    @lazy_property
+    @property
     def imp_mats_H0V0(self) -> list:
         """List of `time_points` impact matrices with changing exposure, starting hazard and starting vulnerability."""
         return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H0V0.imp_mat, self.E1H0V0.imp_mat, self.time_points
         )
 
-    @lazy_property
+    @property
     def imp_mats_H1V0(self) -> list:
         """List of `time_points` impact matrices with changing exposure, future hazard and starting vulnerability."""
         return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H1V0.imp_mat, self.E1H1V0.imp_mat, self.time_points
         )
 
-    @lazy_property
+    @property
     def imp_mats_H0V1(self) -> list:
         """List of `time_points` impact matrices with changing exposure, starting hazard and future vulnerability."""
         return self.interpolation_strategy.interp_over_exposure_dim(
             self.E0H0V1.imp_mat, self.E1H0V1.imp_mat, self.time_points
         )
 
-    @lazy_property
+    @property
     def imp_mats_H1V1(self) -> list:
         """List of `time_points` impact matrices with changing exposure, future hazard and future vulnerability."""
         return self.interpolation_strategy.interp_over_exposure_dim(
@@ -569,28 +569,28 @@ class CalcRiskMetricsPeriod:
 
     ########## Base EAI ###########
 
-    @lazy_property
+    @property
     def per_date_eai_H0V0(self) -> np.ndarray:
         """Expected annual impacts for changing exposure, starting hazard and starting vulnerability."""
         return calc_per_date_eais(
             self.imp_mats_H0V0, self.snapshot_start.hazard.frequency
         )
 
-    @lazy_property
+    @property
     def per_date_eai_H1V0(self) -> np.ndarray:
         """Expected annual impacts for changing exposure, future hazard and starting vulnerability."""
         return calc_per_date_eais(
             self.imp_mats_H1V0, self.snapshot_end.hazard.frequency
         )
 
-    @lazy_property
+    @property
     def per_date_eai_H0V1(self) -> np.ndarray:
         """Expected annual impacts for changing exposure, starting hazard and future vulnerability."""
         return calc_per_date_eais(
             self.imp_mats_H0V1, self.snapshot_start.hazard.frequency
         )
 
-    @lazy_property
+    @property
     def per_date_eai_H1V1(self) -> np.ndarray:
         """Expected annual impacts for changing exposure, future hazard and future vulnerability."""
         return calc_per_date_eais(
@@ -601,22 +601,22 @@ class CalcRiskMetricsPeriod:
 
     ######### Specific AAIs ##########
 
-    @lazy_property
+    @property
     def per_date_aai_H0V0(self) -> np.ndarray:
         """Average annual impacts for changing exposure, starting hazard and starting vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H0V0)
 
-    @lazy_property
+    @property
     def per_date_aai_H1V0(self) -> np.ndarray:
         """Average annual impacts for changing exposure, future hazard and starting vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H1V0)
 
-    @lazy_property
+    @property
     def per_date_aai_H0V1(self) -> np.ndarray:
         """Average annual impacts for changing exposure, starting hazard and future vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H0V1)
 
-    @lazy_property
+    @property
     def per_date_aai_H1V1(self) -> np.ndarray:
         """Average annual impacts for changing exposure, future hazard and future vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H1V1)
@@ -710,10 +710,15 @@ class CalcRiskMetricsPeriod:
         df = df.reset_index().melt(
             id_vars="date", var_name="coord_id", value_name="risk"
         )
-        eai_gdf = self.snapshot_start.exposure.gdf[["group_id"]]
-        eai_gdf["coord_id"] = eai_gdf.index
-        eai_gdf = eai_gdf.merge(df, on="coord_id")
-        eai_gdf = eai_gdf.rename(columns={"group_id": "group"})
+        if "group_id" in self.snapshot_start.exposure.gdf:
+            eai_gdf = self.snapshot_start.exposure.gdf[["group_id"]]
+            eai_gdf["coord_id"] = eai_gdf.index
+            eai_gdf = eai_gdf.merge(df, on="coord_id")
+            eai_gdf = eai_gdf.rename(columns={"group_id": "group"})
+        else:
+            eai_gdf = df
+            eai_gdf["group"] = pd.NA
+
         eai_gdf["group"] = pd.Categorical(eai_gdf["group"], categories=self._groups_id)
         eai_gdf["metric"] = "eai"
         eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"

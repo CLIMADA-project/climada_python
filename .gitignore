@@ -183,3 +183,5 @@ results/
 !.pylintrc
 !.readthedocs.yml
 !.github
+climada_petals/
+climada_python/

@@ -556,8 +556,6 @@ class TestCentroidsReaderWriter(unittest.TestCase):
     def test_from_raster_file(self):
         """Test from_raster_file"""
         width, height = 50, 60
-        o_lat, o_lon = (10.42822096697894, -69.33714959699981)
-        res_lat, res_lon = (-0.009000000000000341, 0.009000000000000341)
 
         centr_ras = Centroids.from_raster_file(
             HAZ_DEMO_FL, window=Window(0, 0, width, height)
@@ -723,6 +721,51 @@ class TestCentroidsReaderWriter(unittest.TestCase):
         centroids_w.write_hdf5(tmpfile)
         centroids_r = Centroids.from_hdf5(tmpfile)
         self.assertTrue(centroids_w == centroids_r)
+        tmpfile.unlink()
+
+    def test_read_write_hdf5_with_additional_columns(self):
+        tmpfile = Path("test_write_hdf5.out.hdf5")
+        crs = CRS.from_user_input(ALT_CRS)
+        centroids_w = Centroids(
+            lat=VEC_LAT,
+            lon=VEC_LON,
+            crs=crs,
+            region_id=REGION_ID,
+            on_land=ON_LAND,
+        )
+        centroids_w.gdf = (
+            centroids_w.gdf.join(
+                gpd.GeoDataFrame(
+                    {"more_points": [shapely.Point(i, i) for i in range(8)]}
+                ).set_geometry("more_points")
+            )
+            .join(
+                gpd.GeoDataFrame(
+                    {
+                        "some_shapes": [
+                            shapely.Point((2, 2)),
+                            shapely.Point((3, 3)),
+                            shapely.Polygon([(0, 0), (1, 1), (1, 0), (0, 0)]),
+                            shapely.LineString([(0, 1), (1, 0)]),
+                        ]
+                        * 2
+                    }
+                ).set_geometry("some_shapes")
+            )
+            .join(
+                gpd.GeoDataFrame(
+                    {
+                        "more_shapes": [
+                            shapely.LineString([(0, 1), (1, 2)]),
+                        ]
+                        * 8
+                    }
+                ).set_geometry("more_shapes", crs=DEF_CRS)
+            )
+        )
+        centroids_w.write_hdf5(tmpfile)
+        centroids_r = Centroids.from_hdf5(tmpfile)
+        self.assertEqual(centroids_w, centroids_r)
         tmpfile.unlink()
 
     def test_from_hdf5_nonexistent_file(self):
@@ -901,41 +944,6 @@ class TestCentroidsMethods(unittest.TestCase):
             cent.on_land, np.concatenate([on_land, on_land2, [None, None]])
         )
 
-    def test_select_pass(self):
-        """Test Centroids.select method"""
-        region_id = np.zeros(VEC_LAT.size)
-        region_id[[2, 4]] = 10
-        centr = Centroids(lat=VEC_LAT, lon=VEC_LON, region_id=region_id)
-
-        fil_centr = centr.select(reg_id=10)
-        self.assertEqual(fil_centr.size, 2)
-        self.assertEqual(fil_centr.lat[0], VEC_LAT[2])
-        self.assertEqual(fil_centr.lat[1], VEC_LAT[4])
-        self.assertEqual(fil_centr.lon[0], VEC_LON[2])
-        self.assertEqual(fil_centr.lon[1], VEC_LON[4])
-        self.assertTrue(np.array_equal(fil_centr.region_id, np.ones(2) * 10))
-
-    def test_select_extent_pass(self):
-        """Test select extent"""
-        centr = Centroids(
-            lat=np.array([-5, -3, 0, 3, 5]),
-            lon=np.array([-180, -175, -170, 170, 175]),
-            region_id=np.zeros(5),
-        )
-        ext_centr = centr.select(extent=[-175, -170, -5, 5])
-        np.testing.assert_array_equal(ext_centr.lon, np.array([-175, -170]))
-        np.testing.assert_array_equal(ext_centr.lat, np.array([-3, 0]))
-
-        # Cross antimeridian, version 1
-        ext_centr = centr.select(extent=[170, -175, -5, 5])
-        np.testing.assert_array_equal(ext_centr.lon, np.array([-180, -175, 170, 175]))
-        np.testing.assert_array_equal(ext_centr.lat, np.array([-5, -3, 3, 5]))
-
-        # Cross antimeridian, version 2
-        ext_centr = centr.select(extent=[170, 185, -5, 5])
-        np.testing.assert_array_equal(ext_centr.lon, np.array([-180, -175, 170, 175]))
-        np.testing.assert_array_equal(ext_centr.lat, np.array([-5, -3, 3, 5]))
-
     def test_get_meta(self):
         """
         Test that the `get_meta` method correctly generates metadata
@@ -968,7 +976,7 @@ class TestCentroidsMethods(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(meta["crs"], expected_meta["crs"]))
         self.assertTrue(meta["transform"].almost_equals(expected_meta["transform"]))
 
-    def test_get_closest_point(self):
+    def test_get_closest_point_1(self):
         """Test get_closest_point"""
         for n, (lat, lon) in enumerate(LATLON):
             x, y, idx = self.centr.get_closest_point(lon * 0.99, lat * 1.01)
@@ -978,7 +986,7 @@ class TestCentroidsMethods(unittest.TestCase):
             self.assertEqual(self.centr.lon[n], x)
             self.assertEqual(self.centr.lat[n], y)
 
-    def test_get_closest_point(self):
+    def test_get_closest_point_2(self):
         """Test get_closest_point"""
         for y_sign in [1, -1]:
             meta = {

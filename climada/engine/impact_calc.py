@@ -92,6 +92,12 @@ class ImpactCalc:
             Default: True
         assign_centroids : bool, optional
             indicates whether centroids are assigned to the self.exposures object.
+            The default centroids assignment uses Euclidean distance and a threshold equal to
+            twice the highest resolution (smallest distance between any two nearest neighbours)
+            of the centroids (assuming a regular grid).
+            Recommendation: assign the centroids directly with control
+            over the distance metric and the distance threshold using
+            `exposure.assign_centroids(hazard)`. In this case, set assign_centroids to ``False``.
             Centroids assignment is an expensive operation; set this to ``False`` to save
             computation time if the hazards' centroids are already assigned to the exposures
             object.
@@ -114,10 +120,20 @@ class ImpactCalc:
             >>> imp = impcalc.impact(insured=True)
             >>> imp.aai_agg
 
+            >>> haz = Hazard.from_hdf5(HAZ_DEMO_H5)  # Set hazard
+            >>> impfset = ImpactFuncSet.from_excel(ENT_TEMPLATE_XLS)
+            >>> exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS))
+            >>> #Adjust threshold and distance to centroids/exposure resolution
+            >>> exp.assign_centroids(hazard, threshold=1.5, distance='euclidean')
+            >>> impcalc = ImpactCal(exp, impfset, haz)
+            >>> imp = impcalc.impact(insured=True, assign_centroids=False)
+            >>> imp.aai_agg
+
         See also
         --------
         apply_deductible_to_mat : apply deductible to impact matrix
         apply_cover_to_mat : apply cover to impact matrix
+        climada.entity.exposures.assign_centroids : assign centroids to exposures explicitly
         """
         # TODO: consider refactoring, making use of Exposures.hazard_impf
         # check for compatibility of exposures and hazard type

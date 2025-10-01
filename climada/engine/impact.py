@@ -1178,7 +1178,7 @@ class Impact:
         return_periods=(25, 50, 100, 250),
         log10_scale=True,
         axis=None,
-        mask_distance=0.01,
+        mask_distance=0.03,
         kwargs_local_exceedance_impact=None,
         **kwargs,
     ):
@@ -1198,8 +1198,8 @@ class Impact:
         mask_distance: float, optional
             Only regions are plotted that are closer to any of the data points than this distance,
             relative to overall plot size. For instance, to only plot values
-            at the centroids, use mask_distance=0.01. If None, the plot is not masked.
-            Default is 0.01.
+            at the centroids, use mask_distance=0.03. If None, the plot is not masked.
+            Default is 0.03.
         kwargs_local_exceedance_impact: dict
             Dictionary of keyword arguments for the method impact.local_exceedance_impact.
         kwargs : dict, optional

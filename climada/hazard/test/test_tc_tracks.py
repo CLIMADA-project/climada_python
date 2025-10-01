@@ -50,6 +50,31 @@ TEST_TRACK_FAST = DATA_DIR.joinpath("FAST_test_tracks.nc")
 TEST_TRACK_STORM = DATA_DIR.joinpath("storm_test_tracks.txt")
 TEST_TRACKS_ANTIMERIDIAN = DATA_DIR.joinpath("tracks-antimeridian")
 TEST_TRACKS_LEGACY_HDF5 = DATA_DIR.joinpath("tctracks_hdf5_legacy.nc")
+TRACK_DENSITY_FUNCS = xr.Dataset(
+    {
+        "time_step": ("time", np.timedelta64(1, "h") * np.arange(4)),
+        "max_sustained_wind": ("time", [10, 20, 30, 20]),
+        "central_pressure": ("time", [1, 1, 1, 1]),
+        "radius_max_wind": ("time", [1, 1, 1, 1]),
+        "environnmental_pressure": ("time", [1, 1, 1, 1]),
+        "basin": ("time", ["NA", "NA", "NA", "NA"]),
+    },
+    coords={
+        "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12H")),
+        "lat": ("time", [-90, -89, -88, -87]),
+        "lon": ("time", [-179, -169, -159, -149]),
+    },
+    attrs={
+        "max_sustained_wind_unit": "m/s",
+        "central_pressure_unit": "hPa",
+        "name": "storm_0",
+        "sid": "0",
+        "orig_event_flag": True,
+        "data_provider": "FAST",
+        "id_no": "0",
+        "category": "1",
+    },
+)
 
 
 class TestIbtracs(unittest.TestCase):
@@ -875,6 +900,90 @@ class TestFuncs(unittest.TestCase):
         ):
             tc_test.subset_year((2100, False, False), (2150, False, False))
 
+    def test_subset_basin(self):
+        """test the correct splitting of a single tc object into different tc objets by basin"""
+
+        # EMMANUEL tracks
+        tc_test = tc.TCTracks.from_simulations_emanuel(TEST_TRACK_EMANUEL)
+
+        # all basins
+        dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=False)
+
+        self.assertEqual(len(dict_basins["NA"].data), 1)
+        self.assertEqual(len(dict_basins["EP"].data), 2)
+        self.assertEqual(len(dict_basins["WP"].data), 2)
+        self.assertEqual(len(dict_basins["NI"].data), 0)
+        self.assertEqual(len(dict_basins["SI"].data), 1)
+        self.assertEqual(len(dict_basins["SP"].data), 0)
+        self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # only origin basin
+        dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=True)
+
+        self.assertEqual(len(dict_basins["NA"].data), 0)
+        self.assertEqual(len(dict_basins["EP"].data), 2)
+        self.assertEqual(len(dict_basins["WP"].data), 2)
+        self.assertEqual(len(dict_basins["NI"].data), 0)
+        self.assertEqual(len(dict_basins["SI"].data), 1)
+        self.assertEqual(len(dict_basins["SP"].data), 0)
+        self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # STORM tracks
+        tc_test = tc.TCTracks.from_simulations_storm(TEST_TRACK_STORM)
+        # only origin basin (True) and all crossed basins (False)
+        for bool in [True, False]:
+            dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=bool)
+
+            self.assertEqual(len(dict_basins["NA"].data), 0)
+            self.assertEqual(len(dict_basins["EP"].data), 6)
+            self.assertEqual(len(dict_basins["WP"].data), 0)
+            self.assertEqual(len(dict_basins["NI"].data), 0)
+            self.assertEqual(len(dict_basins["SI"].data), 0)
+            self.assertEqual(len(dict_basins["SP"].data), 0)
+            self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # FAST tracks
+        tc_test = tc.TCTracks.from_FAST(TEST_TRACK_FAST)
+        # only origin basin (True) and all crossed basins (False)
+        for bool in [True, False]:
+            dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=bool)
+
+            self.assertEqual(len(dict_basins["NA"].data), 5)
+            self.assertEqual(len(dict_basins["EP"].data), 0)
+            self.assertEqual(len(dict_basins["WP"].data), 0)
+            self.assertEqual(len(dict_basins["NI"].data), 0)
+            self.assertEqual(len(dict_basins["SI"].data), 0)
+            self.assertEqual(len(dict_basins["SP"].data), 0)
+            self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # CHAZ tracks
+        tc_test = tc.TCTracks.from_simulations_chaz(TEST_TRACK_CHAZ)
+        # only origin basin (True) and all crossed basins (False)
+        for bool in [True, False]:
+            dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=True)
+
+            self.assertEqual(len(dict_basins["NA"].data), 0)
+            self.assertEqual(len(dict_basins["EP"].data), 0)
+            self.assertEqual(len(dict_basins["WP"].data), 0)
+            self.assertEqual(len(dict_basins["NI"].data), 0)
+            self.assertEqual(len(dict_basins["SI"].data), 6)
+            self.assertEqual(len(dict_basins["SP"].data), 7)
+            self.assertEqual(len(tracks_outside_basin.data), 0)
+
+        # GETTELMAN tracks
+        tc_test = tc.TCTracks.from_gettelman(TEST_TRACK_GETTELMAN)
+        # only origin basin (True) and all crossed basins (False)
+        for bool in [True, False]:
+            dict_basins, tracks_outside_basin = tc_test.subset_by_basin(origin=True)
+
+            self.assertEqual(len(dict_basins["NA"].data), 0)
+            self.assertEqual(len(dict_basins["EP"].data), 0)
+            self.assertEqual(len(dict_basins["WP"].data), 2)
+            self.assertEqual(len(dict_basins["NI"].data), 1)
+            self.assertEqual(len(dict_basins["SI"].data), 0)
+            self.assertEqual(len(dict_basins["SP"].data), 0)
+            self.assertEqual(len(tracks_outside_basin.data), 0)
+
     def test_get_extent(self):
         """Test extent/bounds attributes."""
         storms = ["1988169N14259", "2002073S16161", "2002143S07157"]
@@ -1350,7 +1459,7 @@ class TestFuncs(unittest.TestCase):
         lon_test = np.array([170, 179.18, 180.05])
         lat_test = np.array([-60, -16.56, -16.85])
         on_land = np.array([False, True, True])
-        lon_shift = np.array([-360, 0, 360])
+        lon_shift = np.array([360, 360, 360])
         # ensure both points are considered on land as is
         np.testing.assert_array_equal(
             u_coord.coord_on_land(lat=lat_test, lon=lon_test), on_land
@@ -1367,6 +1476,55 @@ class TestFuncs(unittest.TestCase):
             u_coord.coord_on_land(lat=lat_test, lon=u_coord.lon_normalize(lon_test)),
             on_land,
         )
+
+    def test_compute_density_tracks(self):
+        """Test `compute_track_density` to ensure proper density count."""
+        tc_tracks = tc.TCTracks([TRACK_DENSITY_FUNCS])
+
+        hist, _, _ = tc_tracks.compute_track_density(res=10)
+        hist_wind_min, _, _ = tc_tracks.compute_track_density(
+            res=10, wind_min=11, wind_max=None
+        )
+        hist_wind_max, _, _ = tc_tracks.compute_track_density(
+            res=10, wind_min=None, wind_max=30
+        )
+        hist_wind_both, _, _ = tc_tracks.compute_track_density(
+            res=10, wind_min=11, wind_max=29
+        )
+        self.assertEqual(hist.shape, (17, 35))
+        self.assertEqual(hist.sum(), 4)
+        self.assertEqual(hist_wind_min.sum(), 3)
+        self.assertEqual(hist_wind_max.sum(), 4)
+        self.assertEqual(hist_wind_both.sum(), 2)
+        # the track defined above occupy positions 0 to 4
+        np.testing.assert_array_equal(hist[0, 0:4], [1, 1, 1, 1])
+
+    def test_compute_genesis_density(self):
+        """Check that the correct number of grid point is computed per grid cell for the starting
+        location of cyclone tracks"""
+
+        res = 10
+        tc_tracks = tc.TCTracks([TRACK_DENSITY_FUNCS])
+        lat_bins = np.linspace(-90, 90, int(180 / res))
+        lon_bins = np.linspace(-180, 180, int(360 / res))
+        hist = tc._compute_genesis_density(
+            tc_track=tc_tracks, lat_bins=lat_bins, lon_bins=lon_bins
+        )
+        self.assertEqual(hist.shape, (17, 35))
+        self.assertEqual(
+            hist.sum(), 1
+        )  # there is only track so only one starting point
+        self.assertEqual(
+            hist[0, 0], 1
+        )  # the starting location is in the grid cell top left
+
+    def test_plot_track_density(self):
+        """Very basic check that the plotting function runs."""
+        # compute track density
+        tc_tracks = tc.TCTracks([TRACK_DENSITY_FUNCS])
+        hist, _, _ = tc_tracks.compute_track_density(res=10)
+        # plot track density
+        tc.plot_track_density(hist=hist)
 
 
 # Execute Tests

@@ -774,7 +774,7 @@ def clean_emdat_df(
         df_data["Start Day"] = np.array(day_list, dtype="int")
         df_data["Start Year"] = np.array(year_list, dtype="int")
         for var in ["Disaster Subtype", "Disaster Type", "Country"]:
-            df_data[VARNAMES_EMDAT[target_version][var]].fillna("None", inplace=True)
+            df_data.fillna({VARNAMES_EMDAT[target_version][var]: "None"}, inplace=True)
 
     # (3) Filter by countries, year range, and disaster type
     # (3.1) Countries:

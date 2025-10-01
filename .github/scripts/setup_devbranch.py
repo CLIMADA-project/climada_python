@@ -3,7 +3,7 @@
 
 The following preparation steps are executed:
 
-- update version numbers in _version.py and setup.py: append a -dev suffix
+- update version numbers in _version.py and pyproject.toml: append a -dev suffix
 - insert a vanilla "unreleased" section on top of CHANGELOG.md
 
 The changes are not commited to the repository. This is dealt with in the bash script
@@ -75,10 +75,10 @@ def update_version(nvn):
     return update_file(file_with_version, regex, nvn)
 
 
-def update_setup(new_version_number):
-    """Update the setup.py file"""
-    file_with_version = "setup.py"
-    regex = r"(^\s+version\s*=\s*[\'\"]).*([\'\"]\s*,\s*$)"
+def update_pyproject(new_version_number):
+    """Update the pyproject.toml file"""
+    file_with_version = "pyproject.toml"
+    regex = r"(^version\s*=\s*[\'\"]).*([\'\"]\s*$)"
     return update_file(file_with_version, regex, new_version_number)
 
 
@@ -110,7 +110,7 @@ def setup_devbranch():
     semver[-1] = f"{int(semver[-1]) + 1}-dev"
     dev_version = ".".join(semver)
 
-    update_setup(dev_version)
+    update_pyproject(dev_version)
     update_version(dev_version)
     update_changelog()
 

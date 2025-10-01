@@ -23,6 +23,7 @@ import logging
 
 import numpy as np
 import rasterio
+from affine import Affine
 
 from climada import CONFIG
 from climada.util.constants import SYSTEM_DIR
@@ -171,3 +172,53 @@ def get_gpw_file_path(gpw_version, reference_year, data_dir=None, verbose=True):
         f" different folder. The data can be downloaded from {sedac_browse_url}, e.g.,"
         f" {sedac_file_url} (Free NASA Earthdata login required)."
     )
+
+
+def grid_aligned_with_gpw(reference_year, gpw_version, res_arcsec, data_dir=SYSTEM_DIR):
+    """
+    Defines a grid based on population metadata.
+
+    Parameters
+    ----------
+    reference_year : int
+        The reference year for population and nightlight data.
+    gpw_version : int
+        Version number of GPW population data.
+    res_arcsec : int or None
+        Desired resolution in arcseconds. If None, aligns to population grid.
+    data_dir : str
+        Path to input data directory.
+
+    Returns
+    -------
+    grid : dict
+        A dictionary containing grid metadata, following the raster grid
+        specification.
+    """
+    res_deg = res_arcsec / 3600
+
+    file_path = get_gpw_file_path(
+        gpw_version, reference_year, data_dir=data_dir, verbose=False
+    )
+    with rasterio.open(file_path, "r") as src:
+        global_crs = src.crs
+        gpw_transform = src.transform
+    # Align grid resolution with GPW dataset
+    aligned_lon_min = -180 + (round((gpw_transform[2] - (-180)) / res_deg) * res_deg)
+    aligned_lat_max = 90 - (round((90 - gpw_transform[5]) / res_deg) * res_deg)
+
+    global_transform = Affine(res_deg, 0, aligned_lon_min, 0, -res_deg, aligned_lat_max)
+
+    global_width = round(360 / res_deg)
+    global_height = round(180 / res_deg)
+
+    # Define the target grid using the computed values
+    return {
+        "driver": "GTiff",
+        "dtype": "float32",
+        "nodata": None,
+        "crs": global_crs,
+        "width": global_width,
+        "height": global_height,
+        "transform": global_transform,
+    }

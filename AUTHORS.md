@@ -36,3 +36,4 @@
 * Luca Severino
 * Samuel Juhel
 * Valentin Gebhart
+* Dahyann Araya
