@@ -32,7 +32,7 @@ from pyrepo_mcda.sensitivity_analysis_weights_values import (
     Sensitivity_analysis_weights_values,
 )
 
-from climada.engine.option_appraisal.MCDM.criterion import Criterion
+from climada.engine.option_appraisal.MCDM.criterion import CriteriaSet, Criterion
 
 MCDM_DEFAULT = {"Topsis": TOPSIS(), "Saw": SAW(), "Vikor": VIKOR()}  #'AHP': AHP(),
 """Default MCDM ranking method"""
@@ -41,6 +41,14 @@ COMPROMISE_DEFAULT = {
     "copeland": copeland,
 }
 """Default Compromise approach"""
+
+
+class MCACalc:
+    def __init__(
+        self,
+        criteria_set: CriteriaSet,
+    ):
+        pass
 
 
 class MCA_Calc:
