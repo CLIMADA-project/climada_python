@@ -154,6 +154,7 @@ class CalcRiskMetricsPoints:
         eai_gdf["group"] = pd.Categorical(eai_gdf["group"], categories=self._groups_id)
         eai_gdf["metric"] = "eai"
         eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"
+        eai_gdf["unit"] = self.snapshots[0].exposure.value_unit
         return eai_gdf
 
     def calc_aai_metric(self) -> pd.DataFrame:
@@ -166,6 +167,7 @@ class CalcRiskMetricsPoints:
         )
         aai_df["metric"] = "aai"
         aai_df["measure"] = self.measure.name if self.measure else "no_measure"
+        aai_df["unit"] = self.snapshots[0].exposure.value_unit
         aai_df.reset_index(inplace=True)
         return aai_df
 
@@ -186,6 +188,7 @@ class CalcRiskMetricsPoints:
         aai_per_group_df["measure"] = (
             self.measure.name if self.measure else "no_measure"
         )
+        aai_per_group_df["unit"] = self.snapshots[0].exposure.value_unit
         return aai_per_group_df
 
     def calc_return_periods_metric(self, return_periods: list[int]) -> pd.DataFrame:
@@ -214,6 +217,7 @@ class CalcRiskMetricsPoints:
         )
         rp_df["metric"] = "rp_" + rp_df["rp"].astype(str)
         rp_df["measure"] = self.measure.name if self.measure else "no_measure"
+        rp_df["unit"] = self.snapshots[0].exposure.value_unit
         return rp_df
 
     def apply_measure(self, measure: Measure) -> "CalcRiskMetricsPoints":
@@ -722,6 +726,7 @@ class CalcRiskMetricsPeriod:
         eai_gdf["group"] = pd.Categorical(eai_gdf["group"], categories=self._groups_id)
         eai_gdf["metric"] = "eai"
         eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"
+        eai_gdf["unit"] = self.snapshot_start.exposure.value_unit
         return eai_gdf
 
     def calc_aai_metric(self) -> pd.DataFrame:
@@ -734,6 +739,7 @@ class CalcRiskMetricsPeriod:
         )
         aai_df["metric"] = "aai"
         aai_df["measure"] = self.measure.name if self.measure else "no_measure"
+        aai_df["unit"] = self.snapshot_start.exposure.value_unit
         aai_df.reset_index(inplace=True)
         return aai_df
 
@@ -775,6 +781,7 @@ class CalcRiskMetricsPeriod:
         aai_per_group_df["measure"] = (
             self.measure.name if self.measure else "no_measure"
         )
+        aai_per_group_df["unit"] = self.snapshot_start.exposure.value_unit
         return aai_per_group_df
 
     def calc_return_periods_metric(self, return_periods: list[int]) -> pd.DataFrame:
@@ -812,6 +819,7 @@ class CalcRiskMetricsPeriod:
         )
         rp_df["metric"] = "rp_" + rp_df["rp"].astype(str)
         rp_df["measure"] = self.measure.name if self.measure else "no_measure"
+        rp_df["unit"] = self.snapshot_start.exposure.value_unit
         return rp_df
 
     def calc_risk_contributions_metric(self) -> pd.DataFrame:
@@ -857,6 +865,7 @@ class CalcRiskMetricsPeriod:
         df.reset_index(inplace=True)
         df["group"] = pd.Categorical([pd.NA] * len(df), categories=self._groups_id)
         df["measure"] = self.measure.name if self.measure else "no_measure"
+        df["unit"] = self.snapshot_start.exposure.value_unit
         return df
 
     def apply_measure(self, measure: Measure) -> "CalcRiskMetricsPeriod":
