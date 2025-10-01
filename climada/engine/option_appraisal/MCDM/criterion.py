@@ -18,19 +18,35 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from typing import List, Optional, Set, Union
 
 import pandas as pd
 
-from climada.engine.option_appraisal.MCDM.category import CategorizedObject
+from climada.engine.option_appraisal.MCDM.category import (
+    CategorizedObject,
+    CriteriaCategory,
+)
 
 
 @dataclass
 class Criterion(CategorizedObject):
     name: str
-    column_name: str
-    obj_maximise: bool
+    categories: Set[CriteriaCategory]  # = field(default_factory=set, repr=False)
+    data: pd.Series = None
+    obj_maximise: bool = True
     group: None | str = None
+
+    def __post_init__(self) -> None:
+        """
+        Called automatically after the dataclass's generated __init__.
+        This is where we manually execute the parent class's initialization
+        logic using the fields collected by the dataclass.
+        """
+        # Call the parent's __init__ with the necessary arguments.
+        # This executes the Category assignment logic on the instance.
+        # It's crucial that 'name' and 'categories' are passed in the correct order/manner.
+        super().__init__(self.name, self.categories)
 
 
 class CriteriaSet:
