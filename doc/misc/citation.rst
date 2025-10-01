@@ -20,7 +20,7 @@ If you use specific tools and modules of CLIMADA, please cite the appropriate pu
    * - *Any*
      - The `Zenodo archive <https://doi.org/10.5281/zenodo.4598943>`_ of the CLIMADA version you are using
    * - :doc:`Impact calculations </user-guide/climada_engine_Impact>`
-     - Aznar-Siguan, G. and Bresch, D. N. (2019): CLIMADA v1: A global weather and climate risk assessment platform, Geosci. Model Dev., 12, 3085–3097, https://doi.org/10.5194/gmd-14-351-2021
+     - Aznar-Siguan, G. and Bresch, D. N. (2019): CLIMADA v1: A global weather and climate risk assessment platform, Geosci. Model Dev., 12, 3085–3097, https://doi.org/10.5194/gmd-12-3085-2019
    * - :doc:`Cost-benefit analysis </user-guide/climada_engine_CostBenefit>`
      - Bresch, D. N. and Aznar-Siguan, G. (2021): CLIMADA v1.4.1: Towards a globally consistent adaptation options appraisal tool, Geosci. Model Dev., 14, 351–363, https://doi.org/10.5194/gmd-14-351-2021
    * - :doc:`Uncertainty and sensitivity analysis </user-guide/climada_engine_unsequa>`

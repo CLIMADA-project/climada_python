@@ -90,7 +90,9 @@ class TestYearSets(unittest.TestCase):
         )
         frequencies = np.array(np.ones(20) * 0.2)
 
-        sampling_vect = yearsets.sample_events(events_per_year, frequencies)
+        sampling_vect = yearsets.sample_events(
+            events_per_year, frequencies, with_replacement=False
+        )
 
         self.assertEqual(len(sampling_vect), len(events_per_year))
         self.assertEqual(

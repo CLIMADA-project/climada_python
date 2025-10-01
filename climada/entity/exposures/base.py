@@ -591,10 +591,10 @@ class Exposures:
         self,
         hazard,
         distance="euclidean",
-        threshold=u_coord.NEAREST_NEIGHBOR_THRESHOLD,
+        threshold=None,
         overwrite=True,
     ):
-        """Assign for each exposure coordinate closest hazard coordinate.
+        """Assign for each exposure coordinate the closest hazard coordinate.
         The Exposures ``gdf`` will be altered by this method. It will have an additional
         (or modified) column named ``centr_[hazard.HAZ_TYPE]`` after the call.
 
@@ -602,54 +602,70 @@ class Exposures:
         and parameters.
 
         The value -1 is used for distances larger than ``threshold`` in point distances.
-        In case of raster hazards the value -1 is used for centroids outside of the raster.
 
         Parameters
         ----------
         hazard : Hazard
-            Hazard to match (with raster or vector centroids).
+            Hazard to match. The hazard centroids must be in the same coordinate
+            reference system (crs) as the exposures.
         distance : str, optional
-            Distance to use in case of vector centroids.
+            Distance to use for matching exposures points to hazard centroids
             Possible values are "euclidean", "haversine" and "approx".
             Default: "euclidean"
         threshold : float
-            If the distance (in km) to the nearest neighbor exceeds `threshold`,
+            Assignement threshold in units of the exposure's crs.
+            If the distance to the nearest neighbor exceeds `threshold`,
             the index `-1` is assigned.
-            Set `threshold` to 0, to disable nearest neighbor matching.
-            Default: 100 (km)
+            Set `threshold` to 0, to disable nearest neighbor matching and enforce
+            exact matching.
+            Default: twice the highest resolution (smallest distance between any two nearest neighbours) of the hazard centroids
         overwrite: bool
             If True, overwrite centroids already present. If False, do
             not assign new centroids. Default is True.
 
         See Also
         --------
-        climada.util.coordinates.match_grid_points: method to associate centroids to
-            exposure points when centroids is a raster
         climada.util.coordinates.match_coordinates:
             method to associate centroids to exposure points
+        climada.util.coordinates.estimate_matching_threshold:
+            method to calculate the default threshold
+        climada.util.coordinates.km_to_degree:
+            method to approximately convert kilometers to degrees
+        climada.util.coordinates.degree_to_km:
+            method to approximately convert degrees to kilometers
+
         Notes
         -----
-        The default order of use is:
+        For coordinates in lat/lon coordinates distances in degrees differ from
+        distances in meters on the Earth surface, in particular for higher
+        latitude and distances larger than 100km. If more accuracy for degree
+        coordinates is needed, please use 'haversine' distance metric,
+        which however is slower.
 
-        1. if centroid raster is defined, assign exposures points to
-           the closest raster point.
-        2. if no raster, assign centroids to the nearest neighbor using
-           euclidian metric
+        Caution: nearest neighbourg matching can introduce serious artefacts
+        such as:
+            - exposure and hazard centroids with shifted grids can lead
+            to systematically wrong assignements.
+            - hazard centroids covering larger areas than exposures may lead
+            to sub-optimal matching if the threshold is too large
+            - projected crs often diverge at the anti-meridian and close points
+            on either side will be at a large distance. For proper handling
+            of the anti-meridian please use degree coordinates in EPSG:4326.
+            This might be relevant for countries like the Fidji or the US that
+            cross the anti-meridian.
 
-        Both cases can introduce innacuracies for coordinates in lat/lon
-        coordinates as distances in degrees differ from distances in meters
-        on the Earth surface, in particular for higher latitude and distances
-        larger than 100km. If more accuracy is needed, please use 'haversine'
-        distance metric. This however is slower for (quasi-)gridded data,
-        and works only for non-gridded data.
+        Users are free to implement their own matching alrogithm and save the
+        matching centroid index in the appropriate column ``centr_[hazard.HAZ_TYPE]``.
         """
         haz_type = hazard.haz_type
         centr_haz = INDICATOR_CENTR + haz_type
         if centr_haz in self.gdf:
-            LOGGER.info("Exposures matching centroids already found for %s", haz_type)
             if overwrite:
                 LOGGER.info("Existing centroids will be overwritten for %s", haz_type)
             else:
+                LOGGER.info(
+                    "Exposures matching centroids already found for %s", haz_type
+                )
                 return
 
         LOGGER.info(
@@ -659,7 +675,7 @@ class Exposures:
         )
 
         if not u_coord.equal_crs(self.crs, hazard.centroids.crs):
-            raise ValueError("Set hazard and exposure to same CRS first!")
+            raise ValueError("Set hazard and exposure to the same CRS first!")
         # Note: equal_crs is tested here, rather than within match_centroids(),
         # because exp.gdf.crs may not be defined, but exp.crs must be defined.
 
@@ -707,6 +723,7 @@ class Exposures:
         width=None,
         height=None,
         resampling=Resampling.nearest,
+        attrs=None,
     ):
         """Read raster data and set latitude, longitude, value and meta
 
@@ -734,11 +751,15 @@ class Exposures:
         resampling : rasterio.warp,.Resampling optional
             resampling
             function used for reprojection to dst_crs
+        attrs : dict
+            dictionary of kwargs passed to the resulting Exposures.__init__
 
         returns
         --------
         Exposures
         """
+        attrs = attrs or {}
+
         meta, value = u_coord.read_raster(
             file_name,
             [band],
@@ -765,6 +786,7 @@ class Exposures:
             },
             meta=meta,
             crs=meta["crs"],
+            **attrs,
         )
 
     def plot_scatter(
