@@ -31,6 +31,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
 import scipy.sparse as sparse
+from affine import Affine
 from osgeo import gdal
 from PIL import Image
 from shapefile import Shape
@@ -68,6 +69,17 @@ BM_FILENAMES = [
     "BlackMarble_%i_D2_geo_gray.tif",
 ]
 """Nightlight NASA files which generate the whole earth when put together."""
+
+BM_NIGHTLIGHT_GRID = {
+    "driver": "GTiff",
+    "dtype": "float32",
+    "nodata": None,
+    "crs": rasterio.crs.CRS.from_epsg(4326),  # pylint: disable=c-extension-no-member
+    "width": round(360 / NASA_RESOLUTION_DEG),
+    "height": round(180 / NASA_RESOLUTION_DEG),
+    "transform": Affine(NASA_RESOLUTION_DEG, 0, -180, 0, -NASA_RESOLUTION_DEG, 90),
+}
+"""Grid aligned with Nightlight NASA files"""
 
 
 def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype="float32"):
@@ -146,6 +158,7 @@ def load_nasa_nl_shape(geometry, year, data_dir=SYSTEM_DIR, dtype="float32"):
         if idx == 0:
             meta = meta_tmp
             # set correct CRS from local tile's CRS to global WGS 84:
+            # pylint: disable=c-extension-no-member
             meta.update({"crs": rasterio.crs.CRS.from_epsg(4326), "dtype": dtype})
             if len(req_files) == 1:  # only one tile required:
                 return np.array(out_image, dtype=dtype), meta
@@ -264,9 +277,7 @@ def check_nl_local_file_exists(required_files=None, check_path=SYSTEM_DIR, year=
         required_files = np.ones(
             np.count_nonzero(BM_FILENAMES),
         )
-        LOGGER.warning(
-            "The parameter 'required_files' was too short and " "is ignored."
-        )
+        LOGGER.warning("The parameter 'required_files' was too short and is ignored.")
     if isinstance(check_path, str):
         check_path = Path(check_path)
     if not check_path.is_dir():

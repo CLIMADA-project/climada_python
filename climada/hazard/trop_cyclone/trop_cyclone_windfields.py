@@ -902,6 +902,8 @@ def _coriolis_parameter(lat: np.ndarray) -> np.ndarray:
     cp : np.ndarray of same shape as input
         Coriolis parameter.
     """
+    u_coord.check_if_geo_coords(lat, 0)
+
     return 2 * V_ANG_EARTH * np.sin(np.radians(np.abs(lat)))
 
 

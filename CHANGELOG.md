@@ -10,23 +10,79 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 6.1.0
+
+Release date: 2025-09-30
+
+### Dependency Changes
+
+Added:
+
+- `bayesian-optimization` >=1.5,<2.0
+- `deprecation` >=2.1
+- `fiona` >=1.10
+- `peewee` >=3.17
+- `pyarrow` >=20.0
+
+Updated:
+
+- `bayesian-optimization` =1.5 &rarr; nan
+- `bottleneck` >=1.4 &rarr; >=1.5
+- `dask` >=2025.2 &rarr; >=2025.5
+- `deprecation` =2.1 &rarr; nan
+- `geopandas` >=0.14,<1.0 &rarr; >=0.14
+- `h5py` >=3.12 &rarr; >=3.13
+- `openpyxl` >=3.1 &rarr; >=3.0
+- `pandas` >=2.1,<2.2 &rarr; >=2.1
+- `peewee` =3.17 &rarr; nan
+- `pillow` =11.1 &rarr; =11.3
+- `rtree` >=1.3,<1.4 &rarr; >=1.3
+- `scikit-learn` >=1.6 &rarr; >=1.7
+- `scipy` >=1.14,<1.15 &rarr; >=1.15
+- `sparse` >=0.15 &rarr; >=0.17
+- `xarray` >=2025.1 &rarr; >=2025.6
+
 Removed:
 
 - `pandas-datareader`
 
 ### Added
+
 - Added optional parameter to `geo_im_from_array`, `plot_from_gdf`, `plot_rp_imp`, `plot_rp_intensity`,
 `plot_intensity`, `plot_fraction`, `_event_plot` to mask plotting when regions are too far from data points [#1047](https://github.com/CLIMADA-project/climada_python/pull/1047). To recreate previous plots (no masking), the parameter can be set to None.
 - Added instructions to install Climada petals on Euler cluster in `doc.guide.Guide_Euler.ipynb` [#1029](https://github.com/CLIMADA-project/climada_python/pull/1029)
-
+- Added util methods to handle crs coordinates consistently: `is_geo_coords`, `check_if_geo_coords`, `get_crs_unit`, `estimate_matching_threshold`, `degree_to_km`, and `km_to_degree` [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080)
 - `ImpactFunc` and `ImpactFuncSet` now support equality comparisons via `==` [#1027](https://github.com/CLIMADA-project/climada_python/pull/1027)
+- Calibration of impact function ensembles in `climada.util.calibrate` [#1048](https://github.com/CLIMADA-project/climada_python/pull/1048)
+- Added optional `attrs` parameter to `Exposures.from_raster` method to set additional object properties through the method's `Exposures.__init__` call.
 
 ### Changed
 
+- Changed default distance threshold for nearest neighbor matching in `util.coordinates.match_coordinates` from a fixed value of 100km to twice the highest resolution of the coords_to_assign [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080).
+- Changed the default mask_distance in `util.plot.geo_im_from_array` to 0.03 to avoid white gaps in gridded hazard data with comparably low resolution (>80 centroids per axis) [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
+- Increased speed of `util.plot.add_shapes` by avoiding for loops, substantially speeding up `Hazard.plot_intensity` and other functions. [#1073](https://github.com/CLIMADA-project/climada_python/pull/1073)
+- Update `util.coordinates.match_centroids`, `util.coordinates.match_coordinates`, so that they also
+accept coordinates that are not defined in degree. [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080)
+- Implement cheap test to check that input coordinates at least seem geographic for functions that require
+geographic coordinates as input (e.g. `util.coordinates.dist_to_coast`, `util.coordinates.coord_on_land`, `util.coordinates.lon_normalize`, `util.coordinates.lon_bounds`). [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080)
 - `Hazard.local_exceedance_intensity`, `Hazard.local_return_period` and `Impact.local_exceedance_impact`, `Impact.local_return_period`, using the `climada.util.interpolation` module: New default (no binning), binning on decimals, and faster implementation [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
 - World Bank indicator data is now downloaded directly from their API via the function `download_world_bank_indicator`, instead of relying on the `pandas-datareader` package [#1033](https://github.com/CLIMADA-project/climada_python/pull/1033)
 - `Exposures.write_hdf5` pickles geometry data in WKB format, which is faster and more sustainable. [#1051](https://github.com/CLIMADA-project/climada_python/pull/1051)
 - The online documentation has been completely overhauled, now uses PyData theme: [#977](https://github.com/CLIMADA-project/climada_python/pull/977)
+- `Input` to impact function calibration tasks now supports adding weights to the data [#1048](https://github.com/CLIMADA-project/climada_python/pull/1048)
+- Add `climada.hazard.xarray` module with helper structures for reading Hazard objects from `xarray` data [#1063](https://github.com/CLIMADA-project/climada_python/pull/1063)
+- The output of the `impact_yearset` was changed to only contain attributes corresponding to the yearly impact set. The application of the correction factor and the frequency of the resulting yearly impact object are corrected. [#1075](https://github.com/CLIMADA-project/climada_python/pull/1075)
+- `util.coordinates.get_resolution` always returns positive values, regardless of how the input coordinates' order [#1080](https://github.com/CLIMADA-project/climada_python/pull/1080).
 
 ### Fixed
 
@@ -35,9 +91,13 @@ Removed:
 
 ### Deprecated
 
+- `Hazard.from_xarray_raster_file`. Use `Hazard.from_xarray_raster` and pass the file path as `data` argument [#1063](https://github.com/CLIMADA-project/climada_python/pull/1063)
+
 ### Removed
 
 - `climada.util.interpolation.round_to_sig_digits` [#1012](https://github.com/CLIMADA-project/climada_python/pull/1012)
+- `intensity_thres` of `Hazard`, `StormEurope`, and `TropCyclones` object [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
+- Deprecated method `climada.hazard.trop_cyclone.trop_cyclone.TropCyclone.set_from_tracks` [#1065](https://github.com/CLIMADA-project/climada_python/pull/1065)
 
 ## 6.0.1
 
@@ -88,8 +148,12 @@ Removed:
 
 ### Added
 
+- `climada.entity.impact_funcs.trop_cyclone.ImpfSetTropCyclone.get_impf_id_regions_per_countries` function [#1034](https://github.com/CLIMADA-project/climada_python/pull/1034)
+- `climada.hazard.tc_tracks.BasinBoundsStorm` Enum class `climada.hazard.tc_tracks.subset_by_basin` function [#1031](https://github.com/CLIMADA-project/climada_python/pull/1031)
 - `climada.hazard.tc_tracks.TCTracks.subset_years` function [#1023](https://github.com/CLIMADA-project/climada_python/pull/1023)
-- `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
+-`climada.hazard.tc_tracks.compute_track_density` function, `climada.hazard.tc_tracks.compute_genesis_density` function, `climada.hazard.plot.plot_track_density` function
+ [#1003](https://github.com/CLIMADA-project/climada_python/pull/1003)
+-`climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
 - `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex` with CLIMADA
 - `climada.util.coordinates.bounding_box_global` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
@@ -207,6 +271,7 @@ CLIMADA tutorials. [#872](https://github.com/CLIMADA-project/climada_python/pull
 - `Impact.write_hdf5` now throws an error if `event_name` is does not contain strings exclusively [#894](https://github.com/CLIMADA-project/climada_python/pull/894)
 - Split `climada.hazard.trop_cyclone` module into smaller submodules without affecting module usage [#911](https://github.com/CLIMADA-project/climada_python/pull/911)
 - `yearly_steps` parameter of `TropCyclone.apply_climate_scenario_knu` has been made explicit [#991](https://github.com/CLIMADA-project/climada_python/pull/991)
+- `Hazard.write_hdf5` writes centroids as x,y columns (or as wkb in case of polygons) at a compression level of 9, not as pickled `Shapely` objects anymore, which reduces the size of the files significantly.
 
 ### Fixed
 

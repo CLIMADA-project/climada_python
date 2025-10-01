@@ -22,6 +22,16 @@ climada\.hazard\.io module
     :undoc-members:
     :show-inheritance:
 
+climada\.hazard\.xarray module
+------------------------------
+
+Helper module ro read xarray data as Hazard.
+
+.. automodule:: climada.hazard.xarray
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.hazard\.isimip\_data module
 ------------------------------------
 
