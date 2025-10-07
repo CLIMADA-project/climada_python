@@ -18,21 +18,32 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
 
-from abc import ABC
+from climada.engine.option_appraisal.MCDM.constants import IMPORTANCE_MATCH
 
 
-class Weights(ABC):
-    def __init__(self, weights) -> None:
-        super().__init__()
-        self.weights = weights
+class WeightedItem:
+    def __init__(self, weight) -> None:
+        self.weight = weight
 
     @property
-    def weights(self):
-        return self._weights
+    def weight(self):
+        return self._weight
 
-    @weights.setter
-    def weights(self, value, /):
-        self._weights = self._normalize(value)
+    @weight.setter
+    def weight(self, value, /):
+        if value is None:
+            value = 0.0
 
-    def _normalize(self, value):
-        return value / value.sum()
+        if isinstance(value, str):
+            try:
+                value = IMPORTANCE_MATCH[value]
+            except KeyError as err:
+                err.add_note(
+                    f"Importance '{value}' is not defined. It must be defined within {list( IMPORTANCE_MATCH.keys() )}"
+                )
+                raise
+
+        if not 0.0 <= value <= 1.0:
+            raise ValueError(f"Weight needs to be between 0 and 1 (received {value}.")
+
+        self._weight = value
