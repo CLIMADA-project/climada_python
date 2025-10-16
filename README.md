@@ -8,17 +8,20 @@
 option appraisal. Designed by a large scientific community, it helps reasearchers, policymakers, and businesses analyse the impacts of natural hazards and
 explore adaptation strategies.
 
-As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution (4x4km) via a [data API](https://climada.ethz.ch/data-api/v1/docs) For select hazards, historic and probabilistic events sets, for past, present and future climate exist at distinct time horizons.
-You will find a repository containing scientific peer-reviewed articles that explain software components implemented in CLIMADA [here](https://github.com/CLIMADA-project/climada_papers).
+## Overview
 
 CLIMADA is divided into two parts (two repositories):
 
-1. the core [climada_python](https://github.com/CLIMADA-project/climada_python) contains all the modules necessary for the probabilistic impact, the averted damage, uncertainty and forecast calculations. Data for hazard, exposures and impact functions can be obtained from the [data API](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_util_api_client.ipynb). [Litpop](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_entity_LitPop.ipynb) is included as demo Exposures module, and [Tropical cyclones](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_hazard_TropCyclone.ipynb) is included as a demo Hazard module.
-2. the petals [climada_petals](https://github.com/CLIMADA-project/climada_petals) contains all the modules for generating data (e.g., TC_Surge, WildFire, OpenStreeMap, ...). Most development is done here. The petals builds-upon the core and does not work as a stand-alone.
+1. [Core (`climada_python`)](https://github.com/CLIMADA-project/climada_python) contains all the modules necessary for computing probabilistic impact, averted damage, and uncertainty, sensitivity analysis and impact function calibration. Data for hazard, exposures and impact functions can be obtained from the [data API](https://github.com/CLIMADA-project/climada_python/blob/main/doc/user-guide/climada_util_api_client.ipynb). [Litpop](https://github.com/CLIMADA-project/climada_python/blob/main/doc/user-guide/climada_entity_LitPop.ipynb) is included as demo Exposures module, and [Tropical cyclones](https://github.com/CLIMADA-project/climada_python/blob/main/doc/user-guide/climada_hazard_TropCyclone.ipynb) is included as a demo Hazard module.
+2. [Petals (`climada_petals`)](https://github.com/CLIMADA-project/climada_petals) contains all the modules for generating data (e.g., TC_Surge, WildFire, OpenStreeMap, ...). Most development is done here. The petals builds-upon the core and does not work as a stand-alone.
 
-For new users, we recommend to begin with the core (1) and the [tutorials](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial) therein.
+For new users, we recommend to begin with Core (1) and the [tutorials](https://github.com/CLIMADA-project/climada_python/tree/main/doc/user-guide) therein.
 
-This is the Python version of CLIMADA - please see [here](https://github.com/davidnbresch/climada) for backward compatibility with the MATLAB version.
+A [publication repository](https://github.com/CLIMADA-project/climada_papers) contains scientific, peer-reviewed articles that explain software components implemented in CLIMADA.
+
+CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution (4x4km) via a [data API](https://climada.ethz.ch/data-api/v1/docs) for select hazards, historic and probabilistic events sets, for past, present and future climate exist at distinct time horizons.
+
+This is the Python version of CLIMADA - For backward compatibility with the MATLAB version please see https://github.com/davidnbresch/climada.
 
 ## Getting started
 
@@ -31,25 +34,25 @@ mamba install -c conda-forge climada
 ```
 
 It is **highly recommended** to install CLIMADA into a **separate** Conda environment.
-See the [installation guide](https://climada-python.readthedocs.io/en/latest/guide/install.html) for further information.
+See the [installation guide](https://climada-python.readthedocs.io/en/latest/getting-started/install.html) for further information.
 
-Follow the [tutorials](https://climada-python.readthedocs.io/en/stable/tutorial/1_main_climada.html) in a Jupyter Notebook to see what can be done with CLIMADA and how.
+Follow the [tutorials](https://climada-python.readthedocs.io/en/stable/user-guide/1_main_climada.html) in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
 ## Documentation
 
-The online documentation is available on [Read the Docs](https://climada-python.readthedocs.io/en/stable/).The documentation of each release version of CLIMADA can be accessed separately through the drop-down menu at the bottom of the left sidebar. Additionally, the version 'stable' refers to the most recent release (installed via `conda`), and 'latest' refers to the latest unstable development version (the `develop` branch).
+The online documentation is available on [Read the Docs](https://climada-python.readthedocs.io/en/stable/). The documentation of each release version of CLIMADA can be accessed separately through the drop-down menu at the bottom of the left sidebar. Additionally, the version 'stable' refers to the most recent release (installed via `conda`), and 'latest' refers to the latest unstable development version (the `develop` branch).
 
-CLIMADA python:
+CLIMADA Core (`climada_python`):
 
 - [online (recommended)](https://climada-python.readthedocs.io/en/latest/)
 - [PDF file](https://climada-python.readthedocs.io/_/downloads/en/stable/pdf/)
-- [core Tutorials on GitHub](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial)
+- [Core tutorials on GitHub](https://github.com/CLIMADA-project/climada_python/tree/main/doc/user-guide)
 
-CLIMADA petals:
+CLIMADA Petals (`climada_petals`):
 
 - [online (recommended)](https://climada-petals.readthedocs.io/en/latest/)
 - [PDF file](https://climada-petals.readthedocs.io/_/downloads/en/stable/pdf/)
-- [petals Tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
+- [Petals tutorials on GitHub](https://github.com/CLIMADA-project/climada_petals/tree/main/doc/tutorial)
 
 The documentation can also be [built locally](https://climada-python.readthedocs.io/en/latest/README.html).
 
@@ -59,7 +62,7 @@ See the [Citation Guide](https://climada-python.readthedocs.io/en/latest/misc/ci
 
 Please use the following logo if you are presenting results obtained with or through CLIMADA:
 
-![https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png](https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png?raw=true)
+![https://github.com/CLIMADA-project/climada_python/blob/main/doc/guide/img/CLIMADA_logo_QR.png](https://github.com/CLIMADA-project/climada_python/blob/main/doc/development/img/CLIMADA_logo_QR.png?raw=true)
 
 ## Contributing
 
