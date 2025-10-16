@@ -13,7 +13,7 @@ explore adaptation strategies.
 CLIMADA is divided into two parts (two repositories):
 
 1. [Core (`climada_python`)](https://github.com/CLIMADA-project/climada_python) contains all the modules necessary for computing probabilistic impact, averted damage, and uncertainty, sensitivity analysis and impact function calibration. Data for hazard, exposures and impact functions can be obtained from the [data API](https://github.com/CLIMADA-project/climada_python/blob/main/doc/user-guide/climada_util_api_client.ipynb). [Litpop](https://github.com/CLIMADA-project/climada_python/blob/main/doc/user-guide/climada_entity_LitPop.ipynb) is included as demo Exposures module, and [Tropical cyclones](https://github.com/CLIMADA-project/climada_python/blob/main/doc/user-guide/climada_hazard_TropCyclone.ipynb) is included as a demo Hazard module.
-2. [Petals (`climada_petals`)](https://github.com/CLIMADA-project/climada_petals) contains all the modules for generating data (e.g., TC_Surge, WildFire, OpenStreeMap, ...). Most development is done here. The petals builds-upon the core and does not work as a stand-alone.
+2. [Petals (`climada_petals`)](https://github.com/CLIMADA-project/climada_petals) contains all the modules for generating data (e.g., TC_Surge, WildFire, OpenStreeMap, ...). Most development is done here. Petals is an extension of Core and does **not** work as a stand-alone module.
 
 For new users, we recommend to begin with Core (1) and the [tutorials](https://github.com/CLIMADA-project/climada_python/tree/main/doc/user-guide) therein.
 
