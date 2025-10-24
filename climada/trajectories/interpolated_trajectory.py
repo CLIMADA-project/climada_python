@@ -256,13 +256,12 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 # to do it before caching in the private attribute
                 tmp = self._risk_contributions_post_treatment(tmp)
 
-            setattr(self, attr_name, tmp)
-
             if self._risk_disc_rates:
-                return self.npv_transform(
-                    getattr(self, attr_name), self._risk_disc_rates
-                )
+                LOGGER.debug("Found risk discount rate. Computing NPV.")
+                tmp = self.npv_transform(tmp, self._risk_disc_rates)
 
+            LOGGER.debug("All computing done, caching value.")
+            setattr(self, attr_name, tmp)
             return getattr(self, attr_name)
 
     def _compute_period_metrics(
