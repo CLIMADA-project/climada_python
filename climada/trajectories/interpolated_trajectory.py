@@ -347,9 +347,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def _risk_contributions_post_treatment(self, df) -> pd.DataFrame:
         df.set_index(["group", "date", "measure", "metric"], inplace=True)
         start_dates = [snap.date for snap in self._snapshots[:-1]]
-        end_dates = [
-            snap.date - to_offset(self.time_resolution) for snap in self._snapshots[1:]
-        ]
+        end_dates = [snap.date for snap in self._snapshots[1:]]
         periods_dates = list(zip(start_dates, end_dates))
         df.loc[pd.IndexSlice[:, :, :, "base risk"]] = df.loc[
             pd.IndexSlice[
