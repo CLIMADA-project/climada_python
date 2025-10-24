@@ -75,10 +75,9 @@ class RiskTrajectory(ABC):
         `_generic_metrics` can have an additional keyword argument and call and extend on its
         parent method, while this method can stay the same.
         """
-        df = self._generic_metrics(
+        return self._generic_metrics(
             metric_name=metric_name, metric_meth=metric_meth, **kwargs
         )
-        return df
 
     @property
     def return_periods(self) -> list[int]:
