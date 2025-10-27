@@ -655,6 +655,27 @@ class CalcRiskMetricsPeriod:
 
     ##################################
 
+    ##### Interpolation of metrics #####
+
+    def calc_eai(self) -> np.ndarray:
+        """Compute the EAIs at each date of the risk period (including changes in exposure, hazard and vulnerability)."""
+        per_date_eai_H0V0, per_date_eai_H1V0, per_date_eai_H0V1, per_date_eai_H1V1 = (
+            self.per_date_eai_H0V0,
+            self.per_date_eai_H1V0,
+            self.per_date_eai_H0V1,
+            self.per_date_eai_H1V1,
+        )
+        per_date_eai_V0 = self.interpolation_strategy.interp_over_hazard_dim(
+            per_date_eai_H0V0, per_date_eai_H1V0
+        )
+        per_date_eai_V1 = self.interpolation_strategy.interp_over_hazard_dim(
+            per_date_eai_H0V1, per_date_eai_H1V1
+        )
+        per_date_eai = self.interpolation_strategy.interp_over_vulnerability_dim(
+            per_date_eai_V0, per_date_eai_V1
+        )
+        return per_date_eai
+
     ### Fully interpolated metrics ###
 
     @lazy_property
@@ -686,27 +707,6 @@ class CalcRiskMetricsPeriod:
     # for a no interpolation case (and maybe the timeseries?)
 
     ####################################
-
-    ##### Interpolation of metrics #####
-
-    def calc_eai(self) -> np.ndarray:
-        """Compute the EAIs at each date of the risk period (including changes in exposure, hazard and vulnerability)."""
-        per_date_eai_H0V0, per_date_eai_H1V0, per_date_eai_H0V1, per_date_eai_H1V1 = (
-            self.per_date_eai_H0V0,
-            self.per_date_eai_H1V0,
-            self.per_date_eai_H0V1,
-            self.per_date_eai_H1V1,
-        )
-        per_date_eai_V0 = self.interpolation_strategy.interp_over_hazard_dim(
-            per_date_eai_H0V0, per_date_eai_H1V0
-        )
-        per_date_eai_V1 = self.interpolation_strategy.interp_over_hazard_dim(
-            per_date_eai_H0V1, per_date_eai_H1V1
-        )
-        per_date_eai = self.interpolation_strategy.interp_over_vulnerability_dim(
-            per_date_eai_V0, per_date_eai_V1
-        )
-        return per_date_eai
 
     def calc_eai_gdf(self) -> gpd.GeoDataFrame:
         """Merges the per date EAIs of the risk period with the GeoDataframe of the exposure of the starting snapshot."""

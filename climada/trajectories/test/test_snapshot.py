@@ -47,36 +47,56 @@ class TestSnapshot(unittest.TestCase):
 
     def test_init_with_int_date(self):
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, 2023
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date=2023,
         )
         self.assertEqual(snapshot.date, datetime.date(2023, 1, 1))
 
     def test_init_with_str_date(self):
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, "2023-01-01"
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date="2023-01-01",
         )
         self.assertEqual(snapshot.date, datetime.date(2023, 1, 1))
 
     def test_init_with_date_object(self):
         date_obj = datetime.date(2023, 1, 1)
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, date_obj
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date=date_obj,
         )
         self.assertEqual(snapshot.date, date_obj)
 
     def test_init_with_invalid_date(self):
         with self.assertRaises(ValueError):
             Snapshot(
-                self.mock_exposure, self.mock_hazard, self.mock_impfset, "invalid-date"
+                exposure=self.mock_exposure,
+                hazard=self.mock_hazard,
+                impfset=self.mock_impfset,
+                date="invalid-date",
             )
 
     def test_init_with_invalid_type(self):
         with self.assertRaises(TypeError):
-            Snapshot(self.mock_exposure, self.mock_hazard, self.mock_impfset, 2023.5)
+            Snapshot(
+                exposure=self.mock_exposure,
+                hazard=self.mock_hazard,
+                impfset=self.mock_impfset,
+                date=2023.5,
+            )
 
     def test_properties(self):
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, 2023
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date=2023,
         )
 
         # We want a new reference
@@ -95,7 +115,10 @@ class TestSnapshot(unittest.TestCase):
 
     def test_apply_measure(self):
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, 2023
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date=2023,
         )
         new_snapshot = snapshot.apply_measure(self.mock_measure)
 

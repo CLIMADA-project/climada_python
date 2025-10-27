@@ -63,6 +63,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         "return_periods",
         "risk_contributions",
         "aai_per_group",
+        "all_risk",
     ]
 
     def __init__(
@@ -518,7 +519,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             "start_date": pd.NamedAgg(column="date", aggfunc="min"),
             "end_date": pd.NamedAgg(column="date", aggfunc="max"),
         }
-
         df_periods_dates = (
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)
             .agg(**agg_dict)
@@ -530,7 +530,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             + " to "
             + df_periods_dates["end_date"].astype(str)
         )
-
         df_periods = (
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)[
                 colname
@@ -539,7 +538,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             .reset_index()
         )
         df_periods = pd.merge(
-            df_periods_dates[grouper + ["period"]], df_periods, on=grouper
+            df_periods_dates[grouper + ["period", "period_id"]],
+            df_periods,
+            on=grouper + ["period_id"],
         )
         df_periods = df_periods.drop(["period_id"], axis=1)
         return df_periods[

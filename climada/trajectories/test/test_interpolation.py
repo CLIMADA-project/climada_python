@@ -315,11 +315,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         np.testing.assert_allclose(result_exposure[2].data, self.dummy_matrix_1.data)
 
     def test_ExponentialExposureInterpolation_init_and_methods(self):
-        strategy = ExponentialExposureStrategy()
-        self.assertEqual(strategy.exposure_interp, exponential_interp_imp_mat)
-        self.assertEqual(strategy.hazard_interp, linear_interp_arrays)
-        self.assertEqual(strategy.vulnerability_interp, linear_interp_arrays)
-
+        strategy = ExponentialExposureStrategy(rate=1.1)
         # Test hazard interpolation (should be linear)
         expected_hazard_interp = linear_interp_arrays(
             self.dummy_metric_0, self.dummy_metric_1
@@ -347,7 +343,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
 
         # Test exposure interpolation (using mock for exponential_interp_imp_mat)
         result_exposure = strategy.interp_over_exposure_dim(
-            self.dummy_matrix_0, self.dummy_matrix_1, self.interpolation_range, rate=1.1
+            self.dummy_matrix_0, self.dummy_matrix_1, self.interpolation_range
         )
         # Verify the structure/first/last elements of the mock output
         self.assertEqual(len(result_exposure), self.interpolation_range)

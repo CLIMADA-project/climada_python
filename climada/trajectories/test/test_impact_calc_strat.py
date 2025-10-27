@@ -26,11 +26,8 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 from scipy.sparse import csr_matrix
 
-from climada.trajectories.impact_calc_strat import (
-    Impact,
-    ImpactCalcComputation,
-    Snapshot,
-)
+from climada.trajectories import Snapshot
+from climada.trajectories.impact_calc_strat import Impact, ImpactCalcComputation
 
 
 class TestImpactCalcComputation(unittest.TestCase):
