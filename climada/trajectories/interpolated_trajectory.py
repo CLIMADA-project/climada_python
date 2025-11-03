@@ -32,15 +32,15 @@ import matplotlib.ticker as mticker
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.impact_calc_strat import ImpactCalcComputation
+from climada.trajectories.impact_calc_strat import (
+    ImpactCalcComputation,
+    ImpactComputationStrategy,
+)
 from climada.trajectories.interpolation import (
     AllLinearStrategy,
     InterpolationStrategyBase,
 )
-from climada.trajectories.riskperiod import (
-    CalcRiskMetricsPeriod,
-    ImpactComputationStrategy,
-)
+from climada.trajectories.riskperiod import CalcRiskMetricsPeriod
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
     DEFAULT_ALLGROUP_NAME,
@@ -52,6 +52,8 @@ from climada.util import log_level
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_TIME_RESOLUTION = "Y"
+
+__all__ = ["InterpolatedRiskTrajectory"]
 
 
 class InterpolatedRiskTrajectory(RiskTrajectory):

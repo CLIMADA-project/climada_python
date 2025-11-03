@@ -33,6 +33,8 @@ from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.hazard.base import Hazard
 
+__all__ = ["ImpactCalcComputation"]
+
 
 class ImpactComputationStrategy(ABC):
     """

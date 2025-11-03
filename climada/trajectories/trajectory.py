@@ -35,6 +35,8 @@ LOGGER = logging.getLogger(__name__)
 DEFAULT_RP = [20, 50, 100]
 DEFAULT_ALLGROUP_NAME = "All"
 
+__all__ = ["RiskTrajectory", "DEFAULT_RP", "DEFAULT_ALLGROUP_NAME"]
+
 
 class RiskTrajectory(ABC):
     _grouper = ["measure", "metric"]

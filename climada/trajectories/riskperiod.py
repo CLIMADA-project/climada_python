@@ -46,6 +46,15 @@ from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
 
+__all__ = [
+    "CalcRiskMetricsPoints",
+    "CalcRiskMetricsPeriod",
+    "calc_per_date_aais",
+    "calc_per_date_eais",
+    "calc_per_date_rps",
+    "calc_freq_curve",
+]
+
 
 def lazy_property(method):
     # This function is used as a decorator for properties

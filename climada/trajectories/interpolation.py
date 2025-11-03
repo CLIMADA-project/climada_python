@@ -30,7 +30,14 @@ from scipy import sparse
 
 LOGGER = logging.getLogger(__name__)
 
-__all__ = ["AllLinearStrategy", "ExponentialExposureStrategy"]
+__all__ = [
+    "AllLinearStrategy",
+    "ExponentialExposureStrategy",
+    "linear_interp_arrays",
+    "linear_interp_imp_mat",
+    "exponential_interp_arrays",
+    "exponential_interp_imp_mat",
+]
 
 # Define a type alias for the expected signature of the metric interpolation functions
 # (e.g., linear_interp_arrays)

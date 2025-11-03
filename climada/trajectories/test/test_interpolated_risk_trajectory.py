@@ -249,7 +249,7 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
             rt.interpolation_strategy = "A"
 
         # There is only one possibility at the moment so we just check against a new object
-        new_interp = ExponentialExposureStrategy(rate=0.1)
+        new_interp = ExponentialExposureStrategy()
         rt.interpolation_strategy = new_interp
         self.assertEqual(rt.interpolation_strategy, new_interp)
         mock_reset_metrics.assert_has_calls([call(), call()])
@@ -1091,10 +1091,7 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
         mock_calc_data.return_value = mock_df_data
 
         # Call the method
-        fig, ax = rt.plot_time_waterfall(
-            start_date=datetime.date(2023, 1, 1),
-            end_date=datetime.date(2023, 1, 2),
-        )
+        fig, ax = rt.plot_time_waterfall()
 
         # Assertions
         mock_calc_data.assert_called_once_with(
@@ -1164,10 +1161,7 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
         mock_calc_data.return_value = mock_data
         print(mock_data)
         # Call the method
-        ax = rt.plot_waterfall(
-            start_date=datetime.date.fromisoformat(start_date),
-            end_date=datetime.date.fromisoformat(end_date),
-        )
+        ax = rt.plot_waterfall()
 
         # Assertions
         mock_calc_data.assert_called_once_with(

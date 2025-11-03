@@ -80,17 +80,15 @@ class TestInterpolationFuncs(unittest.TestCase):
     def test_exponential_interp_arrays_1d(self):
         arr_start = np.array([1, 10, 100])
         arr_end = np.array([2, 20, 200])
-        rate = 10
         expected = np.array([1.0, 14.142136, 200.0])
-        result = exponential_interp_arrays(arr_start, arr_end, rate)
+        result = exponential_interp_arrays(arr_start, arr_end)
         np.testing.assert_allclose(result, expected, rtol=self.rtol, atol=self.atol)
 
     def test_exponential_interp_arrays_shape(self):
         arr_start = np.array([10, 100, 5])
         arr_end = np.array([20, 200])
-        rate = 10
         with self.assertRaises(ValueError):
-            exponential_interp_arrays(arr_start, arr_end, rate)
+            exponential_interp_arrays(arr_start, arr_end)
 
     def test_exponential_interp_arrays_2d(self):
         arr_start = np.array(
@@ -101,36 +99,18 @@ class TestInterpolationFuncs(unittest.TestCase):
             ]
         )  # date 3 metric a,b,c
         arr_end = np.array([[2, 20, 200], [2, 20, 200], [2, 20, 200]])
-        rate = 10
         expected = np.array(
             [[1.0, 10.0, 100.0], [1.4142136, 14.142136, 141.42136], [2, 20, 200]]
         )
-        result = exponential_interp_arrays(arr_start, arr_end, rate)
+        result = exponential_interp_arrays(arr_start, arr_end)
         np.testing.assert_allclose(result, expected, rtol=self.rtol, atol=self.atol)
 
     def test_exponential_interp_arrays_start_equals_end(self):
         arr_start = np.array([5, 5])
         arr_end = np.array([5, 5])
-        rate = 2
         expected = np.array([5.0, 5.0])
-        result = exponential_interp_arrays(arr_start, arr_end, rate)
+        result = exponential_interp_arrays(arr_start, arr_end)
         np.testing.assert_allclose(result, expected, rtol=self.rtol, atol=self.atol)
-
-    def test_exponential_interp_arrays_invalid_rate(self):
-        arr_start = np.array([10, 100])
-        arr_end = np.array([20, 200])
-        # Test rate <= 0
-        with self.assertRaises(ValueError) as cm:
-            exponential_interp_arrays(arr_start, arr_end, 0)
-        self.assertIn(
-            "Rate for exponential interpolation must be positive", str(cm.exception)
-        )
-
-        with self.assertRaises(ValueError) as cm:
-            exponential_interp_arrays(arr_start, arr_end, -2)
-        self.assertIn(
-            "Rate for exponential interpolation must be positive", str(cm.exception)
-        )
 
     def test_linear_impmat_interpolate(self):
         result = linear_interp_imp_mat(self.imp_mat0, self.imp_mat1, self.time_points)
@@ -156,7 +136,7 @@ class TestInterpolationFuncs(unittest.TestCase):
 
     def test_exp_impmat_interpolate(self):
         result = exponential_interp_imp_mat(
-            self.imp_mat0, self.imp_mat1, self.time_points, 1.1
+            self.imp_mat0, self.imp_mat1, self.time_points
         )
         self.assertEqual(len(result), self.time_points)
         for mat in result:
@@ -176,9 +156,7 @@ class TestInterpolationFuncs(unittest.TestCase):
 
     def test_exp_impmat_interpolate_inconsistent_shape(self):
         with self.assertRaises(ValueError):
-            exponential_interp_imp_mat(
-                self.imp_mat0, self.imp_mat2, self.time_points, 1.1
-            )
+            exponential_interp_imp_mat(self.imp_mat0, self.imp_mat2, self.time_points)
 
 
 class TestInterpolationStrategies(unittest.TestCase):
@@ -321,7 +299,7 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
         np.testing.assert_allclose(result_exposure[2].data, self.dummy_matrix_1.data)
 
     def test_ExponentialExposureInterpolation_init_and_methods(self):
-        strategy = ExponentialExposureStrategy(rate=1.1)
+        strategy = ExponentialExposureStrategy()
         # Test hazard interpolation (should be linear)
         expected_hazard_interp = linear_interp_arrays(
             self.dummy_metric_0, self.dummy_metric_1

@@ -26,11 +26,11 @@ import logging
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.impact_calc_strat import ImpactCalcComputation
-from climada.trajectories.riskperiod import (
-    CalcRiskMetricsPoints,
+from climada.trajectories.impact_calc_strat import (
+    ImpactCalcComputation,
     ImpactComputationStrategy,
 )
+from climada.trajectories.riskperiod import CalcRiskMetricsPoints
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
     DEFAULT_ALLGROUP_NAME,
@@ -40,6 +40,8 @@ from climada.trajectories.trajectory import (
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
+
+__all__ = ["StaticRiskTrajectory"]
 
 
 class StaticRiskTrajectory(RiskTrajectory):
