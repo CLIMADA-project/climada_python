@@ -26,11 +26,12 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 from scipy.sparse import csr_matrix
 
+from climada.engine import Impact
 from climada.entity import ImpactFuncSet
 from climada.entity.exposures import Exposures
 from climada.hazard import Hazard
 from climada.trajectories import Snapshot
-from climada.trajectories.impact_calc_strat import Impact, ImpactCalcComputation
+from climada.trajectories.impact_calc_strat import ImpactCalcComputation
 
 
 class TestImpactCalcComputation(unittest.TestCase):

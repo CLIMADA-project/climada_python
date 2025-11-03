@@ -31,13 +31,15 @@ import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.trajectories.impact_calc_strat import ImpactCalcComputation
-from climada.trajectories.interpolated_trajectory import DEFAULT_RP
 from climada.trajectories.riskperiod import (  # ImpactComputationStrategy, # If needed to mock its base class directly
     CalcRiskMetricsPoints,
 )
 from climada.trajectories.snapshot import Snapshot
-from climada.trajectories.static_trajectory import StaticRiskTrajectory
-from climada.trajectories.trajectory import DEFAULT_ALLGROUP_NAME
+from climada.trajectories.static_trajectory import (
+    DEFAULT_ALLGROUP_NAME,
+    DEFAULT_RP,
+    StaticRiskTrajectory,
+)
 
 
 class TestStaticRiskTrajectory(unittest.TestCase):

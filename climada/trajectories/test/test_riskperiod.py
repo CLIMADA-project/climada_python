@@ -49,12 +49,12 @@ from climada.trajectories.interpolation import (
 from climada.trajectories.riskperiod import (
     CalcRiskMetricsPeriod,
     CalcRiskMetricsPoints,
-    Snapshot,
     calc_freq_curve,
     calc_per_date_aais,
     calc_per_date_eais,
     calc_per_date_rps,
 )
+from climada.trajectories.snapshot import Snapshot
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
 
 

@@ -27,9 +27,12 @@ from unittest.mock import MagicMock, Mock, call, patch
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.interpolated_trajectory import DEFAULT_RP
 from climada.trajectories.snapshot import Snapshot
-from climada.trajectories.trajectory import DEFAULT_ALLGROUP_NAME, RiskTrajectory
+from climada.trajectories.trajectory import (
+    DEFAULT_ALLGROUP_NAME,
+    DEFAULT_RP,
+    RiskTrajectory,
+)
 
 
 class TestRiskTrajectory(unittest.TestCase):
