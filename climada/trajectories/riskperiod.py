@@ -45,6 +45,7 @@ from climada.trajectories.interpolation import (
 from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
+DEFAULT_PERIOD_INDEX_NAME = "date"
 
 __all__ = [
     "CalcRiskMetricsPoints",
@@ -77,12 +78,45 @@ def lazy_property(method):
 
 
 class CalcRiskMetricsPoints:
+    """This class handles the computation of impacts for a list of `Snapshot`.
+
+    Note that most attribute like members are properties with their own docstring.
+
+    Attributes
+    ----------
+
+    impact_computation_strategy: ImpactComputationStrategy, optional
+        The method used to calculate the impact from the (Haz,Exp,Vul) of the snapshots.
+        Defaults to ImpactCalc
+    measure: Measure, optional
+        The measure applied to snapshots. Defaults to None.
+
+    Notes
+    -----
+
+    This class is intended for internal computation.
+    """
 
     def __init__(
         self,
         snapshots: list[Snapshot],
         impact_computation_strategy: ImpactComputationStrategy,
     ) -> None:
+        """Initialize a new `CalcRiskMetricsPoints`
+
+        This initializes and instantiate a new `CalcRiskMetricsPoints` object.
+        No computation is done at initialisation and only done "just in time".
+
+        Parameters
+        ----------
+        snapshots : List[Snapshot]
+            The `Snapshot` list to compute risk for.
+        impact_computation_strategy: ImpactComputationStrategy, optional
+            The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots.
+            Defaults to ImpactCalc
+
+        """
+
         self._reset_impact_data()
         self.snapshots = snapshots
         self.impact_computation_strategy = impact_computation_strategy
@@ -90,7 +124,7 @@ class CalcRiskMetricsPoints:
             [snap.date for snap in self.snapshots], name="date"
         )
         self.measure = None
-        self._groups_id = np.unique(
+        self._group_id = np.unique(
             np.concatenate(
                 [
                     snap.exposure.gdf["group_id"]
@@ -101,7 +135,7 @@ class CalcRiskMetricsPoints:
         )
 
     def _reset_impact_data(self):
-        """Util method that resets computed data, for instance when changing the time resolution."""
+        """Util method that resets computed data, for instance when changing the computation strategy."""
         self._impacts = None
         self._eai_gdf = None
         self._per_date_eai = None
@@ -109,7 +143,7 @@ class CalcRiskMetricsPoints:
 
     @property
     def impact_computation_strategy(self) -> ImpactComputationStrategy:
-        """The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots."""
+        """The method used to calculate the impact from the (Haz,Exp,Vul) of the snapshots."""
         return self._impact_computation_strategy
 
     @impact_computation_strategy.setter
@@ -122,6 +156,8 @@ class CalcRiskMetricsPoints:
 
     @lazy_property
     def impacts(self) -> list[Impact]:
+        """Return Impact object for the different snapshots."""
+
         return [
             self.impact_computation_strategy.compute_impacts(
                 snap.exposure, snap.hazard, snap.impfset
@@ -131,27 +167,32 @@ class CalcRiskMetricsPoints:
 
     @lazy_property
     def per_date_eai(self) -> np.ndarray:
-        """Expected annual impacts per date with changing exposure, changing hazard and changing vulnerability"""
+        """Expected annual impacts per snapshot."""
+
         return np.array([imp.eai_exp for imp in self.impacts])
 
     @lazy_property
     def per_date_aai(self) -> np.ndarray:
-        """Average annual impacts per date with changing exposure, changing hazard and changing vulnerability"""
+        """Average annual impacts per snapshot."""
+
         return np.array([imp.aai_agg for imp in self.impacts])
 
     @lazy_property
     def eai_gdf(self) -> pd.DataFrame:
-        """Convenience function returning a GeoDataFrame (with both datetime and coordinates) from `per_date_eai`.
+        """Convenience function returning a DataFrame (with both datetime and coordinates) from `per_date_eai`.
+
+        This can easily be merged with the GeoDataFrame of the exposure object of one of the `Snapshot`.
 
         Notes
         -----
 
-        The GeoDataFrame from the starting snapshot is used as a basis (notably for `value` and `group_id`).
+        The DataFrame from the first snapshot of the list is used as a basis (notably for `value` and `group_id`).
         """
         return self.calc_eai_gdf()
 
     def calc_eai_gdf(self) -> pd.DataFrame:
-        """Merges the per date EAIs of the risk period with the GeoDataframe of the exposure of the starting snapshot."""
+        """Merge the per date EAIs of the risk period with the Dataframe of the exposure of the starting snapshot."""
+
         df = pd.DataFrame(self.per_date_eai, index=self._date_idx)
         df = df.reset_index().melt(
             id_vars="date", var_name="coord_id", value_name="risk"
@@ -166,19 +207,20 @@ class CalcRiskMetricsPoints:
         )
         eai_gdf = eai_gdf.merge(df, on=["date", "coord_id"])
         eai_gdf = eai_gdf.rename(columns={"group_id": "group"})
-        eai_gdf["group"] = pd.Categorical(eai_gdf["group"], categories=self._groups_id)
+        eai_gdf["group"] = pd.Categorical(eai_gdf["group"], categories=self._group_id)
         eai_gdf["metric"] = "eai"
         eai_gdf["measure"] = self.measure.name if self.measure else "no_measure"
         eai_gdf["unit"] = self.snapshots[0].exposure.value_unit
         return eai_gdf
 
     def calc_aai_metric(self) -> pd.DataFrame:
-        """Compute a DataFrame of the AAI at each dates of the risk period (including changes in exposure, hazard and vulnerability)."""
+        """Compute a DataFrame of the AAI for each snapshot."""
+
         aai_df = pd.DataFrame(
             index=self._date_idx, columns=["risk"], data=self.per_date_aai
         )
         aai_df["group"] = pd.Categorical(
-            [pd.NA] * len(aai_df), categories=self._groups_id
+            [pd.NA] * len(aai_df), categories=self._group_id
         )
         aai_df["metric"] = "aai"
         aai_df["measure"] = self.measure.name if self.measure else "no_measure"
@@ -187,13 +229,7 @@ class CalcRiskMetricsPoints:
         return aai_df
 
     def calc_aai_per_group_metric(self) -> pd.DataFrame:
-        """Compute a DataFrame of the AAI distinguised per group id in the exposures, at each dates of the risk period (including changes in exposure, hazard and vulnerability).
-
-        Notes
-        -----
-
-        If group id changes between starting and ending snapshots of the risk period, the AAIs are linearly interpolated (with a warning for transparency).
-        """
+        """Compute a DataFrame of the AAI distinguised per group id in the exposures, for each snapshot."""
 
         eai_pres_groups = self.eai_gdf[["date", "coord_id", "group", "risk"]].copy()
         aai_per_group_df = eai_pres_groups.groupby(
@@ -207,7 +243,7 @@ class CalcRiskMetricsPoints:
         return aai_per_group_df
 
     def calc_return_periods_metric(self, return_periods: list[int]) -> pd.DataFrame:
-        """Compute a DataFrame of the estimated impacts for a list of return periods, at each dates of the risk period (including changes in exposure, hazard and vulnerability).
+        """Compute a DataFrame of the estimated impacts for a list of return periods, for each snapshot.
 
         Parameters
         ----------
@@ -216,7 +252,6 @@ class CalcRiskMetricsPoints:
             The return periods to estimate impacts for.
         """
 
-        # currently mathematicaly wrong, but approximatively correct, to be reworked when concatenating the impact matrices for the interpolation
         per_date_rp = np.array(
             [
                 imp.calc_freq_curve(return_per=return_periods).impact
@@ -227,16 +262,14 @@ class CalcRiskMetricsPoints:
             index=self._date_idx, columns=return_periods, data=per_date_rp
         ).melt(value_name="risk", var_name="rp", ignore_index=False)
         rp_df.reset_index(inplace=True)
-        rp_df["group"] = pd.Categorical(
-            [pd.NA] * len(rp_df), categories=self._groups_id
-        )
+        rp_df["group"] = pd.Categorical([pd.NA] * len(rp_df), categories=self._group_id)
         rp_df["metric"] = "rp_" + rp_df["rp"].astype(str)
         rp_df["measure"] = self.measure.name if self.measure else "no_measure"
         rp_df["unit"] = self.snapshots[0].exposure.value_unit
         return rp_df
 
     def apply_measure(self, measure: Measure) -> "CalcRiskMetricsPoints":
-        """Creates a new `CalcRiskPeriod` object with a measure.
+        """Creates a new `CalcRiskMetricsPoints` object with a measure.
 
         The given measure is applied to both snapshot of the risk period.
 
@@ -263,7 +296,7 @@ class CalcRiskMetricsPoints:
 
 
 class CalcRiskMetricsPeriod:
-    """Handles the computation of impacts for a risk period.
+    """This class handles the computation of impacts for a risk period.
 
     This object handles the interpolations and computations of risk metrics in
     between two given snapshots, along a DateTimeIndex build from either a
@@ -289,7 +322,7 @@ class CalcRiskMetricsPeriod:
     Notes
     -----
 
-    This class is intended for internal computation. Users should favor `RiskTrajectory` objects.
+    This class is intended for internal computation.
     """
 
     def __init__(
@@ -300,10 +333,10 @@ class CalcRiskMetricsPeriod:
         interpolation_strategy: InterpolationStrategyBase,
         impact_computation_strategy: ImpactComputationStrategy,
     ):
-        """Initialize a new `CalcRiskPeriod`
+        """Initialize a new `CalcRiskMetricsPeriod`
 
-        This initializes and instantiate a new CalcRiskPeriod object. No heavy
-        computation is done at that point.
+        This initializes and instantiate a new `CalcRiskMetricsPeriod` object.
+        No computation is done at initialisation and only done "just in time".
 
         Parameters
         ----------
@@ -321,11 +354,6 @@ class CalcRiskMetricsPeriod:
             The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots.
             Defaults to ImpactCalc
 
-        Notes
-        -----
-
-        If both `time_points` and `freq` are given, a consistency check between the two is made.
-
         """
 
         LOGGER.debug("Instantiating new CalcRiskPeriod.")
@@ -335,7 +363,7 @@ class CalcRiskMetricsPeriod:
             date1=snapshot0.date,
             date2=snapshot1.date,
             freq=time_resolution,
-            name="date",
+            name=DEFAULT_PERIOD_INDEX_NAME,
         )
         self.interpolation_strategy = interpolation_strategy
         self.impact_computation_strategy = impact_computation_strategy
@@ -381,16 +409,15 @@ class CalcRiskMetricsPeriod:
 
         Parameters
         ----------
-        date1 : str or pd.Timestamp
-            The start date of the date range.
-        date2 : str or pd.Timestamp
-            The end date of the date range.
-        periods : int, optional
-            Number of date points to generate. If None, `freq` must be provided.
+        date1 : str or pd.Timestamp or datetime.date
+            The start date of the period range.
+        date2 : str or pd.Timestamp or datetime.date
+            The end date of the period range.
         freq : str, optional
-            Frequency string for the date range. If None, `periods` must be provided.
+            Frequency string for the period range.
+            See `here <https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#period-aliases>`_.
         name : str, optional
-            Name of the resulting date range index.
+            Name of the resulting period range index.
 
         Returns
         -------
@@ -437,19 +464,21 @@ class CalcRiskMetricsPeriod:
 
     @property
     def time_points(self) -> int:
-        """The numbers of different time points (dates) in the risk period."""
+        """The numbers of different time points (periods) in the risk period."""
         return self._time_points
 
     @property
     def time_resolution(self) -> str:
-        """The time resolution of the risk periods, expressed as a pandas interval frequency string."""
+        """The time resolution of the risk periods, expressed as a pandas period frequency string."""
         return self._time_resolution  # type: ignore
 
     @time_resolution.setter
     def time_resolution(self, value, /):
-        freq = pd.tseries.frequencies.to_offset(value)
         self.date_idx = pd.period_range(
-            self.snapshot_start.date, self.snapshot_end.date, freq=freq, name="date"
+            self.snapshot_start.date,
+            self.snapshot_end.date,
+            freq=value,
+            name=DEFAULT_PERIOD_INDEX_NAME,
         )
 
     @property
@@ -586,7 +615,7 @@ class CalcRiskMetricsPeriod:
 
     ###############################
 
-    ########## Base EAI ###########
+    ########## Core EAI ###########
 
     @property
     def per_date_eai_H0V0(self) -> np.ndarray:
@@ -618,7 +647,7 @@ class CalcRiskMetricsPeriod:
 
     ##################################
 
-    ######### Specific AAIs ##########
+    ######### Core AAIs ##########
 
     @property
     def per_date_aai_H0V0(self) -> np.ndarray:
@@ -642,7 +671,7 @@ class CalcRiskMetricsPeriod:
 
     #################################
 
-    ######### Specific RPs  #########
+    ######### Core RPs  #########
 
     def per_date_return_periods_H0V0(self, return_periods: list[int]) -> np.ndarray:
         """Estimated impacts per dates for given return periods, with changing exposure, starting hazard and starting vulnerability."""
@@ -700,17 +729,20 @@ class CalcRiskMetricsPeriod:
 
     @lazy_property
     def per_date_aai(self) -> np.ndarray:
-        """Average annual impacts per date with changing exposure, changing hazard and changing vulnerability"""
+        """Average annual impacts per date with changing exposure, changing hazard and changing vulnerability."""
         return calc_per_date_aais(self.per_date_eai)
 
     @lazy_property
     def eai_gdf(self) -> pd.DataFrame:
-        """Convenience function returning a GeoDataFrame (with both datetime and coordinates) from `per_date_eai`.
+        """Convenience function returning a DataFrame (with both datetime and coordinates ids) from `per_date_eai`.
+
+        This dataframe can easily be merged with one of the snapshot exposure geodataframe.
 
         Notes
         -----
 
-        The GeoDataFrame from the starting snapshot is used as a basis (notably for `value` and `group_id`).
+        The DataFrame from the starting snapshot is used as a basis (notably for `value` and `group_id`).
+
         """
         return self.calc_eai_gdf()
 
@@ -724,10 +756,10 @@ class CalcRiskMetricsPeriod:
     ####################################
 
     def calc_eai_gdf(self) -> pd.DataFrame:
-        """Merges the per date EAIs of the risk period with the GeoDataframe of the exposure of the starting snapshot."""
+        """Merge the per date EAIs of the risk period with the GeoDataframe of the exposure of the starting snapshot."""
         df = pd.DataFrame(self.per_date_eai, index=self.date_idx)
         df = df.reset_index().melt(
-            id_vars="date", var_name="coord_id", value_name="risk"
+            id_vars=DEFAULT_PERIOD_INDEX_NAME, var_name="coord_id", value_name="risk"
         )
         if "group_id" in self.snapshot_start.exposure.gdf:
             eai_gdf = self.snapshot_start.exposure.gdf[["group_id"]]
@@ -764,7 +796,8 @@ class CalcRiskMetricsPeriod:
         Notes
         -----
 
-        If group id changes between starting and ending snapshots of the risk period, the AAIs are linearly interpolated (with a warning for transparency).
+        If group ids changes between starting and ending snapshots of the risk period, the AAIs are linearly interpolated (with a warning for transparency).
+
         """
         if len(self._group_id_E0) < 1 or len(self._group_id_E1) < 1:
             LOGGER.warning(
@@ -772,9 +805,11 @@ class CalcRiskMetricsPeriod:
             )
             return pd.DataFrame()
 
-        eai_pres_groups = self.eai_gdf[["date", "coord_id", "group", "risk"]].copy()
+        eai_pres_groups = self.eai_gdf[
+            [DEFAULT_PERIOD_INDEX_NAME, "coord_id", "group", "risk"]
+        ].copy()
         aai_per_group_df = eai_pres_groups.groupby(
-            ["date", "group"], as_index=False, observed=True
+            [DEFAULT_PERIOD_INDEX_NAME, "group"], as_index=False, observed=True
         )["risk"].sum()
         if not np.array_equal(self._group_id_E0, self._group_id_E1):
             LOGGER.warning(
@@ -785,9 +820,9 @@ class CalcRiskMetricsPeriod:
                 np.tile(self._group_id_E1, len(self.date_idx)),
                 categories=self._groups_id,
             )
-            aai_fut_groups = eai_fut_groups.groupby(["date", "group"], as_index=False)[
-                "risk"
-            ].sum()
+            aai_fut_groups = eai_fut_groups.groupby(
+                [DEFAULT_PERIOD_INDEX_NAME, "group"], as_index=False
+            )["risk"].sum()
             aai_per_group_df["risk"] = linear_interp_arrays(
                 aai_per_group_df["risk"].values, aai_fut_groups["risk"].values
             )
@@ -800,13 +835,16 @@ class CalcRiskMetricsPeriod:
         return aai_per_group_df
 
     def calc_return_periods_metric(self, return_periods: list[int]) -> pd.DataFrame:
-        """Compute a DataFrame of the estimated impacts for a list of return periods, at each dates of the risk period (including changes in exposure, hazard and vulnerability).
+        """Compute a DataFrame of the estimated impacts for a list of return
+        periods, at each dates of the risk period (including changes in exposure,
+        hazard and vulnerability).
 
         Parameters
         ----------
 
         return_periods : list of int
             The return periods to estimate impacts for.
+
         """
 
         # currently mathematicaly wrong, but approximatively correct, to be reworked when concatenating the impact matrices for the interpolation
@@ -838,7 +876,11 @@ class CalcRiskMetricsPeriod:
         return rp_df
 
     def calc_risk_contributions_metric(self) -> pd.DataFrame:
-        """Compute a DataFrame of the individual contributions of risk (impact), at each dates of the risk period (including changes in exposure, hazard and vulnerability)."""
+        """Compute a DataFrame of the individual contributions of risk (impact),
+        at each dates of the risk period (including changes in exposure,
+        hazard and vulnerability).
+
+        """
         per_date_aai_V0 = self.interpolation_strategy.interp_over_hazard_dim(
             self.per_date_aai_H0V0, self.per_date_aai_H1V0
         )
@@ -884,7 +926,7 @@ class CalcRiskMetricsPeriod:
         return df
 
     def apply_measure(self, measure: Measure) -> "CalcRiskMetricsPeriod":
-        """Creates a new `CalcRiskPeriod` object with a measure.
+        """Creates a new `CalcRiskMetricsPeriod` object with a measure.
 
         The given measure is applied to both snapshot of the risk period.
 
@@ -916,9 +958,9 @@ class CalcRiskMetricsPeriod:
 
 
 def calc_per_date_eais(imp_mats: list[csr_matrix], frequency: np.ndarray) -> np.ndarray:
-    """
-    Calculate expected average impact (EAI) values from a list of impact matrices corresponding
-    to impacts at different dates (with possible changes along exposure, hazard and vulnerability).
+    """Calculate expected average impact (EAI) values from a list of impact matrices
+    corresponding to impacts at different dates (with possible changes along
+    exposure, hazard and vulnerability).
 
     Parameters
     ----------
@@ -931,6 +973,7 @@ def calc_per_date_eais(imp_mats: list[csr_matrix], frequency: np.ndarray) -> np.
     -------
     np.ndarray
         2D array of EAI (1D) for each dates.
+
     """
     per_date_eai_exp = np.array(
         [ImpactCalc.eai_exp_from_mat(imp_mat, frequency) for imp_mat in imp_mats]
@@ -939,9 +982,9 @@ def calc_per_date_eais(imp_mats: list[csr_matrix], frequency: np.ndarray) -> np.
 
 
 def calc_per_date_aais(per_date_eai_exp: np.ndarray) -> np.ndarray:
-    """
-    Calculate per_date aggregate annual impact (AAI) values resulting from a list arrays corresponding
-    to EAI at different dates (with possible changes along exposure, hazard and vulnerability).
+    """Calculate per_date aggregate annual impact (AAI) values
+    resulting from a list arrays corresponding to EAI at different
+    dates (with possible changes along exposure, hazard and vulnerability).
 
     Parameters
     ----------
@@ -964,9 +1007,9 @@ def calc_per_date_rps(
     frequency: np.ndarray,
     return_periods: list[int],
 ) -> np.ndarray:
-    """
-    Calculate per date return period impact values from a list of impact matrices corresponding
-    to impacts at different dates (with possible changes along exposure, hazard and vulnerability).
+    """Calculate per date return period impact values from a
+    list of impact matrices corresponding to impacts at different
+    dates (with possible changes along exposure, hazard and vulnerability).
 
     Parameters
     ----------
@@ -981,6 +1024,7 @@ def calc_per_date_rps(
     -------
     np.ndarray
         2D array of impacts per return periods (1D) for each dates.
+
     """
     rp = np.array(
         [calc_freq_curve(imp_mat, frequency, return_periods) for imp_mat in imp_mats]
@@ -989,8 +1033,7 @@ def calc_per_date_rps(
 
 
 def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None) -> np.ndarray:
-    """
-    Calculate the estimated impacts for given return periods.
+    """Calculate the estimated impacts for given return periods.
 
     Parameters
     ----------
@@ -1006,6 +1049,7 @@ def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None) -> np.ndarray:
     -------
     np.ndarray
        The estimated impacts for the different return periods.
+
     """
 
     at_event = np.sum(imp_mat_intrpl, axis=1).A1

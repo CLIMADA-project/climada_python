@@ -16,14 +16,15 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This modules implements different sparce matrices interpolation approaches.
+This modules implements different sparce matrices and numpy arrays
+interpolation approaches.
 
 """
 
 import logging
 from abc import ABC
 from collections.abc import Callable
-from typing import Any, Concatenate, Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 from scipy import sparse
@@ -77,19 +78,18 @@ def linear_interp_imp_mat(
     $$M_p = M_{start} \cdot (1 - p) + M_{end} \cdot p$$
     The proportions $p$ range from 0 to 1, inclusive.
     """
+
     return [
         mat_start + prop * (mat_end - mat_start)
         for prop in np.linspace(0, 1, number_of_interpolation_points)
     ]
 
 
-# Assuming the matrix object type is complex and not easily type-hinted beyond 'Any'
-# If a specific custom type exists (e.g., 'ImpactMatrix'), that should be used instead of 'Any'.
-
-
 def exponential_interp_imp_mat(
-    mat_start: Any, mat_end: Any, number_of_interpolation_points: int
-) -> List[Any]:
+    mat_start: sparse.csr_matrix,
+    mat_end: sparse.csr_matrix,
+    number_of_interpolation_points: int,
+) -> List[sparse.csr_matrix]:
     r"""
     Exponentially interpolates between two "impact matrices".
 
@@ -131,7 +131,7 @@ def exponential_interp_imp_mat(
     3. Mapping the result back to the original domain:
        $$M_{interp} = \exp(M'_{interp}$$
     """
-    # ... function body remains the same ...
+
     mat_start = mat_start.copy()
     mat_end = mat_end.copy()
     mat_start.data = np.log(mat_start.data + np.finfo(float).eps)
@@ -203,8 +203,8 @@ def exponential_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.
     Performs exponential interpolation between two NumPy arrays over their first dimension.
 
     This function achieves an exponential-like transition by performing linear
-    interpolation in the logarithmic space, suitable for metrics that represent
-    growth factors.
+    interpolation in the logarithmic space, suitable to interpolate over a dimension which has
+    a growth factor.
 
     Parameters
     ----------
@@ -312,9 +312,8 @@ class InterpolationStrategyBase(ABC):
             A sparse matrix of the impacts at the end of the range.
         interpolation_range : int
             The total number of time points to interpolate, including the start and end.
-        **kwargs : Optional[ Dict[str, Any]]
-            Keyword arguments (e.g., 'rate' for exponential interpolation) to pass
-            to the underlying :attr:`exposure_interp` function.
+        **kwargs : Optional[Dict[str, Any]]
+            Keyword arguments to pass to the underlying :attr:`exposure_interp` function.
 
         Returns
         -------
@@ -328,15 +327,13 @@ class InterpolationStrategyBase(ABC):
             indicating incompatible matrix shapes.
         """
         try:
-            # Note: Assuming the Callable takes the exact positional arguments
             res = self.exposure_interp(imp_E0, imp_E1, interpolation_range, **kwargs)
         except ValueError as err:
-            # Specific error handling for clarity
             if str(err) == "inconsistent shapes":
                 raise ValueError(
                     "Tried to interpolate impact matrices of different shape. "
                     "A possible reason could be Exposures of different shapes."
-                ) from err  # Use 'from err' to chain the exception
+                ) from err
 
             raise err
 
@@ -360,7 +357,7 @@ class InterpolationStrategyBase(ABC):
             The starting array of metrics.
         metric_1 : numpy.ndarray
             The ending array of metrics. Must have the same shape as ``metric_0``.
-        **kwargs : Optional[ Dict[str, Any]]
+        **kwargs : Optional [Dict[str, Any]]
             Keyword arguments to pass to the underlying :attr:`hazard_interp` function.
 
         Returns
@@ -368,7 +365,6 @@ class InterpolationStrategyBase(ABC):
         numpy.ndarray
             The resulting interpolated array.
         """
-        # Note: Assuming the Callable takes the exact positional arguments
         return self.hazard_interp(metric_0, metric_1, **kwargs)
 
     def interp_over_vulnerability_dim(
@@ -389,7 +385,7 @@ class InterpolationStrategyBase(ABC):
             The starting array of metrics.
         metric_1 : numpy.ndarray
             The ending array of metrics. Must have the same shape as ``metric_0``.
-        **kwargs : Optional[ Dict[str, Any]]
+        **kwargs : Optional[Dict[str, Any]]
             Keyword arguments to pass to the underlying :attr:`vulnerability_interp` function.
 
         Returns
@@ -402,7 +398,10 @@ class InterpolationStrategyBase(ABC):
 
 
 class InterpolationStrategy(InterpolationStrategyBase):
-    r"""Interface for interpolation strategies."""
+    r"""Interface for interpolation strategies.
+
+    This is the class to use to define your own custom interpolation strategy.
+    """
 
     def __init__(
         self,
@@ -417,7 +416,7 @@ class InterpolationStrategy(InterpolationStrategyBase):
 
 
 class AllLinearStrategy(InterpolationStrategyBase):
-    r"""Linear interpolation strategy."""
+    r"""Linear interpolation strategy over all dimensions."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -427,7 +426,7 @@ class AllLinearStrategy(InterpolationStrategyBase):
 
 
 class ExponentialExposureStrategy(InterpolationStrategyBase):
-    r"""Exponential interpolation strategy."""
+    r"""Exponential interpolation strategy for exposure and linear for Hazard and Vulnerability."""
 
     def __init__(self) -> None:
         super().__init__()

@@ -16,7 +16,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This modules implements the impact computation strategy objects for trajectories.
+This modules implements the impact computation strategy objects for risk
+trajectories.
 
 """
 
@@ -41,8 +42,12 @@ class ImpactComputationStrategy(ABC):
     Interface for impact computation strategies.
 
     This abstract class defines the contract for all concrete strategies
-    responsible for calculating and optionally modifying the total impact
-    based on a set of inputs (exposure, hazard, vulnerability).
+    responsible for calculating and optionally modifying with a risk transfer,
+    the impact computation, based on a set of inputs (exposure, hazard, vulnerability).
+
+    It revolves around a `compute_impacts()` method that takes as arguments
+    the three dimensions of risk (exposure, hazard, vulnerability) and return an
+    Impact object.
     """
 
     @abstractmethod
@@ -90,11 +95,33 @@ class ImpactComputationStrategy(ABC):
 
 
 class ImpactCalcComputation(ImpactComputationStrategy):
-    """
-    Default impact computation strategy.
+    r"""
+    Default impact computation strategy using the core engine of climada.
 
     This strategy first calculates the raw impact using the standard
     :class:`ImpactCalc` logic and then applies a global risk transfer mechanism.
+
+    This risk transfer is distinct and non-exclusive with the risk transfer
+    defined through the Exposures object. While in the Exposures case, the transfer
+    is defined on a per coordinate basis, this one is applied total impact on the whole region
+    considered, and proportionally rescales the impacts per coordinate accordingly.
+
+    Notes
+    -----
+    The calculation is performed event-wise:
+
+    1. **Total Impact**: Calculate the total impact for each event
+       (sum of impacts across all exposure points).
+    2. **Transferred Risk per Event**: Defined as:
+       $$\min(\max(0, \text{Total Impact} - \text{attachement}), \text{cover})$$
+    3. **Residual Risk per Event**:
+       $$\text{Total Impact} - \text{Transferred Risk per Event}$$
+    4. **Adjustment**: The original impact per exposure point is scaled
+       by the ratio of (Residual Risk / Total Impact) or
+       (Transferred Risk / Total Impact) for that event.
+       This ensures the risk transfer is shared proportionally among all
+       impacted exposure points.
+
     """
 
     def compute_impacts(
@@ -107,9 +134,7 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         calc_residual: bool = False,
     ) -> Impact:
         """
-        Calculates the impact and applies the risk transfer mechanism.
-
-        This overrides the abstract method to implement the default strategy.
+        Calculates the impact and applies the "global" risk transfer mechanism.
 
         Parameters
         ----------
@@ -184,20 +209,17 @@ class ImpactCalcComputation(ImpactComputationStrategy):
             Determines whether to set the matrix to the residual or transferred impact.
         """
         if risk_transf_attach is not None or risk_transf_cover is not None:
-            # Assuming impact.imp_mat is a sparse matrix, which is a common pattern
             impact.imp_mat = self.calculate_residual_or_risk_transfer_impact_matrix(
                 impact.imp_mat, risk_transf_attach, risk_transf_cover, calc_residual
             )
 
     def calculate_residual_or_risk_transfer_impact_matrix(
         self,
-        imp_mat: Union[
-            sparse.csr_matrix, Any
-        ],  # Use Any if sparse.csr_matrix is too restrictive
+        imp_mat: sparse.csr_matrix,
         attachement: Optional[float],
         cover: Optional[float],
         calc_residual: bool,
-    ) -> Union[sparse.csr_matrix, Any]:
+    ) -> sparse.csr_matrix:
         r"""
         Calculates either the residual or the risk transfer impact matrix
         based on a global risk transfer mechanism.

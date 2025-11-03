@@ -45,10 +45,12 @@ __all__ = ["StaticRiskTrajectory"]
 
 
 class StaticRiskTrajectory(RiskTrajectory):
-    """Calculates risk trajectories over a series of snapshots.
+    """This class implements static risk trajectories, objects that
+    regroup impacts computations for multiple dates.
 
     This class computes risk metrics over a series of snapshots,
-    optionally applying risk discounting.
+    optionally applying risk discounting. It does not interpolate risk
+    between the snapshot and only provides results for each snapshot.
 
     """
 
@@ -58,6 +60,15 @@ class StaticRiskTrajectory(RiskTrajectory):
         "return_periods",
         "aai_per_group",
     ]
+    """Class variable listing the risk metrics that can be computed.
+
+    Currently:
+
+    - eai, expected impact (per exposure point within a period of 1/frequency unit of the hazard object)
+    - aai, average annual impact (aggregated eai over the whole exposure)
+    - aai_per_group, average annual impact per exposure subgroup (defined from the exposure geodataframe)
+    - return_periods, estimated impacts aggregated over the whole exposure for different return periods
+    """
 
     def __init__(
         self,
@@ -68,6 +79,25 @@ class StaticRiskTrajectory(RiskTrajectory):
         risk_disc_rates: DiscRates | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
+        """Initialize a new `StaticRiskTrajectory`.
+
+        Parameters
+        ----------
+        snapshots_list : list[Snapshot]
+            The list of `Snapshot` object to compute risk from.
+        return_periods: list[int], optional
+            The return periods to use when computing the `return_periods_metric`.
+            Defaults to `DEFAULT_RP` ([20, 50, 100]).
+        all_groups_name: str, optional
+            The string to use to define all exposure points subgroup.
+            Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
+        risk_disc_rates: DiscRates, optional
+            The discount rate to apply to future risk. Defaults to None.
+        impact_computation_strategy: ImpactComputationStrategy, optional
+            The method used to calculate the impact from the (Haz,Exp,Vul)
+            of the two snapshots. Defaults to :class:`ImpactCalcComputation`.
+
+        """
         super().__init__(
             snapshots_list,
             return_periods=return_periods,
@@ -82,7 +112,7 @@ class StaticRiskTrajectory(RiskTrajectory):
 
     @property
     def impact_computation_strategy(self) -> ImpactComputationStrategy:
-        """The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots."""
+        """The approach or strategy used to calculate the impact from the snapshots."""
         return self._risk_metrics_calculators.impact_computation_strategy
 
     @impact_computation_strategy.setter
@@ -99,7 +129,39 @@ class StaticRiskTrajectory(RiskTrajectory):
         metric_meth: str | None = None,
         **kwargs,
     ) -> pd.DataFrame:
-        """Generic method to compute metrics based on the provided metric name and method."""
+        """Generic method to compute metrics based on the provided metric name and method.
+
+        This method calls the appropriate method from the calculator to return
+        the results for the given metric, in a tidy formatted dataframe.
+
+        It first checks whether the requested metric is a valid one.
+        Then looks for a possible cached value and otherwised asks the
+        calculators (`self._risk_metric_calculators`) to run the computation.
+        The results are then regrouped in a nice and tidy DataFrame.
+        If a `risk_disc_rates` was set, values are converted to net present values.
+        Results are then cached within `self._<metric_name>_metrics` and returned.
+
+        Parameters
+        ----------
+        metric_name : str, optional
+            The name of the metric to return results for.
+        metric_meth : str, optional
+            The name of the specific method of the calculator to call.
+
+        Returns
+        -------
+        pd.DataFrame
+            A tidy formatted dataframe of the risk metric computed for the
+            different snapshots.
+
+        Raises
+        ------
+        NotImplementedError
+            If the requested metric is not part of `POSSIBLE_METRICS`.
+        ValueError
+            If either of the arguments are not provided.
+
+        """
         if metric_name is None or metric_meth is None:
             raise ValueError("Both metric_name and metric_meth must be provided.")
 
@@ -122,7 +184,9 @@ class StaticRiskTrajectory(RiskTrajectory):
         if "coord_id" in tmp.columns:
             tmp = tmp.set_index(["coord_id"], append=True)
 
-        # When more than 2 snapshots, there are duplicated rows, we need to remove them.
+        # When more than 2 snapshots, there might be duplicated rows, we need to remove them.
+        # Should not be the case in static trajectory, but in any case we really don't want
+        # duplicated rows, which would mess up some dataframe manipulation down the road.
         tmp = tmp[~tmp.index.duplicated(keep="first")]
         tmp = tmp.reset_index()
         if self._all_groups_name not in tmp["group"].cat.categories:
@@ -151,12 +215,6 @@ class StaticRiskTrajectory(RiskTrajectory):
         This method computes and return a `DataFrame` with eai metric
         (for each exposure point) for each date.
 
-        Parameters
-        ----------
-        npv : bool
-            Whether to apply the (risk) discount rate if it is defined.
-            Defaults to `True`.
-
         Notes
         -----
 
@@ -173,11 +231,6 @@ class StaticRiskTrajectory(RiskTrajectory):
 
         This method computes and return a `DataFrame` with aai metric for each date.
 
-        Parameters
-        ----------
-        npv : bool
-            Whether to apply the (risk) discount rate if it is defined.
-            Defaults to `True`.
         """
 
         return self._compute_metrics(
@@ -185,6 +238,11 @@ class StaticRiskTrajectory(RiskTrajectory):
         )
 
     def return_periods_metrics(self, **kwargs) -> pd.DataFrame:
+        """Return the estimated impacts for different return periods.
+
+        Return periods to estimate impacts for are defined by `self.return_periods`.
+
+        """
         return self._compute_metrics(
             metric_name="return_periods",
             metric_meth="calc_return_periods_metric",
@@ -198,11 +256,6 @@ class StaticRiskTrajectory(RiskTrajectory):
         This method computes and return a `DataFrame` with aai metric for each
         of the exposure group defined by a group id, for each date.
 
-        Parameters
-        ----------
-        npv : bool
-            Whether to apply the (risk) discount rate if it is defined.
-            Defaults to `True`.
         """
 
         return self._compute_metrics(
@@ -215,7 +268,7 @@ class StaticRiskTrajectory(RiskTrajectory):
         self,
         metrics: list[str] | None = None,
     ) -> pd.DataFrame | pd.Series:
-        """Returns a DataFrame of risk metrics for each dates
+        """Returns a DataFrame of risk metrics for each dates.
 
         This methods collects (and if needed computes) the `metrics`
         (Defaulting to "aai", "return_periods" and "aai_per_group").
@@ -225,29 +278,15 @@ class StaticRiskTrajectory(RiskTrajectory):
         metrics : list[str], optional
             The list of metrics to return (defaults to
             ["aai","return_periods","aai_per_group"])
-        return_periods : list[int], optional
-            The return periods to consider for the return periods metric
-            (default to the value of the `.default_rp` attribute)
-        npv : bool
-            Whether to apply the (risk) discount rate if it was defined
-            when instantiating the trajectory. Defaults to `True`.
 
         Returns
         -------
         pd.DataFrame | pd.Series
-            A tidy DataFrame with metrics value for all possible dates.
+            A tidy DataFrame with metric values for all possible dates.
 
         """
 
-        metrics_df = []
         metrics = (
             ["aai", "return_periods", "aai_per_group"] if metrics is None else metrics
         )
-        if "aai" in metrics:
-            metrics_df.append(self.aai_metrics())
-        if "return_periods" in metrics:
-            metrics_df.append(self.return_periods_metrics())
-        if "aai_per_group" in metrics:
-            metrics_df.append(self.aai_per_group_metrics())
-
-        return pd.concat(metrics_df)
+        return pd.concat([getattr(self, f"{metric}_metrics")() for metric in metrics])
