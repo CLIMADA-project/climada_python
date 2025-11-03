@@ -33,6 +33,7 @@ from climada.trajectories.snapshot import Snapshot
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_RP = [20, 50, 100]
+DEFAULT_ALLGROUP_NAME = "All"
 
 
 class RiskTrajectory(ABC):
@@ -45,8 +46,8 @@ class RiskTrajectory(ABC):
         self,
         snapshots_list: list[Snapshot],
         *,
-        return_periods: list[int],
-        all_groups_name: str = "All",
+        return_periods: list[int] = DEFAULT_RP,
+        all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
     ):
         self._reset_metrics()
@@ -192,7 +193,7 @@ class RiskTrajectory(ABC):
         if not isinstance(cash_flows.index, pd.PeriodIndex):
             raise ValueError("cash_flows must be a pandas Series with a PeriodIndex")
 
-        df = cash_flows.to_frame(name="cash_flow")
+        df = cash_flows.to_frame(name="cash_flow")  # type: ignore
         df["year"] = df.index.year
 
         # Merge with the discount rates based on the year

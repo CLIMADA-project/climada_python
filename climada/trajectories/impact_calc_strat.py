@@ -84,7 +84,7 @@ class ImpactComputationStrategy(ABC):
         --------
         ImpactCalcComputation : The default implementation of this interface.
         """
-        pass
+        ...
 
 
 class ImpactCalcComputation(ImpactComputationStrategy):
@@ -196,7 +196,7 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         cover: Optional[float],
         calc_residual: bool,
     ) -> Union[sparse.csr_matrix, Any]:
-        """
+        r"""
         Calculates either the residual or the risk transfer impact matrix
         based on a global risk transfer mechanism.
 
@@ -238,7 +238,7 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         """
         imp_mat = copy.deepcopy(imp_mat)
         # Calculate the total impact per event
-        total_at_event = imp_mat.sum(axis=1).A1
+        total_at_event = imp_mat.sum(axis=1).A1  # type: ignore
         # Risk layer at event
         attachement = 0 if attachement is None else attachement
         cover = np.inf if cover is None else cover

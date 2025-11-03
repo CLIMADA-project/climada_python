@@ -1,4 +1,3 @@
-import copy
 import datetime
 import unittest
 from unittest.mock import MagicMock
@@ -88,7 +87,7 @@ class TestSnapshot(unittest.TestCase):
                 exposure=self.mock_exposure,
                 hazard=self.mock_hazard,
                 impfset=self.mock_impfset,
-                date=2023.5,
+                date=2023.5,  # type: ignore
             )
 
     def test_properties(self):
@@ -123,7 +122,7 @@ class TestSnapshot(unittest.TestCase):
         new_snapshot = snapshot.apply_measure(self.mock_measure)
 
         self.assertIsNotNone(new_snapshot.measure)
-        self.assertEqual(new_snapshot.measure.name, "Test Measure")
+        self.assertEqual(new_snapshot.measure.name, "Test Measure")  # type: ignore
         self.assertEqual(new_snapshot.exposure, self.mock_modified_exposure)
         self.assertEqual(new_snapshot.hazard, self.mock_modified_hazard)
         self.assertEqual(new_snapshot.impfset, self.mock_modified_impfset)

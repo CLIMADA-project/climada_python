@@ -32,7 +32,11 @@ from climada.trajectories.riskperiod import (
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
-from climada.trajectories.trajectory import DEFAULT_RP, RiskTrajectory
+from climada.trajectories.trajectory import (
+    DEFAULT_ALLGROUP_NAME,
+    DEFAULT_RP,
+    RiskTrajectory,
+)
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
@@ -58,7 +62,7 @@ class StaticRiskTrajectory(RiskTrajectory):
         snapshots_list: list[Snapshot],
         *,
         return_periods: list[int] = DEFAULT_RP,
-        all_groups_name: str = "All",
+        all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
@@ -105,6 +109,10 @@ class StaticRiskTrajectory(RiskTrajectory):
         # Construct the attribute name for storing the metric results
         attr_name = f"_{metric_name}_metrics"
 
+        if getattr(self, attr_name) is not None:
+            LOGGER.debug(f"Returning cached {attr_name}")
+            return getattr(self, attr_name)
+
         with log_level(level="WARNING", name_prefix="climada"):
             tmp = getattr(self._risk_metrics_calculators, metric_meth)(**kwargs)
 
@@ -115,8 +123,9 @@ class StaticRiskTrajectory(RiskTrajectory):
         # When more than 2 snapshots, there are duplicated rows, we need to remove them.
         tmp = tmp[~tmp.index.duplicated(keep="first")]
         tmp = tmp.reset_index()
-        tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
-        tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+        if self._all_groups_name not in tmp["group"].cat.categories:
+            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
+            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
         columns_to_front = ["group", "date", "measure", "metric"]
         tmp = tmp[
             columns_to_front
@@ -127,11 +136,11 @@ class StaticRiskTrajectory(RiskTrajectory):
             ]
             + ["risk"]
         ]
-        setattr(self, attr_name, tmp)
 
         if self._risk_disc_rates:
-            return self.npv_transform(getattr(self, attr_name), self._risk_disc_rates)
+            tmp = self.npv_transform(tmp, self._risk_disc_rates)
 
+        setattr(self, attr_name, tmp)
         return getattr(self, attr_name)
 
     def eai_metrics(self, **kwargs) -> pd.DataFrame:

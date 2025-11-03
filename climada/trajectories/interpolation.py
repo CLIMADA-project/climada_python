@@ -22,23 +22,24 @@ This modules implements different sparce matrices interpolation approaches.
 
 import logging
 from abc import ABC
-from typing import Any, Callable, Dict, List, Optional
+from collections.abc import Callable
+from typing import Any, Concatenate, Dict, List, Optional
 
 import numpy as np
 from scipy import sparse
 
 LOGGER = logging.getLogger(__name__)
 
+__all__ = ["AllLinearStrategy", "ExponentialExposureStrategy"]
+
 # Define a type alias for the expected signature of the metric interpolation functions
 # (e.g., linear_interp_arrays)
-MetricInterpFunc = Callable[
-    [np.ndarray, np.ndarray, Optional[Dict[str, Any]]], np.ndarray
-]
+MetricInterpFunc = Callable[Concatenate[np.ndarray, np.ndarray, ...], np.ndarray]
 
 # Define a type alias for the expected signature of the matrix interpolation function
 # (e.g., linear_interp_imp_mat)
 MatrixInterpFunc = Callable[
-    [sparse.csr_matrix, sparse.csr_matrix, int, Optional[Dict[str, Any]]],
+    Concatenate[sparse.csr_matrix, sparse.csr_matrix, int, ...],
     List[sparse.csr_matrix],
 ]
 
@@ -48,7 +49,7 @@ def linear_interp_imp_mat(
     mat_end: sparse.csr_matrix,
     number_of_interpolation_points: int,
 ) -> List[sparse.csr_matrix]:
-    """
+    r"""
     Linearly interpolates between two sparse impact matrices.
 
     Creates a sequence of matrices representing a linear transition from a starting
@@ -93,7 +94,7 @@ def linear_interp_imp_mat(
 def exponential_interp_imp_mat(
     mat_start: Any, mat_end: Any, number_of_interpolation_points: int, rate: float
 ) -> List[Any]:
-    """
+    r"""
     Exponentially interpolates between two "impact matrices" using a specified rate.
 
     This function performs interpolation in a logarithmic space, effectively
@@ -168,7 +169,7 @@ def exponential_interp_imp_mat(
 
 
 def linear_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarray:
-    """
+    r"""
     Performs linear interpolation between two NumPy arrays over their first dimension.
 
     This function interpolates each metric (column) linearly across the time steps
@@ -220,7 +221,7 @@ def linear_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarr
 def exponential_interp_arrays(
     arr_start: np.ndarray, arr_end: np.ndarray, rate: float
 ) -> np.ndarray:
-    """
+    r"""
     Performs exponential interpolation between two NumPy arrays over their first dimension.
 
     This function achieves an exponential-like transition by performing linear
@@ -293,7 +294,7 @@ def exponential_interp_arrays(
 
 
 class InterpolationStrategyBase(ABC):
-    """
+    r"""
     Base abstract class for defining a set of interpolation strategies.
 
     This class serves as a blueprint for implementing specific interpolation
@@ -429,7 +430,7 @@ class InterpolationStrategyBase(ABC):
 
 
 class InterpolationStrategy(InterpolationStrategyBase):
-    """Interface for interpolation strategies."""
+    r"""Interface for interpolation strategies."""
 
     def __init__(
         self,
@@ -444,7 +445,7 @@ class InterpolationStrategy(InterpolationStrategyBase):
 
 
 class AllLinearStrategy(InterpolationStrategyBase):
-    """Linear interpolation strategy."""
+    r"""Linear interpolation strategy."""
 
     def __init__(self) -> None:
         super().__init__()
@@ -454,7 +455,7 @@ class AllLinearStrategy(InterpolationStrategyBase):
 
 
 class ExponentialExposureStrategy(InterpolationStrategyBase):
-    """Exponential interpolation strategy."""
+    r"""Exponential interpolation strategy."""
 
     def __init__(self, rate) -> None:
         super().__init__()

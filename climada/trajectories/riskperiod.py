@@ -26,11 +26,10 @@ approach is used: computation is only done when required, and then stored.
 
 """
 
+import datetime
 import itertools
 import logging
-from abc import ABC
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
@@ -38,18 +37,12 @@ from scipy.sparse import csr_matrix
 from climada.engine.impact import Impact
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.measures.base import Measure
-from climada.trajectories.impact_calc_strat import (
-    ImpactCalcComputation,
-    ImpactComputationStrategy,
-)
+from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
 from climada.trajectories.interpolation import (
-    AllLinearStrategy,
-    InterpolationStrategy,
     InterpolationStrategyBase,
     linear_interp_arrays,
 )
 from climada.trajectories.snapshot import Snapshot
-from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
@@ -104,6 +97,19 @@ class CalcRiskMetricsPoints:
         self._eai_gdf = None
         self._per_date_eai = None
         self._per_date_aai = None
+
+    @property
+    def impact_computation_strategy(self) -> ImpactComputationStrategy:
+        """The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots."""
+        return self._impact_computation_strategy
+
+    @impact_computation_strategy.setter
+    def impact_computation_strategy(self, value, /):
+        if not isinstance(value, ImpactComputationStrategy):
+            raise ValueError("Not an impact computation strategy")
+
+        self._impact_computation_strategy = value
+        self._reset_impact_data()
 
     @lazy_property
     def impacts(self) -> list[Impact]:
@@ -237,7 +243,7 @@ class CalcRiskMetricsPoints:
             The risk period with given measure applied.
 
         """
-        snapshots = [snap.apply(measure) for snap in self.snapshots]
+        snapshots = [snap.apply_measure(measure) for snap in self.snapshots]
         risk_period = CalcRiskMetricsPoints(
             snapshots,
             self.impact_computation_strategy,
@@ -327,12 +333,12 @@ class CalcRiskMetricsPeriod:
         self.measure = None  # Only possible to set with apply_measure to make sure snapshots are consistent
 
         self._group_id_E0 = (
-            self.snapshot_start.exposure.gdf["group_id"].values
+            np.array(self.snapshot_start.exposure.gdf["group_id"].values)
             if "group_id" in self.snapshot_start.exposure.gdf.columns
             else np.array([])
         )
         self._group_id_E1 = (
-            self.snapshot_end.exposure.gdf["group_id"].values
+            np.array(self.snapshot_end.exposure.gdf["group_id"].values)
             if "group_id" in self.snapshot_end.exposure.gdf.columns
             else np.array([])
         )
@@ -357,8 +363,8 @@ class CalcRiskMetricsPeriod:
 
     @staticmethod
     def _set_date_idx(
-        date1: str | pd.Timestamp,
-        date2: str | pd.Timestamp,
+        date1: str | pd.Timestamp | datetime.date,
+        date2: str | pd.Timestamp | datetime.date,
         freq: str | None = None,
         name: str | None = None,
     ) -> pd.PeriodIndex:
@@ -428,7 +434,7 @@ class CalcRiskMetricsPeriod:
     @property
     def time_resolution(self) -> str:
         """The time resolution of the risk periods, expressed as a pandas interval frequency string."""
-        return self._time_resolution
+        return self._time_resolution  # type: ignore
 
     @time_resolution.setter
     def time_resolution(self, value, /):
@@ -689,7 +695,7 @@ class CalcRiskMetricsPeriod:
         return calc_per_date_aais(self.per_date_eai)
 
     @lazy_property
-    def eai_gdf(self) -> gpd.GeoDataFrame:
+    def eai_gdf(self) -> pd.DataFrame:
         """Convenience function returning a GeoDataFrame (with both datetime and coordinates) from `per_date_eai`.
 
         Notes
@@ -708,7 +714,7 @@ class CalcRiskMetricsPeriod:
 
     ####################################
 
-    def calc_eai_gdf(self) -> gpd.GeoDataFrame:
+    def calc_eai_gdf(self) -> pd.DataFrame:
         """Merges the per date EAIs of the risk period with the GeoDataframe of the exposure of the starting snapshot."""
         df = pd.DataFrame(self.per_date_eai, index=self.date_idx)
         df = df.reset_index().melt(

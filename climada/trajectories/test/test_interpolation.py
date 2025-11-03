@@ -20,7 +20,6 @@ Tests for interpolation
 
 """
 
-import math
 import unittest
 from unittest.mock import MagicMock
 
@@ -188,13 +187,18 @@ class TestInterpolationStrategies(unittest.TestCase):
         self.interpolation_range = 3
         self.dummy_metric_0 = np.array([10, 20])
         self.dummy_metric_1 = np.array([100, 200])
-        self.dummy_matrix_0 = np.array([[1, 2], [3, 4]])
-        self.dummy_matrix_1 = np.array([[10, 20], [30, 40]])
+        self.dummy_matrix_0 = csr_matrix(np.array([[1, 2], [3, 4]]))
+        self.dummy_matrix_1 = csr_matrix(np.array([[10, 20], [30, 40]]))
 
     def test_InterpolationStrategy_init(self):
-        mock_exposure = lambda a, b, r: a + b
-        mock_hazard = lambda a, b, r: a * b
-        mock_vulnerability = lambda a, b, r: a / b
+        def mock_exposure(a, b, r):
+            return a + b
+
+        def mock_hazard(a, b, r):
+            return a * b
+
+        def mock_vulnerability(a, b, r):
+            return a / b
 
         strategy = InterpolationStrategy(mock_exposure, mock_hazard, mock_vulnerability)
         self.assertEqual(strategy.exposure_interp, mock_exposure)
@@ -225,7 +229,9 @@ class TestInterpolationStrategies(unittest.TestCase):
             ValueError, "Tried to interpolate impact matrices of different shape"
         ):
             strategy.interp_over_exposure_dim(
-                self.dummy_matrix_0, np.array([[1]]), self.interpolation_range
+                self.dummy_matrix_0,
+                csr_matrix(np.array([[1]])),
+                self.interpolation_range,
             )
         mock_exposure.assert_called_once()  # Ensure it was called
 

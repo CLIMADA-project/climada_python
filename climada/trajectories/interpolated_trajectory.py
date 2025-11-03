@@ -24,26 +24,34 @@ of risk in between points in time (snapshots).
 import datetime
 import itertools
 import logging
+from typing import cast
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import pandas as pd
-from pandas.tseries.frequencies import to_offset
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.trajectories.impact_calc_strat import ImpactCalcComputation
-from climada.trajectories.interpolation import InterpolationStrategyBase
-from climada.trajectories.riskperiod import (
+from climada.trajectories.interpolation import (
     AllLinearStrategy,
+    InterpolationStrategyBase,
+)
+from climada.trajectories.riskperiod import (
     CalcRiskMetricsPeriod,
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
-from climada.trajectories.trajectory import DEFAULT_RP, RiskTrajectory
+from climada.trajectories.trajectory import (
+    DEFAULT_ALLGROUP_NAME,
+    DEFAULT_RP,
+    RiskTrajectory,
+)
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
+
+DEFAULT_TIME_RESOLUTION = "Y"
 
 
 class InterpolatedRiskTrajectory(RiskTrajectory):
@@ -71,8 +79,8 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         snapshots_list: list[Snapshot],
         *,
         return_periods: list[int] = DEFAULT_RP,
-        time_resolution: str = "Y",
-        all_groups_name: str = "All",
+        time_resolution: str = DEFAULT_TIME_RESOLUTION,
+        all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
@@ -235,8 +243,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             # When more than 2 snapshots, there are duplicated rows, we need to remove them.
             tmp = tmp[~tmp.index.duplicated(keep="first")]
             tmp = tmp.reset_index()
-            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
-            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+            if self._all_groups_name not in tmp["group"].cat.categories:
+                tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
+                tmp["group"] = tmp["group"].fillna(self._all_groups_name)
             columns_to_front = ["group", "date", "measure", "metric"]
             tmp = tmp[
                 columns_to_front
@@ -356,7 +365,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 pd.to_datetime(self.start_date).to_period(self.time_resolution),
                 :,
                 "base risk",
-            ]
+            ]  # type: ignore
         ].values
         for p2 in periods_dates[1:]:
             for metric in [
@@ -390,7 +399,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def per_date_risk_metrics(
         self,
         metrics: list[str] | None = None,
-    ) -> pd.DataFrame | pd.Series:
+    ) -> pd.DataFrame:
         """Returns a DataFrame of risk metrics for each dates
 
         This methods collects (and if needed computes) the `metrics`
@@ -510,18 +519,17 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         # Apply the function to identify continuous periods
         df_periods = df_sorted.groupby(
             grouper, dropna=False, group_keys=False, observed=True
-        ).apply(cls._identify_continuous_periods, time_unit)
+        )[df_sorted.columns].apply(cls._identify_continuous_periods, time_unit)
 
         if isinstance(colname, str):
             colname = [colname]
-
         agg_dict = {
             "start_date": pd.NamedAgg(column="date", aggfunc="min"),
             "end_date": pd.NamedAgg(column="date", aggfunc="max"),
         }
         df_periods_dates = (
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)
-            .agg(**agg_dict)
+            .agg(func=None, **agg_dict)  # type: ignore
             .reset_index()
         )
 
@@ -622,7 +630,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         risk_contribution["base risk"] = risk_contribution.iloc[0]["base risk"]
         # risk_contribution.plot(x="date", ax=ax, kind="bar", stacked=True)
         ax.stackplot(
-            risk_contribution.index.to_timestamp(),
+            risk_contribution.index.to_timestamp(),  # type: ignore
             [risk_contribution[col] for col in risk_contribution.columns],
             labels=risk_contribution.columns,
         )
@@ -685,6 +693,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         risk_contribution = risk_contribution.loc[
             (risk_contribution.index == str(end_date))
         ].squeeze()
+        risk_contribution = cast(pd.Series, risk_contribution)
 
         labels = [
             f"Risk {start_date_p}",
@@ -732,7 +741,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
         for i in range(len(values)):
             ax.text(
-                labels[i],
+                labels[i],  # type: ignore
                 values[i] + bottoms[i],
                 f"{values[i]:.0e}",
                 ha="center",

@@ -21,3 +21,11 @@ from .interpolated_trajectory import InterpolatedRiskTrajectory
 from .interpolation import AllLinearStrategy, ExponentialExposureStrategy
 from .snapshot import Snapshot
 from .static_trajectory import StaticRiskTrajectory
+
+__all__ = [
+    "InterpolatedRiskTrajectory",
+    "AllLinearStrategy",
+    "ExponentialExposureStrategy",
+    "Snapshot",
+    "StaticRiskTrajectory",
+]

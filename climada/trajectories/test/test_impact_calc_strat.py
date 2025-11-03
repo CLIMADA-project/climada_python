@@ -26,6 +26,9 @@ from unittest.mock import MagicMock, patch
 import numpy as np
 from scipy.sparse import csr_matrix
 
+from climada.entity import ImpactFuncSet
+from climada.entity.exposures import Exposures
+from climada.hazard import Hazard
 from climada.trajectories import Snapshot
 from climada.trajectories.impact_calc_strat import Impact, ImpactCalcComputation
 
@@ -33,7 +36,13 @@ from climada.trajectories.impact_calc_strat import Impact, ImpactCalcComputation
 class TestImpactCalcComputation(unittest.TestCase):
     def setUp(self):
         self.mock_snapshot0 = MagicMock(spec=Snapshot)
+        self.mock_snapshot0.exposure = MagicMock(spec=Exposures)
+        self.mock_snapshot0.hazard = MagicMock(spec=Hazard)
+        self.mock_snapshot0.impfset = MagicMock(spec=ImpactFuncSet)
         self.mock_snapshot1 = MagicMock(spec=Snapshot)
+        self.mock_snapshot1.exposure = MagicMock(spec=Exposures)
+        self.mock_snapshot1.hazard = MagicMock(spec=Hazard)
+        self.mock_snapshot1.impfset = MagicMock(spec=ImpactFuncSet)
 
         self.impact_calc_computation = ImpactCalcComputation()
 
@@ -42,21 +51,23 @@ class TestImpactCalcComputation(unittest.TestCase):
     def test_compute_impacts(
         self, mock_apply_risk_transfer, mock_calculate_impacts_for_snapshots
     ):
-        mock_impacts = (
-            MagicMock(spec=Impact),
-            MagicMock(spec=Impact),
-            MagicMock(spec=Impact),
-            MagicMock(spec=Impact),
-        )
+        mock_impacts = MagicMock(spec=Impact)
         mock_calculate_impacts_for_snapshots.return_value = mock_impacts
 
         result = self.impact_calc_computation.compute_impacts(
-            self.mock_snapshot0, self.mock_snapshot1, (0, 0, 0), 0.1, 0.9, False
+            exp=self.mock_snapshot0.exposure,
+            haz=self.mock_snapshot0.hazard,
+            vul=self.mock_snapshot0.impfset,
+            risk_transf_attach=0.1,
+            risk_transf_cover=0.9,
+            calc_residual=False,
         )
 
         self.assertEqual(result, mock_impacts)
         mock_calculate_impacts_for_snapshots.assert_called_once_with(
-            self.mock_snapshot0, self.mock_snapshot1, (0, 0, 0)
+            self.mock_snapshot0.exposure,
+            self.mock_snapshot0.hazard,
+            self.mock_snapshot0.impfset,
         )
         mock_apply_risk_transfer.assert_called_once_with(mock_impacts, 0.1, 0.9, False)
 
@@ -69,7 +80,9 @@ class TestImpactCalcComputation(unittest.TestCase):
             mock_impact_calc.return_value.impact.side_effect = [mock_imp_E0H0]
 
             result = self.impact_calc_computation.compute_impacts_pre_transfer(
-                self.mock_snapshot0, self.mock_snapshot1, (0, 0, 0)
+                exp=self.mock_snapshot0.exposure,
+                haz=self.mock_snapshot0.hazard,
+                vul=self.mock_snapshot0.impfset,
             )
 
             self.assertEqual(result, mock_imp_E0H0)
