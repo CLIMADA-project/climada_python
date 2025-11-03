@@ -583,25 +583,17 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def plot_time_waterfall(
         self,
         ax=None,
-        start_date: datetime.date | None = None,
-        end_date: datetime.date | None = None,
         figsize=(12, 6),
     ):
         """Plot a waterfall chart of risk contributions over a specified date range.
 
         This method generates a stacked bar chart to visualize the
-        risk contributions between specified start and end dates, for each date in between.
-        If no dates are provided, it defaults to the start and end dates of the risk trajectory.
-        See the notes on how risk is attributed to each contributions.
+        risk contributions.
 
         Parameters
         ----------
         ax : matplotlib.axes.Axes, optional
             The matplotlib axes on which to plot. If None, a new figure and axes are created.
-        start_date : datetime, optional
-            The start date for the waterfall plot. If None, defaults to the start date of the risk trajectory.
-        end_date : datetime, optional
-            The end date for the waterfall plot. If None, defaults to the end date of the risk trajectory.
 
         Returns
         -------
@@ -613,10 +605,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             fig, ax = plt.subplots(figsize=figsize)
         else:
             fig = ax.figure  # get parent figure from the axis
-        start_date = self.start_date if start_date is None else start_date
-        end_date = self.end_date if end_date is None else end_date
+
         risk_contribution = self._calc_waterfall_plot_data(
-            start_date=start_date, end_date=end_date
+            start_date=self.start_date, end_date=self.end_date
         )
         risk_contribution = risk_contribution[
             [
@@ -640,7 +631,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         #     bottom =  [b + v for b, v in zip(bottom, risk_contribution[col])]
         # Construct y-axis label and title based on parameters
         value_label = "USD"
-        title_label = f"Risk between {start_date} and {end_date} (Average impact)"
+        title_label = (
+            f"Risk between {self.start_date} and {self.end_date} (Average impact)"
+        )
 
         locator = mdates.AutoDateLocator()
         formatter = mdates.ConciseDateFormatter(locator)
@@ -656,23 +649,15 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def plot_waterfall(
         self,
         ax=None,
-        start_date: datetime.date | None = None,
-        end_date: datetime.date | None = None,
     ):
         """Plot a waterfall chart of risk contributions between two dates.
 
-        This method generates a waterfall plot to visualize the changes in risk contributions
-        between a specified start and end date. If no dates are provided, it defaults to
-        the start and end dates of the risk trajectory.
+        This method generates a waterfall plot to visualize the changes in risk contributions.
 
         Parameters
         ----------
         ax : matplotlib.axes.Axes, optional
             The matplotlib axes on which to plot. If None, a new figure and axes are created.
-        start_date : datetime, optional
-            The start date for the waterfall plot. If None, defaults to the start date of the risk trajectory.
-        end_date : datetime, optional
-            The end date for the waterfall plot. If None, defaults to the end date of the risk trajectory.
 
         Returns
         -------
@@ -680,18 +665,16 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             The matplotlib axes with the plotted waterfall chart.
 
         """
-        start_date = self.start_date if start_date is None else start_date
-        end_date = self.end_date if end_date is None else end_date
-        start_date_p = pd.to_datetime(start_date).to_period(self.time_resolution)
-        end_date_p = pd.to_datetime(end_date).to_period(self.time_resolution)
+        start_date_p = pd.to_datetime(self.start_date).to_period(self.time_resolution)
+        end_date_p = pd.to_datetime(self.end_date).to_period(self.time_resolution)
         risk_contribution = self._calc_waterfall_plot_data(
-            start_date=start_date, end_date=end_date
+            start_date=self.start_date, end_date=self.end_date
         )
         if ax is None:
             _, ax = plt.subplots(figsize=(8, 5))
 
         risk_contribution = risk_contribution.loc[
-            (risk_contribution.index == str(end_date))
+            (risk_contribution.index == str(self.end_date))
         ].squeeze()
         risk_contribution = cast(pd.Series, risk_contribution)
 
