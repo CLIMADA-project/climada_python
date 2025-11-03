@@ -39,17 +39,6 @@ __all__ = [
     "exponential_interp_imp_mat",
 ]
 
-# Define a type alias for the expected signature of the metric interpolation functions
-# (e.g., linear_interp_arrays)
-MetricInterpFunc = Callable[Concatenate[np.ndarray, np.ndarray, ...], np.ndarray]
-
-# Define a type alias for the expected signature of the matrix interpolation function
-# (e.g., linear_interp_imp_mat)
-MatrixInterpFunc = Callable[
-    Concatenate[sparse.csr_matrix, sparse.csr_matrix, int, ...],
-    List[sparse.csr_matrix],
-]
-
 
 def linear_interp_imp_mat(
     mat_start: sparse.csr_matrix,
@@ -283,29 +272,30 @@ class InterpolationStrategyBase(ABC):
 
     Attributes
     ----------
-    exposure_interp : MatrixInterpFunc
+    exposure_interp : Callable
         The function used to interpolate sparse impact matrices over the
         exposure dimension.
         Signature: (mat_start, mat_end, num_points, **kwargs) -> list[sparse.csr_matrix].
-    hazard_interp : MetricInterpFunc
+    hazard_interp : Callable
         The function used to interpolate NumPy arrays of metrics over the
         hazard dimension.
         Signature: (arr_start, arr_end, **kwargs) -> np.ndarray.
-    vulnerability_interp : MetricInterpFunc
+    vulnerability_interp : Callable
         The function used to interpolate NumPy arrays of metrics over the
         vulnerability dimension.
         Signature: (arr_start, arr_end, **kwargs) -> np.ndarray.
     """
 
-    exposure_interp: MatrixInterpFunc
-    hazard_interp: MetricInterpFunc
-    vulnerability_interp: MetricInterpFunc
+    exposure_interp: Callable
+    hazard_interp: Callable
+    vulnerability_interp: Callable
 
     def interp_over_exposure_dim(
         self,
         imp_E0: sparse.csr_matrix,
         imp_E1: sparse.csr_matrix,
         interpolation_range: int,
+        /,
         **kwargs: Optional[Dict[str, Any]],
     ) -> List[sparse.csr_matrix]:
         """
@@ -356,6 +346,7 @@ class InterpolationStrategyBase(ABC):
         self,
         metric_0: np.ndarray,
         metric_1: np.ndarray,
+        /,
         **kwargs: Optional[Dict[str, Any]],
     ) -> np.ndarray:
         """
@@ -384,6 +375,7 @@ class InterpolationStrategyBase(ABC):
         self,
         metric_0: np.ndarray,
         metric_1: np.ndarray,
+        /,
         **kwargs: Optional[Dict[str, Any]],
     ) -> np.ndarray:
         """
