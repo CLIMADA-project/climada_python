@@ -92,10 +92,10 @@ def linear_interp_imp_mat(
 
 
 def exponential_interp_imp_mat(
-    mat_start: Any, mat_end: Any, number_of_interpolation_points: int, rate: float
+    mat_start: Any, mat_end: Any, number_of_interpolation_points: int
 ) -> List[Any]:
     r"""
-    Exponentially interpolates between two "impact matrices" using a specified rate.
+    Exponentially interpolates between two "impact matrices".
 
     This function performs interpolation in a logarithmic space, effectively
     achieving an exponential-like transition between `mat_start` and `mat_end`.
@@ -113,9 +113,6 @@ def exponential_interp_imp_mat(
     number_of_interpolation_points : int
         The total number of matrix objects to return, including the start and
         end points. Must be $\ge 2$.
-    rate : float
-        The base rate used for the exponential scaling. Must be positive ($> 0$).
-        It determines the scaling factor used in the logarithmic conversion.
 
     Returns
     -------
@@ -124,38 +121,25 @@ def exponential_interp_imp_mat(
         `mat_start` and the last to `mat_end` (after the conversion/reversion).
         The list length is `number_of_interpolation_points`.
 
-    Raises
-    ------
-    ValueError
-        If `rate` is less than or equal to zero.
-
     Notes
     -----
     The interpolation is achieved by:
 
     1. Mapping the matrix data to a transformed logarithmic space:
-       $$M'_{i} = \frac{\ln(M_{i})}{\ln(\text{rate})}$$
+       $$M'_{i} = \ln(M_{i})}$$
        (where $\ln$ is the natural logarithm, and $\epsilon$ is added to $M_{i}$
        to prevent $\ln(0)$).
     2. Performing standard linear interpolation on the transformed matrices
        $M'_{start}$ and $M'_{end}$ to get $M'_{interp}$:
        $$M'_{interp} = M'_{start} \cdot (1 - \text{ratio}) + M'_{end} \cdot \text{ratio}$$
     3. Mapping the result back to the original domain:
-       $$M_{interp} = \exp(M'_{interp} \cdot \ln(\text{rate}))$$
-
-    This process assumes the values in the original matrices are growth/impact
-    factors that should be compounded.
+       $$M_{interp} = \exp(M'_{interp}$$
     """
     # ... function body remains the same ...
-    # Convert matrices to logarithmic domain
-    if rate <= 0:
-        raise ValueError("Rate for exponential interpolation must be positive")
-
     mat_start = mat_start.copy()
     mat_end = mat_end.copy()
-    log_rate = np.log(rate)
-    mat_start.data = np.log(mat_start.data + np.finfo(float).eps) / log_rate
-    mat_end.data = np.log(mat_end.data + np.finfo(float).eps) / log_rate
+    mat_start.data = np.log(mat_start.data + np.finfo(float).eps)
+    mat_end.data = np.log(mat_end.data + np.finfo(float).eps)
 
     # Perform linear interpolation in the logarithmic domain
     res = []
@@ -163,7 +147,7 @@ def exponential_interp_imp_mat(
     for point in range(num_points):
         ratio = point / (num_points - 1)
         mat_interpolated = mat_start * (1 - ratio) + ratio * mat_end
-        mat_interpolated.data = np.exp(mat_interpolated.data * log_rate)
+        mat_interpolated.data = np.exp(mat_interpolated.data)
         res.append(mat_interpolated)
     return res
 
@@ -218,9 +202,7 @@ def linear_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarr
     return np.multiply(arr_start, prop0) + np.multiply(arr_end, prop1)
 
 
-def exponential_interp_arrays(
-    arr_start: np.ndarray, arr_end: np.ndarray, rate: float
-) -> np.ndarray:
+def exponential_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarray:
     r"""
     Performs exponential interpolation between two NumPy arrays over their first dimension.
 
@@ -234,9 +216,6 @@ def exponential_interp_arrays(
         The starting array of metrics. Values must be positive.
     arr_end : numpy.ndarray
         The ending array of metrics. Must have the exact same shape as `arr_start`.
-    rate : float
-        The base rate used for the exponential scaling. Must be positive ($> 0$).
-        It defines the base for the logarithmic transformation.
 
     Returns
     -------
@@ -248,8 +227,7 @@ def exponential_interp_arrays(
     Raises
     ------
     ValueError
-        If `arr_start` and `arr_end` do not have the same shape, or if `rate` is
-        less than or equal to zero.
+        If `arr_start` and `arr_end` do not have the same shape.
 
     Notes
     -----
@@ -258,18 +236,14 @@ def exponential_interp_arrays(
 
     The formula for the interpolated result $R$ at proportion $\text{prop}$ is:
     $$
-    R = \exp \left( \left(
-        \frac{\ln(A_{start})}{\ln(\text{rate})} \cdot (1 - \text{prop}) +
-        \frac{\ln(A_{end})}{\ln(\text{rate})} \cdot \text{prop}
-    \right) \cdot \ln(\text{rate}) \right)
+    R = \exp \left(
+        \ln(A_{start}) \cdot (1 - \text{prop}) +
+        \ln(A_{end}) \cdot \text{prop}
+    \right)
     $$
     where $A_{start}$ and $A_{end}$ are the input arrays (with $\epsilon$ added
     to prevent $\ln(0)$) and $\text{prop}$ ranges from 0 to 1.
     """
-
-    if rate <= 0:
-        raise ValueError("Rate for exponential interpolation must be positive")
-
     if arr_start.shape != arr_end.shape:
         raise ValueError(
             f"Cannot interpolate arrays of different shapes: {arr_start.shape} and {arr_end.shape}."
@@ -282,15 +256,14 @@ def exponential_interp_arrays(
         prop0, prop1 = prop0.reshape(-1, 1), prop1.reshape(-1, 1)
 
     # Perform log transformation, linear interpolation, and exponential back-transformation
-    log_rate = np.log(rate)
-    log_arr_start = np.log(arr_start + np.finfo(float).eps) / log_rate
-    log_arr_end = np.log(arr_end + np.finfo(float).eps) / log_rate
+    log_arr_start = np.log(arr_start + np.finfo(float).eps)
+    log_arr_end = np.log(arr_end + np.finfo(float).eps)
 
     interpolated_log_arr = np.multiply(log_arr_start, prop0) + np.multiply(
         log_arr_end, prop1
     )
 
-    return np.exp(interpolated_log_arr * log_rate)
+    return np.exp(interpolated_log_arr)
 
 
 class InterpolationStrategyBase(ABC):
@@ -457,12 +430,11 @@ class AllLinearStrategy(InterpolationStrategyBase):
 class ExponentialExposureStrategy(InterpolationStrategyBase):
     r"""Exponential interpolation strategy."""
 
-    def __init__(self, rate) -> None:
+    def __init__(self) -> None:
         super().__init__()
-        self.rate = rate
         self.exposure_interp = (
             lambda mat_start, mat_end, points: exponential_interp_imp_mat(
-                mat_start, mat_end, points, self.rate
+                mat_start, mat_end, points
             )
         )
         self.hazard_interp = linear_interp_arrays
