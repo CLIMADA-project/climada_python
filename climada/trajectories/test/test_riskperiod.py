@@ -338,7 +338,7 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
         self.assertEqual(result_gdf["group"].dtype.name, "category")
         self.assertListEqual(
             list(result_gdf["group"].cat.categories),
-            list(self.calc_risk_metrics_points._groups_id),
+            list(self.calc_risk_metrics_points._group_id),
         )
 
     def test_calc_aai_metric(self):
@@ -366,7 +366,7 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
         self.assertEqual(
             result_df.shape[0],
             len(self.calc_risk_metrics_points.snapshots)
-            * len(self.calc_risk_metrics_points._groups_id),
+            * len(self.calc_risk_metrics_points._group_id),
         )
         expected_columns = ["date", "group", "risk", "metric", "measure", "unit"]
         self.assertTrue(all(col in result_df.columns for col in expected_columns))
