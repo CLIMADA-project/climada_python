@@ -92,7 +92,7 @@ class CountryCode(Enum):
             "NAM", "NER", "NGA", "NLD", "NOR", "POL", "PRK", "PRT", "PSE", "REU", "ROU",
             "RUS", "RWA", "SDN", "SEN", "SGP", "SGS", "SJM", "SLE", "SMR", "SPM", "SRB",
             "SSD", "STP", "SVK", "SVN", "SWE", "SYC", "TCD", "TGO", "TUN", "TUR", "UKR",
-            "UMI", "VAT", "XKX", "ZMB",
+            "UMI", "VAT", "XKO", "ZMB",
         ],
     }
 
@@ -365,8 +365,18 @@ class ImpfSetTropCyclone(ImpactFuncSet):
 
     @staticmethod
     def get_countries_per_region(region=None):
-        """Returns dictionaries with numerical (numeric) and alphabetical (alpha3) ISO3 codes
-        of all countries associated to a calibration region.
+        """Returns countries within a tropical cyclone calibration region and associated impact functions.
+
+        This method returns a tuple with numerical (numeric) and alphabetical (alpha3)
+        ISO3 codes of all countries associated to a calibration region.
+
+        If no region or "all" is provided as argument, the method return a tuple of
+        dictionaries with short name of the tropical cyclone calibration regions as
+        keys and the values for each of those.
+
+        Notes
+        -----
+
         Only contains countries that were affected by tropical cyclones
         between 1980 and 2017 according to EM-DAT.
 
@@ -395,9 +405,12 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             return (
                 CountryCode.REGION_NAME.value,
                 CountryCode.IMPF_ID.value,
-                coordinates.country_to_iso(
-                    CountryCode.ALPHA3.value, representation="numeric"
-                ),
+                {
+                    reg: coordinates.country_to_iso(
+                        CountryCode.ALPHA3.value[reg], representation="numeric"
+                    )
+                    for reg in CountryCode.REGION_NAME.value
+                },
                 CountryCode.ALPHA3.value,
             )
 
