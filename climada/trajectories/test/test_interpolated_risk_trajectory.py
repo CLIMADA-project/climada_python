@@ -1198,13 +1198,10 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
         # Set some metrics to non-None values
         rt._eai_metrics = "dummy_eai"  # type:ignore
         rt._aai_metrics = "dummy_aai"  # type:ignore
-        rt._all_risk_metrics = "dummy_all"  # type:ignore
-
         rt._reset_metrics()
 
         for metric in rt.POSSIBLE_METRICS:
             self.assertIsNone(getattr(rt, "_" + metric + "_metrics"))
-        self.assertIsNone(rt._all_risk_metrics)  # type:ignore
 
     def test_get_risk_periods(self):
         # Create dummy CalcRiskPeriod mocks with specific dates
