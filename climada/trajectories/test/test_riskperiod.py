@@ -1326,4 +1326,13 @@ def assert_sparse_matrix_array_equal(expected_array, actual_array):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(
+        TestCalcRiskMetricsPeriod_TopLevel
+    )
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestCalcRiskMetricsPoints)
+    )
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestCalcRiskPeriod_LowLevel)
+    )
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

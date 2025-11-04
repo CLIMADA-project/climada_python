@@ -1303,4 +1303,5 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInterpolatedRiskTrajectory)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

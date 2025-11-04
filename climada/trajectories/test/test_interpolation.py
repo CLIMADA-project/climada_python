@@ -342,4 +342,11 @@ class TestConcreteInterpolationStrategies(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(
+        TestConcreteInterpolationStrategies
+    )
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestInterpolationFuncs))
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestInterpolationStrategies)
+    )
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

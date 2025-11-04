@@ -121,4 +121,5 @@ class TestImpactCalcComputation(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main()
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalcComputation)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)
