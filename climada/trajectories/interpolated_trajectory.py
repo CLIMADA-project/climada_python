@@ -24,33 +24,47 @@ of risk in between points in time (snapshots).
 import datetime
 import itertools
 import logging
+from typing import cast
 
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 import pandas as pd
-from pandas.tseries.frequencies import to_offset
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.impact_calc_strat import ImpactCalcComputation
-from climada.trajectories.interpolation import InterpolationStrategyBase
-from climada.trajectories.riskperiod import (
-    AllLinearStrategy,
-    CalcRiskMetricsPeriod,
+from climada.trajectories.impact_calc_strat import (
+    ImpactCalcComputation,
     ImpactComputationStrategy,
 )
+from climada.trajectories.interpolation import (
+    AllLinearStrategy,
+    InterpolationStrategyBase,
+)
+from climada.trajectories.riskperiod import CalcRiskMetricsPeriod
 from climada.trajectories.snapshot import Snapshot
-from climada.trajectories.trajectory import DEFAULT_RP, RiskTrajectory
+from climada.trajectories.trajectory import (
+    DEFAULT_ALLGROUP_NAME,
+    DEFAULT_RP,
+    RiskTrajectory,
+)
 from climada.util import log_level
 
 LOGGER = logging.getLogger(__name__)
 
+DEFAULT_TIME_RESOLUTION = "Y"
+
+__all__ = ["InterpolatedRiskTrajectory"]
+
 
 class InterpolatedRiskTrajectory(RiskTrajectory):
-    """Calculates risk trajectories over a series of snapshots.
+    """This class implements interpolated risk trajectories, objects that
+    regroup impacts computations for multiple dates, and interpolate risk
+    metrics in between.
 
     This class computes risk metrics over a series of snapshots,
-    optionally applying risk discounting.
+    optionally applying risk discounting. It interpolate risk
+    between each pair of snapshots and provides dataframes of risk metric on a
+    given time resolution.
 
     """
 
@@ -64,18 +78,55 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         "risk_contributions",
         "aai_per_group",
     ]
+    """Class variable listing the risk metrics that can be computed.
+
+    Currently:
+
+    - eai, expected impact (per exposure point within a period of 1/frequency unit of the hazard object)
+    - aai, average annual impact (aggregated eai over the whole exposure)
+    - aai_per_group, average annual impact per exposure subgroup (defined from the exposure geodataframe)
+    - return_periods, estimated impacts aggregated over the whole exposure for different return periods
+    - risk_contributions, estimated contribution part of, respectively exposure, hazard, vulnerability and their interaction to the change in risk over the considered period
+    """
 
     def __init__(
         self,
         snapshots_list: list[Snapshot],
         *,
         return_periods: list[int] = DEFAULT_RP,
-        time_resolution: str = "Y",
-        all_groups_name: str = "All",
+        time_resolution: str = DEFAULT_TIME_RESOLUTION,
+        all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
+        """Initialize a new `StaticRiskTrajectory`.
+
+        Parameters
+        ----------
+        snapshot_list : list[Snapshot]
+            The list of `Snapshot` object to compute risk from.
+        return_periods: list[int], optional
+            The return periods to use when computing the `return_periods_metric`.
+            Defaults to `DEFAULT_RP` ([20, 50, 100]).
+        time_resolution: str, optional
+            The time resolution to use for interpolation.
+            It must be a valid pandas string used to define periods,
+            e.g., "Y" for years, "M" for months, "3M" for trimester, etc.
+            Defaults to `DEFAULT_TIME_RESOLUTION` ("Y").
+        all_groups_name: str, optional
+            The string to use to define all exposure points subgroup.
+            Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
+        risk_disc_rates: DiscRates, optional
+            The discount rate to apply to future risk. Defaults to None.
+        interpolation_strategy: InterpolationStrategyBase, optional
+            The interpolation strategy to use when interpolating.
+            Defaults to :class:`AllLinearStrategy`
+        impact_computation_strategy: ImpactComputationStrategy, optional
+            The method used to calculate the impact from the (Haz,Exp,Vul)
+            of the two snapshots. Defaults to :class:`ImpactCalcComputation`.
+
+        """
         super().__init__(
             snapshots_list,
             return_periods=return_periods,
@@ -108,7 +159,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
     @property
     def impact_computation_strategy(self) -> ImpactComputationStrategy:
-        """The method used to calculate the impact from the (Haz,Exp,Vul) of the two snapshots."""
+        """The method used to calculate the impact from the (Haz,Exp,Vul) triplets."""
         return self._risk_metrics_calculators[0].impact_computation_strategy
 
     @impact_computation_strategy.setter
@@ -122,7 +173,12 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
     @property
     def time_resolution(self) -> str:
-        """The return period values to use when computing risk period metrics.
+        """The time resolution to use when interpolating.
+
+        It must be a valid pandas string used to define periods,
+        e.g., "Y" for years, "M" for months, "3M" for trimester, etc.
+
+        See `here <https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#period-aliases>`_
 
         Notes
         -----
@@ -148,7 +204,13 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         interpolation_strategy,
         impact_computation_strategy,
     ) -> list[CalcRiskMetricsPeriod]:
-        """Creates the `CalcRiskPeriod` objects corresponding to a given list of snapshots."""
+        """Initialize or reset the internal risk metrics calculators.
+
+        Notes
+        -----
+
+        This methods sorts the snapshots per date.
+        """
 
         def pairwise(container: list):
             """
@@ -192,7 +254,40 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         metric_meth: str | None = None,
         **kwargs,
     ) -> pd.DataFrame:
-        """Generic method to compute metrics based on the provided metric name and method."""
+        """Generic method to compute metrics based on the provided metric name and method.
+
+        This method calls the appropriate method from the calculator to return
+        the results for the given metric, in a tidy formatted dataframe.
+
+        It first checks whether the requested metric is a valid one.
+        Then looks for a possible cached value and otherwised asks the
+        calculators (`self._risk_metric_calculators`) to run the computations.
+        The results are then regrouped in a nice and tidy DataFrame.
+        If a `risk_disc_rates` was set, values are converted to net present values.
+        Results are then cached within `self._<metric_name>_metrics` and returned.
+
+        Parameters
+        ----------
+        metric_name : str, optional
+            The name of the metric to return results for.
+        metric_meth : str, optional
+            The name of the specific method of the calculator to call.
+
+        Returns
+        -------
+        pd.DataFrame
+            A tidy formatted dataframe of the risk metric computed for the
+            different snapshots.
+
+        Raises
+        ------
+        NotImplementedError
+            If the requested metric is not part of `POSSIBLE_METRICS`.
+        ValueError
+            If either of the arguments are not provided.
+
+        """
+
         if metric_name is None or metric_meth is None:
             raise ValueError("Both metric_name and metric_meth must be provided.")
 
@@ -234,8 +329,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             # When more than 2 snapshots, there are duplicated rows, we need to remove them.
             tmp = tmp[~tmp.index.duplicated(keep="first")]
             tmp = tmp.reset_index()
-            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
-            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
+            if self._all_groups_name not in tmp["group"].cat.categories:
+                tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
+                tmp["group"] = tmp["group"].fillna(self._all_groups_name)
             columns_to_front = ["group", "date", "measure", "metric"]
             tmp = tmp[
                 columns_to_front
@@ -256,13 +352,12 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 # to do it before caching in the private attribute
                 tmp = self._risk_contributions_post_treatment(tmp)
 
-            setattr(self, attr_name, tmp)
-
             if self._risk_disc_rates:
-                return self.npv_transform(
-                    getattr(self, attr_name), self._risk_disc_rates
-                )
+                LOGGER.debug("Found risk discount rate. Computing NPV.")
+                tmp = self.npv_transform(tmp, self._risk_disc_rates)
 
+            LOGGER.debug("All computing done, caching value.")
+            setattr(self, attr_name, tmp)
             return getattr(self, attr_name)
 
     def _compute_period_metrics(
@@ -279,7 +374,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         This method computes and return a `DataFrame` with eai metric
         (for each exposure point) for each date.
-
 
         Notes
         -----
@@ -304,6 +398,12 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
 
     def return_periods_metrics(self, **kwargs) -> pd.DataFrame:
+        """Return the estimated impacts for different return periods.
+
+        Return periods to estimate impacts for are defined by `self.return_periods`.
+
+        """
+
         return self._compute_metrics(
             metric_name="return_periods",
             metric_meth="calc_return_periods_metric",
@@ -346,11 +446,19 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
 
     def _risk_contributions_post_treatment(self, df) -> pd.DataFrame:
+        """Post treat the risk contributions metrics.
+
+        When more than two snapshots are provided, the total risk of the previous pair
+        (period) becomes the base risk for the subsequent one.
+        This method straightens this by resetting the base risk to the risk from
+        the first snapshot of the list and correcting the different contributions
+        by cumulating the contributions from the previous periods.
+
+        """
+
         df.set_index(["group", "date", "measure", "metric"], inplace=True)
         start_dates = [snap.date for snap in self._snapshots[:-1]]
-        end_dates = [
-            snap.date - to_offset(self.time_resolution) for snap in self._snapshots[1:]
-        ]
+        end_dates = [snap.date for snap in self._snapshots[1:]]
         periods_dates = list(zip(start_dates, end_dates))
         df.loc[pd.IndexSlice[:, :, :, "base risk"]] = df.loc[
             pd.IndexSlice[
@@ -358,7 +466,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 pd.to_datetime(self.start_date).to_period(self.time_resolution),
                 :,
                 "base risk",
-            ]
+            ]  # type: ignore
         ].values
         for p2 in periods_dates[1:]:
             for metric in [
@@ -392,7 +500,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def per_date_risk_metrics(
         self,
         metrics: list[str] | None = None,
-    ) -> pd.DataFrame | pd.Series:
+    ) -> pd.DataFrame:
         """Returns a DataFrame of risk metrics for each dates
 
         This methods collects (and if needed computes) the `metrics`
@@ -406,9 +514,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         return_periods : list[int], optional
             The return periods to consider for the return periods metric
             (default to the value of the `.default_rp` attribute)
-        npv : bool
-            Whether to apply the (risk) discount rate if it was defined
-            when instantiating the trajectory. Defaults to `True`.
 
         Returns
         -------
@@ -417,18 +522,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         """
 
-        metrics_df = []
         metrics = (
             ["aai", "return_periods", "aai_per_group"] if metrics is None else metrics
         )
-        if "aai" in metrics:
-            metrics_df.append(self.aai_metrics())
-        if "return_periods" in metrics:
-            metrics_df.append(self.return_periods_metrics())
-        if "aai_per_group" in metrics:
-            metrics_df.append(self.aai_per_group_metrics())
-
-        return pd.concat(metrics_df)
+        return pd.concat([getattr(self, f"{metric}_metrics")() for metric in metrics])
 
     @staticmethod
     def _get_risk_periods(
@@ -439,6 +536,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     ):
         """Returns risk periods from the given list that are within `start_date` and `end_date`.
 
+        Either using a strict inclusion (period is stricly within start and end) or extending
+        to overlap inclusion, i.e., start or end is within the period.
+
         Parameters
         ----------
         risk_periods : list[CalcRiskPeriod]
@@ -447,7 +547,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         end_date : datetime.date
         strict: bool, default True
             If true, only returns periods stricly within start and end dates. Else,
-            returns periods that have an overlap within start and end.
+            additionaly returns periods that have an overlap within start and end.
         """
         if strict:
             return [
@@ -470,7 +570,8 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
     @staticmethod
     def _identify_continuous_periods(group, time_unit):
-        # Calculate the difference between consecutive dates
+        """Calculate the difference between consecutive dates."""
+
         if time_unit == "year":
             group["date_diff"] = group["date"].dt.year.diff()
         if time_unit == "month":
@@ -491,10 +592,8 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         time_unit: str = "year",
         colname: str | list[str] = "risk",
     ) -> pd.DataFrame:
-        """Groups per date risk metric to periods."""
+        """Group per date risk metric to periods."""
 
-        ## I'm thinking this does not work with RPs... As you can't just sum impacts
-        ## Not sure what to do with it. -> Fixed I take the avg RP impact of the period
         def conditional_agg(group):
             try:
                 if "rp" in group.name[2]:
@@ -512,19 +611,17 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         # Apply the function to identify continuous periods
         df_periods = df_sorted.groupby(
             grouper, dropna=False, group_keys=False, observed=True
-        ).apply(cls._identify_continuous_periods, time_unit)
+        )[df_sorted.columns].apply(cls._identify_continuous_periods, time_unit)
 
         if isinstance(colname, str):
             colname = [colname]
-
         agg_dict = {
             "start_date": pd.NamedAgg(column="date", aggfunc="min"),
             "end_date": pd.NamedAgg(column="date", aggfunc="max"),
         }
-
         df_periods_dates = (
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)
-            .agg(**agg_dict)
+            .agg(func=None, **agg_dict)  # type: ignore
             .reset_index()
         )
 
@@ -533,7 +630,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             + " to "
             + df_periods_dates["end_date"].astype(str)
         )
-
         df_periods = (
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)[
                 colname
@@ -542,7 +638,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             .reset_index()
         )
         df_periods = pd.merge(
-            df_periods_dates[grouper + ["period"]], df_periods, on=grouper
+            df_periods_dates[grouper + ["period", "period_id"]],
+            df_periods,
+            on=grouper + ["period_id"],
         )
         df_periods = df_periods.drop(["period_id"], axis=1)
         return df_periods[
@@ -552,7 +650,8 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def per_period_risk_metrics(
         self, metrics: list[str] = ["aai", "return_periods", "aai_per_group"], **kwargs
     ) -> pd.DataFrame:
-        """Returns a tidy dataframe of the risk metrics with the total for each different period."""
+        """Return a tidy dataframe of the risk metrics with the total for each different period (pair of snapshots)."""
+
         df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
         return self._date_to_period_agg(df, grouper=self._grouper, **kwargs)
 
@@ -578,25 +677,17 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def plot_time_waterfall(
         self,
         ax=None,
-        start_date: datetime.date | None = None,
-        end_date: datetime.date | None = None,
         figsize=(12, 6),
     ):
         """Plot a waterfall chart of risk contributions over a specified date range.
 
         This method generates a stacked bar chart to visualize the
-        risk contributions between specified start and end dates, for each date in between.
-        If no dates are provided, it defaults to the start and end dates of the risk trajectory.
-        See the notes on how risk is attributed to each contributions.
+        risk contributions.
 
         Parameters
         ----------
         ax : matplotlib.axes.Axes, optional
             The matplotlib axes on which to plot. If None, a new figure and axes are created.
-        start_date : datetime, optional
-            The start date for the waterfall plot. If None, defaults to the start date of the risk trajectory.
-        end_date : datetime, optional
-            The end date for the waterfall plot. If None, defaults to the end date of the risk trajectory.
 
         Returns
         -------
@@ -608,10 +699,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             fig, ax = plt.subplots(figsize=figsize)
         else:
             fig = ax.figure  # get parent figure from the axis
-        start_date = self.start_date if start_date is None else start_date
-        end_date = self.end_date if end_date is None else end_date
+
         risk_contribution = self._calc_waterfall_plot_data(
-            start_date=start_date, end_date=end_date
+            start_date=self.start_date, end_date=self.end_date
         )
         risk_contribution = risk_contribution[
             [
@@ -625,7 +715,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         risk_contribution["base risk"] = risk_contribution.iloc[0]["base risk"]
         # risk_contribution.plot(x="date", ax=ax, kind="bar", stacked=True)
         ax.stackplot(
-            risk_contribution.index.to_timestamp(),
+            risk_contribution.index.to_timestamp(),  # type: ignore
             [risk_contribution[col] for col in risk_contribution.columns],
             labels=risk_contribution.columns,
         )
@@ -635,7 +725,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         #     bottom =  [b + v for b, v in zip(bottom, risk_contribution[col])]
         # Construct y-axis label and title based on parameters
         value_label = "USD"
-        title_label = f"Risk between {start_date} and {end_date} (Average impact)"
+        title_label = (
+            f"Risk between {self.start_date} and {self.end_date} (Average impact)"
+        )
 
         locator = mdates.AutoDateLocator()
         formatter = mdates.ConciseDateFormatter(locator)
@@ -651,23 +743,15 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def plot_waterfall(
         self,
         ax=None,
-        start_date: datetime.date | None = None,
-        end_date: datetime.date | None = None,
     ):
         """Plot a waterfall chart of risk contributions between two dates.
 
-        This method generates a waterfall plot to visualize the changes in risk contributions
-        between a specified start and end date. If no dates are provided, it defaults to
-        the start and end dates of the risk trajectory.
+        This method generates a waterfall plot to visualize the changes in risk contributions.
 
         Parameters
         ----------
         ax : matplotlib.axes.Axes, optional
             The matplotlib axes on which to plot. If None, a new figure and axes are created.
-        start_date : datetime, optional
-            The start date for the waterfall plot. If None, defaults to the start date of the risk trajectory.
-        end_date : datetime, optional
-            The end date for the waterfall plot. If None, defaults to the end date of the risk trajectory.
 
         Returns
         -------
@@ -675,19 +759,18 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             The matplotlib axes with the plotted waterfall chart.
 
         """
-        start_date = self.start_date if start_date is None else start_date
-        end_date = self.end_date if end_date is None else end_date
-        start_date_p = pd.to_datetime(start_date).to_period(self.time_resolution)
-        end_date_p = pd.to_datetime(end_date).to_period(self.time_resolution)
+        start_date_p = pd.to_datetime(self.start_date).to_period(self.time_resolution)
+        end_date_p = pd.to_datetime(self.end_date).to_period(self.time_resolution)
         risk_contribution = self._calc_waterfall_plot_data(
-            start_date=start_date, end_date=end_date
+            start_date=self.start_date, end_date=self.end_date
         )
         if ax is None:
             _, ax = plt.subplots(figsize=(8, 5))
 
         risk_contribution = risk_contribution.loc[
-            (risk_contribution.index == str(end_date))
+            (risk_contribution.index == str(self.end_date))
         ].squeeze()
+        risk_contribution = cast(pd.Series, risk_contribution)
 
         labels = [
             f"Risk {start_date_p}",
@@ -735,7 +818,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
         for i in range(len(values)):
             ax.text(
-                labels[i],
+                labels[i],  # type: ignore
                 values[i] + bottoms[i],
                 f"{values[i]:.0e}",
                 ha="center",

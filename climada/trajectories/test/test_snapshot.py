@@ -1,4 +1,3 @@
-import copy
 import datetime
 import unittest
 from unittest.mock import MagicMock
@@ -7,8 +6,7 @@ import numpy as np
 import pandas as pd
 
 from climada.entity.exposures import Exposures
-from climada.entity.impact_funcs import ImpactFuncSet
-from climada.entity.impact_funcs.base import ImpactFunc
+from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
 from climada.entity.measures.base import Measure
 from climada.hazard import Hazard
 from climada.trajectories.snapshot import Snapshot
@@ -47,36 +45,56 @@ class TestSnapshot(unittest.TestCase):
 
     def test_init_with_int_date(self):
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, 2023
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date=2023,
         )
         self.assertEqual(snapshot.date, datetime.date(2023, 1, 1))
 
     def test_init_with_str_date(self):
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, "2023-01-01"
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date="2023-01-01",
         )
         self.assertEqual(snapshot.date, datetime.date(2023, 1, 1))
 
     def test_init_with_date_object(self):
         date_obj = datetime.date(2023, 1, 1)
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, date_obj
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date=date_obj,
         )
         self.assertEqual(snapshot.date, date_obj)
 
     def test_init_with_invalid_date(self):
         with self.assertRaises(ValueError):
             Snapshot(
-                self.mock_exposure, self.mock_hazard, self.mock_impfset, "invalid-date"
+                exposure=self.mock_exposure,
+                hazard=self.mock_hazard,
+                impfset=self.mock_impfset,
+                date="invalid-date",
             )
 
     def test_init_with_invalid_type(self):
         with self.assertRaises(TypeError):
-            Snapshot(self.mock_exposure, self.mock_hazard, self.mock_impfset, 2023.5)
+            Snapshot(
+                exposure=self.mock_exposure,
+                hazard=self.mock_hazard,
+                impfset=self.mock_impfset,
+                date=2023.5,  # type: ignore
+            )
 
     def test_properties(self):
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, 2023
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date=2023,
         )
 
         # We want a new reference
@@ -95,16 +113,20 @@ class TestSnapshot(unittest.TestCase):
 
     def test_apply_measure(self):
         snapshot = Snapshot(
-            self.mock_exposure, self.mock_hazard, self.mock_impfset, 2023
+            exposure=self.mock_exposure,
+            hazard=self.mock_hazard,
+            impfset=self.mock_impfset,
+            date=2023,
         )
         new_snapshot = snapshot.apply_measure(self.mock_measure)
 
         self.assertIsNotNone(new_snapshot.measure)
-        self.assertEqual(new_snapshot.measure.name, "Test Measure")
+        self.assertEqual(new_snapshot.measure.name, "Test Measure")  # type: ignore
         self.assertEqual(new_snapshot.exposure, self.mock_modified_exposure)
         self.assertEqual(new_snapshot.hazard, self.mock_modified_hazard)
         self.assertEqual(new_snapshot.impfset, self.mock_modified_impfset)
 
 
 if __name__ == "__main__":
-    unittest.main()
+    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSnapshot)
+    unittest.TextTestRunner(verbosity=2).run(TESTS)

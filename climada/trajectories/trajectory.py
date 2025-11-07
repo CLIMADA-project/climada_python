@@ -33,22 +33,36 @@ from climada.trajectories.snapshot import Snapshot
 LOGGER = logging.getLogger(__name__)
 
 DEFAULT_RP = [20, 50, 100]
+"""Default return periods to use when computing return period impact estimates."""
+
+DEFAULT_ALLGROUP_NAME = "All"
+"""Default string to use to define the exposure subgroup containing all exposure points."""
+
+__all__ = ["RiskTrajectory", "DEFAULT_RP", "DEFAULT_ALLGROUP_NAME"]
 
 
 class RiskTrajectory(ABC):
     _grouper = ["measure", "metric"]
-    """Results dataframe grouper"""
+    """Results dataframe grouper used in most `groupby()` calls."""
 
     POSSIBLE_METRICS = []
+    """Class variable listing the risk metrics that can be computed."""
 
     def __init__(
         self,
         snapshots_list: list[Snapshot],
         *,
-        return_periods: list[int],
-        all_groups_name: str = "All",
+        return_periods: list[int] = DEFAULT_RP,
+        all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
     ):
+        """Base abstract class for risk trajectory objects.
+
+        See concrete implementation :class:`StaticRiskTrajectory` and
+        :class:`InterpolatedRiskTrajectory` for more details.
+
+        """
+
         self._reset_metrics()
         self._snapshots = snapshots_list
         self._all_groups_name = all_groups_name
@@ -57,28 +71,52 @@ class RiskTrajectory(ABC):
         self.end_date = max([snapshot.date for snapshot in snapshots_list])
         self._risk_disc_rates = risk_disc_rates
 
-    def _reset_metrics(self):
+    def _reset_metrics(self) -> None:
+        """Resets the computed metrics to None.
+
+        This method is called to inititialize the `POSSIBLE_METRICS` to `None` during
+        the initialisation.
+
+        It is also called when properties that would change the results of
+        computed metrics (for instance changing the time resolution in
+        :class:`InterpolatedRiskMetrics`)
+
+        """
         for metric in self.POSSIBLE_METRICS:
             setattr(self, "_" + metric + "_metrics", None)
 
-    def _generic_metrics(self, metric_name: str, **kwargs) -> pd.DataFrame: ...
+    def _generic_metrics(
+        self, /, metric_name: str, metric_meth: str, **kwargs
+    ) -> pd.DataFrame:
+        """Main method to return the results of a specific metric.
+
+        This method should call the `_generic_metrics()` of its parent and
+        define the part of the computation and treatment that
+        is specific to a child class of :class:`RiskTrajectory`.
+
+        See also
+        --------
+
+        - :method:`_compute_metrics`
+
+        """
+        ...
 
     def _compute_metrics(
-        self, metric_name: str, metric_meth: str, **kwargs
+        self, /, metric_name: str, metric_meth: str, **kwargs
     ) -> pd.DataFrame:
         """Helper method to compute metrics.
 
         Notes
         -----
 
-        This method exists for the sake of the children option appraisal classes, for which
-        `_generic_metrics` can have an additional keyword argument and call and extend on its
-        parent method, while this method can stay the same.
+        This method exists for the sake of the children classes for option appraisal, for which
+        `_generic_metrics` can have a different signature and extend on its
+        parent method. This method can stay the same (same signature) for all classes.
         """
-        df = self._generic_metrics(
+        return self._generic_metrics(
             metric_name=metric_name, metric_meth=metric_meth, **kwargs
         )
-        return df
 
     @property
     def return_periods(self) -> list[int]:
@@ -108,7 +146,7 @@ class RiskTrajectory(ABC):
         Notes
         -----
 
-        Changing its value resets the metrics.
+        Changing its value resets all the metrics.
         """
         return self._risk_disc_rates
 
@@ -124,7 +162,7 @@ class RiskTrajectory(ABC):
     def npv_transform(
         cls, df: pd.DataFrame, risk_disc_rates: DiscRates
     ) -> pd.DataFrame:
-        """Apply discount rate to a metric `DataFrame`.
+        """Apply provided discount rate to the provided metric `DataFrame`.
 
         Parameters
         ----------
@@ -137,7 +175,6 @@ class RiskTrajectory(ABC):
         -------
         pd.DataFrame
             The discounted risk metric.
-
 
         """
 
@@ -184,16 +221,17 @@ class RiskTrajectory(ABC):
         Returns
         -------
 
-        A dataframe (copy) of `cash_flows` where values are discounted according to `disc`
+        A dataframe (copy) of `cash_flows` where values are discounted according to `disc`.
+
         """
 
         if not disc_rates:
             return cash_flows
 
         if not isinstance(cash_flows.index, pd.PeriodIndex):
-            raise ValueError("cash_flows must be a pandas Series with a datetime index")
+            raise ValueError("cash_flows must be a pandas Series with a PeriodIndex")
 
-        df = cash_flows.to_frame(name="cash_flow")
+        df = cash_flows.to_frame(name="cash_flow")  # type: ignore
         df["year"] = df.index.year
 
         # Merge with the discount rates based on the year

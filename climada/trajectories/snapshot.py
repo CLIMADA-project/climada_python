@@ -18,7 +18,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 This modules implements the Snapshot class.
 
-Snapshot are used to store the a snapshot of Exposure, Hazard, Vulnerability
+Snapshot are used to store a snapshot of Exposure, Hazard and Vulnerability
 at a specific date.
 
 """
@@ -34,6 +34,8 @@ from climada.hazard import Hazard
 
 LOGGER = logging.getLogger(__name__)
 
+__all__ = ["Snapshot"]
+
 
 class Snapshot:
     """
@@ -47,7 +49,7 @@ class Snapshot:
     date : int | datetime.date | str
         The date of the Snapshot, it can be an integer representing a year,
         a datetime object or a string representation of a datetime object
-        with format YYYY-MM-DD.
+        with format "YYYY-MM-DD".
 
     Attributes
     ----------
@@ -61,8 +63,12 @@ class Snapshot:
 
     The object creates deep copies of the exposure hazard and impact function set.
 
+    Also note that exposure, hazard and impfset are read-only properties.
+    Consider snapshot as immutable objects.
+
     To create a snapshot with a measure, create a snapshot `snap` without
-    the measure and call `snap.apply_measure(measure)`, which returns a new Snapshot object.
+    the measure and call `snap.apply_measure(measure)`, which returns a new Snapshot object
+    with the measure applied to its risk dimensions.
     """
 
     def __init__(
@@ -96,12 +102,12 @@ class Snapshot:
 
     @property
     def measure(self) -> Measure | None:
-        """Impact function set data for the snapshot."""
+        """(Adaptation) Measure data for the snapshot."""
         return self._measure
 
     @property
     def date(self) -> datetime.date:
-        """Impact function set data for the snapshot."""
+        """Date of the snapshot."""
         return self._date
 
     @staticmethod
@@ -123,9 +129,9 @@ class Snapshot:
             raise TypeError("date_arg must be an int, str, or datetime.date")
 
     def apply_measure(self, measure: Measure) -> "Snapshot":
-        """Create a new snapshot from a measure
+        """Create a new snapshot by applying a Measure object.
 
-        This methods creates a new `Snapshot` object by applying a measure on
+        This method creates a new `Snapshot` object by applying a measure on
         the current one.
 
         Parameters
