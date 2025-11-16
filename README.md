@@ -35,6 +35,89 @@ See the [installation guide](https://climada-python.readthedocs.io/en/latest/gui
 
 Follow the [tutorials](https://climada-python.readthedocs.io/en/stable/tutorial/1_main_climada.html) in a Jupyter Notebook to see what can be done with CLIMADA and how.
 
+## New: physrisk Vulnerability Curves (Heat & Wildfire)
+
+This repository now includes **empirically-calibrated vulnerability curves** for integration with the [OS-Climate physrisk](https://github.com/os-climate/physrisk) physical climate risk assessment framework.
+
+### What's Included
+
+**18 Vulnerability Curves** covering:
+
+1. **WBGT (Heat Stress)** - 12 curves
+   - 7 ISO 7243:2017 standard functions (occupational heat stress)
+   - 5 empirical calibrations from peer-reviewed research
+   - Asset types: Construction, manufacturing, mining, services, energy sector
+   - Acclimatized and unacclimatized worker profiles
+
+2. **FFDI (Wildfire)** - 6 curves
+   - Australian Forest Fire Danger Index (McArthur 1967)
+   - Calibrated from 54 bushfires, 8,256 houses (1957-2009)
+   - Asset types: Residential (standard/bushfire-prone), commercial, forestry, infrastructure
+   - Validated against Black Saturday 2009 (FFDI 160-190)
+
+### Quick Start
+
+Generate all vulnerability curves:
+
+```bash
+python vulnerability_curves_physrisk/generate_all_curves.py
+```
+
+**Output**: 18 JSON files in physrisk `VulnerabilityCurve` format, ready for climate risk assessment.
+
+### Empirical Calibration Sources
+
+All curves are calibrated from peer-reviewed research:
+
+- **ISO 7243:2017** - International standard for occupational heat stress
+- **Dunne et al. (2013)** *Nature Climate Change* - Labor productivity under heat
+- **Kjellstrom et al. (2018)** *Int. J. Biometeorology* - Epidemiological heat studies
+- **Blanchi et al. (2010)** *Int. J. Wildland Fire* - 54 bushfires, 8,256 houses
+- **Krix et al. (2025)** *Int. J. Wildland Fire* - AFDRS impact index (r²=0.71)
+- **Black Saturday 2009** - Victorian Bushfires Royal Commission data
+
+### Documentation
+
+**Comprehensive methodology documentation** (250+ pages with APA citations):
+
+#### WBGT (Heat Stress)
+- [`doc/user-guide/wbgt_impact_functions_empirical_calibration.md`](doc/user-guide/wbgt_impact_functions_empirical_calibration.md)
+- [`doc/user-guide/iso7243_wbgt_standard_implementation.md`](doc/user-guide/iso7243_wbgt_standard_implementation.md)
+- [`doc/user-guide/wbgt_physrisk_integration_methods.md`](doc/user-guide/wbgt_physrisk_integration_methods.md)
+
+#### FFDI (Wildfire)
+- [`doc/user-guide/ffdi_impact_functions_methodology.md`](doc/user-guide/ffdi_impact_functions_methodology.md)
+
+#### General
+- [`vulnerability_curves_physrisk/README.md`](vulnerability_curves_physrisk/README.md) - Usage guide
+- [`doc/user-guide/climada_entity_physrisk_export.md`](doc/user-guide/climada_entity_physrisk_export.md) - Export workflow
+
+### Key Features
+
+- **physrisk converter**: Automatic CLIMADA → physrisk JSON export ([`climada/entity/impact_funcs/physrisk_converter.py`](climada/entity/impact_funcs/physrisk_converter.py))
+- **Empirical validation**: All curves validated against historical events
+- **Asset-specific profiles**: Different vulnerability by building type, work intensity, acclimatization
+- **Uncertainty quantification**: Documented uncertainty bounds (±10-40% depending on hazard)
+- **Climate scenario ready**: Direct integration with physrisk for RCP projections
+
+### Generation Scripts
+
+Individual curve generation scripts in [`script/applications/`](script/applications/):
+
+- `create_wbgt_iso7243_impact_functions.py` - ISO 7243 standard curves
+- `create_wbgt_impact_function.py` - Empirical WBGT calibrations
+- `create_ffdi_impact_functions.py` - FFDI wildfire curves
+- `create_heat_fire_impact_functions.py` - Generic heat/fire templates
+
+### Location
+
+All files are organized in [`vulnerability_curves_physrisk/`](vulnerability_curves_physrisk/):
+- Generated JSON curves (18 files)
+- `README.md` with complete usage instructions
+- `generate_all_curves.py` for automated generation
+
+---
+
 ## Documentation
 
 The online documentation is available on [Read the Docs](https://climada-python.readthedocs.io/en/stable/).The documentation of each release version of CLIMADA can be accessed separately through the drop-down menu at the bottom of the left sidebar. Additionally, the version 'stable' refers to the most recent release (installed via `conda`), and 'latest' refers to the latest unstable development version (the `develop` branch).
