@@ -253,10 +253,7 @@ class StormEurope(Hazard):
         with xr.open_dataset(file_name) as ncdf:
             if centroids.size != (ncdf.sizes["latitude"] * ncdf.sizes["longitude"]):
                 LOGGER.warning(
-                    (
-                        "Centroids size doesn't match NCDF dimensions. "
-                        "Omitting file %s."
-                    ),
+                    ("Centroids size doesn't match NCDF dimensions. Omitting file %s."),
                     file_name,
                 )
                 return None
@@ -356,7 +353,7 @@ class StormEurope(Hazard):
                     raise ValueError(
                         "Extraction of date and coordinates failed. This is most likely "
                         "because the selected event_date "
-                        f'{event_date.strftime("%Y-%m-%d")} is not contained in the '
+                        f"{event_date.strftime('%Y-%m-%d')} is not contained in the "
                         "weather forecast selected by fp_file {fp_file}. Please adjust "
                         f"event_date or fp_file."
                     ) from ker
@@ -520,9 +517,9 @@ class StormEurope(Hazard):
                 raise ValueError(
                     "Extraction of date and coordinates failed. This is most likely "
                     "because the selected event_date "
-                    f'{event_date.strftime("%Y-%m-%d")} is not contained in the '
+                    f"{event_date.strftime('%Y-%m-%d')} is not contained in the "
                     "weather forecast selected by run_datetime"
-                    f'{run_datetime.strftime("%Y-%m-%d %H:%M")}. Please adjust '
+                    f"{run_datetime.strftime('%Y-%m-%d %H:%M')}. Please adjust "
                     "event_date or run_datetime."
                 ) from ker
 
@@ -1073,8 +1070,8 @@ def generate_WS_forecast_hazard(
             haz_model = "C2E"
             full_model_name_temp = "COSMO-2E"
         haz_file_name = (
-            f'{HAZ_TYPE}_{haz_model}_run{run_datetime.strftime("%Y%m%d%H")}'
-            f'_event{event_date.strftime("%Y%m%d")}.hdf5'
+            f"{HAZ_TYPE}_{haz_model}_run{run_datetime.strftime('%Y%m%d%H')}"
+            f"_event{event_date.strftime('%Y%m%d')}.hdf5"
         )
         haz_file = FORECAST_DIR / haz_file_name
         if haz_file.exists():
@@ -1103,8 +1100,8 @@ def generate_WS_forecast_hazard(
             full_model_name_temp = haz_model
             haz_model = "IDE"
         haz_file_name = (
-            f'{HAZ_TYPE}_{haz_model}_run{run_datetime.strftime("%Y%m%d%H")}'
-            f'_event{event_date.strftime("%Y%m%d")}.hdf5'
+            f"{HAZ_TYPE}_{haz_model}_run{run_datetime.strftime('%Y%m%d%H')}"
+            f"_event{event_date.strftime('%Y%m%d')}.hdf5"
         )
         haz_file = FORECAST_DIR / haz_file_name
         if haz_file.exists():

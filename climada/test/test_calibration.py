@@ -20,11 +20,9 @@ Test Calibration class.
 """
 
 import unittest
-from pathlib import Path
 
 import pandas as pd
 
-import climada.hazard.test as hazard_test
 from climada import CONFIG
 from climada.engine import ImpactCalc
 from climada.engine.calibration_opt import calib_instance

@@ -48,7 +48,6 @@ def get_attributes_with_matching_dimension(obj, dims):
 
     list_of_attrs = []
     for attr, value in obj.__dict__.items():
-
         if isinstance(value, list):
             try:
                 value = np.array(value)

@@ -4,7 +4,6 @@
 import os
 import re
 import sys
-import unittest
 from pathlib import Path
 
 import nbformat
@@ -23,7 +22,7 @@ NOTEBOOKS = [
     (f.absolute(), f.name)
     for f in sorted(NOTEBOOK_DIR.iterdir())
     if os.path.splitext(f)[1] == (".ipynb")
-    and not f.name in EXCLUDED_FROM_NOTEBOOK_TEST
+    and f.name not in EXCLUDED_FROM_NOTEBOOK_TEST
 ]
 
 
@@ -54,7 +53,6 @@ def test_notebook(nb, name):
         # run all cells
         i = 0
         for c in cells:
-
             # skip markdown cells
             if c["cell_type"] != "code":
                 continue
@@ -130,7 +128,7 @@ def test_notebook(nb, name):
 
 def main():
     # run the tests and write xml reports to tests_xml
-    pytest.main([f"--junitxml=tests_xml/tests.xml", __file__])
+    pytest.main(["--junitxml=tests_xml/tests.xml", __file__])
 
 
 if __name__ == "__main__":

@@ -94,33 +94,28 @@ def calib_instance(
             for cnt_, year in years_in_common.iteritems():
                 df_out.loc[df_out["year"] == year, "impact_CLIMADA"] = iys[year]
 
-    else:  # impact per event
-        if df_out.empty | df_out.index.shape[0] == 1:
-            for cnt_, impact in enumerate(impacts.at_event):
-                if cnt_ > 0:
-                    df_out.loc[cnt_] = df_out.loc[0]  # copy info from first row
-                df_out.loc[cnt_, "impact_CLIMADA"] = impact
-                df_out.loc[cnt_, "event_id"] = int(impacts.event_id[cnt_])
-                df_out.loc[cnt_, "event_name"] = impacts.event_name[cnt_]
-                df_out.loc[cnt_, "year"] = dt.datetime.fromordinal(
-                    impacts.date[cnt_]
-                ).year
-                df_out.loc[cnt_, "date"] = impacts.date[cnt_]
-        elif df_out.index.shape[0] == impacts.at_event.shape[0]:
-            for cnt_, (impact, ind) in enumerate(zip(impacts.at_event, df_out.index)):
-                df_out.loc[ind, "impact_CLIMADA"] = impact
-                df_out.loc[ind, "event_id"] = int(impacts.event_id[cnt_])
-                df_out.loc[ind, "event_name"] = impacts.event_name[cnt_]
-                df_out.loc[ind, "year"] = dt.datetime.fromordinal(
-                    impacts.date[cnt_]
-                ).year
-                df_out.loc[ind, "date"] = impacts.date[cnt_]
-        else:
-            raise ValueError(
-                "adding simulated impacts to reported impacts not"
-                " yet implemented. use yearly_impact=True or run"
-                " without init_impact_data."
-            )
+    elif df_out.empty | df_out.index.shape[0] == 1:
+        for cnt_, impact in enumerate(impacts.at_event):
+            if cnt_ > 0:
+                df_out.loc[cnt_] = df_out.loc[0]  # copy info from first row
+            df_out.loc[cnt_, "impact_CLIMADA"] = impact
+            df_out.loc[cnt_, "event_id"] = int(impacts.event_id[cnt_])
+            df_out.loc[cnt_, "event_name"] = impacts.event_name[cnt_]
+            df_out.loc[cnt_, "year"] = dt.datetime.fromordinal(impacts.date[cnt_]).year
+            df_out.loc[cnt_, "date"] = impacts.date[cnt_]
+    elif df_out.index.shape[0] == impacts.at_event.shape[0]:
+        for cnt_, (impact, ind) in enumerate(zip(impacts.at_event, df_out.index)):
+            df_out.loc[ind, "impact_CLIMADA"] = impact
+            df_out.loc[ind, "event_id"] = int(impacts.event_id[cnt_])
+            df_out.loc[ind, "event_name"] = impacts.event_name[cnt_]
+            df_out.loc[ind, "year"] = dt.datetime.fromordinal(impacts.date[cnt_]).year
+            df_out.loc[ind, "date"] = impacts.date[cnt_]
+    else:
+        raise ValueError(
+            "adding simulated impacts to reported impacts not"
+            " yet implemented. use yearly_impact=True or run"
+            " without init_impact_data."
+        )
     if return_cost != "False":
         df_out = calib_cost_calc(df_out, return_cost)
     return df_out
@@ -293,8 +288,7 @@ def init_impact_data(
             # em_data = emdat_impact_event(source_file)
     else:
         raise ValueError(
-            "init_impact_data not yet implemented for other impact_data_sources "
-            "than emdat."
+            "init_impact_data not yet implemented for other impact_data_sources than emdat."
         )
     return em_data
 
@@ -378,17 +372,16 @@ def calib_all(
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):
         df_impact_data = impact_data_source
+    elif list(impact_data_source.keys()) == ["emdat"]:
+        df_impact_data = init_impact_data(
+            hazard_type,
+            region_ids,
+            year_range,
+            impact_data_source["emdat"],
+            year_range[-1],
+        )
     else:
-        if list(impact_data_source.keys()) == ["emdat"]:
-            df_impact_data = init_impact_data(
-                hazard_type,
-                region_ids,
-                year_range,
-                impact_data_source["emdat"],
-                year_range[-1],
-            )
-        else:
-            raise ValueError("other impact data sources not yet implemented.")
+        raise ValueError("other impact data sources not yet implemented.")
     params_generator = (
         dict(zip(param_full_dict, x))
         for x in itertools.product(*param_full_dict.values())
@@ -460,17 +453,16 @@ def calib_optimize(
     # prepare impact data
     if isinstance(impact_data_source, pd.DataFrame):
         df_impact_data = impact_data_source
+    elif list(impact_data_source.keys()) == ["emdat"]:
+        df_impact_data = init_impact_data(
+            hazard_type,
+            region_ids,
+            year_range,
+            impact_data_source["emdat"],
+            year_range[-1],
+        )
     else:
-        if list(impact_data_source.keys()) == ["emdat"]:
-            df_impact_data = init_impact_data(
-                hazard_type,
-                region_ids,
-                year_range,
-                impact_data_source["emdat"],
-                year_range[-1],
-            )
-        else:
-            raise ValueError("other impact data sources not yet implemented.")
+        raise ValueError("other impact data sources not yet implemented.")
 
     # definie specific function to
     def specific_calib(values):

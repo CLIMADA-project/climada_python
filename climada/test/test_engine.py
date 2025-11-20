@@ -29,7 +29,6 @@ from tables.exceptions import HDF5ExtError
 
 from climada import CONFIG
 from climada.engine import impact_data as im_d
-from climada.engine.test.test_impact import dummy_impact
 from climada.engine.unsequa import CalcCostBenefit, InputVar
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
@@ -79,7 +78,6 @@ def haz_dem(x_haz=1, haz=None):
 
 
 def make_input_vars():
-
     exp = exp_dem
     exp_distr = {
         "x_exp": sp.stats.uniform(0.8, 2),
@@ -114,7 +112,6 @@ def ent_fut_dem():
 
 
 def make_costben_iv():
-
     entdem = ent_dem()
     ent_iv = InputVar.ent(
         impf_set_list=[entdem.impact_funcs],

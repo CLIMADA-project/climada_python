@@ -47,7 +47,6 @@ import matplotlib as mpl
 
 # pylint: disable=unused-import
 # without importing numpy ahead of fiona the debugger may run into an error
-import numpy
 from fiona.crs import from_epsg
 
 from .config import CONFIG

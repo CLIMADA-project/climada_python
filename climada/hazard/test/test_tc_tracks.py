@@ -877,20 +877,17 @@ class TestFuncs(unittest.TestCase):
         # Invalid input: Mismatch between start_day and end_day
         with self.assertRaisesRegex(
             ValueError,
-            "Mismatch between start_year and end_year: "
-            "Both must be either True or False.",
+            "Mismatch between start_year and end_year: Both must be either True or False.",
         ):
             tc_test.subset_year((2000, False, False), (False, False, False))
         with self.assertRaisesRegex(
             ValueError,
-            "Mismatch between start_month and end_month: "
-            "Both must be either True or False.",
+            "Mismatch between start_month and end_month: Both must be either True or False.",
         ):
             tc_test.subset_year((2000, False, False), (2000, 5, False))
         with self.assertRaisesRegex(
             ValueError,
-            "Mismatch between start_day and end_day: "
-            "Both must be either True or False.",
+            "Mismatch between start_day and end_day: Both must be either True or False.",
         ):
             tc_test.subset_year((False, False, False), (False, False, 3))
         with self.assertRaisesRegex(ValueError, "Start year is after end year."):

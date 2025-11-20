@@ -133,7 +133,6 @@ def get_knutson_scaling_factor(
         or (base_end_year <= gmst_info["gmst_start_year"])
         or (base_end_year >= gmst_info["gmst_end_year"])
     ):
-
         raise ValueError(
             "The selected historical baseline falls outside"
             f"the GMST data period {gmst_info['gmst_start_year']}"

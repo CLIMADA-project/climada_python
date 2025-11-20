@@ -30,10 +30,10 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import rasterio
-import scipy.sparse as sparse
 from affine import Affine
 from osgeo import gdal
 from PIL import Image
+from scipy import sparse
 from shapefile import Shape
 
 from climada import CONFIG
@@ -302,8 +302,7 @@ def check_nl_local_file_exists(required_files=None, check_path=SYSTEM_DIR, year=
         LOGGER.info("No satellite files found locally in %s", check_path)
     else:
         LOGGER.debug(
-            "Not all satellite files available. "
-            "Found %d out of %d required files in %s",
+            "Not all satellite files available. Found %d out of %d required files in %s",
             int(sum(files_exist)),
             int(sum(required_files)),
             check_path,
@@ -583,8 +582,7 @@ def untar_noaa_stable_nightlight(f_tar_ini):
         ]
         if len(extract_name) == 0:
             raise ValueError(
-                "No stable light intensities for selected year and satellite "
-                f"in file {f_tar_ini}"
+                f"No stable light intensities for selected year and satellite in file {f_tar_ini}"
             )
         if len(extract_name) > 1:
             LOGGER.warning(
@@ -645,8 +643,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
                     pass
             if "file_down" not in locals():
                 raise ValueError(
-                    f"Nightlight for reference year {ref_year} not available. "
-                    "Try a different year."
+                    f"Nightlight for reference year {ref_year} not available. Try a different year."
                 )
         else:
             url = noaa_url + sat_name + str(ref_year) + ".v4.tar"

@@ -24,7 +24,6 @@ __all__ = ["Hazard"]
 import copy
 import datetime as dt
 import logging
-import warnings
 from typing import List, Optional
 
 import geopandas as gpd
@@ -38,7 +37,6 @@ import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
 import climada.util.interpolation as u_interp
-from climada import CONFIG
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.io import HazardIO
 from climada.hazard.plot import HazardPlot

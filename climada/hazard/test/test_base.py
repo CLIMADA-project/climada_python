@@ -23,7 +23,6 @@ import unittest
 from pathlib import Path
 
 import numpy as np
-from pathos.pools import ProcessPool as Pool
 from scipy import sparse
 
 import climada.util.coordinates as u_coord
@@ -714,8 +713,7 @@ class TestSelect(unittest.TestCase):
         # Select a part of the hazard where fraction is zero only
         with self.assertRaisesRegex(
             RuntimeError,
-            "Your selection created a Hazard object where the fraction matrix is zero "
-            "everywhere",
+            "Your selection created a Hazard object where the fraction matrix is zero everywhere",
         ):
             hazard.select(event_id=[3, 4], reg_id=[2])
 

@@ -40,8 +40,7 @@ class TestAppend(unittest.TestCase):
         self.assertEqual(["file_name1.mat", "file_name2.mat"], tag1.file_name)
         self.assertEqual(["dummy file 1", "dummy file 2"], tag1.description)
         self.assertEqual(
-            " File: file_name1 + file_name2\n"
-            " Description: dummy file 1 + dummy file 2",
+            " File: file_name1 + file_name2\n Description: dummy file 1 + dummy file 2",
             str(tag1),
         )
 

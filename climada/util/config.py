@@ -87,7 +87,7 @@ class Config:
                 [
                     f"{k}: {v}"
                     for (k, v) in self.__dict__.items()
-                    if not k in {"_name", "_root"}
+                    if k not in {"_name", "_root"}
                 ]
             )
         )

@@ -92,7 +92,6 @@ def haz_dem(x_haz=1, haz=None):
 
 
 def make_input_vars():
-
     exp = exp_dem
     exp_distr = {
         "x_exp": sp.stats.uniform(0.8, 2),
@@ -127,7 +126,6 @@ def ent_fut_dem():
 
 
 def make_costben_iv():
-
     entdem = ent_dem()
     ent_iv = InputVar.ent(
         impf_set_list=[entdem.impact_funcs],
@@ -158,7 +156,6 @@ class TestInputVar(unittest.TestCase):
     """Test UncVar class"""
 
     def test_init_pass(self):
-
         impf = impf_dem
         distr_dict = {
             "x_paa": sp.stats.beta(0.5, 1),
@@ -169,7 +166,6 @@ class TestInputVar(unittest.TestCase):
         self.assertTrue(isinstance(impf_iv.distr_dict, dict))
 
     def test_evaluate_pass(self):
-
         impf = impf_dem
         distr_dict = {
             "x_paa": sp.stats.beta(0.5, 1),
@@ -225,7 +221,6 @@ class TestInputVar(unittest.TestCase):
         plt.close()
 
     def test_var_to_inputvar(self):
-
         exp = exp_dem()
         distr_dict = {"x_exp": sp.stats.uniform(0.8, 1.2)}
 

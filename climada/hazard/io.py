@@ -98,8 +98,7 @@ class HazardIO:
     def set_raster(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_raster."""
         LOGGER.warning(
-            "The use of Hazard.set_raster is deprecated."
-            "Use Hazard.from_raster instead."
+            "The use of Hazard.set_raster is deprecated.Use Hazard.from_raster instead."
         )
         self.__dict__ = self.__class__.from_raster(*args, **kwargs).__dict__
 
@@ -783,8 +782,7 @@ class HazardIO:
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_excel."""
         LOGGER.warning(
-            "The use of Hazard.read_excel is deprecated."
-            "Use Hazard.from_excel instead."
+            "The use of Hazard.read_excel is deprecated.Use Hazard.from_excel instead."
         )
         self.__dict__ = self.__class__.from_excel(*args, **kwargs).__dict__
 
@@ -957,7 +955,7 @@ class HazardIO:
     def read_hdf5(self, *args, **kwargs):
         """This function is deprecated, use Hazard.from_hdf5."""
         LOGGER.warning(
-            "The use of Hazard.read_hdf5 is deprecated." "Use Hazard.from_hdf5 instead."
+            "The use of Hazard.read_hdf5 is deprecated.Use Hazard.from_hdf5 instead."
         )
         self.__dict__ = self.__class__.from_hdf5(*args, **kwargs).__dict__
 

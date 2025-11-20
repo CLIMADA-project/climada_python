@@ -100,8 +100,7 @@ def _distance_along_line(start, end, distance, dist_func, tol):
     initial_distance = dist_func(start, end)
     if initial_distance < distance:
         raise ValueError(
-            f"End is closer to start ({initial_distance}) than "
-            f"given distance ({distance})."
+            f"End is closer to start ({initial_distance}) than given distance ({distance})."
         )
 
     if tol <= 0:

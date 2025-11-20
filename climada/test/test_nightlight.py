@@ -28,9 +28,9 @@ from tempfile import TemporaryDirectory
 
 import affine
 import numpy as np
-import scipy.sparse as sparse
 from osgeo import gdal
 from PIL import Image
+from scipy import sparse
 from shapely.geometry import Polygon
 
 from climada.entity.exposures.litpop import nightlight
@@ -96,8 +96,7 @@ class TestNightlight(unittest.TestCase):
                 geometry=shape, path=path, layer=4
             )
         self.assertEqual(
-            "BlackMarble_2016_C1_geo_gray.tif has only 3 layers,"
-            " layer 4 can't be accessed.",
+            "BlackMarble_2016_C1_geo_gray.tif has only 3 layers, layer 4 can't be accessed.",
             str(cm.exception),
         )
         # Test logger
@@ -312,8 +311,7 @@ class TestNightlight(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             nightlight.untar_noaa_stable_nightlight(path_tar)
         self.assertEqual(
-            "No stable light intensities for selected year and satellite "
-            f"in file {path_tar}",
+            f"No stable light intensities for selected year and satellite in file {path_tar}",
             str(cm.exception),
         )
         path_tar.unlink()

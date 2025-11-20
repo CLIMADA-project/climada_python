@@ -296,8 +296,8 @@ def world_bank(cntry_iso, ref_year, info_ind):
             )
         except (IOError, requests.exceptions.ConnectionError) as err:
             raise type(err)(
-                "Internet connection failed while downloading "
-                "historical income groups: " + str(err)
+                "Internet connection failed while downloading historical income groups: "
+                + str(err)
             ) from err
 
         cntry_dfr = dfr_wb.loc[cntry_iso]

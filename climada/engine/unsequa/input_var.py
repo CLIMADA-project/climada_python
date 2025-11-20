@@ -798,9 +798,9 @@ def _impfset_uncfunc(IFi, MDD, PAA, IL, impf_set_list, haz_id_dict):
                     + IFi,
                     0.0,
                 )
-                impf_set_tmp.get_func(haz_type=haz_type, fun_id=fun_id).intensity = (
-                    new_int
-                )
+                impf_set_tmp.get_func(
+                    haz_type=haz_type, fun_id=fun_id
+                ).intensity = new_int
     return impf_set_tmp
 
 
@@ -866,7 +866,6 @@ def _ent_unc_func(
     exp_list,
     meas_set,
 ):
-
     exposures = _exp_uncfunc(EN, ET, EL, exp_list, bounds_noise)
     impact_func_set = _impfset_uncfunc(
         IFi, MDD, PAA, IL, impf_set_list=impf_set_list, haz_id_dict=haz_id_dict

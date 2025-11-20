@@ -176,8 +176,7 @@ class DiscRates:
         sel_disc = self.select(year_range)
         if sel_disc is None:
             raise ValueError(
-                "No information of discount rates for provided years:"
-                f" {ini_year} - {end_year}"
+                f"No information of discount rates for provided years: {ini_year} - {end_year}"
             )
         return u_fin.net_present_value(sel_disc.years, sel_disc.rates, val_years)
 
@@ -259,8 +258,7 @@ class DiscRates:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use ``DiscRates.from_mat`` instead."""
         LOGGER.warning(
-            "The use of DiscRates.read_mat is deprecated."
-            "Use DiscRates.from_mat instead."
+            "The use of DiscRates.read_mat is deprecated.Use DiscRates.from_mat instead."
         )
         self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
 
@@ -305,8 +303,7 @@ class DiscRates:
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use DiscRates.from_excel instead."""
         LOGGER.warning(
-            "The use of DiscRates.read_excel is deprecated."
-            "Use DiscRates.from_excel instead."
+            "The use of DiscRates.read_excel is deprecated.Use DiscRates.from_excel instead."
         )
         self.__dict__ = DiscRates.from_excel(*args, **kwargs).__dict__
 

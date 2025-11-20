@@ -334,8 +334,7 @@ class Client:
         else:  # try to restore previous results from an identical request
             if not self.cache.enabled:
                 raise Client.NoConnection(
-                    "there is no internet connection and the client does"
-                    " not cache results."
+                    "there is no internet connection and the client does not cache results."
                 )
             cached_result = self.cache.fetch(url, **params)
             if not cached_result:
@@ -464,7 +463,9 @@ class Client:
         )
         if len(jarr) > 1:
             shown = 10
-            endofmessage = "" if len(jarr) <= shown else f"\nand {len(jarr)-shown} more"
+            endofmessage = (
+                "" if len(jarr) <= shown else f"\nand {len(jarr) - shown} more"
+            )
             datasetlist = ",\n* ".join(
                 str(jarr[i]) for i in range(min(shown, len(jarr)))
             )
@@ -780,7 +781,7 @@ class Client:
         climada.hazard.Hazard
             The combined hazard object
         """
-        if not hazard_type in HAZ_TYPES:
+        if hazard_type not in HAZ_TYPES:
             raise ValueError(
                 "Valid hazard types are a subset of CLIMADA hazard types."
                 f" Currently these types are supported: {HAZ_TYPES}"
@@ -870,7 +871,7 @@ class Client:
         climada.entity.exposures.Exposures
             The combined exposures object
         """
-        if not exposures_type in EXP_TYPES:
+        if exposures_type not in EXP_TYPES:
             raise ValueError(
                 "Valid exposures types are a subset of CLIMADA exposures types."
                 f" Currently these types are supported: {EXP_TYPES}"

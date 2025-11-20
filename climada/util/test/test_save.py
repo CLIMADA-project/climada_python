@@ -20,7 +20,6 @@ Test save module.
 """
 
 import unittest
-from pathlib import Path
 
 from climada import CONFIG
 from climada.util.save import load, save

@@ -29,9 +29,7 @@ import climada.hazard.tc_clim_change as tc_cc
 
 
 class TestKnutson(unittest.TestCase):
-
     def test_get_knutson_scaling_calculations(self):
-
         basin = "NA"
         variable = "cat05"
         percentile = "5/10"

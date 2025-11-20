@@ -197,8 +197,7 @@ class CalcImpact(Calc):
 
         if unc_sample.samples_df.empty:
             raise ValueError(
-                "No sample was found. Please create one first"
-                "using UncImpact.make_sample(N)"
+                "No sample was found. Please create one firstusing UncImpact.make_sample(N)"
             )
 
         # copy may not be needed, but is kept to prevent potential

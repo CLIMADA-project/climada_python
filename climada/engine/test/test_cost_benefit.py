@@ -39,7 +39,6 @@ from climada.entity.measures import Measure
 from climada.entity.measures.base import LOGGER as ILOG
 from climada.hazard.base import Hazard
 from climada.test import get_test_file
-from climada.util.api_client import Client
 from climada.util.constants import ENT_DEMO_FUTURE, ENT_DEMO_TODAY
 
 ENT_TEST_MAT = get_test_file("demo_today", file_format="MAT-file")

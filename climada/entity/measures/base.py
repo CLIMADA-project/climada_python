@@ -507,9 +507,9 @@ class Measure:
             fun_ids = list(new_impfs.get_func()[self.haz_type].keys())
             for key in fun_ids:
                 new_impfs.get_func()[self.haz_type][key].id = key + IMPF_ID_FACT
-                new_impfs.get_func()[self.haz_type][
-                    key + IMPF_ID_FACT
-                ] = new_impfs.get_func()[self.haz_type][key]
+                new_impfs.get_func()[self.haz_type][key + IMPF_ID_FACT] = (
+                    new_impfs.get_func()[self.haz_type][key]
+                )
             try:
                 new_exp.gdf[INDICATOR_IMPF + self.haz_type] += IMPF_ID_FACT
             except KeyError:
@@ -533,9 +533,7 @@ class Measure:
                         exposures.gdf[no_chg_reg],  # old values for inert regions
                         new_exp.gdf[chg_reg],  # new values for changing regions
                     ]
-                ).loc[
-                    exposures.gdf.index, :
-                ],  # re-establish old order
+                ).loc[exposures.gdf.index, :],  # re-establish old order
             ),
             crs=exposures.crs,
         )

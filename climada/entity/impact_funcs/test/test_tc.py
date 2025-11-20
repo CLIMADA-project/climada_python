@@ -22,7 +22,6 @@ Test impf_TropCycl class.
 import unittest
 
 import numpy as np
-import pandas as pd
 
 from climada.entity.impact_funcs.trop_cyclone import ImpfSetTropCyclone, ImpfTropCyclone
 

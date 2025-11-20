@@ -31,7 +31,6 @@ from climada.hazard import tc_tracks as tc
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.hazard.storm_europe import StormEurope
-from climada.hazard.test.test_base import dummy_hazard
 from climada.test import get_test_file
 from climada.util import coordinates as u_coord
 from climada.util.api_client import Client

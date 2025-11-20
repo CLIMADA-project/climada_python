@@ -169,7 +169,6 @@ class TestDigits(unittest.TestCase):
 
 
 class TestSafeDivide(unittest.TestCase):
-
     def test_scalar_division(self):
         self.assertEqual(safe_divide(10, 2), 5)
         self.assertEqual(safe_divide(-10, 5), -2)

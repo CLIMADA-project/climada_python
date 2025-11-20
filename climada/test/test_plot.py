@@ -21,7 +21,6 @@ test plots
 
 import copy
 import unittest
-import urllib
 from pathlib import Path
 
 import contextily as ctx
@@ -40,7 +39,7 @@ from climada.entity import (
     Measure,
     MeasureSet,
 )
-from climada.hazard import Centroids, Hazard
+from climada.hazard import Hazard
 from climada.test import get_test_file
 from climada.util.api_client import Client
 from climada.util.constants import ENT_DEMO_TODAY, HAZ_DEMO_FL, TEST_UNC_OUTPUT_COSTBEN
