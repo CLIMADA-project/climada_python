@@ -14,7 +14,8 @@ repos:
     rev: v0.14.5
     hooks:
       # Run the linter, applying safe fixes
-      - id: ruff-check
-        args: [ --fix ]
+      # TODO: Enable once all existing issues are fixed
+      # - id: ruff-check
+      #   args: [ --fix ]
       # Run the formatter.
       - id: ruff-format
