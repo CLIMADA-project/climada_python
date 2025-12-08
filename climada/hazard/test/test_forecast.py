@@ -51,24 +51,28 @@ def test_init_hazard_forecast(hazard_kwargs_fixture):
         **hazard_kwargs_fixture,
     )
     assert isinstance(haz_fc, HazardForecast)
-    assert np.assert_array_equal(
+    npt.assert_array_equal(
         haz_fc.lead_time,
         np.array(["2024-01-01T00:00:00", "2024-01-01T00:01:00"], dtype="datetime64[s]"),
     )
     assert haz_fc.lead_time.dtype == "datetime64[s]"
-    assert haz_fc.member == np.array([0, 1])
+    npt.assert_array_equal(haz_fc.member, np.array([0, 1]))
     assert haz_fc.haz_type == hazard_kwargs_fixture["haz_type"]
     assert haz_fc.pool == hazard_kwargs_fixture["pool"]
     assert haz_fc.units == hazard_kwargs_fixture["units"]
     assert haz_fc.centroids == hazard_kwargs_fixture["centroids"]
-    assert haz_fc.event_id == hazard_kwargs_fixture["event_id"]
-    assert haz_fc.frequency == hazard_kwargs_fixture["frequency"]
+    npt.assert_array_equal(haz_fc.event_id, hazard_kwargs_fixture["event_id"])
+    npt.assert_array_equal(haz_fc.frequency, hazard_kwargs_fixture["frequency"])
     assert haz_fc.frequency_unit == hazard_kwargs_fixture["frequency_unit"]
-    assert haz_fc.event_name == hazard_kwargs_fixture["event_name"]
-    assert haz_fc.date == hazard_kwargs_fixture["date"]
-    assert haz_fc.orig == hazard_kwargs_fixture["orig"]
-    assert haz_fc.intensity == hazard_kwargs_fixture["intensity"]
-    assert haz_fc.fraction == hazard_kwargs_fixture["fraction"]
+    npt.assert_array_equal(haz_fc.event_name, hazard_kwargs_fixture["event_name"])
+    npt.assert_array_equal(haz_fc.date, hazard_kwargs_fixture["date"])
+    npt.assert_array_equal(haz_fc.orig, hazard_kwargs_fixture["orig"])
+    npt.assert_array_equal(
+        haz_fc.intensity.todense(), hazard_kwargs_fixture["intensity"].todense()
+    )
+    npt.assert_array_equal(
+        haz_fc.fraction.todense(), hazard_kwargs_fixture["fraction"].todense()
+    )
 
 
 @pytest.fixture
