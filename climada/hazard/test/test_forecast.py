@@ -31,24 +31,22 @@ from climada.hazard.test.test_base import hazard_kwargs
 
 
 @pytest.fixture
-def hazard_kwargs_fixture():
-    from climada.hazard.test.test_base import hazard_kwargs as get_hazard_kwargs
-
-    return get_hazard_kwargs()
+def haz_kwargs():
+    return hazard_kwargs()
 
 
 @pytest.fixture
-def dummy_hazard(hazard_kwargs_fixture):
-    return Hazard(**hazard_kwargs_fixture)
+def dummy_hazard(haz_kwargs):
+    return Hazard(**haz_kwargs)
 
 
-def test_init_hazard_forecast(hazard_kwargs_fixture):
+def test_init_hazard_forecast(haz_kwargs):
     haz_fc = HazardForecast(
         lead_time=np.array(
             ["2024-01-01T00:00:00", "2024-01-01T00:01:00"], dtype="datetime64[s]"
         ),
         member=np.array([0, 1]),
-        **hazard_kwargs_fixture,
+        **haz_kwargs,
     )
     assert isinstance(haz_fc, HazardForecast)
     npt.assert_array_equal(
@@ -57,21 +55,49 @@ def test_init_hazard_forecast(hazard_kwargs_fixture):
     )
     assert haz_fc.lead_time.dtype == "datetime64[s]"
     npt.assert_array_equal(haz_fc.member, np.array([0, 1]))
-    assert haz_fc.haz_type == hazard_kwargs_fixture["haz_type"]
-    assert haz_fc.pool == hazard_kwargs_fixture["pool"]
-    assert haz_fc.units == hazard_kwargs_fixture["units"]
-    assert haz_fc.centroids == hazard_kwargs_fixture["centroids"]
-    npt.assert_array_equal(haz_fc.event_id, hazard_kwargs_fixture["event_id"])
-    npt.assert_array_equal(haz_fc.frequency, hazard_kwargs_fixture["frequency"])
-    assert haz_fc.frequency_unit == hazard_kwargs_fixture["frequency_unit"]
-    npt.assert_array_equal(haz_fc.event_name, hazard_kwargs_fixture["event_name"])
-    npt.assert_array_equal(haz_fc.date, hazard_kwargs_fixture["date"])
-    npt.assert_array_equal(haz_fc.orig, hazard_kwargs_fixture["orig"])
+    assert haz_fc.haz_type == haz_kwargs["haz_type"]
+    assert haz_fc.pool == haz_kwargs["pool"]
+    assert haz_fc.units == haz_kwargs["units"]
+    assert haz_fc.centroids == haz_kwargs["centroids"]
+    npt.assert_array_equal(haz_fc.event_id, haz_kwargs["event_id"])
+    npt.assert_array_equal(haz_fc.frequency, haz_kwargs["frequency"])
+    assert haz_fc.frequency_unit == haz_kwargs["frequency_unit"]
+    npt.assert_array_equal(haz_fc.event_name, haz_kwargs["event_name"])
+    npt.assert_array_equal(haz_fc.date, haz_kwargs["date"])
+    npt.assert_array_equal(haz_fc.orig, haz_kwargs["orig"])
     npt.assert_array_equal(
-        haz_fc.intensity.todense(), hazard_kwargs_fixture["intensity"].todense()
+        haz_fc.intensity.todense(), haz_kwargs["intensity"].todense()
+    )
+    npt.assert_array_equal(haz_fc.fraction.todense(), haz_kwargs["fraction"].todense())
+
+
+def test_from_hazard(dummy_hazard):
+    lead_time = np.array(
+        ["2024-01-01T00:00:00", "2024-01-01T00:01:00"], dtype="datetime64[s]"
+    )
+    member = np.array([0, 1])
+    haz_fc_from_haz = HazardForecast.from_hazard(
+        dummy_hazard, lead_time=lead_time, member=member
+    )
+
+    assert isinstance(haz_fc_from_haz, HazardForecast)
+    npt.assert_array_equal(haz_fc_from_haz.lead_time, lead_time)
+    npt.assert_array_equal(haz_fc_from_haz.member, member)
+    assert haz_fc_from_haz.haz_type == dummy_hazard.haz_type
+    assert haz_fc_from_haz.pool == dummy_hazard.pool
+    assert haz_fc_from_haz.units == dummy_hazard.units
+    assert haz_fc_from_haz.centroids == dummy_hazard.centroids
+    npt.assert_array_equal(haz_fc_from_haz.event_id, dummy_hazard.event_id)
+    npt.assert_array_equal(haz_fc_from_haz.frequency, dummy_hazard.frequency)
+    assert haz_fc_from_haz.frequency_unit == dummy_hazard.frequency_unit
+    npt.assert_array_equal(haz_fc_from_haz.event_name, dummy_hazard.event_name)
+    npt.assert_array_equal(haz_fc_from_haz.date, dummy_hazard.date)
+    npt.assert_array_equal(haz_fc_from_haz.orig, dummy_hazard.orig)
+    npt.assert_array_equal(
+        haz_fc_from_haz.intensity.todense(), dummy_hazard.intensity.todense()
     )
     npt.assert_array_equal(
-        haz_fc.fraction.todense(), hazard_kwargs_fixture["fraction"].todense()
+        haz_fc_from_haz.fraction.todense(), dummy_hazard.fraction.todense()
     )
 
 
