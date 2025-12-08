@@ -19,6 +19,19 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Forecast base class.
 """
 
+import numpy as np
+
 
 class Forecast:
-    pass
+    def __init__(self, lead_time=None, member=None, *args, **kwargs):
+        if lead_time is None:
+            self.lead_time = np.array([])
+        else:
+            self.lead_time = np.array(lead_time)
+
+        if member is None:
+            self.member = np.array([])
+        else:
+            self.member = member
+
+        super().__init__(*args, **kwargs)
