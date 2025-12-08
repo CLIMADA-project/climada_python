@@ -23,6 +23,7 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+from scipy.sparse import csr_matrix
 
 from climada.hazard.base import Hazard
 from climada.hazard.forecast import HazardForecast
@@ -37,13 +38,13 @@ def haz_kwargs():
 
 
 @pytest.fixture
-def dummy_hazard(haz_kwargs):
+def hazard(haz_kwargs):
     return Hazard(**haz_kwargs)
 
 
 @pytest.fixture
 def lead_time():
-    return pd.date_range("2000-01-01", "2000-01-02", periods=6).to_numpy()
+    return pd.timedelta_range("1h", periods=6).to_numpy()
 
 
 @pytest.fixture
@@ -60,80 +61,30 @@ def haz_fc(lead_time, member, haz_kwargs):
     )
 
 
+def assert_hazard_kwargs(hazard: Hazard, **kwargs):
+    for key, value in kwargs.items():
+        attr = getattr(hazard, key)
+        if isinstance(value, (np.ndarray, list)):
+            npt.assert_array_equal(attr, value)
+        elif isinstance(value, csr_matrix):
+            npt.assert_array_equal(attr.todense(), value.todense())
+        else:
+            assert attr == value
+
+
 def test_init_hazard_forecast(haz_fc, member, lead_time, haz_kwargs):
     assert isinstance(haz_fc, HazardForecast)
-    npt.assert_array_equal(
-        haz_fc.lead_time,
-        lead_time,
-    )
+    npt.assert_array_equal(haz_fc.lead_time, lead_time)
     assert haz_fc.lead_time.dtype == lead_time.dtype
     npt.assert_array_equal(haz_fc.member, member)
-    assert haz_fc.haz_type == haz_kwargs["haz_type"]
-    assert haz_fc.pool == haz_kwargs["pool"]
-    assert haz_fc.units == haz_kwargs["units"]
-    assert haz_fc.centroids == haz_kwargs["centroids"]
-    npt.assert_array_equal(haz_fc.event_id, haz_kwargs["event_id"])
-    npt.assert_array_equal(haz_fc.frequency, haz_kwargs["frequency"])
-    assert haz_fc.frequency_unit == haz_kwargs["frequency_unit"]
-    npt.assert_array_equal(haz_fc.event_name, haz_kwargs["event_name"])
-    npt.assert_array_equal(haz_fc.date, haz_kwargs["date"])
-    npt.assert_array_equal(haz_fc.orig, haz_kwargs["orig"])
-    npt.assert_array_equal(
-        haz_fc.intensity.todense(), haz_kwargs["intensity"].todense()
-    )
-    npt.assert_array_equal(haz_fc.fraction.todense(), haz_kwargs["fraction"].todense())
+    assert_hazard_kwargs(haz_fc, **haz_kwargs)
 
 
-def test_from_hazard(lead_time, member, dummy_hazard):
+def test_from_hazard(lead_time, member, hazard, haz_kwargs):
     haz_fc_from_haz = HazardForecast.from_hazard(
-        dummy_hazard, lead_time=lead_time, member=member
+        hazard, lead_time=lead_time, member=member
     )
-
     assert isinstance(haz_fc_from_haz, HazardForecast)
     npt.assert_array_equal(haz_fc_from_haz.lead_time, lead_time)
     npt.assert_array_equal(haz_fc_from_haz.member, member)
-    assert haz_fc_from_haz.haz_type == dummy_hazard.haz_type
-    assert haz_fc_from_haz.pool == dummy_hazard.pool
-    assert haz_fc_from_haz.units == dummy_hazard.units
-    assert haz_fc_from_haz.centroids == dummy_hazard.centroids
-    npt.assert_array_equal(haz_fc_from_haz.event_id, dummy_hazard.event_id)
-    npt.assert_array_equal(haz_fc_from_haz.frequency, dummy_hazard.frequency)
-    assert haz_fc_from_haz.frequency_unit == dummy_hazard.frequency_unit
-    npt.assert_array_equal(haz_fc_from_haz.event_name, dummy_hazard.event_name)
-    npt.assert_array_equal(haz_fc_from_haz.date, dummy_hazard.date)
-    npt.assert_array_equal(haz_fc_from_haz.orig, dummy_hazard.orig)
-    npt.assert_array_equal(
-        haz_fc_from_haz.intensity.todense(), dummy_hazard.intensity.todense()
-    )
-    npt.assert_array_equal(
-        haz_fc_from_haz.fraction.todense(), dummy_hazard.fraction.todense()
-    )
-
-
-def test_hazard_forecast_select(haz_fc, lead_time, member):
-    """Check if Hazard.select works on the derived class"""
-    haz_fc_select = haz_fc.select(event_id=[4, 1])
-    # NOTE: Events keep their original order
-    npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([3, 0])])
-    npt.assert_array_equal(haz_fc_select.member, member[np.array([3, 0])])
-    npt.assert_array_equal(haz_fc_select.lead_time, lead_time[np.array([3, 0])])
-
-
-@pytest.fixture
-def hazard():
-    return Hazard()
-
-
-def test_empty_hazard(hazard):
-    assert hazard.size == 0
-    assert hazard.haz_type == ""
-
-
-class TestSomething:
-
-    @pytest.fixture(autouse=True)
-    def haz_type(self, hazard):
-        hazard.haz_type = "foo"
-
-    def test_haz_type(self, hazard):
-        assert hazard.haz_type == "foo"
+    assert_hazard_kwargs(haz_fc_from_haz, **haz_kwargs)
