@@ -53,7 +53,7 @@ class HazardForecast(Forecast, Hazard):
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
 
     @classmethod
-    def from_hazard(self, hazard: Hazard):
+    def from_hazard(cls, hazard: Hazard, lead_time: np.ndarray, member: np.ndarray):
         """
         Create a HazardForecast object from a Hazard object.
 
@@ -69,8 +69,8 @@ class HazardForecast(Forecast, Hazard):
             but with lead_time and member attributes set from instance of HazardForecast.
         """
         return cls(
-            lead_time=self.lead_time,
-            member=self.member,
+            lead_time=lead_time,
+            member=member,
             haz_type=hazard.haz_type,
             pool=hazard.pool,
             units=hazard.units,
