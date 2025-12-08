@@ -236,6 +236,7 @@ class ImpactCalc:
             if isinstance(self.hazard, HazardForecast):
                 raise ValueError(
                     "Saving impact matrix is required when using HazardForecast."
+                    "Please set save_mat=True."
                 )
             imp_mat = None
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
@@ -246,11 +247,9 @@ class ImpactCalc:
         if isinstance(self.hazard, HazardForecast):
             return ImpactForecast.from_impact(
                 impact, self.hazard.lead_time, self.hazard.member
-            )  # return ImpactForecast object
-        else:
-            return (
-                impact  # return normal impact object if hazard is not a HazardForecast
             )
+        else:
+            return impact
 
     def _return_empty(self, save_mat):
         """
@@ -277,6 +276,7 @@ class ImpactCalc:
             if isinstance(self.hazard, HazardForecast):
                 raise ValueError(
                     "Saving impact matrix is required when using HazardForecast."
+                    "Please set save_mat=True."
                 )
             imp_mat = None
         impact = Impact.from_eih(
@@ -285,11 +285,9 @@ class ImpactCalc:
         if isinstance(self.hazard, HazardForecast):
             return ImpactForecast.from_impact(
                 impact, self.hazard.lead_time, self.hazard.member
-            )  # return ImpactForecast object
-        else:
-            return (
-                impact  # return normal impact object if hazard is not a HazardForecast
             )
+        else:
+            return impact
 
     def minimal_exp_gdf(
         self, impf_col, assign_centroids, ignore_cover, ignore_deductible

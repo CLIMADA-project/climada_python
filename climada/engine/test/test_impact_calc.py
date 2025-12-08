@@ -305,113 +305,6 @@ class TestImpactCalc(unittest.TestCase):
         # fmt: on
         check_impact(self, impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
-    def test_impactForecast(self):
-        """Test that ImpactForecast is returned correctly"""
-        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
-        member = np.arange(6)
-        _haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
-        haz_fc = HazardForecast.from_hazard(_haz, lead_time=lead_time, member=member)
-
-        exp = Exposures.from_hdf5(
-            get_test_file("test_exposure_US_flood_random_locations")
-        )
-        impf_set = ImpactFuncSet.from_excel(
-            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
-        )
-        icalc = ImpactCalc(exp, impf_set, haz_fc)
-        impact = icalc.impact(assign_centroids=False)
-        aai_agg = 161436.05112960344
-        eai_exp = np.array(
-            [
-                1.61159701e05,
-                1.33742847e02,
-                0.00000000e00,
-                4.21352988e-01,
-                1.42185609e02,
-                0.00000000e00,
-                0.00000000e00,
-                0.00000000e00,
-            ]
-        )
-        at_event = np.array(
-            [
-                0.00000000e00,
-                0.00000000e00,
-                9.85233619e04,
-                3.41245461e04,
-                7.73566566e07,
-                0.00000000e00,
-                0.00000000e00,
-            ]
-        )
-        # fmt: off
-        imp_mat_array = np.array(
-            [
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 6.41965663e04, 0.00000000e00, 2.02249434e02,
-                    3.41245461e04, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    3.41245461e04, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    7.73566566e07, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-            ]
-        )
-        # fmt: on
-        check_impact(
-            self, impact, haz_fc, exp, aai_agg, eai_exp, at_event, imp_mat_array
-        )
-
-        # additional test to check that impact is indeed ImpactForecast
-        self.assertIsInstance(impact, ImpactForecast)
-        np.testing.assert_array_equal(impact.lead_time, lead_time)
-        self.assertIs(impact.lead_time.dtype, lead_time.dtype)
-        np.testing.assert_array_equal(impact.member, member)
-
-    def test_impact_forecast_empty_impmat_error(self):
-        """Test that error is raised when trying to compute impact forecast
-        without saving impact matrix
-        """
-        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
-        member = np.arange(6)
-        _haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
-        haz_fc = HazardForecast.from_hazard(_haz, lead_time=lead_time, member=member)
-
-        exp = Exposures.from_hdf5(
-            get_test_file("test_exposure_US_flood_random_locations")
-        )
-        impf_set = ImpactFuncSet.from_excel(
-            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
-        )
-        icalc = ImpactCalc(exp, impf_set, haz_fc)
-        with self.assertRaises(ValueError) as cm:
-            icalc.impact(assign_centroids=False, save_mat=False)
-        the_exception = cm.exception
-        self.assertEqual(
-            the_exception.args[0],
-            "Saving impact matrix is required when using HazardForecast.",
-        )
-
     def test_empty_impact(self):
         """Check that empty impact is returned if no centroids match the exposures"""
         exp = ENT.exposures.copy()
@@ -716,6 +609,118 @@ class TestImpactCalc(unittest.TestCase):
         check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
 
 
+class TestImpactCalcForecast(unittest.TestCase):
+    """Test impact calc for forecast hazard"""
+
+    def test_impactForecast(self):
+        """Test that ImpactForecast is returned correctly"""
+        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
+        member = np.arange(6)
+        _haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
+        haz_fc = HazardForecast.from_hazard(_haz, lead_time=lead_time, member=member)
+
+        exp = Exposures.from_hdf5(
+            get_test_file("test_exposure_US_flood_random_locations")
+        )
+        impf_set = ImpactFuncSet.from_excel(
+            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
+        )
+        icalc = ImpactCalc(exp, impf_set, haz_fc)
+        impact = icalc.impact(assign_centroids=False)
+        aai_agg = 161436.05112960344
+        eai_exp = np.array(
+            [
+                1.61159701e05,
+                1.33742847e02,
+                0.00000000e00,
+                4.21352988e-01,
+                1.42185609e02,
+                0.00000000e00,
+                0.00000000e00,
+                0.00000000e00,
+            ]
+        )
+        at_event = np.array(
+            [
+                0.00000000e00,
+                0.00000000e00,
+                9.85233619e04,
+                3.41245461e04,
+                7.73566566e07,
+                0.00000000e00,
+                0.00000000e00,
+            ]
+        )
+        # fmt: off
+        imp_mat_array = np.array(
+            [
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 6.41965663e04, 0.00000000e00, 2.02249434e02,
+                    3.41245461e04, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    3.41245461e04, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    7.73566566e07, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+            ]
+        )
+        # fmt: on
+        check_impact(
+            self, impact, haz_fc, exp, aai_agg, eai_exp, at_event, imp_mat_array
+        )
+
+        # additional test to check that impact is indeed ImpactForecast
+        self.assertIsInstance(impact, ImpactForecast)
+        np.testing.assert_array_equal(impact.lead_time, lead_time)
+        self.assertIs(impact.lead_time.dtype, lead_time.dtype)
+        np.testing.assert_array_equal(impact.member, member)
+
+    def test_impact_forecast_empty_impmat_error(self):
+        """Test that error is raised when trying to compute impact forecast
+        without saving impact matrix
+        """
+        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
+        member = np.arange(6)
+        _haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
+        haz_fc = HazardForecast.from_hazard(_haz, lead_time=lead_time, member=member)
+
+        exp = Exposures.from_hdf5(
+            get_test_file("test_exposure_US_flood_random_locations")
+        )
+        impf_set = ImpactFuncSet.from_excel(
+            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
+        )
+        icalc = ImpactCalc(exp, impf_set, haz_fc)
+        with self.assertRaises(ValueError) as cm:
+            icalc.impact(assign_centroids=False, save_mat=False)
+        no_impmat_exception = cm.exception
+        self.assertEqual(
+            no_impmat_exception.args[0],
+            "Saving impact matrix is required when using HazardForecast."
+            "Please set save_mat=True.",
+        )
+
+
 class TestImpactMatrixCalc(unittest.TestCase):
     """Verify the computation of the impact matrix"""
 
@@ -1011,6 +1016,7 @@ class TestReturnImpact(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactCalcForecast))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReturnImpact))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrix))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixCalc))
