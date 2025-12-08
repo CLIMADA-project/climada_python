@@ -38,3 +38,21 @@ class HazardForecast(Forecast, Hazard):
         **kwargs,
     ):
         super().__init__(lead_time=lead_time, member=member, **kwargs)
+
+        def from_hazard(self, hazard: Hazard):
+            return cls(
+                haz_type=hazard.haz_type,
+                pool=hazard.pool,
+                units=hazard.units,
+                centroids=hazard.centroids,
+                event_id=hazard.event_id,
+                frequency=hazard.frequency,
+                frequency_unit=hazard.frequency_unit,
+                event_name=hazard.event_name,
+                date=hazard.date,
+                orig=hazard.orig,
+                intensity=hazard.intensity,
+                fraction=hazard.fraction,
+                lead_time=self.lead_time,
+                member=self.member,
+            )
