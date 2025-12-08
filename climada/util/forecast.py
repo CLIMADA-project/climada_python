@@ -23,15 +23,18 @@ import numpy as np
 
 
 class Forecast:
-    def __init__(self, lead_time=None, member=None, *args, **kwargs):
-        if lead_time is None:
-            self.lead_time = np.array([])
-        else:
-            self.lead_time = np.array(lead_time)
+    def __init__(
+        self,
+        lead_time: np.ndarray | None = None,
+        member: np.ndarray | None = None,
+        *args,
+        **kwargs,
+    ):
 
-        if member is None:
-            self.member = np.array([])
-        else:
-            self.member = member
+        self.lead_time = (
+            np.asarray(lead_time) if lead_time is not None else np.array([])
+        )
+
+        self.member = np.asarray(member) if member is not None else np.array([])
 
         super().__init__(*args, **kwargs)

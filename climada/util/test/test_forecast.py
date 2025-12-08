@@ -18,3 +18,27 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Tests for Forecast base class.
 """
+
+import numpy as np
+import numpy.testing as npt
+import pytest
+
+from climada.util.forecast import Forecast
+
+
+def test_forecast_init():
+    """Test initialization of Forecast class."""
+    forecast = Forecast()
+    npt.assert_array_equal(forecast.lead_time, np.array([]))
+    npt.assert_array_equal(forecast.member, np.array([]))
+
+    forecast = Forecast(member=np.array([1, 2]))
+    npt.assert_array_equal(forecast.member, np.array([1, 2]), strict=True)
+
+    forecast = Forecast(lead_time=np.array([1, 2]))
+    npt.assert_array_equal(forecast.lead_time, np.array([1, 2]), strict=True)
+
+    forecast = Forecast(lead_time=np.array([1, 2]), member=[3, 4])
+    npt.assert_array_equal(forecast.lead_time, np.array([1, 2]), strict=True)
+    npt.assert_array_equal(forecast.member, np.array([3, 4]), strict=True)
+    assert isinstance(forecast.member, np.ndarray)
