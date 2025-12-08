@@ -76,6 +76,12 @@ class TestImpactForecastInit:
         npt.assert_array_equal(forecast1.member, member)
         self.assert_impact_kwargs(forecast1, **impact_kwargs)
 
+    def test_impact_forecast_init_error(self, impact_kwargs, lead_time, member):
+        with pytest.raises(ValueError, match="Forecast.lead_time"):
+            ImpactForecast(lead_time=lead_time[:-2], member=member, **impact_kwargs)
+        with pytest.raises(ValueError, match="Forecast.member"):
+            ImpactForecast(lead_time=lead_time, member=member[1:], **impact_kwargs)
+
     def test_impact_forecast_from_impact(
         self, impact_forecast, impact_kwargs, lead_time, member
     ):
