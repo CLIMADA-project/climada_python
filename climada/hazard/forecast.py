@@ -24,7 +24,7 @@ import logging
 import numpy as np
 
 from climada.engine.forecast import Forecast
-from climada.hazard.hazard import Hazard
+from climada.hazard.base import Hazard
 
 LOGGER = logging.getLogger(__name__)
 
