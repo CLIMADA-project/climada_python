@@ -35,12 +35,14 @@ class HazardForecast(Forecast, Hazard):
         self,
         lead_time: np.ndarray | None = None,
         member: np.ndarray | None = None,
-        **kwargs,
+        **hazard_kwargs,
     ):
-        super().__init__(lead_time=lead_time, member=member, **kwargs)
+        super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
 
         def from_hazard(self, hazard: Hazard):
             return cls(
+                lead_time=self.lead_time,
+                member=self.member,
                 haz_type=hazard.haz_type,
                 pool=hazard.pool,
                 units=hazard.units,
@@ -53,6 +55,4 @@ class HazardForecast(Forecast, Hazard):
                 orig=hazard.orig,
                 intensity=hazard.intensity,
                 fraction=hazard.fraction,
-                lead_time=self.lead_time,
-                member=self.member,
             )
