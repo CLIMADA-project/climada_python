@@ -21,6 +21,7 @@ Tests for Hazard Forecast.
 
 import numpy as np
 import numpy.testing as npt
+import pandas as pd
 import pytest
 
 from climada.hazard.base import Hazard
@@ -40,21 +41,33 @@ def dummy_hazard(haz_kwargs):
     return Hazard(**haz_kwargs)
 
 
-def test_init_hazard_forecast(haz_kwargs):
-    haz_fc = HazardForecast(
-        lead_time=np.array(
-            ["2024-01-01T00:00:00", "2024-01-01T00:01:00"], dtype="datetime64[s]"
-        ),
-        member=np.array([0, 1]),
+@pytest.fixture
+def lead_time():
+    return pd.date_range("2000-01-01", "2000-01-02", periods=6).to_numpy()
+
+
+@pytest.fixture
+def member():
+    return np.arange(6)
+
+
+@pytest.fixture
+def haz_fc(lead_time, member, haz_kwargs):
+    return HazardForecast(
+        lead_time=lead_time,
+        member=member,
         **haz_kwargs,
     )
+
+
+def test_init_hazard_forecast(haz_fc, member, lead_time, haz_kwargs):
     assert isinstance(haz_fc, HazardForecast)
     npt.assert_array_equal(
         haz_fc.lead_time,
-        np.array(["2024-01-01T00:00:00", "2024-01-01T00:01:00"], dtype="datetime64[s]"),
+        lead_time,
     )
-    assert haz_fc.lead_time.dtype == "datetime64[s]"
-    npt.assert_array_equal(haz_fc.member, np.array([0, 1]))
+    assert haz_fc.lead_time.dtype == lead_time.dtype
+    npt.assert_array_equal(haz_fc.member, member)
     assert haz_fc.haz_type == haz_kwargs["haz_type"]
     assert haz_fc.pool == haz_kwargs["pool"]
     assert haz_fc.units == haz_kwargs["units"]
@@ -71,11 +84,7 @@ def test_init_hazard_forecast(haz_kwargs):
     npt.assert_array_equal(haz_fc.fraction.todense(), haz_kwargs["fraction"].todense())
 
 
-def test_from_hazard(dummy_hazard):
-    lead_time = np.array(
-        ["2024-01-01T00:00:00", "2024-01-01T00:01:00"], dtype="datetime64[s]"
-    )
-    member = np.array([0, 1])
+def test_from_hazard(lead_time, member, dummy_hazard):
     haz_fc_from_haz = HazardForecast.from_hazard(
         dummy_hazard, lead_time=lead_time, member=member
     )
