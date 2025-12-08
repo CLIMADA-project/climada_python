@@ -39,7 +39,6 @@ class Forecast:
         self,
         lead_time: np.ndarray | None = None,
         member: np.ndarray | None = None,
-        *args,
         **kwargs,
     ):
         """Initialize Forecast.
@@ -58,4 +57,4 @@ class Forecast:
 
         self.member = np.asarray(member) if member is not None else np.array([])
 
-        super().__init__(*args, **kwargs)
+        super().__init__(**kwargs)
