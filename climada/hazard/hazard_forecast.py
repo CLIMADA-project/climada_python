@@ -1,0 +1,40 @@
+"""
+This file is part of CLIMADA.
+
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
+
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Define Forecast variant of Hazard.
+"""
+
+import logging
+
+import numpy as np
+
+from climada.engine.forecast import Forecast
+from climada.hazard.hazard import Hazard
+
+LOGGER = logging.getLogger(__name__)
+
+
+class HazardForecast(Forecast, Hazard):
+
+    def __init__(
+        self,
+        lead_time: np.ndarray | None = None,
+        member: np.ndarray | None = None,
+        **kwargs,
+    ):
+        super().__init__(lead_time=lead_time, member=member, **kwargs)
