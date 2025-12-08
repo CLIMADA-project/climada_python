@@ -18,3 +18,41 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 Define Forecast variant of Hazard.
 """
+
+import logging
+
+import numpy as np
+
+from climada.engine.forecast import Forecast
+from climada.hazard.hazard import Hazard
+
+LOGGER = logging.getLogger(__name__)
+
+
+class HazardForecast(Forecast, Hazard):
+
+    def __init__(
+        self,
+        lead_time: np.ndarray | None = None,
+        member: np.ndarray | None = None,
+        **kwargs,
+    ):
+        super().__init__(lead_time=lead_time, member=member, **kwargs)
+
+        def from_hazard(self, hazard: Hazard):
+            return cls(
+                haz_type=hazard.haz_type,
+                pool=hazard.pool,
+                units=hazard.units,
+                centroids=hazard.centroids,
+                event_id=hazard.event_id,
+                frequency=hazard.frequency,
+                frequency_unit=hazard.frequency_unit,
+                event_name=hazard.event_name,
+                date=hazard.date,
+                orig=hazard.orig,
+                intensity=hazard.intensity,
+                fraction=hazard.fraction,
+                lead_time=self.lead_time,
+                member=self.member,
+            )
