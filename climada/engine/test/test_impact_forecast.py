@@ -56,7 +56,6 @@ def impact_forecast(impact, lead_time, member):
 
 
 class TestImpactForecastInit:
-
     def assert_impact_kwargs(self, impact: Impact, **kwargs):
         for key, value in kwargs.items():
             attr = getattr(impact, key)
@@ -87,7 +86,6 @@ class TestImpactForecastInit:
 
 def test_impact_forecast_select(impact_forecast, lead_time, member, impact_kwargs):
     """Check if Impact.select works on the derived class"""
-
     event_ids = impact_kwargs["event_id"][np.array([2, 0])]
     impact_fc = impact_forecast.select(event_ids=event_ids)
     # NOTE: Events keep their original order
@@ -96,3 +94,12 @@ def test_impact_forecast_select(impact_forecast, lead_time, member, impact_kwarg
     )
     npt.assert_array_equal(impact_fc.member, member[np.array([0, 2])])
     npt.assert_array_equal(impact_fc.lead_time, lead_time[np.array([0, 2])])
+
+
+@pytest.mark.skip("Concat from base class does not work")
+def test_impact_forecast_concat(impact_forecast, member):
+    """Check if Impact.concat works on the derived class"""
+    impact_fc = ImpactForecast.concat(
+        [impact_forecast, impact_forecast], reset_event_ids=True
+    )
+    npt.assert_array_equal(impact_fc.member, np.concatenate([member, member]))
