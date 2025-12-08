@@ -27,12 +27,17 @@ from scipy.sparse import csr_matrix
 
 from climada.engine import Impact, ImpactForecast
 
-from .test_impact import impact_kwargs
+from .test_impact import impact_kwargs as imp_kwargs
 
 
 @pytest.fixture
-def impact():
-    return Impact(**impact_kwargs())
+def impact_kwargs():
+    return imp_kwargs()
+
+
+@pytest.fixture
+def impact(impact_kwargs):
+    return Impact(**impact_kwargs)
 
 
 def assert_impact_kwargs(impact: Impact, **kwargs):
@@ -50,20 +55,20 @@ class TestImpactForecastInit:
     lead_time = pd.date_range("2000-01-01", "2000-01-02", periods=6).to_numpy()
     member = np.arange(6)
 
-    def test_impact_forecast_init(self):
+    def test_impact_forecast_init(self, impact_kwargs):
         forecast1 = ImpactForecast(
             lead_time=self.lead_time,
             member=self.member,
-            **impact_kwargs(),
+            **impact_kwargs,
         )
         npt.assert_array_equal(forecast1.lead_time, self.lead_time)
         npt.assert_array_equal(forecast1.member, self.member)
-        assert_impact_kwargs(forecast1, **impact_kwargs())
+        assert_impact_kwargs(forecast1, **impact_kwargs)
 
-    def test_impact_forecast_from_impact(self, impact):
+    def test_impact_forecast_from_impact(self, impact, impact_kwargs):
         forecast = ImpactForecast.from_impact(
             impact, lead_time=self.lead_time, member=self.member
         )
         npt.assert_array_equal(forecast.lead_time, self.lead_time)
         npt.assert_array_equal(forecast.member, self.member)
-        assert_impact_kwargs(forecast, **impact_kwargs())
+        assert_impact_kwargs(forecast, **impact_kwargs)
