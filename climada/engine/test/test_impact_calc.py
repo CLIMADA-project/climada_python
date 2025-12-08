@@ -26,14 +26,17 @@ from unittest.mock import MagicMock, call, create_autospec, patch
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
 from scipy import sparse
 
 from climada import CONFIG
 from climada.engine import Impact, ImpactCalc
 from climada.engine.impact_calc import LOGGER as ILOG
+from climada.engine.impact_forecast import ImpactForecast
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet, ImpfTropCyclone
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Centroids, Hazard
+from climada.hazard.forecast import HazardForecast
 from climada.test import get_test_file
 from climada.util.api_client import Client
 from climada.util.config import Config
@@ -47,7 +50,7 @@ DATA_FOLDER.mkdir(exist_ok=True)
 
 
 def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=None):
-    """Test properties of imapcts"""
+    """Test properties of impacts"""
     self.assertEqual(len(haz.event_id), len(imp.at_event))
     self.assertIsInstance(imp, Impact)
     np.testing.assert_allclose(imp.coord_exp[:, 0], exp.latitude)
@@ -301,6 +304,89 @@ class TestImpactCalc(unittest.TestCase):
         )
         # fmt: on
         check_impact(self, impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
+
+    def test_impactForecast(self):
+        """Test that ImpactForecast is returned correctly"""
+        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
+        member = np.arange(6)
+        _haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
+        haz_fc = HazardForecast.from_hazard(_haz, lead_time=lead_time, member=member)
+
+        exp = Exposures.from_hdf5(
+            get_test_file("test_exposure_US_flood_random_locations")
+        )
+        impf_set = ImpactFuncSet.from_excel(
+            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
+        )
+        icalc = ImpactCalc(exp, impf_set, haz_fc)
+        impact = icalc.impact(assign_centroids=False)
+        aai_agg = 161436.05112960344
+        eai_exp = np.array(
+            [
+                1.61159701e05,
+                1.33742847e02,
+                0.00000000e00,
+                4.21352988e-01,
+                1.42185609e02,
+                0.00000000e00,
+                0.00000000e00,
+                0.00000000e00,
+            ]
+        )
+        at_event = np.array(
+            [
+                0.00000000e00,
+                0.00000000e00,
+                9.85233619e04,
+                3.41245461e04,
+                7.73566566e07,
+                0.00000000e00,
+                0.00000000e00,
+            ]
+        )
+        # fmt: off
+        imp_mat_array = np.array(
+            [
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 6.41965663e04, 0.00000000e00, 2.02249434e02,
+                    3.41245461e04, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    3.41245461e04, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    7.73566566e07, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+                [
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
+                ],
+            ]
+        )
+        # fmt: on
+        check_impact(
+            self, impact, haz_fc, exp, aai_agg, eai_exp, at_event, imp_mat_array
+        )
+
+        # additional test to check that impact is indeed ImpactForecast
+        self.assertIsInstance(impact, ImpactForecast)
+        np.testing.assert_array_equal(impact.lead_time, lead_time)
+        self.assertIs(impact.lead_time.dtype, lead_time.dtype)
+        np.testing.assert_array_equal(impact.member, member)
 
     def test_empty_impact(self):
         """Check that empty impact is returned if no centroids match the exposures"""
