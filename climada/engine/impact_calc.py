@@ -29,6 +29,8 @@ from scipy import sparse
 
 from climada import CONFIG
 from climada.engine.impact import Impact
+from climada.engine.impact_forecast import ImpactForecast
+from climada.hazard.forecast import HazardForecast
 
 LOGGER = logging.getLogger(__name__)
 
@@ -217,7 +219,7 @@ class ImpactCalc:
 
         Returns
         -------
-        Impact
+        Impact or ImpactForecast
             Impact Object initialize from the impact matrix
 
         See Also
@@ -233,9 +235,18 @@ class ImpactCalc:
         else:
             imp_mat = None
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
-        return Impact.from_eih(
+
+        impact = Impact.from_eih(
             self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
         )
+        if isinstance(self.hazard, HazardForecast):
+            return ImpactForecast().from_impact(
+                impact, self.hazard.ensemble_member, self.hazard.lead_time
+            )  # return ImpactForecast object
+        else:
+            return (
+                impact  # return normal impact object if hazard is not a HazardForecast
+            )
 
     def _return_empty(self, save_mat):
         """
