@@ -67,8 +67,8 @@ def hazard_kwargs():
     }
 
 
-def dummy_hazard(haz_kwargs):
-    return Hazard(**haz_kwargs)
+def dummy_hazard():
+    return Hazard(**hazard_kwargs())
 
 
 class TestLoader(unittest.TestCase):
