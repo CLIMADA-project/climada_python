@@ -29,8 +29,6 @@ from climada.hazard.base import Hazard
 from climada.hazard.forecast import HazardForecast
 from climada.hazard.test.test_base import hazard_kwargs
 
-# --- Examples for fixtures and test organization --- #
-
 
 @pytest.fixture
 def haz_kwargs():
