@@ -49,6 +49,7 @@ Fraction is empty. Format: HDF5.
 def hazard_kwargs():
     return {
         "haz_type": "TC",
+        "pool": None,
         "intensity": sparse.csr_matrix(
             [[0.2, 0.3, 0.4], [0.1, 0.1, 0.01], [4.3, 2.1, 1.0], [5.3, 0.2, 0.0]]
         ),
