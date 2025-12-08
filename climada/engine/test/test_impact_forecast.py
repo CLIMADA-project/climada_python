@@ -84,9 +84,10 @@ class TestImpactForecastInit:
         self.assert_impact_kwargs(impact_forecast, **impact_kwargs)
 
 
-def test_impact_forecast_select(impact_forecast, lead_time, member):
+def test_impact_forecast_select(impact_forecast, lead_time, member, impact_kwargs):
     """Check if Impact.select works on the derived class"""
-    impact_fc = impact_forecast.select(event_ids=[12, 10])
+    event_ids = impact_kwargs["event_id"][np.array([2, 0])]
+    impact_fc = impact_forecast.select(event_ids=event_ids)
     # NOTE: Events keep their original order
     npt.assert_array_equal(
         impact_fc.event_id, impact_forecast.event_id[np.array([0, 2])]
