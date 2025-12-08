@@ -43,7 +43,7 @@ class HazardForecast(Forecast, Hazard):
 
         Parameters
         ----------
-        lead_time : np.ndarray of np.datetime64 or None, optional
+        lead_time : np.ndarray of np.timedelta64 or None, optional
             Forecast lead times. Default is empty array.
         member : np.ndarray or None, optional
             Ensemble member identifiers as integers. Default is empty array.
@@ -62,7 +62,7 @@ class HazardForecast(Forecast, Hazard):
         ----------
         hazard : climada.hazard.base.Hazard
             Hazard object to convert into a HazardForecast.
-        lead_time : np.ndarray of np.datetime64 or None, optional
+        lead_time : np.ndarray of np.timedelta64 or None, optional
             Forecast lead times. Default is empty array.
         member : np.ndarray or None, optional
             Ensemble member identifiers as integers. Default is empty array.
