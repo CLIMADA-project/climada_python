@@ -42,7 +42,7 @@ def impact(impact_kwargs):
 
 @pytest.fixture
 def lead_time():
-    return pd.date_range("2000-01-01", "2000-01-02", periods=6).to_numpy()
+    return pd.timedelta_range(start="1 day", periods=6).to_numpy()
 
 
 @pytest.fixture
