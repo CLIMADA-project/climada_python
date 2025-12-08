@@ -37,10 +37,37 @@ class HazardForecast(Forecast, Hazard):
         member: np.ndarray | None = None,
         **hazard_kwargs,
     ):
+        """
+        Initialize a HazardForecast object.
+
+        Parameters
+        ----------
+        lead_time : np.ndarray of np.datetime64 or None, optional
+            Forecast lead times. Default is empty array.
+        member : np.ndarray or None, optional
+            Ensemble member identifiers as integers. Default is empty array.
+        **hazard_kwargs
+            keyword arguments to pass to Hazard.__init__. See Hazard.__init__
+            docstring for details.
+        """
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
 
     @classmethod
     def from_hazard(self, hazard: Hazard):
+        """
+        Create a HazardForecast object from a Hazard object.
+
+        Parameters
+        ----------
+        hazard : Hazard
+            Hazard object to convert into a HazardForecast.
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the same attributes as the input hazard,
+            but with lead_time and member attributes set from instance of HazardForecast.
+        """
         return cls(
             lead_time=self.lead_time,
             member=self.member,
