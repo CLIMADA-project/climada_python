@@ -23,29 +23,32 @@ import numpy as np
 import numpy.testing as npt
 import pytest
 
-from climada.hazard import Hazard, HazardForecast
+from climada.hazard.base import Hazard
+from climada.hazard.forecast import HazardForecast
 from climada.hazard.test.test_base import hazard_kwargs
 
 # --- Examples for fixtures and test organization --- #
 
 
 @pytest.fixture
-def haz_kwargs():
-    return hazard_kwargs()
+def hazard_kwargs_fixture():
+    from climada.hazard.test.test_base import hazard_kwargs as get_hazard_kwargs
+
+    return get_hazard_kwargs()
 
 
 @pytest.fixture
-def dummy_hazard(haz_kwargs):
-    return Hazard(haz_kwargs())
+def dummy_hazard(hazard_kwargs_fixture):
+    return Hazard(**hazard_kwargs_fixture)
 
 
-def test_init_hazard_forecast():
+def test_init_hazard_forecast(hazard_kwargs_fixture):
     haz_fc = HazardForecast(
         lead_time=np.array(
             ["2024-01-01T00:00:00", "2024-01-01T00:01:00"], dtype="datetime64[s]"
         ),
         member=np.array([0, 1]),
-        **hazard_kwargs,
+        **hazard_kwargs_fixture,
     )
     assert isinstance(haz_fc, HazardForecast)
     assert np.assert_array_equal(
@@ -54,18 +57,18 @@ def test_init_hazard_forecast():
     )
     assert haz_fc.lead_time.dtype == "datetime64[s]"
     assert haz_fc.member == np.array([0, 1])
-    assert haz_fc.haz_type == haz_kwargs["haz_type"]
-    assert haz_fc.pool == haz_kwargs["pool"]
-    assert haz_fc.units == haz_kwargs["units"]
-    assert haz_fc.centroids == haz_kwargs["centroids"]
-    assert haz_fc.event_id == haz_kwargs["event_id"]
-    assert haz_fc.frequency == haz_kwargs["frequency"]
-    assert haz_fc.frequency_unit == haz_kwargs["frequency_unit"]
-    assert haz_fc.event_name == haz_kwargs["event_name"]
-    assert haz_fc.date == haz_kwargs["date"]
-    assert haz_fc.orig == haz_kwargs["orig"]
-    assert haz_fc.intensity == haz_kwargs["intensity"]
-    assert haz_fc.fraction == haz_kwargs["fraction"]
+    assert haz_fc.haz_type == hazard_kwargs_fixture["haz_type"]
+    assert haz_fc.pool == hazard_kwargs_fixture["pool"]
+    assert haz_fc.units == hazard_kwargs_fixture["units"]
+    assert haz_fc.centroids == hazard_kwargs_fixture["centroids"]
+    assert haz_fc.event_id == hazard_kwargs_fixture["event_id"]
+    assert haz_fc.frequency == hazard_kwargs_fixture["frequency"]
+    assert haz_fc.frequency_unit == hazard_kwargs_fixture["frequency_unit"]
+    assert haz_fc.event_name == hazard_kwargs_fixture["event_name"]
+    assert haz_fc.date == hazard_kwargs_fixture["date"]
+    assert haz_fc.orig == hazard_kwargs_fixture["orig"]
+    assert haz_fc.intensity == hazard_kwargs_fixture["intensity"]
+    assert haz_fc.fraction == hazard_kwargs_fixture["fraction"]
 
 
 @pytest.fixture
