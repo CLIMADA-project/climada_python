@@ -23,8 +23,8 @@ import logging
 
 import numpy as np
 
-from climada.engine.forecast import Forecast
 from climada.hazard.base import Hazard
+from climada.util.forecast import Forecast
 
 LOGGER = logging.getLogger(__name__)
 
@@ -39,20 +39,21 @@ class HazardForecast(Forecast, Hazard):
     ):
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
 
-        def from_hazard(self, hazard: Hazard):
-            return cls(
-                lead_time=self.lead_time,
-                member=self.member,
-                haz_type=hazard.haz_type,
-                pool=hazard.pool,
-                units=hazard.units,
-                centroids=hazard.centroids,
-                event_id=hazard.event_id,
-                frequency=hazard.frequency,
-                frequency_unit=hazard.frequency_unit,
-                event_name=hazard.event_name,
-                date=hazard.date,
-                orig=hazard.orig,
-                intensity=hazard.intensity,
-                fraction=hazard.fraction,
-            )
+    @classmethod
+    def from_hazard(self, hazard: Hazard):
+        return cls(
+            lead_time=self.lead_time,
+            member=self.member,
+            haz_type=hazard.haz_type,
+            pool=hazard.pool,
+            units=hazard.units,
+            centroids=hazard.centroids,
+            event_id=hazard.event_id,
+            frequency=hazard.frequency,
+            frequency_unit=hazard.frequency_unit,
+            event_name=hazard.event_name,
+            date=hazard.date,
+            orig=hazard.orig,
+            intensity=hazard.intensity,
+            fraction=hazard.fraction,
+        )
