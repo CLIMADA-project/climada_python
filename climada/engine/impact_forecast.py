@@ -52,7 +52,7 @@ class ImpactForecast(Forecast, Impact):
             Keyword-arguments passed to ~:py:class`climada.engine.impact.Impact`.
         """
         # TODO: Maybe assert array lengths?
-        super().__init__(lead_time, member, **impact_kwargs)
+        super().__init__(lead_time=lead_time, member=member, **impact_kwargs)
 
     @classmethod
     def from_impact(
