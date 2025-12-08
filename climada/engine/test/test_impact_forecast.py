@@ -93,3 +93,12 @@ def test_impact_forecast_select(impact_forecast, lead_time, member):
     )
     npt.assert_array_equal(impact_fc.member, member[np.array([0, 2])])
     npt.assert_array_equal(impact_fc.lead_time, lead_time[np.array([0, 2])])
+
+
+@pytest.skip("Concat from base class does not work")
+def test_impact_forecast_concat(impact_forecast, member):
+    """Check if Impact.concat works on the derived class"""
+    impact_fc = ImpactForecast.concat(
+        [impact_forecast, impact_forecast], reset_event_ids=True
+    )
+    npt.assert_array_equal(impact_fc.member, np.concatenate([member, member]))
