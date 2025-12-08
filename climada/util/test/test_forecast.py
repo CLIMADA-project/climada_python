@@ -21,6 +21,7 @@ Tests for Forecast base class.
 
 import numpy as np
 import numpy.testing as npt
+import pandas as pd
 
 from climada.util.forecast import Forecast
 
@@ -34,8 +35,10 @@ def test_forecast_init():
     forecast = Forecast(member=np.array([1, 2]))
     npt.assert_array_equal(forecast.member, np.array([1, 2]), strict=True)
 
-    forecast = Forecast(lead_time=np.array([1, 2]))
-    npt.assert_array_equal(forecast.lead_time, np.array([1, 2]), strict=True)
+    forecast = Forecast(lead_time=np.array([6, 12], dtype="timedelta64[h]"))
+    npt.assert_array_equal(
+        forecast.lead_time, np.array([6, 12], dtype="timedelta64[h]"), strict=True
+    )
 
     forecast = Forecast(lead_time=np.array([1, 2]), member=[3, 4])
     npt.assert_array_equal(forecast.lead_time, np.array([1, 2]), strict=True)
@@ -43,10 +46,7 @@ def test_forecast_init():
     assert isinstance(forecast.member, np.ndarray)
 
     # Test with datetime64 including seconds
-    lead_times_seconds = np.array(
-        ["2024-01-01T00:00:00", "2024-01-01T00:01:00", "2024-01-01"],
-        dtype="datetime64[s]",
-    )
+    lead_times_seconds = pd.timedelta_range(start="1 day", periods=4).to_numpy()
     forecast = Forecast(lead_time=lead_times_seconds, member=[1, 2, 3])
     npt.assert_array_equal(forecast.lead_time, lead_times_seconds, strict=True)
-    assert forecast.lead_time.dtype == np.dtype("datetime64[s]")
+    assert forecast.lead_time.dtype == np.dtype("timedelta64[ns]")
