@@ -29,8 +29,6 @@ from climada.hazard.base import Hazard
 from climada.hazard.forecast import HazardForecast
 from climada.hazard.test.test_base import hazard_kwargs
 
-# --- Examples for fixtures and test organization --- #
-
 
 @pytest.fixture
 def haz_kwargs():
@@ -100,3 +98,12 @@ def test_hazard_forecast_concat(haz_fc, lead_time, member):
         haz_fc_concat.lead_time, np.concatenate([lead_time, lead_time])
     )
     npt.assert_array_equal(haz_fc_concat.member, np.concatenate([member, member]))
+
+
+def test_hazard_forecast_select(haz_fc, lead_time, member):
+    """Check if Hazard.select works on the derived class"""
+    haz_fc_select = haz_fc.select(event_id=[4, 1])
+    # NOTE: Events keep their original order
+    npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([3, 0])])
+    npt.assert_array_equal(haz_fc_select.member, member[np.array([3, 0])])
+    npt.assert_array_equal(haz_fc_select.lead_time, lead_time[np.array([3, 0])])
