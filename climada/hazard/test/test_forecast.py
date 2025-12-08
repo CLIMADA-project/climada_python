@@ -88,3 +88,14 @@ def test_from_hazard(lead_time, member, hazard, haz_kwargs):
     npt.assert_array_equal(haz_fc_from_haz.lead_time, lead_time)
     npt.assert_array_equal(haz_fc_from_haz.member, member)
     assert_hazard_kwargs(haz_fc_from_haz, **haz_kwargs)
+
+
+def test_hazard_forecast_concat(haz_fc, lead_time, member):
+    haz_fc1 = haz_fc.select(event_id=[1, 2])
+    haz_fc2 = haz_fc.select(event_id=[3, 4])
+    haz_fc_concat = HazardForecast.concat([haz_fc1, haz_fc2])
+    assert isinstance(haz_fc_concat, HazardForecast)
+    npt.assert_array_equal(
+        haz_fc_concat.lead_time, np.concatenate([lead_time, lead_time])
+    )
+    npt.assert_array_equal(haz_fc_concat.member, np.concatenate([member, member]))
