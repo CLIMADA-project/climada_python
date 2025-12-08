@@ -28,8 +28,8 @@ class Forecast:
     Attributes
     ----------
     lead_time : np.ndarray
-        Array of forecast lead times, given as datetime64 objects.
-        Represents the time points for which forecasts are made.
+        Array of forecast lead times, given as timedelta64 objects.
+        Represents the lead times of the forecasts.
     member : np.ndarray
         Array of ensemble member identifiers, given as integers.
         Represents different forecast ensemble members.
