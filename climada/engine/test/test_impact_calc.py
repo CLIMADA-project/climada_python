@@ -388,6 +388,30 @@ class TestImpactCalc(unittest.TestCase):
         self.assertIs(impact.lead_time.dtype, lead_time.dtype)
         np.testing.assert_array_equal(impact.member, member)
 
+    def test_impact_forecast_empty_impmat_error(self):
+        """Test that error is raised when trying to compute impact forecast
+        without saving impact matrix
+        """
+        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
+        member = np.arange(6)
+        _haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
+        haz_fc = HazardForecast.from_hazard(_haz, lead_time=lead_time, member=member)
+
+        exp = Exposures.from_hdf5(
+            get_test_file("test_exposure_US_flood_random_locations")
+        )
+        impf_set = ImpactFuncSet.from_excel(
+            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
+        )
+        icalc = ImpactCalc(exp, impf_set, haz_fc)
+        with self.assertRaises(ValueError) as cm:
+            icalc.impact(assign_centroids=False, save_mat=False)
+        the_exception = cm.exception
+        self.assertEqual(
+            the_exception.args[0],
+            "Saving impact matrix is required when using HazardForecast.",
+        )
+
     def test_empty_impact(self):
         """Check that empty impact is returned if no centroids match the exposures"""
         exp = ENT.exposures.copy()

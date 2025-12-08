@@ -233,6 +233,10 @@ class ImpactCalc:
                 imp_mat, self.hazard.frequency
             )
         else:
+            if isinstance(self.hazard, HazardForecast):
+                raise ValueError(
+                    "Saving impact matrix is required when using HazardForecast."
+                )
             imp_mat = None
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
 
@@ -270,6 +274,10 @@ class ImpactCalc:
                 (self.n_events, self.n_exp_pnt), dtype=np.float64
             )
         else:
+            if isinstance(self.hazard, HazardForecast):
+                raise ValueError(
+                    "Saving impact matrix is required when using HazardForecast."
+                )
             imp_mat = None
         impact = Impact.from_eih(
             self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
