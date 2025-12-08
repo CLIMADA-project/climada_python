@@ -40,35 +40,59 @@ def impact(impact_kwargs):
     return Impact(**impact_kwargs)
 
 
-def assert_impact_kwargs(impact: Impact, **kwargs):
-    for key, value in kwargs.items():
-        attr = getattr(impact, key)
-        if isinstance(value, (np.ndarray, list)):
-            npt.assert_array_equal(attr, value)
-        elif isinstance(value, csr_matrix):
-            npt.assert_array_equal(attr.todense(), value.todense())
-        else:
-            assert attr == value
+@pytest.fixture
+def lead_time():
+    return pd.timedelta_range(start="1 day", periods=6).to_numpy()
+
+
+@pytest.fixture
+def member():
+    return np.arange(6)
+
+
+@pytest.fixture
+def impact_forecast(impact, lead_time, member):
+    return ImpactForecast.from_impact(impact, lead_time=lead_time, member=member)
 
 
 class TestImpactForecastInit:
-    lead_time = pd.timedelta_range(start="1 day", periods=6).to_numpy()
-    member = np.arange(6)
 
-    def test_impact_forecast_init(self, impact_kwargs):
+    def assert_impact_kwargs(self, impact: Impact, **kwargs):
+        for key, value in kwargs.items():
+            attr = getattr(impact, key)
+            if isinstance(value, (np.ndarray, list)):
+                npt.assert_array_equal(attr, value)
+            elif isinstance(value, csr_matrix):
+                npt.assert_array_equal(attr.todense(), value.todense())
+            else:
+                assert attr == value
+
+    def test_impact_forecast_init(self, impact_kwargs, lead_time, member):
         forecast1 = ImpactForecast(
-            lead_time=self.lead_time,
-            member=self.member,
+            lead_time=lead_time,
+            member=member,
             **impact_kwargs,
         )
-        npt.assert_array_equal(forecast1.lead_time, self.lead_time)
-        npt.assert_array_equal(forecast1.member, self.member)
-        assert_impact_kwargs(forecast1, **impact_kwargs)
+        npt.assert_array_equal(forecast1.lead_time, lead_time)
+        npt.assert_array_equal(forecast1.member, member)
+        self.assert_impact_kwargs(forecast1, **impact_kwargs)
 
-    def test_impact_forecast_from_impact(self, impact, impact_kwargs):
-        forecast = ImpactForecast.from_impact(
-            impact, lead_time=self.lead_time, member=self.member
-        )
-        npt.assert_array_equal(forecast.lead_time, self.lead_time)
-        npt.assert_array_equal(forecast.member, self.member)
-        assert_impact_kwargs(forecast, **impact_kwargs)
+    def test_impact_forecast_from_impact(
+        self, impact_forecast, impact_kwargs, lead_time, member
+    ):
+        npt.assert_array_equal(impact_forecast.lead_time, lead_time)
+        npt.assert_array_equal(impact_forecast.member, member)
+        self.assert_impact_kwargs(impact_forecast, **impact_kwargs)
+
+
+def test_impact_forecast_select(impact_forecast, lead_time, member, impact_kwargs):
+    """Check if Impact.select works on the derived class"""
+
+    event_ids = impact_kwargs["event_id"][np.array([2, 0])]
+    impact_fc = impact_forecast.select(event_ids=event_ids)
+    # NOTE: Events keep their original order
+    npt.assert_array_equal(
+        impact_fc.event_id, impact_forecast.event_id[np.array([0, 2])]
+    )
+    npt.assert_array_equal(impact_fc.member, member[np.array([0, 2])])
+    npt.assert_array_equal(impact_fc.lead_time, lead_time[np.array([0, 2])])
