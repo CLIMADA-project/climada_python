@@ -42,3 +42,12 @@ def test_forecast_init():
     npt.assert_array_equal(forecast.lead_time, np.array([1, 2]), strict=True)
     npt.assert_array_equal(forecast.member, np.array([3, 4]), strict=True)
     assert isinstance(forecast.member, np.ndarray)
+
+    # Test with datetime64 including seconds
+    lead_times_seconds = np.array(
+        ["2024-01-01T00:00:00", "2024-01-01T00:01:00", "2024-01-01"],
+        dtype="datetime64[s]",
+    )
+    forecast = Forecast(lead_time=lead_times_seconds, member=[1, 2, 3])
+    npt.assert_array_equal(forecast.lead_time, lead_times_seconds, strict=True)
+    assert forecast.lead_time.dtype == np.dtype("datetime64[s]")

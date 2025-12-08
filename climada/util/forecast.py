@@ -23,6 +23,18 @@ import numpy as np
 
 
 class Forecast:
+    """Mixin class for forecast data.
+
+    Attributes
+    ----------
+    lead_time : np.ndarray
+        Array of forecast lead times, given as datetime64 objects.
+        Represents the time points for which forecasts are made.
+    member : np.ndarray
+        Array of ensemble member identifiers, given as integers.
+        Represents different forecast ensemble members.
+    """
+
     def __init__(
         self,
         lead_time: np.ndarray | None = None,
@@ -30,6 +42,15 @@ class Forecast:
         *args,
         **kwargs,
     ):
+        """Initialize Forecast.
+
+        Parameters
+        ----------
+        lead_time : np.ndarray or None, optional
+            Forecast lead times. Default is empty array.
+        member : np.ndarray or None, optional
+            Ensemble member identifiers. Default is empty array.
+        """
 
         self.lead_time = (
             np.asarray(lead_time) if lead_time is not None else np.array([])
