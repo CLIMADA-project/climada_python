@@ -30,6 +30,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 class HazardForecast(Forecast, Hazard):
+    """A hazard object with forecast information"""
 
     def __init__(
         self,
@@ -47,8 +48,8 @@ class HazardForecast(Forecast, Hazard):
         member : np.ndarray or None, optional
             Ensemble member identifiers as integers. Default is empty array.
         **hazard_kwargs
-            keyword arguments to pass to Hazard.__init__. See Hazard.__init__
-            docstring for details.
+            keyword arguments to pass to :py:class:`~climada.hazard.base.Hazard` See
+            py:meth`~climada.hazard.base.Hazard.__init__` for details.
         """
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
 
@@ -59,8 +60,12 @@ class HazardForecast(Forecast, Hazard):
 
         Parameters
         ----------
-        hazard : Hazard
+        hazard : climada.hazard.base.Hazard
             Hazard object to convert into a HazardForecast.
+        lead_time : np.ndarray of np.datetime64 or None, optional
+            Forecast lead times. Default is empty array.
+        member : np.ndarray or None, optional
+            Ensemble member identifiers as integers. Default is empty array.
 
         Returns
         -------
