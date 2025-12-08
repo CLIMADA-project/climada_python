@@ -45,9 +45,9 @@ class ImpactForecast(Forecast, Impact):
         Parameters
         ----------
         lead_time : np.ndarray, optional
-            The lead time associated with each event entry
+            The lead time associated with each event entry, given as timedelta64 type
         member : np.ndarray, optional
-            The ensemble member associated with each event entry
+            The ensemble member associated with each event entry, given as integers
         impact_kwargs
             Keyword-arguments passed to ~:py:class`climada.engine.impact.Impact`.
         """
@@ -65,9 +65,9 @@ class ImpactForecast(Forecast, Impact):
         impact : climada.engine.impact.Impact
             The impact object whose data to use in the forecast object
         lead_time : np.ndarray, optional
-            The lead time associated with each event entry
+            The lead time associated with each event entry, given as timedelta64 type
         member : np.ndarray, optional
-            The ensemble member associated with each event entry
+            The ensemble member associated with each event entry, given as integers
         """
         with log_level("WARNING", "climada.engine.impact"):
             return cls(

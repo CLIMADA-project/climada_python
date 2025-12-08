@@ -52,7 +52,7 @@ def assert_impact_kwargs(impact: Impact, **kwargs):
 
 
 class TestImpactForecastInit:
-    lead_time = pd.date_range("2000-01-01", "2000-01-02", periods=6).to_numpy()
+    lead_time = pd.timedelta_range(start="1 day", periods=6).to_numpy()
     member = np.arange(6)
 
     def test_impact_forecast_init(self, impact_kwargs):
