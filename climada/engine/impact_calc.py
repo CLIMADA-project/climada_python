@@ -240,8 +240,8 @@ class ImpactCalc:
             self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
         )
         if isinstance(self.hazard, HazardForecast):
-            return ImpactForecast().from_impact(
-                impact, self.hazard.ensemble_member, self.hazard.lead_time
+            return ImpactForecast.from_impact(
+                impact, self.hazard.lead_time, self.hazard.member
             )  # return ImpactForecast object
         else:
             return (
@@ -275,8 +275,8 @@ class ImpactCalc:
             self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
         )
         if isinstance(self.hazard, HazardForecast):
-            return ImpactForecast().from_impact(
-                impact, self.hazard.ensemble_member, self.hazard.lead_time
+            return ImpactForecast.from_impact(
+                impact, self.hazard.lead_time, self.hazard.member
             )  # return ImpactForecast object
         else:
             return (
