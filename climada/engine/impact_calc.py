@@ -259,7 +259,7 @@ class ImpactCalc:
 
         Returns
         -------
-        Impact
+        Impact or ImpactForecast
             Empty impact object with correct array sizes.
         """
         at_event = np.zeros(self.n_events)
@@ -271,9 +271,17 @@ class ImpactCalc:
             )
         else:
             imp_mat = None
-        return Impact.from_eih(
+        impact = Impact.from_eih(
             self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
         )
+        if isinstance(self.hazard, HazardForecast):
+            return ImpactForecast().from_impact(
+                impact, self.hazard.ensemble_member, self.hazard.lead_time
+            )  # return ImpactForecast object
+        else:
+            return (
+                impact  # return normal impact object if hazard is not a HazardForecast
+            )
 
     def minimal_exp_gdf(
         self, impf_col, assign_centroids, ignore_cover, ignore_deductible
