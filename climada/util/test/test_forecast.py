@@ -21,7 +21,6 @@ Tests for Forecast base class.
 
 import numpy as np
 import numpy.testing as npt
-import pytest
 
 from climada.util.forecast import Forecast
 
