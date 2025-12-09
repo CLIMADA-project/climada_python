@@ -20,6 +20,7 @@ Define Forecast variant of Hazard.
 """
 
 import logging
+from typing import Self
 
 import numpy as np
 
@@ -107,6 +108,8 @@ class HazardForecast(Forecast, Hazard):
 
     def select(
         self,
+        member=None,
+        lead_time=None,
         event_names=None,
         event_id=None,
         date=None,
@@ -114,9 +117,26 @@ class HazardForecast(Forecast, Hazard):
         reg_id=None,
         extent=None,
         reset_frequency=False,
-        member=None,
-        lead_time=None,
-    ):
+    ) -> Self:
+        """Select entries based on the parameters and return a new instance.
+
+        The selection will contain the intersection of all given parameters.
+
+        Parameters
+        ----------
+        member : Sequence of ints
+            Ensemble members to select
+        lead_time : Sequence of numpy.timedelta64
+            Lead times to select
+
+        Returns
+        -------
+        HazardForecast
+
+        See Also
+        --------
+        :py:meth:`~climada.hazard.base.Hazard.select`
+        """
         if member is not None or lead_time is not None:
             mask_member = (
                 self.idx_member(member)
