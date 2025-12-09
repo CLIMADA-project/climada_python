@@ -102,11 +102,6 @@ def test_hazard_forecast_concat(haz_fc, lead_time, member):
 
 def test_hazard_forecast_select(haz_fc, lead_time, member, haz_kwargs):
     """Check if Hazard.select works on the derived class"""
-    # haz_fc_select = haz_fc.select(event_id=[4, 1])
-    # # NOTE: Events keep their original order
-    # npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([3, 0])])
-    # npt.assert_array_equal(haz_fc_select.member, member[np.array([3, 0])])
-    # npt.assert_array_equal(haz_fc_select.lead_time, lead_time[np.array([3, 0])])
 
     select_mask = np.array([2, 3])
     ordered_select_mask = np.array([2, 3])
