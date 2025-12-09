@@ -95,16 +95,37 @@ def test_from_hazard(lead_time, member, hazard, haz_kwargs):
     assert_hazard_kwargs(haz_fc_from_haz, **haz_kwargs)
 
 
-@pytest.mark.skip("Concat from base class does not work")
-def test_hazard_forecast_concat(haz_fc, lead_time, member):
-    haz_fc1 = haz_fc.select(event_id=[1, 2])
-    haz_fc2 = haz_fc.select(event_id=[3, 4])
-    haz_fc_concat = HazardForecast.concat([haz_fc1, haz_fc2])
-    assert isinstance(haz_fc_concat, HazardForecast)
-    npt.assert_array_equal(
-        haz_fc_concat.lead_time, np.concatenate([lead_time, lead_time])
-    )
-    npt.assert_array_equal(haz_fc_concat.member, np.concatenate([member, member]))
+class TestHazardForecastConcat:
+
+    def test_concat(self, haz_fc, lead_time, member, haz_kwargs):
+        haz_fc1 = haz_fc.select(event_id=[3])
+        haz_fc2 = HazardForecast(
+            haz_type=haz_kwargs["haz_type"], frequency_unit=haz_kwargs["frequency_unit"]
+        )  # Empty hazard
+        haz_fc3 = haz_fc.select(event_id=[1, 2])
+        haz_fc_concat = HazardForecast.concat([haz_fc1, haz_fc2, haz_fc3])
+        assert isinstance(haz_fc_concat, HazardForecast)
+        assert haz_fc_concat.size == 3
+        npt.assert_array_equal(
+            haz_fc_concat.lead_time, np.concatenate((lead_time[2:3], lead_time[0:2]))
+        )
+        npt.assert_array_equal(
+            haz_fc_concat.member, np.concatenate((member[2:3], member[0:2]))
+        )
+        npt.assert_array_equal(haz_fc_concat.event_id, [3, 1, 2])
+
+    def test_empty_list(self):
+        haz_concat = HazardForecast.concat([])
+        assert isinstance(haz_concat, HazardForecast)
+        assert haz_concat.size == 0
+        npt.assert_array_equal(haz_concat.lead_time, [])
+        npt.assert_array_equal(haz_concat.event_id, [])
+
+    def test_type_fail(self, haz_fc, hazard):
+        with pytest.raises(TypeError, match="different classes"):
+            HazardForecast.concat([haz_fc, hazard])
+        with pytest.raises(TypeError, match="different classes"):
+            Hazard.concat([haz_fc, hazard])
 
 
 @pytest.mark.parametrize(

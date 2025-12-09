@@ -52,7 +52,11 @@ class Forecast:
         """
 
         self.lead_time = (
-            np.asarray(lead_time) if lead_time is not None else np.array([])
+            np.asarray(lead_time)
+            if lead_time is not None
+            else np.array([], dtype="timedelta64[ns]")
         )
-        self.member = np.asarray(member) if member is not None else np.array([])
+        self.member = (
+            np.asarray(member) if member is not None else np.array([], dtype="int")
+        )
         super().__init__(**kwargs)
