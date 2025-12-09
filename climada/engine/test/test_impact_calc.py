@@ -692,7 +692,7 @@ class TestImpactCalc(unittest.TestCase):
         imp = ImpactCalc(exp, impf_set, haz).impact(
             assign_centroids=False, save_mat=True
         )
-        check_impact(imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
+        check_impact(imp, haz, exp, aai_agg, eai_exp, at_event, np.array([at_event]).T)
 
 
 class TestImpactCalcForecast:
