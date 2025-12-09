@@ -115,6 +115,24 @@ def test_hazard_forecast_select(haz_fc, lead_time, member):
     npt.assert_array_equal(haz_fc_select.member, member[np.array([3, 0])])
     npt.assert_array_equal(haz_fc_select.lead_time, lead_time[np.array([3, 0])])
 
+    haz_fc_select = haz_fc.select(member=[3, 0])
+    npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([0, 3])])
+    npt.assert_array_equal(haz_fc_select.member, member[np.array([0, 3])])
+    npt.assert_array_equal(haz_fc_select.lead_time, lead_time[np.array([0, 3])])
+
+    haz_fc_select = haz_fc.select(lead_time=lead_time[np.array([3, 0])])
+    npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([0, 3])])
+    npt.assert_array_equal(haz_fc_select.member, member[np.array([0, 3])])
+    npt.assert_array_equal(haz_fc_select.lead_time, lead_time[np.array([0, 3])])
+
+    haz_fc_select = haz_fc.select(event_id=[1, 4], member=[0, 1, 2])
+    npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([0])])
+
+    haz_fc_select = haz_fc.select(
+        event_id=[1, 2, 4], member=[0, 1, 2], lead_time=lead_time[1:3]
+    )
+    npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([1])])
+
 
 def test_write_read_hazard_forecast(haz_fc, tmp_path):
 

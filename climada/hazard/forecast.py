@@ -104,3 +104,43 @@ class HazardForecast(Forecast, Hazard):
         num_entries = len(self.event_id)
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
+
+    def select(
+        self,
+        event_names=None,
+        event_id=None,
+        date=None,
+        orig=None,
+        reg_id=None,
+        extent=None,
+        reset_frequency=False,
+        member=None,
+        lead_time=None,
+    ):
+        if member is not None or lead_time is not None:
+            mask_member = (
+                self.idx_member(member)
+                if member is not None
+                else np.full_like(self.member, True, dtype=bool)
+            )
+            mask_lead_time = (
+                self.idx_lead_time(lead_time)
+                if lead_time is not None
+                else np.full_like(self.lead_time, True, dtype=bool)
+            )
+            mask_event_id = np.asarray(self.event_id)[(mask_member & mask_lead_time)]
+            event_id = (
+                np.intersect1d(event_id, mask_event_id)
+                if event_id is not None
+                else mask_event_id
+            )
+
+        return super().select(
+            event_names=event_names,
+            event_id=event_id,
+            date=date,
+            orig=orig,
+            reg_id=reg_id,
+            extent=extent,
+            reset_frequency=reset_frequency,
+        )
