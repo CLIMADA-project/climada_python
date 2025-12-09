@@ -103,7 +103,7 @@ def test_hazard_forecast_concat(haz_fc, lead_time, member):
 def test_hazard_forecast_select(haz_fc, lead_time, member, haz_kwargs):
     """Check if Hazard.select works on the derived class"""
 
-    select_mask = np.array([2, 3])
+    select_mask = np.array([3, 2])
     ordered_select_mask = np.array([2, 3])
     vars_to_select = {
         "event_id": "event_id",
