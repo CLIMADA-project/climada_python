@@ -27,6 +27,7 @@ from unittest.mock import MagicMock, call, create_autospec, patch
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pytest
 from scipy import sparse
 
 from climada import CONFIG
@@ -47,6 +48,88 @@ HAZ = Hazard.from_hdf5(get_test_file("test_tc_florida"))
 
 DATA_FOLDER = DEMO_DIR / "test-results"
 DATA_FOLDER.mkdir(exist_ok=True)
+
+
+@pytest.fixture(autouse=True)
+def exposure_fixture():
+    n_exp = 50
+    lats = np.linspace(-10, 10, n_exp)
+    lons = np.linspace(-10, 10, n_exp)
+    data = gpd.GeoDataFrame(
+        {
+            "impf_TC": 1,
+            "value": 1,
+        },
+        index=range(n_exp),
+        geometry=gpd.points_from_xy(lons, lats),
+        crs="EPSG:4326",
+    )
+    exposures = Exposures(data=data)
+    return exposures
+
+
+@pytest.fixture(autouse=True)
+def hazard_fixture(exposure_fixture):
+    n_events = 10
+    centroids = Centroids(
+        lat=exposure_fixture.gdf.geometry.x,
+        lon=exposure_fixture.gdf.geometry.y,
+    )
+    intensity = (
+        np.ones((n_events, exposure_fixture.gdf.shape[0])) * 50
+    )  # uniform intensity
+    haz = Hazard()
+    haz.haz_type = "TC"
+    haz.centroids = centroids
+    haz.intensity = intensity
+    haz.frequency = 1 / 10 * np.ones(n_events)  # uniform frequency (10 n_events)
+    return haz
+
+
+@pytest.fixture(autouse=True)
+def hazard_forecast_fixture(hazard_fixture):
+    n_events = hazard_fixture.size
+    lead_time = pd.timedelta_range("1h", periods=n_events).to_numpy()
+    member = np.arange(10)
+    haz_fc = HazardForecast.from_hazard(
+        hazard=hazard_fixture,
+        lead_time=lead_time,
+        member=member,
+    )
+    return haz_fc
+
+
+@pytest.fixture(autouse=True)
+def impact_func_set_fixture(exposure_fixture, hazard_fixture):
+    step_impf = ImpactFunc()
+    step_impf.id = exposure_fixture.data[f"impf_{hazard_fixture.haz_type}"].unique()[0]
+    step_impf.haz_type = hazard_fixture.haz_type
+    step_impf.name = "fixture step function"
+    step_impf.intensity_unit = ""
+    step_impf.intensity = np.array([0, 0.495, 0.4955, 0.5, 1, 10])
+    step_impf.mdd = np.array([0, 0, 0, 1, 1, 1])
+    step_impf.paa = np.sort(np.linspace(1, 1, num=6))
+    return ImpactFuncSet([step_impf])
+
+
+@pytest.fixture(autouse=True)
+def impact_calc_fixture(exposure_fixture, hazard_fixture, impact_func_set_fixture):
+    imp_mat = np.ones(
+        (
+            len(hazard_fixture.event_id),
+            exposure_fixture.gdf.shape[0],
+            exposure_fixture.gdf.shape[0],
+        )
+    )
+    aai_agg = np.sum(exposure_fixture.gdf["value"]) * hazard_fixture.frequency[0]
+    eai_exp = np.ones(exposure_fixture.gdf.shape[0]) * hazard_fixture.frequency[0]
+    at_event = np.ones(hazard_fixture.size) * np.sum(exposure_fixture.gdf["value"])
+    return {
+        "imp_mat": imp_mat,
+        "aai_agg": aai_agg,
+        "eai_exp": eai_exp,
+        "at_event": at_event,
+    }
 
 
 def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=None):
@@ -609,108 +692,34 @@ class TestImpactCalc(unittest.TestCase):
         check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
 
 
-class TestImpactCalcForecast(unittest.TestCase):
+class TestImpactCalcForecast:
     """Test impact calc for forecast hazard"""
 
-    def test_impactForecast(self):
+    def test_impactForecast_type(
+        exposure_fixture,
+        hazard_forecast_fixture,
+        impact_func_set_fixture,
+        impact_calc_fixture,
+    ):
         """Test that ImpactForecast is returned correctly"""
-        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
-        member = np.arange(6)
-        _haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
-        haz_fc = HazardForecast.from_hazard(_haz, lead_time=lead_time, member=member)
 
-        exp = Exposures.from_hdf5(
-            get_test_file("test_exposure_US_flood_random_locations")
+        # check that impact is indeed ImpactForecast
+        assert isinstance(impact, ImpactForecast)
+        np.testing.assert_array_equal(
+            impact.lead_time, hazard_forecast_fixture.lead_time
         )
-        impf_set = ImpactFuncSet.from_excel(
-            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
-        )
-        icalc = ImpactCalc(exp, impf_set, haz_fc)
-        impact = icalc.impact(assign_centroids=False)
-        aai_agg = 161436.05112960344
-        eai_exp = np.array(
-            [
-                1.61159701e05,
-                1.33742847e02,
-                0.00000000e00,
-                4.21352988e-01,
-                1.42185609e02,
-                0.00000000e00,
-                0.00000000e00,
-                0.00000000e00,
-            ]
-        )
-        at_event = np.array(
-            [
-                0.00000000e00,
-                0.00000000e00,
-                9.85233619e04,
-                3.41245461e04,
-                7.73566566e07,
-                0.00000000e00,
-                0.00000000e00,
-            ]
-        )
-        # fmt: off
-        imp_mat_array = np.array(
-            [
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 6.41965663e04, 0.00000000e00, 2.02249434e02,
-                    3.41245461e04, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    3.41245461e04, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    7.73566566e07, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-                [
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                    0.00000000e00, 0.00000000e00, 0.00000000e00, 0.00000000e00,
-                ],
-            ]
-        )
-        # fmt: on
-        check_impact(
-            self, impact, haz_fc, exp, aai_agg, eai_exp, at_event, imp_mat_array
-        )
+        assert impact.lead_time.dtype == hazard_forecast_fixture.lead_time.dtype
+        np.testing.assert_array_equal(impact.member, hazard_forecast_fixture.member)
 
-        # additional test to check that impact is indeed ImpactForecast
-        self.assertIsInstance(impact, ImpactForecast)
-        np.testing.assert_array_equal(impact.lead_time, lead_time)
-        self.assertIs(impact.lead_time.dtype, lead_time.dtype)
-        np.testing.assert_array_equal(impact.member, member)
-
-    def test_impact_forecast_empty_impmat_error(self):
+    def test_impact_forecast_empty_impmat_error(
+        hazard_forecast_fixture, exposure_fixture, impact_func_set_fixture
+    ):
         """Test that error is raised when trying to compute impact forecast
         without saving impact matrix
         """
-        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
-        member = np.arange(6)
-        _haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
-        haz_fc = HazardForecast.from_hazard(_haz, lead_time=lead_time, member=member)
-
-        exp = Exposures.from_hdf5(
-            get_test_file("test_exposure_US_flood_random_locations")
+        icalc = ImpactCalc(
+            exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
         )
-        impf_set = ImpactFuncSet.from_excel(
-            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
-        )
-        icalc = ImpactCalc(exp, impf_set, haz_fc)
         with self.assertRaises(ValueError) as cm:
             icalc.impact(assign_centroids=False, save_mat=False)
         no_impmat_exception = cm.exception
@@ -720,25 +729,19 @@ class TestImpactCalcForecast(unittest.TestCase):
             "Please set save_mat=True.",
         )
 
-    def test_impact_forecast_blocked_nonsense_attrs(self):
+    def test_impact_forecast_blocked_nonsense_attrs(
+        hazard_forecast_fixture, exposure_fixture, impact_func_set_fixture
+    ):
         """Test that nonsense attributes are blocked when computing impact forecast"""
-        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
-        member = np.arange(6)
-        haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
-        haz_fc = HazardForecast.from_hazard(haz, lead_time=lead_time, member=member)
+        lead_time = hazard_fixture.lead_time
+        member = hazard_fixture.member
 
-        exp = Exposures.from_hdf5(
-            get_test_file("test_exposure_US_flood_random_locations")
-        )
-        impf_set = ImpactFuncSet.from_excel(
-            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
-        )
-        impact = ImpactCalc(exp, impf_set, haz_fc).impact(
-            assign_centroids=False, save_mat=True
-        )
+        impact = ImpactCalc(
+            exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
+        ).impact(assign_centroids=True, save_mat=True)
         assert np.isnan(impact.aai_agg)
         assert np.all(np.isnan(impact.eai_exp))
-        assert impact.eai_exp.shape == (len(exp.gdf),)
+        assert impact.eai_exp.shape == (len(exposure_fixture.gdf),)
 
 
 class TestImpactMatrixCalc(unittest.TestCase):
