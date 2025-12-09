@@ -233,11 +233,11 @@ class ImpactCalc:
                 imp_mat, self.hazard.frequency
             )
             if isinstance(self.hazard, HazardForecast):
-                eai_exp = np.nan * np.ones(eai_exp.shape, dtype=eai_exp.dtype)
-                aai_agg = np.nan * np.ones(aai_agg.shape, dtype=aai_agg.dtype)
+                eai_exp = np.full_like(eai_exp, np.nan, dtype=eai_exp.dtype)
+                aai_agg = np.full_like(aai_agg, np.nan, dtype=aai_agg.dtype)
                 LOGGER.warning(
                     "eai_exp and aai_agg are undefined with forecasts. "
-                    "Setting them to empty arrays."
+                    "Setting them to NaN arrays."
                 )
 
         else:
@@ -256,8 +256,7 @@ class ImpactCalc:
             return ImpactForecast.from_impact(
                 impact, self.hazard.lead_time, self.hazard.member
             )
-        else:
-            return impact
+        return impact
 
     def _return_empty(self, save_mat):
         """
@@ -273,13 +272,14 @@ class ImpactCalc:
         Impact or ImpactForecast
             Empty impact object with correct array sizes.
         """
+        at_event = np.zeros(self.n_events)
         if isinstance(self.hazard, HazardForecast):
-            eai_exp = np.nan * np.ones(self.n_exp_pnt)
+            eai_exp = np.full(self.n_exp_pnt, np.nan)
             aai_agg = np.nan
         else:
             eai_exp = np.zeros(self.n_exp_pnt)
             aai_agg = 0.0
-        at_event = np.zeros(self.n_events)
+
         if save_mat:
             imp_mat = sparse.csr_matrix(
                 (self.n_events, self.n_exp_pnt), dtype=np.float64
@@ -287,10 +287,11 @@ class ImpactCalc:
         else:
             if isinstance(self.hazard, HazardForecast):
                 raise ValueError(
-                    "Saving impact matrix is required when using HazardForecast."
+                    "Saving impact matrix is required when using HazardForecast. "
                     "Please set save_mat=True."
                 )
             imp_mat = None
+
         impact = Impact.from_eih(
             self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
         )
@@ -298,8 +299,7 @@ class ImpactCalc:
             return ImpactForecast.from_impact(
                 impact, self.hazard.lead_time, self.hazard.member
             )
-        else:
-            return impact
+        return impact
 
     def minimal_exp_gdf(
         self, impf_col, assign_centroids, ignore_cover, ignore_deductible
