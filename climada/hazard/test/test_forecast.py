@@ -41,13 +41,13 @@ def hazard(haz_kwargs):
 
 
 @pytest.fixture
-def lead_time():
-    return pd.timedelta_range("1h", periods=6).to_numpy()
+def lead_time(haz_kwargs):
+    return pd.timedelta_range("1h", periods=len(haz_kwargs["event_id"])).to_numpy()
 
 
 @pytest.fixture
-def member():
-    return np.arange(6)
+def member(haz_kwargs):
+    return np.arange(len(haz_kwargs["event_id"]))
 
 
 @pytest.fixture
@@ -76,6 +76,13 @@ def test_init_hazard_forecast(haz_fc, member, lead_time, haz_kwargs):
     assert haz_fc.lead_time.dtype == lead_time.dtype
     npt.assert_array_equal(haz_fc.member, member)
     assert_hazard_kwargs(haz_fc, **haz_kwargs)
+
+
+def test_init_hazard_forecast_error(hazard, member, lead_time, haz_kwargs):
+    with pytest.raises(ValueError, match="Forecast.lead_time"):
+        HazardForecast(lead_time=lead_time[:-2], member=member, **haz_kwargs)
+    with pytest.raises(ValueError, match="Forecast.member"):
+        HazardForecast.from_hazard(hazard, lead_time=lead_time, member=member[1:])
 
 
 def test_from_hazard(lead_time, member, hazard, haz_kwargs):
@@ -140,3 +147,20 @@ def test_hazard_forecast_select(haz_fc, lead_time, member, haz_kwargs, var, var_
     )
 
     assert haz_fc_sel.centroids == haz_fc.centroids
+
+
+def test_write_read_hazard_forecast(haz_fc, tmp_path):
+
+    file_name = tmp_path / "test_hazard_forecast.h5"
+
+    haz_fc.write_hdf5(file_name)
+    haz_fc_read = HazardForecast.from_hdf5(file_name)
+
+    assert haz_fc_read.lead_time.dtype.kind == np.dtype("timedelta64").kind
+
+    for key in haz_fc.__dict__.keys():
+        if key in ["intensity", "fraction"]:
+            (haz_fc.__dict__[key] != haz_fc_read.__dict__[key]).nnz == 0
+        else:
+            # npt.assert_array_equal also works for comparing int, float or list
+            npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])

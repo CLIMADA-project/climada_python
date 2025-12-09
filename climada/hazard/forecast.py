@@ -23,8 +23,9 @@ import logging
 
 import numpy as np
 
-from climada.hazard.base import Hazard
-from climada.util.forecast import Forecast
+from ..util.checker import size
+from ..util.forecast import Forecast
+from .base import Hazard
 
 LOGGER = logging.getLogger(__name__)
 
@@ -52,6 +53,7 @@ class HazardForecast(Forecast, Hazard):
             py:meth`~climada.hazard.base.Hazard.__init__` for details.
         """
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
+        self._check_sizes()
 
     @classmethod
     def from_hazard(cls, hazard: Hazard, lead_time: np.ndarray, member: np.ndarray):
@@ -89,3 +91,16 @@ class HazardForecast(Forecast, Hazard):
             intensity=hazard.intensity,
             fraction=hazard.fraction,
         )
+
+    def _check_sizes(self):
+        """Check sizes of forecast data vs. hazard data.
+
+        Raises
+        ------
+        ValueError
+            If the sizes of the forecast data do not match the
+            :py:attr:`~climada.hazard.base.Hazard.event_id`
+        """
+        num_entries = len(self.event_id)
+        size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
+        size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
