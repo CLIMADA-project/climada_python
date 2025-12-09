@@ -20,7 +20,6 @@ Define Forecast variant of Hazard.
 """
 
 import logging
-from typing import Self
 
 import numpy as np
 
@@ -117,7 +116,7 @@ class HazardForecast(Forecast, Hazard):
         reg_id=None,
         extent=None,
         reset_frequency=False,
-    ) -> Self:
+    ):
         """Select entries based on the parameters and return a new instance.
 
         The selection will contain the intersection of all given parameters.
