@@ -58,11 +58,33 @@ class Forecast:
         super().__init__(**kwargs)
 
     def idx_member(self, member: np.ndarray) -> np.ndarray:
-        """Return boolean array where self.member == member using numpy.isin()"""
+        """Return boolean array where self.member == member using numpy.isin()
+
+        Parameters
+        ----------
+        member : np.ndarray
+            Forecast ensemble members, given as integers.
+
+        Returns
+        -------
+        np.ndarray
+            Boolean array where self.member is in member.
+        """
 
         return np.isin(self.member, member)
 
     def idx_lead_time(self, lead_time: np.ndarray) -> np.ndarray:
-        """Return boolean array where self.lead_time == lead_time using numpy.isin()"""
+        """Return boolean array where self.lead_time == lead_time using numpy.isin()
+
+        Parameters
+        ----------
+        lead_time : np.ndarray
+            Forecast lead times, given as timedelta64 objects.
+
+        Returns
+        -------
+        np.ndarray
+            Boolean array where self.lead_time is in lead_time.
+        """
 
         return np.isin(self.lead_time, lead_time)
