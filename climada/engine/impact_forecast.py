@@ -88,3 +88,13 @@ class ImpactForecast(Forecast, Impact):
                 imp_mat=impact.imp_mat,
                 haz_type=impact.haz_type,
             )
+
+    @property
+    def at_event(self):
+        return self._at_event
+
+    @at_event.setter
+    def at_event(self, value):
+        """Set the total exposure value close to a hazard"""
+        LOGGER.warning("at_event for forecasts is not yet implemented.")
+        self._at_event = value
