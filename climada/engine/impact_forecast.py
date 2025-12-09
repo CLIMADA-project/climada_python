@@ -98,3 +98,24 @@ class ImpactForecast(Forecast, Impact):
         """Set the total exposure value close to a hazard"""
         LOGGER.warning("at_event for forecasts is not yet implemented.")
         self._at_event = value
+
+    def local_exceedance_impact(
+        self,
+        return_periods=(25, 50, 100, 250),
+        method="interpolate",
+        min_impact=0,
+        log_frequency=True,
+        log_impact=True,
+        bin_decimals=None,
+    ):
+        """Compution of local exceedance impact for given return periods is not
+        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
+        Returns
+        -------
+        NotImplementedError
+        """
+
+        LOGGER.error("local_exceedance_impact is not defined for ImpactForecast")
+        raise NotImplementedError(
+            "local_exceedance_impact is not defined for ImpactForecast"
+        )
