@@ -19,26 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Forecast base class.
 """
 
-from typing import Any
-
 import numpy as np
-
-
-def check_attribute_shapes(obj_act: Any, attr_act: str, obj_exp: Any, attr_exp: str):
-    """Compare the shapes of attributes of two objects.
-
-    Raises
-    ------
-    ValueError
-        If the shapes do not match
-    """
-    shape_actual = getattr(obj_act, attr_act).shape
-    shape_expected = getattr(obj_exp, attr_exp).shape
-    if shape_actual != shape_expected:
-        raise ValueError(
-            f"Shape mismatch between {type(obj_act).__name__}.{attr_act} "
-            f"{shape_actual} and {type(obj_exp).__name__}.{attr_exp} {shape_expected}"
-        )
 
 
 class Forecast:

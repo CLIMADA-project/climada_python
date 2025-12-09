@@ -24,6 +24,7 @@ import logging
 import numpy as np
 
 from ..util import log_level
+from ..util.checker import size
 from ..util.forecast import Forecast
 from .impact import Impact
 
@@ -52,7 +53,7 @@ class ImpactForecast(Forecast, Impact):
             Keyword-arguments passed to ~:py:class`climada.engine.impact.Impact`.
         """
         super().__init__(lead_time=lead_time, member=member, **impact_kwargs)
-        self._check_shapes()
+        self._check_sizes()
 
     @classmethod
     def from_impact(
@@ -89,24 +90,15 @@ class ImpactForecast(Forecast, Impact):
                 haz_type=impact.haz_type,
             )
 
-    def _check_shapes(self):
-        """Check shapes of forecast data vs. impact data.
+    def _check_sizes(self):
+        """Check sizes of forecast data vs. impact data.
 
         Raises
         ------
         ValueError
-            If the shapes of the forecast data do not match the
+            If the sizes of the forecast data do not match the
             :py:attr:`~climada.engine.impact.Impact.event_id`
         """
-        shape_expected = self.event_id.shape
-
-        def check_forecast_attr(attr: str):
-            shape_actual = getattr(self, attr).shape
-            if shape_actual != shape_expected:
-                raise ValueError(
-                    f"Shape mismatch between Forecast.{attr} "
-                    f"{shape_actual} and Impact.event_id {shape_expected}"
-                )
-
-        check_forecast_attr("member")
-        check_forecast_attr("lead_time")
+        num_entries = len(self.event_id)
+        size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
+        size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")

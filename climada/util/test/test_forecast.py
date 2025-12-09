@@ -22,9 +22,8 @@ Tests for Forecast base class.
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
-import pytest
 
-from climada.util.forecast import Forecast, check_attribute_shapes
+from climada.util.forecast import Forecast
 
 
 def test_forecast_init():
@@ -51,32 +50,3 @@ def test_forecast_init():
     forecast = Forecast(lead_time=lead_times_seconds, member=[1, 2, 3])
     npt.assert_array_equal(forecast.lead_time, lead_times_seconds, strict=True)
     assert forecast.lead_time.dtype == np.dtype("timedelta64[ns]")
-
-
-class A:
-    foo = np.array([[0, 1], [1, 0]])
-
-
-class B:
-    bar = np.array([[1, 1], [1, 1]])
-
-
-class TestCheckCompareShapes:
-    @pytest.fixture
-    def a(self):
-        return A()
-
-    @pytest.fixture
-    def b(self):
-        return B()
-
-    def test_pass(self, a, b):
-        check_attribute_shapes(a, "foo", b, "bar")
-
-    def test_error(self, a, b):
-        a.foo = np.array([0, 1])
-        with pytest.raises(ValueError, match=r"A.foo \(2\,\)"):
-            check_attribute_shapes(a, "foo", b, "bar")
-        b.bar = np.array([0, 1, 2])
-        with pytest.raises(ValueError, match=r"B.bar \(3\,\)"):
-            check_attribute_shapes(a, "foo", b, "bar")
