@@ -720,6 +720,26 @@ class TestImpactCalcForecast(unittest.TestCase):
             "Please set save_mat=True.",
         )
 
+    def test_impact_forecast_blocked_nonsense_attrs(self):
+        """Test that nonsense attributes are blocked when computing impact forecast"""
+        lead_time = pd.timedelta_range("1h", periods=6).to_numpy()
+        member = np.arange(6)
+        haz = Hazard.from_hdf5(get_test_file("test_hazard_US_flood_random_locations"))
+        haz_fc = HazardForecast.from_hazard(haz, lead_time=lead_time, member=member)
+
+        exp = Exposures.from_hdf5(
+            get_test_file("test_exposure_US_flood_random_locations")
+        )
+        impf_set = ImpactFuncSet.from_excel(
+            Path(__file__).parent / "data" / "flood_imp_func_set.xls"
+        )
+        impact = ImpactCalc(exp, impf_set, haz_fc).impact(
+            assign_centroids=False, save_mat=True
+        )
+        assert np.isnan(impact.aai_agg)
+        assert np.all(np.isnan(impact.eai_exp))
+        assert impact.eai_exp.shape == (len(exp.gdf),)
+
 
 class TestImpactMatrixCalc(unittest.TestCase):
     """Verify the computation of the impact matrix"""
