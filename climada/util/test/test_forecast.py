@@ -68,6 +68,12 @@ def test_idx_member():
     idx = forecast.idx_member(None)
     npt.assert_array_equal(idx, np.array([False, False, False, False]), strict=True)
 
+    # Try once with inconsitent types
+    forecast = Forecast(member=np.array(["1", -2, np.nan]))
+    npt.assert_array_equal(
+        forecast.idx_member([np.nan, "1"]), np.array([True, False, True]), strict=True
+    )
+
 
 def test_idx_lead_time():
     """Test idx_lead_time method of Forecast class."""
