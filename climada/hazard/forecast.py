@@ -21,7 +21,7 @@ Define Forecast variant of Hazard.
 
 import logging
 import pathlib
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import numpy as np
 import xarray as xr
@@ -54,8 +54,66 @@ class HazardForecast(Forecast, Hazard):
         **hazard_kwargs
             keyword arguments to pass to :py:class:`~climada.hazard.base.Hazard` See
             py:meth`~climada.hazard.base.Hazard.__init__` for details.
+
+        Notes
+        -----
+        If event_name or date are not provided in hazard_kwargs, they will
+        be automatically generated from the Cartesian product of lead_time and member.
+        Event names are formatted as "lt_{hours}h_m_{member}" where hours is the
+        lead time converted to hours. Dates are set to 0 (undefined) by default
+        since forecast events don't have historical dates. event_id is preserved
+        from hazard_kwargs if provided.
         """
+        auto_generate = (
+            "event_name" not in hazard_kwargs and "date" not in hazard_kwargs
+        )
+
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
+
+        if auto_generate and len(self.lead_time) > 0 and len(self.member) > 0:
+            self._set_event_attrs_from_forecast_dims()
+
+    def _set_event_attrs_from_forecast_dims(self) -> None:
+        """
+        Set event_name and date from lead_time and member dimensions.
+
+        This method generates event attributes based on the Cartesian product of
+        lead_time and member arrays. It should have the same length as the number
+        of events in the hazard intensity matrix. event_id is left unchanged.
+        """
+        n_events = len(self.lead_time)
+        if n_events != len(self.member):
+            raise ValueError(
+                f"Length mismatch: lead_time has {len(self.lead_time)} elements "
+                f"but member has {len(self.member)} elements. They should be equal "
+                f"in a stacked forecast hazard."
+            )
+
+        self.event_name = [
+            f"lt_{self._format_lead_time(lt)}_m_{m}"
+            for lt, m in zip(self.lead_time, self.member)
+        ]
+
+        self.date = np.zeros(n_events, dtype=int)
+
+    @staticmethod
+    def _format_lead_time(lead_time: np.timedelta64) -> str:
+        """
+        Format lead_time as hours for event names.
+
+        Parameters
+        ----------
+        lead_time : np.timedelta64
+            Lead time to format
+
+        Returns
+        -------
+        str
+            Formatted lead time as "{hours}h"
+        """
+        # Convert to hours
+        hours = lead_time / np.timedelta64(1, "h")
+        return f"{hours:.0f}h"
 
     @classmethod
     def from_hazard(cls, hazard: Hazard, lead_time: np.ndarray, member: np.ndarray):
@@ -77,6 +135,7 @@ class HazardForecast(Forecast, Hazard):
             A HazardForecast object with the same attributes as the input hazard,
             but with lead_time and member attributes set from instance of HazardForecast.
         """
+        # Keep event_id from hazard but let event_name and date be auto-generated
         return cls(
             lead_time=lead_time,
             member=member,
@@ -87,8 +146,6 @@ class HazardForecast(Forecast, Hazard):
             event_id=hazard.event_id,
             frequency=hazard.frequency,
             frequency_unit=hazard.frequency_unit,
-            event_name=hazard.event_name,
-            date=hazard.date,
             orig=hazard.orig,
             intensity=hazard.intensity,
             fraction=hazard.fraction,
@@ -101,7 +158,7 @@ class HazardForecast(Forecast, Hazard):
         hazard_type: str,
         intensity_unit: str,
         *,
-        intensity: str = "intensity",
+        intensity: Optional[str] = None,
         coordinate_vars: Optional[Dict[str, str]] = None,
         data_vars: Optional[Dict[str, str]] = None,
         crs: str = "EPSG:4326",
@@ -128,9 +185,8 @@ class HazardForecast(Forecast, Hazard):
         coordinate_vars : dict(str, str), optional
             Mapping from default coordinate names to coordinate names in the data.
             For HazardForecast, should include:
-
-            - ``"leadtime"``: name of the lead time coordinate (required)
-            - ``"members"``: name of the ensemble member coordinate (required)
+            - ``"lead_time"``: name of the lead time coordinate (required)
+            - ``"member"``: name of the ensemble member coordinate (required)
             - ``"longitude"``: name of longitude coordinate (default: "longitude")
             - ``"latitude"``: name of latitude coordinate (default: "latitude")
 
@@ -157,29 +213,23 @@ class HazardForecast(Forecast, Hazard):
         """
 
         # Open dataset if needed
-
-        hazard_type = "PR"
-        intensity_unit = "mm/h"
-        coordinate_vars = {
-            "longitude": "lon",
-            "latitude": "lat",
-            "lead_time": "lead_time",
-            "member": "eps",
-            "event": "event",
-        }
-
         if isinstance(data, (pathlib.Path, str)):
             open_dataset_kws = open_dataset_kws or {}
             open_dataset_kws = {"chunks": "auto"} | open_dataset_kws
-            dset = xr.open_dataset(data)  # , **open_dataset_kws
+            dset = xr.open_dataset(data, **open_dataset_kws)
         else:
             dset = data
 
-        # Dynamically extract the data variable name
-        data_var_names = list(dset.data_vars.keys())
-        if len(data_var_names) == 0:
-            raise ValueError("Dataset has no data variables")
-        intensity = data_var_names[0]  # Use first data variable name
+        if intensity is None:
+            data_var_names = list(dset.data_vars.keys())
+            if len(data_var_names) == 0:
+                raise ValueError("Dataset has no data variables")
+            intensity = data_var_names[0]
+            LOGGER.info(
+                "No intensity variable specified. "
+                "Assuming intensity variable is '%s'",
+                intensity,
+            )
 
         # Extract forecast coordinates
         coordinate_vars = coordinate_vars or {}
@@ -192,17 +242,16 @@ class HazardForecast(Forecast, Hazard):
         leadtime_var = coordinate_vars["lead_time"]
         member_var = coordinate_vars["member"]
 
-        dset = ds.assign_coords(
+        dset = dset.assign_coords(
             event=(
-                ("lead_time", "eps"),
-                np.zeros((len(ds["lead_time"]), len(ds["eps"]))),
+                (leadtime_var, member_var),
+                np.zeros((len(dset[leadtime_var]), len(dset[member_var]))),
             )
         )
 
         dset_squeezed = dset.squeeze()
 
         # Prepare coordinate_vars for parent call
-        # Remove forecast-specific keys that the parent doesn't understand
         parent_coord_vars = {
             k: v for k, v in coordinate_vars.items() if k not in ["member", "lead_time"]
         }
@@ -220,6 +269,10 @@ class HazardForecast(Forecast, Hazard):
             "lead_time": reader.data_stacked[leadtime_var].values,
             "member": reader.data_stacked[member_var].values,
         }
+
+        # Remove event_name and date so they get auto-generated from lead_time/member
+        kwargs.pop("event_name", None)
+        kwargs.pop("date", None)
 
         # Convert to HazardForecast with forecast attributes
         return cls(**Hazard._check_and_cast_attrs(kwargs))
