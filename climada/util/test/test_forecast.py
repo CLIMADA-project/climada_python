@@ -50,3 +50,40 @@ def test_forecast_init():
     forecast = Forecast(lead_time=lead_times_seconds, member=[1, 2, 3])
     npt.assert_array_equal(forecast.lead_time, lead_times_seconds, strict=True)
     assert forecast.lead_time.dtype == np.dtype("timedelta64[ns]")
+
+
+def test_idx_member():
+    """Test idx_member method of Forecast class."""
+    forecast = Forecast(member=np.array([1, 2, 3, 4]))
+
+    idx = forecast.idx_member(1)
+    npt.assert_array_equal(idx, np.array([True, False, False, False]), strict=True)
+
+    idx = forecast.idx_member(np.array([2, 4]))
+    npt.assert_array_equal(idx, np.array([False, True, False, True]), strict=True)
+
+    idx = forecast.idx_member([2, 4])
+    npt.assert_array_equal(idx, np.array([False, True, False, True]), strict=True)
+
+    idx = forecast.idx_member(None)
+    npt.assert_array_equal(idx, np.array([False, False, False, False]), strict=True)
+
+
+def test_idx_lead_time():
+    """Test idx_lead_time method of Forecast class."""
+    forecast = Forecast(
+        lead_time=pd.timedelta_range(start="1 day", periods=4).to_numpy()
+    )
+
+    idx = forecast.idx_lead_time(
+        pd.timedelta_range(start="1 day", periods=4).to_numpy()[::2]
+    )
+    npt.assert_array_equal(idx, np.array([True, False, True, False]), strict=True)
+
+    idx = forecast.idx_lead_time(
+        pd.timedelta_range(start="1 day", periods=4).to_numpy()[0]
+    )
+    npt.assert_array_equal(idx, np.array([True, False, False, False]), strict=True)
+
+    idx = forecast.idx_lead_time(None)
+    npt.assert_array_equal(idx, np.array([False, False, False, False]), strict=True)
