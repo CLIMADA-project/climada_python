@@ -75,11 +75,15 @@ def hazard_fixture(exposure_fixture):
         lat=exposure_fixture.gdf.geometry.x,
         lon=exposure_fixture.gdf.geometry.y,
     )
-    intensity = (
+    intensity = sparse.csr_matrix(
         np.ones((n_events, exposure_fixture.gdf.shape[0])) * 50
     )  # uniform intensity
     haz = Hazard()
+    haz.event_id = np.arange(n_events)
+    haz.event_name = haz.event_id
     haz.haz_type = "TC"
+    haz.date = haz.event_id
+    haz.frequency_unit = "m/s"
     haz.centroids = centroids
     haz.intensity = intensity
     haz.frequency = 1 / 10 * np.ones(n_events)  # uniform frequency (10 n_events)
@@ -696,13 +700,16 @@ class TestImpactCalcForecast:
     """Test impact calc for forecast hazard"""
 
     def test_impactForecast_type(
+        self,
         exposure_fixture,
         hazard_forecast_fixture,
         impact_func_set_fixture,
         impact_calc_fixture,
     ):
         """Test that ImpactForecast is returned correctly"""
-
+        impact = ImpactCalc(
+            exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
+        ).impact(assign_centroids=True, save_mat=True)
         # check that impact is indeed ImpactForecast
         assert isinstance(impact, ImpactForecast)
         np.testing.assert_array_equal(
@@ -712,7 +719,7 @@ class TestImpactCalcForecast:
         np.testing.assert_array_equal(impact.member, hazard_forecast_fixture.member)
 
     def test_impact_forecast_empty_impmat_error(
-        hazard_forecast_fixture, exposure_fixture, impact_func_set_fixture
+        self, hazard_forecast_fixture, exposure_fixture, impact_func_set_fixture
     ):
         """Test that error is raised when trying to compute impact forecast
         without saving impact matrix
@@ -720,21 +727,20 @@ class TestImpactCalcForecast:
         icalc = ImpactCalc(
             exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
         )
-        with self.assertRaises(ValueError) as cm:
-            icalc.impact(assign_centroids=False, save_mat=False)
-        no_impmat_exception = cm.exception
-        self.assertEqual(
-            no_impmat_exception.args[0],
+        no_impmat_exception = (
             "Saving impact matrix is required when using HazardForecast."
-            "Please set save_mat=True.",
+            "Please set save_mat=True."
         )
+        with pytest.raises(ValueError) as cm:
+            icalc.impact(assign_centroids=True, save_mat=False)
+        assert no_impmat_exception == str(cm.value)
 
     def test_impact_forecast_blocked_nonsense_attrs(
-        hazard_forecast_fixture, exposure_fixture, impact_func_set_fixture
+        self, hazard_forecast_fixture, exposure_fixture, impact_func_set_fixture
     ):
         """Test that nonsense attributes are blocked when computing impact forecast"""
-        lead_time = hazard_fixture.lead_time
-        member = hazard_fixture.member
+        lead_time = hazard_forecast_fixture.lead_time
+        member = hazard_forecast_fixture.member
 
         impact = ImpactCalc(
             exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
