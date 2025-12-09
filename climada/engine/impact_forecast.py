@@ -25,6 +25,7 @@ import numpy as np
 import scipy.sparse as sparse
 
 from ..util import log_level
+from ..util.checker import size
 from ..util.forecast import Forecast
 from .impact import Impact
 
@@ -52,8 +53,8 @@ class ImpactForecast(Forecast, Impact):
         impact_kwargs
             Keyword-arguments passed to ~:py:class`climada.engine.impact.Impact`.
         """
-        # TODO: Maybe assert array lengths?
         super().__init__(lead_time=lead_time, member=member, **impact_kwargs)
+        self._check_sizes()
 
     @classmethod
     def from_impact(
@@ -92,13 +93,16 @@ class ImpactForecast(Forecast, Impact):
 
     @property
     def at_event(self):
-        LOGGER.warning("at_event for forecasts is not yet implemented.")
+        """Get the total impact for each member/lead_time combination."""
+        LOGGER.warning(
+            "at_event gives the total impact for one specific combination of member and "
+            "lead_time."
+        )
         return self._at_event
 
     @at_event.setter
     def at_event(self, value):
-        """Set the total exposure value close to a hazard"""
-        LOGGER.warning("at_event for forecasts is not yet implemented.")
+        """Set the total impact for each member/lead_time combination."""
         self._at_event = value
 
     def local_exceedance_impact(
@@ -111,9 +115,14 @@ class ImpactForecast(Forecast, Impact):
         bin_decimals=None,
     ):
         """Compution of local exceedance impact for given return periods is not
-        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
-        Returns
-        -------
+        implemented for ImpactForecast.
+
+        See Also
+        --------
+        See :py:meth:`~climada.engine.impact.Impact.local_exceedance_impact`
+
+        Raises
+        ------
         NotImplementedError
         """
 
@@ -132,8 +141,13 @@ class ImpactForecast(Forecast, Impact):
         bin_decimals=None,
     ):
         """Compution of local return period for given impact thresholds is not
-        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
-        Returns
+        implemented for ImpactForecast.
+
+        See Also
+        --------
+        See :py:meth:`~climada.engine.impact.Impact.local_return_period`
+
+        Raises
         -------
         NotImplementedError
         """
@@ -145,14 +159,32 @@ class ImpactForecast(Forecast, Impact):
 
     def calc_freq_curve(self, return_per=None):
         """Computation of the impact exceedance frequency curve is not
-        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
-        Returns
-        -------
+        implemented for ImpactForecast.
+
+        See Also
+        --------
+        See :py:meth:`~climada.engine.impact.Impact.calc_freq_curve`
+
+        Raises
+        ------
         NotImplementedError
         """
 
         LOGGER.error("calc_freq_curve is not defined for ImpactForecast")
         raise NotImplementedError("calc_freq_curve is not defined for ImpactForecast")
+
+    def _check_sizes(self):
+        """Check sizes of forecast data vs. impact data.
+
+        Raises
+        ------
+        ValueError
+            If the sizes of the forecast data do not match the
+            :py:attr:`~climada.engine.impact.Impact.event_id`
+        """
+        num_entries = len(self.event_id)
+        size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
+        size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
     def _reduce_attrs(self, reduce_method: str):
         """
