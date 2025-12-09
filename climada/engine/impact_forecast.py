@@ -91,13 +91,16 @@ class ImpactForecast(Forecast, Impact):
 
     @property
     def at_event(self):
-        LOGGER.warning("at_event for forecasts is not yet implemented.")
+        """Get the total impact for each member/lead_time combination."""
+        LOGGER.warning(
+            "at_event gives the total impact for one specific combination of member and "
+            "lead_time."
+        )
         return self._at_event
 
     @at_event.setter
     def at_event(self, value):
-        """Set the total exposure value close to a hazard"""
-        LOGGER.warning("at_event for forecasts is not yet implemented.")
+        """Set the total impact for each member/lead_time combination."""
         self._at_event = value
 
     def local_exceedance_impact(
@@ -110,9 +113,14 @@ class ImpactForecast(Forecast, Impact):
         bin_decimals=None,
     ):
         """Compution of local exceedance impact for given return periods is not
-        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
-        Returns
-        -------
+        implemented for ImpactForecast.
+
+        See Also
+        --------
+        See :py:meth:`~climada.engine.impact.Impact.local_exceedance_impact`
+
+        Raises
+        ------
         NotImplementedError
         """
 
@@ -131,8 +139,13 @@ class ImpactForecast(Forecast, Impact):
         bin_decimals=None,
     ):
         """Compution of local return period for given impact thresholds is not
-        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
-        Returns
+        implemented for ImpactForecast.
+
+        See Also
+        --------
+        See :py:meth:`~climada.engine.impact.Impact.local_return_period`
+
+        Raises
         -------
         NotImplementedError
         """
@@ -144,9 +157,14 @@ class ImpactForecast(Forecast, Impact):
 
     def calc_freq_curve(self, return_per=None):
         """Computation of the impact exceedance frequency curve is not
-        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
-        Returns
-        -------
+        implemented for ImpactForecast.
+
+        See Also
+        --------
+        See :py:meth:`~climada.engine.impact.Impact.calc_freq_curve`
+
+        Raises
+        ------
         NotImplementedError
         """
 

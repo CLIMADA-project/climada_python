@@ -106,7 +106,7 @@ def test_impact_forecast_concat(impact_forecast, member):
 
 
 def test_impact_forecast_blocked_methods(impact_forecast):
-    """Check if ImpactForecast.exceedance_freq_curve raises NotImplementedError"""
+    """Check if blocked methods raise NotImplementedError"""
     with pytest.raises(NotImplementedError):
         impact_forecast.local_exceedance_impact(np.array([10, 50, 100]))
 
