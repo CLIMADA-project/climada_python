@@ -107,3 +107,19 @@ def test_hazard_forecast_select(haz_fc, lead_time, member):
     npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([3, 0])])
     npt.assert_array_equal(haz_fc_select.member, member[np.array([3, 0])])
     npt.assert_array_equal(haz_fc_select.lead_time, lead_time[np.array([3, 0])])
+
+
+def test_write_read_hazard_forecast(haz_fc, tmp_path):
+
+    file_name = tmp_path / "test_hazard_forecast.h5"
+
+    haz_fc.write_hdf5(file_name)
+    haz_fc_read = HazardForecast.from_hdf5(file_name)
+
+    assert haz_fc_read.lead_time.dtype == np.dtype("timedelta64[ns]")
+    assert haz_fc_read.member.dtype == int
+    for key in haz_fc.__dict__.keys():
+        if key not in ["intensity", "fraction"]:
+            npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
+        else:
+            (haz_fc.__dict__[key] != haz_fc_read.__dict__[key]).nnz == 0
