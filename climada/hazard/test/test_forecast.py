@@ -107,13 +107,46 @@ def test_hazard_forecast_concat(haz_fc, lead_time, member):
     npt.assert_array_equal(haz_fc_concat.member, np.concatenate([member, member]))
 
 
-def test_hazard_forecast_select(haz_fc, lead_time, member):
+@pytest.mark.parametrize(
+    "var, var_select",
+    [("event_id", "event_id"), ("event_name", "event_names"), ("date", "date")],
+)
+def test_hazard_forecast_select(haz_fc, lead_time, member, haz_kwargs, var, var_select):
     """Check if Hazard.select works on the derived class"""
-    haz_fc_select = haz_fc.select(event_id=[4, 1])
-    # NOTE: Events keep their original order
-    npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([3, 0])])
-    npt.assert_array_equal(haz_fc_select.member, member[np.array([3, 0])])
-    npt.assert_array_equal(haz_fc_select.lead_time, lead_time[np.array([3, 0])])
+
+    select_mask = np.array([3, 2])
+    ordered_select_mask = np.array([3, 2])
+    if var == "date":
+        # Date needs to be a valid delta
+        select_mask = np.array([2, 3])
+        ordered_select_mask = np.array([2, 3])
+
+    var_value = np.array(haz_kwargs[var])[select_mask]
+    # event_name is a list, convert to numpy array for indexing
+    haz_fc_sel = haz_fc.select(**{var_select: var_value})
+    # Note: order is preserved
+    npt.assert_array_equal(
+        haz_fc_sel.event_id,
+        haz_fc.event_id[ordered_select_mask],
+    )
+    npt.assert_array_equal(
+        haz_fc_sel.event_name,
+        np.array(haz_fc.event_name)[ordered_select_mask],
+    )
+    npt.assert_array_equal(haz_fc_sel.date, haz_fc.date[ordered_select_mask])
+    npt.assert_array_equal(haz_fc_sel.frequency, haz_fc.frequency[ordered_select_mask])
+    npt.assert_array_equal(haz_fc_sel.member, member[ordered_select_mask])
+    npt.assert_array_equal(haz_fc_sel.lead_time, lead_time[ordered_select_mask])
+    npt.assert_array_equal(
+        haz_fc_sel.intensity.todense(),
+        haz_fc.intensity.todense()[ordered_select_mask],
+    )
+    npt.assert_array_equal(
+        haz_fc_sel.fraction.todense(),
+        haz_fc.fraction.todense()[ordered_select_mask],
+    )
+
+    assert haz_fc_sel.centroids == haz_fc.centroids
 
 
 def test_write_read_hazard_forecast(haz_fc, tmp_path):
