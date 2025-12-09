@@ -122,4 +122,5 @@ def test_write_read_hazard_forecast(haz_fc, tmp_path):
         if key in ["intensity", "fraction"]:
             (haz_fc.__dict__[key] != haz_fc_read.__dict__[key]).nnz == 0
         else:
+            # npt.assert_array_equal also works for comparing int, float or list
             npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
