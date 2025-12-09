@@ -119,3 +119,35 @@ class ImpactForecast(Forecast, Impact):
         raise NotImplementedError(
             "local_exceedance_impact is not defined for ImpactForecast"
         )
+
+    def local_return_period(
+        self,
+        threshold_impact=(1000.0, 10000.0),
+        method="interpolate",
+        min_impact=0,
+        log_frequency=True,
+        log_impact=True,
+        bin_decimals=None,
+    ):
+        """Compution of local return period for given impact thresholds is not
+        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
+        Returns
+        -------
+        NotImplementedError
+        """
+
+        LOGGER.error("local_return_period is not defined for ImpactForecast")
+        raise NotImplementedError(
+            "local_return_period is not defined for ImpactForecast"
+        )
+
+    def calc_freq_curve(self, return_per=None):
+        """Computation of the impact exceedance frequency curve is not
+        implemented for ImpactForecast. See climada.engine.impact.Impact for details.
+        Returns
+        -------
+        NotImplementedError
+        """
+
+        LOGGER.error("calc_freq_curve is not defined for ImpactForecast")
+        raise NotImplementedError("calc_freq_curve is not defined for ImpactForecast")
