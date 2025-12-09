@@ -41,13 +41,15 @@ def impact(impact_kwargs):
 
 
 @pytest.fixture
-def lead_time():
-    return pd.timedelta_range(start="1 day", periods=6).to_numpy()
+def lead_time(impact_kwargs):
+    return pd.timedelta_range(
+        start="1 day", periods=len(impact_kwargs["event_id"])
+    ).to_numpy()
 
 
 @pytest.fixture
-def member():
-    return np.arange(6)
+def member(impact_kwargs):
+    return np.arange(len(impact_kwargs["event_id"]))
 
 
 @pytest.fixture
@@ -76,6 +78,12 @@ class TestImpactForecastInit:
         npt.assert_array_equal(forecast1.member, member)
         self.assert_impact_kwargs(forecast1, **impact_kwargs)
 
+    def test_impact_forecast_init_error(self, impact, impact_kwargs, lead_time, member):
+        with pytest.raises(ValueError, match="Forecast.lead_time"):
+            ImpactForecast(lead_time=lead_time[:-2], member=member, **impact_kwargs)
+        with pytest.raises(ValueError, match="Forecast.member"):
+            ImpactForecast.from_impact(impact, lead_time=lead_time, member=member[1:])
+
     def test_impact_forecast_from_impact(
         self, impact_forecast, impact_kwargs, lead_time, member
     ):
@@ -84,16 +92,58 @@ class TestImpactForecastInit:
         self.assert_impact_kwargs(impact_forecast, **impact_kwargs)
 
 
-def test_impact_forecast_select(impact_forecast, lead_time, member, impact_kwargs):
+@pytest.mark.parametrize(
+    "var, var_select",
+    [("event_id", "event_ids"), ("event_name", "event_names"), ("date", "dates")],
+)
+def test_impact_forecast_select_events(
+    impact_forecast, lead_time, member, impact_kwargs, var, var_select
+):
     """Check if Impact.select works on the derived class"""
-    event_ids = impact_kwargs["event_id"][np.array([2, 0])]
-    impact_fc = impact_forecast.select(event_ids=event_ids)
+    select_mask = np.array([2, 1])
+    ordered_select_mask = np.array([1, 2])
+    if var == "date":
+        # Date needs to be a valid delta
+        select_mask = np.array([1, 2])
+        ordered_select_mask = np.array([1, 2])
+
+    var_value = np.array(impact_kwargs[var])[select_mask]
+    # event_name is a list, convert to numpy array for indexing
+    impact_fc = impact_forecast.select(**{var_select: var_value})
     # NOTE: Events keep their original order
     npt.assert_array_equal(
-        impact_fc.event_id, impact_forecast.event_id[np.array([0, 2])]
+        impact_fc.event_id,
+        impact_forecast.event_id[ordered_select_mask],
     )
-    npt.assert_array_equal(impact_fc.member, member[np.array([0, 2])])
-    npt.assert_array_equal(impact_fc.lead_time, lead_time[np.array([0, 2])])
+    npt.assert_array_equal(
+        impact_fc.event_name,
+        np.array(impact_forecast.event_name)[ordered_select_mask],
+    )
+    npt.assert_array_equal(impact_fc.date, impact_forecast.date[ordered_select_mask])
+    npt.assert_array_equal(
+        impact_fc.frequency, impact_forecast.frequency[ordered_select_mask]
+    )
+    npt.assert_array_equal(impact_fc.member, member[ordered_select_mask])
+    npt.assert_array_equal(impact_fc.lead_time, lead_time[ordered_select_mask])
+    npt.assert_array_equal(
+        impact_fc.imp_mat.todense(),
+        impact_forecast.imp_mat.todense()[ordered_select_mask],
+    )
+
+
+def test_impact_forecast_select_exposure(
+    impact_forecast, lead_time, member, impact_kwargs
+):
+    """Check if Impact.select works on the derived class"""
+    exp_col = 0
+    select_mask = np.array([exp_col])
+    coord_exp = impact_kwargs["coord_exp"][select_mask]
+    impact_fc = impact_forecast.select(coord_exp=coord_exp)
+    npt.assert_array_equal(impact_fc.member, member)
+    npt.assert_array_equal(impact_fc.lead_time, lead_time)
+    npt.assert_array_equal(
+        impact_fc.imp_mat.todense(), impact_forecast.imp_mat.todense()[:, exp_col]
+    )
 
 
 @pytest.mark.skip("Concat from base class does not work")
