@@ -273,9 +273,13 @@ class ImpactCalc:
         Impact or ImpactForecast
             Empty impact object with correct array sizes.
         """
+        if isinstance(self.hazard, HazardForecast):
+            eai_exp = np.nan * np.ones(self.n_exp_pnt)
+            aai_agg = np.nan
+        else:
+            eai_exp = np.zeros(self.n_exp_pnt)
+            aai_agg = 0.0
         at_event = np.zeros(self.n_events)
-        eai_exp = np.zeros(self.n_exp_pnt)
-        aai_agg = 0.0
         if save_mat:
             imp_mat = sparse.csr_matrix(
                 (self.n_events, self.n_exp_pnt), dtype=np.float64

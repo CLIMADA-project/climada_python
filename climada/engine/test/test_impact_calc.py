@@ -51,8 +51,7 @@ DATA_FOLDER.mkdir(exist_ok=True)
 
 
 @pytest.fixture(autouse=True)
-def exposure_fixture():
-    n_exp = 50
+def exposure_fixture(n_exp=50):
     lats = np.linspace(-10, 10, n_exp)
     lons = np.linspace(-10, 10, n_exp)
     data = gpd.GeoDataFrame(
@@ -748,6 +747,15 @@ class TestImpactCalcForecast:
         assert np.isnan(impact.aai_agg)
         assert np.all(np.isnan(impact.eai_exp))
         assert impact.eai_exp.shape == (len(exposure_fixture.gdf),)
+
+        # test that aai_agg and eai_exp are also nan when 0-size exp
+        empty_exp = exposure_fixture(n_exp=0)
+        impact_empty = ImpactCalc(
+            exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
+        ).impact(assign_centroids=True, save_mat=True)
+        assert np.isnan(impact_empty.aai_agg)
+        assert np.all(np.isnan(impact_empty.eai_exp))
+        assert impact_empty.eai_exp.shape == (len(empty_exp.gdf),)
 
 
 class TestImpactMatrixCalc(unittest.TestCase):
