@@ -91,6 +91,7 @@ class ImpactForecast(Forecast, Impact):
 
     @property
     def at_event(self):
+        LOGGER.warning("at_event for forecasts is not yet implemented.")
         return self._at_event
 
     @at_event.setter
