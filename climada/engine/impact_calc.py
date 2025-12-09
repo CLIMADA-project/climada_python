@@ -232,6 +232,14 @@ class ImpactCalc:
             at_event, eai_exp, aai_agg = self.risk_metrics(
                 imp_mat, self.hazard.frequency
             )
+            if isinstance(self.hazard, HazardForecast):
+                eai_exp = np.nan * np.ones(eai_exp.shape, dtype=eai_exp.dtype)
+                aai_agg = np.nan * np.ones(aai_agg.shape, dtype=aai_agg.dtype)
+                LOGGER.warning(
+                    "eai_exp and aai_agg are undefined with forecasts. "
+                    "Setting them to empty arrays."
+                )
+
         else:
             if isinstance(self.hazard, HazardForecast):
                 raise ValueError(
