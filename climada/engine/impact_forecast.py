@@ -184,3 +184,39 @@ class ImpactForecast(Forecast, Impact):
         num_entries = len(self.event_id)
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
+
+    def select(
+        self,
+        event_ids=None,
+        event_names=None,
+        dates=None,
+        coord_exp=None,
+        reset_frequency=False,
+        member=None,
+        lead_time=None,
+    ):
+        if member is not None or lead_time is not None:
+            mask_member = (
+                self.idx_member(member)
+                if member is not None
+                else np.full_like(self.member, True, dtype=bool)
+            )
+            mask_lead_time = (
+                self.idx_lead_time(lead_time)
+                if lead_time is not None
+                else np.full_like(self.lead_time, True, dtype=bool)
+            )
+            mask_event_id = np.asarray(self.event_id)[(mask_member & mask_lead_time)]
+            event_ids = (
+                np.intersect1d(event_ids, mask_event_id)
+                if event_ids is not None
+                else mask_event_id
+            )
+
+        return super().select(
+            event_ids=event_ids,
+            event_names=event_names,
+            dates=dates,
+            coord_exp=coord_exp,
+            reset_frequency=reset_frequency,
+        )
