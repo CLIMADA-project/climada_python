@@ -41,13 +41,13 @@ def hazard(haz_kwargs):
 
 
 @pytest.fixture
-def lead_time():
-    return pd.timedelta_range("1h", periods=6).to_numpy()
+def lead_time(haz_kwargs):
+    return pd.timedelta_range("1h", periods=len(haz_kwargs["event_id"])).to_numpy()
 
 
 @pytest.fixture
-def member():
-    return np.arange(6)
+def member(haz_kwargs):
+    return np.arange(len(haz_kwargs["event_id"]))
 
 
 @pytest.fixture
@@ -76,6 +76,13 @@ def test_init_hazard_forecast(haz_fc, member, lead_time, haz_kwargs):
     assert haz_fc.lead_time.dtype == lead_time.dtype
     npt.assert_array_equal(haz_fc.member, member)
     assert_hazard_kwargs(haz_fc, **haz_kwargs)
+
+
+def test_init_hazard_forecast_error(hazard, member, lead_time, haz_kwargs):
+    with pytest.raises(ValueError, match="Forecast.lead_time"):
+        HazardForecast(lead_time=lead_time[:-2], member=member, **haz_kwargs)
+    with pytest.raises(ValueError, match="Forecast.member"):
+        HazardForecast.from_hazard(hazard, lead_time=lead_time, member=member[1:])
 
 
 def test_from_hazard(lead_time, member, hazard, haz_kwargs):

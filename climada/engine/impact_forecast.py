@@ -24,6 +24,7 @@ import logging
 import numpy as np
 
 from ..util import log_level
+from ..util.checker import size
 from ..util.forecast import Forecast
 from .impact import Impact
 
@@ -51,8 +52,8 @@ class ImpactForecast(Forecast, Impact):
         impact_kwargs
             Keyword-arguments passed to ~:py:class`climada.engine.impact.Impact`.
         """
-        # TODO: Maybe assert array lengths?
         super().__init__(lead_time=lead_time, member=member, **impact_kwargs)
+        self._check_sizes()
 
     @classmethod
     def from_impact(
@@ -88,3 +89,16 @@ class ImpactForecast(Forecast, Impact):
                 imp_mat=impact.imp_mat,
                 haz_type=impact.haz_type,
             )
+
+    def _check_sizes(self):
+        """Check sizes of forecast data vs. impact data.
+
+        Raises
+        ------
+        ValueError
+            If the sizes of the forecast data do not match the
+            :py:attr:`~climada.engine.impact.Impact.event_id`
+        """
+        num_entries = len(self.event_id)
+        size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
+        size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
