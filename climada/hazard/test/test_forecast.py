@@ -100,42 +100,43 @@ def test_hazard_forecast_concat(haz_fc, lead_time, member):
     npt.assert_array_equal(haz_fc_concat.member, np.concatenate([member, member]))
 
 
-def test_hazard_forecast_select(haz_fc, lead_time, member, haz_kwargs):
+@pytest.mark.parametrize(
+    "var, var_select",
+    [("event_id", "event_id"), ("event_name", "event_names"), ("date", "date")],
+)
+def test_hazard_forecast_select(haz_fc, lead_time, member, haz_kwargs, var, var_select):
     """Check if Hazard.select works on the derived class"""
 
     select_mask = np.array([3, 2])
-    ordered_select_mask = np.array([2, 3])
-    vars_to_select = {
-        "event_id": "event_id",
-        "event_name": "event_names",
-        "date": "date",
-    }
+    ordered_select_mask = np.array([3, 2])
+    if var == "date":
+        # Date needs to be a valid delta
+        select_mask = np.array([2, 3])
+        ordered_select_mask = np.array([2, 3])
 
-    for var, var_select in vars_to_select.items():
-        var_value = np.array(haz_kwargs[var])[select_mask]
-        # event_name is a list, convert to numpy array for indexing
-        haz_fc_sel = haz_fc.select(**{var_select: var_value})
-        npt.assert_array_equal(
-            haz_fc_sel.event_id,
-            haz_fc.event_id[ordered_select_mask],
-        )
-        npt.assert_array_equal(
-            haz_fc_sel.event_name,
-            np.array(haz_fc.event_name)[ordered_select_mask],
-        )
-        npt.assert_array_equal(haz_fc_sel.date, haz_fc.date[ordered_select_mask])
-        npt.assert_array_equal(
-            haz_fc_sel.frequency, haz_fc.frequency[ordered_select_mask]
-        )
-        npt.assert_array_equal(haz_fc_sel.member, member[ordered_select_mask])
-        npt.assert_array_equal(haz_fc_sel.lead_time, lead_time[ordered_select_mask])
-        npt.assert_array_equal(
-            haz_fc_sel.intensity.todense(),
-            haz_fc.intensity.todense()[ordered_select_mask],
-        )
-        npt.assert_array_equal(
-            haz_fc_sel.fraction.todense(),
-            haz_fc.fraction.todense()[ordered_select_mask],
-        )
+    var_value = np.array(haz_kwargs[var])[select_mask]
+    # event_name is a list, convert to numpy array for indexing
+    haz_fc_sel = haz_fc.select(**{var_select: var_value})
+    # Note: order is preserved
+    npt.assert_array_equal(
+        haz_fc_sel.event_id,
+        haz_fc.event_id[ordered_select_mask],
+    )
+    npt.assert_array_equal(
+        haz_fc_sel.event_name,
+        np.array(haz_fc.event_name)[ordered_select_mask],
+    )
+    npt.assert_array_equal(haz_fc_sel.date, haz_fc.date[ordered_select_mask])
+    npt.assert_array_equal(haz_fc_sel.frequency, haz_fc.frequency[ordered_select_mask])
+    npt.assert_array_equal(haz_fc_sel.member, member[ordered_select_mask])
+    npt.assert_array_equal(haz_fc_sel.lead_time, lead_time[ordered_select_mask])
+    npt.assert_array_equal(
+        haz_fc_sel.intensity.todense(),
+        haz_fc.intensity.todense()[ordered_select_mask],
+    )
+    npt.assert_array_equal(
+        haz_fc_sel.fraction.todense(),
+        haz_fc.fraction.todense()[ordered_select_mask],
+    )
 
-        assert haz_fc_sel.centroids == haz_fc.centroids
+    assert haz_fc_sel.centroids == haz_fc.centroids
