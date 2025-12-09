@@ -29,6 +29,8 @@ from scipy import sparse
 
 from climada import CONFIG
 from climada.engine.impact import Impact
+from climada.engine.impact_forecast import ImpactForecast
+from climada.hazard.forecast import HazardForecast
 
 LOGGER = logging.getLogger(__name__)
 
@@ -217,7 +219,7 @@ class ImpactCalc:
 
         Returns
         -------
-        Impact
+        Impact or ImpactForecast
             Impact Object initialize from the impact matrix
 
         See Also
@@ -230,12 +232,31 @@ class ImpactCalc:
             at_event, eai_exp, aai_agg = self.risk_metrics(
                 imp_mat, self.hazard.frequency
             )
+            if isinstance(self.hazard, HazardForecast):
+                eai_exp = np.full_like(eai_exp, np.nan, dtype=eai_exp.dtype)
+                aai_agg = np.full_like(aai_agg, np.nan, dtype=aai_agg.dtype)
+                LOGGER.warning(
+                    "eai_exp and aai_agg are undefined with forecasts. "
+                    "Setting them to NaN arrays."
+                )
+
         else:
+            if isinstance(self.hazard, HazardForecast):
+                raise ValueError(
+                    "Saving impact matrix is required when using HazardForecast."
+                    "Please set save_mat=True."
+                )
             imp_mat = None
             at_event, eai_exp, aai_agg = self.stitch_risk_metrics(imp_mat_gen)
-        return Impact.from_eih(
+
+        impact = Impact.from_eih(
             self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
         )
+        if isinstance(self.hazard, HazardForecast):
+            return ImpactForecast.from_impact(
+                impact, self.hazard.lead_time, self.hazard.member
+            )
+        return impact
 
     def _return_empty(self, save_mat):
         """
@@ -248,21 +269,37 @@ class ImpactCalc:
 
         Returns
         -------
-        Impact
+        Impact or ImpactForecast
             Empty impact object with correct array sizes.
         """
         at_event = np.zeros(self.n_events)
-        eai_exp = np.zeros(self.n_exp_pnt)
-        aai_agg = 0.0
+        if isinstance(self.hazard, HazardForecast):
+            eai_exp = np.full(self.n_exp_pnt, np.nan)
+            aai_agg = np.nan
+        else:
+            eai_exp = np.zeros(self.n_exp_pnt)
+            aai_agg = 0.0
+
         if save_mat:
             imp_mat = sparse.csr_matrix(
                 (self.n_events, self.n_exp_pnt), dtype=np.float64
             )
         else:
+            if isinstance(self.hazard, HazardForecast):
+                raise ValueError(
+                    "Saving impact matrix is required when using HazardForecast. "
+                    "Please set save_mat=True."
+                )
             imp_mat = None
-        return Impact.from_eih(
+
+        impact = Impact.from_eih(
             self.exposures, self.hazard, at_event, eai_exp, aai_agg, imp_mat
         )
+        if isinstance(self.hazard, HazardForecast):
+            return ImpactForecast.from_impact(
+                impact, self.hazard.lead_time, self.hazard.member
+            )
+        return impact
 
     def minimal_exp_gdf(
         self, impf_col, assign_centroids, ignore_cover, ignore_deductible

@@ -153,3 +153,15 @@ def test_impact_forecast_concat(impact_forecast, member):
         [impact_forecast, impact_forecast], reset_event_ids=True
     )
     npt.assert_array_equal(impact_fc.member, np.concatenate([member, member]))
+
+
+def test_impact_forecast_blocked_methods(impact_forecast):
+    """Check if blocked methods raise NotImplementedError"""
+    with pytest.raises(NotImplementedError):
+        impact_forecast.local_exceedance_impact(np.array([10, 50, 100]))
+
+    with pytest.raises(NotImplementedError):
+        impact_forecast.local_return_period(np.array([10, 50, 100]))
+
+    with pytest.raises(NotImplementedError):
+        impact_forecast.calc_freq_curve(np.array([10, 50, 100]))
