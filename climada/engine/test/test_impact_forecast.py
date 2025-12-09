@@ -86,7 +86,7 @@ class TestImpactForecastInit:
 
 def test_impact_forecast_select(impact_forecast, lead_time, member, impact_kwargs):
     """Check if Impact.select works on the derived class"""
-    select_mask = np.array([1, 2])
+    select_mask = np.array([2, 1])
     ordered_select_mask = np.array([1, 2])
     vars_to_select = {
         "event_id": "event_ids",
