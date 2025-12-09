@@ -115,3 +115,39 @@ def test_impact_forecast_blocked_methods(impact_forecast):
 
     with pytest.raises(NotImplementedError):
         impact_forecast.calc_freq_curve(np.array([10, 50, 100]))
+
+
+def test_impact_forecast_mean_min_max(impact_forecast):
+    """Check mean, min, and max methods for ImpactForecast"""
+    imp_fcst_mean = impact_forecast.mean()
+    imp_fcst_min = impact_forecast.min()
+    imp_fcst_max = impact_forecast.max()
+    # sparse.csr_matrix(
+    #        np.array([[0, 0], [1, 1], [2, 2], [3, 3], [30, 30], [31, 31]])
+
+    # assert imp_mat
+    npt.assert_array_equal(
+        imp_fcst_mean.imp_mat.todense(), impact_forecast.imp_mat.todense().mean(axis=0)
+    )
+    npt.assert_array_equal(imp_fcst_min.imp_mat.todense(), np.array([[0, 0]]))
+    npt.assert_array_equal(imp_fcst_max.imp_mat.todense(), np.array([[31, 31]]))
+    # assert at_event
+    npt.assert_array_equal(
+        imp_fcst_mean.at_event, impact_forecast.at_event.mean()
+    )  # 134/6
+    npt.assert_array_equal(imp_fcst_min.at_event, impact_forecast.at_event.min())
+    npt.assert_array_equal(imp_fcst_max.at_event, impact_forecast.at_event.max())
+
+    # check that attributes where reduced correctly
+    assert imp_fcst_mean.event_name[0] == "mean"
+    assert imp_fcst_min.event_name[0] == "min"
+    assert imp_fcst_max.event_name[0] == "max"
+    assert imp_fcst_mean.event_id[0] == 0
+    assert imp_fcst_min.event_id[0] == 0
+    assert imp_fcst_max.event_id[0] == 0
+    assert imp_fcst_mean.frequency == 0
+    assert imp_fcst_min.frequency == 0
+    assert imp_fcst_max.frequency == 0
+    assert imp_fcst_mean.date == impact_forecast.date.min()
+    assert imp_fcst_min.date == impact_forecast.date.min()
+    assert imp_fcst_max.date == impact_forecast.date.min()

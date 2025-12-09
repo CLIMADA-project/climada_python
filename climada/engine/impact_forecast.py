@@ -22,6 +22,7 @@ Define Forecast variant of Impact.
 import logging
 
 import numpy as np
+import scipy.sparse as sparse
 
 from ..util import log_level
 from ..util.forecast import Forecast
@@ -152,3 +153,137 @@ class ImpactForecast(Forecast, Impact):
 
         LOGGER.error("calc_freq_curve is not defined for ImpactForecast")
         raise NotImplementedError("calc_freq_curve is not defined for ImpactForecast")
+
+    def _reduce_attrs(self, reduce_method: str):
+        """
+        Reduce the attributes of an ImpactForecast to a single value.
+
+        Attributes are modified as follows:
+        - event_id: set to [0]
+        - event_name: set to [reduce_method]
+        - date: set to the minimum value
+        - frequency: set to 0
+
+        Parameters
+        ----------
+        reduce_method : str
+            The reduction method used to reduce the attributes.
+        """
+        red_event_id = np.asarray([0])
+        red_event_name = np.asarray([reduce_method])
+        red_date = np.array([self.date.min()])
+        red_frequency = np.array([0])
+        return red_event_id, red_event_name, red_date, red_frequency
+
+    def min(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the minimum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.min(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        red_event_id, red_event_name, red_date, red_frequency = self._reduce_attrs(
+            "min"
+        )
+        return ImpactForecast(
+            lead_time=self.lead_time,
+            member=self.member,
+            event_id=red_event_id,
+            event_name=red_event_name,
+            date=red_date,
+            frequency=red_frequency,
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+        )
+
+    def max(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the maximum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.max(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        red_event_id, red_event_name, red_date, red_frequency = self._reduce_attrs(
+            "max"
+        )
+        return ImpactForecast(
+            lead_time=self.lead_time,
+            member=self.member,
+            event_id=red_event_id,
+            event_name=red_event_name,
+            date=red_date,
+            frequency=red_frequency,
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+        )
+
+    def mean(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the mean value.
+
+        The mean value is computed by taking the mean of the impact matrix along the
+        exposure points axis (axis=1) and then taking the mean of the resulting array.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        None
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        red_event_id, red_event_name, red_date, red_frequency = self._reduce_attrs(
+            "mean"
+        )
+        return ImpactForecast(
+            lead_time=self.lead_time,
+            member=self.member,
+            event_id=red_event_id,
+            event_name=red_event_name,
+            date=red_date,
+            frequency=red_frequency,
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+        )
