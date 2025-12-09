@@ -50,8 +50,9 @@ DATA_FOLDER = DEMO_DIR / "test-results"
 DATA_FOLDER.mkdir(exist_ok=True)
 
 
-@pytest.fixture(autouse=True)
-def exposure_fixture(n_exp=50):
+@pytest.fixture(params=[50, 1, 0])
+def exposure(request):
+    n_exp = request.param
     lats = np.linspace(-10, 10, n_exp)
     lons = np.linspace(-10, 10, n_exp)
     data = gpd.GeoDataFrame(
@@ -67,19 +68,19 @@ def exposure_fixture(n_exp=50):
     return exposures
 
 
-@pytest.fixture(autouse=True)
-def hazard_fixture(exposure_fixture):
+@pytest.fixture
+def hazard(exposure):
     n_events = 10
     centroids = Centroids(
-        lat=exposure_fixture.gdf.geometry.x,
-        lon=exposure_fixture.gdf.geometry.y,
+        lat=exposure.gdf.geometry.x,
+        lon=exposure.gdf.geometry.y,
     )
     intensity = sparse.csr_matrix(
-        np.ones((n_events, exposure_fixture.gdf.shape[0])) * 50
+        np.ones((n_events, exposure.gdf.shape[0])) * 50
     )  # uniform intensity
     haz = Hazard()
     haz.event_id = np.arange(n_events)
-    haz.event_name = haz.event_id
+    haz.event_name = haz.event_id.tolist()
     haz.haz_type = "TC"
     haz.date = haz.event_id
     haz.frequency_unit = "m/s"
@@ -89,24 +90,28 @@ def hazard_fixture(exposure_fixture):
     return haz
 
 
-@pytest.fixture(autouse=True)
-def hazard_forecast_fixture(hazard_fixture):
-    n_events = hazard_fixture.size
+@pytest.fixture
+def hazard_forecast(hazard):
+    n_events = hazard.size
     lead_time = pd.timedelta_range("1h", periods=n_events).to_numpy()
-    member = np.arange(10)
+    member = np.arange(n_events)
     haz_fc = HazardForecast.from_hazard(
-        hazard=hazard_fixture,
+        hazard=hazard,
         lead_time=lead_time,
         member=member,
     )
     return haz_fc
 
 
-@pytest.fixture(autouse=True)
-def impact_func_set_fixture(exposure_fixture, hazard_fixture):
+@pytest.fixture
+def impact_func_set(exposure, hazard):
     step_impf = ImpactFunc()
-    step_impf.id = exposure_fixture.data[f"impf_{hazard_fixture.haz_type}"].unique()[0]
-    step_impf.haz_type = hazard_fixture.haz_type
+    step_impf.id = 1
+    try:
+        step_impf.id = exposure.data[f"impf_{hazard.haz_type}"].unique()[0]
+    except IndexError:
+        pass
+    step_impf.haz_type = hazard.haz_type
     step_impf.name = "fixture step function"
     step_impf.intensity_unit = ""
     step_impf.intensity = np.array([0, 0.495, 0.4955, 0.5, 1, 10])
@@ -115,18 +120,12 @@ def impact_func_set_fixture(exposure_fixture, hazard_fixture):
     return ImpactFuncSet([step_impf])
 
 
-@pytest.fixture(autouse=True)
-def impact_calc_fixture(exposure_fixture, hazard_fixture, impact_func_set_fixture):
-    imp_mat = np.ones(
-        (
-            len(hazard_fixture.event_id),
-            exposure_fixture.gdf.shape[0],
-            exposure_fixture.gdf.shape[0],
-        )
-    )
-    aai_agg = np.sum(exposure_fixture.gdf["value"]) * hazard_fixture.frequency[0]
-    eai_exp = np.ones(exposure_fixture.gdf.shape[0]) * hazard_fixture.frequency[0]
-    at_event = np.ones(hazard_fixture.size) * np.sum(exposure_fixture.gdf["value"])
+@pytest.fixture
+def impact_calc(exposure, hazard):
+    imp_mat = np.ones((len(hazard.event_id), exposure.gdf.shape[0]))
+    aai_agg = np.sum(exposure.gdf["value"]) * hazard.frequency[0]
+    eai_exp = np.ones(exposure.gdf.shape[0]) * hazard.frequency[0]
+    at_event = np.ones(hazard.size) * np.sum(exposure.gdf["value"])
     return {
         "imp_mat": imp_mat,
         "aai_agg": aai_agg,
@@ -135,17 +134,18 @@ def impact_calc_fixture(exposure_fixture, hazard_fixture, impact_func_set_fixtur
     }
 
 
-def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=None):
+def check_impact(imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=None):
     """Test properties of impacts"""
-    self.assertEqual(len(haz.event_id), len(imp.at_event))
-    self.assertIsInstance(imp, Impact)
+    # NOTE: Correctly compares NaNs!
+    assert len(haz.event_id) == len(imp.at_event)
+    assert isinstance(imp, Impact)
     np.testing.assert_allclose(imp.coord_exp[:, 0], exp.latitude)
     np.testing.assert_allclose(imp.coord_exp[:, 1], exp.longitude)
-    self.assertAlmostEqual(imp.aai_agg, aai_agg, 3)
+    np.testing.assert_allclose(imp.aai_agg, aai_agg, rtol=1e-3)
     np.testing.assert_allclose(imp.eai_exp, eai_exp, rtol=1e-5)
     np.testing.assert_allclose(imp.at_event, at_event, rtol=1e-5)
     if imp_mat_array is not None:
-        np.testing.assert_allclose(imp.imp_mat.toarray().ravel(), imp_mat_array.ravel())
+        np.testing.assert_allclose(imp.imp_mat.todense(), imp_mat_array)
 
 
 class TestImpactCalc(unittest.TestCase):
@@ -389,7 +389,7 @@ class TestImpactCalc(unittest.TestCase):
             ]
         )
         # fmt: on
-        check_impact(self, impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
+        check_impact(impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
     def test_empty_impact(self):
         """Check that empty impact is returned if no centroids match the exposures"""
@@ -400,11 +400,11 @@ class TestImpactCalc(unittest.TestCase):
         aai_agg = 0.0
         eai_exp = np.zeros(len(exp.gdf))
         at_event = np.zeros(HAZ.size)
-        check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, None)
+        check_impact(impact, HAZ, exp, aai_agg, eai_exp, at_event, None)
 
         impact = icalc.impact(save_mat=True, assign_centroids=False)
         imp_mat_array = sparse.csr_matrix((HAZ.size, len(exp.gdf))).toarray()
-        check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, imp_mat_array)
+        check_impact(impact, HAZ, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
     def test_single_event_impact(self):
         """Check impact for single event"""
@@ -414,11 +414,11 @@ class TestImpactCalc(unittest.TestCase):
         aai_agg = 0.0
         eai_exp = np.zeros(len(ENT.exposures.gdf))
         at_event = np.array([0])
-        check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, None)
+        check_impact(impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, None)
         impact = icalc.impact(save_mat=True, assign_centroids=False)
         imp_mat_array = sparse.csr_matrix((haz.size, len(ENT.exposures.gdf))).toarray()
         check_impact(
-            self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, imp_mat_array
+            impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, imp_mat_array
         )
 
     def test_calc_impact_save_mat_pass(self):
@@ -692,70 +692,47 @@ class TestImpactCalc(unittest.TestCase):
         imp = ImpactCalc(exp, impf_set, haz).impact(
             assign_centroids=False, save_mat=True
         )
-        check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
+        check_impact(imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
 
 
 class TestImpactCalcForecast:
     """Test impact calc for forecast hazard"""
 
-    def test_impactForecast_type(
+    @pytest.fixture
+    def impact_calc_forecast(self, impact_calc):
+        """Write NaNs to attributes that are not used"""
+        impact_calc["aai_agg"] = np.full_like(impact_calc["aai_agg"], np.nan)
+        impact_calc["eai_exp"] = np.full_like(impact_calc["eai_exp"], np.nan)
+
+    def test_impact_forecast(
         self,
-        exposure_fixture,
-        hazard_forecast_fixture,
-        impact_func_set_fixture,
-        impact_calc_fixture,
+        exposure,
+        hazard_forecast,
+        impact_func_set,
+        impact_calc,
+        impact_calc_forecast,
     ):
         """Test that ImpactForecast is returned correctly"""
-        impact = ImpactCalc(
-            exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
-        ).impact(assign_centroids=True, save_mat=True)
-        # check that impact is indeed ImpactForecast
-        assert isinstance(impact, ImpactForecast)
-        np.testing.assert_array_equal(
-            impact.lead_time, hazard_forecast_fixture.lead_time
+        impact = ImpactCalc(exposure, impact_func_set, hazard_forecast).impact(
+            assign_centroids=True, save_mat=True
         )
-        assert impact.lead_time.dtype == hazard_forecast_fixture.lead_time.dtype
-        np.testing.assert_array_equal(impact.member, hazard_forecast_fixture.member)
+        # check that impact is indeed ImpactForecast
+        impact_calc["imp_mat_array"] = impact_calc.pop("imp_mat")
+        check_impact(imp=impact, haz=hazard_forecast, exp=exposure, **impact_calc)
+        assert isinstance(impact, ImpactForecast)
+        np.testing.assert_array_equal(impact.lead_time, hazard_forecast.lead_time)
+        assert impact.lead_time.dtype == hazard_forecast.lead_time.dtype
+        np.testing.assert_array_equal(impact.member, hazard_forecast.member)
 
     def test_impact_forecast_empty_impmat_error(
-        self, hazard_forecast_fixture, exposure_fixture, impact_func_set_fixture
+        self, hazard_forecast, exposure, impact_func_set
     ):
         """Test that error is raised when trying to compute impact forecast
         without saving impact matrix
         """
-        icalc = ImpactCalc(
-            exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
-        )
-        no_impmat_exception = (
-            "Saving impact matrix is required when using HazardForecast."
-            "Please set save_mat=True."
-        )
-        with pytest.raises(ValueError) as cm:
+        icalc = ImpactCalc(exposure, impact_func_set, hazard_forecast)
+        with pytest.raises(ValueError, match="Saving impact matrix is required"):
             icalc.impact(assign_centroids=True, save_mat=False)
-        assert no_impmat_exception == str(cm.value)
-
-    def test_impact_forecast_blocked_nonsense_attrs(
-        self, hazard_forecast_fixture, exposure_fixture, impact_func_set_fixture
-    ):
-        """Test that nonsense attributes are blocked when computing impact forecast"""
-        lead_time = hazard_forecast_fixture.lead_time
-        member = hazard_forecast_fixture.member
-
-        impact = ImpactCalc(
-            exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
-        ).impact(assign_centroids=True, save_mat=True)
-        assert np.isnan(impact.aai_agg)
-        assert np.all(np.isnan(impact.eai_exp))
-        assert impact.eai_exp.shape == (len(exposure_fixture.gdf),)
-
-        # test that aai_agg and eai_exp are also nan when 0-size exp
-        empty_exp = exposure_fixture(n_exp=0)
-        impact_empty = ImpactCalc(
-            exposure_fixture, impact_func_set_fixture, hazard_forecast_fixture
-        ).impact(assign_centroids=True, save_mat=True)
-        assert np.isnan(impact_empty.aai_agg)
-        assert np.all(np.isnan(impact_empty.eai_exp))
-        assert impact_empty.eai_exp.shape == (len(empty_exp.gdf),)
 
 
 class TestImpactMatrixCalc(unittest.TestCase):
