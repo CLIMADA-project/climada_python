@@ -63,7 +63,7 @@ class Forecast:
         Parameters
         ----------
         member : np.ndarray
-            Forecast ensemble members, given as integers.
+            Array of ensemble members (ints) for which to return an indexer
 
         Returns
         -------
@@ -79,7 +79,7 @@ class Forecast:
         Parameters
         ----------
         lead_time : np.ndarray
-            Forecast lead times, given as timedelta64 objects.
+            Array of lead times (numpy.timedelta64) for which to return an indexer
 
         Returns
         -------
