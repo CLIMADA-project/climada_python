@@ -86,14 +86,49 @@ class TestImpactForecastInit:
 
 def test_impact_forecast_select(impact_forecast, lead_time, member, impact_kwargs):
     """Check if Impact.select works on the derived class"""
-    event_ids = impact_kwargs["event_id"][np.array([2, 0])]
-    impact_fc = impact_forecast.select(event_ids=event_ids)
-    # NOTE: Events keep their original order
+    select_mask = np.array([1, 2])
+    ordered_select_mask = np.array([1, 2])
+    vars_to_select = {
+        "event_id": "event_ids",
+        "event_name": "event_names",
+        "date": "dates",
+    }
+
+    for var, var_select in vars_to_select.items():
+        var_value = np.array(impact_kwargs[var])[select_mask]
+        # event_name is a list, convert to numpy array for indexing
+        impact_fc = impact_forecast.select(**{var_select: var_value})
+        # NOTE: Events keep their original order
+        npt.assert_array_equal(
+            impact_fc.event_id,
+            impact_forecast.event_id[ordered_select_mask],
+        )
+        npt.assert_array_equal(
+            impact_fc.event_name,
+            np.array(impact_forecast.event_name)[ordered_select_mask],
+        )
+        npt.assert_array_equal(
+            impact_fc.date, impact_forecast.date[ordered_select_mask]
+        )
+        npt.assert_array_equal(
+            impact_fc.frequency, impact_forecast.frequency[ordered_select_mask]
+        )
+        npt.assert_array_equal(impact_fc.member, member[ordered_select_mask])
+        npt.assert_array_equal(impact_fc.lead_time, lead_time[ordered_select_mask])
+        npt.assert_array_equal(
+            impact_fc.imp_mat.todense(),
+            impact_forecast.imp_mat.todense()[ordered_select_mask],
+        )
+
+    exp_col = 0
+    select_mask = np.array([exp_col])
+    coord_exp = impact_kwargs["coord_exp"][select_mask]
+    impact_fc = impact_forecast.select(coord_exp=coord_exp)
+    npt.assert_array_equal(impact_fc.member, member)
+    npt.assert_array_equal(impact_fc.lead_time, lead_time)
     npt.assert_array_equal(
-        impact_fc.event_id, impact_forecast.event_id[np.array([0, 2])]
+        impact_fc.imp_mat.todense(), impact_forecast.imp_mat.todense()[:, exp_col]
     )
-    npt.assert_array_equal(impact_fc.member, member[np.array([0, 2])])
-    npt.assert_array_equal(impact_fc.lead_time, lead_time[np.array([0, 2])])
 
 
 @pytest.mark.skip("Concat from base class does not work")
