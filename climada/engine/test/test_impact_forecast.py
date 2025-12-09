@@ -148,34 +148,40 @@ class TestSelect:
             impact_fc.imp_mat.todense(), impact_forecast.imp_mat.todense()[:, exp_col]
         )
 
-    def test_derived_select(self, haz_fc, lead_time, member, haz_kwargs):
-        haz_fc_select = haz_fc.select(member=[3, 0])
-        idx = np.array([0, 3])
-        npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[idx])
-        npt.assert_array_equal(haz_fc_select.member, member[idx])
-        npt.assert_array_equal(haz_fc_select.lead_time, lead_time[idx])
+    def test_derived_select(self, impact_forecast, lead_time, member, impact_kwargs):
+        imp_fc_select = impact_forecast.select(member=[2, 0])
+        idx = np.array([0, 2])
+        npt.assert_array_equal(imp_fc_select.event_id, impact_forecast.event_id[idx])
+        npt.assert_array_equal(imp_fc_select.member, member[idx])
+        npt.assert_array_equal(imp_fc_select.lead_time, lead_time[idx])
 
-        haz_fc_select = haz_fc.select(lead_time=lead_time[np.array([3, 0])])
-        npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[idx])
-        npt.assert_array_equal(haz_fc_select.member, member[idx])
-        npt.assert_array_equal(haz_fc_select.lead_time, lead_time[idx])
+        imp_fc_select = impact_forecast.select(lead_time=lead_time[np.array([2, 0])])
+        npt.assert_array_equal(imp_fc_select.event_id, impact_forecast.event_id[idx])
+        npt.assert_array_equal(imp_fc_select.member, member[idx])
+        npt.assert_array_equal(imp_fc_select.lead_time, lead_time[idx])
 
         # Test intersections
-        haz_fc_select = haz_fc.select(event_id=[1, 4], member=[0, 1, 2])
-        npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([0])])
-
-        haz_fc_select = haz_fc.select(
-            event_id=[1, 2, 4], member=[0, 1, 2], lead_time=lead_time[1:3]
+        imp_fc_select = impact_forecast.select(event_ids=[10, 14], member=[0, 1, 2])
+        npt.assert_array_equal(
+            imp_fc_select.event_id, impact_forecast.event_id[np.array([0])]
         )
-        npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([1])])
+
+        imp_fc_select = impact_forecast.select(
+            event_ids=[10, 11, 13], member=[0, 1, 2], lead_time=lead_time[1:3]
+        )
+        npt.assert_array_equal(
+            imp_fc_select.event_id, impact_forecast.event_id[np.array([1])]
+        )
 
         # Test "outer"
-        haz_fc2 = HazardForecast(
-            lead_time=lead_time, member=np.zeros_like(member, dtype="int"), **haz_kwargs
+        impact_forecast2 = ImpactForecast(
+            lead_time=lead_time,
+            member=np.zeros_like(member, dtype="int"),
+            **impact_kwargs,
         )
-        haz_fc_select = haz_fc2.select(event_id=[1, 2, 4], member=[0])
-        npt.assert_array_equal(haz_fc_select.event_id, [1, 2, 4])
-        npt.assert_array_equal(haz_fc_select.member, [0, 0, 0])
+        imp_fc_select = impact_forecast2.select(event_ids=[10, 11, 13], member=[0])
+        npt.assert_array_equal(imp_fc_select.event_id, [10, 11, 13])
+        npt.assert_array_equal(imp_fc_select.member, [0, 0, 0])
 
 
 @pytest.mark.skip("Concat from base class does not work")
