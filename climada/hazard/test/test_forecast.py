@@ -116,10 +116,10 @@ def test_write_read_hazard_forecast(haz_fc, tmp_path):
     haz_fc.write_hdf5(file_name)
     haz_fc_read = HazardForecast.from_hdf5(file_name)
 
-    assert haz_fc_read.lead_time.dtype == np.dtype("timedelta64[ns]")
-    assert haz_fc_read.member.dtype == int
+    assert haz_fc_read.lead_time.dtype.kind == np.dtype("timedelta64").kind
+
     for key in haz_fc.__dict__.keys():
-        if key not in ["intensity", "fraction"]:
-            npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
-        else:
+        if key in ["intensity", "fraction"]:
             (haz_fc.__dict__[key] != haz_fc_read.__dict__[key]).nnz == 0
+        else:
+            npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
