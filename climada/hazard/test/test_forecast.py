@@ -154,7 +154,7 @@ class TestSelect:
 
         assert haz_fc_sel.centroids == haz_fc.centroids
 
-    def test_derived_select(self, haz_fc, lead_time, member, haz_kwargs):
+    def test_derived_select_single(self, haz_fc, lead_time, member):
         haz_fc_select = haz_fc.select(member=[3, 0])
         idx = np.array([0, 3])
         npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[idx])
@@ -166,7 +166,7 @@ class TestSelect:
         npt.assert_array_equal(haz_fc_select.member, member[idx])
         npt.assert_array_equal(haz_fc_select.lead_time, lead_time[idx])
 
-        # Test intersections
+    def test_derived_select_intersections(self, haz_fc, lead_time, member, haz_kwargs):
         haz_fc_select = haz_fc.select(event_id=[1, 4], member=[0, 1, 2])
         npt.assert_array_equal(haz_fc_select.event_id, haz_fc.event_id[np.array([0])])
 
@@ -182,6 +182,19 @@ class TestSelect:
         haz_fc_select = haz_fc2.select(event_id=[1, 2, 4], member=[0])
         npt.assert_array_equal(haz_fc_select.event_id, [1, 2, 4])
         npt.assert_array_equal(haz_fc_select.member, [0, 0, 0])
+
+    def test_derived_select_null(self, haz_fc, haz_kwargs):
+        haz_fc_select = haz_fc.select()
+        assert_hazard_kwargs(haz_fc_select, **haz_kwargs)
+
+        with pytest.raises(IndexError):
+            haz_fc.select(event_id=[-1])
+        with pytest.raises(IndexError):
+            haz_fc.select(member=[-1])
+        with pytest.raises(IndexError):
+            haz_fc.select(
+                lead_time=[np.timedelta64("2", "Y").astype("timedelta64[ns]")]
+            )
 
 
 def test_write_read_hazard_forecast(haz_fc, tmp_path):
