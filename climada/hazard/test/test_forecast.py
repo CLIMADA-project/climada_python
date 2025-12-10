@@ -209,9 +209,9 @@ def test_hazard_forecast_mean_min_max(haz_fc):
     assert haz_fcst_mean.frequency == 1
     assert haz_fcst_min.frequency == 1
     assert haz_fcst_max.frequency == 1
-    assert haz_fcst_mean.date == haz_fc.date.min()
-    assert haz_fcst_min.date == haz_fc.date.min()
-    assert haz_fcst_max.date == haz_fc.date.min()
+    assert haz_fcst_mean.date == 0
+    assert haz_fcst_min.date == 0
+    assert haz_fcst_max.date == 0
     assert np.all(haz_fcst_mean.orig)
     assert np.all(haz_fcst_min.orig)
     assert np.all(haz_fcst_max.orig)
