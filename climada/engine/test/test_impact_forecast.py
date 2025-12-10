@@ -167,24 +167,31 @@ def test_impact_forecast_blocked_methods(impact_forecast):
         impact_forecast.calc_freq_curve(np.array([10, 50, 100]))
 
 
-def test_write_read_impact_forecast(impact_forecast, tmp_path):
+@pytest.mark.parametrize("dense", [True, False])
+def test_write_read_hdf5(impact_forecast, tmp_path, dense):
 
     file_name = tmp_path / "test_hazard_forecast.h5"
     # replace dummy_impact event_names with strings
     impact_forecast.event_name = [str(name) for name in impact_forecast.event_name]
+    impact_forecast.write_hdf5(file_name, dense_imp_mat=dense)
 
-    impact_forecast.write_hdf5(file_name)
-    impact_forecast_read = ImpactForecast.from_hdf5(file_name)
-
-    assert impact_forecast_read.lead_time.dtype.kind == np.dtype("timedelta64").kind
-
-    for key in impact_forecast.__dict__.keys():
-        if key in ["imp_mat"]:
-            (
-                impact_forecast.__dict__[key] != impact_forecast_read.__dict__[key]
-            ).nnz == 0
+    def compare_attr(obj, attr):
+        actual = getattr(obj, attr)
+        expected = getattr(impact_forecast, attr)
+        if isinstance(actual, csr_matrix):
+            npt.assert_array_equal(actual.todense(), expected.todense())
         else:
-            # npt.assert_array_equal also works for comparing int, float or list
-            npt.assert_array_equal(
-                impact_forecast.__dict__[key], impact_forecast_read.__dict__[key]
-            )
+            npt.assert_array_equal(actual, expected)
+
+    # Read ImpactForecast
+    impact_forecast_read = ImpactForecast.from_hdf5(file_name)
+    assert impact_forecast_read.lead_time.dtype.kind == np.dtype("timedelta64").kind
+    for attr in impact_forecast.__dict__.keys():
+        compare_attr(impact_forecast_read, attr)
+
+    # Read Impact
+    impact_read = Impact.from_hdf5(file_name)
+    for attr in impact_read.__dict__.keys():
+        compare_attr(impact_read, attr)
+    assert "member" not in impact_read.__dict__
+    assert "lead_time" not in impact_read.__dict__
