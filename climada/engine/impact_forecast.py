@@ -191,8 +191,10 @@ class ImpactForecast(Forecast, Impact):
         Reduce the attributes of an ImpactForecast to a single value.
 
         Attributes are modified as follows:
-        - event_id: set to [0]
-        - event_name: set to [reduce_method]
+        - lead_time: set to NaT
+        - member: set to -1
+        - event_id: set to 0
+        - event_name: set to reduce_method
         - date: set to the minimum value
         - frequency: set to 1
 
@@ -223,7 +225,8 @@ class ImpactForecast(Forecast, Impact):
 
         Returns
         -------
-        None
+        ImpactForecast
+            An ImpactForecast object with the min impact matrix and at_event.
         """
         red_imp_mat = sparse.csr_matrix(self.imp_mat.min(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
@@ -258,7 +261,8 @@ class ImpactForecast(Forecast, Impact):
 
         Returns
         -------
-        None
+        ImpactForecast
+            An ImpactForecast object with the max impact matrix and at_event.
         """
         red_imp_mat = sparse.csr_matrix(self.imp_mat.max(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
@@ -295,7 +299,8 @@ class ImpactForecast(Forecast, Impact):
 
         Returns
         -------
-        None
+        ImpactForecast
+            An ImpactForecast object with the mean impact matrix and at_event.
         """
         red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
