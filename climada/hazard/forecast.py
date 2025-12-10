@@ -147,11 +147,13 @@ class HazardForecast(Forecast, Hazard):
                 if lead_time is not None
                 else np.full_like(self.lead_time, True, dtype=bool)
             )
-            mask_event_id = np.asarray(self.event_id)[(mask_member & mask_lead_time)]
+            event_id_from_forecast_mask = np.asarray(self.event_id)[
+                (mask_member & mask_lead_time)
+            ]
             event_id = (
-                np.intersect1d(event_id, mask_event_id)
+                np.intersect1d(event_id, event_id_from_forecast_mask)
                 if event_id is not None
-                else mask_event_id
+                else event_id_from_forecast_mask
             )
 
         return super().select(
