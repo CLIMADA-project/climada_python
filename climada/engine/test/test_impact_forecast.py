@@ -233,6 +233,36 @@ def test_impact_forecast_blocked_methods(impact_forecast):
         impact_forecast.calc_freq_curve(np.array([10, 50, 100]))
 
 
+@pytest.mark.parametrize("dense", [True, False])
+def test_write_read_hdf5(impact_forecast, tmp_path, dense):
+
+    file_name = tmp_path / "test_hazard_forecast.h5"
+    # replace dummy_impact event_names with strings
+    impact_forecast.event_name = [str(name) for name in impact_forecast.event_name]
+    impact_forecast.write_hdf5(file_name, dense_imp_mat=dense)
+
+    def compare_attr(obj, attr):
+        actual = getattr(obj, attr)
+        expected = getattr(impact_forecast, attr)
+        if isinstance(actual, csr_matrix):
+            npt.assert_array_equal(actual.todense(), expected.todense())
+        else:
+            npt.assert_array_equal(actual, expected)
+
+    # Read ImpactForecast
+    impact_forecast_read = ImpactForecast.from_hdf5(file_name)
+    assert impact_forecast_read.lead_time.dtype.kind == np.dtype("timedelta64").kind
+    for attr in impact_forecast.__dict__.keys():
+        compare_attr(impact_forecast_read, attr)
+
+    # Read Impact
+    impact_read = Impact.from_hdf5(file_name)
+    for attr in impact_read.__dict__.keys():
+        compare_attr(impact_read, attr)
+    assert "member" not in impact_read.__dict__
+    assert "lead_time" not in impact_read.__dict__
+
+
 @pytest.fixture
 def impact_forecast_stats(impact_kwargs, lead_time, member):
     max_index = 4
@@ -268,3 +298,49 @@ def test_impact_forecast_min_mean_max(impact_forecast_stats, attr):
     npt.assert_array_equal(imp_fc_reduced.event_id, [0])
     npt.assert_array_equal(imp_fc_reduced.frequency, [1])
     npt.assert_array_equal(imp_fc_reduced.date, [0])
+
+
+@pytest.mark.parametrize("quantile", [0.3, 0.6, 0.8])
+def test_impact_forecast_quantile(impact_forecast, quantile):
+    """Check quantile method for ImpactForecast"""
+    imp_fcst_quantile = impact_forecast.quantile(q=quantile)
+
+    # assert imp_mat
+    npt.assert_array_equal(
+        imp_fcst_quantile.imp_mat.toarray().squeeze(),
+        np.quantile(impact_forecast.imp_mat.toarray(), quantile, axis=0),
+    )
+    # assert at_event
+    npt.assert_array_equal(
+        imp_fcst_quantile.at_event,
+        np.quantile(impact_forecast.at_event, quantile, axis=0).sum(),
+    )
+
+    # check that attributes where reduced correctly
+    npt.assert_array_equal(imp_fcst_quantile.member, np.array([-1]))
+    npt.assert_array_equal(
+        imp_fcst_quantile.lead_time, np.array([np.timedelta64("NaT")])
+    )
+    npt.assert_array_equal(imp_fcst_quantile.event_id, np.array([0]))
+    npt.assert_array_equal(
+        imp_fcst_quantile.event_name, np.array([f"quantile_{quantile}"])
+    )
+    npt.assert_array_equal(imp_fcst_quantile.frequency, np.array([1]))
+    npt.assert_array_equal(imp_fcst_quantile.date, np.array([0]))
+
+
+def test_median(impact_forecast):
+    imp_fcst_median = impact_forecast.median()
+    imp_fcst_quantile = impact_forecast.quantile(q=0.5)
+    npt.assert_array_equal(
+        imp_fcst_median.imp_mat.toarray(), imp_fcst_quantile.imp_mat.toarray()
+    )
+    npt.assert_array_equal(imp_fcst_median.imp_mat.toarray(), [[2.5, 2.5]])
+
+    # check that attributes where reduced correctly
+    npt.assert_array_equal(imp_fcst_median.member, np.array([-1]))
+    npt.assert_array_equal(imp_fcst_median.lead_time, np.array([np.timedelta64("NaT")]))
+    npt.assert_array_equal(imp_fcst_median.event_id, np.array([0]))
+    npt.assert_array_equal(imp_fcst_median.event_name, np.array(["median"]))
+    npt.assert_array_equal(imp_fcst_median.frequency, np.array([1]))
+    npt.assert_array_equal(imp_fcst_median.date, np.array([0]))

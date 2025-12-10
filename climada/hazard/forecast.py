@@ -299,3 +299,60 @@ class HazardForecast(Forecast, Hazard):
             extent=extent,
             reset_frequency=reset_frequency,
         )
+
+    def _quantile(self, q: float, event_name: str | None = None):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
+        """
+        red_intensity = sparse.csr_matrix(
+            np.quantile(self.intensity.toarray(), q, axis=0)
+        )
+        red_fraction = sparse.csr_matrix(
+            np.quantile(self.fraction.toarray(), q, axis=0)
+        )
+        if event_name is None:
+            event_name = f"quantile_{q}"
+        return HazardForecast(
+            haz_type=self.haz_type,
+            pool=self.pool,
+            units=self.units,
+            centroids=self.centroids,
+            frequency_unit=self.frequency_unit,
+            intensity=red_intensity,
+            fraction=red_fraction,
+            **self._reduce_attrs(event_name),
+        )
+
+    def quantile(self, q: float):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
+
+        The quantile value is computed by taking the quantile of the impact matrix
+        along the event dimension axis (axis=0) and then taking the quantile of the
+        resulting array.
+
+        Parameters
+        ----------
+        q : float
+            The quantile to compute, between 0 and 1.
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the quantile intensity and fraction.
+        """
+        return self._quantile(q=q)
+
+    def median(self):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the median value.
+
+        The median value is computed by taking the median of the impact matrix along the
+        event dimension axis (axis=0) and then taking the median of the resulting array.
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the median intensity and fraction.
+        """
+        return self._quantile(q=0.5, event_name="median")
