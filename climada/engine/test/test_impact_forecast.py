@@ -318,3 +318,49 @@ def test_impact_forecast_min_mean_max(impact_forecast_stats, attr):
     npt.assert_array_equal(imp_fc_reduced.event_id, [0])
     npt.assert_array_equal(imp_fc_reduced.frequency, [1])
     npt.assert_array_equal(imp_fc_reduced.date, [0])
+
+
+@pytest.mark.parametrize("quantile", [0.3, 0.6, 0.8])
+def test_impact_forecast_quantile(impact_forecast, quantile):
+    """Check quantile method for ImpactForecast"""
+    imp_fcst_quantile = impact_forecast.quantile(q=quantile)
+
+    # assert imp_mat
+    npt.assert_array_equal(
+        imp_fcst_quantile.imp_mat.toarray().squeeze(),
+        np.quantile(impact_forecast.imp_mat.toarray(), quantile, axis=0),
+    )
+    # assert at_event
+    npt.assert_array_equal(
+        imp_fcst_quantile.at_event,
+        np.quantile(impact_forecast.at_event, quantile, axis=0).sum(),
+    )
+
+    # check that attributes where reduced correctly
+    npt.assert_array_equal(imp_fcst_quantile.member, np.array([-1]))
+    npt.assert_array_equal(
+        imp_fcst_quantile.lead_time, np.array([np.timedelta64("NaT")])
+    )
+    npt.assert_array_equal(imp_fcst_quantile.event_id, np.array([0]))
+    npt.assert_array_equal(
+        imp_fcst_quantile.event_name, np.array([f"quantile_{quantile}"])
+    )
+    npt.assert_array_equal(imp_fcst_quantile.frequency, np.array([1]))
+    npt.assert_array_equal(imp_fcst_quantile.date, np.array([0]))
+
+
+def test_median(impact_forecast):
+    imp_fcst_median = impact_forecast.median()
+    imp_fcst_quantile = impact_forecast.quantile(q=0.5)
+    npt.assert_array_equal(
+        imp_fcst_median.imp_mat.toarray(), imp_fcst_quantile.imp_mat.toarray()
+    )
+    npt.assert_array_equal(imp_fcst_median.imp_mat.toarray(), [[2.5, 2.5]])
+
+    # check that attributes where reduced correctly
+    npt.assert_array_equal(imp_fcst_median.member, np.array([-1]))
+    npt.assert_array_equal(imp_fcst_median.lead_time, np.array([np.timedelta64("NaT")]))
+    npt.assert_array_equal(imp_fcst_median.event_id, np.array([0]))
+    npt.assert_array_equal(imp_fcst_median.event_name, np.array(["median"]))
+    npt.assert_array_equal(imp_fcst_median.frequency, np.array([1]))
+    npt.assert_array_equal(imp_fcst_median.date, np.array([0]))
