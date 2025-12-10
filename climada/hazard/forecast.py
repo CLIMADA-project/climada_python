@@ -20,7 +20,6 @@ Define Forecast variant of Hazard.
 """
 
 import logging
-from typing import Self
 
 import numpy as np
 
@@ -107,7 +106,7 @@ class HazardForecast(Forecast, Hazard):
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
     @classmethod
-    def concat(cls, haz_list: list[Self]) -> Self:
+    def concat(cls, haz_list: list):
         """Concatenate multiple HazardForecast instances and return a new object"""
         if len(haz_list) == 0:
             return cls()
