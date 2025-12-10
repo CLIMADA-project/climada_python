@@ -165,3 +165,26 @@ def test_impact_forecast_blocked_methods(impact_forecast):
 
     with pytest.raises(NotImplementedError):
         impact_forecast.calc_freq_curve(np.array([10, 50, 100]))
+
+
+def test_write_read_impact_forecast(impact_forecast, tmp_path):
+
+    file_name = tmp_path / "test_hazard_forecast.h5"
+    # replace dummy_impact event_names with strings
+    impact_forecast.event_name = [str(name) for name in impact_forecast.event_name]
+
+    impact_forecast.write_hdf5(file_name)
+    impact_forecast_read = ImpactForecast.from_hdf5(file_name)
+
+    assert impact_forecast_read.lead_time.dtype.kind == np.dtype("timedelta64").kind
+
+    for key in impact_forecast.__dict__.keys():
+        if key in ["imp_mat"]:
+            (
+                impact_forecast.__dict__[key] != impact_forecast_read.__dict__[key]
+            ).nnz == 0
+        else:
+            # npt.assert_array_equal also works for comparing int, float or list
+            npt.assert_array_equal(
+                impact_forecast.__dict__[key], impact_forecast_read.__dict__[key]
+            )
