@@ -215,3 +215,33 @@ def test_hazard_forecast_mean_min_max(haz_fc):
     assert np.all(haz_fcst_mean.orig)
     assert np.all(haz_fcst_min.orig)
     assert np.all(haz_fcst_max.orig)
+
+
+def test_hazard_forecast_quantile(haz_fc):
+    """Check quantile method for HazardForecast"""
+    for q in [0.0, 0.5, 0.8]:
+        haz_fcst_quantile = haz_fc.quantile(q)
+
+        # assert intensity
+        npt.assert_array_equal(
+            haz_fcst_quantile.intensity.toarray().squeeze(),
+            np.quantile(haz_fc.intensity.toarray(), q, axis=0),
+        )
+        # assert fraction
+        npt.assert_array_equal(
+            haz_fcst_quantile.fraction.toarray().squeeze(),
+            np.quantile(haz_fc.fraction.toarray(), q, axis=0),
+        )
+
+        # check that attributes where reduced correctly
+        npt.assert_array_equal(
+            haz_fcst_quantile.lead_time, np.array([np.timedelta64("NaT")])
+        )
+        npt.assert_array_equal(haz_fcst_quantile.member, np.array([-1]))
+        npt.assert_array_equal(
+            haz_fcst_quantile.event_name, np.array([f"quantile_{q}"])
+        )
+        npt.assert_array_equal(haz_fcst_quantile.event_id, np.array([0]))
+        npt.assert_array_equal(haz_fcst_quantile.frequency, np.array([1]))
+        npt.assert_array_equal(haz_fcst_quantile.date, np.array([0]))
+        npt.assert_array_equal(haz_fcst_quantile.orig, np.array([True]))
