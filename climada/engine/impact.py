@@ -2208,9 +2208,12 @@ class Impact:
         imp_mat = sparse.vstack(imp_mats)
 
         # Concatenate other attributes
-        kwargs = {
-            attr: stack_attribute(attr) for attr in ("date", "frequency", "at_event")
-        }
+        concat_attrs = {
+            name.lstrip("_")  # Private attributes with getter/setter
+            for name, value in first_imp.__dict__.items()
+            if isinstance(value, np.ndarray)
+        }.difference(("event_id", "coord_exp", "eai_exp", "aai_agg"))
+        kwargs = {attr: stack_attribute(attr) for attr in concat_attrs}
 
         # Get remaining attributes from first impact object in list
         return cls(
