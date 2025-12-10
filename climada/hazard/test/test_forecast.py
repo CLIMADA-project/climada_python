@@ -30,7 +30,7 @@ from climada.hazard.forecast import HazardForecast
 from climada.hazard.test.test_base import hazard_kwargs
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
 def haz_kwargs():
     return hazard_kwargs()
 
@@ -40,14 +40,18 @@ def hazard(haz_kwargs):
     return Hazard(**haz_kwargs)
 
 
-@pytest.fixture
-def lead_time(haz_kwargs):
-    return pd.timedelta_range("1h", periods=len(haz_kwargs["event_id"])).to_numpy()
+@pytest.fixture(scope="module", params=[1, 2])
+def lead_time(request, haz_kwargs):
+    base_range = pd.timedelta_range(
+        "1h", periods=len(haz_kwargs["event_id"]) // request.param
+    )
+    return np.tile(base_range.to_numpy(), request.param)
 
 
-@pytest.fixture
-def member(haz_kwargs):
-    return np.arange(len(haz_kwargs["event_id"]))
+@pytest.fixture(scope="module", params=[1, 2])
+def member(request, haz_kwargs):
+    base_range = np.arange(len(haz_kwargs["event_id"]) // request.param)
+    return np.tile(base_range, request.param)
 
 
 @pytest.fixture
@@ -260,55 +264,55 @@ def test_hazard_forecast_mean_min_max(haz_fc, attr):
     npt.assert_array_equal(haz_fcst_reduced.orig, [True])
 
 
-def test_hazard_forecast_mean_min_max_dim(haz_fc):
+@pytest.mark.parametrize("attr", ["min", "mean", "max"])
+def test_hazard_forecast_mean_min_max_member(haz_fc, attr):
     """Check mean, min, and max methods for ImpactForecast with dim argument"""
-    for attr in ["min", "mean", "max"]:
-        for dim, unique_vals in zip(
-            ["member", "lead_time"],
-            [np.unique(haz_fc.member), np.unique(haz_fc.lead_time)],
-        ):
-            haz_fcst_reduced = getattr(haz_fc, attr)(dim=dim)
-            # Assert sparse matrices
-            expected_intensity = []
-            expected_fraction = []
-            for val in unique_vals:
-                mask = getattr(haz_fc, dim) == val
-                expected_intensity.append(
-                    getattr(haz_fc.intensity.todense()[mask], attr)(axis=0)
-                )
-                expected_fraction.append(
-                    getattr(haz_fc.fraction.todense()[mask], attr)(axis=0)
-                )
-            npt.assert_array_equal(
-                haz_fcst_reduced.intensity.todense(),
-                np.vstack(expected_intensity),
-            )
-            npt.assert_array_equal(
-                haz_fcst_reduced.fraction.todense(),
-                np.vstack(expected_fraction),
-            )
 
-            # Check that attributes where reduced correctly
-            if dim == "member":
-                npt.assert_array_equal(haz_fcst_reduced.member, unique_vals)
-                npt.assert_array_equal(
-                    haz_fcst_reduced.lead_time,
-                    np.array([np.timedelta64("NaT")] * len(unique_vals)),
-                )
-            else:  # dim == "lead_time"
-                npt.assert_array_equal(haz_fcst_reduced.lead_time, unique_vals)
-                npt.assert_array_equal(
-                    haz_fcst_reduced.member,
-                    np.array([-1] * len(unique_vals)),
-                )
-            npt.assert_array_equal(
-                haz_fcst_reduced.event_name,
-                np.array([attr] * len(unique_vals)),
+    for dim, unique_vals in zip(
+        ["member", "lead_time"],
+        [np.unique(haz_fc.member), np.unique(haz_fc.lead_time)],
+    ):
+        haz_fcst_reduced = getattr(haz_fc, attr)(dim=dim)
+        # Assert sparse matrices
+        expected_intensity = []
+        expected_fraction = []
+        for val in unique_vals:
+            mask = getattr(haz_fc, dim) == val
+            expected_intensity.append(
+                getattr(haz_fc.intensity.todense()[mask], attr)(axis=0)
             )
-            npt.assert_array_equal(haz_fcst_reduced.event_id, [0] * len(unique_vals))
-            npt.assert_array_equal(haz_fcst_reduced.frequency, [1] * len(unique_vals))
-            npt.assert_array_equal(haz_fcst_reduced.date, [0] * len(unique_vals))
-            npt.assert_array_equal(haz_fcst_reduced.orig, [True] * len(unique_vals))
+            expected_fraction.append(
+                getattr(haz_fc.fraction.todense()[mask], attr)(axis=0)
+            )
+        npt.assert_array_equal(
+            haz_fcst_reduced.intensity.todense(),
+            np.vstack(expected_intensity),
+        )
+        npt.assert_array_equal(
+            haz_fcst_reduced.fraction.todense(),
+            np.vstack(expected_fraction),
+        )
+        # Check that attributes where reduced correctly
+        if dim == "member":
+            npt.assert_array_equal(haz_fcst_reduced.member, unique_vals)
+            npt.assert_array_equal(
+                haz_fcst_reduced.lead_time,
+                np.array([np.timedelta64("NaT")] * len(unique_vals)),
+            )
+        else:  # dim == "lead_time"
+            npt.assert_array_equal(haz_fcst_reduced.lead_time, unique_vals)
+            npt.assert_array_equal(
+                haz_fcst_reduced.member,
+                np.array([-1] * len(unique_vals)),
+            )
+        npt.assert_array_equal(
+            haz_fcst_reduced.event_name,
+            np.array([attr] * len(unique_vals)),
+        )
+        npt.assert_array_equal(haz_fcst_reduced.event_id, [0] * len(unique_vals))
+        npt.assert_array_equal(haz_fcst_reduced.frequency, [1] * len(unique_vals))
+        npt.assert_array_equal(haz_fcst_reduced.date, [0] * len(unique_vals))
+        npt.assert_array_equal(haz_fcst_reduced.orig, [True] * len(unique_vals))
     # TODO add test in case no reduction happens (e.g., all values along dim are unique)
 
 
