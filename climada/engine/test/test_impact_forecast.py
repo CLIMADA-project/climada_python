@@ -172,8 +172,6 @@ def test_impact_forecast_mean_min_max(impact_forecast):
     imp_fcst_mean = impact_forecast.mean()
     imp_fcst_min = impact_forecast.min()
     imp_fcst_max = impact_forecast.max()
-    # sparse.csr_matrix(
-    #        np.array([[0, 0], [1, 1], [2, 2], [3, 3], [30, 30], [31, 31]])
 
     # assert imp_mat
     npt.assert_array_equal(
