@@ -194,18 +194,23 @@ class ImpactForecast(Forecast, Impact):
         - event_id: set to [0]
         - event_name: set to [reduce_method]
         - date: set to the minimum value
-        - frequency: set to 0
+        - frequency: set to 1
 
         Parameters
         ----------
         reduce_method : str
             The reduction method used to reduce the attributes.
         """
-        red_event_id = np.asarray([0])
-        red_event_name = np.asarray([reduce_method])
-        red_date = np.array([self.date.min()])
-        red_frequency = np.array([0])
-        return red_event_id, red_event_name, red_date, red_frequency
+        reduced_attrs = {
+            "lead_time": np.array([np.timedelta64("NaT")]),
+            "member": np.array([-1]),
+            "event_id": np.array([0]),
+            "event_name": np.array([reduce_method]),
+            "date": np.array([self.date.min()]),
+            "frequency": np.array([1]),
+        }
+
+        return reduced_attrs
 
     def min(self):
         """
@@ -222,16 +227,14 @@ class ImpactForecast(Forecast, Impact):
         """
         red_imp_mat = sparse.csr_matrix(self.imp_mat.min(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
-        red_event_id, red_event_name, red_date, red_frequency = self._reduce_attrs(
-            "min"
-        )
+        reduced_attrs = self._reduce_attrs("min")
         return ImpactForecast(
-            lead_time=self.lead_time,
-            member=self.member,
-            event_id=red_event_id,
-            event_name=red_event_name,
-            date=red_date,
-            frequency=red_frequency,
+            lead_time=reduced_attrs["lead_time"],
+            member=reduced_attrs["member"],
+            event_id=reduced_attrs["event_id"],
+            event_name=reduced_attrs["event_name"],
+            date=reduced_attrs["date"],
+            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
             coord_exp=self.coord_exp,
             crs=self.crs,
@@ -259,16 +262,14 @@ class ImpactForecast(Forecast, Impact):
         """
         red_imp_mat = sparse.csr_matrix(self.imp_mat.max(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
-        red_event_id, red_event_name, red_date, red_frequency = self._reduce_attrs(
-            "max"
-        )
+        reduced_attrs = self._reduce_attrs("max")
         return ImpactForecast(
-            lead_time=self.lead_time,
-            member=self.member,
-            event_id=red_event_id,
-            event_name=red_event_name,
-            date=red_date,
-            frequency=red_frequency,
+            lead_time=reduced_attrs["lead_time"],
+            member=reduced_attrs["member"],
+            event_id=reduced_attrs["event_id"],
+            event_name=reduced_attrs["event_name"],
+            date=reduced_attrs["date"],
+            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
             coord_exp=self.coord_exp,
             crs=self.crs,
@@ -298,16 +299,14 @@ class ImpactForecast(Forecast, Impact):
         """
         red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
-        red_event_id, red_event_name, red_date, red_frequency = self._reduce_attrs(
-            "mean"
-        )
+        reduced_attrs = self._reduce_attrs("mean")
         return ImpactForecast(
-            lead_time=self.lead_time,
-            member=self.member,
-            event_id=red_event_id,
-            event_name=red_event_name,
-            date=red_date,
-            frequency=red_frequency,
+            lead_time=reduced_attrs["lead_time"],
+            member=reduced_attrs["member"],
+            event_id=reduced_attrs["event_id"],
+            event_name=reduced_attrs["event_name"],
+            date=reduced_attrs["date"],
+            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
             coord_exp=self.coord_exp,
             crs=self.crs,

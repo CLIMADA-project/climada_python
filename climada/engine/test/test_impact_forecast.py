@@ -189,15 +189,21 @@ def test_impact_forecast_mean_min_max(impact_forecast):
     npt.assert_array_equal(imp_fcst_max.at_event, impact_forecast.at_event.max())
 
     # check that attributes where reduced correctly
+    assert np.isnat(imp_fcst_mean.lead_time[0])
+    assert np.isnat(imp_fcst_min.lead_time[0])
+    assert np.isnat(imp_fcst_max.lead_time[0])
+    assert imp_fcst_mean.member[0] == -1
+    assert imp_fcst_min.member[0] == -1
+    assert imp_fcst_max.member[0] == -1
     assert imp_fcst_mean.event_name[0] == "mean"
     assert imp_fcst_min.event_name[0] == "min"
     assert imp_fcst_max.event_name[0] == "max"
     assert imp_fcst_mean.event_id[0] == 0
     assert imp_fcst_min.event_id[0] == 0
     assert imp_fcst_max.event_id[0] == 0
-    assert imp_fcst_mean.frequency == 0
-    assert imp_fcst_min.frequency == 0
-    assert imp_fcst_max.frequency == 0
+    assert imp_fcst_mean.frequency == 1
+    assert imp_fcst_min.frequency == 1
+    assert imp_fcst_max.frequency == 1
     assert imp_fcst_mean.date == impact_forecast.date.min()
     assert imp_fcst_min.date == impact_forecast.date.min()
     assert imp_fcst_max.date == impact_forecast.date.min()
