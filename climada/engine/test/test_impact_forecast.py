@@ -45,35 +45,20 @@ def impact(impact_kwargs):
 
 
 @pytest.fixture
-def lead_time():
-    return pd.timedelta_range(start="1 day", periods=6).to_numpy()
+def lead_time(impact_kwargs):
+    return pd.timedelta_range(
+        start="1 day", periods=len(impact_kwargs["event_id"])
+    ).to_numpy()
 
 
 @pytest.fixture
-def member():
-    return np.arange(6)
+def member(impact_kwargs):
+    return np.arange(len(impact_kwargs["event_id"]))
 
 
 @pytest.fixture
 def impact_forecast(impact, lead_time, member):
     return ImpactForecast.from_impact(impact, lead_time=lead_time, member=member)
-
-
-class TestImpactForecastInit:
-
-    @pytest.fixture
-    def lead_time(impact_kwargs):
-        return pd.timedelta_range(
-            start="1 day", periods=len(impact_kwargs["event_id"])
-        ).to_numpy()
-
-    @pytest.fixture
-    def member(impact_kwargs):
-        return np.arange(len(self, impact_kwargs["event_id"]))
-
-    @pytest.fixture
-    def impact_forecast(impact, lead_time, member):
-        return ImpactForecast.from_impact(impact, lead_time=lead_time, member=member)
 
 
 class TestImpactForecastInit:
