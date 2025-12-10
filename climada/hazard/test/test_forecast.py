@@ -233,3 +233,28 @@ def test_write_read_hazard_forecast(haz_fc, tmp_path):
         else:
             # npt.assert_array_equal also works for comparing int, float or list
             npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
+
+
+@pytest.mark.parametrize("attr", ["min", "mean", "max"])
+def test_hazard_forecast_mean_min_max(haz_fc, attr):
+    """Check mean, min, and max methods for ImpactForecast"""
+    haz_fcst_reduced = getattr(haz_fc, attr)()
+
+    # Assert sparse matrices
+    npt.assert_array_equal(
+        haz_fcst_reduced.intensity.todense(),
+        getattr(haz_fc.intensity.todense(), attr)(axis=0),
+    )
+    npt.assert_array_equal(
+        haz_fcst_reduced.fraction.todense(),
+        getattr(haz_fc.fraction.todense(), attr)(axis=0),
+    )
+
+    # Check that attributes where reduced correctly
+    npt.assert_array_equal(np.isnat(haz_fcst_reduced.lead_time), [True])
+    npt.assert_array_equal(haz_fcst_reduced.member, [-1])
+    npt.assert_array_equal(haz_fcst_reduced.event_name, [attr])
+    npt.assert_array_equal(haz_fcst_reduced.event_id, [0])
+    npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
+    npt.assert_array_equal(haz_fcst_reduced.date, [0])
+    npt.assert_array_equal(haz_fcst_reduced.orig, [True])
