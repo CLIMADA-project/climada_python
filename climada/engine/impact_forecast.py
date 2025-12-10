@@ -284,16 +284,9 @@ class ImpactForecast(Forecast, Impact):
         ImpactForecast
             An ImpactForecast object with the min impact matrix and at_event.
         """
-        red_imp_mat = sparse.csr_matrix(self.imp_mat.min(axis=0))
+        red_imp_mat = self.imp_mat.min(axis=0).tocsr()
         red_at_event = np.array([red_imp_mat.sum()])
-        reduced_attrs = self._reduce_attrs("min")
         return ImpactForecast(
-            lead_time=reduced_attrs["lead_time"],
-            member=reduced_attrs["member"],
-            event_id=reduced_attrs["event_id"],
-            event_name=reduced_attrs["event_name"],
-            date=reduced_attrs["date"],
-            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
             coord_exp=self.coord_exp,
             crs=self.crs,
@@ -304,6 +297,7 @@ class ImpactForecast(Forecast, Impact):
             unit=self.unit,
             imp_mat=red_imp_mat,
             haz_type=self.haz_type,
+            **self._reduce_attrs("min"),
         )
 
     def max(self):
@@ -320,16 +314,9 @@ class ImpactForecast(Forecast, Impact):
         ImpactForecast
             An ImpactForecast object with the max impact matrix and at_event.
         """
-        red_imp_mat = sparse.csr_matrix(self.imp_mat.max(axis=0))
+        red_imp_mat = self.imp_mat.max(axis=0).tocsr()
         red_at_event = np.array([red_imp_mat.sum()])
-        reduced_attrs = self._reduce_attrs("max")
         return ImpactForecast(
-            lead_time=reduced_attrs["lead_time"],
-            member=reduced_attrs["member"],
-            event_id=reduced_attrs["event_id"],
-            event_name=reduced_attrs["event_name"],
-            date=reduced_attrs["date"],
-            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
             coord_exp=self.coord_exp,
             crs=self.crs,
@@ -340,6 +327,7 @@ class ImpactForecast(Forecast, Impact):
             unit=self.unit,
             imp_mat=red_imp_mat,
             haz_type=self.haz_type,
+            **self._reduce_attrs("max"),
         )
 
     def mean(self):
@@ -357,14 +345,7 @@ class ImpactForecast(Forecast, Impact):
         """
         red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
-        reduced_attrs = self._reduce_attrs("mean")
         return ImpactForecast(
-            lead_time=reduced_attrs["lead_time"],
-            member=reduced_attrs["member"],
-            event_id=reduced_attrs["event_id"],
-            event_name=reduced_attrs["event_name"],
-            date=reduced_attrs["date"],
-            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
             coord_exp=self.coord_exp,
             crs=self.crs,
@@ -375,6 +356,7 @@ class ImpactForecast(Forecast, Impact):
             unit=self.unit,
             imp_mat=red_imp_mat,
             haz_type=self.haz_type,
+            **self._reduce_attrs("mean"),
         )
 
     def quantile(self, q: float):

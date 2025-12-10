@@ -149,24 +149,17 @@ class HazardForecast(Forecast, Hazard):
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
-        red_intensity = sparse.csr_matrix(self.intensity.min(axis=0))
-        red_fraction = sparse.csr_matrix(self.fraction.min(axis=0))
-        reduced_attrs = self._reduce_attrs("min")
+        red_intensity = self.intensity.min(axis=0).tocsr()
+        red_fraction = self.fraction.min(axis=0).tocsr()
         return HazardForecast(
-            lead_time=reduced_attrs["lead_time"],
-            member=reduced_attrs["member"],
             haz_type=self.haz_type,
             pool=self.pool,
             units=self.units,
             centroids=self.centroids,
-            event_id=reduced_attrs["event_id"],
-            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
-            event_name=reduced_attrs["event_name"],
-            date=reduced_attrs["date"],
-            orig=reduced_attrs["orig"],
             intensity=red_intensity,
             fraction=red_fraction,
+            **self._reduce_attrs("min"),
         )
 
     def max(self):
@@ -183,24 +176,17 @@ class HazardForecast(Forecast, Hazard):
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
-        red_intensity = sparse.csr_matrix(self.intensity.max(axis=0))
-        red_fraction = sparse.csr_matrix(self.fraction.max(axis=0))
-        reduced_attrs = self._reduce_attrs("max")
+        red_intensity = self.intensity.max(axis=0).tocsr()
+        red_fraction = self.fraction.max(axis=0).tocsr()
         return HazardForecast(
-            lead_time=reduced_attrs["lead_time"],
-            member=reduced_attrs["member"],
             haz_type=self.haz_type,
             pool=self.pool,
             units=self.units,
             centroids=self.centroids,
-            event_id=reduced_attrs["event_id"],
-            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
-            event_name=reduced_attrs["event_name"],
-            date=reduced_attrs["date"],
-            orig=reduced_attrs["orig"],
             intensity=red_intensity,
             fraction=red_fraction,
+            **self._reduce_attrs("max"),
         )
 
     def mean(self):
@@ -218,22 +204,15 @@ class HazardForecast(Forecast, Hazard):
         """
         red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
         red_fraction = sparse.csr_matrix(self.fraction.mean(axis=0))
-        reduced_attrs = self._reduce_attrs("mean")
         return HazardForecast(
-            lead_time=reduced_attrs["lead_time"],
-            member=reduced_attrs["member"],
             haz_type=self.haz_type,
             pool=self.pool,
             units=self.units,
             centroids=self.centroids,
-            event_id=reduced_attrs["event_id"],
-            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
-            event_name=reduced_attrs["event_name"],
-            date=reduced_attrs["date"],
-            orig=reduced_attrs["orig"],
             intensity=red_intensity,
             fraction=red_fraction,
+            **self._reduce_attrs("mean"),
         )
 
     def quantile(self, q: float):
