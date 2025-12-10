@@ -26,9 +26,11 @@ from typing import Any, Dict, List, Optional
 import numpy as np
 import xarray as xr
 
-from climada.hazard.base import Hazard
 from climada.hazard.xarray import HazardXarrayReader
-from climada.util.forecast import Forecast
+
+from ..util.checker import size
+from ..util.forecast import Forecast
+from .base import Hazard
 
 LOGGER = logging.getLogger(__name__)
 
@@ -115,6 +117,51 @@ class HazardForecast(Forecast, Hazard):
         hours = lead_time / np.timedelta64(1, "h")
         return f"{hours:.0f}h"
 
+        if auto_generate and len(self.lead_time) > 0 and len(self.member) > 0:
+            self._set_event_attrs_from_forecast_dims()
+
+    def _set_event_attrs_from_forecast_dims(self) -> None:
+        """
+        Set event_name and date from lead_time and member dimensions.
+
+        This method generates event attributes based on the Cartesian product of
+        lead_time and member arrays. It should have the same length as the number
+        of events in the hazard intensity matrix. event_id is left unchanged.
+        """
+        n_events = len(self.lead_time)
+        if n_events != len(self.member):
+            raise ValueError(
+                f"Length mismatch: lead_time has {len(self.lead_time)} elements "
+                f"but member has {len(self.member)} elements. They should be equal "
+                f"in a stacked forecast hazard."
+            )
+
+        self.event_name = [
+            f"lt_{self._format_lead_time(lt)}_m_{m}"
+            for lt, m in zip(self.lead_time, self.member)
+        ]
+
+        self.date = np.zeros(n_events, dtype=int)
+
+    @staticmethod
+    def _format_lead_time(lead_time: np.timedelta64) -> str:
+        """
+        Format lead_time as hours for event names.
+
+        Parameters
+        ----------
+        lead_time : np.timedelta64
+            Lead time to format
+
+        Returns
+        -------
+        str
+            Formatted lead time as "{hours}h"
+        """
+        # Convert to hours
+        hours = lead_time / np.timedelta64(1, "h")
+        return f"{hours:.0f}h"
+
     @classmethod
     def from_hazard(cls, hazard: Hazard, lead_time: np.ndarray, member: np.ndarray):
         """
@@ -149,6 +196,80 @@ class HazardForecast(Forecast, Hazard):
             orig=hazard.orig,
             intensity=hazard.intensity,
             fraction=hazard.fraction,
+        )
+
+    def _check_sizes(self):
+        """Check sizes of forecast data vs. hazard data.
+
+        Raises
+        ------
+        ValueError
+            If the sizes of the forecast data do not match the
+            :py:attr:`~climada.hazard.base.Hazard.event_id`
+        """
+        num_entries = len(self.event_id)
+        size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
+        size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
+
+    def select(
+        self,
+        member=None,
+        lead_time=None,
+        event_names=None,
+        event_id=None,
+        date=None,
+        orig=None,
+        reg_id=None,
+        extent=None,
+        reset_frequency=False,
+    ):
+        """Select entries based on the parameters and return a new instance.
+
+        The selection will contain the intersection of all given parameters.
+
+        Parameters
+        ----------
+        member : Sequence of ints
+            Ensemble members to select
+        lead_time : Sequence of numpy.timedelta64
+            Lead times to select
+
+        Returns
+        -------
+        HazardForecast
+
+        See Also
+        --------
+        :py:meth:`~climada.hazard.base.Hazard.select`
+        """
+        if member is not None or lead_time is not None:
+            mask_member = (
+                self.idx_member(member)
+                if member is not None
+                else np.full_like(self.member, True, dtype=bool)
+            )
+            mask_lead_time = (
+                self.idx_lead_time(lead_time)
+                if lead_time is not None
+                else np.full_like(self.lead_time, True, dtype=bool)
+            )
+            event_id_from_forecast_mask = np.asarray(self.event_id)[
+                (mask_member & mask_lead_time)
+            ]
+            event_id = (
+                np.intersect1d(event_id, event_id_from_forecast_mask)
+                if event_id is not None
+                else event_id_from_forecast_mask
+            )
+
+        return super().select(
+            event_names=event_names,
+            event_id=event_id,
+            date=date,
+            orig=orig,
+            reg_id=reg_id,
+            extent=extent,
+            reset_frequency=reset_frequency,
         )
 
     @classmethod
