@@ -238,3 +238,55 @@ class HazardForecast(Forecast, Hazard):
             intensity=red_intensity,
             fraction=red_fraction,
         )
+
+    def quantile(self, q: float):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
+
+        The quantile value is computed by taking the quantile of the impact matrix
+        along the event dimension axis (axis=0) and then taking the quantile of the
+        resulting array.
+
+        Parameters
+        ----------
+        q : float
+            The quantile to compute, between 0 and 1.
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the quantile intensity and fraction.
+        """
+        red_intensity = sparse.csr_matrix(self.intensity.todense().quantile(q, axis=0))
+        red_fraction = sparse.csr_matrix(self.fraction.todense().quantile(q, axis=0))
+        reduced_attrs = self._reduce_attrs(f"quantile_{q}")
+        return HazardForecast(
+            lead_time=reduced_attrs["lead_time"],
+            member=reduced_attrs["member"],
+            haz_type=self.haz_type,
+            pool=self.pool,
+            units=self.units,
+            centroids=self.centroids,
+            event_id=reduced_attrs["event_id"],
+            frequency=reduced_attrs["frequency"],
+            frequency_unit=self.frequency_unit,
+            event_name=reduced_attrs["event_name"],
+            date=reduced_attrs["date"],
+            orig=reduced_attrs["orig"],
+            intensity=red_intensity,
+            fraction=red_fraction,
+        )
+
+    def median(self):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the median value.
+
+        The median value is computed by taking the median of the impact matrix along the
+        event dimension axis (axis=0) and then taking the median of the resulting array.
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the median intensity and fraction.
+        """
+        return self.quantile(0.5)
