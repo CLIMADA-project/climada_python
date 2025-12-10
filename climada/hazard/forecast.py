@@ -282,115 +282,6 @@ class HazardForecast(Forecast, Hazard):
             reset_frequency=reset_frequency,
         )
 
-    def _reduce_attrs(self, event_name: str):
-        """
-        Reduce the attributes of a HazardForecast to a single value.
-
-        Attributes are modified as follows:
-        - lead_time: set to NaT
-        - member: set to -1
-        - event_id: set to 0
-        - event_name: set to the name of the reduction method (default)
-        - date: set to 0
-        - frequency: set to 1
-
-        Parameters
-        ----------
-        event_name : str
-            The event_name given to the reduced data.
-        """
-        reduced_attrs = {
-            "lead_time": np.array([np.timedelta64("NaT")]),
-            "member": np.array([-1]),
-            "event_id": np.array([0]),
-            "event_name": np.array([event_name]),
-            "date": np.array([0]),
-            "frequency": np.array([1]),
-            "orig": np.array([True]),
-        }
-
-        return reduced_attrs
-
-    def min(self):
-        """
-        Reduce the intensity and fraction of a HazardForecast to the minimum
-        value.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        HazardForecast
-            A HazardForecast object with the min intensity and fraction.
-        """
-        red_intensity = self.intensity.min(axis=0).tocsr()
-        red_fraction = self.fraction.min(axis=0).tocsr()
-        return HazardForecast(
-            haz_type=self.haz_type,
-            pool=self.pool,
-            units=self.units,
-            centroids=self.centroids,
-            frequency_unit=self.frequency_unit,
-            intensity=red_intensity,
-            fraction=red_fraction,
-            **self._reduce_attrs("min"),
-        )
-
-    def max(self):
-        """
-        Reduce the intensity and fraction of a HazardForecast to the maximum
-        value.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        HazardForecast
-            A HazardForecast object with the min intensity and fraction.
-        """
-        red_intensity = self.intensity.max(axis=0).tocsr()
-        red_fraction = self.fraction.max(axis=0).tocsr()
-        return HazardForecast(
-            haz_type=self.haz_type,
-            pool=self.pool,
-            units=self.units,
-            centroids=self.centroids,
-            frequency_unit=self.frequency_unit,
-            intensity=red_intensity,
-            fraction=red_fraction,
-            **self._reduce_attrs("max"),
-        )
-
-    def mean(self):
-        """
-        Reduce the intensity and fraction of a HazardForecast to the mean value.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        HazardForecast
-            A HazardForecast object with the min intensity and fraction.
-        """
-        red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
-        red_fraction = sparse.csr_matrix(self.fraction.mean(axis=0))
-        return HazardForecast(
-            haz_type=self.haz_type,
-            pool=self.pool,
-            units=self.units,
-            centroids=self.centroids,
-            frequency_unit=self.frequency_unit,
-            intensity=red_intensity,
-            fraction=red_fraction,
-            **self._reduce_attrs("mean"),
-        )
-
     def quantile(self, q: float):
         """
         Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
@@ -415,22 +306,15 @@ class HazardForecast(Forecast, Hazard):
         red_fraction = sparse.csr_matrix(
             np.quantile(self.fraction.toarray(), q, axis=0)
         )
-        reduced_attrs = self._reduce_attrs(f"quantile_{q}")
         return HazardForecast(
-            lead_time=reduced_attrs["lead_time"],
-            member=reduced_attrs["member"],
             haz_type=self.haz_type,
             pool=self.pool,
             units=self.units,
             centroids=self.centroids,
-            event_id=reduced_attrs["event_id"],
-            frequency=reduced_attrs["frequency"],
             frequency_unit=self.frequency_unit,
-            event_name=reduced_attrs["event_name"],
-            date=reduced_attrs["date"],
-            orig=reduced_attrs["orig"],
             intensity=red_intensity,
             fraction=red_fraction,
+            **self._reduce_attrs(f"quantile_{q}"),
         )
 
     def median(self):
