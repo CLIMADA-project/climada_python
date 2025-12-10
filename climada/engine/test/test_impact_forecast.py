@@ -261,3 +261,32 @@ def test_impact_forecast_mean_min_max(impact_forecast):
     assert imp_fcst_mean.date == 0
     assert imp_fcst_min.date == 0
     assert imp_fcst_max.date == 0
+
+
+def test_impact_forecast_quantile(impact_forecast):
+    """Check quantile method for ImpactForecast"""
+    for q in [0.0, 0.5, 0.8]:
+        imp_fcst_quantile = impact_forecast.quantile(q)
+
+        # assert imp_mat
+        npt.assert_array_equal(
+            imp_fcst_quantile.imp_mat.toarray().squeeze(),
+            np.quantile(impact_forecast.imp_mat.toarray(), q, axis=0),
+        )
+        # assert at_event
+        npt.assert_array_equal(
+            imp_fcst_quantile.at_event,
+            np.quantile(impact_forecast.at_event, q, axis=0).sum(),
+        )
+
+        # check that attributes where reduced correctly
+        npt.assert_array_equal(imp_fcst_quantile.member, np.array([-1]))
+        npt.assert_array_equal(
+            imp_fcst_quantile.lead_time, np.array([np.timedelta64("NaT")])
+        )
+        npt.assert_array_equal(imp_fcst_quantile.event_id, np.array([0]))
+        npt.assert_array_equal(
+            imp_fcst_quantile.event_name, np.array([f"quantile_{q}"])
+        )
+        npt.assert_array_equal(imp_fcst_quantile.frequency, np.array([1]))
+        npt.assert_array_equal(imp_fcst_quantile.date, np.array([0]))

@@ -376,3 +376,54 @@ class ImpactForecast(Forecast, Impact):
             imp_mat=red_imp_mat,
             haz_type=self.haz_type,
         )
+
+    def quantile(self, q: float):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the quantile value.
+
+        Parameters
+        ----------
+        q : float
+            The quantile to compute, which must be between 0 and 1.
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the quantile impact matrix and at_event.
+        """
+        red_imp_mat = sparse.csr_matrix(np.quantile(self.imp_mat.toarray(), q, axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        reduced_attrs = self._reduce_attrs(f"quantile_{q}")
+        return ImpactForecast(
+            lead_time=reduced_attrs["lead_time"],
+            member=reduced_attrs["member"],
+            event_id=reduced_attrs["event_id"],
+            event_name=reduced_attrs["event_name"],
+            date=reduced_attrs["date"],
+            frequency=reduced_attrs["frequency"],
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+        )
+
+    def median(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the median value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the median impact matrix and at_event.
+        """
+        return self.quantile(0.5)
