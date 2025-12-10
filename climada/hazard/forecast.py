@@ -25,7 +25,7 @@ import numpy as np
 import scipy.sparse as sparse
 
 from ..util.checker import size
-from ..util.forecast import Forecast
+from ..util.forecast import Forecast, reduce_unique_selection
 from .base import Hazard
 
 LOGGER = logging.getLogger(__name__)
@@ -135,20 +135,26 @@ class HazardForecast(Forecast, Hazard):
 
         return reduced_attrs
 
-    def min(self):
+    def min(self, dim=None):
         """
         Reduce the intensity and fraction of a HazardForecast to the minimum
         value.
 
         Parameters
         ----------
-        None
+        dim : str | None
+            Dimension to reduce over. If None, reduce over all data.
 
         Returns
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                values=getattr(self.dim), select=dim, reduce_attr="min"
+            )
+
         red_intensity = self.intensity.min(axis=0).tocsr()
         red_fraction = self.fraction.min(axis=0).tocsr()
         return HazardForecast(
@@ -162,20 +168,26 @@ class HazardForecast(Forecast, Hazard):
             **self._reduce_attrs("min"),
         )
 
-    def max(self):
+    def max(self, dim=None):
         """
         Reduce the intensity and fraction of a HazardForecast to the maximum
         value.
 
         Parameters
         ----------
-        None
+        dim : str | None
+            Dimension to reduce over. If None, reduce over all data.
 
         Returns
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                values=getattr(self.dim), select=dim, reduce_attr="max"
+            )
+
         red_intensity = self.intensity.max(axis=0).tocsr()
         red_fraction = self.fraction.max(axis=0).tocsr()
         return HazardForecast(
@@ -189,19 +201,25 @@ class HazardForecast(Forecast, Hazard):
             **self._reduce_attrs("max"),
         )
 
-    def mean(self):
+    def mean(self, dim=None):
         """
         Reduce the intensity and fraction of a HazardForecast to the mean value.
 
         Parameters
         ----------
-        None
+        dim : str | None
+            Dimension to reduce over. If None, reduce over all data.
 
         Returns
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                values=getattr(self.dim), select=dim, reduce_attr="mean"
+            )
+
         red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
         red_fraction = sparse.csr_matrix(self.fraction.mean(axis=0))
         return HazardForecast(
