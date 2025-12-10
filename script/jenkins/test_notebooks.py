@@ -18,7 +18,7 @@ EXCLUDED_FROM_NOTEBOOK_TEST = ["climada_installation_step_by_step.ipynb"]
 
 
 # collect test cases, one for each notebook in the docs (unless they're excluded)
-NOTEBOOK_DIR = Path(__file__).parent.parent.parent.joinpath("doc", "tutorial")
+NOTEBOOK_DIR = Path(__file__).parent.parent.parent.joinpath("doc", "user-guide")
 NOTEBOOKS = [
     (f.absolute(), f.name)
     for f in sorted(NOTEBOOK_DIR.iterdir())
