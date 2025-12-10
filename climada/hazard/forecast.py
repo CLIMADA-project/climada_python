@@ -106,6 +106,125 @@ class HazardForecast(Forecast, Hazard):
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
+    def _reduce_attrs(self, event_name: str):
+        """
+        Reduce the attributes of a HazardForecast to a single value.
+
+        Attributes are modified as follows:
+        - lead_time: set to NaT
+        - member: set to -1
+        - event_id: set to 0
+        - event_name: set to the name of the reduction method (default)
+        - date: set to 0
+        - frequency: set to 1
+
+        Parameters
+        ----------
+        event_name : str
+            The event_name given to the reduced data.
+        """
+        reduced_attrs = {
+            "lead_time": np.array([np.timedelta64("NaT")]),
+            "member": np.array([-1]),
+            "event_id": np.array([0]),
+            "event_name": np.array([event_name]),
+            "date": np.array([0]),
+            "frequency": np.array([1]),
+            "orig": np.array([True]),
+        }
+
+        return reduced_attrs
+
+    def min(self):
+        """
+        Reduce the intensity and fraction of a HazardForecast to the minimum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the min intensity and fraction.
+        """
+        red_intensity = self.intensity.min(axis=0).tocsr()
+        red_fraction = self.fraction.min(axis=0).tocsr()
+        return HazardForecast(
+            haz_type=self.haz_type,
+            pool=self.pool,
+            units=self.units,
+            centroids=self.centroids,
+            frequency_unit=self.frequency_unit,
+            intensity=red_intensity,
+            fraction=red_fraction,
+            **self._reduce_attrs("min"),
+        )
+
+    def max(self):
+        """
+        Reduce the intensity and fraction of a HazardForecast to the maximum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the min intensity and fraction.
+        """
+        red_intensity = self.intensity.max(axis=0).tocsr()
+        red_fraction = self.fraction.max(axis=0).tocsr()
+        return HazardForecast(
+            haz_type=self.haz_type,
+            pool=self.pool,
+            units=self.units,
+            centroids=self.centroids,
+            frequency_unit=self.frequency_unit,
+            intensity=red_intensity,
+            fraction=red_fraction,
+            **self._reduce_attrs("max"),
+        )
+
+    def mean(self):
+        """
+        Reduce the intensity and fraction of a HazardForecast to the mean value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the min intensity and fraction.
+        """
+        red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
+        red_fraction = sparse.csr_matrix(self.fraction.mean(axis=0))
+        return HazardForecast(
+            haz_type=self.haz_type,
+            pool=self.pool,
+            units=self.units,
+            centroids=self.centroids,
+            frequency_unit=self.frequency_unit,
+            intensity=red_intensity,
+            fraction=red_fraction,
+            **self._reduce_attrs("mean"),
+        )
+
+    @classmethod
+    def concat(cls, haz_list: list):
+        """Concatenate multiple HazardForecast instances and return a new object"""
+        if len(haz_list) == 0:
+            return cls()
+        hazard = Hazard.concat(haz_list)
+        lead_time = np.concatenate(tuple(haz.lead_time for haz in haz_list))
+        member = np.concatenate(tuple(haz.member for haz in haz_list))
+        return cls.from_hazard(hazard, lead_time=lead_time, member=member)
+
     def select(
         self,
         member=None,

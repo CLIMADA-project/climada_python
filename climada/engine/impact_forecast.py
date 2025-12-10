@@ -186,6 +186,123 @@ class ImpactForecast(Forecast, Impact):
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
+    def _reduce_attrs(self, event_name: str):
+        """
+        Reduce the attributes of an ImpactForecast to a single value.
+
+        Attributes are modified as follows:
+        - lead_time: set to NaT
+        - member: set to -1
+        - event_id: set to 0
+        - event_name: set to the name of the reduction method (default)
+        - date: set to 0
+        - frequency: set to 1
+
+        Parameters
+        ----------
+        event_name : str
+            The event name given to the reduced data.
+        """
+        reduced_attrs = {
+            "lead_time": np.array([np.timedelta64("NaT")]),
+            "member": np.array([-1]),
+            "event_id": np.array([0]),
+            "event_name": np.array([event_name]),
+            "date": np.array([0]),
+            "frequency": np.array([1]),
+        }
+
+        return reduced_attrs
+
+    def min(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the minimum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the min impact matrix and at_event.
+        """
+        red_imp_mat = self.imp_mat.min(axis=0).tocsr()
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("min"),
+        )
+
+    def max(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the maximum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the max impact matrix and at_event.
+        """
+        red_imp_mat = self.imp_mat.max(axis=0).tocsr()
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("max"),
+        )
+
+    def mean(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the mean value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the mean impact matrix and at_event.
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("mean"),
+        )
+
     def select(
         self,
         event_ids=None,
@@ -205,10 +322,6 @@ class ImpactForecast(Forecast, Impact):
             Ensemble members to select
         lead_time : Sequence of numpy.timedelta64
             Lead times to select
-
-        Returns
-        -------
-        ImpactForecast
 
         See Also
         --------
