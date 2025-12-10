@@ -355,6 +355,28 @@ class ImpactForecast(Forecast, Impact):
             reset_frequency=reset_frequency,
         )
 
+    def _quantile(self, q: float, event_name: str | None = None):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the quantile value.
+        """
+        red_imp_mat = sparse.csr_matrix(np.quantile(self.imp_mat.toarray(), q, axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        if event_name is None:
+            event_name = f"quantile_{q}"
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs(event_name),
+        )
+
     def quantile(self, q: float):
         """
         Reduce the impact matrix and at_event of an ImpactForecast to the quantile value.
@@ -369,21 +391,7 @@ class ImpactForecast(Forecast, Impact):
         ImpactForecast
             An ImpactForecast object with the quantile impact matrix and at_event.
         """
-        red_imp_mat = sparse.csr_matrix(np.quantile(self.imp_mat.toarray(), q, axis=0))
-        red_at_event = np.array([red_imp_mat.sum()])
-        return ImpactForecast(
-            frequency_unit=self.frequency_unit,
-            coord_exp=self.coord_exp,
-            crs=self.crs,
-            eai_exp=self.eai_exp,
-            at_event=red_at_event,
-            tot_value=self.tot_value,
-            aai_agg=self.aai_agg,
-            unit=self.unit,
-            imp_mat=red_imp_mat,
-            haz_type=self.haz_type,
-            **self._reduce_attrs(f"quantile_{q}"),
-        )
+        return self._quantile(q=q)
 
     def median(self):
         """
@@ -398,4 +406,4 @@ class ImpactForecast(Forecast, Impact):
         ImpactForecast
             An ImpactForecast object with the median impact matrix and at_event.
         """
-        return self.quantile(0.5)
+        return self._quantile(q=0.5, event_name="median")
