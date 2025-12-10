@@ -1716,13 +1716,9 @@ class Impact:
             array_attrs = array_attrs.intersection(file.keys())
             kwargs.update({attr: file[attr][:] for attr in array_attrs})
             # correct lead_time attribut to timedelta
-            if "lead_time" in array_attrs:
-                kwargs.update(
-                    {
-                        "lead_time": np.array(file["lead_time"][:]).astype(
-                            "timedelta64[ns]"
-                        )
-                    }
+            if "lead_time" in kwargs:
+                kwargs["lead_time"] = np.array(file["lead_time"][:]).astype(
+                    "timedelta64[ns]"
                 )
             # Special handling for 'event_name' because it should be a list of strings
             if "event_name" in file:
