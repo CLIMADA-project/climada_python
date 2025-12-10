@@ -167,41 +167,38 @@ def test_impact_forecast_blocked_methods(impact_forecast):
         impact_forecast.calc_freq_curve(np.array([10, 50, 100]))
 
 
-def test_impact_forecast_mean_min_max(impact_forecast):
+@pytest.fixture
+def impact_forecast_stats(impact_kwargs, lead_time, member):
+    max_index = 4
+    for key, val in impact_kwargs.items():
+        if isinstance(val, (np.ndarray, list)):
+            impact_kwargs[key] = val[:max_index]
+        elif isinstance(val, csr_matrix):
+            impact_kwargs[key] = val[:max_index, :]
+    impact_kwargs["imp_mat"] = csr_matrix([[1, 0], [0, 1], [3, 2], [2, 3]])
+    impact_kwargs["at_event"] = np.array([1, 1, 5, 5])
+    return ImpactForecast(
+        lead_time=lead_time[:max_index], member=member[:max_index], **impact_kwargs
+    )
+
+
+@pytest.mark.parametrize("attr", ["min", "mean", "max"])
+def test_impact_forecast_min_mean_max(impact_forecast_stats, attr):
     """Check mean, min, and max methods for ImpactForecast"""
-    imp_fcst_mean = impact_forecast.mean()
-    imp_fcst_min = impact_forecast.min()
-    imp_fcst_max = impact_forecast.max()
+    imp_fc_reduced = getattr(impact_forecast_stats, attr)()
 
     # assert imp_mat
     npt.assert_array_equal(
-        imp_fcst_mean.imp_mat.todense(), impact_forecast.imp_mat.todense().mean(axis=0)
+        imp_fc_reduced.imp_mat.todense(),
+        getattr(impact_forecast_stats.imp_mat.todense(), attr)(axis=0),
     )
-    npt.assert_array_equal(imp_fcst_min.imp_mat.todense(), np.array([[0, 0]]))
-    npt.assert_array_equal(imp_fcst_max.imp_mat.todense(), np.array([[31, 31]]))
-    # assert at_event
-    npt.assert_array_equal(
-        imp_fcst_mean.at_event, impact_forecast.at_event.mean()
-    )  # 134/6
-    npt.assert_array_equal(imp_fcst_min.at_event, impact_forecast.at_event.min())
-    npt.assert_array_equal(imp_fcst_max.at_event, impact_forecast.at_event.max())
+    at_event_expected = {"min": [0], "mean": [3], "max": [6]}
+    npt.assert_array_equal(imp_fc_reduced.at_event, at_event_expected[attr])
 
     # check that attributes where reduced correctly
-    assert np.isnat(imp_fcst_mean.lead_time[0])
-    assert np.isnat(imp_fcst_min.lead_time[0])
-    assert np.isnat(imp_fcst_max.lead_time[0])
-    assert imp_fcst_mean.member[0] == -1
-    assert imp_fcst_min.member[0] == -1
-    assert imp_fcst_max.member[0] == -1
-    assert imp_fcst_mean.event_name[0] == "mean"
-    assert imp_fcst_min.event_name[0] == "min"
-    assert imp_fcst_max.event_name[0] == "max"
-    assert imp_fcst_mean.event_id[0] == 0
-    assert imp_fcst_min.event_id[0] == 0
-    assert imp_fcst_max.event_id[0] == 0
-    assert imp_fcst_mean.frequency == 1
-    assert imp_fcst_min.frequency == 1
-    assert imp_fcst_max.frequency == 1
-    assert imp_fcst_mean.date == 0
-    assert imp_fcst_min.date == 0
-    assert imp_fcst_max.date == 0
+    npt.assert_array_equal(np.isnat(imp_fc_reduced.lead_time), [True])
+    npt.assert_array_equal(imp_fc_reduced.member, [-1])
+    npt.assert_array_equal(imp_fc_reduced.event_name, [attr])
+    npt.assert_array_equal(imp_fc_reduced.event_id, [0])
+    npt.assert_array_equal(imp_fc_reduced.frequency, [1])
+    npt.assert_array_equal(imp_fc_reduced.date, [0])

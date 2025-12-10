@@ -166,52 +166,26 @@ def test_write_read_hazard_forecast(haz_fc, tmp_path):
             npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
 
 
-def test_hazard_forecast_mean_min_max(haz_fc):
+@pytest.mark.parametrize("attr", ["min", "mean", "max"])
+def test_hazard_forecast_mean_min_max(haz_fc, attr):
     """Check mean, min, and max methods for ImpactForecast"""
-    haz_fcst_mean = haz_fc.mean()
-    haz_fcst_min = haz_fc.min()
-    haz_fcst_max = haz_fc.max()
+    haz_fcst_reduced = getattr(haz_fc, attr)()
 
-    # assert intensity
+    # Assert sparse matrices
     npt.assert_array_equal(
-        haz_fcst_mean.intensity.todense(), haz_fc.intensity.todense().mean(axis=0)
+        haz_fcst_reduced.intensity.todense(),
+        getattr(haz_fc.intensity.todense(), attr)(axis=0),
     )
     npt.assert_array_equal(
-        haz_fcst_min.intensity.todense(), haz_fc.intensity.todense().min(axis=0)
-    )
-    npt.assert_array_equal(
-        haz_fcst_max.intensity.todense(), haz_fc.intensity.todense().max(axis=0)
-    )
-    # assert fraction
-    npt.assert_array_equal(
-        haz_fcst_mean.fraction.todense(), haz_fc.fraction.todense().mean(axis=0)
-    )
-    npt.assert_array_equal(
-        haz_fcst_min.fraction.todense(), haz_fc.fraction.todense().min(axis=0)
-    )
-    npt.assert_array_equal(
-        haz_fcst_max.fraction.todense(), haz_fc.fraction.todense().max(axis=0)
+        haz_fcst_reduced.fraction.todense(),
+        getattr(haz_fc.fraction.todense(), attr)(axis=0),
     )
 
-    # check that attributes where reduced correctly
-    assert np.isnat(haz_fcst_mean.lead_time[0])
-    assert np.isnat(haz_fcst_min.lead_time[0])
-    assert np.isnat(haz_fcst_max.lead_time[0])
-    assert haz_fcst_mean.member[0] == -1
-    assert haz_fcst_min.member[0] == -1
-    assert haz_fcst_max.member[0] == -1
-    assert haz_fcst_mean.event_name[0] == "mean"
-    assert haz_fcst_min.event_name[0] == "min"
-    assert haz_fcst_max.event_name[0] == "max"
-    assert haz_fcst_mean.event_id[0] == 0
-    assert haz_fcst_min.event_id[0] == 0
-    assert haz_fcst_max.event_id[0] == 0
-    assert haz_fcst_mean.frequency == 1
-    assert haz_fcst_min.frequency == 1
-    assert haz_fcst_max.frequency == 1
-    assert haz_fcst_mean.date == 0
-    assert haz_fcst_min.date == 0
-    assert haz_fcst_max.date == 0
-    assert np.all(haz_fcst_mean.orig)
-    assert np.all(haz_fcst_min.orig)
-    assert np.all(haz_fcst_max.orig)
+    # Check that attributes where reduced correctly
+    npt.assert_array_equal(np.isnat(haz_fcst_reduced.lead_time), [True])
+    npt.assert_array_equal(haz_fcst_reduced.member, [-1])
+    npt.assert_array_equal(haz_fcst_reduced.event_name, [attr])
+    npt.assert_array_equal(haz_fcst_reduced.event_id, [0])
+    npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
+    npt.assert_array_equal(haz_fcst_reduced.date, [0])
+    npt.assert_array_equal(haz_fcst_reduced.orig, [True])
