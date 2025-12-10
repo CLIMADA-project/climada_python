@@ -22,6 +22,7 @@ Define Forecast variant of Impact.
 import logging
 
 import numpy as np
+import scipy.sparse as sparse
 
 from ..util import log_level
 from ..util.checker import size
@@ -239,4 +240,142 @@ class ImpactForecast(Forecast, Impact):
             dates=dates,
             coord_exp=coord_exp,
             reset_frequency=reset_frequency,
+        )
+
+    def _reduce_attrs(self, reduce_method: str):
+        """
+        Reduce the attributes of an ImpactForecast to a single value.
+
+        Attributes are modified as follows:
+        - lead_time: set to NaT
+        - member: set to -1
+        - event_id: set to 0
+        - event_name: set to reduce_method
+        - date: set to the minimum value
+        - frequency: set to 1
+
+        Parameters
+        ----------
+        reduce_method : str
+            The reduction method used to reduce the attributes.
+        """
+        reduced_attrs = {
+            "lead_time": np.array([np.timedelta64("NaT")]),
+            "member": np.array([-1]),
+            "event_id": np.array([0]),
+            "event_name": np.array([reduce_method]),
+            "date": np.array([self.date.min()]),
+            "frequency": np.array([1]),
+        }
+
+        return reduced_attrs
+
+    def min(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the minimum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the min impact matrix and at_event.
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.min(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        reduced_attrs = self._reduce_attrs("min")
+        return ImpactForecast(
+            lead_time=reduced_attrs["lead_time"],
+            member=reduced_attrs["member"],
+            event_id=reduced_attrs["event_id"],
+            event_name=reduced_attrs["event_name"],
+            date=reduced_attrs["date"],
+            frequency=reduced_attrs["frequency"],
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+        )
+
+    def max(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the maximum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the max impact matrix and at_event.
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.max(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        reduced_attrs = self._reduce_attrs("max")
+        return ImpactForecast(
+            lead_time=reduced_attrs["lead_time"],
+            member=reduced_attrs["member"],
+            event_id=reduced_attrs["event_id"],
+            event_name=reduced_attrs["event_name"],
+            date=reduced_attrs["date"],
+            frequency=reduced_attrs["frequency"],
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+        )
+
+    def mean(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the mean value.
+
+        The mean value is computed by taking the mean of the impact matrix along the
+        exposure points axis (axis=1) and then taking the mean of the resulting array.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the mean impact matrix and at_event.
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        reduced_attrs = self._reduce_attrs("mean")
+        return ImpactForecast(
+            lead_time=reduced_attrs["lead_time"],
+            member=reduced_attrs["member"],
+            event_id=reduced_attrs["event_id"],
+            event_name=reduced_attrs["event_name"],
+            date=reduced_attrs["date"],
+            frequency=reduced_attrs["frequency"],
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
         )
