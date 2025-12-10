@@ -72,50 +72,13 @@ class HazardForecast(Forecast, Hazard):
 
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
 
-        if auto_generate and len(self.lead_time) > 0 and len(self.member) > 0:
-            self._set_event_attrs_from_forecast_dims()
-
-    def _set_event_attrs_from_forecast_dims(self) -> None:
-        """
-        Set event_name and date from lead_time and member dimensions.
-
-        This method generates event attributes based on the Cartesian product of
-        lead_time and member arrays. It should have the same length as the number
-        of events in the hazard intensity matrix. event_id is left unchanged.
-        """
-        n_events = len(self.lead_time)
-        if n_events != len(self.member):
-            raise ValueError(
-                f"Length mismatch: lead_time has {len(self.lead_time)} elements "
-                f"but member has {len(self.member)} elements. They should be equal "
-                f"in a stacked forecast hazard."
-            )
-
-        self.event_name = [
-            f"lt_{self._format_lead_time(lt)}_m_{m}"
-            for lt, m in zip(self.lead_time, self.member)
-        ]
-
-        self.date = np.zeros(n_events, dtype=int)
-
-    @staticmethod
-    def _format_lead_time(lead_time: np.timedelta64) -> str:
-        """
-        Format lead_time as hours for event names.
-
-        Parameters
-        ----------
-        lead_time : np.timedelta64
-            Lead time to format
-
-        Returns
-        -------
-        str
-            Formatted lead time as "{hours}h"
-        """
-        # Convert to hours
-        hours = lead_time / np.timedelta64(1, "h")
-        return f"{hours:.0f}h"
+        # Validate that lead_time and member have matching lengths
+        if len(self.lead_time) > 0 and len(self.member) > 0:
+            if len(self.lead_time) != len(self.member):
+                raise ValueError(
+                    f"Forecast.lead_time and Forecast.member must have the same length. "
+                    f"Got {len(self.lead_time)} lead times and {len(self.member)} members."
+                )
 
         if auto_generate and len(self.lead_time) > 0 and len(self.member) > 0:
             self._set_event_attrs_from_forecast_dims()

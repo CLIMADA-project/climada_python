@@ -19,10 +19,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Tests for Impact Forecast.
 """
 
+import datetime as dt
+from pathlib import Path
+
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+import xarray as xr
 from scipy.sparse import csr_matrix
 
 from climada.engine import Impact, ImpactForecast
