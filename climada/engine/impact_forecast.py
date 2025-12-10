@@ -186,7 +186,7 @@ class ImpactForecast(Forecast, Impact):
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
-    def _reduce_attrs(self, reduce_method: str):
+    def _reduce_attrs(self, event_name: str):
         """
         Reduce the attributes of an ImpactForecast to a single value.
 
@@ -194,21 +194,21 @@ class ImpactForecast(Forecast, Impact):
         - lead_time: set to NaT
         - member: set to -1
         - event_id: set to 0
-        - event_name: set to reduce_method
-        - date: set to the minimum value
+        - event_name: set to the name of the reduction method (default)
+        - date: set to 0
         - frequency: set to 1
 
         Parameters
         ----------
-        reduce_method : str
-            The reduction method used to reduce the attributes.
+        event_name : str
+            The event name given to the reduced data.
         """
         reduced_attrs = {
             "lead_time": np.array([np.timedelta64("NaT")]),
             "member": np.array([-1]),
             "event_id": np.array([0]),
-            "event_name": np.array([reduce_method]),
-            "date": np.array([self.date.min()]),
+            "event_name": np.array([event_name]),
+            "date": np.array([0]),
             "frequency": np.array([1]),
         }
 
@@ -289,9 +289,6 @@ class ImpactForecast(Forecast, Impact):
     def mean(self):
         """
         Reduce the impact matrix and at_event of an ImpactForecast to the mean value.
-
-        The mean value is computed by taking the mean of the impact matrix along the
-        exposure points axis (axis=1) and then taking the mean of the resulting array.
 
         Parameters
         ----------

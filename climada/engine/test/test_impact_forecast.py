@@ -202,6 +202,6 @@ def test_impact_forecast_mean_min_max(impact_forecast):
     assert imp_fcst_mean.frequency == 1
     assert imp_fcst_min.frequency == 1
     assert imp_fcst_max.frequency == 1
-    assert imp_fcst_mean.date == impact_forecast.date.min()
-    assert imp_fcst_min.date == impact_forecast.date.min()
-    assert imp_fcst_max.date == impact_forecast.date.min()
+    assert imp_fcst_mean.date == 0
+    assert imp_fcst_min.date == 0
+    assert imp_fcst_max.date == 0
