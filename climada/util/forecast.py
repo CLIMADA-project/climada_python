@@ -60,3 +60,35 @@ class Forecast:
             np.asarray(member) if member is not None else np.array([], dtype="int")
         )
         super().__init__(**kwargs)
+
+    def idx_member(self, member: np.ndarray) -> np.ndarray:
+        """Return boolean array where self.member == member using numpy.isin()
+
+        Parameters
+        ----------
+        member : np.ndarray
+            Array of ensemble members (ints) for which to return an indexer
+
+        Returns
+        -------
+        np.ndarray
+            Boolean array where self.member is in member.
+        """
+
+        return np.isin(self.member, member)
+
+    def idx_lead_time(self, lead_time: np.ndarray) -> np.ndarray:
+        """Return boolean array where self.lead_time == lead_time using numpy.isin()
+
+        Parameters
+        ----------
+        lead_time : np.ndarray
+            Array of lead times (numpy.timedelta64) for which to return an indexer
+
+        Returns
+        -------
+        np.ndarray
+            Boolean array where self.lead_time is in lead_time.
+        """
+
+        return np.isin(self.lead_time, lead_time)
