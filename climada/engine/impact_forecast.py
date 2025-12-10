@@ -221,11 +221,13 @@ class ImpactForecast(Forecast, Impact):
                 if lead_time is not None
                 else np.full_like(self.lead_time, True, dtype=bool)
             )
-            mask_event_id = np.asarray(self.event_id)[(mask_member & mask_lead_time)]
+            event_id_from_forecast_mask = np.asarray(self.event_id)[
+                (mask_member & mask_lead_time)
+            ]
             event_ids = (
-                np.intersect1d(event_ids, mask_event_id)
+                np.intersect1d(event_ids, event_id_from_forecast_mask)
                 if event_ids is not None
-                else mask_event_id
+                else event_id_from_forecast_mask
             )
 
         return super().select(
