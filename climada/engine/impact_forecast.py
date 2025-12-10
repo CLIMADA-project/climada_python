@@ -197,15 +197,18 @@ class ImpactForecast(Forecast, Impact):
     ):
         """Select entries based on the parameters and return a new instance.
         The selection will contain the intersection of all given parameters.
+
         Parameters
         ----------
         member : Sequence of ints
             Ensemble members to select
         lead_time : Sequence of numpy.timedelta64
             Lead times to select
+
         Returns
         -------
         ImpactForecast
+
         See Also
         --------
         :py:meth:`~climada.engine.impact.Impact.select`
