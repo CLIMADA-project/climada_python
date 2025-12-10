@@ -254,8 +254,12 @@ class HazardForecast(Forecast, Hazard):
         HazardForecast
             A HazardForecast object with the quantile intensity and fraction.
         """
-        red_intensity = sparse.csr_matrix(self.intensity.todense().quantile(q, axis=0))
-        red_fraction = sparse.csr_matrix(self.fraction.todense().quantile(q, axis=0))
+        red_intensity = sparse.csr_matrix(
+            np.quantile(self.intensity.toarray(), q, axis=0)
+        )
+        red_fraction = sparse.csr_matrix(
+            np.quantile(self.fraction.toarray(), q, axis=0)
+        )
         reduced_attrs = self._reduce_attrs(f"quantile_{q}")
         return HazardForecast(
             lead_time=reduced_attrs["lead_time"],
