@@ -339,6 +339,7 @@ class HazardForecast(Forecast, Hazard):
             data=dset_squeezed,
             coordinate_vars=parent_coord_vars,
             intensity=intensity,
+            crs=crs,
         )
 
         kwargs = reader.get_hazard_kwargs() | {

@@ -27,9 +27,11 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 import xarray as xr
+from scipy import sparse
 from scipy.sparse import csr_matrix
 
 from climada.hazard.base import Hazard
+from climada.hazard.centroids.centr import Centroids
 from climada.hazard.forecast import HazardForecast
 from climada.hazard.test.test_base import hazard_kwargs
 
@@ -353,6 +355,92 @@ class TestSelect:
             haz_fc.select(
                 lead_time=[np.timedelta64("2", "Y").astype("timedelta64[ns]")]
             )
+
+
+def test_check_sizes(haz_fc):
+    """Test that _check_sizes validates matching lengths"""
+    # Should pass with matching lengths
+    haz_fc._check_sizes()
+
+    # Test with mismatched member length - manipulate after creation
+    haz_fc_bad = HazardForecast(
+        lead_time=haz_fc.lead_time,
+        member=haz_fc.member,
+        event_id=haz_fc.event_id,
+        event_name=haz_fc.event_name,
+        date=haz_fc.date,
+        haz_type=haz_fc.haz_type,
+        units=haz_fc.units,
+        centroids=haz_fc.centroids,
+        intensity=haz_fc.intensity,
+        fraction=haz_fc.fraction,
+    )
+    # Manipulate member array directly to bypass __init__ validation
+    haz_fc_bad.member = haz_fc.member[:-1]
+    with pytest.raises(ValueError, match="Forecast.member"):
+        haz_fc_bad._check_sizes()
+
+    # Test with mismatched lead_time length
+    haz_fc_bad2 = HazardForecast(
+        lead_time=haz_fc.lead_time,
+        member=haz_fc.member,
+        event_id=haz_fc.event_id,
+        event_name=haz_fc.event_name,
+        date=haz_fc.date,
+        haz_type=haz_fc.haz_type,
+        units=haz_fc.units,
+        centroids=haz_fc.centroids,
+        intensity=haz_fc.intensity,
+        fraction=haz_fc.fraction,
+    )
+    # Manipulate lead_time array directly to bypass __init__ validation
+    haz_fc_bad2.lead_time = haz_fc.lead_time[:-1]
+    with pytest.raises(ValueError, match="Forecast.lead_time"):
+        haz_fc_bad2._check_sizes()
+
+
+def test_set_event_attrs_from_forecast_dims():
+    """Test that _set_event_attrs_from_forecast_dims generates event attributes correctly"""
+    lead_time = pd.timedelta_range("3h", periods=4, freq="2h").to_numpy()
+    member = np.array([1, 2, 3, 4])
+
+    # Create a HazardForecast without event_name and date (they will be auto-generated)
+    haz_fc = HazardForecast(
+        lead_time=lead_time,
+        member=member,
+        haz_type="TC",
+        units="m/s",
+        event_id=np.array([10, 20, 30, 40]),
+        intensity=sparse.csr_matrix(np.random.rand(4, 3)),
+        centroids=Centroids(lat=np.array([1, 2, 3]), lon=np.array([4, 5, 6])),
+    )
+
+    # Check that event_name was auto-generated
+    assert len(haz_fc.event_name) == 4
+    assert haz_fc.event_name[0] == "lt_3h_m_1"
+    assert haz_fc.event_name[1] == "lt_5h_m_2"
+    assert haz_fc.event_name[2] == "lt_7h_m_3"
+    assert haz_fc.event_name[3] == "lt_9h_m_4"
+
+    # Check that date was set to zeros
+    npt.assert_array_equal(haz_fc.date, np.zeros(4, dtype=int))
+
+    # Test that it raises error when lead_time and member have different lengths
+    haz_fc_bad = HazardForecast(
+        lead_time=lead_time,
+        member=member,
+        haz_type="TC",
+        units="m/s",
+        event_id=np.array([10, 20, 30, 40]),
+        event_name=["a", "b", "c", "d"],  # Provide event_name to bypass auto-generation
+        date=np.array([1, 2, 3, 4]),
+        intensity=sparse.csr_matrix(np.random.rand(4, 3)),
+        centroids=Centroids(lat=np.array([1, 2, 3]), lon=np.array([4, 5, 6])),
+    )
+    # Now manipulate arrays to create mismatch and call the method directly
+    haz_fc_bad.member = member[:-1]
+    with pytest.raises(ValueError, match="Length mismatch"):
+        haz_fc_bad._set_event_attrs_from_forecast_dims()
 
 
 def test_write_read_hazard_forecast(haz_fc, tmp_path):
