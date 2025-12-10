@@ -244,9 +244,7 @@ class HazardForecast(Forecast, Hazard):
         *,
         intensity: Optional[str] = None,
         coordinate_vars: Optional[Dict[str, str]] = None,
-        data_vars: Optional[Dict[str, str]] = None,
         crs: str = "EPSG:4326",
-        rechunk: bool = False,
         open_dataset_kws: dict[str, Any] | None = None,
     ):
         """Read forecast hazard data from an xarray Dataset
@@ -276,12 +274,8 @@ class HazardForecast(Forecast, Hazard):
 
             Note: The "event" coordinate is automatically constructed from lead_time
             and member, so it should not be specified.
-        data_vars : dict(str, str), optional
-            Mapping from default variable names to variable names in the data
         crs : str, optional
             Coordinate reference system identifier. Defaults to "EPSG:4326"
-        rechunk : bool, optional
-            Whether to rechunk the dataset before processing. Defaults to False
         open_dataset_kws : dict, optional
             Keyword arguments passed to xarray.open_dataset if data is a file path
 
@@ -345,6 +339,7 @@ class HazardForecast(Forecast, Hazard):
             data=dset_squeezed,
             coordinate_vars=parent_coord_vars,
             intensity=intensity,
+            crs=crs,
         )
 
         kwargs = reader.get_hazard_kwargs() | {
