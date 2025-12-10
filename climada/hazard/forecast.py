@@ -22,6 +22,7 @@ Define Forecast variant of Hazard.
 import logging
 
 import numpy as np
+import scipy.sparse as sparse
 
 from ..util.checker import size
 from ..util.forecast import Forecast
@@ -149,7 +150,7 @@ class HazardForecast(Forecast, Hazard):
             A HazardForecast object with the min intensity and fraction.
         """
         red_intensity = sparse.csr_matrix(self.intensity.min(axis=0))
-        red_fraction = sparse.csr_matrix(self.fraction.sum())
+        red_fraction = sparse.csr_matrix(self.fraction.min(axis=0))
         reduced_attrs = self._reduce_attrs("min")
         return HazardForecast(
             lead_time=reduced_attrs["lead_time"],
@@ -163,7 +164,7 @@ class HazardForecast(Forecast, Hazard):
             frequency_unit=self.frequency_unit,
             event_name=reduced_attrs["event_name"],
             date=reduced_attrs["date"],
-            orig=hazard.orig,
+            orig=reduced_attrs["orig"],
             intensity=red_intensity,
             fraction=red_fraction,
         )
@@ -182,8 +183,8 @@ class HazardForecast(Forecast, Hazard):
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
-        red_intensity = sparse.csr_matrix(self.intensity.min(axis=0))
-        red_fraction = sparse.csr_matrix(self.fraction.sum())
+        red_intensity = sparse.csr_matrix(self.intensity.max(axis=0))
+        red_fraction = sparse.csr_matrix(self.fraction.max(axis=0))
         reduced_attrs = self._reduce_attrs("max")
         return HazardForecast(
             lead_time=reduced_attrs["lead_time"],
@@ -197,7 +198,7 @@ class HazardForecast(Forecast, Hazard):
             frequency_unit=self.frequency_unit,
             event_name=reduced_attrs["event_name"],
             date=reduced_attrs["date"],
-            orig=hazard.orig,
+            orig=reduced_attrs["orig"],
             intensity=red_intensity,
             fraction=red_fraction,
         )
@@ -218,8 +219,8 @@ class HazardForecast(Forecast, Hazard):
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
-        red_intensity = sparse.csr_matrix(self.intensity.min(axis=0))
-        red_fraction = sparse.csr_matrix(self.fraction.sum())
+        red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
+        red_fraction = sparse.csr_matrix(self.fraction.mean(axis=0))
         reduced_attrs = self._reduce_attrs("mean")
         return HazardForecast(
             lead_time=reduced_attrs["lead_time"],
@@ -233,7 +234,7 @@ class HazardForecast(Forecast, Hazard):
             frequency_unit=self.frequency_unit,
             event_name=reduced_attrs["event_name"],
             date=reduced_attrs["date"],
-            orig=hazard.orig,
+            orig=reduced_attrs["orig"],
             intensity=red_intensity,
             fraction=red_fraction,
         )
