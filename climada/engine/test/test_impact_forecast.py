@@ -202,13 +202,23 @@ class TestSelect:
         assert imp_fc_select.imp_mat.shape == (0, num_centroids)
 
 
-@pytest.mark.skip("Concat from base class does not work")
-def test_impact_forecast_concat(impact_forecast, member):
+def test_impact_forecast_concat(impact_forecast, member, lead_time):
     """Check if Impact.concat works on the derived class"""
     impact_fc = ImpactForecast.concat(
         [impact_forecast, impact_forecast], reset_event_ids=True
     )
     npt.assert_array_equal(impact_fc.member, np.concatenate([member, member]))
+    npt.assert_array_equal(impact_fc.lead_time, np.concatenate([lead_time, lead_time]))
+    npt.assert_array_equal(
+        impact_fc.event_id, np.arange(impact_fc.imp_mat.shape[0]) + 1
+    )
+    npt.assert_array_equal(impact_fc.event_name, impact_forecast.event_name * 2)
+    npt.assert_array_equal(
+        impact_fc.imp_mat.toarray(),
+        np.vstack(
+            (impact_forecast.imp_mat.toarray(), impact_forecast.imp_mat.toarray())
+        ),
+    )
 
 
 def test_impact_forecast_blocked_methods(impact_forecast):
