@@ -152,7 +152,7 @@ class HazardForecast(Forecast, Hazard):
         """
         if dim is not None:
             return reduce_unique_selection(
-                values=getattr(self.dim), select=dim, reduce_attr="min"
+                self, values=dim, select=dim, reduce_attr="min"
             )
 
         red_intensity = self.intensity.min(axis=0).tocsr()
@@ -185,7 +185,7 @@ class HazardForecast(Forecast, Hazard):
         """
         if dim is not None:
             return reduce_unique_selection(
-                values=getattr(self.dim), select=dim, reduce_attr="max"
+                self, values=dim, select=dim, reduce_attr="max"
             )
 
         red_intensity = self.intensity.max(axis=0).tocsr()
@@ -217,7 +217,7 @@ class HazardForecast(Forecast, Hazard):
         """
         if dim is not None:
             return reduce_unique_selection(
-                values=getattr(self.dim), select=dim, reduce_attr="mean"
+                self, values=dim, select=dim, reduce_attr="mean"
             )
 
         red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
