@@ -20,6 +20,8 @@ Define Forecast variant of Impact.
 """
 
 import logging
+from pathlib import Path
+from typing import Union
 
 import numpy as np
 import scipy.sparse as sparse
@@ -172,6 +174,62 @@ class ImpactForecast(Forecast, Impact):
 
         LOGGER.error("calc_freq_curve is not defined for ImpactForecast")
         raise NotImplementedError("calc_freq_curve is not defined for ImpactForecast")
+
+    @classmethod
+    def from_hdf5(cls, file_path: Union[str, Path]):
+        """Create an ImpactForecast object from an H5 file.
+
+        This assumes a specific layout of the file. If values are not found in the
+        expected places, they will be set to the default values for an ``Impact`` object.
+
+        The following H5 file structure is assumed (H5 groups are terminated with ``/``,
+        attributes are denoted by ``.attrs/``)::
+
+            file.h5
+            ├─ at_event
+            ├─ coord_exp
+            ├─ eai_exp
+            ├─ event_id
+            ├─ event_name
+            ├─ frequency
+            ├─ imp_mat
+            ├─ lead_time
+            ├─ member
+            ├─ .attrs/
+            │  ├─ aai_agg
+            │  ├─ crs
+            │  ├─ frequency_unit
+            │  ├─ haz_type
+            │  ├─ tot_value
+            │  ├─ unit
+
+        As per the :py:func:`climada.engine.impact.Impact.__init__`, any of these entries
+        is optional. If it is not found, the default value will be used when constructing
+        the Impact.
+
+        The impact matrix ``imp_mat`` can either be an H5 dataset, in which case it is
+        interpreted as dense representation of the matrix, or an H5 group, in which case
+        the group is expected to contain the following data for instantiating a
+        `scipy.sparse.csr_matrix <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html>`_::
+
+            imp_mat/
+            ├─ data
+            ├─ indices
+            ├─ indptr
+            ├─ .attrs/
+            │  ├─ shape
+
+        Parameters
+        ----------
+        file_path : str or Path
+            The file path of the file to read.
+
+        Returns
+        -------
+        imp : ImpactForecast
+            ImpactForecast with data from the given file
+        """
+        return super().from_hdf5(file_path, add_array_attrs={"member", "lead_time"})
 
     def _check_sizes(self):
         """Check sizes of forecast data vs. impact data.
