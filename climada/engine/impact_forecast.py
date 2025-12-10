@@ -24,6 +24,7 @@ from pathlib import Path
 from typing import Union
 
 import numpy as np
+import scipy.sparse as sparse
 
 from ..util import log_level
 from ..util.checker import size
@@ -242,3 +243,172 @@ class ImpactForecast(Forecast, Impact):
         num_entries = len(self.event_id)
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
+
+    def _reduce_attrs(self, event_name: str):
+        """
+        Reduce the attributes of an ImpactForecast to a single value.
+
+        Attributes are modified as follows:
+        - lead_time: set to NaT
+        - member: set to -1
+        - event_id: set to 0
+        - event_name: set to the name of the reduction method (default)
+        - date: set to 0
+        - frequency: set to 1
+
+        Parameters
+        ----------
+        event_name : str
+            The event name given to the reduced data.
+        """
+        reduced_attrs = {
+            "lead_time": np.array([np.timedelta64("NaT")]),
+            "member": np.array([-1]),
+            "event_id": np.array([0]),
+            "event_name": np.array([event_name]),
+            "date": np.array([0]),
+            "frequency": np.array([1]),
+        }
+
+        return reduced_attrs
+
+    def min(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the minimum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the min impact matrix and at_event.
+        """
+        red_imp_mat = self.imp_mat.min(axis=0).tocsr()
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("min"),
+        )
+
+    def max(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the maximum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the max impact matrix and at_event.
+        """
+        red_imp_mat = self.imp_mat.max(axis=0).tocsr()
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("max"),
+        )
+
+    def mean(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the mean value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the mean impact matrix and at_event.
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("mean"),
+        )
+
+    def select(
+        self,
+        event_ids=None,
+        event_names=None,
+        dates=None,
+        coord_exp=None,
+        reset_frequency=False,
+        member=None,
+        lead_time=None,
+    ):
+        """Select entries based on the parameters and return a new instance.
+        The selection will contain the intersection of all given parameters.
+
+        Parameters
+        ----------
+        member : Sequence of ints
+            Ensemble members to select
+        lead_time : Sequence of numpy.timedelta64
+            Lead times to select
+
+        See Also
+        --------
+        :py:meth:`~climada.engine.impact.Impact.select`
+        """
+        if member is not None or lead_time is not None:
+            mask_member = (
+                self.idx_member(member)
+                if member is not None
+                else np.full_like(self.member, True, dtype=bool)
+            )
+            mask_lead_time = (
+                self.idx_lead_time(lead_time)
+                if lead_time is not None
+                else np.full_like(self.lead_time, True, dtype=bool)
+            )
+            event_id_from_forecast_mask = np.asarray(self.event_id)[
+                (mask_member & mask_lead_time)
+            ]
+            event_ids = (
+                np.intersect1d(event_ids, event_id_from_forecast_mask)
+                if event_ids is not None
+                else event_id_from_forecast_mask
+            )
+
+        return super().select(
+            event_ids=event_ids,
+            event_names=event_names,
+            dates=dates,
+            coord_exp=coord_exp,
+            reset_frequency=reset_frequency,
+        )
