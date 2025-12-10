@@ -258,3 +258,62 @@ def test_hazard_forecast_mean_min_max(haz_fc, attr):
     npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
     npt.assert_array_equal(haz_fcst_reduced.date, [0])
     npt.assert_array_equal(haz_fcst_reduced.orig, [True])
+
+
+def test_hazard_forecast_mean_min_max_dim(haz_fc):
+    """Check mean, min, and max methods for ImpactForecast with dim argument"""
+    for attr in ["min", "mean", "max"]:
+        for dim, unique_vals in zip(
+            ["member", "lead_time"],
+            [np.unique(haz_fc.member), np.unique(haz_fc.lead_time)],
+        ):
+            haz_fcst_reduced = getattr(haz_fc, attr)(dim=dim)
+            # Assert sparse matrices
+            expected_intensity = []
+            expected_fraction = []
+            for val in unique_vals:
+                mask = getattr(haz_fc, dim) == val
+                expected_intensity.append(
+                    getattr(haz_fc.intensity.todense()[mask], attr)(axis=0)
+                )
+                expected_fraction.append(
+                    getattr(haz_fc.fraction.todense()[mask], attr)(axis=0)
+                )
+            npt.assert_array_equal(
+                haz_fcst_reduced.intensity.todense(),
+                np.vstack(expected_intensity),
+            )
+            npt.assert_array_equal(
+                haz_fcst_reduced.fraction.todense(),
+                np.vstack(expected_fraction),
+            )
+
+            # Check that attributes where reduced correctly
+            if dim == "member":
+                npt.assert_array_equal(haz_fcst_reduced.member, unique_vals)
+                npt.assert_array_equal(
+                    haz_fcst_reduced.lead_time,
+                    np.array([np.timedelta64("NaT")] * len(unique_vals)),
+                )
+            else:  # dim == "lead_time"
+                npt.assert_array_equal(haz_fcst_reduced.lead_time, unique_vals)
+                npt.assert_array_equal(
+                    haz_fcst_reduced.member,
+                    np.array([-1] * len(unique_vals)),
+                )
+            npt.assert_array_equal(
+                haz_fcst_reduced.event_name,
+                np.array([attr] * len(unique_vals)),
+            )
+            npt.assert_array_equal(haz_fcst_reduced.event_id, [0] * len(unique_vals))
+            npt.assert_array_equal(haz_fcst_reduced.frequency, [1] * len(unique_vals))
+            npt.assert_array_equal(haz_fcst_reduced.date, [0] * len(unique_vals))
+            npt.assert_array_equal(haz_fcst_reduced.orig, [True] * len(unique_vals))
+    # TODO add test in case no reduction happens (e.g., all values along dim are unique)
+
+
+def test_hazard_forecast_mean_max_min_dim_error(haz_fc):
+    """Check mean, min, and max methods for ImpactForecast with dim argument"""
+    for attr in ["min", "mean", "max"]:
+        with pytest.raises(ValueError, match="not a valid dimension"):
+            getattr(haz_fc, attr)(dim="invalid_dim")
