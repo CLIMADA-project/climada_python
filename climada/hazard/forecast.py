@@ -105,6 +105,16 @@ class HazardForecast(Forecast, Hazard):
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
+    @classmethod
+    def concat(cls, haz_list: list):
+        """Concatenate multiple HazardForecast instances and return a new object"""
+        if len(haz_list) == 0:
+            return cls()
+        hazard = Hazard.concat(haz_list)
+        lead_time = np.concatenate(tuple(haz.lead_time for haz in haz_list))
+        member = np.concatenate(tuple(haz.member for haz in haz_list))
+        return cls.from_hazard(hazard, lead_time=lead_time, member=member)
+
     def select(
         self,
         member=None,
