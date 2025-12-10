@@ -153,6 +153,8 @@ def forecast_netcdf_file(tmp_path_factory):
     tmpdir = tmp_path_factory.mktemp("forecast_data")
     netcdf_path = tmpdir / "forecast_data.nc"
 
+    crs = "EPSG:4326"
+
     n_eps = 5
     n_lead_time = 4
     n_lat = 3
@@ -198,6 +200,7 @@ def forecast_netcdf_file(tmp_path_factory):
         "lead_time": lead_time_vals,
         "lon": lon,
         "lat": lat,
+        "crs": crs,
     }
 
 
@@ -250,6 +253,7 @@ def test_from_xarray_raster_event_names(forecast_netcdf_file):
             "lead_time": "lead_time",
             "member": "eps",
         },
+        crs=forecast_netcdf_file["crs"],
     )
 
     # Check that event names are generated with lead_time in hours
@@ -279,6 +283,7 @@ def test_from_xarray_raster_dates(forecast_netcdf_file):
             "lead_time": "lead_time",
             "member": "eps",
         },
+        crs=forecast_netcdf_file["crs"],
     )
 
     # Check that all dates are 0 (undefined for forecast)
