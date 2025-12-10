@@ -92,3 +92,29 @@ class Forecast:
         """
 
         return np.isin(self.lead_time, lead_time)
+
+
+def reduce_unique_selection(forecast, values, select, reduce_attr):
+    """
+    Reduce an attribute of a forecast object by selecting unique values
+    and performing an attribute reduction method.
+    Parameters
+    ----------
+    values : np.ndarray
+        Array of values for which to select and reduce the attribute.
+    select : str
+        Name of the attribute to select on (e.g. 'lead_time', 'member').
+    reduce_attr : str
+        Name of the attribute reduction method to call (e.g. 'min', 'mean').
+    Returns
+    -------
+    Forecast
+        Forecast object with the attribute reduced by the reduction method
+        and selected by the unique values.
+    """
+    return forecast.concat(
+        [
+            getattr(forecast.select(**{select: [val]}), reduce_attr)(dim=None)
+            for val in np.unique(values)
+        ]
+    )
