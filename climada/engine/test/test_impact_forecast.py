@@ -148,7 +148,7 @@ class TestSelect:
             impact_fc.imp_mat.todense(), impact_forecast.imp_mat.todense()[:, exp_col]
         )
 
-    def test_derived_select(self, impact_forecast, lead_time, member, impact_kwargs):
+    def test_derived_select_single(self, impact_forecast, lead_time, member):
         imp_fc_select = impact_forecast.select(member=[2, 0])
         idx = np.array([0, 2])
         npt.assert_array_equal(imp_fc_select.event_id, impact_forecast.event_id[idx])
@@ -160,7 +160,9 @@ class TestSelect:
         npt.assert_array_equal(imp_fc_select.member, member[idx])
         npt.assert_array_equal(imp_fc_select.lead_time, lead_time[idx])
 
-        # Test intersections
+    def test_derived_select_intersections(
+        self, impact_forecast, lead_time, member, impact_kwargs
+    ):
         imp_fc_select = impact_forecast.select(event_ids=[10, 14], member=[0, 1, 2])
         npt.assert_array_equal(
             imp_fc_select.event_id, impact_forecast.event_id[np.array([0])]
@@ -182,6 +184,22 @@ class TestSelect:
         imp_fc_select = impact_forecast2.select(event_ids=[10, 11, 13], member=[0])
         npt.assert_array_equal(imp_fc_select.event_id, [10, 11, 13])
         npt.assert_array_equal(imp_fc_select.member, [0, 0, 0])
+
+    def test_no_select(self, impact_forecast, impact_kwargs):
+        imp_fc_select = impact_forecast.select()
+        npt.assert_array_equal(
+            imp_fc_select.imp_mat.todense(), impact_forecast.imp_mat.todense()
+        )
+
+        num_centroids = len(impact_kwargs["coord_exp"])
+        imp_fc_select = impact_forecast.select(event_names=["aaaaa", "foo"])
+        assert imp_fc_select.imp_mat.shape == (0, num_centroids)
+        imp_fc_select = impact_forecast.select(event_ids=[-1, 1002])
+        assert imp_fc_select.imp_mat.shape == (0, num_centroids)
+        imp_fc_select = impact_forecast.select(member=[-1])
+        assert imp_fc_select.imp_mat.shape == (0, num_centroids)
+        imp_fc_select = impact_forecast.select(np.timedelta64("3", "Y"))
+        assert imp_fc_select.imp_mat.shape == (0, num_centroids)
 
 
 @pytest.mark.skip("Concat from base class does not work")
