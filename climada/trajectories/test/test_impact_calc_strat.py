@@ -48,10 +48,7 @@ class TestImpactCalcComputation(unittest.TestCase):
         self.impact_calc_computation = ImpactCalcComputation()
 
     @patch.object(ImpactCalcComputation, "compute_impacts_pre_transfer")
-    @patch.object(ImpactCalcComputation, "_apply_risk_transfer")
-    def test_compute_impacts(
-        self, mock_apply_risk_transfer, mock_calculate_impacts_for_snapshots
-    ):
+    def test_compute_impacts(self, mock_calculate_impacts_for_snapshots):
         mock_impacts = MagicMock(spec=Impact)
         mock_calculate_impacts_for_snapshots.return_value = mock_impacts
 
@@ -59,9 +56,6 @@ class TestImpactCalcComputation(unittest.TestCase):
             exp=self.mock_snapshot0.exposure,
             haz=self.mock_snapshot0.hazard,
             vul=self.mock_snapshot0.impfset,
-            risk_transf_attach=0.1,
-            risk_transf_cover=0.9,
-            calc_residual=False,
         )
 
         self.assertEqual(result, mock_impacts)
@@ -70,7 +64,6 @@ class TestImpactCalcComputation(unittest.TestCase):
             self.mock_snapshot0.hazard,
             self.mock_snapshot0.impfset,
         )
-        mock_apply_risk_transfer.assert_called_once_with(mock_impacts, 0.1, 0.9, False)
 
     def test_calculate_impacts_for_snapshots(self):
         mock_imp_E0H0 = MagicMock(spec=Impact)
@@ -87,37 +80,6 @@ class TestImpactCalcComputation(unittest.TestCase):
             )
 
             self.assertEqual(result, mock_imp_E0H0)
-
-    def test_apply_risk_transfer(self):
-        mock_imp_E0H0 = MagicMock(spec=Impact)
-        mock_imp_E0H0.imp_mat = MagicMock(spec=csr_matrix)
-        mock_imp_resi = MagicMock(spec=csr_matrix)
-
-        with patch.object(
-            self.impact_calc_computation,
-            "calculate_residual_or_risk_transfer_impact_matrix",
-        ) as mock_calc_risk_transfer:
-            mock_calc_risk_transfer.return_value = mock_imp_resi
-            self.impact_calc_computation._apply_risk_transfer(
-                mock_imp_E0H0, 0.1, 0.9, False
-            )
-
-            self.assertIs(mock_imp_E0H0.imp_mat, mock_imp_resi)
-
-    def test_calculate_residual_or_risk_transfer_impact_matrix(self):
-        imp_mat = MagicMock()
-        imp_mat.sum.return_value.A1 = np.array([100, 200, 300])
-        imp_mat.multiply.return_value = "rescaled_matrix"
-
-        result = self.impact_calc_computation.calculate_residual_or_risk_transfer_impact_matrix(
-            imp_mat, 0.1, 0.9, True
-        )
-        self.assertEqual(result, "rescaled_matrix")
-
-        result = self.impact_calc_computation.calculate_residual_or_risk_transfer_impact_matrix(
-            imp_mat, 0.1, 0.9, False
-        )
-        self.assertEqual(result, "rescaled_matrix")
 
 
 if __name__ == "__main__":
