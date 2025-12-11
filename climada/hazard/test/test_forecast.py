@@ -95,16 +95,37 @@ def test_from_hazard(lead_time, member, hazard, haz_kwargs):
     assert_hazard_kwargs(haz_fc_from_haz, **haz_kwargs)
 
 
-@pytest.mark.skip("Concat from base class does not work")
-def test_hazard_forecast_concat(haz_fc, lead_time, member):
-    haz_fc1 = haz_fc.select(event_id=[1, 2])
-    haz_fc2 = haz_fc.select(event_id=[3, 4])
-    haz_fc_concat = HazardForecast.concat([haz_fc1, haz_fc2])
-    assert isinstance(haz_fc_concat, HazardForecast)
-    npt.assert_array_equal(
-        haz_fc_concat.lead_time, np.concatenate([lead_time, lead_time])
-    )
-    npt.assert_array_equal(haz_fc_concat.member, np.concatenate([member, member]))
+class TestHazardForecastConcat:
+
+    def test_concat(self, haz_fc, lead_time, member, haz_kwargs):
+        haz_fc1 = haz_fc.select(event_id=[3])
+        haz_fc2 = HazardForecast(
+            haz_type=haz_kwargs["haz_type"], frequency_unit=haz_kwargs["frequency_unit"]
+        )  # Empty hazard
+        haz_fc3 = haz_fc.select(event_id=[1, 2])
+        haz_fc_concat = HazardForecast.concat([haz_fc1, haz_fc2, haz_fc3])
+        assert isinstance(haz_fc_concat, HazardForecast)
+        assert haz_fc_concat.size == 3
+        npt.assert_array_equal(
+            haz_fc_concat.lead_time, np.concatenate((lead_time[2:3], lead_time[0:2]))
+        )
+        npt.assert_array_equal(
+            haz_fc_concat.member, np.concatenate((member[2:3], member[0:2]))
+        )
+        npt.assert_array_equal(haz_fc_concat.event_id, [3, 1, 2])
+
+    def test_empty_list(self):
+        haz_concat = HazardForecast.concat([])
+        assert isinstance(haz_concat, HazardForecast)
+        assert haz_concat.size == 0
+        npt.assert_array_equal(haz_concat.lead_time, [])
+        npt.assert_array_equal(haz_concat.event_id, [])
+
+    def test_type_fail(self, haz_fc, hazard):
+        with pytest.raises(TypeError, match="different classes"):
+            HazardForecast.concat([haz_fc, hazard])
+        with pytest.raises(TypeError, match="different classes"):
+            Hazard.concat([haz_fc, hazard])
 
 
 class TestSelect:
@@ -212,3 +233,86 @@ def test_write_read_hazard_forecast(haz_fc, tmp_path):
         else:
             # npt.assert_array_equal also works for comparing int, float or list
             npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
+
+
+@pytest.mark.parametrize("attr", ["min", "mean", "max"])
+def test_hazard_forecast_mean_min_max(haz_fc, attr):
+    """Check mean, min, and max methods for ImpactForecast"""
+    haz_fcst_reduced = getattr(haz_fc, attr)()
+
+    # Assert sparse matrices
+    npt.assert_array_equal(
+        haz_fcst_reduced.intensity.todense(),
+        getattr(haz_fc.intensity.todense(), attr)(axis=0),
+    )
+    npt.assert_array_equal(
+        haz_fcst_reduced.fraction.todense(),
+        getattr(haz_fc.fraction.todense(), attr)(axis=0),
+    )
+
+    # Check that attributes where reduced correctly
+    npt.assert_array_equal(np.isnat(haz_fcst_reduced.lead_time), [True])
+    npt.assert_array_equal(haz_fcst_reduced.member, [-1])
+    npt.assert_array_equal(haz_fcst_reduced.event_name, [attr])
+    npt.assert_array_equal(haz_fcst_reduced.event_id, [0])
+    npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
+    npt.assert_array_equal(haz_fcst_reduced.date, [0])
+    npt.assert_array_equal(haz_fcst_reduced.orig, [True])
+
+
+@pytest.mark.parametrize("quantile", [0.3, 0.6, 0.8])
+def test_hazard_forecast_quantile(haz_fc, quantile):
+    """Check quantile method for HazardForecast"""
+    haz_fcst_quantile = haz_fc.quantile(q=quantile)
+
+    # assert intensity
+    npt.assert_array_equal(
+        haz_fcst_quantile.intensity.toarray().squeeze(),
+        np.quantile(haz_fc.intensity.toarray(), quantile, axis=0),
+    )
+    # assert fraction
+    npt.assert_array_equal(
+        haz_fcst_quantile.fraction.toarray().squeeze(),
+        np.quantile(haz_fc.fraction.toarray(), quantile, axis=0),
+    )
+
+    # check that attributes where reduced correctly
+    npt.assert_array_equal(
+        haz_fcst_quantile.lead_time, np.array([np.timedelta64("NaT")])
+    )
+    npt.assert_array_equal(haz_fcst_quantile.member, np.array([-1]))
+    npt.assert_array_equal(
+        haz_fcst_quantile.event_name, np.array([f"quantile_{quantile}"])
+    )
+    npt.assert_array_equal(haz_fcst_quantile.event_id, np.array([0]))
+    npt.assert_array_equal(haz_fcst_quantile.frequency, np.array([1]))
+    npt.assert_array_equal(haz_fcst_quantile.date, np.array([0]))
+    npt.assert_array_equal(haz_fcst_quantile.orig, np.array([True]))
+
+
+def test_median(haz_fc):
+    haz_fcst_median = haz_fc.median()
+    haz_fcst_quantile = haz_fc.quantile(q=0.5)
+    npt.assert_array_equal(
+        haz_fcst_median.intensity.todense(), haz_fcst_quantile.intensity.todense()
+    )
+    npt.assert_array_equal(
+        haz_fcst_median.intensity.todense(),
+        np.median(haz_fc.intensity.todense(), axis=0),
+    )
+    npt.assert_array_equal(
+        haz_fcst_median.fraction.todense(), haz_fcst_quantile.fraction.todense()
+    )
+    npt.assert_array_equal(
+        haz_fcst_median.fraction.todense(),
+        np.median(haz_fc.fraction.todense(), axis=0),
+    )
+
+    # check that attributes where reduced correctly
+    npt.assert_array_equal(haz_fcst_median.member, np.array([-1]))
+    npt.assert_array_equal(haz_fcst_median.lead_time, np.array([np.timedelta64("NaT")]))
+    npt.assert_array_equal(haz_fcst_median.event_id, np.array([0]))
+    npt.assert_array_equal(haz_fcst_median.event_name, np.array(["median"]))
+    npt.assert_array_equal(haz_fcst_median.frequency, np.array([1]))
+    npt.assert_array_equal(haz_fcst_median.date, np.array([0]))
+    npt.assert_array_equal(haz_fcst_median.orig, np.array([True]))

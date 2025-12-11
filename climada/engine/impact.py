@@ -1431,6 +1431,8 @@ class Impact:
 
         def write_dataset(group, name, value):
             """Write a dataset"""
+            if name == "lead_time":
+                value = value.astype("timedelta64[ns]").astype("int64")
             group.create_dataset(name, data=value, dtype=_str_type_helper(value))
 
         def write_dict(group, name, value):
@@ -1618,7 +1620,9 @@ class Impact:
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_hdf5(cls, file_path: Union[str, Path]):
+    def from_hdf5(
+        cls, file_path: Union[str, Path], *, add_scalar_attrs=None, add_array_attrs=None
+    ):
         """Create an impact object from an H5 file.
 
         This assumes a specific layout of the file. If values are not found in the
@@ -1663,6 +1667,10 @@ class Impact:
         ----------
         file_path : str or Path
             The file path of the file to read.
+        add_scalar_attrs : Iterable of str, optional
+            Scalar attributes to read from file. Defaults to None.
+        add_array_attrs : Iterable of str, optional
+            Array attributes to read from file. Defaults to None.
 
         Returns
         -------
@@ -1691,7 +1699,10 @@ class Impact:
             # Scalar attributes
             scalar_attrs = set(
                 ("crs", "tot_value", "unit", "aai_agg", "frequency_unit", "haz_type")
-            ).intersection(file.attrs.keys())
+            )
+            if add_scalar_attrs is not None:
+                scalar_attrs = scalar_attrs.union(add_scalar_attrs)
+            scalar_attrs = scalar_attrs.intersection(file.attrs.keys())
             kwargs.update({attr: file.attrs[attr] for attr in scalar_attrs})
 
             # Array attributes
@@ -1699,9 +1710,16 @@ class Impact:
             #       invalidated once we close the file.
             array_attrs = set(
                 ("event_id", "date", "coord_exp", "eai_exp", "at_event", "frequency")
-            ).intersection(file.keys())
+            )
+            if add_array_attrs is not None:
+                array_attrs = array_attrs.union(add_array_attrs)
+            array_attrs = array_attrs.intersection(file.keys())
             kwargs.update({attr: file[attr][:] for attr in array_attrs})
-
+            # correct lead_time attribut to timedelta
+            if "lead_time" in kwargs:
+                kwargs["lead_time"] = np.array(file["lead_time"][:]).astype(
+                    "timedelta64[ns]"
+                )
             # Special handling for 'event_name' because it should be a list of strings
             if "event_name" in file:
                 # pylint: disable=no-member

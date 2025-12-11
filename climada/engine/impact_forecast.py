@@ -20,8 +20,11 @@ Define Forecast variant of Impact.
 """
 
 import logging
+from pathlib import Path
+from typing import Union
 
 import numpy as np
+import scipy.sparse as sparse
 
 from ..util import log_level
 from ..util.checker import size
@@ -172,6 +175,62 @@ class ImpactForecast(Forecast, Impact):
         LOGGER.error("calc_freq_curve is not defined for ImpactForecast")
         raise NotImplementedError("calc_freq_curve is not defined for ImpactForecast")
 
+    @classmethod
+    def from_hdf5(cls, file_path: Union[str, Path]):
+        """Create an ImpactForecast object from an H5 file.
+
+        This assumes a specific layout of the file. If values are not found in the
+        expected places, they will be set to the default values for an ``Impact`` object.
+
+        The following H5 file structure is assumed (H5 groups are terminated with ``/``,
+        attributes are denoted by ``.attrs/``)::
+
+            file.h5
+            ├─ at_event
+            ├─ coord_exp
+            ├─ eai_exp
+            ├─ event_id
+            ├─ event_name
+            ├─ frequency
+            ├─ imp_mat
+            ├─ lead_time
+            ├─ member
+            ├─ .attrs/
+            │  ├─ aai_agg
+            │  ├─ crs
+            │  ├─ frequency_unit
+            │  ├─ haz_type
+            │  ├─ tot_value
+            │  ├─ unit
+
+        As per the :py:func:`climada.engine.impact.Impact.__init__`, any of these entries
+        is optional. If it is not found, the default value will be used when constructing
+        the Impact.
+
+        The impact matrix ``imp_mat`` can either be an H5 dataset, in which case it is
+        interpreted as dense representation of the matrix, or an H5 group, in which case
+        the group is expected to contain the following data for instantiating a
+        `scipy.sparse.csr_matrix <https://docs.scipy.org/doc/scipy/reference/generated/scipy.sparse.csr_matrix.html>`_::
+
+            imp_mat/
+            ├─ data
+            ├─ indices
+            ├─ indptr
+            ├─ .attrs/
+            │  ├─ shape
+
+        Parameters
+        ----------
+        file_path : str or Path
+            The file path of the file to read.
+
+        Returns
+        -------
+        imp : ImpactForecast
+            ImpactForecast with data from the given file
+        """
+        return super().from_hdf5(file_path, add_array_attrs={"member", "lead_time"})
+
     def _check_sizes(self):
         """Check sizes of forecast data vs. impact data.
 
@@ -184,6 +243,123 @@ class ImpactForecast(Forecast, Impact):
         num_entries = len(self.event_id)
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
+
+    def _reduce_attrs(self, event_name: str):
+        """
+        Reduce the attributes of an ImpactForecast to a single value.
+
+        Attributes are modified as follows:
+        - lead_time: set to NaT
+        - member: set to -1
+        - event_id: set to 0
+        - event_name: set to the name of the reduction method (default)
+        - date: set to 0
+        - frequency: set to 1
+
+        Parameters
+        ----------
+        event_name : str
+            The event name given to the reduced data.
+        """
+        reduced_attrs = {
+            "lead_time": np.array([np.timedelta64("NaT")]),
+            "member": np.array([-1]),
+            "event_id": np.array([0]),
+            "event_name": np.array([event_name]),
+            "date": np.array([0]),
+            "frequency": np.array([1]),
+        }
+
+        return reduced_attrs
+
+    def min(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the minimum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the min impact matrix and at_event.
+        """
+        red_imp_mat = self.imp_mat.min(axis=0).tocsr()
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("min"),
+        )
+
+    def max(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the maximum
+        value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the max impact matrix and at_event.
+        """
+        red_imp_mat = self.imp_mat.max(axis=0).tocsr()
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("max"),
+        )
+
+    def mean(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the mean value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the mean impact matrix and at_event.
+        """
+        red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs("mean"),
+        )
 
     def select(
         self,
@@ -204,10 +380,6 @@ class ImpactForecast(Forecast, Impact):
             Ensemble members to select
         lead_time : Sequence of numpy.timedelta64
             Lead times to select
-
-        Returns
-        -------
-        ImpactForecast
 
         See Also
         --------
@@ -240,3 +412,56 @@ class ImpactForecast(Forecast, Impact):
             coord_exp=coord_exp,
             reset_frequency=reset_frequency,
         )
+
+    def _quantile(self, q: float, event_name: str | None = None):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the quantile value.
+        """
+        red_imp_mat = sparse.csr_matrix(np.quantile(self.imp_mat.toarray(), q, axis=0))
+        red_at_event = np.array([red_imp_mat.sum()])
+        if event_name is None:
+            event_name = f"quantile_{q}"
+        return ImpactForecast(
+            frequency_unit=self.frequency_unit,
+            coord_exp=self.coord_exp,
+            crs=self.crs,
+            eai_exp=self.eai_exp,
+            at_event=red_at_event,
+            tot_value=self.tot_value,
+            aai_agg=self.aai_agg,
+            unit=self.unit,
+            imp_mat=red_imp_mat,
+            haz_type=self.haz_type,
+            **self._reduce_attrs(event_name),
+        )
+
+    def quantile(self, q: float):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the quantile value.
+
+        Parameters
+        ----------
+        q : float
+            The quantile to compute, which must be between 0 and 1.
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the quantile impact matrix and at_event.
+        """
+        return self._quantile(q=q)
+
+    def median(self):
+        """
+        Reduce the impact matrix and at_event of an ImpactForecast to the median value.
+
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        ImpactForecast
+            An ImpactForecast object with the median impact matrix and at_event.
+        """
+        return self._quantile(q=0.5, event_name="median")
