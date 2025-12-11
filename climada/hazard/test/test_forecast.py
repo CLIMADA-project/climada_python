@@ -509,3 +509,61 @@ def test_hazard_forecast_mean_min_max(haz_fc, attr):
     npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
     npt.assert_array_equal(haz_fcst_reduced.date, [0])
     npt.assert_array_equal(haz_fcst_reduced.orig, [True])
+
+
+@pytest.mark.parametrize("quantile", [0.3, 0.6, 0.8])
+def test_hazard_forecast_quantile(haz_fc, quantile):
+    """Check quantile method for HazardForecast"""
+    haz_fcst_quantile = haz_fc.quantile(q=quantile)
+
+    # assert intensity
+    npt.assert_array_equal(
+        haz_fcst_quantile.intensity.toarray().squeeze(),
+        np.quantile(haz_fc.intensity.toarray(), quantile, axis=0),
+    )
+    # assert fraction
+    npt.assert_array_equal(
+        haz_fcst_quantile.fraction.toarray().squeeze(),
+        np.quantile(haz_fc.fraction.toarray(), quantile, axis=0),
+    )
+
+    # check that attributes where reduced correctly
+    npt.assert_array_equal(
+        haz_fcst_quantile.lead_time, np.array([np.timedelta64("NaT")])
+    )
+    npt.assert_array_equal(haz_fcst_quantile.member, np.array([-1]))
+    npt.assert_array_equal(
+        haz_fcst_quantile.event_name, np.array([f"quantile_{quantile}"])
+    )
+    npt.assert_array_equal(haz_fcst_quantile.event_id, np.array([0]))
+    npt.assert_array_equal(haz_fcst_quantile.frequency, np.array([1]))
+    npt.assert_array_equal(haz_fcst_quantile.date, np.array([0]))
+    npt.assert_array_equal(haz_fcst_quantile.orig, np.array([True]))
+
+
+def test_median(haz_fc):
+    haz_fcst_median = haz_fc.median()
+    haz_fcst_quantile = haz_fc.quantile(q=0.5)
+    npt.assert_array_equal(
+        haz_fcst_median.intensity.todense(), haz_fcst_quantile.intensity.todense()
+    )
+    npt.assert_array_equal(
+        haz_fcst_median.intensity.todense(),
+        np.median(haz_fc.intensity.todense(), axis=0),
+    )
+    npt.assert_array_equal(
+        haz_fcst_median.fraction.todense(), haz_fcst_quantile.fraction.todense()
+    )
+    npt.assert_array_equal(
+        haz_fcst_median.fraction.todense(),
+        np.median(haz_fc.fraction.todense(), axis=0),
+    )
+
+    # check that attributes where reduced correctly
+    npt.assert_array_equal(haz_fcst_median.member, np.array([-1]))
+    npt.assert_array_equal(haz_fcst_median.lead_time, np.array([np.timedelta64("NaT")]))
+    npt.assert_array_equal(haz_fcst_median.event_id, np.array([0]))
+    npt.assert_array_equal(haz_fcst_median.event_name, np.array(["median"]))
+    npt.assert_array_equal(haz_fcst_median.frequency, np.array([1]))
+    npt.assert_array_equal(haz_fcst_median.date, np.array([0]))
+    npt.assert_array_equal(haz_fcst_median.orig, np.array([True]))
