@@ -27,12 +27,20 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 import xarray as xr
+from packaging.version import Version
 from scipy.sparse import csr_matrix
 
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
 from climada.hazard.forecast import HazardForecast
 from climada.hazard.test.test_base import hazard_kwargs
+
+# See https://docs.xarray.dev/en/stable/whats-new.html#id80
+xarray_leadtime = pytest.mark.skipif(
+    (Version(xr.__version__) < Version("2025.07.0"))
+    and (Version(xr.__version__) >= Version("2025.04.0")),
+    reason="xarray timedelta bug",
+)
 
 
 @pytest.fixture
@@ -193,6 +201,7 @@ class TestXarrayReader:
             "crs": crs,
         }
 
+    @xarray_leadtime
     def test_from_xarray_raster_basic(self, forecast_netcdf_file):
         """Test basic loading of forecast hazard from xarray"""
         haz_fc = HazardForecast.from_xarray_raster(
@@ -231,6 +240,7 @@ class TestXarrayReader:
         assert len(haz_fc.centroids.lat) == expected_n_centroids
         assert len(haz_fc.centroids.lon) == expected_n_centroids
 
+    @xarray_leadtime
     def test_from_xarray_raster_event_names(self, forecast_netcdf_file):
         """Test that event names are auto-generated from lead_time and member"""
         haz_fc = HazardForecast.from_xarray_raster(
@@ -258,6 +268,7 @@ class TestXarrayReader:
         ]
         npt.assert_array_equal(haz_fc.event_name, event_names_expected)
 
+    @xarray_leadtime
     def test_from_xarray_raster_dates(self, forecast_netcdf_file):
         """Test that dates are set to 0 for forecast events"""
         haz_fc = HazardForecast.from_xarray_raster(
