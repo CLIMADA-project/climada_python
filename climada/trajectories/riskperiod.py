@@ -663,6 +663,27 @@ class CalcRiskMetricsPeriod:
             self.E0H1V1.imp_mat, self.E1H1V1.imp_mat, self.time_points
         )
 
+    @property
+    def imp_mats_E0H0V0(self) -> list:
+        """List of `time_points` impact matrices with base exposure, base hazard and base vulnerability."""
+        return self.interpolation_strategy.interp_over_exposure_dim(
+            self.E0H0V0.imp_mat, self.E0H0V0.imp_mat, self.time_points
+        )
+
+    @property
+    def imp_mats_E0H1V0(self) -> list:
+        """List of `time_points` impact matrices with base exposure, future hazard and base vulnerability."""
+        return self.interpolation_strategy.interp_over_exposure_dim(
+            self.E0H1V0.imp_mat, self.E0H1V0.imp_mat, self.time_points
+        )
+
+    @property
+    def imp_mats_E0H0V1(self) -> list:
+        """List of `time_points` impact matrices with base exposure, future hazard and base vulnerability."""
+        return self.interpolation_strategy.interp_over_exposure_dim(
+            self.E0H0V1.imp_mat, self.E0H0V1.imp_mat, self.time_points
+        )
+
     ###############################
 
     ########## Core EAI ###########
@@ -695,6 +716,27 @@ class CalcRiskMetricsPeriod:
             self.imp_mats_H1V1, self.snapshot_end.hazard.frequency
         )
 
+    @property
+    def per_date_eai_E0H0V0(self) -> np.ndarray:
+        """Expected annual impacts for base exposure, base hazard and base vulnerability."""
+        return calc_per_date_eais(
+            self.imp_mats_E0H0V0, self.snapshot_end.hazard.frequency
+        )
+
+    @property
+    def per_date_eai_E0H1V0(self) -> np.ndarray:
+        """Expected annual impacts for base exposure, future hazard and base vulnerability."""
+        return calc_per_date_eais(
+            self.imp_mats_E0H1V0, self.snapshot_end.hazard.frequency
+        )
+
+    @property
+    def per_date_eai_E0H0V1(self) -> np.ndarray:
+        """Expected annual impacts for base exposure, future hazard and base vulnerability."""
+        return calc_per_date_eais(
+            self.imp_mats_E0H0V1, self.snapshot_end.hazard.frequency
+        )
+
     ##################################
 
     ######### Core AAIs ##########
@@ -718,6 +760,21 @@ class CalcRiskMetricsPeriod:
     def per_date_aai_H1V1(self) -> np.ndarray:
         """Average annual impacts for changing exposure, future hazard and future vulnerability."""
         return calc_per_date_aais(self.per_date_eai_H1V1)
+
+    @property
+    def per_date_aai_E0H0V0(self) -> np.ndarray:
+        """Average annual impacts for base exposure, base hazard and base vulnerability."""
+        return calc_per_date_aais(self.per_date_eai_E0H0V0)
+
+    @property
+    def per_date_aai_E0H1V0(self) -> np.ndarray:
+        """Average annual impacts for base exposure, base hazard and base vulnerability."""
+        return calc_per_date_aais(self.per_date_eai_E0H1V0)
+
+    @property
+    def per_date_aai_E0H0V1(self) -> np.ndarray:
+        """Average annual impacts for base exposure, base hazard and base vulnerability."""
+        return calc_per_date_aais(self.per_date_eai_E0H0V1)
 
     #################################
 
@@ -948,11 +1005,11 @@ class CalcRiskMetricsPeriod:
         hazard and vulnerability).
 
         """
-        per_date_aai_V0 = self.interpolation_strategy.interp_over_hazard_dim(
-            self.per_date_aai_H0V0, self.per_date_aai_H1V0
+        per_date_aai_E0V0 = self.interpolation_strategy.interp_over_hazard_dim(
+            self.per_date_aai_E0H0V0, self.per_date_aai_E0H1V0
         )
-        per_date_aai_H0 = self.interpolation_strategy.interp_over_vulnerability_dim(
-            self.per_date_aai_H0V0, self.per_date_aai_H0V1
+        per_date_aai_E0H0 = self.interpolation_strategy.interp_over_vulnerability_dim(
+            self.per_date_aai_E0H0V0, self.per_date_aai_E0H0V1
         )
         df = pd.DataFrame(
             {
@@ -960,12 +1017,12 @@ class CalcRiskMetricsPeriod:
                 CONTRIBUTION_BASE_RISK_NAME: self.per_date_aai[0],
                 CONTRIBUTION_EXPOSURE_NAME: self.per_date_aai_H0V0
                 - self.per_date_aai[0],
-                CONTRIBUTION_HAZARD_NAME: per_date_aai_V0
-                - (self.per_date_aai_H0V0 - self.per_date_aai[0])
+                CONTRIBUTION_HAZARD_NAME: per_date_aai_E0V0
+                #       - (self.per_date_aai_H0V0 - self.per_date_aai[0])
                 - self.per_date_aai[0],
-                CONTRIBUTION_VULNERABILITY_NAME: per_date_aai_H0
-                - self.per_date_aai[0]
-                - (self.per_date_aai_H0V0 - self.per_date_aai[0]),
+                CONTRIBUTION_VULNERABILITY_NAME: per_date_aai_E0H0
+                - self.per_date_aai[0],
+                #       - (self.per_date_aai_H0V0 - self.per_date_aai[0]),
             },
             index=self.date_idx,
         )
