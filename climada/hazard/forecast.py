@@ -57,74 +57,9 @@ class HazardForecast(Forecast, Hazard):
         **hazard_kwargs
             keyword arguments to pass to :py:class:`~climada.hazard.base.Hazard` See
             py:meth`~climada.hazard.base.Hazard.__init__` for details.
-
-        Notes
-        -----
-        If event_name or date are not provided in hazard_kwargs, they will
-        be automatically generated from the Cartesian product of lead_time and member.
-        Event names are formatted as "lt_{hours}h_m_{member}" where hours is the
-        lead time converted to hours. Dates are set to 0 (undefined) by default
-        since forecast events don't have historical dates. event_id is preserved
-        from hazard_kwargs if provided.
         """
-        auto_generate = (
-            "event_name" not in hazard_kwargs and "date" not in hazard_kwargs
-        )
-
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
-
-        # Validate that lead_time and member have matching lengths
-        if len(self.lead_time) > 0 and len(self.member) > 0:
-            if len(self.lead_time) != len(self.member):
-                raise ValueError(
-                    f"Forecast.lead_time and Forecast.member must have the same length. "
-                    f"Got {len(self.lead_time)} lead times and {len(self.member)} members."
-                )
-
-        if auto_generate and len(self.lead_time) > 0 and len(self.member) > 0:
-            self._set_event_attrs_from_forecast_dims()
-
-    def _set_event_attrs_from_forecast_dims(self) -> None:
-        """
-        Set event_name and date from lead_time and member dimensions.
-
-        This method generates event attributes based on the Cartesian product of
-        lead_time and member arrays. It should have the same length as the number
-        of events in the hazard intensity matrix. event_id is left unchanged.
-        """
-        n_events = len(self.lead_time)
-        if n_events != len(self.member):
-            raise ValueError(
-                f"Length mismatch: lead_time has {len(self.lead_time)} elements "
-                f"but member has {len(self.member)} elements. They should be equal "
-                f"in a stacked forecast hazard."
-            )
-
-        self.event_name = [
-            f"lt_{self._format_lead_time(lt)}_m_{m}"
-            for lt, m in zip(self.lead_time, self.member)
-        ]
-
-        self.date = np.zeros(n_events, dtype=int)
-
-    @staticmethod
-    def _format_lead_time(lead_time: np.timedelta64) -> str:
-        """
-        Format lead_time as hours for event names.
-
-        Parameters
-        ----------
-        lead_time : np.timedelta64
-            Lead time to format
-
-        Returns
-        -------
-        str
-            Formatted lead time as "{hours}h"
-        """
-        # Convert to hours
-        hours = lead_time / np.timedelta64(1, "h")
-        return f"{hours:.0f}h"
+        self._check_sizes()
 
     @classmethod
     def from_hazard(cls, hazard: Hazard, lead_time: np.ndarray, member: np.ndarray):
@@ -146,7 +81,6 @@ class HazardForecast(Forecast, Hazard):
             A HazardForecast object with the same attributes as the input hazard,
             but with lead_time and member attributes set from instance of HazardForecast.
         """
-        # Keep event_id from hazard but let event_name and date be auto-generated
         return cls(
             lead_time=lead_time,
             member=member,
@@ -158,6 +92,8 @@ class HazardForecast(Forecast, Hazard):
             frequency=hazard.frequency,
             frequency_unit=hazard.frequency_unit,
             orig=hazard.orig,
+            event_name=hazard.event_name,
+            date=hazard.date,
             intensity=hazard.intensity,
             fraction=hazard.fraction,
         )
@@ -351,49 +287,6 @@ class HazardForecast(Forecast, Hazard):
             reset_frequency=reset_frequency,
         )
 
-    def _quantile(self, q: float, event_name: str | None = None):
-        """
-        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
-        """
-        red_intensity = sparse.csr_matrix(
-            np.quantile(self.intensity.toarray(), q, axis=0)
-        )
-        red_fraction = sparse.csr_matrix(
-            np.quantile(self.fraction.toarray(), q, axis=0)
-        )
-        if event_name is None:
-            event_name = f"quantile_{q}"
-        return HazardForecast(
-            haz_type=self.haz_type,
-            pool=self.pool,
-            units=self.units,
-            centroids=self.centroids,
-            frequency_unit=self.frequency_unit,
-            intensity=red_intensity,
-            fraction=red_fraction,
-            **self._reduce_attrs(event_name),
-        )
-
-    def quantile(self, q: float):
-        """
-        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
-
-        The quantile value is computed by taking the quantile of the impact matrix
-        along the event dimension axis (axis=0) and then taking the quantile of the
-        resulting array.
-
-        Parameters
-        ----------
-        q : float
-            The quantile to compute, between 0 and 1.
-
-        Returns
-        -------
-        HazardForecast
-            A HazardForecast object with the quantile intensity and fraction.
-        """
-        return self._quantile(q=q)
-
     @classmethod
     def from_xarray_raster(
         cls,
@@ -502,16 +395,62 @@ class HazardForecast(Forecast, Hazard):
         kwargs = reader.get_hazard_kwargs() | {
             "haz_type": hazard_type,
             "units": intensity_unit,
-            "lead_time": reader.data_stacked[leadtime_var].values,
-            "member": reader.data_stacked[member_var].values,
+            "lead_time": reader.data_stacked[leadtime_var].to_numpy(),
+            "member": reader.data_stacked[member_var].to_numpy(),
         }
 
-        # Remove event_name and date so they get auto-generated from lead_time/member
-        kwargs.pop("event_name", None)
-        kwargs.pop("date", None)
+        # Generate from lead_time/member
+        kwargs["event_name"] = [
+            f"lt_{lt / np.timedelta64(1, 'h'):.0f}h_m_{m}"
+            for lt, m in zip(kwargs["lead_time"], kwargs["member"])
+        ]
+        kwargs["date"] = np.zeros_like(kwargs["date"], dtype=int)
 
         # Convert to HazardForecast with forecast attributes
         return cls(**Hazard._check_and_cast_attrs(kwargs))
+
+    def _quantile(self, q: float, event_name: str | None = None):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
+        """
+        red_intensity = sparse.csr_matrix(
+            np.quantile(self.intensity.toarray(), q, axis=0)
+        )
+        red_fraction = sparse.csr_matrix(
+            np.quantile(self.fraction.toarray(), q, axis=0)
+        )
+        if event_name is None:
+            event_name = f"quantile_{q}"
+        return HazardForecast(
+            haz_type=self.haz_type,
+            pool=self.pool,
+            units=self.units,
+            centroids=self.centroids,
+            frequency_unit=self.frequency_unit,
+            intensity=red_intensity,
+            fraction=red_fraction,
+            **self._reduce_attrs(event_name),
+        )
+
+    def quantile(self, q: float):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
+
+        The quantile value is computed by taking the quantile of the impact matrix
+        along the event dimension axis (axis=0) and then taking the quantile of the
+        resulting array.
+
+        Parameters
+        ----------
+        q : float
+            The quantile to compute, between 0 and 1.
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the quantile intensity and fraction.
+        """
+        return self._quantile(q=q)
 
     def median(self):
         """
