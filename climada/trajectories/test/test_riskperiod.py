@@ -1262,34 +1262,38 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
 
     def test_calc_risk_components_metric(self):
         self.calc_risk_period._groups_id = np.array([0])
-        self.calc_risk_period.per_date_aai_H0V0 = np.array([0, 0, 0])
-        self.calc_risk_period.per_date_aai_H1V0 = np.array([1, 1, 1])
-        self.calc_risk_period.per_date_aai_H0V1 = np.array([2, 2, 2])
-        self.calc_risk_period.per_date_aai_H1V1 = np.array([3, 3, 3])
-        self.calc_risk_period.per_date_aai = np.array([0, 6 / 4, 3])
+        self.calc_risk_period.per_date_aai_H0V0 = np.array([1, 3, 5])
+        self.calc_risk_period.per_date_aai_E0H0V0 = np.array([1, 1, 1])
+        self.calc_risk_period.per_date_aai_E0H1V0 = np.array(
+            [2, 2, 2]
+        )  # Haz change doubles damages in fut
+        self.calc_risk_period.per_date_aai_E0H0V1 = np.array(
+            [3, 3, 3]
+        )  # Vul change triples damages in fut
+        self.calc_risk_period.per_date_aai = np.array([1, 6, 10])
 
         # Mock the return values of interp_over_hazard_dim
         self.calc_risk_period.interpolation_strategy.interp_over_hazard_dim.return_value = np.array(
-            [0, 0.5, 1]
+            [1, 1.5, 2]
         )
 
         # Mock the return value of interp_over_vulnerability_dim
         self.calc_risk_period.interpolation_strategy.interp_over_vulnerability_dim.return_value = np.array(
-            [0, 1, 2]
+            [1, 2, 3]
         )
 
         result = self.calc_risk_period.calc_risk_components_metric()
 
         # Assert that interp_over_hazard_dim was called with the correct arguments
         self.calc_risk_period.interpolation_strategy.interp_over_hazard_dim.assert_called_once_with(
-            self.calc_risk_period.per_date_aai_H0V0,
-            self.calc_risk_period.per_date_aai_H1V0,
+            self.calc_risk_period.per_date_aai_E0H0V0,
+            self.calc_risk_period.per_date_aai_E0H1V0,
         )
 
         # Assert that interp_over_vulnerability_dim was called with the results of interp_over_hazard_dim
         self.calc_risk_period.interpolation_strategy.interp_over_vulnerability_dim.assert_called_once_with(
-            self.calc_risk_period.per_date_aai_H0V0,
-            self.calc_risk_period.per_date_aai_H0V1,
+            self.calc_risk_period.per_date_aai_E0H0V0,
+            self.calc_risk_period.per_date_aai_E0H0V1,
         )
 
         # Assert the final returned value
@@ -1315,10 +1319,9 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         )
         self.assertTrue((result[MEASURE_COL_NAME] == "dummy_measure").all())
 
-        # Check calculated risk values by rp, date
         np.testing.assert_allclose(
             result[RISK_COL_NAME].values,
-            np.array([0, 0, 0, 0, 0, 0, 0, 0.5, 1.0, 0, 1, 2, 0, 0, 0]),
+            np.array([1.0, 1.0, 1.0, 0, 2.0, 4.0, 0, 0.5, 1.0, 0, 1, 2, 0, 1.5, 2.0]),
         )
 
     @patch("climada.trajectories.riskperiod.CalcRiskMetricsPeriod")
