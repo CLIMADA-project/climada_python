@@ -23,9 +23,6 @@ Tests for impact_calc_strat
 import unittest
 from unittest.mock import MagicMock, patch
 
-import numpy as np
-from scipy.sparse import csr_matrix
-
 from climada.engine import Impact
 from climada.entity import ImpactFuncSet
 from climada.entity.exposures import Exposures

@@ -27,6 +27,8 @@ import copy
 import datetime
 import logging
 
+import pandas as pd
+
 from climada.entity.exposures import Exposures
 from climada.entity.impact_funcs import ImpactFuncSet
 from climada.entity.measures.base import Measure
@@ -109,6 +111,15 @@ class Snapshot:
     def date(self) -> datetime.date:
         """Date of the snapshot."""
         return self._date
+
+    @property
+    def impact_calc_data(self) -> dict:
+        """Convenience function for ImpactCalc class."""
+        return {
+            "exposures": self.exposure,
+            "hazard": self.hazard,
+            "impfset": self.impfset,
+        }
 
     @staticmethod
     def _convert_to_date(date_arg) -> datetime.date:

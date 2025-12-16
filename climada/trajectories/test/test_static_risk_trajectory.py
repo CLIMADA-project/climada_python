@@ -30,6 +30,17 @@ import numpy as np  # For potential NaN/NA comparisons
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.constants import (
+    AAI_METRIC_NAME,
+    AAI_PER_GROUP_METRIC_NAME,
+    DATE_COL_NAME,
+    EAI_METRIC_NAME,
+    GROUP_COL_NAME,
+    MEASURE_COL_NAME,
+    METRIC_COL_NAME,
+    RETURN_PERIOD_METRIC_NAME,
+    RISK_COL_NAME,
+)
 from climada.trajectories.impact_calc_strat import ImpactCalcComputation
 from climada.trajectories.riskperiod import (  # ImpactComputationStrategy, # If needed to mock its base class directly
     CalcRiskMetricsPoints,
@@ -48,59 +59,77 @@ class TestStaticRiskTrajectory(unittest.TestCase):
         self.dates2 = [pd.Timestamp("2026-01-01")]
         self.groups = ["GroupA", "GroupB", pd.NA]
         self.measures = ["MEAS1", "MEAS2"]
-        self.metrics = ["aai"]
+        self.metrics = [AAI_METRIC_NAME]
         self.aai_dates1 = pd.DataFrame(
             product(self.groups, self.dates1, self.measures, self.metrics),
-            columns=["group", "date", "measure", "metric"],
+            columns=[GROUP_COL_NAME, DATE_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
         )
-        self.aai_dates1["risk"] = np.arange(12) * 100
-        self.aai_dates1["group"] = self.aai_dates1["group"].astype("category")
+        self.aai_dates1[RISK_COL_NAME] = np.arange(12) * 100
+        self.aai_dates1[GROUP_COL_NAME] = self.aai_dates1[GROUP_COL_NAME].astype(
+            "category"
+        )
 
         self.aai_dates2 = pd.DataFrame(
             product(self.groups, self.dates2, self.measures, self.metrics),
-            columns=["group", "date", "measure", "metric"],
+            columns=[GROUP_COL_NAME, DATE_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
         )
-        self.aai_dates2["risk"] = np.arange(6) * 100 + 1200
-        self.aai_dates2["group"] = self.aai_dates2["group"].astype("category")
+        self.aai_dates2[RISK_COL_NAME] = np.arange(6) * 100 + 1200
+        self.aai_dates2[GROUP_COL_NAME] = self.aai_dates2[GROUP_COL_NAME].astype(
+            "category"
+        )
 
         self.aai_alldates = pd.DataFrame(
             product(
                 self.groups, self.dates1 + self.dates2, self.measures, self.metrics
             ),
-            columns=["group", "date", "measure", "metric"],
+            columns=[GROUP_COL_NAME, DATE_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
         )
-        self.aai_alldates["risk"] = np.arange(18) * 100
-        self.aai_alldates["group"] = self.aai_alldates["group"].astype("category")
-        self.aai_alldates["group"] = self.aai_alldates["group"].cat.add_categories(
-            [DEFAULT_ALLGROUP_NAME]
+        self.aai_alldates[RISK_COL_NAME] = np.arange(18) * 100
+        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[GROUP_COL_NAME].astype(
+            "category"
         )
-        self.aai_alldates["group"] = self.aai_alldates["group"].fillna(
+        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[
+            GROUP_COL_NAME
+        ].cat.add_categories([DEFAULT_ALLGROUP_NAME])
+        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[GROUP_COL_NAME].fillna(
             DEFAULT_ALLGROUP_NAME
         )
         self.expected_pre_npv_aai = self.aai_alldates
         self.expected_pre_npv_aai = self.expected_pre_npv_aai[
-            ["group", "date", "measure", "metric", "risk"]
+            [
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                RISK_COL_NAME,
+            ]
         ]
 
         self.expected_npv_aai = pd.DataFrame(
             product(
-                self.groups, self.dates1 + self.dates2, self.measures, self.metrics
+                self.dates1 + self.dates2, self.groups, self.measures, self.metrics
             ),
-            columns=["group", "date", "measure", "metric"],
+            columns=[DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
         )
-        self.expected_npv_aai["risk"] = np.arange(18) * 90
-        self.expected_npv_aai["group"] = self.expected_npv_aai["group"].astype(
-            "category"
-        )
-        self.expected_npv_aai["group"] = self.expected_npv_aai[
-            "group"
+        self.expected_npv_aai[RISK_COL_NAME] = np.arange(18) * 90
+        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
+            GROUP_COL_NAME
+        ].astype("category")
+        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
+            GROUP_COL_NAME
         ].cat.add_categories(["All"])
-        self.expected_npv_aai["group"] = self.expected_npv_aai["group"].fillna(
-            DEFAULT_ALLGROUP_NAME
-        )
+        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
+            GROUP_COL_NAME
+        ].fillna(DEFAULT_ALLGROUP_NAME)
         expected_npv_df = self.expected_npv_aai
         expected_npv_df = expected_npv_df[
-            ["group", "date", "measure", "metric", "risk"]
+            [
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                RISK_COL_NAME,
+            ]
         ]
 
         self.mock_snapshot1 = MagicMock(spec=Snapshot)
@@ -234,7 +263,9 @@ class TestStaticRiskTrajectory(unittest.TestCase):
             self.aai_alldates
         )
         self.mock_static_traj.npv_transform.return_value = self.expected_npv_aai
-        result = self.mock_static_traj._generic_metrics("aai", "calc_aai_metric")
+        result = self.mock_static_traj._generic_metrics(
+            AAI_METRIC_NAME, "calc_aai_metric"
+        )
 
         self.mock_static_traj._risk_metrics_calculators.calc_aai_metric.assert_called_once_with()
         self.mock_static_traj.npv_transform.assert_called_once()
@@ -257,7 +288,9 @@ class TestStaticRiskTrajectory(unittest.TestCase):
             self.expected_npv_aai.reset_index(drop=True),
         )
 
-        result2 = self.mock_static_traj._generic_metrics("aai", "calc_aai_metric")
+        result2 = self.mock_static_traj._generic_metrics(
+            AAI_METRIC_NAME, "calc_aai_metric"
+        )
         # Check no new call
         self.mock_static_traj._risk_metrics_calculators.calc_aai_metric.assert_called_once_with()
         pd.testing.assert_frame_equal(
@@ -271,7 +304,7 @@ class TestStaticRiskTrajectory(unittest.TestCase):
         )
         self.mock_static_traj.eai_metrics(some_arg="test")
         self.mock_static_traj._compute_metrics.assert_called_once_with(
-            metric_name="eai", metric_meth="calc_eai_gdf", some_arg="test"
+            metric_name=EAI_METRIC_NAME, metric_meth="calc_eai_gdf", some_arg="test"
         )
 
     def test_aai_metrics(self):
@@ -280,7 +313,7 @@ class TestStaticRiskTrajectory(unittest.TestCase):
         )
         self.mock_static_traj.aai_metrics(some_arg="test")
         self.mock_static_traj._compute_metrics.assert_called_once_with(
-            metric_name="aai", metric_meth="calc_aai_metric", some_arg="test"
+            metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric", some_arg="test"
         )
 
     def test_return_periods_metrics(self):
@@ -290,7 +323,7 @@ class TestStaticRiskTrajectory(unittest.TestCase):
         )
         self.mock_static_traj.return_periods_metrics(some_arg="test")
         self.mock_static_traj._compute_metrics.assert_called_once_with(
-            metric_name="return_periods",
+            metric_name=RETURN_PERIOD_METRIC_NAME,
             metric_meth="calc_return_periods_metric",
             return_periods=[1, 2],
             some_arg="test",
@@ -302,7 +335,7 @@ class TestStaticRiskTrajectory(unittest.TestCase):
         )
         self.mock_static_traj.aai_per_group_metrics(some_arg="test")
         self.mock_static_traj._compute_metrics.assert_called_once_with(
-            metric_name="aai_per_group",
+            metric_name=AAI_PER_GROUP_METRIC_NAME,
             metric_meth="calc_aai_per_group_metric",
             some_arg="test",
         )
@@ -313,13 +346,13 @@ class TestStaticRiskTrajectory(unittest.TestCase):
         )
         # Set up mock return values for each method
         self.mock_static_traj.aai_metrics.return_value = pd.DataFrame(
-            {"metric": ["aai"], "risk": [100]}
+            {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
         )
         self.mock_static_traj.return_periods_metrics.return_value = pd.DataFrame(
-            {"metric": ["rp"], "risk": [50]}
+            {METRIC_COL_NAME: ["rp"], RISK_COL_NAME: [50]}
         )
         self.mock_static_traj.aai_per_group_metrics.return_value = pd.DataFrame(
-            {"metric": ["aai_grp"], "risk": [10]}
+            {METRIC_COL_NAME: ["aai_grp"], RISK_COL_NAME: [10]}
         )
         result = self.mock_static_traj.per_date_risk_metrics()
 

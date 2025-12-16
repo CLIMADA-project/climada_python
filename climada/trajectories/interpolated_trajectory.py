@@ -32,6 +32,27 @@ import matplotlib.ticker as mticker
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.constants import (
+    AAI_METRIC_NAME,
+    AAI_PER_GROUP_METRIC_NAME,
+    CONTRIBUTION_BASE_RISK_NAME,
+    CONTRIBUTION_EXPOSURE_NAME,
+    CONTRIBUTION_HAZARD_NAME,
+    CONTRIBUTION_INTERACTION_TERM_NAME,
+    CONTRIBUTION_VULNERABILITY_NAME,
+    CONTRIBUTIONS_METRIC_NAME,
+    COORD_ID_COL_NAME,
+    DATE_COL_NAME,
+    DEFAULT_TIME_RESOLUTION,
+    EAI_METRIC_NAME,
+    GROUP_COL_NAME,
+    MEASURE_COL_NAME,
+    METRIC_COL_NAME,
+    PERIOD_COL_NAME,
+    RETURN_PERIOD_METRIC_NAME,
+    RISK_COL_NAME,
+    UNIT_COL_NAME,
+)
 from climada.trajectories.impact_calc_strat import (
     ImpactCalcComputation,
     ImpactComputationStrategy,
@@ -48,12 +69,13 @@ from climada.trajectories.trajectory import (
     RiskTrajectory,
 )
 from climada.util import log_level
+from climada.util.dataframe_handling import reorder_dataframe_columns
 
 LOGGER = logging.getLogger(__name__)
 
-DEFAULT_TIME_RESOLUTION = "Y"
-
 __all__ = ["InterpolatedRiskTrajectory"]
+
+from climada.trajectories.trajectory import DEFAULT_DF_COLUMN_PRIORITY, INDEXING_COLUMNS
 
 
 class InterpolatedRiskTrajectory(RiskTrajectory):
@@ -68,15 +90,15 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
     """
 
-    _grouper = ["measure", "metric"]
+    _grouper = [MEASURE_COL_NAME, METRIC_COL_NAME]
     """Results dataframe grouper"""
 
     POSSIBLE_METRICS = [
-        "eai",
-        "aai",
-        "return_periods",
-        "risk_contributions",
-        "aai_per_group",
+        EAI_METRIC_NAME,
+        AAI_METRIC_NAME,
+        RETURN_PERIOD_METRIC_NAME,
+        CONTRIBUTIONS_METRIC_NAME,
+        AAI_PER_GROUP_METRIC_NAME,
     ]
     """Class variable listing the risk metrics that can be computed.
 
@@ -88,6 +110,12 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     - return_periods, estimated impacts aggregated over the whole exposure for different return periods
     - risk_contributions, estimated contribution part of, respectively exposure, hazard, vulnerability and their interaction to the change in risk over the considered period
     """
+
+    _DEFAULT_ALL_METRICS = [
+        AAI_METRIC_NAME,
+        RETURN_PERIOD_METRIC_NAME,
+        AAI_PER_GROUP_METRIC_NAME,
+    ]
 
     def __init__(
         self,
@@ -322,28 +350,20 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 raise e
 
         else:
-            tmp = tmp.set_index(["date", "group", "measure", "metric"])
-            if "coord_id" in tmp.columns:
-                tmp = tmp.set_index(["coord_id"], append=True)
+            tmp = tmp.set_index(INDEXING_COLUMNS)
+            if COORD_ID_COL_NAME in tmp.columns:
+                tmp = tmp.set_index([COORD_ID_COL_NAME], append=True)
 
             # When more than 2 snapshots, there are duplicated rows, we need to remove them.
             tmp = tmp[~tmp.index.duplicated(keep="first")]
             tmp = tmp.reset_index()
-            if self._all_groups_name not in tmp["group"].cat.categories:
-                tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
-                tmp["group"] = tmp["group"].fillna(self._all_groups_name)
-            columns_to_front = ["group", "date", "measure", "metric"]
-            tmp = tmp[
-                columns_to_front
-                + [
-                    col
-                    for col in tmp.columns
-                    if col not in columns_to_front + ["group", "risk", "rp"]
-                ]
-                + ["risk"]
-            ]
+            if self._all_groups_name not in tmp[GROUP_COL_NAME].cat.categories:
+                tmp[GROUP_COL_NAME] = tmp[GROUP_COL_NAME].cat.add_categories(
+                    [self._all_groups_name]
+                )
+                tmp[GROUP_COL_NAME] = tmp[GROUP_COL_NAME].fillna(self._all_groups_name)
 
-            if metric_name == "risk_contributions" and len(self._snapshots) > 2:
+            if metric_name == CONTRIBUTIONS_METRIC_NAME and len(self._snapshots) > 2:
                 # If there is more than one Snapshot, we need to update the
                 # contributions from previous periods for continuity
                 # and to set the base risk from the first period
@@ -356,6 +376,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 LOGGER.debug("Found risk discount rate. Computing NPV.")
                 tmp = self.npv_transform(tmp, self._risk_disc_rates)
 
+            tmp = reorder_dataframe_columns(tmp, DEFAULT_DF_COLUMN_PRIORITY)
             LOGGER.debug("All computing done, caching value.")
             setattr(self, attr_name, tmp)
             return getattr(self, attr_name)
@@ -382,7 +403,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         """
         df = self._compute_metrics(
-            metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
+            metric_name=EAI_METRIC_NAME, metric_meth="calc_eai_gdf", **kwargs
         )
         return df
 
@@ -394,7 +415,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         """
 
         return self._compute_metrics(
-            metric_name="aai", metric_meth="calc_aai_metric", **kwargs
+            metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric", **kwargs
         )
 
     def return_periods_metrics(self, **kwargs) -> pd.DataFrame:
@@ -405,7 +426,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         """
 
         return self._compute_metrics(
-            metric_name="return_periods",
+            metric_name=RETURN_PERIOD_METRIC_NAME,
             metric_meth="calc_return_periods_metric",
             return_periods=self.return_periods,
             **kwargs,
@@ -420,7 +441,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         """
 
         return self._compute_metrics(
-            metric_name="aai_per_group",
+            metric_name=AAI_PER_GROUP_METRIC_NAME,
             metric_meth="calc_aai_per_group_metric",
             **kwargs,
         )
@@ -440,7 +461,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         """
 
         return self._compute_metrics(
-            metric_name="risk_contributions",
+            metric_name=CONTRIBUTIONS_METRIC_NAME,
             metric_meth="calc_risk_contributions_metric",
             **kwargs,
         )
@@ -456,43 +477,43 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         """
 
-        df.set_index(["group", "date", "measure", "metric"], inplace=True)
+        df.set_index(INDEXING_COLUMNS, inplace=True)
         start_dates = [snap.date for snap in self._snapshots[:-1]]
         end_dates = [snap.date for snap in self._snapshots[1:]]
         periods_dates = list(zip(start_dates, end_dates))
-        df.loc[pd.IndexSlice[:, :, :, "base risk"]] = df.loc[
+        df.loc[pd.IndexSlice[:, :, :, CONTRIBUTION_BASE_RISK_NAME]] = df.loc[
             pd.IndexSlice[
-                :,
                 pd.to_datetime(self.start_date).to_period(self.time_resolution),
                 :,
-                "base risk",
+                :,
+                CONTRIBUTION_BASE_RISK_NAME,
             ]  # type: ignore
         ].values
         for p2 in periods_dates[1:]:
             for metric in [
-                "exposure contribution",
-                "hazard contribution",
-                "vulnerability contribution",
-                "interaction contribution",
+                CONTRIBUTION_EXPOSURE_NAME,
+                CONTRIBUTION_HAZARD_NAME,
+                CONTRIBUTION_VULNERABILITY_NAME,
+                CONTRIBUTION_INTERACTION_TERM_NAME,
             ]:
                 mask_last_previous = (
-                    df.index.get_level_values(1)
+                    df.index.get_level_values(0)
                     == pd.to_datetime(p2[0]).to_period(self.time_resolution)
                 ) & (df.index.get_level_values(3) == metric)
                 mask_to_update = (
                     (
-                        df.index.get_level_values(1)
+                        df.index.get_level_values(0)
                         > pd.to_datetime(p2[0]).to_period(self.time_resolution)
                     )
                     & (
-                        df.index.get_level_values(1)
+                        df.index.get_level_values(0)
                         <= pd.to_datetime(p2[1]).to_period(self.time_resolution)
                     )
                     & (df.index.get_level_values(3) == metric)
                 )
 
-                df.loc[mask_to_update, "risk"] += df.loc[
-                    mask_last_previous, "risk"
+                df.loc[mask_to_update, RISK_COL_NAME] += df.loc[
+                    mask_last_previous, RISK_COL_NAME
                 ].iloc[0]
 
         return df.reset_index()
@@ -504,13 +525,13 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         """Returns a DataFrame of risk metrics for each dates
 
         This methods collects (and if needed computes) the `metrics`
-        (Defaulting to "aai", "return_periods" and "aai_per_group").
+        (Defaulting to AAI_METRIC_NAME, RETURN_PERIOD_METRIC_NAME and AAI_PER_GROUP_METRIC_NAME).
 
         Parameters
         ----------
         metrics : list[str], optional
             The list of metrics to return (defaults to
-            ["aai","return_periods","aai_per_group"])
+            [AAI_METRIC_NAME,RETURN_PERIOD_METRIC_NAME,AAI_PER_GROUP_METRIC_NAME])
         return_periods : list[int], optional
             The return periods to consider for the return periods metric
             (default to the value of the `.default_rp` attribute)
@@ -522,10 +543,11 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         """
 
-        metrics = (
-            ["aai", "return_periods", "aai_per_group"] if metrics is None else metrics
+        metrics = self._DEFAULT_ALL_METRICS if metrics is None else metrics
+        return pd.concat(
+            [getattr(self, f"{metric}_metrics")() for metric in metrics],
+            ignore_index=True,
         )
-        return pd.concat([getattr(self, f"{metric}_metrics")() for metric in metrics])
 
     @staticmethod
     def _get_risk_periods(
@@ -573,13 +595,13 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         """Calculate the difference between consecutive dates."""
 
         if time_unit == "year":
-            group["date_diff"] = group["date"].dt.year.diff()
+            group["date_diff"] = group[DATE_COL_NAME].dt.year.diff()
         if time_unit == "month":
-            group["date_diff"] = group["date"].dt.month.diff()
+            group["date_diff"] = group[DATE_COL_NAME].dt.month.diff()
         if time_unit == "day":
-            group["date_diff"] = group["date"].dt.day.diff()
+            group["date_diff"] = group[DATE_COL_NAME].dt.day.diff()
         if time_unit == "hour":
-            group["date_diff"] = group["date"].dt.hour.diff()
+            group["date_diff"] = group[DATE_COL_NAME].dt.hour.diff()
         # Identify breaks in continuity
         group["period_id"] = (group["date_diff"] != 1).cumsum()
         return group
@@ -590,7 +612,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         df: pd.DataFrame,
         grouper: list[str],
         time_unit: str = "year",
-        colname: str | list[str] = "risk",
+        colname: str | list[str] = RISK_COL_NAME,
     ) -> pd.DataFrame:
         """Group per date risk metric to periods."""
 
@@ -603,10 +625,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             except IndexError:
                 return group.sum()
 
-        df_sorted = df.sort_values(by=grouper + ["date"])
+        df_sorted = df.sort_values(by=grouper + [DATE_COL_NAME])
 
-        if "group" in df.columns and "group" not in grouper:
-            grouper = ["group"] + grouper
+        if GROUP_COL_NAME in df.columns and GROUP_COL_NAME not in grouper:
+            grouper = [GROUP_COL_NAME] + grouper
 
         # Apply the function to identify continuous periods
         df_periods = df_sorted.groupby(
@@ -616,8 +638,8 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         if isinstance(colname, str):
             colname = [colname]
         agg_dict = {
-            "start_date": pd.NamedAgg(column="date", aggfunc="min"),
-            "end_date": pd.NamedAgg(column="date", aggfunc="max"),
+            "start_date": pd.NamedAgg(column=DATE_COL_NAME, aggfunc="min"),
+            "end_date": pd.NamedAgg(column=DATE_COL_NAME, aggfunc="max"),
         }
         df_periods_dates = (
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)
@@ -625,7 +647,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             .reset_index()
         )
 
-        df_periods_dates["period"] = (
+        df_periods_dates[PERIOD_COL_NAME] = (
             df_periods_dates["start_date"].astype(str)
             + " to "
             + df_periods_dates["end_date"].astype(str)
@@ -634,26 +656,35 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)[
                 colname
             ]
-            .apply(conditional_agg)
+            .apply("mean")
             .reset_index()
         )
         df_periods = pd.merge(
-            df_periods_dates[grouper + ["period", "period_id"]],
+            df_periods_dates[grouper + [PERIOD_COL_NAME, "period_id"]],
             df_periods,
             on=grouper + ["period_id"],
         )
         df_periods = df_periods.drop(["period_id"], axis=1)
         return df_periods[
-            ["period"] + [col for col in df_periods.columns if col != "period"]
+            [PERIOD_COL_NAME]
+            + [col for col in df_periods.columns if col != PERIOD_COL_NAME]
         ]
 
     def per_period_risk_metrics(
-        self, metrics: list[str] = ["aai", "return_periods", "aai_per_group"], **kwargs
+        self,
+        metrics: list[str] = [
+            AAI_METRIC_NAME,
+            RETURN_PERIOD_METRIC_NAME,
+            AAI_PER_GROUP_METRIC_NAME,
+        ],
+        **kwargs,
     ) -> pd.DataFrame:
         """Return a tidy dataframe of the risk metrics with the total for each different period (pair of snapshots)."""
 
         df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
-        return self._date_to_period_agg(df, grouper=self._grouper, **kwargs)
+        return self._date_to_period_agg(
+            df, grouper=self._grouper + [UNIT_COL_NAME], **kwargs
+        )
 
     def _calc_waterfall_plot_data(
         self,
@@ -665,12 +696,12 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         end_date = self.end_date if end_date is None else end_date
         risk_contributions = self.risk_contributions_metrics()
         risk_contributions = risk_contributions.loc[
-            (risk_contributions["date"] >= str(start_date))
-            & (risk_contributions["date"] <= str(end_date))
+            (risk_contributions[DATE_COL_NAME] >= str(start_date))
+            & (risk_contributions[DATE_COL_NAME] <= str(end_date))
         ]
-        risk_contributions = risk_contributions.set_index(["date", "metric"])[
-            "risk"
-        ].unstack()
+        risk_contributions = risk_contributions.set_index(
+            [DATE_COL_NAME, METRIC_COL_NAME]
+        )[RISK_COL_NAME].unstack()
         return risk_contributions
 
     def plot_time_waterfall(
@@ -704,15 +735,17 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
         risk_contribution = risk_contribution[
             [
-                "base risk",
-                "exposure contribution",
-                "hazard contribution",
-                "vulnerability contribution",
-                "interaction contribution",
+                CONTRIBUTION_BASE_RISK_NAME,
+                CONTRIBUTION_EXPOSURE_NAME,
+                CONTRIBUTION_HAZARD_NAME,
+                CONTRIBUTION_VULNERABILITY_NAME,
+                CONTRIBUTION_INTERACTION_TERM_NAME,
             ]
         ]
-        risk_contribution["base risk"] = risk_contribution.iloc[0]["base risk"]
-        # risk_contribution.plot(x="date", ax=ax, kind="bar", stacked=True)
+        risk_contribution[CONTRIBUTION_BASE_RISK_NAME] = risk_contribution.iloc[0][
+            CONTRIBUTION_BASE_RISK_NAME
+        ]
+        # risk_contribution.plot(x=DATE_COL_NAME, ax=ax, kind="bar", stacked=True)
         ax.stackplot(
             risk_contribution.index.to_timestamp(),  # type: ignore
             [risk_contribution[col] for col in risk_contribution.columns],
@@ -780,24 +813,25 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             f"Total Risk {end_date_p}",
         ]
         values = [
-            risk_contribution["base risk"],
-            risk_contribution["exposure contribution"],
-            risk_contribution["hazard contribution"],
-            risk_contribution["vulnerability contribution"],
-            risk_contribution["interaction contribution"],
+            risk_contribution[CONTRIBUTION_BASE_RISK_NAME],
+            risk_contribution[CONTRIBUTION_EXPOSURE_NAME],
+            risk_contribution[CONTRIBUTION_HAZARD_NAME],
+            risk_contribution[CONTRIBUTION_VULNERABILITY_NAME],
+            risk_contribution[CONTRIBUTION_INTERACTION_TERM_NAME],
             risk_contribution.sum(),
         ]
         bottoms = [
             0.0,
-            risk_contribution["base risk"],
-            risk_contribution["base risk"] + risk_contribution["exposure contribution"],
-            risk_contribution["base risk"]
-            + risk_contribution["exposure contribution"]
-            + risk_contribution["hazard contribution"],
-            risk_contribution["base risk"]
-            + risk_contribution["exposure contribution"]
-            + risk_contribution["hazard contribution"]
-            + risk_contribution["vulnerability contribution"],
+            risk_contribution[CONTRIBUTION_BASE_RISK_NAME],
+            risk_contribution[CONTRIBUTION_BASE_RISK_NAME]
+            + risk_contribution[CONTRIBUTION_EXPOSURE_NAME],
+            risk_contribution[CONTRIBUTION_BASE_RISK_NAME]
+            + risk_contribution[CONTRIBUTION_EXPOSURE_NAME]
+            + risk_contribution[CONTRIBUTION_HAZARD_NAME],
+            risk_contribution[CONTRIBUTION_BASE_RISK_NAME]
+            + risk_contribution[CONTRIBUTION_EXPOSURE_NAME]
+            + risk_contribution[CONTRIBUTION_HAZARD_NAME]
+            + risk_contribution[CONTRIBUTION_VULNERABILITY_NAME],
             0.0,
         ]
 

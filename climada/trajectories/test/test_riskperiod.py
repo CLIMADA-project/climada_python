@@ -36,6 +36,24 @@ from climada.entity.impact_funcs import ImpactFuncSet
 from climada.entity.impact_funcs.trop_cyclone import ImpfTropCyclone
 from climada.entity.measures.base import Measure
 from climada.hazard import Hazard
+from climada.trajectories.constants import (
+    AAI_METRIC_NAME,
+    CONTRIBUTION_BASE_RISK_NAME,
+    CONTRIBUTION_EXPOSURE_NAME,
+    CONTRIBUTION_HAZARD_NAME,
+    CONTRIBUTION_INTERACTION_TERM_NAME,
+    CONTRIBUTION_VULNERABILITY_NAME,
+    COORD_ID_COL_NAME,
+    DATE_COL_NAME,
+    EAI_METRIC_NAME,
+    GROUP_COL_NAME,
+    GROUP_ID_COL_NAME,
+    MEASURE_COL_NAME,
+    METRIC_COL_NAME,
+    NO_MEASURE_VALUE,
+    RISK_COL_NAME,
+    UNIT_COL_NAME,
+)
 
 # Import the CalcRiskPeriod class and other necessary classes/functions
 from climada.trajectories.impact_calc_strat import (
@@ -66,7 +84,7 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
         self.exposure_present = Exposures.from_hdf5(EXP_DEMO_H5)
         self.exposure_present.gdf.rename(columns={"impf_": "impf_TC"}, inplace=True)
         self.exposure_present.gdf["impf_TC"] = 1
-        self.exposure_present.gdf["group_id"] = (
+        self.exposure_present.gdf[GROUP_ID_COL_NAME] = (
             self.exposure_present.gdf["value"]
             > self.exposure_present.gdf["value"].mean()
         ) * 1
@@ -81,7 +99,7 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
         self.exposure_future.gdf["value"] = self.exposure_future.gdf["value"] * growth
         self.exposure_future.gdf.rename(columns={"impf_": "impf_TC"}, inplace=True)
         self.exposure_future.gdf["impf_TC"] = 1
-        self.exposure_future.gdf["group_id"] = (
+        self.exposure_future.gdf[GROUP_ID_COL_NAME] = (
             self.exposure_future.gdf["value"] > self.exposure_future.gdf["value"].mean()
         ) * 1
         self.hazard_future = Hazard.from_hdf5(HAZ_DEMO_H5)
@@ -315,29 +333,30 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
             + len(self.mock_snapshot_end.exposure.gdf),
         )
         expected_columns = [
-            "date",
-            "coord_id",
-            "group",
-            "risk",
-            "metric",
-            "measure",
-            "unit",
+            DATE_COL_NAME,
+            COORD_ID_COL_NAME,
+            GROUP_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
+            UNIT_COL_NAME,
         ]
         self.assertTrue(
             all(col in list(result_gdf.columns) for col in expected_columns)
         )
         np.testing.assert_allclose(
-            np.array(result_gdf["risk"].values), self.expected_eai.flatten()
+            np.array(result_gdf[RISK_COL_NAME].values), self.expected_eai.flatten()
         )
         # Check constants and column transformations
-        self.assertEqual(result_gdf["metric"].unique(), "eai")
-        self.assertEqual(result_gdf["measure"].iloc[0], "no_measure")
+        self.assertEqual(result_gdf[METRIC_COL_NAME].unique(), EAI_METRIC_NAME)
+        self.assertEqual(result_gdf[MEASURE_COL_NAME].iloc[0], NO_MEASURE_VALUE)
         self.assertEqual(
-            result_gdf["unit"].iloc[0], self.mock_snapshot_start.exposure.value_unit
+            result_gdf[UNIT_COL_NAME].iloc[0],
+            self.mock_snapshot_start.exposure.value_unit,
         )
-        self.assertEqual(result_gdf["group"].dtype.name, "category")
+        self.assertEqual(result_gdf[GROUP_COL_NAME].dtype.name, "category")
         self.assertListEqual(
-            list(result_gdf["group"].cat.categories),
+            list(result_gdf[GROUP_COL_NAME].cat.categories),
             list(self.calc_risk_metrics_points._group_id),
         )
 
@@ -347,18 +366,26 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
         self.assertEqual(
             result_df.shape[0], len(self.calc_risk_metrics_points.snapshots)
         )
-        expected_columns = ["date", "group", "risk", "metric", "measure", "unit"]
+        expected_columns = [
+            DATE_COL_NAME,
+            GROUP_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
+            UNIT_COL_NAME,
+        ]
         self.assertTrue(all(col in result_df.columns for col in expected_columns))
         np.testing.assert_allclose(
-            np.array(result_df["risk"].values), self.expected_aai
+            np.array(result_df[RISK_COL_NAME].values), self.expected_aai
         )
         # Check constants and column transformations
-        self.assertEqual(result_df["metric"].unique(), "aai")
-        self.assertEqual(result_df["measure"].iloc[0], "no_measure")
+        self.assertEqual(result_df[METRIC_COL_NAME].unique(), AAI_METRIC_NAME)
+        self.assertEqual(result_df[MEASURE_COL_NAME].iloc[0], NO_MEASURE_VALUE)
         self.assertEqual(
-            result_df["unit"].iloc[0], self.mock_snapshot_start.exposure.value_unit
+            result_df[UNIT_COL_NAME].iloc[0],
+            self.mock_snapshot_start.exposure.value_unit,
         )
-        self.assertEqual(result_df["group"].dtype.name, "category")
+        self.assertEqual(result_df[GROUP_COL_NAME].dtype.name, "category")
 
     def test_calc_aai_per_group_metric(self):
         result_df = self.calc_risk_metrics_points.calc_aai_per_group_metric()
@@ -368,19 +395,27 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
             len(self.calc_risk_metrics_points.snapshots)
             * len(self.calc_risk_metrics_points._group_id),
         )
-        expected_columns = ["date", "group", "risk", "metric", "measure", "unit"]
+        expected_columns = [
+            DATE_COL_NAME,
+            GROUP_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
+            UNIT_COL_NAME,
+        ]
         self.assertTrue(all(col in result_df.columns for col in expected_columns))
         np.testing.assert_allclose(
-            np.array(result_df["risk"].values), self.expected_aai_per_group
+            np.array(result_df[RISK_COL_NAME].values), self.expected_aai_per_group
         )
         # Check constants and column transformations
-        self.assertEqual(result_df["metric"].unique(), "aai")
-        self.assertEqual(result_df["measure"].iloc[0], "no_measure")
+        self.assertEqual(result_df[METRIC_COL_NAME].unique(), AAI_METRIC_NAME)
+        self.assertEqual(result_df[MEASURE_COL_NAME].iloc[0], NO_MEASURE_VALUE)
         self.assertEqual(
-            result_df["unit"].iloc[0], self.mock_snapshot_start.exposure.value_unit
+            result_df[UNIT_COL_NAME].iloc[0],
+            self.mock_snapshot_start.exposure.value_unit,
         )
-        self.assertEqual(result_df["group"].dtype.name, "category")
-        self.assertListEqual(list(result_df["group"].unique()), [0, 1])
+        self.assertEqual(result_df[GROUP_COL_NAME].dtype.name, "category")
+        self.assertListEqual(list(result_df[GROUP_COL_NAME].unique()), [0, 1])
 
     def test_calc_return_periods_metric(self):
         result_df = self.calc_risk_metrics_points.calc_return_periods_metric(
@@ -390,20 +425,29 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
         self.assertEqual(
             result_df.shape[0], len(self.calc_risk_metrics_points.snapshots) * 3
         )
-        expected_columns = ["date", "group", "risk", "metric", "measure", "unit"]
+        expected_columns = [
+            DATE_COL_NAME,
+            GROUP_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
+            UNIT_COL_NAME,
+        ]
         self.assertTrue(all(col in result_df.columns for col in expected_columns))
         np.testing.assert_allclose(
-            np.array(result_df["risk"].values), self.expected_return_period_metric
+            np.array(result_df[RISK_COL_NAME].values),
+            self.expected_return_period_metric,
         )
         # Check constants and column transformations
         self.assertListEqual(
-            list(result_df["metric"].unique()), ["rp_20", "rp_50", "rp_100"]
+            list(result_df[METRIC_COL_NAME].unique()), ["rp_20", "rp_50", "rp_100"]
         )
-        self.assertEqual(result_df["measure"].iloc[0], "no_measure")
+        self.assertEqual(result_df[MEASURE_COL_NAME].iloc[0], NO_MEASURE_VALUE)
         self.assertEqual(
-            result_df["unit"].iloc[0], self.mock_snapshot_start.exposure.value_unit
+            result_df[UNIT_COL_NAME].iloc[0],
+            self.mock_snapshot_start.exposure.value_unit,
         )
-        self.assertEqual(result_df["group"].dtype.name, "category")
+        self.assertEqual(result_df[GROUP_COL_NAME].dtype.name, "category")
 
     @patch.object(Snapshot, "apply_measure")
     @patch("climada.trajectories.riskperiod.CalcRiskMetricsPoints")
@@ -427,7 +471,7 @@ class TestCalcRiskMetricsPeriod_TopLevel(unittest.TestCase):
         self.exposure_present = Exposures.from_hdf5(EXP_DEMO_H5)
         self.exposure_present.gdf.rename(columns={"impf_": "impf_TC"}, inplace=True)
         self.exposure_present.gdf["impf_TC"] = 1
-        self.exposure_present.gdf["group_id"] = (
+        self.exposure_present.gdf[GROUP_ID_COL_NAME] = (
             self.exposure_present.gdf["value"] > 500000
         ) * 1
         self.hazard_present = Hazard.from_hdf5(HAZ_DEMO_H5)
@@ -441,7 +485,7 @@ class TestCalcRiskMetricsPeriod_TopLevel(unittest.TestCase):
         self.exposure_future.gdf["value"] = self.exposure_future.gdf["value"] * growth
         self.exposure_future.gdf.rename(columns={"impf_": "impf_TC"}, inplace=True)
         self.exposure_future.gdf["impf_TC"] = 1
-        self.exposure_future.gdf["group_id"] = (
+        self.exposure_future.gdf[GROUP_ID_COL_NAME] = (
             self.exposure_future.gdf["value"] > 500000
         ) * 1
         self.hazard_future = Hazard.from_hdf5(HAZ_DEMO_H5)
@@ -508,11 +552,11 @@ class TestCalcRiskMetricsPeriod_TopLevel(unittest.TestCase):
         )
         np.testing.assert_array_equal(
             self.calc_risk_period._group_id_E0,
-            self.mock_snapshot_start.exposure.gdf["group_id"].values,
+            self.mock_snapshot_start.exposure.gdf[GROUP_ID_COL_NAME].values,
         )
         np.testing.assert_array_equal(
             self.calc_risk_period._group_id_E1,
-            self.mock_snapshot_end.exposure.gdf["group_id"].values,
+            self.mock_snapshot_end.exposure.gdf[GROUP_ID_COL_NAME].values,
         )
         self.assertIsInstance(self.calc_risk_period.date_idx, pd.PeriodIndex)
         self.assertEqual(
@@ -607,7 +651,7 @@ class TestCalcRiskMetricsPeriod_TopLevel(unittest.TestCase):
                     "2024-12-01",
                     "2025-01-01",
                 ],
-                name="date",
+                name=DATE_COL_NAME,
                 freq="M",
             ),
         )
@@ -1035,18 +1079,18 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.calc_risk_period.per_date_aai_H1V1 = np.array([4, 6, 24])
 
         self.calc_risk_period.date_idx = pd.PeriodIndex(
-            ["2020-01-01", "2025-01-01", "2030-01-01"], name="date", freq="5Y"
+            ["2020-01-01", "2025-01-01", "2030-01-01"], name=DATE_COL_NAME, freq="5Y"
         )
         self.calc_risk_period.snapshot_start.exposure.gdf = gpd.GeoDataFrame(
             {
-                "group_id": [1, 2, 2],
+                GROUP_ID_COL_NAME: [1, 2, 2],
                 "geometry": [Point(0, 0), Point(1, 1), Point(2, 2)],
                 "value": [10, 10, 20],
             }
         )
         self.calc_risk_period.snapshot_end.exposure.gdf = gpd.GeoDataFrame(
             {
-                "group_id": [1, 2, 2],
+                GROUP_ID_COL_NAME: [1, 2, 2],
                 "geometry": [Point(0, 0), Point(1, 1), Point(2, 2)],
                 "value": [10, 10, 20],
             }
@@ -1095,18 +1139,18 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.calc_risk_period.per_date_eai = expected_risk
         result = self.calc_risk_period.calc_eai_gdf()
         expected_columns = {
-            "group",
-            "coord_id",
-            "date",
-            "risk",
-            "metric",
-            "measure",
+            GROUP_COL_NAME,
+            COORD_ID_COL_NAME,
+            DATE_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
         }
         self.assertTrue(expected_columns.issubset(set(result.columns)))
-        self.assertTrue((result["metric"] == "eai").all())
-        self.assertTrue((result["measure"] == "dummy_measure").all())
+        self.assertTrue((result[METRIC_COL_NAME] == EAI_METRIC_NAME).all())
+        self.assertTrue((result[MEASURE_COL_NAME] == "dummy_measure").all())
         # Check calculated risk values by coord_id, date
-        actual_risk = result["risk"].values
+        actual_risk = result[RISK_COL_NAME].values
         np.testing.assert_allclose(expected_risk.T.flatten(), actual_risk)
 
     def test_calc_aai_metric(self):
@@ -1115,18 +1159,18 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.calc_risk_period._groups_id = np.array([0])
         result = self.calc_risk_period.calc_aai_metric()
         expected_columns = {
-            "group",
-            "date",
-            "risk",
-            "metric",
-            "measure",
+            GROUP_COL_NAME,
+            DATE_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
         }
         self.assertTrue(expected_columns.issubset(set(result.columns)))
-        self.assertTrue((result["metric"] == "aai").all())
-        self.assertTrue((result["measure"] == "dummy_measure").all())
+        self.assertTrue((result[METRIC_COL_NAME] == AAI_METRIC_NAME).all())
+        self.assertTrue((result[MEASURE_COL_NAME] == "dummy_measure").all())
 
         # Check calculated risk values by coord_id, date
-        actual_risk = result["risk"].values
+        actual_risk = result[RISK_COL_NAME].values
         np.testing.assert_allclose(expected_aai, actual_risk)
 
     def test_calc_aai_per_group_metric(self):
@@ -1135,35 +1179,37 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         self.calc_risk_period._groups_id = np.array([1, 2])
         self.calc_risk_period.eai_gdf = pd.DataFrame(
             {
-                "date": pd.PeriodIndex(
+                DATE_COL_NAME: pd.PeriodIndex(
                     ["2020-01-01"] * 3 + ["2025-01-01"] * 3 + ["2030-01-01"] * 3,
-                    name="date",
+                    name=DATE_COL_NAME,
                     freq="5Y",
                 ),
-                "coord_id": [0, 1, 2, 0, 1, 2, 0, 1, 2],
-                "group": [1, 1, 2, 1, 1, 2, 1, 1, 2],
-                "risk": [2, 3, 4, 5, 6, 7, 8, 9, 10],
-                "metric": ["eai", "eai", "eai"] * 3,
-                "measure": ["dummy_measure", "dummy_measure", "dummy_measure"] * 3,
+                COORD_ID_COL_NAME: [0, 1, 2, 0, 1, 2, 0, 1, 2],
+                GROUP_COL_NAME: [1, 1, 2, 1, 1, 2, 1, 1, 2],
+                RISK_COL_NAME: [2, 3, 4, 5, 6, 7, 8, 9, 10],
+                METRIC_COL_NAME: [EAI_METRIC_NAME, EAI_METRIC_NAME, EAI_METRIC_NAME]
+                * 3,
+                MEASURE_COL_NAME: ["dummy_measure", "dummy_measure", "dummy_measure"]
+                * 3,
             }
         )
-        self.calc_risk_period.eai_gdf["group"] = self.calc_risk_period.eai_gdf[
-            "group"
+        self.calc_risk_period.eai_gdf[GROUP_COL_NAME] = self.calc_risk_period.eai_gdf[
+            GROUP_COL_NAME
         ].astype("category")
         result = self.calc_risk_period.calc_aai_per_group_metric()
         expected_columns = {
-            "group",
-            "date",
-            "risk",
-            "metric",
-            "measure",
+            GROUP_COL_NAME,
+            DATE_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
         }
         self.assertTrue(expected_columns.issubset(set(result.columns)))
-        self.assertTrue((result["metric"] == "aai").all())
-        self.assertTrue((result["measure"] == "dummy_measure").all())
+        self.assertTrue((result[METRIC_COL_NAME] == AAI_METRIC_NAME).all())
+        self.assertTrue((result[MEASURE_COL_NAME] == "dummy_measure").all())
         # Check calculated risk values by coord_id, date
         expected_risk = np.array([5, 5, 6.6, 13.6, 3.4, 27])
-        actual_risk = result["risk"].values
+        actual_risk = result[RISK_COL_NAME].values
         np.testing.assert_allclose(expected_risk, actual_risk)
 
     def test_calc_return_periods_metric(self):
@@ -1197,19 +1243,21 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
         # Assert the final returned value
 
         expected_columns = {
-            "group",
-            "date",
-            "risk",
-            "metric",
-            "measure",
+            GROUP_COL_NAME,
+            DATE_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
         }
         self.assertTrue(expected_columns.issubset(set(result.columns)))
-        self.assertTrue(all(result["metric"].unique() == ["rp_10", "rp_20", "rp_30"]))
-        self.assertTrue((result["measure"] == "dummy_measure").all())
+        self.assertTrue(
+            all(result[METRIC_COL_NAME].unique() == ["rp_10", "rp_20", "rp_30"])
+        )
+        self.assertTrue((result[MEASURE_COL_NAME] == "dummy_measure").all())
 
         # Check calculated risk values by rp, date
         np.testing.assert_allclose(
-            result["risk"].values, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9])
+            result[RISK_COL_NAME].values, np.array([1, 4, 7, 2, 5, 8, 3, 6, 9])
         )
 
     def test_calc_risk_components_metric(self):
@@ -1246,30 +1294,30 @@ class TestCalcRiskPeriod_LowLevel(unittest.TestCase):
 
         # Assert the final returned value
         expected_columns = {
-            "group",
-            "date",
-            "risk",
-            "metric",
-            "measure",
+            GROUP_COL_NAME,
+            DATE_COL_NAME,
+            RISK_COL_NAME,
+            METRIC_COL_NAME,
+            MEASURE_COL_NAME,
         }
         self.assertTrue(expected_columns.issubset(set(result.columns)))
         self.assertTrue(
             all(
-                result["metric"].unique()
+                result[METRIC_COL_NAME].unique()
                 == [
-                    "base risk",
-                    "exposure contribution",
-                    "hazard contribution",
-                    "vulnerability contribution",
-                    "interaction contribution",
+                    CONTRIBUTION_BASE_RISK_NAME,
+                    CONTRIBUTION_EXPOSURE_NAME,
+                    CONTRIBUTION_HAZARD_NAME,
+                    CONTRIBUTION_VULNERABILITY_NAME,
+                    CONTRIBUTION_INTERACTION_TERM_NAME,
                 ]
             )
         )
-        self.assertTrue((result["measure"] == "dummy_measure").all())
+        self.assertTrue((result[MEASURE_COL_NAME] == "dummy_measure").all())
 
         # Check calculated risk values by rp, date
         np.testing.assert_allclose(
-            result["risk"].values,
+            result[RISK_COL_NAME].values,
             np.array([0, 0, 0, 0, 0, 0, 0, 0.5, 1.0, 0, 1, 2, 0, 0, 0]),
         )
 

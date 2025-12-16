@@ -27,6 +27,7 @@ from unittest.mock import MagicMock, Mock, call, patch
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.constants import AAI_METRIC_NAME
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
     DEFAULT_ALLGROUP_NAME,
@@ -133,7 +134,12 @@ class TestRiskTrajectory(unittest.TestCase):
             {
                 "date": pd.to_datetime(["2023-01-01", "2024-01-01"] * 2),
                 "measure": ["m1", "m1", "m2", "m2"],
-                "metric": ["aai", "aai", "aai", "aai"],
+                "metric": [
+                    AAI_METRIC_NAME,
+                    AAI_METRIC_NAME,
+                    AAI_METRIC_NAME,
+                    AAI_METRIC_NAME,
+                ],
                 "risk": [100.0, 200.0, 80.0, 180.0],
             }
         )
@@ -168,7 +174,7 @@ class TestRiskTrajectory(unittest.TestCase):
                         ],
                         name="date",
                     ),
-                    name=("m1", "aai"),
+                    name=("m1", AAI_METRIC_NAME),
                 ),
             )
             assert mock_calc_npv.mock_calls[0].args[1] == pd.Timestamp("2023-01-01")
@@ -184,7 +190,7 @@ class TestRiskTrajectory(unittest.TestCase):
                         ],
                         name="date",
                     ),
-                    name=("m2", "aai"),
+                    name=("m2", AAI_METRIC_NAME),
                 ),
             )
             assert mock_calc_npv.mock_calls[1].args[1] == pd.Timestamp("2023-01-01")
@@ -194,7 +200,12 @@ class TestRiskTrajectory(unittest.TestCase):
                 {
                     "date": pd.to_datetime(["2023-01-01", "2024-01-01"] * 2),
                     "measure": ["m1", "m1", "m2", "m2"],
-                    "metric": ["aai", "aai", "aai", "aai"],
+                    "metric": [
+                        AAI_METRIC_NAME,
+                        AAI_METRIC_NAME,
+                        AAI_METRIC_NAME,
+                        AAI_METRIC_NAME,
+                    ],
                     "risk": [
                         100.0 * (1 / (1 + 0.01)) ** 0,
                         200.0 * (1 / (1 + 0.02)) ** 1,
@@ -215,7 +226,7 @@ class TestRiskTrajectory(unittest.TestCase):
                 "date": pd.to_datetime(["2023-01-01", "2024-01-01", "2023-01-01"]),
                 "group": ["G1", "G1", "G2"],
                 "measure": ["m1", "m1", "m1"],
-                "metric": ["aai", "aai", "aai"],
+                "metric": [AAI_METRIC_NAME, AAI_METRIC_NAME, AAI_METRIC_NAME],
                 "risk": [100.0, 200.0, 150.0],
             }
         )
@@ -242,7 +253,7 @@ class TestRiskTrajectory(unittest.TestCase):
                     "date": pd.to_datetime(["2023-01-01", "2024-01-01", "2023-01-01"]),
                     "group": ["G1", "G1", "G2"],
                     "measure": ["m1", "m1", "m1"],
-                    "metric": ["aai", "aai", "aai"],
+                    "metric": [AAI_METRIC_NAME, AAI_METRIC_NAME, AAI_METRIC_NAME],
                     "risk": [
                         100.0 * (1 / (1 + 0.01)) ** 0,
                         200.0 * (1 / (1 + 0.02)) ** 1,

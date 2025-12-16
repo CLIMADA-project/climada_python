@@ -331,7 +331,7 @@ class InterpolationStrategyBase(ABC):
         except ValueError as err:
             if str(err) == "inconsistent shapes":
                 raise ValueError(
-                    "Tried to interpolate impact matrices of different shape. "
+                    "Tried to interpolate impact matrices of different shapes. "
                     "A possible reason could be Exposures of different shapes."
                 ) from err
 
