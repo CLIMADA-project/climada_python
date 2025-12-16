@@ -311,6 +311,7 @@ class CalcRiskMetricsPoints:
             [pd.NA] * len(rp_df), categories=self._group_id
         )
         rp_df[METRIC_COL_NAME] = RP_VALUE_PREFIX + "_" + rp_df["rp"].astype(str)
+        rp_df = rp_df.drop("rp", axis=1)
         rp_df[MEASURE_COL_NAME] = (
             self.measure.name if self.measure else NO_MEASURE_VALUE
         )
@@ -934,6 +935,7 @@ class CalcRiskMetricsPeriod:
             [pd.NA] * len(rp_df), categories=self._groups_id
         )
         rp_df[METRIC_COL_NAME] = RP_VALUE_PREFIX + "_" + rp_df["rp"].astype(str)
+        rp_df = rp_df.drop("rp", axis=1)
         rp_df[MEASURE_COL_NAME] = (
             self.measure.name if self.measure else NO_MEASURE_VALUE
         )
