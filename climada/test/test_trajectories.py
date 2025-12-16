@@ -47,6 +47,7 @@ from climada.trajectories.constants import (
     MEASURE_COL_NAME,
     METRIC_COL_NAME,
     NO_MEASURE_VALUE,
+    PERIOD_COL_NAME,
     RETURN_PERIOD_METRIC_NAME,
     RISK_COL_NAME,
     RP_VALUE_PREFIX,
@@ -95,16 +96,16 @@ class TestStaticTrajectory(TestCase):
         # fmt: off
         self.expected_static_metrics = pd.DataFrame.from_dict(
             {'index': [0, 1, 2, 3, 4, 5, 6, 7],
-             'columns': ['group', 'date', 'measure', 'metric', 'unit', 'risk'],
+             'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
              'data': [
-                 ['All', pd.Timestamp(str(self.PRESENT_DATE)), NO_MEASURE_VALUE, 'aai', 'USD', self.expected_base_imp.aai_agg],
-                 ['All', pd.Timestamp(str(self.FUTURE_DATE)),  NO_MEASURE_VALUE, 'aai', 'USD', self.expected_future_imp.aai_agg],
-                 ['All', pd.Timestamp(str(self.PRESENT_DATE)), NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[0]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[0]]],
-                 ['All', pd.Timestamp(str(self.FUTURE_DATE)),  NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[0]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[0]]],
-                 ['All', pd.Timestamp(str(self.PRESENT_DATE)), NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[1]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[1]]],
-                 ['All', pd.Timestamp(str(self.FUTURE_DATE)),  NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[1]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[1]]],
-                 ['All', pd.Timestamp(str(self.PRESENT_DATE)), NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[2]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[2]]],
-                 ['All', pd.Timestamp(str(self.FUTURE_DATE)),  NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[2]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[2]]],
+                 [pd.Timestamp(str(self.PRESENT_DATE)), 'All', NO_MEASURE_VALUE, 'aai', 'USD', self.expected_base_imp.aai_agg],
+                 [pd.Timestamp(str(self.FUTURE_DATE)),  'All', NO_MEASURE_VALUE, 'aai', 'USD', self.expected_future_imp.aai_agg],
+                 [pd.Timestamp(str(self.PRESENT_DATE)), 'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[0]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[0]]],
+                 [pd.Timestamp(str(self.FUTURE_DATE)),  'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[0]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[0]]],
+                 [pd.Timestamp(str(self.PRESENT_DATE)), 'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[1]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[1]]],
+                 [pd.Timestamp(str(self.FUTURE_DATE)),  'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[1]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[1]]],
+                 [pd.Timestamp(str(self.PRESENT_DATE)), 'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[2]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[2]]],
+                 [pd.Timestamp(str(self.FUTURE_DATE)),  'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[2]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[2]]],
              ],
              'index_names': [None],
              'column_names': [None]},
@@ -125,53 +126,20 @@ class TestStaticTrajectory(TestCase):
     def test_static_trajectory_one_snap(self):
         static_traj = StaticRiskTrajectory([self.base_snapshot])
         expected = pd.DataFrame.from_dict(
+            # fmt: off
             {
                 "index": [0, 1, 2, 3],
-                "columns": [
-                    GROUP_COL_NAME,
-                    DATE_COL_NAME,
-                    MEASURE_COL_NAME,
-                    METRIC_COL_NAME,
-                    UNIT_COL_NAME,
-                    RISK_COL_NAME,
-                ],
+                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
                 "data": [
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        self.expected_base_imp.aai_agg,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[0]}",
-                        "USD",
-                        self.expected_base_return_period_impacts[DEFAULT_RP[0]],
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[1]}",
-                        "USD",
-                        self.expected_base_return_period_impacts[DEFAULT_RP[1]],
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[2]}",
-                        "USD",
-                        self.expected_base_return_period_impacts[DEFAULT_RP[2]],
-                    ],
+                    [pd.Timestamp(str(self.PRESENT_DATE)), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.aai_agg,],
+                    [pd.Timestamp(str(self.PRESENT_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[0]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[0]],],
+                    [pd.Timestamp(str(self.PRESENT_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[1]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[1]],],
+                    [pd.Timestamp(str(self.PRESENT_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[2]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[2]],],
                 ],
                 "index_names": [None],
                 "column_names": [None],
             },
+            # fmt: on
             orient="tight",
         )
 
@@ -206,53 +174,20 @@ class TestStaticTrajectory(TestCase):
             [
                 self.expected_static_metrics,
                 pd.DataFrame.from_dict(
+                    # fmt: off
                     {
                         "index": [8, 9, 10, 11],
-                        "columns": [
-                            GROUP_COL_NAME,
-                            DATE_COL_NAME,
-                            MEASURE_COL_NAME,
-                            METRIC_COL_NAME,
-                            UNIT_COL_NAME,
-                            RISK_COL_NAME,
-                        ],
+                        "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
                         "data": [
-                            [
-                                1,
-                                pd.Timestamp(str(self.PRESENT_DATE)),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                self.expected_base_imp.eai_exp[CATEGORIES == 1].sum(),
-                            ],
-                            [
-                                2,
-                                pd.Timestamp(str(self.PRESENT_DATE)),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                self.expected_base_imp.eai_exp[CATEGORIES == 2].sum(),
-                            ],
-                            [
-                                1,
-                                pd.Timestamp(str(self.FUTURE_DATE)),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                self.expected_future_imp.eai_exp[CATEGORIES == 1].sum(),
-                            ],
-                            [
-                                2,
-                                pd.Timestamp(str(self.FUTURE_DATE)),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                self.expected_future_imp.eai_exp[CATEGORIES == 2].sum(),
-                            ],
+                            [pd.Timestamp(str(self.PRESENT_DATE)), 1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.eai_exp[CATEGORIES == 1].sum(),],
+                            [pd.Timestamp(str(self.PRESENT_DATE)), 2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.eai_exp[CATEGORIES == 2].sum(),],
+                            [pd.Timestamp(str(self.FUTURE_DATE)), 1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_future_imp.eai_exp[CATEGORIES == 1].sum(),],
+                            [pd.Timestamp(str(self.FUTURE_DATE)), 2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_future_imp.eai_exp[CATEGORIES == 2].sum(),],
                         ],
                         "index_names": [None],
                         "column_names": [None],
                     },
+                    # fmt: on
                     orient="tight",
                 ),
             ]
@@ -271,85 +206,24 @@ class TestStaticTrajectory(TestCase):
             [self.base_snapshot, self.future_snapshot], return_periods=[10, 60, 1000]
         )
         expected = pd.DataFrame.from_dict(
+            # fmt: off
             {
                 "index": [0, 1, 2, 3, 4, 5, 6, 7],
-                "columns": [
-                    GROUP_COL_NAME,
-                    DATE_COL_NAME,
-                    MEASURE_COL_NAME,
-                    METRIC_COL_NAME,
-                    UNIT_COL_NAME,
-                    RISK_COL_NAME,
-                ],
+                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
                 "data": [
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        self.expected_base_imp.aai_agg,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.FUTURE_DATE)),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        self.expected_future_imp.aai_agg,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        "rp_10",
-                        "USD",
-                        0.0,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.FUTURE_DATE)),
-                        NO_MEASURE_VALUE,
-                        "rp_10",
-                        "USD",
-                        0.0,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        "rp_60",
-                        "USD",
-                        700.0,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.FUTURE_DATE)),
-                        NO_MEASURE_VALUE,
-                        "rp_60",
-                        "USD",
-                        14000.0,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        "rp_1000",
-                        "USD",
-                        1500.0,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.FUTURE_DATE)),
-                        NO_MEASURE_VALUE,
-                        "rp_1000",
-                        "USD",
-                        30000.0,
-                    ],
+                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.aai_agg,],
+                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_future_imp.aai_agg,],
+                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, "rp_10", "USD", 0.0,],
+                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, "rp_10", "USD", 0.0,],
+                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, "rp_60", "USD", 700.0,],
+                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, "rp_60", "USD", 14000.0,],
+                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, "rp_1000", "USD", 1500.0,],
+                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, "rp_1000", "USD", 30000.0,],
                 ],
                 "index_names": [None],
                 "column_names": [None],
             },
+            # fmt: on
             orient="tight",
         )
         pd.testing.assert_frame_equal(
@@ -376,88 +250,24 @@ class TestStaticTrajectory(TestCase):
             [self.base_snapshot, self.future_snapshot], risk_disc_rates=risk_disc_rate
         )
         expected = pd.DataFrame.from_dict(
+            # fmt: off
             {
                 "index": [0, 1, 2, 3, 4, 5, 6, 7],
-                "columns": [
-                    GROUP_COL_NAME,
-                    DATE_COL_NAME,
-                    MEASURE_COL_NAME,
-                    METRIC_COL_NAME,
-                    UNIT_COL_NAME,
-                    RISK_COL_NAME,
-                ],
+                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
                 "data": [
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        self.expected_base_imp.aai_agg,
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.FUTURE_DATE)),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        self.expected_future_imp.aai_agg * ((1 / (1 + 0.01)) ** 20),
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[0]}",
-                        "USD",
-                        self.expected_base_return_period_impacts[DEFAULT_RP[0]],
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.FUTURE_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[0]}",
-                        "USD",
-                        self.expected_future_return_period_impacts[DEFAULT_RP[0]]
-                        * ((1 / (1 + 0.01)) ** 20),
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[1]}",
-                        "USD",
-                        self.expected_base_return_period_impacts[DEFAULT_RP[1]],
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.FUTURE_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[1]}",
-                        "USD",
-                        self.expected_future_return_period_impacts[DEFAULT_RP[1]]
-                        * ((1 / (1 + 0.01)) ** 20),
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.PRESENT_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[2]}",
-                        "USD",
-                        self.expected_base_return_period_impacts[DEFAULT_RP[2]],
-                    ],
-                    [
-                        "All",
-                        pd.Timestamp(str(self.FUTURE_DATE)),
-                        NO_MEASURE_VALUE,
-                        f"rp_{DEFAULT_RP[2]}",
-                        "USD",
-                        self.expected_future_return_period_impacts[DEFAULT_RP[2]]
-                        * ((1 / (1 + 0.01)) ** 20),
-                    ],
+                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.aai_agg,],
+                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_future_imp.aai_agg * ((1 / (1 + 0.01)) ** 20),],
+                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[0]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[0]],],
+                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[0]}", "USD", self.expected_future_return_period_impacts[DEFAULT_RP[0]] * ((1 / (1 + 0.01)) ** 20),],
+                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[1]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[1]],],
+                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[1]}", "USD", self.expected_future_return_period_impacts[DEFAULT_RP[1]] * ((1 / (1 + 0.01)) ** 20),],
+                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[2]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[2]],],
+                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[2]}", "USD", self.expected_future_return_period_impacts[DEFAULT_RP[2]] * ((1 / (1 + 0.01)) ** 20),],
                 ],
                 "index_names": [None],
                 "column_names": [None],
             },
+            # fmt: on
             orient="tight",
         )
         pd.testing.assert_frame_equal(
@@ -516,19 +326,19 @@ class TestInterpolatedTrajectory(TestCase):
         # fmt: off
         self.expected_interp_metrics = pd.DataFrame.from_dict(
             {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-             'columns': ['group', 'date', 'measure', 'metric', 'unit', 'risk'],
-             'data': [['All', pd.Period(2020), NO_MEASURE_VALUE, 'aai', 'USD', 20.0],
-                      ['All', pd.Period(2021), NO_MEASURE_VALUE, 'aai', 'USD', 105.0], # This should indeed not be 240+20 / 2 (because we interpolate each contributor separately)
-                      ['All', pd.Period(2022), NO_MEASURE_VALUE, 'aai', 'USD', 240.0],
-                      ['All', pd.Period(2020), NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                      ['All', pd.Period(2021), NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                      ['All', pd.Period(2022), NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                      ['All', pd.Period(2020), NO_MEASURE_VALUE, 'rp_50', 'USD', 500.0],
-                      ['All', pd.Period(2021), NO_MEASURE_VALUE, 'rp_50', 'USD', 2625.0],
-                      ['All', pd.Period(2022), NO_MEASURE_VALUE, 'rp_50', 'USD', 6000.0],
-                      ['All', pd.Period(2020), NO_MEASURE_VALUE, 'rp_100', 'USD', 1500.0],
-                      ['All', pd.Period(2021), NO_MEASURE_VALUE, 'rp_100', 'USD', 7875.0],
-                      ['All', pd.Period(2022), NO_MEASURE_VALUE, 'rp_100', 'USD', 18000.0]],
+             'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+             'data': [[ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 20.0],
+                      [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 105.0], # This should indeed not be 240+20 / 2 (because we interpolate each contributor separately)
+                      [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 240.0],
+                      [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                      [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                      [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                      [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 500.0],
+                      [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 2625.0],
+                      [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 6000.0],
+                      [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 1500.0],
+                      [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 7875.0],
+                      [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 18000.0]],
              'index_names': [None],
              'column_names': [None]},
             orient="tight"
@@ -536,16 +346,15 @@ class TestInterpolatedTrajectory(TestCase):
 
         self.expected_period_metrics = pd.DataFrame.from_dict(
             {'index': [0, 1, 2, 3],
-             'columns': ['group', 'period', 'measure', 'metric', 'unit', 'risk'],
-             'data': [['All', f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", NO_MEASURE_VALUE, 'aai', 'USD', 365.0/3],
-                      ['All', f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", NO_MEASURE_VALUE, 'rp_100', 'USD', 9125/3],
-                      ['All', f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                      ['All', f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", NO_MEASURE_VALUE, 'rp_50', 'USD', 27375.0]],
+             'columns': [PERIOD_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+             'data': [[f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", 'All', NO_MEASURE_VALUE, 'aai', 'USD', 365.0/3],
+                      [f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", 'All', NO_MEASURE_VALUE, 'rp_100', 'USD', 27375/3],
+                      [f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", 'All', NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                      [f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", 'All', NO_MEASURE_VALUE, 'rp_50', 'USD', 9125.0/3]],
              'index_names': [None],
              'column_names': [None]},
             orient="tight"
         )
-
         # fmt: on
 
     def test_interp_trajectory(self):
@@ -588,72 +397,25 @@ class TestInterpolatedTrajectory(TestCase):
         expected_interp_metrics = pd.concat(
             [
                 self.expected_interp_metrics,
+                # fmt: off
                 pd.DataFrame.from_dict(
                     {
                         "index": [0, 1, 2, 3, 4, 5],
-                        "columns": [
-                            GROUP_COL_NAME,
-                            DATE_COL_NAME,
-                            MEASURE_COL_NAME,
-                            METRIC_COL_NAME,
-                            UNIT_COL_NAME,
-                            RISK_COL_NAME,
-                        ],
+                        "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
                         "data": [
-                            [
-                                1,
-                                pd.Period("2020"),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                15.0,
-                            ],
-                            [
-                                2,
-                                pd.Period("2020"),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                5.0,
-                            ],
-                            [
-                                1,
-                                pd.Period("2021"),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                78.75,
-                            ],
-                            [
-                                2,
-                                pd.Period("2021"),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                26.25,
-                            ],
-                            [
-                                1,
-                                pd.Period("2022"),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                180.0,
-                            ],
-                            [
-                                2,
-                                pd.Period("2022"),
-                                NO_MEASURE_VALUE,
-                                AAI_METRIC_NAME,
-                                "USD",
-                                60.0,
-                            ],
+                            [pd.Period("2020"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 15.0,],
+                            [pd.Period("2020"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 5.0,],
+                            [pd.Period("2021"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 78.75,],
+                            [pd.Period("2021"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 26.25,],
+                            [pd.Period("2022"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 180.0,],
+                            [pd.Period("2022"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 60.0,],
                         ],
                         "index_names": [None],
                         "column_names": [None],
                     },
                     orient="tight",
                 ),
+                # fmt: on
             ],
             ignore_index=True,
         )
@@ -671,75 +433,28 @@ class TestInterpolatedTrajectory(TestCase):
             [self.base_snapshot, self.future_snapshot], return_periods=[10, 60, 1000]
         )
         expected = pd.DataFrame.from_dict(
+            # fmt: off
             {
                 "index": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-                "columns": [
-                    GROUP_COL_NAME,
-                    DATE_COL_NAME,
-                    MEASURE_COL_NAME,
-                    METRIC_COL_NAME,
-                    UNIT_COL_NAME,
-                    RISK_COL_NAME,
-                ],
+                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
                 "data": [
-                    [
-                        "All",
-                        pd.Period(2020),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        20.0,
-                    ],
-                    [
-                        "All",
-                        pd.Period(2021),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        105.0,
-                    ],
-                    [
-                        "All",
-                        pd.Period(2022),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        240.0,
-                    ],
-                    ["All", pd.Period(2020), NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
-                    ["All", pd.Period(2021), NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
-                    ["All", pd.Period(2022), NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
-                    ["All", pd.Period(2020), NO_MEASURE_VALUE, "rp_60", "USD", 700.0],
-                    ["All", pd.Period(2021), NO_MEASURE_VALUE, "rp_60", "USD", 3675.0],
-                    ["All", pd.Period(2022), NO_MEASURE_VALUE, "rp_60", "USD", 8400.0],
-                    [
-                        "All",
-                        pd.Period(2020),
-                        NO_MEASURE_VALUE,
-                        "rp_1000",
-                        "USD",
-                        1500.0,
-                    ],
-                    [
-                        "All",
-                        pd.Period(2021),
-                        NO_MEASURE_VALUE,
-                        "rp_1000",
-                        "USD",
-                        7875.0,
-                    ],
-                    [
-                        "All",
-                        pd.Period(2022),
-                        NO_MEASURE_VALUE,
-                        "rp_1000",
-                        "USD",
-                        18000.0,
-                    ],
+                    [pd.Period(2020), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 20.0,],
+                    [pd.Period(2021), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 105.0,],
+                    [pd.Period(2022), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 240.0,],
+                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
+                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
+                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
+                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_60", "USD", 700.0],
+                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_60", "USD", 3675.0],
+                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_60", "USD", 8400.0],
+                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_1000", "USD", 1500.0,],
+                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_1000", "USD", 7875.0,],
+                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_1000", "USD", 18000.0,],
                 ],
                 "index_names": [None],
                 "column_names": [None],
             },
+            # fmt: on
             orient="tight",
         )
         pd.testing.assert_frame_equal(
@@ -766,68 +481,28 @@ class TestInterpolatedTrajectory(TestCase):
             [self.base_snapshot, self.future_snapshot], risk_disc_rates=risk_disc_rate
         )
         expected = pd.DataFrame.from_dict(
+            # fmt: off
             {
                 "index": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-                "columns": [
-                    GROUP_COL_NAME,
-                    DATE_COL_NAME,
-                    MEASURE_COL_NAME,
-                    METRIC_COL_NAME,
-                    UNIT_COL_NAME,
-                    RISK_COL_NAME,
-                ],
+                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
                 "data": [
-                    [
-                        "All",
-                        pd.Period(2020),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        20.0,
-                    ],
-                    [
-                        "All",
-                        pd.Period(2021),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        100.0,
-                    ],
-                    [
-                        "All",
-                        pd.Period(2022),
-                        NO_MEASURE_VALUE,
-                        AAI_METRIC_NAME,
-                        "USD",
-                        217.68707482993196,
-                    ],
-                    ["All", pd.Period(2020), NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
-                    ["All", pd.Period(2021), NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
-                    ["All", pd.Period(2022), NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
-                    ["All", pd.Period(2020), NO_MEASURE_VALUE, "rp_50", "USD", 500.0],
-                    ["All", pd.Period(2021), NO_MEASURE_VALUE, "rp_50", "USD", 2500.0],
-                    [
-                        "All",
-                        pd.Period(2022),
-                        NO_MEASURE_VALUE,
-                        "rp_50",
-                        "USD",
-                        5442.176870748299,
-                    ],
-                    ["All", pd.Period(2020), NO_MEASURE_VALUE, "rp_100", "USD", 1500.0],
-                    ["All", pd.Period(2021), NO_MEASURE_VALUE, "rp_100", "USD", 7500.0],
-                    [
-                        "All",
-                        pd.Period(2022),
-                        NO_MEASURE_VALUE,
-                        "rp_100",
-                        "USD",
-                        16326.530612244896,
-                    ],
+                    [pd.Period(2020), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 20.0,],
+                    [pd.Period(2021), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 100.0,],
+                    [pd.Period(2022), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 217.68707482993196,],
+                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
+                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
+                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
+                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_50", "USD", 500.0],
+                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_50", "USD", 2500.0],
+                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_50", "USD", 5442.176870748299,],
+                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_100", "USD", 1500.0],
+                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_100", "USD", 7500.0],
+                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_100", "USD", 16326.530612244896,],
                 ],
                 "index_names": [None],
                 "column_names": [None],
             },
+            # fmt: on
             orient="tight",
         )
         pd.testing.assert_frame_equal(
