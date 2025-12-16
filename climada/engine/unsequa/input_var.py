@@ -246,9 +246,8 @@ class InputVar:
             The frequency of all events is multiplied by a number
             sampled uniformly from a distribution with (min, max) = bounds_freq
         HL: sample uniformly from hazard list
-            From the provided list of hazard is elements are uniformly
-            sampled. For example, Hazards outputs from dynamical models
-            for different input factors.
+            For each sample, one element is drawn uniformly from the provided list of hazards.
+            For example, Hazards outputs from dynamical models for different input factors.
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
 
@@ -310,8 +309,8 @@ class InputVar:
             with (min, max) = bounds_noise. EN is the value of the seed
             for  the uniform random number generator.
         EL: sample uniformly from exposure list
-            From the provided list of exposure is elements are uniformly
-            sampled. For example, LitPop instances with different exponents.
+            For each sample, one element is drawn uniformly from the provided list of exposures.
+            For example, LitPop instances with different exponents.
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
 
@@ -376,9 +375,8 @@ class InputVar:
             sampled uniformly from a distribution with
             (min, max) = bounds_int
         IL: sample uniformly from impact function set list
-            From the provided list of impact function sets elements are uniformly
-            sampled. For example, impact functions obtained from different
-            calibration methods.
+            For each sample, one element is drawn uniformly from the provided list of impact function sets.
+            For example, impact functions obtained from different calibration methods.
 
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
@@ -468,8 +466,8 @@ class InputVar:
             with (min, max) = bounds_noise. EN is the value of the seed
             for  the uniform random number generator.
         EL: sample uniformly from exposure list
-            From the provided list of exposure is elements are uniformly
-            sampled. For example, LitPop instances with different exponents.
+            For each sample, one element is drawn uniformly from the provided list of exposures.
+            For example, LitPop instances with different exponents.
         MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
@@ -483,9 +481,8 @@ class InputVar:
             sampled uniformly from a distribution with
             (min, max) = bounds_int
         IL: sample uniformly from impact function set list
-            From the provided list of impact function sets elements are uniformly
-            sampled. For example, impact functions obtained from different
-            calibration methods.
+            For each sample, one element is drawn uniformly from the provided list of impact function sets.
+            For example, impact functions obtained from different calibration methods.
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
 
@@ -566,7 +563,7 @@ class InputVar:
                 bounds_noise=bounds_noise,
                 exp_list=exp_list,
                 meas_set=meas_set,
-                **kwargs
+                **kwargs,
             ),
             _ent_unc_dict(
                 bounds_totval=bounds_totval,
@@ -616,8 +613,8 @@ class InputVar:
             with (min, max) = bounds_noise. EN is the value of the seed
             for  the uniform random number generator.
         EL: sample uniformly from exposure list
-            From the provided list of exposure is elements are uniformly
-            sampled. For example, LitPop instances with different exponents.
+            For each sample, one element is drawn uniformly from the provided list of exposures.
+            For example, LitPop instances with different exponents.
         MDD: scale the mdd (homogeneously)
             The value of mdd at each intensity is multiplied by a number
             sampled uniformly from a distribution with
@@ -631,9 +628,8 @@ class InputVar:
             sampled uniformly from a distribution with
             (min, max) = bounds_impfi
         IL: sample uniformly from impact function set list
-            From the provided list of impact function sets elements are uniformly
-            sampled. For example, impact functions obtained from different
-            calibration methods.
+            For each sample, one element is drawn uniformly from the provided list of impact function sets.
+            For example, impact functions obtained from different calibration methods.
 
         If a bounds is None, this parameter is assumed to have no uncertainty.
 
@@ -706,7 +702,7 @@ class InputVar:
                 impf_set_list=impf_set_list,
                 exp_list=exp_list,
                 meas_set=meas_set,
-                **kwargs
+                **kwargs,
             ),
             _entfut_unc_dict(
                 bounds_eg=bounds_eg,
