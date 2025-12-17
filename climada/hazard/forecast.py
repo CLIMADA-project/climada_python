@@ -30,7 +30,7 @@ import xarray as xr
 from climada.hazard.xarray import HazardXarrayReader
 
 from ..util.checker import size
-from ..util.forecast import Forecast
+from ..util.forecast import Forecast, reduce_unique_selection
 from .base import Hazard
 
 LOGGER = logging.getLogger(__name__)
@@ -111,7 +111,7 @@ class HazardForecast(Forecast, Hazard):
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
-    def _reduce_attrs(self, event_name: str):
+    def _reduce_attrs(self, event_name: str, **attrs):
         """
         Reduce the attributes of a HazardForecast to a single value.
 
@@ -128,32 +128,45 @@ class HazardForecast(Forecast, Hazard):
         event_name : str
             The event_name given to the reduced data.
         """
+
+        def unique_or_default(attr, default):
+            if len(unique := np.unique(getattr(self, attr))) == 1:
+                return unique.item(0)
+            return default
+
         reduced_attrs = {
-            "lead_time": np.array([np.timedelta64("NaT")]),
-            "member": np.array([-1]),
-            "event_id": np.array([0]),
-            "event_name": np.array([event_name]),
-            "date": np.array([0]),
-            "frequency": np.array([1]),
-            "orig": np.array([True]),
-        }
+            "lead_time": unique_or_default("lead_time", np.timedelta64("NaT")),
+            "member": unique_or_default("member", -1),
+            "event_id": unique_or_default("event_id", 1),
+            "event_name": unique_or_default("event_name", event_name),
+            "date": unique_or_default("date", 0),
+            "frequency": 1,
+            "orig": unique_or_default("orig", True),
+        } | attrs
+        reduced_attrs = {key: np.array([value]) for key, value in reduced_attrs.items()}
 
         return reduced_attrs
 
-    def min(self):
+    def min(self, dim=None):
         """
         Reduce the intensity and fraction of a HazardForecast to the minimum
         value.
 
         Parameters
         ----------
-        None
+        dim : str | None
+            Dimension to reduce over. If None, reduce over all data.
 
         Returns
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                self, values=getattr(self, dim), select=dim, reduce_attr="min"
+            )
+
         red_intensity = self.intensity.min(axis=0).tocsr()
         red_fraction = self.fraction.min(axis=0).tocsr()
         return HazardForecast(
@@ -167,20 +180,26 @@ class HazardForecast(Forecast, Hazard):
             **self._reduce_attrs("min"),
         )
 
-    def max(self):
+    def max(self, dim=None):
         """
         Reduce the intensity and fraction of a HazardForecast to the maximum
         value.
 
         Parameters
         ----------
-        None
+        dim : str | None
+            Dimension to reduce over. If None, reduce over all data.
 
         Returns
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                self, values=getattr(self, dim), select=dim, reduce_attr="max"
+            )
+
         red_intensity = self.intensity.max(axis=0).tocsr()
         red_fraction = self.fraction.max(axis=0).tocsr()
         return HazardForecast(
@@ -194,19 +213,25 @@ class HazardForecast(Forecast, Hazard):
             **self._reduce_attrs("max"),
         )
 
-    def mean(self):
+    def mean(self, dim=None):
         """
         Reduce the intensity and fraction of a HazardForecast to the mean value.
 
         Parameters
         ----------
-        None
+        dim : str | None
+            Dimension to reduce over. If None, reduce over all data.
 
         Returns
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                self, values=getattr(self, dim), select=dim, reduce_attr="mean"
+            )
+
         red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
         red_fraction = sparse.csr_matrix(self.fraction.mean(axis=0))
         return HazardForecast(
