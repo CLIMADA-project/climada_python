@@ -29,6 +29,8 @@ import pandas as pd
 
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.disc_rates.base import DiscRates
+from climada.entity.impact_funcs.base import ImpactFunc
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.test.reusable import (
     CATEGORIES,
     reusable_minimal_exposures,
@@ -40,6 +42,11 @@ from climada.trajectories import InterpolatedRiskTrajectory, StaticRiskTrajector
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     AAI_PER_GROUP_METRIC_NAME,
+    CONTRIBUTION_BASE_RISK_NAME,
+    CONTRIBUTION_EXPOSURE_NAME,
+    CONTRIBUTION_HAZARD_NAME,
+    CONTRIBUTION_INTERACTION_TERM_NAME,
+    CONTRIBUTION_VULNERABILITY_NAME,
     COORD_ID_COL_NAME,
     DATE_COL_NAME,
     EAI_METRIC_NAME,
@@ -517,6 +524,120 @@ class TestInterpolatedTrajectory(TestCase):
         pd.testing.assert_frame_equal(
             interp_traj.per_date_risk_metrics(),
             self.expected_interp_metrics,
+            check_dtype=False,
+            check_categorical=False,
+        )
+
+    def test_interp_trajectory_risk_contributions(self):
+        interp_traj = InterpolatedRiskTrajectory(
+            [self.base_snapshot, self.future_snapshot]
+        )
+        expected = pd.DataFrame.from_dict(
+            # fmt: off
+            {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
+             'data': [
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 0.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 50.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 100.0],
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 0.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 10.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 20.0],
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 0.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 25.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 100.0]],
+             'index_names': [None],
+             'column_names': [None]},
+            # fmt: on
+            orient="tight",
+        )
+        pd.testing.assert_frame_equal(
+            interp_traj.risk_contributions_metrics(),
+            expected,
+            check_dtype=False,
+            check_categorical=False,
+        )
+
+        # With changing vulnerability
+        hazard = reusable_minimal_hazard()
+        impfset1 = ImpactFuncSet(
+            [
+                ImpactFunc(
+                    haz_type=hazard.haz_type,
+                    intensity_unit=hazard.units,
+                    name="linear",
+                    intensity=np.array([0, 100 / 2, 100]),
+                    mdd=np.array([0, 0.5, 1]),
+                    paa=np.array([1, 1, 1]),
+                    id=1,
+                ),
+            ]
+        )
+        impfset2 = ImpactFuncSet(
+            [
+                ImpactFunc(
+                    haz_type=hazard.haz_type,
+                    intensity_unit=hazard.units,
+                    name="linear-half-paa",
+                    intensity=np.array([0, 100 / 2, 100]),
+                    mdd=np.array([0, 0.5, 1]),
+                    paa=np.array([0.5, 0.5, 0.5]),
+                    id=1,
+                )
+            ]
+        )
+        base_snapshot = Snapshot(
+            exposure=reusable_minimal_exposures(),
+            hazard=hazard,
+            impfset=impfset1,
+            date=2020,
+        )
+        future_snapshot = Snapshot(
+            exposure=reusable_minimal_exposures(
+                increase_value_factor=self.EXP_INCREASE_VALUE_FACTOR,
+            ),
+            hazard=reusable_minimal_hazard(
+                intensity_factor=self.HAZ_INCREASE_INTENSITY_FACTOR
+            ),
+            impfset=impfset2,
+            date=2022,
+        )
+
+        interp_traj = InterpolatedRiskTrajectory([base_snapshot, future_snapshot])
+        expected = pd.DataFrame.from_dict(
+            # fmt: off
+            {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+             'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
+             'data': [
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 0.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 50.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 100.0],
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 0.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 10.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 20.0],
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', -5.0],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', -10.0],
+                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 0.0],
+                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 3.75],
+                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', -10.0]],
+             'index_names': [None],
+             'column_names': [None]},
+            # fmt: on
+            orient="tight",
+        )
+        pd.testing.assert_frame_equal(
+            interp_traj.risk_contributions_metrics(),
+            expected,
             check_dtype=False,
             check_categorical=False,
         )

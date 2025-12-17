@@ -635,54 +635,48 @@ class CalcRiskMetricsPeriod:
 
     ### Impact Matrices arrays ####
 
+    def _interp_mats(self, start_attr, end_attr) -> list:
+        """Helper to reduce repetition in impact matrix interpolation."""
+        start = getattr(self, start_attr).imp_mat
+        end = getattr(self, end_attr).imp_mat
+        return self.interpolation_strategy.interp_over_exposure_dim(
+            start, end, self.time_points
+        )
+
     @property
     def imp_mats_H0V0(self) -> list:
         """List of `time_points` impact matrices with changing exposure, starting hazard and starting vulnerability."""
-        return self.interpolation_strategy.interp_over_exposure_dim(
-            self.E0H0V0.imp_mat, self.E1H0V0.imp_mat, self.time_points
-        )
+        return self._interp_mats("E0H0V0", "E1H0V0")
 
     @property
     def imp_mats_H1V0(self) -> list:
         """List of `time_points` impact matrices with changing exposure, future hazard and starting vulnerability."""
-        return self.interpolation_strategy.interp_over_exposure_dim(
-            self.E0H1V0.imp_mat, self.E1H1V0.imp_mat, self.time_points
-        )
+        return self._interp_mats("E0H1V0", "E1H1V0")
 
     @property
     def imp_mats_H0V1(self) -> list:
         """List of `time_points` impact matrices with changing exposure, starting hazard and future vulnerability."""
-        return self.interpolation_strategy.interp_over_exposure_dim(
-            self.E0H0V1.imp_mat, self.E1H0V1.imp_mat, self.time_points
-        )
+        return self._interp_mats("E0H0V1", "E1H0V1")
 
     @property
     def imp_mats_H1V1(self) -> list:
         """List of `time_points` impact matrices with changing exposure, future hazard and future vulnerability."""
-        return self.interpolation_strategy.interp_over_exposure_dim(
-            self.E0H1V1.imp_mat, self.E1H1V1.imp_mat, self.time_points
-        )
+        return self._interp_mats("E0H1V1", "E1H1V1")
 
     @property
     def imp_mats_E0H0V0(self) -> list:
         """List of `time_points` impact matrices with base exposure, base hazard and base vulnerability."""
-        return self.interpolation_strategy.interp_over_exposure_dim(
-            self.E0H0V0.imp_mat, self.E0H0V0.imp_mat, self.time_points
-        )
+        return self._interp_mats("E0H0V0", "E0H0V0")
 
     @property
     def imp_mats_E0H1V0(self) -> list:
         """List of `time_points` impact matrices with base exposure, future hazard and base vulnerability."""
-        return self.interpolation_strategy.interp_over_exposure_dim(
-            self.E0H1V0.imp_mat, self.E0H1V0.imp_mat, self.time_points
-        )
+        return self._interp_mats("E0H1V0", "E0H1V0")
 
     @property
     def imp_mats_E0H0V1(self) -> list:
-        """List of `time_points` impact matrices with base exposure, future hazard and base vulnerability."""
-        return self.interpolation_strategy.interp_over_exposure_dim(
-            self.E0H0V1.imp_mat, self.E0H0V1.imp_mat, self.time_points
-        )
+        """List of `time_points` impact matrices with base exposure, base hazard and base vulnerability."""
+        return self._interp_mats("E0H0V1", "E0H0V1")
 
     ###############################
 
@@ -720,7 +714,7 @@ class CalcRiskMetricsPeriod:
     def per_date_eai_E0H0V0(self) -> np.ndarray:
         """Expected annual impacts for base exposure, base hazard and base vulnerability."""
         return calc_per_date_eais(
-            self.imp_mats_E0H0V0, self.snapshot_end.hazard.frequency
+            self.imp_mats_E0H0V0, self.snapshot_start.hazard.frequency
         )
 
     @property
@@ -734,7 +728,7 @@ class CalcRiskMetricsPeriod:
     def per_date_eai_E0H0V1(self) -> np.ndarray:
         """Expected annual impacts for base exposure, future hazard and base vulnerability."""
         return calc_per_date_eais(
-            self.imp_mats_E0H0V1, self.snapshot_end.hazard.frequency
+            self.imp_mats_E0H0V1, self.snapshot_start.hazard.frequency
         )
 
     ##################################
