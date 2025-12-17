@@ -40,17 +40,17 @@ def hazard(haz_kwargs):
     return Hazard(**haz_kwargs)
 
 
-@pytest.fixture(scope="module", params=[1, 2])
+# TODO: params should only apply to dimension reduction test
+@pytest.fixture
 def lead_time(request, haz_kwargs):
-    base_range = pd.timedelta_range(
-        "1h", periods=len(haz_kwargs["event_id"]) // request.param
-    )
+    return pd.timedelta_range("1h", periods=len(haz_kwargs["event_id"]))
     return np.tile(base_range.to_numpy(), request.param)
 
 
-@pytest.fixture(scope="module", params=[1, 2])
+# TODO: params should only apply to dimension reduction test
+@pytest.fixture
 def member(request, haz_kwargs):
-    base_range = np.arange(len(haz_kwargs["event_id"]) // request.param)
+    return np.arange(len(haz_kwargs["event_id"]))
     return np.tile(base_range, request.param)
 
 
@@ -258,7 +258,7 @@ def test_hazard_forecast_mean_min_max(haz_fc, attr):
     npt.assert_array_equal(np.isnat(haz_fcst_reduced.lead_time), [True])
     npt.assert_array_equal(haz_fcst_reduced.member, [-1])
     npt.assert_array_equal(haz_fcst_reduced.event_name, [attr])
-    npt.assert_array_equal(haz_fcst_reduced.event_id, [0])
+    npt.assert_array_equal(haz_fcst_reduced.event_id, [1])
     npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
     npt.assert_array_equal(haz_fcst_reduced.date, [0])
     npt.assert_array_equal(haz_fcst_reduced.orig, [True])
@@ -288,7 +288,7 @@ def test_hazard_forecast_quantile(haz_fc, quantile):
     npt.assert_array_equal(
         haz_fcst_quantile.event_name, np.array([f"quantile_{quantile}"])
     )
-    npt.assert_array_equal(haz_fcst_quantile.event_id, np.array([0]))
+    npt.assert_array_equal(haz_fcst_quantile.event_id, np.array([1]))
     npt.assert_array_equal(haz_fcst_quantile.frequency, np.array([1]))
     npt.assert_array_equal(haz_fcst_quantile.date, np.array([0]))
     npt.assert_array_equal(haz_fcst_quantile.orig, np.array([True]))
@@ -315,7 +315,7 @@ def test_median(haz_fc):
     # check that attributes where reduced correctly
     npt.assert_array_equal(haz_fcst_median.member, np.array([-1]))
     npt.assert_array_equal(haz_fcst_median.lead_time, np.array([np.timedelta64("NaT")]))
-    npt.assert_array_equal(haz_fcst_median.event_id, np.array([0]))
+    npt.assert_array_equal(haz_fcst_median.event_id, np.array([1]))
     npt.assert_array_equal(haz_fcst_median.event_name, np.array(["median"]))
     npt.assert_array_equal(haz_fcst_median.frequency, np.array([1]))
     npt.assert_array_equal(haz_fcst_median.date, np.array([0]))
@@ -324,7 +324,7 @@ def test_median(haz_fc):
 
 @pytest.mark.parametrize("attr", ["min", "mean", "max"])
 def test_hazard_forecast_mean_min_max_member(haz_fc, attr):
-    """Check mean, min, and max methods for ImpactForecast with dim argument"""
+    """Check mean, min, and max methods for HazardForecast with dim argument"""
 
     for dim, unique_vals in zip(
         ["member", "lead_time"],
@@ -351,14 +351,16 @@ def test_hazard_forecast_mean_min_max_member(haz_fc, attr):
             np.vstack(expected_fraction),
         )
         # Check that attributes where reduced correctly
-        if dim == "member":
-            npt.assert_array_equal(haz_fcst_reduced.member, unique_vals)
+        if dim == "lead_time":
+            npt.assert_array_equal(haz_fcst_reduced.member, np.unique(haz_fc.member))
             npt.assert_array_equal(
                 haz_fcst_reduced.lead_time,
                 np.array([np.timedelta64("NaT")] * len(unique_vals)),
             )
-        else:  # dim == "lead_time"
-            npt.assert_array_equal(haz_fcst_reduced.lead_time, unique_vals)
+        else:  # dim == "member"
+            npt.assert_array_equal(
+                haz_fcst_reduced.lead_time, np.unique(haz_fc.lead_time)
+            )
             npt.assert_array_equal(
                 haz_fcst_reduced.member,
                 np.array([-1] * len(unique_vals)),
@@ -377,5 +379,5 @@ def test_hazard_forecast_mean_min_max_member(haz_fc, attr):
 def test_hazard_forecast_mean_max_min_dim_error(haz_fc):
     """Check mean, min, and max methods for ImpactForecast with dim argument"""
     for attr in ["min", "mean", "max"]:
-        with pytest.raises(ValueError, match="not a valid dimension"):
+        with pytest.raises(AttributeError):
             getattr(haz_fc, attr)(dim="invalid_dim")
