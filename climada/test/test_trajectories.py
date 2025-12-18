@@ -19,19 +19,14 @@ Test trajectories.
 
 """
 
-import copy
-from itertools import groupby
 from unittest import TestCase
 
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.impact_funcs.base import ImpactFunc
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.test.reusable import (
+from climada.test.common_test_fixtures import (
     CATEGORIES,
     reusable_minimal_exposures,
     reusable_minimal_hazard,
@@ -41,17 +36,11 @@ from climada.test.reusable import (
 from climada.trajectories import StaticRiskTrajectory
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
-    CONTRIBUTION_BASE_RISK_NAME,
-    CONTRIBUTION_EXPOSURE_NAME,
-    CONTRIBUTION_HAZARD_NAME,
-    CONTRIBUTION_INTERACTION_TERM_NAME,
-    CONTRIBUTION_VULNERABILITY_NAME,
     DATE_COL_NAME,
     GROUP_COL_NAME,
     MEASURE_COL_NAME,
     METRIC_COL_NAME,
     NO_MEASURE_VALUE,
-    PERIOD_COL_NAME,
     RISK_COL_NAME,
     UNIT_COL_NAME,
 )
