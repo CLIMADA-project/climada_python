@@ -26,6 +26,7 @@ import logging
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPoints
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     AAI_PER_GROUP_METRIC_NAME,
@@ -43,7 +44,6 @@ from climada.trajectories.impact_calc_strat import (
     ImpactCalcComputation,
     ImpactComputationStrategy,
 )
-from climada.trajectories.riskperiod import CalcRiskMetricsPoints
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
     DEFAULT_ALLGROUP_NAME,

@@ -430,7 +430,7 @@ class TestCalcRiskMetricsPoints(unittest.TestCase):
         self.assertEqual(result_df[GROUP_COL_NAME].dtype.name, "category")
 
     @patch.object(Snapshot, "apply_measure")
-    @patch("climada.trajectories.riskperiod.CalcRiskMetricsPoints")
+    @patch("climada.trajectories.calc_risk_metrics.CalcRiskMetricsPoints")
     def test_apply_measure(self, mock_CalcRiskMetricPoints, mock_snap_apply_measure):
         mock_CalcRiskMetricPoints.return_value = MagicMock(spec=CalcRiskMetricsPoints)
         mock_snap_apply_measure.return_value = 42
