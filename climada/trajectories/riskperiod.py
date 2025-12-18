@@ -34,7 +34,7 @@ import numpy as np
 import pandas as pd
 from scipy.sparse import csr_matrix
 
-from climada.engine.impact import Impact
+from climada.engine.impact import Impact, ImpactFreqCurve
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.measures.base import Measure
 from climada.trajectories.constants import (
@@ -777,25 +777,37 @@ class CalcRiskMetricsPeriod:
     def per_date_return_periods_H0V0(self, return_periods: list[int]) -> np.ndarray:
         """Estimated impacts per dates for given return periods, with changing exposure, starting hazard and starting vulnerability."""
         return calc_per_date_rps(
-            self.imp_mats_H0V0, self.snapshot_start.hazard.frequency, return_periods
+            self.imp_mats_H0V0,
+            self.snapshot_start.hazard.frequency,
+            self.date_idx.freqstr[0],
+            return_periods,
         )
 
     def per_date_return_periods_H1V0(self, return_periods: list[int]) -> np.ndarray:
         """Estimated impacts per dates for given return periods, with changing exposure, future hazard and starting vulnerability."""
         return calc_per_date_rps(
-            self.imp_mats_H1V0, self.snapshot_end.hazard.frequency, return_periods
+            self.imp_mats_H1V0,
+            self.snapshot_end.hazard.frequency,
+            self.date_idx.freqstr[0],
+            return_periods,
         )
 
     def per_date_return_periods_H0V1(self, return_periods: list[int]) -> np.ndarray:
         """Estimated impacts per dates for given return periods, with changing exposure, starting hazard and future vulnerability."""
         return calc_per_date_rps(
-            self.imp_mats_H0V1, self.snapshot_start.hazard.frequency, return_periods
+            self.imp_mats_H0V1,
+            self.snapshot_start.hazard.frequency,
+            self.date_idx.freqstr[0],
+            return_periods,
         )
 
     def per_date_return_periods_H1V1(self, return_periods: list[int]) -> np.ndarray:
         """Estimated impacts per dates for given return periods, with changing exposure, future hazard and future vulnerability."""
         return calc_per_date_rps(
-            self.imp_mats_H1V1, self.snapshot_end.hazard.frequency, return_periods
+            self.imp_mats_H1V1,
+            self.snapshot_end.hazard.frequency,
+            self.date_idx.freqstr[0],
+            return_periods,
         )
 
     ##################################
@@ -1126,6 +1138,7 @@ def calc_per_date_aais(per_date_eai_exp: np.ndarray) -> np.ndarray:
 def calc_per_date_rps(
     imp_mats: list[csr_matrix],
     frequency: np.ndarray,
+    frequency_unit: str,
     return_periods: list[int],
 ) -> np.ndarray:
     """Calculate per date return period impact values from a
@@ -1148,12 +1161,17 @@ def calc_per_date_rps(
 
     """
     rp = np.array(
-        [calc_freq_curve(imp_mat, frequency, return_periods) for imp_mat in imp_mats]
+        [
+            calc_freq_curve(imp_mat, frequency, frequency_unit, return_periods).impact
+            for imp_mat in imp_mats
+        ]
     )
     return rp
 
 
-def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None) -> np.ndarray:
+def calc_freq_curve(
+    imp_mat_intrpl, frequency, frequency_unit, return_per=None
+) -> ImpactFreqCurve:
     """Calculate the estimated impacts for given return periods.
 
     Parameters
@@ -1188,4 +1206,9 @@ def calc_freq_curve(imp_mat_intrpl, frequency, return_per=None) -> np.ndarray:
         ifc_return_per = return_per
         ifc_impact = interp_imp
 
-    return ifc_impact
+    return ImpactFreqCurve(
+        return_per=ifc_return_per,
+        impact=ifc_impact,
+        frequency_unit=frequency_unit,
+        label="Exceedance frequency curve",
+    )
