@@ -29,6 +29,9 @@ import numpy as np  # For potential NaN/NA comparisons
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.calc_risk_metrics import (  # ImpactComputationStrategy, # If needed to mock its base class directly
+    CalcRiskMetricsPeriod,
+)
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     AAI_PER_GROUP_METRIC_NAME,
@@ -58,9 +61,6 @@ from climada.trajectories.interpolated_trajectory import (
 from climada.trajectories.interpolation import (
     AllLinearStrategy,
     ExponentialExposureStrategy,
-)
-from climada.trajectories.riskperiod import (  # ImpactComputationStrategy, # If needed to mock its base class directly
-    CalcRiskMetricsPeriod,
 )
 from climada.trajectories.snapshot import Snapshot
 
