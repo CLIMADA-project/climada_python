@@ -185,8 +185,7 @@ class CalcRiskMetricsPoints:
 
         return np.array([imp.aai_agg for imp in self.impacts])
 
-    @lazy_property
-    def eai_gdf(self) -> pd.DataFrame:
+    def calc_eai_gdf(self) -> pd.DataFrame:
         """Convenience function returning a DataFrame (with both datetime and coordinates) from `per_date_eai`.
 
         This can easily be merged with the GeoDataFrame of the exposure object of one of the `Snapshot`.
@@ -196,10 +195,6 @@ class CalcRiskMetricsPoints:
 
         The DataFrame from the first snapshot of the list is used as a basis (notably for `value` and `group_id`).
         """
-        return self.calc_eai_gdf()
-
-    def calc_eai_gdf(self) -> pd.DataFrame:
-        """Merge the per date EAIs of the risk period with the Dataframe of the exposure of the starting snapshot."""
 
         df = pd.DataFrame(self.per_date_eai, index=self._date_idx)
         df = df.reset_index().melt(
@@ -257,7 +252,7 @@ class CalcRiskMetricsPoints:
             )
             return None
 
-        eai_pres_groups = self.eai_gdf[
+        eai_pres_groups = self.calc_eai_gdf()[
             [DATE_COL_NAME, COORD_ID_COL_NAME, GROUP_COL_NAME, RISK_COL_NAME]
         ].copy()
         aai_per_group_df = eai_pres_groups.groupby(
