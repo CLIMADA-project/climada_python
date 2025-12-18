@@ -110,7 +110,7 @@ class StaticRiskTrajectory(RiskTrajectory):
             The return periods to use when computing the `return_periods_metric`.
             Defaults to `DEFAULT_RP` ([20, 50, 100]).
         all_groups_name: str, optional
-            The string to use to define all exposure points subgroup.
+            The string that should be used to define "all exposure points" subgroup.
             Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
         risk_disc_rates: DiscRates, optional
             The discount rate to apply to future risk. Defaults to None.
