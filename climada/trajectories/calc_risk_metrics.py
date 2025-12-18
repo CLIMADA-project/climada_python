@@ -56,6 +56,8 @@ __all__ = [
     "CalcRiskMetricsPoints",
 ]
 
+_CACHE_SETTINGS = {"ENABLE_LAZY_CACHE": False}
+
 
 def lazy_property(method):
     # This function is used as a decorator for properties
@@ -67,11 +69,12 @@ def lazy_property(method):
 
     @property
     def _lazy(self):
+        if not _CACHE_SETTINGS.get("ENABLE_LAZY_CACHE", True):
+            return method(self)
+
         if getattr(self, attr_name) is None:
-            # LOGGER.debug(
-            #     f"Computing {method.__name__} for {self._snapshot0.date}-{self._snapshot1.date} with {meas_n}."
-            # )
             setattr(self, attr_name, method(self))
+
         return getattr(self, attr_name)
 
     return _lazy
