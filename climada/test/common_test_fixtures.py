@@ -22,18 +22,13 @@ default objects for unit and integration testing.
 
 """
 
-import copy
-from unittest import TestCase
-
 import geopandas as gpd
 import numpy as np
-import pandas as pd
 from scipy.sparse import csr_matrix
 from shapely.geometry import Point
 
-from climada.entity import Exposures, ImpactFunc, ImpactFuncSet, ImpfTropCyclone
+from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
 from climada.hazard import Centroids, Hazard
-from climada.trajectories import InterpolatedRiskTrajectory, StaticRiskTrajectory
 from climada.trajectories.snapshot import Snapshot
 
 # ---------------------------------------------------------------------------
