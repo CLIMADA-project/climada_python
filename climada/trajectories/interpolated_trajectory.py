@@ -26,6 +26,7 @@ import itertools
 import logging
 from typing import cast
 
+import matplotlib as mpl
 import matplotlib.dates as mdates
 import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
@@ -735,31 +736,35 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
         risk_contribution = risk_contribution[
             [
-                CONTRIBUTION_BASE_RISK_NAME,
                 CONTRIBUTION_EXPOSURE_NAME,
                 CONTRIBUTION_HAZARD_NAME,
                 CONTRIBUTION_VULNERABILITY_NAME,
                 CONTRIBUTION_INTERACTION_TERM_NAME,
             ]
         ]
-        risk_contribution[CONTRIBUTION_BASE_RISK_NAME] = risk_contribution.iloc[0][
-            CONTRIBUTION_BASE_RISK_NAME
-        ]
-        # risk_contribution.plot(x=DATE_COL_NAME, ax=ax, kind="bar", stacked=True)
+        positive_contrib = (
+            risk_contribution[risk_contribution > 0].dropna(how="all", axis=1).fillna(0)
+        )  # + base_risk.iloc[0]
+        negative_contrib = (
+            risk_contribution[risk_contribution < 0].dropna(how="all", axis=1).fillna(0)
+        )  # + base_risk.iloc[0]
+
         ax.stackplot(
-            risk_contribution.index.to_timestamp(),  # type: ignore
-            [risk_contribution[col] for col in risk_contribution.columns],
-            labels=risk_contribution.columns,
+            positive_contrib.index.to_timestamp(),  # type: ignore
+            [positive_contrib[col] for col in positive_contrib.columns],
+            labels=positive_contrib.columns,
+            colors=mpl.color_sequences["tab10"][1:],
         )
+        if not (negative_contrib.empty):
+            ax.stackplot(
+                negative_contrib.index.to_timestamp(),  # type: ignore
+                [negative_contrib[col] for col in negative_contrib.columns],
+                labels=negative_contrib.columns,
+                colors=mpl.color_sequences["tab10"][3:],
+            )
         ax.legend()
-        # bottom = [0] * len(risk_contribution)
-        # for col in risk_contribution.columns:
-        #     bottom =  [b + v for b, v in zip(bottom, risk_contribution[col])]
-        # Construct y-axis label and title based on parameters
-        value_label = "USD"
-        title_label = (
-            f"Risk between {self.start_date} and {self.end_date} (Average impact)"
-        )
+        value_label = "Deviation from base risk"
+        title_label = f"Contributions to change in risk between {self.start_date} and {self.end_date} (Average)"
 
         locator = mdates.AutoDateLocator()
         formatter = mdates.ConciseDateFormatter(locator)
@@ -769,7 +774,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         ax.yaxis.set_major_formatter(mticker.EngFormatter())
         ax.set_title(title_label)
         ax.set_ylabel(value_label)
-        ax.set_ylim(0.0, 1.1 * ax.get_ylim()[1])
+        ax.set_ylim(top=1.1 * ax.get_ylim()[1])
         return fig, ax
 
     def plot_waterfall(
