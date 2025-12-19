@@ -168,6 +168,127 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertListEqual(out[2], [124, 840])
         self.assertListEqual(out[3], ["CAN", "USA"])
 
+    def test_get_countries_per_region_all_or_none(self):
+        ifs = ImpfSetTropCyclone()
+        out = ifs.get_countries_per_region()
+        out2 = ifs.get_countries_per_region("all")
+        self.assertEqual(out, out2)
+        self.assertDictEqual(
+            out[0],
+            {
+                "NA1": "Caribbean and Mexico",
+                "NA2": "USA and Canada",
+                "NI": "North Indian",
+                "OC": "Oceania",
+                "SI": "South Indian",
+                "WP1": "South East Asia",
+                "WP2": "Philippines",
+                "WP3": "China Mainland",
+                "WP4": "North West Pacific",
+                "ROW": "Rest of The World",
+            },
+        )
+        self.assertDictEqual(
+            out[1],
+            {
+                "NA1": 1,
+                "NA2": 2,
+                "NI": 3,
+                "OC": 4,
+                "SI": 5,
+                "WP1": 6,
+                "WP2": 7,
+                "WP3": 8,
+                "WP4": 9,
+                "ROW": 10,
+            },
+        )
+        # fmt: off
+        self.assertDictEqual(out[2],
+                             {'NA1': [
+                                 533, 660, 32, 28, 44, 84, 60, 68, 52, 152, 170, 132, 188, 192,
+                                 136, 212, 214, 218, 238, 312, 308, 320, 254, 328, 340, 332,
+                                 388, 659, 662, 484, 500, 474, 558, 591, 604, 630, 600, 654,
+                                 222, 740, 534, 796, 780, 858, 670, 862, 92, 850
+                             ],
+                              'NA2': [124, 840],
+                              'NI': [
+                                  4, 784, 51, 31, 50, 48, 64, 262, 232, 231, 268, 356, 364,
+                                  368, 376, 400, 398, 417, 414, 422, 144, 462, 104, 496,
+                                  524, 512, 586, 634, 682, 706, 760, 762, 795, 800, 860, 887
+                              ],
+                              'OC': [
+                                  16, 36, 184, 242, 583, 316, 296, 584, 580, 540, 574,
+                                  570, 520, 554, 612, 585, 598, 258, 90, 772, 626, 776,
+                                  798, 548, 876, 882
+                              ],
+                              'SI': [
+                                  180, 174, 450, 466, 508, 480, 454, 748, 834, 710, 716
+                              ],
+                              'WP1': [116, 360, 418, 458, 764, 704],
+                              'WP2': [608],
+                              'WP3': [156],
+                              'WP4': [344, 392, 410, 446, 158],
+                              'ROW': [
+                                  24, 248, 8, 20, 10, 260, 40, 108, 56, 204, 535, 854,
+                                  100, 70, 652, 112, 76, 96, 74, 72, 140, 166, 756, 384,
+                                  120, 178, 531, 162, 196, 203, 276, 208, 12, 818, 732,
+                                  724, 233, 246, 250, 234, 266, 826, 831, 288, 292, 324,
+                                  270, 624, 226, 300, 304, 334, 191, 348, 833, 86, 372,
+                                  352, 380, 832, 404, 430, 434, 438, 426, 440, 442, 428,
+                                  663, 504, 492, 498, 807, 470, 499, 478, 175, 516, 562,
+                                  566, 528, 578, 616, 408, 620, 275, 638, 642, 643, 646,
+                                  729, 686, 702, 239, 744, 694, 674, 666, 688, 728, 678,
+                                  703, 705, 752, 690, 148, 768, 788, 792, 804, 581, 336,
+                                  983, 894
+                              ]})
+
+        self.assertDictEqual(out[3],
+                             {
+                                 "NA1": [
+                                     "ABW", "AIA", "ARG", "ATG", "BHS", "BLZ", "BMU", "BOL", "BRB", "CHL", "COL",
+                                     "CPV", "CRI", "CUB", "CYM", "DMA", "DOM", "ECU", "FLK", "GLP", "GRD", "GTM",
+                                     "GUF", "GUY", "HND", "HTI", "JAM", "KNA", "LCA", "MEX", "MSR", "MTQ", "NIC",
+                                     "PAN", "PER", "PRI", "PRY", "SHN", "SLV", "SUR", "SXM", "TCA", "TTO", "URY",
+                                     "VCT", "VEN", "VGB", "VIR",
+                                 ],
+                                 "NA2": ["CAN", "USA"],
+                                 "NI": [
+                                     "AFG", "ARE", "ARM", "AZE", "BGD", "BHR", "BTN", "DJI", "ERI", "ETH", "GEO",
+                                     "IND", "IRN", "IRQ", "ISR", "JOR", "KAZ", "KGZ", "KWT", "LBN", "LKA", "MDV",
+                                     "MMR", "MNG", "NPL", "OMN", "PAK", "QAT", "SAU", "SOM", "SYR", "TJK", "TKM",
+                                     "UGA", "UZB", "YEM",
+                                 ],
+                                 "OC": [
+                                     "ASM", "AUS", "COK", "FJI", "FSM", "GUM", "KIR", "MHL", "MNP", "NCL", "NFK",
+                                     "NIU", "NRU", "NZL", "PCN", "PLW", "PNG", "PYF", "SLB", "TKL", "TLS", "TON",
+                                     "TUV", "VUT", "WLF", "WSM",
+                                 ],
+                                 "SI": [
+                                     "COD", "COM", "MDG", "MLI", "MOZ", "MUS", "MWI", "SWZ", "TZA", "ZAF", "ZWE",
+                                 ],
+                                 "WP1": ["KHM", "IDN", "LAO", "MYS", "THA", "VNM"],
+                                 "WP2": ["PHL"],
+                                 "WP3": ["CHN"],
+                                 "WP4": ["HKG", "JPN", "KOR", "MAC", "TWN"],
+                                 "ROW": [
+                                     "AGO", "ALA", "ALB", "AND", "ATA", "ATF", "AUT", "BDI", "BEL", "BEN", "BES",
+                                     "BFA", "BGR", "BIH", "BLM", "BLR", "BRA", "BRN", "BVT", "BWA", "CAF", "CCK",
+                                     "CHE", "CIV", "CMR", "COG", "CUW", "CXR", "CYP", "CZE", "DEU", "DNK", "DZA",
+                                     "EGY", "ESH", "ESP", "EST", "FIN", "FRA", "FRO", "GAB", "GBR", "GGY", "GHA",
+                                     "GIB", "GIN", "GMB", "GNB", "GNQ", "GRC", "GRL", "HMD", "HRV", "HUN", "IMN",
+                                     "IOT", "IRL", "ISL", "ITA", "JEY", "KEN", "LBR", "LBY", "LIE", "LSO", "LTU",
+                                     "LUX", "LVA", "MAF", "MAR", "MCO", "MDA", "MKD", "MLT", "MNE", "MRT", "MYT",
+                                     "NAM", "NER", "NGA", "NLD", "NOR", "POL", "PRK", "PRT", "PSE", "REU", "ROU",
+                                     "RUS", "RWA", "SDN", "SEN", "SGP", "SGS", "SJM", "SLE", "SMR", "SPM", "SRB",
+                                     "SSD", "STP", "SVK", "SVN", "SWE", "SYC", "TCD", "TGO", "TUN", "TUR", "UKR",
+                                     "UMI", "VAT", "XKO", "ZMB",
+                                     ],
+                             }
+                             )
+
+    # fmt: on
+
     def test_get_imf_id_regions_per_countries(self):
         """Test get_impf_id_regions_per_countries()"""
         ifs = ImpfSetTropCyclone()
