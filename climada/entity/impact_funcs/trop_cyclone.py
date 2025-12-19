@@ -365,7 +365,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
 
     @staticmethod
     def get_countries_per_region(region=None):
-        """Returns countries within a tropical cyclone calibration region and associated impact functions.
+        """Returns countries within a TC calibration region and associated impact functions.
 
         This method returns a tuple with numerical (numeric) and alphabetical (alpha3)
         ISO3 codes of all countries associated to a calibration region.
