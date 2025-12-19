@@ -65,7 +65,9 @@ from climada.trajectories.interpolation import (
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
     DEFAULT_ALLGROUP_NAME,
+    DEFAULT_DF_COLUMN_PRIORITY,
     DEFAULT_RP,
+    INDEXING_COLUMNS,
     RiskTrajectory,
 )
 from climada.util import log_level
@@ -74,8 +76,6 @@ from climada.util.dataframe_handling import reorder_dataframe_columns
 LOGGER = logging.getLogger(__name__)
 
 __all__ = ["InterpolatedRiskTrajectory"]
-
-from climada.trajectories.trajectory import DEFAULT_DF_COLUMN_PRIORITY, INDEXING_COLUMNS
 
 
 class InterpolatedRiskTrajectory(RiskTrajectory):
