@@ -52,6 +52,9 @@ class Snapshot:
         The date of the Snapshot, it can be an integer representing a year,
         a datetime object or a string representation of a datetime object
         with format "YYYY-MM-DD".
+    ref_only : bool, default False
+        Should the `Snapshot` contain deep copies of the Exposures, Hazard and Impfset (False)
+        or references only (True).
 
     Attributes
     ----------
@@ -80,10 +83,11 @@ class Snapshot:
         hazard: Hazard,
         impfset: ImpactFuncSet,
         date: int | datetime.date | str,
+        ref_only: bool = False,
     ) -> None:
-        self._exposure = copy.deepcopy(exposure)
-        self._hazard = copy.deepcopy(hazard)
-        self._impfset = copy.deepcopy(impfset)
+        self._exposure = exposure if ref_only else copy.deepcopy(exposure)
+        self._hazard = hazard if ref_only else copy.deepcopy(hazard)
+        self._impfset = impfset if ref_only else copy.deepcopy(impfset)
         self._measure = None
         self._date = self._convert_to_date(date)
 
