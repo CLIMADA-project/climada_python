@@ -64,6 +64,7 @@ from climada.trajectories.interpolation import (
     linear_interp_arrays,
 )
 from climada.trajectories.snapshot import Snapshot
+from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
 
@@ -76,8 +77,6 @@ __all__ = [
     "calc_freq_curve",
 ]
 
-_CACHE_SETTINGS = {"ENABLE_LAZY_CACHE": False}
-
 
 def lazy_property(method):
     # This function is used as a decorator for properties
@@ -89,7 +88,7 @@ def lazy_property(method):
 
     @property
     def _lazy(self):
-        if not _CACHE_SETTINGS.get("ENABLE_LAZY_CACHE", True):
+        if not CONFIG.trajectory_caching.bool():
             return method(self)
 
         if getattr(self, attr_name) is None:

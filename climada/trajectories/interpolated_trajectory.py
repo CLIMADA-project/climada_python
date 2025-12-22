@@ -72,6 +72,7 @@ from climada.trajectories.trajectory import (
     RiskTrajectory,
 )
 from climada.util import log_level
+from climada.util.config import CONFIG
 from climada.util.dataframe_handling import reorder_dataframe_columns
 
 LOGGER = logging.getLogger(__name__)
@@ -378,9 +379,12 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 tmp = self.npv_transform(tmp, self._risk_disc_rates)
 
             tmp = reorder_dataframe_columns(tmp, DEFAULT_DF_COLUMN_PRIORITY)
-            LOGGER.debug("All computing done, caching value.")
-            setattr(self, attr_name, tmp)
-            return getattr(self, attr_name)
+            if CONFIG.trajectory_caching.bool():
+                LOGGER.debug("All computing done, caching value.")
+                setattr(self, attr_name, tmp)
+                return getattr(self, attr_name)
+            else:
+                return tmp
 
     def _compute_period_metrics(
         self, metric_name: str, metric_meth: str, **kwargs
