@@ -753,26 +753,43 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             risk_contribution[risk_contribution < 0].dropna(how="all", axis=1).fillna(0)
         )  # + base_risk.iloc[0]
 
+        color_index = {
+            CONTRIBUTION_EXPOSURE_NAME: 1,
+            CONTRIBUTION_HAZARD_NAME: 2,
+            CONTRIBUTION_VULNERABILITY_NAME: 3,
+            CONTRIBUTION_INTERACTION_TERM_NAME: 4,
+        }
+        csequence = mpl.color_sequences["tab10"]
         ax.stackplot(
             positive_contrib.index.to_timestamp(),  # type: ignore
             [positive_contrib[col] for col in positive_contrib.columns],
             labels=positive_contrib.columns,
-            colors=mpl.color_sequences["tab10"][1:],
+            colors=[csequence[color_index[col]] for col in positive_contrib.columns],
         )
         if not (negative_contrib.empty):
             ax.stackplot(
                 negative_contrib.index.to_timestamp(),  # type: ignore
                 [negative_contrib[col] for col in negative_contrib.columns],
                 labels=negative_contrib.columns,
-                colors=mpl.color_sequences["tab10"][3:],
+                colors=[
+                    csequence[color_index[col]] for col in negative_contrib.columns
+                ],
             )
-        ax.legend()
+        handles, labels = plt.gca().get_legend_handles_labels()
+        newLabels, newHandles = [], []
+        for handle, label in zip(handles, labels):
+            if label not in newLabels:
+                newLabels.append(label)
+                newHandles.append(handle)
+
+        ax.legend(newHandles, newLabels)
         value_label = "Deviation from base risk"
         title_label = f"Contributions to change in risk between {self.start_date} and {self.end_date} (Average)"
 
         locator = mdates.AutoDateLocator()
         formatter = mdates.ConciseDateFormatter(locator)
 
+        ax.axhline(y=0, linestyle="--", color="black", linewidth=2)
         ax.xaxis.set_major_locator(locator)
         ax.xaxis.set_major_formatter(formatter)
         ax.yaxis.set_major_formatter(mticker.EngFormatter())
