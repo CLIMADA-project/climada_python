@@ -31,7 +31,6 @@ from packaging.version import Version
 from scipy.sparse import csr_matrix
 
 from climada.hazard.base import Hazard
-from climada.hazard.centroids.centr import Centroids
 from climada.hazard.forecast import HazardForecast
 from climada.hazard.test.test_base import hazard_kwargs
 
@@ -53,18 +52,14 @@ def hazard(haz_kwargs):
     return Hazard(**haz_kwargs)
 
 
-# TODO: params should only apply to dimension reduction test
 @pytest.fixture
-def lead_time(request, haz_kwargs):
+def lead_time(haz_kwargs):
     return pd.timedelta_range("1h", periods=len(haz_kwargs["event_id"]))
-    return np.tile(base_range.to_numpy(), request.param)
 
 
-# TODO: params should only apply to dimension reduction test
 @pytest.fixture
-def member(request, haz_kwargs):
+def member(haz_kwargs):
     return np.arange(len(haz_kwargs["event_id"]))
-    return np.tile(base_range, request.param)
 
 
 @pytest.fixture
@@ -378,8 +373,10 @@ class TestSelect:
         with pytest.raises(IndexError):
             haz_fc.select(event_id=[-1])
         with pytest.raises(IndexError):
+            haz_fc.select(event_id=[])
+        with pytest.raises(ValueError, match="Empty selection"):
             haz_fc.select(member=[-1])
-        with pytest.raises(IndexError):
+        with pytest.raises(ValueError, match="Empty selection"):
             haz_fc.select(
                 lead_time=[np.timedelta64("2", "Y").astype("timedelta64[ns]")]
             )
@@ -402,145 +399,139 @@ def test_write_read_hazard_forecast(haz_fc, tmp_path):
             npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
 
 
-@pytest.mark.parametrize("attr", ["min", "mean", "max"])
-def test_hazard_forecast_mean_min_max(haz_fc, attr):
-    """Check mean, min, and max methods for ImpactForecast"""
-    haz_fcst_reduced = getattr(haz_fc, attr)()
+class TestReduce:
 
-    # Assert sparse matrices
-    npt.assert_array_equal(
-        haz_fcst_reduced.intensity.todense(),
-        getattr(haz_fc.intensity.todense(), attr)(axis=0),
-    )
-    npt.assert_array_equal(
-        haz_fcst_reduced.fraction.todense(),
-        getattr(haz_fc.fraction.todense(), attr)(axis=0),
-    )
+    @pytest.fixture(autouse=True, params=["full", "single"])
+    def prep_haz_fc(self, haz_fc, request):
+        """Test either with the full hazard forecast or one with only a single entry"""
+        if request.param == "single":
+            haz_fc = haz_fc.select(event_id=[haz_fc.event_id[0]])
 
-    # Check that attributes where reduced correctly
-    npt.assert_array_equal(np.isnat(haz_fcst_reduced.lead_time), [True])
-    npt.assert_array_equal(haz_fcst_reduced.member, [-1])
-    npt.assert_array_equal(haz_fcst_reduced.event_name, [attr])
-    npt.assert_array_equal(haz_fcst_reduced.event_id, [1])
-    npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
-    npt.assert_array_equal(haz_fcst_reduced.date, [0])
-    npt.assert_array_equal(haz_fcst_reduced.orig, [True])
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "quantile", "median"])
+    def test_reduce(self, haz_fc, attr):
+        """Check reduction methods for HazardForecast"""
+        kwargs = {"q": 0.3} if attr == "quantile" else {}
+        haz_fcst_reduced = getattr(haz_fc, attr)(**kwargs)
 
-
-@pytest.mark.parametrize("quantile", [0.3, 0.6, 0.8])
-def test_hazard_forecast_quantile(haz_fc, quantile):
-    """Check quantile method for HazardForecast"""
-    haz_fcst_quantile = haz_fc.quantile(q=quantile)
-
-    # assert intensity
-    npt.assert_array_equal(
-        haz_fcst_quantile.intensity.toarray().squeeze(),
-        np.quantile(haz_fc.intensity.toarray(), quantile, axis=0),
-    )
-    # assert fraction
-    npt.assert_array_equal(
-        haz_fcst_quantile.fraction.toarray().squeeze(),
-        np.quantile(haz_fc.fraction.toarray(), quantile, axis=0),
-    )
-
-    # check that attributes where reduced correctly
-    npt.assert_array_equal(
-        haz_fcst_quantile.lead_time, np.array([np.timedelta64("NaT")])
-    )
-    npt.assert_array_equal(haz_fcst_quantile.member, np.array([-1]))
-    npt.assert_array_equal(
-        haz_fcst_quantile.event_name, np.array([f"quantile_{quantile}"])
-    )
-    npt.assert_array_equal(haz_fcst_quantile.event_id, np.array([1]))
-    npt.assert_array_equal(haz_fcst_quantile.frequency, np.array([1]))
-    npt.assert_array_equal(haz_fcst_quantile.date, np.array([0]))
-    npt.assert_array_equal(haz_fcst_quantile.orig, np.array([True]))
-
-
-def test_median(haz_fc):
-    haz_fcst_median = haz_fc.median()
-    haz_fcst_quantile = haz_fc.quantile(q=0.5)
-    npt.assert_array_equal(
-        haz_fcst_median.intensity.todense(), haz_fcst_quantile.intensity.todense()
-    )
-    npt.assert_array_equal(
-        haz_fcst_median.intensity.todense(),
-        np.median(haz_fc.intensity.todense(), axis=0),
-    )
-    npt.assert_array_equal(
-        haz_fcst_median.fraction.todense(), haz_fcst_quantile.fraction.todense()
-    )
-    npt.assert_array_equal(
-        haz_fcst_median.fraction.todense(),
-        np.median(haz_fc.fraction.todense(), axis=0),
-    )
-
-    # check that attributes where reduced correctly
-    npt.assert_array_equal(haz_fcst_median.member, np.array([-1]))
-    npt.assert_array_equal(haz_fcst_median.lead_time, np.array([np.timedelta64("NaT")]))
-    npt.assert_array_equal(haz_fcst_median.event_id, np.array([1]))
-    npt.assert_array_equal(haz_fcst_median.event_name, np.array(["median"]))
-    npt.assert_array_equal(haz_fcst_median.frequency, np.array([1]))
-    npt.assert_array_equal(haz_fcst_median.date, np.array([0]))
-    npt.assert_array_equal(haz_fcst_median.orig, np.array([True]))
-
-
-@pytest.mark.parametrize("attr", ["min", "mean", "max"])
-def test_hazard_forecast_mean_min_max_member(haz_fc, attr):
-    """Check mean, min, and max methods for HazardForecast with dim argument"""
-
-    for dim, unique_vals in zip(
-        ["member", "lead_time"],
-        [np.unique(haz_fc.member), np.unique(haz_fc.lead_time)],
-    ):
-        haz_fcst_reduced = getattr(haz_fc, attr)(dim=dim)
-        # Assert sparse matrices
-        expected_intensity = []
-        expected_fraction = []
-        for val in unique_vals:
-            mask = getattr(haz_fc, dim) == val
-            expected_intensity.append(
-                getattr(haz_fc.intensity.todense()[mask], attr)(axis=0)
-            )
-            expected_fraction.append(
-                getattr(haz_fc.fraction.todense()[mask], attr)(axis=0)
-            )
+        # Test by calling the same numpy function on the dense array
         npt.assert_array_equal(
-            haz_fcst_reduced.intensity.todense(),
-            np.vstack(expected_intensity),
+            haz_fcst_reduced.intensity.toarray().squeeze(),
+            getattr(np, attr)(haz_fc.intensity.toarray(), axis=0, **kwargs),
         )
         npt.assert_array_equal(
-            haz_fcst_reduced.fraction.todense(),
-            np.vstack(expected_fraction),
+            haz_fcst_reduced.fraction.toarray().squeeze(),
+            getattr(np, attr)(haz_fc.fraction.toarray(), axis=0, **kwargs),
         )
+
         # Check that attributes where reduced correctly
-        if dim == "lead_time":
-            npt.assert_array_equal(haz_fcst_reduced.member, np.unique(haz_fc.member))
-            npt.assert_array_equal(
-                haz_fcst_reduced.lead_time,
-                np.array([np.timedelta64("NaT")] * len(unique_vals)),
-            )
-        else:  # dim == "member"
-            npt.assert_array_equal(
-                haz_fcst_reduced.lead_time, np.unique(haz_fc.lead_time)
-            )
-            npt.assert_array_equal(
-                haz_fcst_reduced.member,
-                np.array([-1] * len(unique_vals)),
-            )
+        attr_str = "quantile_0.3" if attr == "quantile" else attr
+        npt.assert_array_equal(haz_fcst_reduced.lead_time, [np.timedelta64("NaT")])
+        npt.assert_array_equal(haz_fcst_reduced.member, [-1])
+        npt.assert_array_equal(haz_fcst_reduced.event_name, [attr_str])
+        npt.assert_array_equal(haz_fcst_reduced.event_id, [1])
+        npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
+        npt.assert_array_equal(haz_fcst_reduced.date, [0])
+        npt.assert_array_equal(haz_fcst_reduced.orig, [True])
+
+    @pytest.mark.parametrize("quantile,reduce", [(0.0, "min"), (1.0, "max")])
+    def test_quantile_min_max(self, haz_fc, quantile, reduce):
+        """Compare min/max with quantiles 0/1"""
+        haz_fcst_quantile = haz_fc.quantile(q=quantile)
+        haz_fcst_reduce = getattr(haz_fc, reduce)()
         npt.assert_array_equal(
-            haz_fcst_reduced.event_name,
-            np.array([attr] * len(unique_vals)),
+            haz_fcst_quantile.intensity.todense(), haz_fcst_reduce.intensity.todense()
         )
-        npt.assert_array_equal(haz_fcst_reduced.event_id, [0] * len(unique_vals))
-        npt.assert_array_equal(haz_fcst_reduced.frequency, [1] * len(unique_vals))
-        npt.assert_array_equal(haz_fcst_reduced.date, [0] * len(unique_vals))
-        npt.assert_array_equal(haz_fcst_reduced.orig, [True] * len(unique_vals))
-    # TODO add test in case no reduction happens (e.g., all values along dim are unique)
 
+    def test_median_quantile(self, haz_fc):
+        """Compare median with quantile 0.5"""
+        haz_fcst_median = haz_fc.median()
+        haz_fcst_quantile = haz_fc.quantile(q=0.5)
+        npt.assert_array_equal(
+            haz_fcst_median.intensity.todense(), haz_fcst_quantile.intensity.todense()
+        )
+        npt.assert_array_equal(
+            haz_fcst_median.intensity.todense(),
+            np.median(haz_fc.intensity.todense(), axis=0),
+        )
 
-def test_hazard_forecast_mean_max_min_dim_error(haz_fc):
-    """Check mean, min, and max methods for ImpactForecast with dim argument"""
-    for attr in ["min", "mean", "max"]:
-        with pytest.raises(AttributeError):
-            getattr(haz_fc, attr)(dim="invalid_dim")
+    @pytest.fixture
+    def haz_fc_dim_reduce(self, haz_fc):
+        haz_fc.member = np.array([1, 2, 1, 2])
+        haz_fc.lead_time = np.array(
+            [
+                np.timedelta64(1, "h"),
+                np.timedelta64(1, "h"),
+                np.timedelta64(2, "h"),
+                np.timedelta64(2, "h"),
+            ]
+        )
+        return haz_fc
+
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])
+    @pytest.mark.parametrize("dim", ["lead_time", "member"])
+    def test_reduce_dim(self, haz_fc_dim_reduce, attr, dim):
+        """Check reduction for HazardForecast with dim argument"""
+        kwargs = {"q": 0.3} if attr == "quantile" else {}
+        haz_fc_reduced = getattr(haz_fc_dim_reduce, attr)(dim=dim, **kwargs)
+
+        rdim = "member" if dim == "lead_time" else "lead_time"
+        unique_rdim = np.unique(getattr(haz_fc_dim_reduce, rdim))
+        npt.assert_array_equal(getattr(haz_fc_reduced, rdim), unique_rdim)
+
+        assert np.unique(getattr(haz_fc_reduced, dim)).size == 1
+        if dim == "lead_time":
+            npt.assert_array_equal(
+                haz_fc_reduced.lead_time, [np.timedelta64("NaT"), np.timedelta64("NaT")]
+            )
+        else:
+            npt.assert_array_equal(haz_fc_reduced.member, [-1, -1])
+
+        haz_fc_expected = haz_fc_dim_reduce.concat(
+            [
+                getattr(haz_fc_dim_reduce.select(**{rdim: val}), attr)(
+                    dim=None, **kwargs
+                )
+                for val in unique_rdim
+            ]
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.intensity.todense(), haz_fc_expected.intensity.todense()
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.intensity.todense(), haz_fc_expected.intensity.todense()
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.todense(), haz_fc_expected.fraction.todense()
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.todense(), haz_fc_expected.fraction.todense()
+        )
+
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])
+    @pytest.mark.parametrize("dim", ["lead_time", "member"])
+    def test_reduce_dim_unique_or_single(self, haz_fc, attr, dim):
+        """Test that reduction over a dimension with all-unique values does nothing"""
+        kwargs = {"q": 0.3} if attr == "quantile" else {}
+        haz_fc_reduced = getattr(haz_fc, attr)(dim=dim, **kwargs)
+
+        npt.assert_array_equal(haz_fc_reduced.member, haz_fc.member)
+        npt.assert_array_equal(haz_fc_reduced.lead_time, haz_fc.lead_time)
+        npt.assert_array_equal(
+            haz_fc_reduced.intensity.todense(), haz_fc.intensity.todense()
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.intensity.todense(), haz_fc.intensity.todense()
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.todense(), haz_fc.fraction.todense()
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.todense(), haz_fc.fraction.todense()
+        )
+
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "quantile", "median"])
+    def test_reduce_dim_error(self, haz_fc, attr):
+        """Check reduction error message for invalid"""
+        kwargs = {"q": 0.3} if attr == "quantile" else {}
+        with pytest.raises(ValueError, match=r"Cannot reduce over dim \'invalid_dim\'"):
+            getattr(haz_fc, attr)(dim="invalid_dim", **kwargs)

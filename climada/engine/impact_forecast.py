@@ -28,7 +28,7 @@ import scipy.sparse as sparse
 
 from ..util import log_level
 from ..util.checker import size
-from ..util.forecast import Forecast
+from ..util.forecast import Forecast, reduce_unique_selection
 from .impact import Impact
 
 LOGGER = logging.getLogger(__name__)
@@ -244,7 +244,7 @@ class ImpactForecast(Forecast, Impact):
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
-    def _reduce_attrs(self, event_name: str):
+    def _reduce_attrs(self, event_name: str, **attrs):
         """
         Reduce the attributes of an ImpactForecast to a single value.
 
@@ -261,18 +261,25 @@ class ImpactForecast(Forecast, Impact):
         event_name : str
             The event name given to the reduced data.
         """
+
+        def unique_or_default(attr, default):
+            if len(unique := np.unique(getattr(self, attr))) == 1:
+                return unique.item(0)
+            return default
+
         reduced_attrs = {
-            "lead_time": np.array([np.timedelta64("NaT")]),
-            "member": np.array([-1]),
-            "event_id": np.array([0]),
-            "event_name": np.array([event_name]),
-            "date": np.array([0]),
-            "frequency": np.array([1]),
-        }
+            "lead_time": unique_or_default("lead_time", np.timedelta64("NaT")),
+            "member": unique_or_default("member", -1),
+            "event_id": unique_or_default("event_id", 1),
+            "event_name": unique_or_default("event_name", event_name),
+            "date": unique_or_default("date", 0),
+            "frequency": 1,
+        } | attrs
+        reduced_attrs = {key: np.array([value]) for key, value in reduced_attrs.items()}
 
         return reduced_attrs
 
-    def min(self):
+    def min(self, dim=None):
         """
         Reduce the impact matrix and at_event of an ImpactForecast to the minimum
         value.
@@ -286,6 +293,11 @@ class ImpactForecast(Forecast, Impact):
         ImpactForecast
             An ImpactForecast object with the min impact matrix and at_event.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                self, values=getattr(self, dim), select=dim, reduce_attr="min"
+            )
+
         red_imp_mat = self.imp_mat.min(axis=0).tocsr()
         red_at_event = np.array([red_imp_mat.sum()])
         return ImpactForecast(
@@ -302,7 +314,7 @@ class ImpactForecast(Forecast, Impact):
             **self._reduce_attrs("min"),
         )
 
-    def max(self):
+    def max(self, dim=None):
         """
         Reduce the impact matrix and at_event of an ImpactForecast to the maximum
         value.
@@ -316,6 +328,11 @@ class ImpactForecast(Forecast, Impact):
         ImpactForecast
             An ImpactForecast object with the max impact matrix and at_event.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                self, values=getattr(self, dim), select=dim, reduce_attr="max"
+            )
+
         red_imp_mat = self.imp_mat.max(axis=0).tocsr()
         red_at_event = np.array([red_imp_mat.sum()])
         return ImpactForecast(
@@ -332,7 +349,7 @@ class ImpactForecast(Forecast, Impact):
             **self._reduce_attrs("max"),
         )
 
-    def mean(self):
+    def mean(self, dim=None):
         """
         Reduce the impact matrix and at_event of an ImpactForecast to the mean value.
 
@@ -345,6 +362,11 @@ class ImpactForecast(Forecast, Impact):
         ImpactForecast
             An ImpactForecast object with the mean impact matrix and at_event.
         """
+        if dim is not None:
+            return reduce_unique_selection(
+                self, values=getattr(self, dim), select=dim, reduce_attr="mean"
+            )
+
         red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
         return ImpactForecast(

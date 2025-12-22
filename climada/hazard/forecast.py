@@ -21,7 +21,7 @@ Define Forecast variant of Hazard.
 
 import logging
 import pathlib
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, Literal, Optional
 
 import numpy as np
 import scipy.sparse as sparse
@@ -111,43 +111,7 @@ class HazardForecast(Forecast, Hazard):
         size(exp_len=num_entries, var=self.member, var_name="Forecast.member")
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
-    def _reduce_attrs(self, event_name: str, **attrs):
-        """
-        Reduce the attributes of a HazardForecast to a single value.
-
-        Attributes are modified as follows:
-        - lead_time: set to NaT
-        - member: set to -1
-        - event_id: set to 0
-        - event_name: set to the name of the reduction method (default)
-        - date: set to 0
-        - frequency: set to 1
-
-        Parameters
-        ----------
-        event_name : str
-            The event_name given to the reduced data.
-        """
-
-        def unique_or_default(attr, default):
-            if len(unique := np.unique(getattr(self, attr))) == 1:
-                return unique.item(0)
-            return default
-
-        reduced_attrs = {
-            "lead_time": unique_or_default("lead_time", np.timedelta64("NaT")),
-            "member": unique_or_default("member", -1),
-            "event_id": unique_or_default("event_id", 1),
-            "event_name": unique_or_default("event_name", event_name),
-            "date": unique_or_default("date", 0),
-            "frequency": 1,
-            "orig": unique_or_default("orig", True),
-        } | attrs
-        reduced_attrs = {key: np.array([value]) for key, value in reduced_attrs.items()}
-
-        return reduced_attrs
-
-    def min(self, dim=None):
+    def min(self, dim: Literal["member", "lead_time"] | None = None):
         """
         Reduce the intensity and fraction of a HazardForecast to the minimum
         value.
@@ -163,8 +127,9 @@ class HazardForecast(Forecast, Hazard):
             A HazardForecast object with the min intensity and fraction.
         """
         if dim is not None:
+            rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
-                self, values=getattr(self, dim), select=dim, reduce_attr="min"
+                self, values=getattr(self, rdim), select=rdim, reduce_attr="min"
             )
 
         red_intensity = self.intensity.min(axis=0).tocsr()
@@ -180,7 +145,7 @@ class HazardForecast(Forecast, Hazard):
             **self._reduce_attrs("min"),
         )
 
-    def max(self, dim=None):
+    def max(self, dim: Literal["member", "lead_time"] | None = None):
         """
         Reduce the intensity and fraction of a HazardForecast to the maximum
         value.
@@ -196,8 +161,9 @@ class HazardForecast(Forecast, Hazard):
             A HazardForecast object with the min intensity and fraction.
         """
         if dim is not None:
+            rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
-                self, values=getattr(self, dim), select=dim, reduce_attr="max"
+                self, values=getattr(self, rdim), select=rdim, reduce_attr="max"
             )
 
         red_intensity = self.intensity.max(axis=0).tocsr()
@@ -213,7 +179,7 @@ class HazardForecast(Forecast, Hazard):
             **self._reduce_attrs("max"),
         )
 
-    def mean(self, dim=None):
+    def mean(self, dim: Literal["member", "lead_time"] | None = None):
         """
         Reduce the intensity and fraction of a HazardForecast to the mean value.
 
@@ -228,8 +194,9 @@ class HazardForecast(Forecast, Hazard):
             A HazardForecast object with the min intensity and fraction.
         """
         if dim is not None:
+            rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
-                self, values=getattr(self, dim), select=dim, reduce_attr="mean"
+                self, values=getattr(self, rdim), select=rdim, reduce_attr="mean"
             )
 
         red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
@@ -301,6 +268,10 @@ class HazardForecast(Forecast, Hazard):
                 if event_id is not None
                 else event_id_from_forecast_mask
             )
+            if event_id.size == 0:
+                raise ValueError(
+                    "Empty selection for 'member', 'lead_time', and/or 'event_id'"
+                )
 
         return super().select(
             event_names=event_names,
@@ -311,6 +282,79 @@ class HazardForecast(Forecast, Hazard):
             extent=extent,
             reset_frequency=reset_frequency,
         )
+
+    # TODO: Do not densify the entire matrix but compute quantiles column-wise!
+    def _quantile(
+        self,
+        q: float,
+        dim: Literal["member", "lead_time"] | None = None,
+        event_name: str | None = None,
+    ):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
+        """
+        if dim is not None:
+            rdim = self._reduce_iter_dim(dim)
+            return reduce_unique_selection(
+                self,
+                values=getattr(self, rdim),
+                select=rdim,
+                reduce_attr="quantile",
+                q=q,
+            )
+
+        red_intensity = sparse.csr_matrix(
+            np.quantile(self.intensity.toarray(), q, axis=0)
+        )
+        red_fraction = sparse.csr_matrix(
+            np.quantile(self.fraction.toarray(), q, axis=0)
+        )
+        if event_name is None:
+            event_name = f"quantile_{q}"
+        return HazardForecast(
+            haz_type=self.haz_type,
+            pool=self.pool,
+            units=self.units,
+            centroids=self.centroids,
+            frequency_unit=self.frequency_unit,
+            intensity=red_intensity,
+            fraction=red_fraction,
+            **self._reduce_attrs(event_name),
+        )
+
+    def quantile(self, q: float, dim: Literal["member", "lead_time"] | None = None):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
+
+        The quantile value is computed by taking the quantile of the impact matrix
+        along the event dimension axis (axis=0) and then taking the quantile of the
+        resulting array.
+
+        Parameters
+        ----------
+        q : float
+            The quantile to compute, between 0 and 1.
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the quantile intensity and fraction.
+        """
+        return self._quantile(q=q, dim=dim)
+
+    def median(self, dim: Literal["member", "lead_time"] | None = None):
+        """
+        Reduce the impact matrix and at_event of a HazardForecast to the median value.
+
+        The median value is computed by taking the median of the impact matrix along the
+        event dimension axis (axis=0) and then taking the median of the resulting array.
+
+        Returns
+        -------
+        HazardForecast
+            A HazardForecast object with the median intensity and fraction.
+        """
+        return self._quantile(q=0.5, event_name="median", dim=dim)
 
     @classmethod
     def from_xarray_raster(
@@ -433,60 +477,3 @@ class HazardForecast(Forecast, Hazard):
 
         # Convert to HazardForecast with forecast attributes
         return cls(**Hazard._check_and_cast_attrs(kwargs))
-
-    def _quantile(self, q: float, event_name: str | None = None):
-        """
-        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
-        """
-        red_intensity = sparse.csr_matrix(
-            np.quantile(self.intensity.toarray(), q, axis=0)
-        )
-        red_fraction = sparse.csr_matrix(
-            np.quantile(self.fraction.toarray(), q, axis=0)
-        )
-        if event_name is None:
-            event_name = f"quantile_{q}"
-        return HazardForecast(
-            haz_type=self.haz_type,
-            pool=self.pool,
-            units=self.units,
-            centroids=self.centroids,
-            frequency_unit=self.frequency_unit,
-            intensity=red_intensity,
-            fraction=red_fraction,
-            **self._reduce_attrs(event_name),
-        )
-
-    def quantile(self, q: float):
-        """
-        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
-
-        The quantile value is computed by taking the quantile of the impact matrix
-        along the event dimension axis (axis=0) and then taking the quantile of the
-        resulting array.
-
-        Parameters
-        ----------
-        q : float
-            The quantile to compute, between 0 and 1.
-
-        Returns
-        -------
-        HazardForecast
-            A HazardForecast object with the quantile intensity and fraction.
-        """
-        return self._quantile(q=q)
-
-    def median(self):
-        """
-        Reduce the impact matrix and at_event of a HazardForecast to the median value.
-
-        The median value is computed by taking the median of the impact matrix along the
-        event dimension axis (axis=0) and then taking the median of the resulting array.
-
-        Returns
-        -------
-        HazardForecast
-            A HazardForecast object with the median intensity and fraction.
-        """
-        return self._quantile(q=0.5, event_name="median")
