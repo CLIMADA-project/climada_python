@@ -60,11 +60,31 @@ _CACHE_SETTINGS = {"ENABLE_LAZY_CACHE": False}
 
 
 def lazy_property(method):
-    # This function is used as a decorator for properties
-    # that require "heavy" computation and are not always needed.
-    # When requested, if a property is none, it uses the corresponding
-    # computation method and caches the result in the corresponding
-    # private attribute
+    """
+    Decorator that converts a method into a cached, lazy-evaluated property.
+
+    This decorator is intended for properties that require heavy computation.
+    The result is calculated only when first accessed and then stored in a
+    corresponding private attribute (e.g., a method named `impact` will
+    cache its result in `_impact`).
+
+    Parameters
+    ----------
+    method : callable
+        The method to be converted into a lazy property.
+
+    Returns
+    -------
+    property
+        A property object that handles the caching logic and attribute access.
+
+    Notes
+    -----
+    The caching behavior can be globally toggled via the
+    `_CACHE_SETTINGS["ENABLE_LAZY_CACHE"]` flag. If disabled, the
+    method will be re-evaluated on every access.
+
+    """
     attr_name = f"_{method.__name__}"
 
     @property
@@ -137,13 +157,16 @@ class CalcRiskMetricsPoints:
                     ]
                 )
             )
-        except ValueError as e:
-            error_message = str(e).lower()
+        except ValueError as exc:
+            error_message = str(exc).lower()
             if "need at least one array to concatenate" in error_message:
                 self._group_id = np.array([])
 
     def _reset_impact_data(self):
-        """Util method that resets computed data, for instance when changing the computation strategy."""
+        """Util method that resets computed data, for instance when
+        changing the computation strategy.
+
+        """
         self._impacts = None
         self._eai_gdf = None
         self._per_date_eai = None
@@ -151,7 +174,10 @@ class CalcRiskMetricsPoints:
 
     @property
     def impact_computation_strategy(self) -> ImpactComputationStrategy:
-        """The method used to calculate the impact from the (Haz,Exp,Vul) of the snapshots."""
+        """The method used to calculate the impact from the (Haz,Exp,Vul)
+        of the snapshots.
+
+        """
         return self._impact_computation_strategy
 
     @impact_computation_strategy.setter
@@ -186,18 +212,22 @@ class CalcRiskMetricsPoints:
         return np.array([imp.aai_agg for imp in self.impacts])
 
     def calc_eai_gdf(self) -> pd.DataFrame:
-        """Convenience function returning a DataFrame (with both datetime and coordinates) from `per_date_eai`.
+        """Convenience function returning a DataFrame
+        from `per_date_eai`.
 
-        This can easily be merged with the GeoDataFrame of the exposure object of one of the `Snapshot`.
+        This can easily be merged with the GeoDataFrame of
+        the exposure object of one of the `Snapshot`.
 
         Notes
         -----
 
-        The DataFrame from the first snapshot of the list is used as a basis (notably for `value` and `group_id`).
+        The DataFrame from the first snapshot of the list is used
+        as a basis (notably for `value` and `group_id`).
+
         """
 
-        df = pd.DataFrame(self.per_date_eai, index=self._date_idx)
-        df = df.reset_index().melt(
+        metric_df = pd.DataFrame(self.per_date_eai, index=self._date_idx)
+        metric_df = metric_df.reset_index().melt(
             id_vars=DATE_COL_NAME, var_name=COORD_ID_COL_NAME, value_name=RISK_COL_NAME
         )
         eai_gdf = pd.concat(
@@ -214,7 +244,7 @@ class CalcRiskMetricsPoints:
             eai_gdf[[GROUP_ID_COL_NAME]] = pd.NA
             eai_gdf = eai_gdf[[DATE_COL_NAME, COORD_ID_COL_NAME, GROUP_ID_COL_NAME]]
 
-        eai_gdf = eai_gdf.merge(df, on=[DATE_COL_NAME, COORD_ID_COL_NAME])
+        eai_gdf = eai_gdf.merge(metric_df, on=[DATE_COL_NAME, COORD_ID_COL_NAME])
         eai_gdf = eai_gdf.rename(columns={GROUP_ID_COL_NAME: GROUP_COL_NAME})
         eai_gdf[GROUP_COL_NAME] = pd.Categorical(
             eai_gdf[GROUP_COL_NAME], categories=self._group_id
@@ -244,7 +274,10 @@ class CalcRiskMetricsPoints:
         return aai_df
 
     def calc_aai_per_group_metric(self) -> pd.DataFrame | None:
-        """Compute a DataFrame of the AAI distinguised per group id in the exposures, for each snapshot."""
+        """Compute a DataFrame of the AAI distinguised per group id
+        in the exposures, for each snapshot.
+
+        """
 
         if len(self._group_id) < 1:
             LOGGER.warning(
@@ -266,7 +299,8 @@ class CalcRiskMetricsPoints:
         return aai_per_group_df
 
     def calc_return_periods_metric(self, return_periods: list[int]) -> pd.DataFrame:
-        """Compute a DataFrame of the estimated impacts for a list of return periods, for each snapshot.
+        """Compute a DataFrame of the estimated impacts for a list
+        of return periods, for each snapshot.
 
         Parameters
         ----------
