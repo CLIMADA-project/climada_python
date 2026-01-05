@@ -24,6 +24,7 @@ interpolated and static trajectories.
 import datetime
 import logging
 from abc import ABC, abstractmethod
+from typing import Iterable
 
 import pandas as pd
 
@@ -72,9 +73,9 @@ class RiskTrajectory(ABC):
 
     def __init__(
         self,
-        snapshots_list: list[Snapshot],
+        snapshots_list: Iterable[Snapshot],
         *,
-        return_periods: list[int] = DEFAULT_RP,
+        return_periods: Iterable[int] = DEFAULT_RP,
         all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
     ):
@@ -137,7 +138,7 @@ class RiskTrajectory(ABC):
         )
 
     @property
-    def return_periods(self) -> list[int]:
+    def return_periods(self) -> Iterable[int]:
         """The return period values to use when computing risk period metrics.
 
         Notes
