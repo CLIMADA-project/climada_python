@@ -456,6 +456,7 @@ class TestReduce:
 
     @pytest.fixture
     def haz_fc_dim_reduce(self, haz_fc):
+        """Create hazard forecast where some members/leadtimes are duplicated"""
         haz_fc.member = np.array([1, 2, 1, 2])
         haz_fc.lead_time = np.array(
             [
@@ -531,7 +532,7 @@ class TestReduce:
 
     @pytest.mark.parametrize("attr", ["min", "mean", "max", "quantile", "median"])
     def test_reduce_dim_error(self, haz_fc, attr):
-        """Check reduction error message for invalid"""
+        """Check reduction error message for invalid dimension name"""
         kwargs = {"q": 0.3} if attr == "quantile" else {}
         with pytest.raises(ValueError, match=r"Cannot reduce over dim \'invalid_dim\'"):
             getattr(haz_fc, attr)(dim="invalid_dim", **kwargs)
