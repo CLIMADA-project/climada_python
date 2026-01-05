@@ -80,14 +80,64 @@ class Snapshot:
         exposure: Exposures,
         hazard: Hazard,
         impfset: ImpactFuncSet,
+        measure: Measure | None,
         date: int | datetime.date | str,
         ref_only: bool = False,
     ) -> None:
         self._exposure = exposure if ref_only else copy.deepcopy(exposure)
         self._hazard = hazard if ref_only else copy.deepcopy(hazard)
         self._impfset = impfset if ref_only else copy.deepcopy(impfset)
-        self._measure = None
+        self._measure = measure if ref_only else copy.deepcopy(impfset)
         self._date = self._convert_to_date(date)
+
+    @classmethod
+    def from_triplet(
+        cls,
+        *,
+        exposure: Exposures,
+        hazard: Hazard,
+        impfset: ImpactFuncSet,
+        date: int | datetime.date | str,
+        ref_only: bool = False,
+    ) -> "Snapshot":
+        """Create a Snapshot from exposure, hazard and impact functions set
+
+        This method is the main point of entry for the creation of Snapshot. It
+        creates a new Snapshot object for the given date with copies of the
+        hazard, exposure and impact function set given in argument (or
+        references if ref_only is True)
+
+        Parameters
+        ----------
+        exposure : Exposures
+        hazard : Hazard
+        impfset : ImpactFuncSet
+        date : int | datetime.date | str
+        ref_only : bool
+            If true, uses references to the exposure, hazard and impact
+            function objects. Note that modifying the original objects after
+            computations using the Snapshot might lead to inconsistencies in
+            results.
+
+        Returns
+        -------
+        Snapshot
+
+        Notes
+        -----
+
+        To create a Snapshot with a measure, first create the Snapshot without
+        the measure using this method, and use `apply_measure(measure)` afterward.
+
+        """
+        return cls(
+            exposure=exposure,
+            hazard=hazard,
+            impfset=impfset,
+            measure=None,
+            date=date,
+            ref_only=ref_only,
+        )
 
     @property
     def exposure(self) -> Exposures:
@@ -129,17 +179,17 @@ class Snapshot:
         if isinstance(date_arg, int):
             # Assume the integer represents a year
             return datetime.date(date_arg, 1, 1)
-        elif isinstance(date_arg, str):
+        if isinstance(date_arg, str):
             # Try to parse the string as a date
             try:
                 return datetime.datetime.strptime(date_arg, "%Y-%m-%d").date()
-            except ValueError:
-                raise ValueError("String must be in the format 'YYYY-MM-DD'")
-        elif isinstance(date_arg, datetime.date):
+            except ValueError as exc:
+                raise ValueError("String must be in the format 'YYYY-MM-DD'") from exc
+        if isinstance(date_arg, datetime.date):
             # Already a date object
             return date_arg
-        else:
-            raise TypeError("date_arg must be an int, str, or datetime.date")
+
+        raise TypeError("date_arg must be an int, str, or datetime.date")
 
     def apply_measure(self, measure: Measure) -> "Snapshot":
         """Create a new snapshot by applying a Measure object.
@@ -158,8 +208,9 @@ class Snapshot:
 
         """
 
-        LOGGER.debug(f"Applying measure {measure.name} on snapshot {id(self)}")
+        LOGGER.debug("Applying measure %s on snapshot %s", measure.name, id(self))
         exp, impfset, haz = measure.apply(self.exposure, self.impfset, self.hazard)
-        snap = Snapshot(exposure=exp, hazard=haz, impfset=impfset, date=self.date)
-        snap._measure = measure
+        snap = Snapshot(
+            exposure=exp, hazard=haz, impfset=impfset, date=self.date, measure=measure
+        )
         return snap
