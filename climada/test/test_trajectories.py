@@ -26,15 +26,27 @@ from unittest import TestCase
 import geopandas as gpd
 import numpy as np
 import pandas as pd
+import pytest
 
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.disc_rates.base import DiscRates
-from climada.test.common_test_fixtures import (
+from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs.base import ImpactFunc
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+from climada.hazard.base import Hazard
+from climada.test.conftest import (
     CATEGORIES,
-    reusable_minimal_exposures,
-    reusable_minimal_hazard,
-    reusable_minimal_impfset,
-    reusable_snapshot,
+    DATES,
+    EVENT_IDS,
+    EVENT_NAMES,
+    EXPOSURE_REF_YEAR,
+    FREQUENCY,
+    FREQUENCY_UNIT,
+    HAZARD_MAX_INTENSITY,
+    HAZARD_TYPE,
+    HAZARD_UNIT,
+    IMPF_ID,
+    IMPF_NAME,
 )
 from climada.trajectories import InterpolatedRiskTrajectory, StaticRiskTrajectory
 from climada.trajectories.constants import (
@@ -61,99 +73,274 @@ from climada.trajectories.constants import (
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import DEFAULT_RP
 
+EXPOSURE_FUTURE_YEAR = 2040
 
-class TestStaticTrajectory(TestCase):
-    PRESENT_DATE = 2020
-    HAZ_INCREASE_INTENSITY_FACTOR = 2
-    EXP_INCREASE_VALUE_FACTOR = 10
-    FUTURE_DATE = 2040
+from climada.trajectories.snapshot import Snapshot
 
-    def setUp(self) -> None:
-        self.base_snapshot = reusable_snapshot(date=self.PRESENT_DATE)
-        self.future_snapshot = reusable_snapshot(
-            hazard_intensity_increase_factor=self.HAZ_INCREASE_INTENSITY_FACTOR,
-            exposure_value_increase_factor=self.EXP_INCREASE_VALUE_FACTOR,
-            date=self.FUTURE_DATE,
+
+@pytest.fixture(scope="session")
+def snapshot_factory(
+    exposures_factory,
+    hazard_factory,
+    impfset_factory,
+):
+    """
+    Factory for Snapshot objects.
+
+    Allows controlled construction of baseline / future / counterfactual
+    scenarios by scaling exposure values, hazard intensity, and impact function.
+    """
+
+    def _make_snapshot(
+        *,
+        date=EXPOSURE_REF_YEAR,
+        exposure_value_factor=1.0,
+        hazard_intensity_factor=1.0,
+        hazard_frequency_factor=1.0,
+        paa_scale=1.0,
+        group_id=None,
+    ):
+        exposures = exposures_factory(
+            value_factor=exposure_value_factor, ref_year=date, group_id=group_id
         )
 
-        self.expected_base_imp = ImpactCalc(
-            **self.base_snapshot.impact_calc_data
-        ).impact()
-        self.expected_future_imp = ImpactCalc(
-            **self.future_snapshot.impact_calc_data
-        ).impact()
-        # self.group_vector = self.base_snapshot.exposure.gdf[GROUP_ID_COL_NAME]
-        self.expected_base_return_period_impacts = {
-            rp: imp
-            for rp, imp in zip(
-                self.expected_base_imp.calc_freq_curve(DEFAULT_RP).return_per,
-                self.expected_base_imp.calc_freq_curve(DEFAULT_RP).impact,
-            )
-        }
-        self.expected_future_return_period_impacts = {
-            rp: imp
-            for rp, imp in zip(
-                self.expected_future_imp.calc_freq_curve(DEFAULT_RP).return_per,
-                self.expected_future_imp.calc_freq_curve(DEFAULT_RP).impact,
-            )
-        }
-
-        # fmt: off
-        self.expected_static_metrics = pd.DataFrame.from_dict(
-            {'index': [0, 1, 2, 3, 4, 5, 6, 7],
-             'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
-             'data': [
-                 [pd.Timestamp(str(self.PRESENT_DATE)), 'All', NO_MEASURE_VALUE, 'aai', 'USD', self.expected_base_imp.aai_agg],
-                 [pd.Timestamp(str(self.FUTURE_DATE)),  'All', NO_MEASURE_VALUE, 'aai', 'USD', self.expected_future_imp.aai_agg],
-                 [pd.Timestamp(str(self.PRESENT_DATE)), 'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[0]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[0]]],
-                 [pd.Timestamp(str(self.FUTURE_DATE)),  'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[0]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[0]]],
-                 [pd.Timestamp(str(self.PRESENT_DATE)), 'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[1]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[1]]],
-                 [pd.Timestamp(str(self.FUTURE_DATE)),  'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[1]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[1]]],
-                 [pd.Timestamp(str(self.PRESENT_DATE)), 'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[2]}', 'USD', self.expected_base_return_period_impacts[DEFAULT_RP[2]]],
-                 [pd.Timestamp(str(self.FUTURE_DATE)),  'All', NO_MEASURE_VALUE, f'rp_{DEFAULT_RP[2]}', 'USD', self.expected_future_return_period_impacts[DEFAULT_RP[2]]],
-             ],
-             'index_names': [None],
-             'column_names': [None]},
-            orient="tight"
-        )
-        # fmt: on
-
-    def test_static_trajectory(self):
-        static_traj = StaticRiskTrajectory([self.base_snapshot, self.future_snapshot])
-        print(static_traj.per_date_risk_metrics())
-        pd.testing.assert_frame_equal(
-            static_traj.per_date_risk_metrics(),
-            self.expected_static_metrics,
-            check_dtype=False,
-            check_categorical=False,
+        hazard = hazard_factory(
+            intensity_scale=hazard_intensity_factor,
+            frequency_scale=hazard_frequency_factor,
         )
 
-    def test_static_trajectory_one_snap(self):
-        static_traj = StaticRiskTrajectory([self.base_snapshot])
-        expected = pd.DataFrame.from_dict(
-            # fmt: off
-            {
-                "index": [0, 1, 2, 3],
-                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-                "data": [
-                    [pd.Timestamp(str(self.PRESENT_DATE)), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.aai_agg,],
-                    [pd.Timestamp(str(self.PRESENT_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[0]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[0]],],
-                    [pd.Timestamp(str(self.PRESENT_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[1]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[1]],],
-                    [pd.Timestamp(str(self.PRESENT_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[2]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[2]],],
+        impfset = impfset_factory(
+            paa_scale=paa_scale,
+        )
+
+        return Snapshot(
+            exposure=exposures,
+            hazard=hazard,
+            impfset=impfset,
+            date=date,
+        )
+
+    return _make_snapshot
+
+
+@pytest.fixture(scope="session")
+def snapshot_base(snapshot_factory):
+    return snapshot_factory()
+
+
+@pytest.fixture(scope="session")
+def snapshot_future(snapshot_factory):
+    return snapshot_factory(
+        date=2040,
+        exposure_value_factor=2.0,
+        hazard_intensity_factor=2.0,
+    )
+
+
+def expected_static_metrics_from_snapshots(snapshots):
+    rows = []
+    group_p = False
+    for snap in snapshots:
+        imp = ImpactCalc(**snap.impact_calc_data).impact()
+        curve = imp.calc_freq_curve(DEFAULT_RP)
+
+        rows.append(
+            [
+                pd.Timestamp(str(snap.date)),
+                "All",
+                NO_MEASURE_VALUE,
+                "aai",
+                "USD",
+                imp.aai_agg,
+            ]
+        )
+
+        rows.extend(
+            [
+                [
+                    pd.Timestamp(str(snap.date)),
+                    "All",
+                    NO_MEASURE_VALUE,
+                    f"rp_{rp}",
+                    "USD",
+                    val,
+                ]
+                for rp, val in zip(curve.return_per, curve.impact)
+            ]
+        )
+        if "group_id" in snap.exposure.gdf.columns:
+            group_p = True
+            aai_per_group = [
+                [
+                    pd.Timestamp(str(snap.date)),
+                    group,
+                    NO_MEASURE_VALUE,
+                    "aai",
+                    "USD",
+                    val,
+                ]
+                for group, val in zip(snap.exposure.gdf["group_id"], imp.eai_exp)
+            ]
+            group_df = pd.DataFrame(
+                aai_per_group,
+                columns=[
+                    DATE_COL_NAME,
+                    GROUP_COL_NAME,
+                    MEASURE_COL_NAME,
+                    METRIC_COL_NAME,
+                    UNIT_COL_NAME,
+                    RISK_COL_NAME,
                 ],
-                "index_names": [None],
-                "column_names": [None],
-            },
-            # fmt: on
-            orient="tight",
-        )
+            )
 
-        pd.testing.assert_frame_equal(
-            static_traj.per_date_risk_metrics(),
-            expected,
-            check_dtype=False,
-            check_categorical=False,
+    res = pd.DataFrame(
+        rows,
+        columns=[
+            DATE_COL_NAME,
+            GROUP_COL_NAME,
+            MEASURE_COL_NAME,
+            METRIC_COL_NAME,
+            UNIT_COL_NAME,
+            RISK_COL_NAME,
+        ],
+    )
+    if group_p:
+        res = pd.concat([res, group_df])
+
+    return res.set_index(
+        [
+            DATE_COL_NAME,
+            GROUP_COL_NAME,
+            MEASURE_COL_NAME,
+            METRIC_COL_NAME,
+            UNIT_COL_NAME,
+        ]
+    ).sort_index()
+
+
+def test_static_trajectory(snapshot_factory):
+    present_date = 2020
+    future_date = 2040
+
+    hazard_intensity_factor = 2.0
+    exposure_value_factor = 10.0
+
+    snapshot_base = snapshot_factory(
+        date=present_date,
+    )
+
+    snapshot_fut = snapshot_factory(
+        date=future_date,
+        hazard_intensity_factor=hazard_intensity_factor,
+        exposure_value_factor=exposure_value_factor,
+    )
+
+    expected_static_metrics = expected_static_metrics_from_snapshots(
+        [snapshot_base, snapshot_fut]
+    )
+    static_traj = StaticRiskTrajectory([snapshot_base, snapshot_fut])
+    result = (
+        static_traj.per_date_risk_metrics()
+        .set_index(
+            [
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                UNIT_COL_NAME,
+            ]
         )
+        .sort_index()
+    )
+
+    # --- Assertion ----------------------------------------------------------
+    pd.testing.assert_frame_equal(
+        result,
+        expected_static_metrics,
+        check_index_type=False,
+        check_categorical=False,
+        check_like=False,
+    )
+
+
+def test_static_trajectory_one_snap(snapshot_factory):
+    present_date = 2020
+
+    snapshot_base = snapshot_factory(
+        date=present_date,
+    )
+
+    expected_static_metrics = expected_static_metrics_from_snapshots([snapshot_base])
+    static_traj = StaticRiskTrajectory([snapshot_base])
+    result = (
+        static_traj.per_date_risk_metrics()
+        .set_index(
+            [
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                UNIT_COL_NAME,
+            ]
+        )
+        .sort_index()
+    )
+
+    # --- Assertion ----------------------------------------------------------
+    pd.testing.assert_frame_equal(
+        result,
+        expected_static_metrics,
+        check_index_type=False,
+        check_categorical=False,
+        check_like=False,
+    )
+
+
+def test_static_trajectory_with_group(snapshot_factory):
+    present_date = 2020
+    future_date = 2040
+
+    hazard_intensity_factor = 2.0
+    exposure_value_factor = 10.0
+
+    snapshot_base = snapshot_factory(date=present_date, group_id=CATEGORIES)
+
+    snapshot_fut = snapshot_factory(
+        date=future_date,
+        hazard_intensity_factor=hazard_intensity_factor,
+        exposure_value_factor=exposure_value_factor,
+        group_id=CATEGORIES,
+    )
+
+    expected_static_metrics = expected_static_metrics_from_snapshots(
+        [snapshot_base, snapshot_fut]
+    )
+    static_traj = StaticRiskTrajectory([snapshot_base, snapshot_fut])
+    result = (
+        static_traj.per_date_risk_metrics()
+        .set_index(
+            [
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                UNIT_COL_NAME,
+            ]
+        )
+        .sort_index()
+    )
+
+    # --- Assertion ----------------------------------------------------------
+    pd.testing.assert_frame_equal(
+        result,
+        expected_static_metrics,
+        check_index_type=False,
+        check_categorical=False,
+        check_like=False,
+    )
+
+
+class TestStaticTrajectory:
 
     def test_static_trajectory_with_group(self):
         exp0 = reusable_minimal_exposures(group_id=CATEGORIES)
