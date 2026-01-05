@@ -22,6 +22,7 @@ of risk at multiple points in time (snapshots).
 """
 
 import logging
+from typing import Iterable
 
 import pandas as pd
 
@@ -37,8 +38,6 @@ from climada.trajectories.constants import (
     MEASURE_COL_NAME,
     METRIC_COL_NAME,
     RETURN_PERIOD_METRIC_NAME,
-    RISK_COL_NAME,
-    RP_VALUE_PREFIX,
 )
 from climada.trajectories.impact_calc_strat import (
     ImpactCalcComputation,
@@ -79,10 +78,14 @@ class StaticRiskTrajectory(RiskTrajectory):
 
     Currently:
 
-    - eai, expected impact (per exposure point within a period of 1/frequency unit of the hazard object)
+    - eai, expected impact (per exposure point within a period of 1/frequency
+    unit of the hazard object)
     - aai, average annual impact (aggregated eai over the whole exposure)
-    - aai_per_group, average annual impact per exposure subgroup (defined from the exposure geodataframe)
-    - return_periods, estimated impacts aggregated over the whole exposure for different return periods
+    - aai_per_group, average annual impact per exposure subgroup (defined from
+    the exposure geodataframe)
+    - return_periods, estimated impacts aggregated over the whole exposure for
+    different return periods
+
     """
 
     _DEFAULT_ALL_METRICS = [
@@ -93,9 +96,9 @@ class StaticRiskTrajectory(RiskTrajectory):
 
     def __init__(
         self,
-        snapshots_list: list[Snapshot],
+        snapshots_list: Iterable[Snapshot],
         *,
-        return_periods: list[int] = DEFAULT_RP,
+        return_periods: Iterable[int] = DEFAULT_RP,
         all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
@@ -146,6 +149,7 @@ class StaticRiskTrajectory(RiskTrajectory):
 
     def _generic_metrics(
         self,
+        /,
         metric_name: str | None = None,
         metric_meth: str | None = None,
         **kwargs,
@@ -195,7 +199,7 @@ class StaticRiskTrajectory(RiskTrajectory):
         attr_name = f"_{metric_name}_metrics"
 
         if getattr(self, attr_name) is not None:
-            LOGGER.debug(f"Returning cached {attr_name}")
+            LOGGER.debug("Returning cached %s", attr_name)
             return getattr(self, attr_name)
 
         with log_level(level="WARNING", name_prefix="climada"):
@@ -240,10 +244,10 @@ class StaticRiskTrajectory(RiskTrajectory):
         This computation may become quite expensive for big areas with high resolution.
 
         """
-        df = self._compute_metrics(
+        metric_df = self._compute_metrics(
             metric_name=EAI_METRIC_NAME, metric_meth="calc_eai_gdf", **kwargs
         )
-        return df
+        return metric_df
 
     def aai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the average annual impacts for each date.

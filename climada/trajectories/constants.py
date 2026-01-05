@@ -33,7 +33,7 @@ COORD_ID_COL_NAME = "coord_id"
 
 DEFAULT_PERIOD_INDEX_NAME = "date"
 
-DEFAULT_RP = [20, 50, 100]
+DEFAULT_RP = (20, 50, 100)
 """Default return periods to use when computing return period impact estimates."""
 
 DEFAULT_ALLGROUP_NAME = "All"
