@@ -430,10 +430,6 @@ class ExponentialExposureStrategy(InterpolationStrategyBase):
 
     def __init__(self) -> None:
         super().__init__()
-        self.exposure_interp = (
-            lambda mat_start, mat_end, points: exponential_interp_imp_mat(
-                mat_start, mat_end, points
-            )
-        )
+        self.exposure_interp = exponential_interp_imp_mat
         self.hazard_interp = linear_interp_arrays
         self.vulnerability_interp = linear_interp_arrays
