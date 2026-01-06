@@ -150,7 +150,8 @@ def exponential_interp_matrix_elemwise(
 
 def linear_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarray:
     r"""
-    Performs linear interpolation between two NumPy arrays over their first dimension.
+    Performs linear interpolation between two n x m NumPy arrays over their
+    first dimension (n rows).
 
     This function interpolates each metric (column) linearly across the time steps
     (rows), including both the start and end states.
@@ -175,6 +176,11 @@ def linear_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarr
     ValueError
         If `arr_start` and `arr_end` do not have the same shape.
 
+    Example
+    --------
+        >>> arr_start = [ [ 1, 1], [1, 2], [10, 20] ]
+        >>> arr_end = [ [2, 2], [5, 6], [10, 30] ]
+        >>> linear_interp_arrays(arr_start, arr_end) = [ [1, 1], [3, 4], [10, 30] ]
     Notes
     -----
     The interpolation is performed element-wise along the first dimension
@@ -203,8 +209,7 @@ def exponential_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.
     Performs exponential interpolation between two NumPy arrays over their first dimension.
 
     This function achieves an exponential-like transition by performing linear
-    interpolation in the logarithmic space, suitable to interpolate over a dimension which has
-    a growth factor.
+    interpolation in the logarithmic space.
 
     Parameters
     ----------
@@ -224,6 +229,10 @@ def exponential_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.
     ------
     ValueError
         If `arr_start` and `arr_end` do not have the same shape.
+        
+    See Also
+    ---------
+         linear_interp_arrays: linear version of the interpolation.
 
     Notes
     -----
@@ -264,11 +273,12 @@ def exponential_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.
 
 class InterpolationStrategyBase(ABC):
     r"""
-    Base abstract class for defining a set of interpolation strategies.
+    Base abstract class for defining a set of interpolation strategies for impact outputs.
 
     This class serves as a blueprint for implementing specific interpolation
-    methods (e.g., 'Linear', 'Exponential') across different impact dimensions:
-    Exposure (matrices), Hazard, and Vulnerability (arrays/metrics).
+    methods (e.g., 'Linear', 'Exponential') for impact outputs (impact matrices
+    or metrics such as aai_agg, eai_exp or at_event) across the input dimentions
+    Exposure (impact matrices only), Hazard, and Vulnerability (metrics only).
 
     Attributes
     ----------
