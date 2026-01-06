@@ -95,9 +95,9 @@ class TestInterpolationFuncs(unittest.TestCase):
             [
                 [1, 10, 100],  # date 1 metric a,b,c
                 [1, 10, 100],  # date 2 metric a,b,c
-                [1, 10, 100],
+                [1, 10, 100],  # date 3 metric a,b,c
             ]
-        )  # date 3 metric a,b,c
+        )  
         arr_end = np.array([[2, 20, 200], [2, 20, 200], [2, 20, 200]])
         expected = np.array(
             [[1.0, 10.0, 100.0], [1.4142136, 14.142136, 141.42136], [2, 20, 200]]
