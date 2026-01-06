@@ -107,26 +107,44 @@ def test_convex_combinations_start_equals_end(interpolation_data, func):
     np.testing.assert_allclose(result, arr, rtol=interpolation_data["rtol"])
 
 
-def test_linear_impmat_interpolate(interpolation_data):
+@pytest.mark.parametrize(
+    "func,expected",
+    [
+        (
+            linear_interp_matrix_elemwise,
+            np.array(
+                [
+                    [[1.0, 2.0], [3.0, 4.0]],
+                    [[2.0, 3.0], [4.0, 5.0]],
+                    [[3.0, 4.0], [5.0, 6.0]],
+                    [[4.0, 5.0], [6.0, 7.0]],
+                    [[5.0, 6.0], [7.0, 8.0]],
+                ]
+            ),
+        ),
+        (
+            exponential_interp_matrix_elemwise,
+            np.array(
+                [
+                    [[1.0, 2.0], [3.0, 4.0]],
+                    [[1.49534878, 2.63214803], [3.70779275, 4.75682846]],
+                    [[2.23606798, 3.46410162], [4.58257569, 5.65685425]],
+                    [[3.34370152, 4.55901411], [5.66374698, 6.72717132]],
+                    [[5.0, 6.0], [7.0, 8.0]],
+                ]
+            ),
+        ),
+    ],
+)
+def test_impmat_interpolate(interpolation_data, func, expected):
     data = interpolation_data
-    result = linear_interp_matrix_elemwise(
-        data["imp_mat0"], data["imp_mat1"], data["time_points"]
-    )
+    result = func(data["imp_mat0"], data["imp_mat1"], data["time_points"])
 
     assert len(result) == data["time_points"]
     assert all(isinstance(mat, csr_matrix) for mat in result)
 
     dense = np.array([r.todense() for r in result])
-    expected = np.array(
-        [
-            [[1.0, 2.0], [3.0, 4.0]],
-            [[2.0, 3.0], [4.0, 5.0]],
-            [[3.0, 4.0], [5.0, 6.0]],
-            [[4.0, 5.0], [6.0, 7.0]],
-            [[5.0, 6.0], [7.0, 8.0]],
-        ]
-    )
-    np.testing.assert_array_equal(dense, expected)
+    np.testing.assert_array_almost_equal(dense, expected)
 
 
 # --- Tests for Interpolation Strategies ---
