@@ -226,7 +226,8 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def time_resolution(self, value, /):
         if not isinstance(value, str):
             raise ValueError(
-                'time_resolution should be a valid pandas Period frequency string (e.g., `"Y"`, `"M"`, `"D"`).'
+                "time_resolution should be a valid pandas Period"
+                ' frequency string (e.g., `"Y"`, `"M"`, `"D"`).'
             )
         self._reset_metrics()
         for rmcalc in self._risk_metrics_calculators:
@@ -410,11 +411,14 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def _compute_period_metrics(
         self, metric_name: str, metric_meth: str, **kwargs
     ) -> pd.DataFrame:
-        """Helper method to compute total metrics per period (i.e. whole ranges between pairs of consecutive snapshots)."""
-        df = self._generic_metrics(
+        """Helper method to compute total metrics per period
+        (i.e. whole ranges between pairs of consecutive snapshots).
+
+        """
+        metric_df = self._generic_metrics(
             metric_name=metric_name, metric_meth=metric_meth, **kwargs
         )
-        return self._date_to_period_agg(df, grouper=self._grouper)
+        return self._date_to_period_agg(metric_df, grouper=self._grouper)
 
     def eai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the estimated annual impacts at each exposure point for each date.
@@ -477,11 +481,16 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         This method returns the contributions of the change in risk at each date:
 
-           - The 'base risk', i.e., the risk without change in hazard or exposure, compared to trajectory's earliest date.
-           - The 'exposure contribution', i.e., the additional risks due to change in exposure (only)
-           - The 'hazard contribution', i.e., the additional risks due to change in hazard (only)
-           - The 'vulnerability contribution', i.e., the additional risks due to change in vulnerability (only)
-           - The 'interaction contribution', i.e., the additional risks due to the interaction term
+           - The 'base risk', i.e., the risk without change in hazard or exposure,
+             compared to trajectory's earliest date.
+           - The 'exposure contribution', i.e., the additional risks due to change
+             in exposure (only)
+           - The 'hazard contribution', i.e., the additional risks due to change
+             in hazard (only)
+           - The 'vulnerability contribution', i.e., the additional risks due to
+             change in vulnerability (only)
+           - The 'interaction contribution', i.e., the additional risks due to the
+             interaction term
 
 
         """
@@ -696,7 +705,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         ),
         **kwargs,
     ) -> pd.DataFrame:
-        """Return a tidy dataframe of the risk metrics with the total for each different period (pair of snapshots)."""
+        """Return a tidy dataframe of the risk metrics with the total
+        for each different period (pair of snapshots).
+
+        """
 
         metric_df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
         return self._date_to_period_agg(
@@ -889,11 +901,11 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 "tab:blue",
             ],
         )
-        for i in range(len(values)):
+        for i, val in enumerate(values):
             ax.text(
                 labels[i],  # type: ignore
-                values[i] + bottoms[i],
-                f"{values[i]:.0e}",
+                val + bottoms[i],
+                f"{val:.0e}",
                 ha="center",
                 va="bottom",
                 color="black",
