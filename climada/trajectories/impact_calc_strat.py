@@ -32,6 +32,10 @@ from climada.hazard.base import Hazard
 __all__ = ["ImpactCalcComputation"]
 
 
+# The following is acceptable.
+# We design a pattern, and currently it requires only to
+# define the compute_impacts method.
+# pylint: disable=too-few-public-methods
 class ImpactComputationStrategy(ABC):
     """
     Interface for impact computation strategies.
@@ -73,7 +77,6 @@ class ImpactComputationStrategy(ABC):
         --------
         ImpactCalcComputation : The default implementation of this interface.
         """
-        ...
 
 
 class ImpactCalcComputation(ImpactComputationStrategy):
