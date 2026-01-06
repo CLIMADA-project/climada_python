@@ -1,6 +1,11 @@
 pipeline {
   agent any
 
+  options {
+    // This sends status updates to GitHub
+    githubProjectProperty(projectUrlStr: 'https://github.com/CLIMADA-project/climada_python')
+  }
+
   stages {
     stage('ci') {
       parallel {
