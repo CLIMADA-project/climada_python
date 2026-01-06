@@ -191,7 +191,7 @@ class Snapshot:
 
         raise TypeError("date_arg must be an int, str, or datetime.date")
 
-    def apply_measure(self, measure: Measure) -> "Snapshot":
+    def apply_measure(self, measure: Measure, ref_only: bool = False) -> "Snapshot":
         """Create a new snapshot by applying a Measure object.
 
         This method creates a new `Snapshot` object by applying a measure on
@@ -211,6 +211,11 @@ class Snapshot:
         LOGGER.debug("Applying measure %s on snapshot %s", measure.name, id(self))
         exp, impfset, haz = measure.apply(self.exposure, self.impfset, self.hazard)
         snap = Snapshot(
-            exposure=exp, hazard=haz, impfset=impfset, date=self.date, measure=measure
+            exposure=exp,
+            hazard=haz,
+            impfset=impfset,
+            date=self.date,
+            measure=measure,
+            ref_only=ref_only,
         )
         return snap
