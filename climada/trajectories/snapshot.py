@@ -226,7 +226,7 @@ class Snapshot:
             impfset=impfset,
             date=self.date,
             measure=measure,
-            ref_only=False,
+            ref_only=True,  # Avoid unecessary copies of new objects
             _from_factory=True,
         )
         return snap
