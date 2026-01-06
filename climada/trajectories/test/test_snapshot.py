@@ -95,7 +95,7 @@ def test_init_valid_dates(mock_context, input_date, expected):
 
 
 def test_init_invalid_date_format(mock_context):
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match="String must be in the format"):
         Snapshot.from_triplet(
             exposure=mock_context["exp"],
             hazard=mock_context["haz"],
@@ -105,7 +105,9 @@ def test_init_invalid_date_format(mock_context):
 
 
 def test_init_invalid_date_type(mock_context):
-    with pytest.raises(TypeError):
+    with pytest.raises(
+        TypeError, match=r"date_arg must be an int, str, or datetime.date"
+    ):
         Snapshot.from_triplet(exposure=mock_context["exp"], hazard=mock_context["haz"], impfset=mock_context["imp"], date=2023.5)  # type: ignore
 
 
@@ -151,11 +153,10 @@ def test_reference(mock_context):
 
 
 def test_apply_measure(mock_context):
-    snapshot = Snapshot(
+    snapshot = Snapshot.from_triplet(
         exposure=mock_context["exp"],
         hazard=mock_context["haz"],
         impfset=mock_context["imp"],
-        measure=None,
         date=2023,
     )
     new_snapshot = snapshot.apply_measure(mock_context["measure"])
