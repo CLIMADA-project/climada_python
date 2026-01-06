@@ -35,13 +35,13 @@ __all__ = [
     "AllLinearStrategy",
     "ExponentialExposureStrategy",
     "linear_interp_arrays",
-    "linear_interp_imp_mat",
+    "linear_interp_matrix_elemwise",
     "exponential_interp_arrays",
-    "exponential_interp_imp_mat",
+    "exponential_interp_matrix_elemwise",
 ]
 
 
-def linear_interp_imp_mat(
+def linear_interp_matrix_elemwise(
     mat_start: sparse.csr_matrix,
     mat_end: sparse.csr_matrix,
     number_of_interpolation_points: int,
@@ -85,7 +85,7 @@ def linear_interp_imp_mat(
     ]
 
 
-def exponential_interp_imp_mat(
+def exponential_interp_matrix_elemwise(
     mat_start: sparse.csr_matrix,
     mat_end: sparse.csr_matrix,
     number_of_interpolation_points: int,
@@ -420,7 +420,7 @@ class AllLinearStrategy(InterpolationStrategyBase):
 
     def __init__(self) -> None:
         super().__init__()
-        self.exposure_interp = linear_interp_imp_mat
+        self.exposure_interp = linear_interp_matrix_elemwise
         self.hazard_interp = linear_interp_arrays
         self.vulnerability_interp = linear_interp_arrays
 
@@ -430,6 +430,6 @@ class ExponentialExposureStrategy(InterpolationStrategyBase):
 
     def __init__(self) -> None:
         super().__init__()
-        self.exposure_interp = exponential_interp_imp_mat
+        self.exposure_interp = exponential_interp_matrix_elemwise
         self.hazard_interp = linear_interp_arrays
         self.vulnerability_interp = linear_interp_arrays
