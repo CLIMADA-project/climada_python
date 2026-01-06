@@ -26,6 +26,7 @@ at a specific date.
 import copy
 import datetime
 import logging
+import warnings
 
 from climada.entity.exposures import Exposures
 from climada.entity.impact_funcs import ImpactFuncSet
@@ -83,7 +84,15 @@ class Snapshot:
         measure: Measure | None,
         date: int | datetime.date | str,
         ref_only: bool = False,
+        _from_factory: bool = False,
     ) -> None:
+        if not _from_factory:
+            warnings.warn(
+                "Direct instantiation of 'Snapshot' is discouraged. "
+                "Use 'Snapshot.from_triplet()' instead.",
+                UserWarning,
+                stacklevel=2,
+            )
         self._exposure = exposure if ref_only else copy.deepcopy(exposure)
         self._hazard = hazard if ref_only else copy.deepcopy(hazard)
         self._impfset = impfset if ref_only else copy.deepcopy(impfset)
@@ -137,6 +146,7 @@ class Snapshot:
             measure=None,
             date=date,
             ref_only=ref_only,
+            _from_factory=True,
         )
 
     @property
@@ -191,7 +201,7 @@ class Snapshot:
 
         raise TypeError("date_arg must be an int, str, or datetime.date")
 
-    def apply_measure(self, measure: Measure, ref_only: bool = False) -> "Snapshot":
+    def apply_measure(self, measure: Measure) -> "Snapshot":
         """Create a new snapshot by applying a Measure object.
 
         This method creates a new `Snapshot` object by applying a measure on
@@ -216,6 +226,7 @@ class Snapshot:
             impfset=impfset,
             date=self.date,
             measure=measure,
-            ref_only=ref_only,
+            ref_only=False,
+            _from_factory=True,
         )
         return snap
