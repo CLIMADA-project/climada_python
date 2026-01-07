@@ -87,7 +87,7 @@ class Snapshot:
         self._exposure = exposure if ref_only else copy.deepcopy(exposure)
         self._hazard = hazard if ref_only else copy.deepcopy(hazard)
         self._impfset = impfset if ref_only else copy.deepcopy(impfset)
-        self._measure = measure if ref_only else copy.deepcopy(impfset)
+        self._measure = measure if ref_only else copy.deepcopy(measure)
         self._date = self._convert_to_date(date)
 
     @classmethod
