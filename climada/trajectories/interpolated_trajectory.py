@@ -501,7 +501,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             **kwargs,
         )
 
-    def _risk_contributions_post_treatment(self, df) -> pd.DataFrame:
+    def _risk_contributions_post_treatment(self, df: pd.DataFrame) -> pd.DataFrame:
         """Post treat the risk contributions metrics.
 
         When more than two snapshots are provided, the total risk of the previous pair
@@ -555,7 +555,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
     def per_date_risk_metrics(
         self,
-        metrics: list[str] | None = None,
+        metrics: Iterable[str] | None = None,
     ) -> pd.DataFrame:
         """Returns a DataFrame of risk metrics for each dates
 
