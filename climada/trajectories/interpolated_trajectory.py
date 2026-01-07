@@ -168,7 +168,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             all_groups_name=DEFAULT_ALLGROUP_NAME,
             risk_disc_rates=risk_disc_rates,
         )
-        self._risk_metrics_up_to_date: bool = False
         self.start_date = min((snapshot.date for snapshot in snapshots_list))
         self.end_date = max((snapshot.date for snapshot in snapshots_list))
         self._risk_metrics_calculators = self._reset_risk_metrics_calculators(

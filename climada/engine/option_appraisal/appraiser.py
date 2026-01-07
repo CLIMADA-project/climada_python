@@ -22,6 +22,7 @@ import copy
 import datetime
 import logging
 import warnings
+from typing import Iterable
 
 import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
@@ -32,16 +33,40 @@ from matplotlib import ticker
 from pandas.api.types import is_numeric_dtype
 from tqdm import tqdm
 
+from climada.engine.option_appraisal.constants import (
+    AVERTED_RISK_NAME,
+    MEASURE_NET_COST_NAME,
+    REFERENCE_RISK_NAME,
+    RESIDUAL_RISK_NAME,
+)
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_set import MeasureSet
+from climada.trajectories.constants import (
+    AAI_METRIC_NAME,
+    AAI_PER_GROUP_METRIC_NAME,
+    CONTRIBUTIONS_METRIC_NAME,
+    COORD_ID_COL_NAME,
+    DATE_COL_NAME,
+    DEFAULT_ALLGROUP_NAME,
+    DEFAULT_TIME_RESOLUTION,
+    GROUP_COL_NAME,
+    MEASURE_COL_NAME,
+    METRIC_COL_NAME,
+    NO_MEASURE_VALUE,
+    PERIOD_COL_NAME,
+    RETURN_PERIOD_METRIC_NAME,
+    RISK_COL_NAME,
+)
 from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
 from climada.trajectories.interpolated_trajectory import InterpolatedRiskTrajectory
-from climada.trajectories.interpolation import InterpolationStrategy
+from climada.trajectories.interpolation import ImpactInterpolationStrategy
 from climada.trajectories.riskperiod import CalcRiskMetricsPeriod, CalcRiskMetricsPoints
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.static_trajectory import StaticRiskTrajectory
-from climada.trajectories.trajectory import DEFAULT_RP
+from climada.trajectories.trajectory import DEFAULT_DF_COLUMN_PRIORITY, DEFAULT_RP
 from climada.util import log_level
+from climada.util.config import CONFIG
+from climada.util.dataframe_handling import reorder_dataframe_columns
 
 tqdm.pandas()
 
@@ -54,12 +79,37 @@ class StaticAppraiser(StaticRiskTrajectory):
         snapshots_list: list[Snapshot],
         *,
         measure_set: MeasureSet,
-        return_periods: list[int] = DEFAULT_RP,
-        all_groups_name: str = "All",
+        return_periods: Iterable[int] = DEFAULT_RP,
+        all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
         cost_disc_rates: DiscRates | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
+        """Initialize a new `StaticAppraiser`.
+
+        Parameters
+        ----------
+        snapshots_list : list[Snapshot]
+            The list of `Snapshot` object to compute risk from.
+        measure_set: MeasureSet
+            The set of adaptation measures to appraise.
+        return_periods: list[int], optional
+            The return periods to use when computing the `return_periods_metric`.
+            Defaults to `DEFAULT_RP` ([20, 50, 100]).
+        all_groups_name: str, optional
+            The string that should be used to define "all exposure points" subgroup.
+            Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
+        risk_disc_rates: DiscRates, optional
+            The discount rate to apply to future risk. Defaults to None.
+        cost_disc_rates: DiscRates, optional
+            The discount rate to apply to future costs (of adaptation measures).
+            Defaults to None.
+        impact_computation_strategy: ImpactComputationStrategy, optional
+            The method used to calculate the impact from the (Haz,Exp,Vul)
+            of the two snapshots. Defaults to :class:`ImpactCalcComputation`.
+
+        """
+
         self._cost_disc_rates = cost_disc_rates
         self.measure_set = copy.deepcopy(measure_set)
         super().__init__(
@@ -77,6 +127,7 @@ class StaticAppraiser(StaticRiskTrajectory):
     def _add_adaptation_metrics_calculators(
         risk_metrics_calculators, measure_set: MeasureSet
     ) -> list[CalcRiskMetricsPoints]:
+        """Adds the risk metric calculators for the different adaptation options."""
         calculators = [risk_metrics_calculators] + [
             risk_metrics_calculators.apply_measure(meas)
             for _, meas in measure_set.measures().items()
@@ -107,10 +158,43 @@ class StaticAppraiser(StaticRiskTrajectory):
         self,
         metric_name: str | None = None,
         metric_meth: str | None = None,
-        measures: list[str] | None = None,
         **kwargs,
     ) -> pd.DataFrame:
-        """Generic method to compute metrics based on the provided metric name and method."""
+        """Generic method to compute metrics based on the provided metric name and method.
+
+        This method calls the appropriate method from each calculators (corresponding to
+        each adaptation) to return the results for the given metric,
+        in a tidy formatted dataframe.
+
+        It first checks whether the requested metric is a valid one.
+        Then looks for a possible cached value and otherwised asks the
+        calculators (`self._risk_metric_calculators`) to run the computation.
+        The results are then regrouped in a nice and tidy DataFrame.
+        If a `risk_disc_rates` was set, values are converted to net present values.
+        Results are then cached within `self._<metric_name>_metrics` and returned.
+
+        Parameters
+        ----------
+        metric_name : str, optional
+            The name of the metric to return results for.
+        metric_meth : str, optional
+            The name of the specific method of the calculator to call.
+
+        Returns
+        -------
+        pd.DataFrame
+            A tidy formatted dataframe of the risk metric computed for the
+            different snapshots.
+
+        Raises
+        ------
+        NotImplementedError
+            If the requested metric is not part of `POSSIBLE_METRICS`.
+        ValueError
+            If either of the arguments are not provided.
+
+        """
+
         if metric_name is None or metric_meth is None:
             raise ValueError("Both metric_name and metric_meth must be provided.")
 
@@ -122,92 +206,97 @@ class StaticAppraiser(StaticRiskTrajectory):
         # Construct the attribute name for storing the metric results
         attr_name = f"_{metric_name}_metrics"
 
-        LOGGER.debug(f"Computing {attr_name}")
+        if getattr(self, attr_name) is not None:
+            LOGGER.debug("Returning cached %s", attr_name)
+            return getattr(self, attr_name)
+
+        LOGGER.debug("Computing %s", attr_name)
         with log_level(level="WARNING", name_prefix="climada"):
             tmp = [
                 getattr(calc_period, metric_meth)(**kwargs)
                 for calc_period in self._risk_metrics_calculators
             ]
 
-        # Notably for per_group_aai being None:
         try:
             tmp = pd.concat(tmp)
-            if len(tmp) == 0:
+        except ValueError as exc:
+            if str(exc) == "All objects passed were None":
                 return pd.DataFrame()
-        except ValueError as e:
-            if str(e) == "All objects passed were None":
-                return pd.DataFrame()
-            else:
-                raise e
+            raise exc
 
-        else:
-            tmp = tmp.set_index(["date", "group", "measure", "metric"])
-            if "coord_id" in tmp.columns:
-                tmp = tmp.set_index(["coord_id"], append=True)
+        if len(tmp) == 0:
+            return pd.DataFrame()
 
-            # When more than 2 snapshots, there are duplicated rows, we need to remove them.
-            tmp = tmp[~tmp.index.duplicated(keep="first")]
-            tmp = tmp.reset_index()
-            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
-            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
-            columns_to_front = ["group", "date", "measure", "metric"]
-            tmp = tmp[
-                columns_to_front
-                + [
-                    col
-                    for col in tmp.columns
-                    if col not in columns_to_front + ["group", "risk", "rp"]
-                ]
-                + ["risk"]
-            ]
+        tmp = self._metric_post_treatment(tmp, metric_name)
 
-            if self._risk_disc_rates:
-                tmp = self.npv_transform(
-                    getattr(self, attr_name), self._risk_disc_rates
-                )
+        if CONFIG.trajectory_caching.bool():
+            LOGGER.debug("All computing done, caching value.")
+            setattr(self, attr_name, tmp)
+            return getattr(self, attr_name)
 
-            LOGGER.debug(f"Computing averted risk for: {metric_name}.")
-            tmp = self._calc_averted(tmp)
-            # LOGGER.debug(f"Computing cash flow for: {metric_name}.")
-            # cash_flow_metrics = self.annual_cash_flows()
-            # LOGGER.debug(f"Merging with base metric: {metric_name}.")
-            # tmp = tmp.merge(
-            #     cash_flow_metrics[["date", "measure", "measure net cost"]],
-            #     on=["measure", "date"],
-            # )
-            # LOGGER.debug(f"Merging with no measure: {metric_name}.")
-            if measures is not None:
-                tmp = tmp.loc[tmp["measure"].isin(measures)].reset_index()
+        return tmp
 
-            return tmp
+    def _metric_post_treatment(
+        self, metric_df: pd.DataFrame, metric_name: str
+    ) -> pd.DataFrame:
+        # Notably for per_group_aai being None:
+        metric_df = self._handle_group_categories(metric_df)
+        if self._risk_disc_rates:
+            LOGGER.debug("Found risk discount rate. Computing NPV.")
+            metric_df = self.npv_transform(metric_df, self._risk_disc_rates)
+
+        LOGGER.debug(f"Computing averted risk for: {metric_name}.")
+        metric_df = self._calc_averted(metric_df)
+        metric_df = reorder_dataframe_columns(metric_df, DEFAULT_DF_COLUMN_PRIORITY)
+        return metric_df
+
+    def _handle_group_categories(self, metric_df: pd.DataFrame) -> pd.DataFrame:
+        if self._all_groups_name not in metric_df[GROUP_COL_NAME].cat.categories:
+            metric_df[GROUP_COL_NAME] = metric_df[GROUP_COL_NAME].cat.add_categories(
+                [self._all_groups_name]
+            )
+            metric_df[GROUP_COL_NAME] = metric_df[GROUP_COL_NAME].fillna(
+                self._all_groups_name
+            )
+
+        return metric_df
 
     @staticmethod
     def _calc_averted(base_metrics: pd.DataFrame) -> pd.DataFrame:
         def subtract_no_measure(group, no_measure, merger):
-            # Merge with no_measure to get the corresponding "no_measure" value
-            merged = group.merge(no_measure, on=merger, suffixes=("", "_no_measure"))
-            # Subtract the "no_measure" risk from the current risk
-            merged["reference risk"] = merged["risk_no_measure"]
-            merged["averted risk"] = merged["risk_no_measure"] - merged["risk"]
-            return merged[list(group.columns) + ["reference risk", "averted risk"]]
+            # Merge with no_measure to get the corresponding NO_MEASURE_VALUE value
+            merged = group.merge(
+                no_measure, on=merger, suffixes=("", "_" + NO_MEASURE_VALUE)
+            )
+            # Subtract the NO_MEASURE_VALUE risk from the current risk
+            merged[REFERENCE_RISK_NAME] = merged[RISK_COL_NAME + "_" + NO_MEASURE_VALUE]
+            merged[AVERTED_RISK_NAME] = (
+                merged[RISK_COL_NAME + "_" + NO_MEASURE_VALUE] - merged[RISK_COL_NAME]
+            )
+            return merged[
+                list(group.columns) + [REFERENCE_RISK_NAME, AVERTED_RISK_NAME]
+            ]
 
         no_measures_metrics = base_metrics[
-            base_metrics["measure"] == "no_measure"
+            base_metrics[MEASURE_COL_NAME] == NO_MEASURE_VALUE
         ].copy()
-        merger = ["group", "metric", "date"]
-        if "coord_id" in base_metrics.columns:
-            merger.append("coord_id")
+        merger = [GROUP_COL_NAME, METRIC_COL_NAME, DATE_COL_NAME]
+        if COORD_ID_COL_NAME in base_metrics.columns:
+            merger.append(COORD_ID_COL_NAME)
 
         return base_metrics.groupby(
-            ["group", "metric", "date"], group_keys=False, dropna=False, observed=False
+            [GROUP_COL_NAME, METRIC_COL_NAME, DATE_COL_NAME],
+            group_keys=False,
+            dropna=False,
+            observed=False,
         ).apply(subtract_no_measure, no_measure=no_measures_metrics, merger=merger)
 
 
 class InterpolatedAppraiser(InterpolatedRiskTrajectory):
     _risk_vars = [
-        "reference risk",
-        "averted risk",
-        "risk",
+        REFERENCE_RISK_NAME,
+        AVERTED_RISK_NAME,
+        RISK_COL_NAME,
     ]
 
     def __init__(
@@ -215,12 +304,11 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         snapshots_list: list[Snapshot],
         *,
         measure_set: MeasureSet,
-        return_periods: list[int] = DEFAULT_RP,
-        time_resolution: str = "Y",
-        all_groups_name: str = "All",
+        return_periods: Iterable[int] = DEFAULT_RP,
+        time_resolution: str = DEFAULT_TIME_RESOLUTION,
         risk_disc_rates: DiscRates | None = None,
         cost_disc_rates: DiscRates | None = None,
-        interpolation_strategy: InterpolationStrategy | None = None,
+        interpolation_strategy: ImpactInterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
         self._cost_disc_rates = cost_disc_rates
@@ -229,7 +317,6 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
             snapshots_list,
             time_resolution=time_resolution,
             return_periods=return_periods,
-            all_groups_name=all_groups_name,
             risk_disc_rates=risk_disc_rates,
             interpolation_strategy=interpolation_strategy,
             impact_computation_strategy=impact_computation_strategy,
@@ -283,23 +370,27 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         if base_metrics is not None:
             LOGGER.debug(f"Computing averted risk for: {metric_name}.")
             base_metrics = self._calc_averted(base_metrics)
-            no_measures = base_metrics[base_metrics["measure"] == "no_measure"].copy()
-            no_measures["reference risk"] = no_measures["risk"]
-            no_measures["averted risk"] = 0.0
-            no_measures["measure net cost"] = 0.0
+            no_measures = base_metrics[
+                base_metrics[MEASURE_COL_NAME] == NO_MEASURE_VALUE
+            ].copy()
+            no_measures[REFERENCE_RISK_NAME] = no_measures[RISK_COL_NAME]
+            no_measures[AVERTED_RISK_NAME] = 0.0
+            no_measures[MEASURE_NET_COST_NAME] = 0.0
             LOGGER.debug(f"Computing cash flow for: {metric_name}.")
             cash_flow_metrics = self.annual_cash_flows()
             LOGGER.debug(f"Merging with base metric: {metric_name}.")
             base_metrics = base_metrics.merge(
-                cash_flow_metrics[["date", "measure", "measure net cost"]],
-                on=["measure", "date"],
+                cash_flow_metrics[
+                    [DATE_COL_NAME, MEASURE_COL_NAME, MEASURE_NET_COST_NAME]
+                ],
+                on=[MEASURE_COL_NAME, DATE_COL_NAME],
             )
             LOGGER.debug(f"Merging with no measure: {metric_name}.")
             base_metrics = pd.concat([no_measures, base_metrics])
 
             if measures is not None:
                 base_metrics = base_metrics.loc[
-                    base_metrics["measure"].isin(measures)
+                    base_metrics[MEASURE_COL_NAME].isin(measures)
                 ].reset_index()
 
         return base_metrics
@@ -307,28 +398,37 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
     @staticmethod
     def _calc_averted(base_metrics: pd.DataFrame) -> pd.DataFrame:
         def subtract_no_measure(group, no_measure, merger):
-            # Merge with no_measure to get the corresponding "no_measure" value
-            merged = group.merge(no_measure, on=merger, suffixes=("", "_no_measure"))
-            # Subtract the "no_measure" risk from the current risk
-            merged["reference risk"] = merged["risk_no_measure"]
-            merged["averted risk"] = merged["risk_no_measure"] - merged["risk"]
-            return merged[list(group.columns) + ["reference risk", "averted risk"]]
+            # Merge with no_measure to get the corresponding NO_MEASURE_VALUE value
+            merged = group.merge(
+                no_measure, on=merger, suffixes=("", "_" + NO_MEASURE_VALUE)
+            )
+            # Subtract the NO_MEASURE_VALUE risk from the current risk
+            merged[REFERENCE_RISK_NAME] = merged[RISK_COL_NAME + "_" + NO_MEASURE_VALUE]
+            merged[AVERTED_RISK_NAME] = (
+                merged[RISK_COL_NAME + "_" + NO_MEASURE_VALUE] - merged[RISK_COL_NAME]
+            )
+            return merged[
+                list(group.columns) + [REFERENCE_RISK_NAME, AVERTED_RISK_NAME]
+            ]
 
         no_measures_metrics = base_metrics[
-            base_metrics["measure"] == "no_measure"
+            base_metrics[MEASURE_COL_NAME] == NO_MEASURE_VALUE
         ].copy()
-        merger = ["group", "metric", "date"]
-        if "coord_id" in base_metrics.columns:
-            merger.append("coord_id")
+        merger = [GROUP_COL_NAME, METRIC_COL_NAME, DATE_COL_NAME]
+        if COORD_ID_COL_NAME in base_metrics.columns:
+            merger.append(COORD_ID_COL_NAME)
 
         return base_metrics.groupby(
-            ["group", "metric", "date"], group_keys=False, dropna=False, observed=False
+            [GROUP_COL_NAME, METRIC_COL_NAME, DATE_COL_NAME],
+            group_keys=False,
+            dropna=False,
+            observed=False,
         ).apply(subtract_no_measure, no_measure=no_measures_metrics, merger=merger)
 
     @classmethod
     def _date_to_period_agg(
         cls,
-        df: pd.DataFrame,
+        metric_df: pd.DataFrame,
         grouper: list[str] | None = None,
         time_unit="year",
         colname: str | list[str] | None = None,
@@ -336,25 +436,29 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         colname = cls._risk_vars if colname is None else colname
         if grouper is None:
             grouper = cls._grouper
-        return super()._date_to_period_agg(df, grouper, time_unit, colname)
+        return super()._date_to_period_agg(metric_df, grouper, time_unit, colname)
 
     def per_date_CB(
         self,
-        metrics: list[str] = ["aai", "return_periods", "aai_per_group"],
+        metrics: list[str] = [
+            AAI_METRIC_NAME,
+            RETURN_PERIOD_METRIC_NAME,
+            AAI_PER_GROUP_METRIC_NAME,
+        ],
         include_no_measure=False,
         **kwargs,
     ) -> pd.DataFrame | pd.Series:
         metrics_df = self.per_date_risk_metrics(metrics, **kwargs)
         if not include_no_measure:
-            metrics_df = metrics_df[metrics_df["measure"] != "no_measure"]
+            metrics_df = metrics_df[metrics_df[MEASURE_COL_NAME] != NO_MEASURE_VALUE]
 
-        metrics_df.rename(columns={"risk": "residual risk"}, inplace=True)
+        metrics_df.rename(columns={RISK_COL_NAME: RESIDUAL_RISK_NAME}, inplace=True)
         metrics_df["cumulated measure cost"] = metrics_df.groupby(
-            ["group", "measure", "metric"], observed=True
-        )["measure net cost"].cumsum()
+            [GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME], observed=True
+        )[MEASURE_NET_COST_NAME].cumsum()
         metrics_df["cumulated measure benefit"] = metrics_df.groupby(
-            ["group", "measure", "metric"], observed=True
-        )["averted risk"].cumsum()
+            [GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME], observed=True
+        )[AVERTED_RISK_NAME].cumsum()
         metrics_df["cost/benefit ratio"] = (
             metrics_df["cumulated measure cost"]
             / metrics_df["cumulated measure benefit"]
@@ -363,7 +467,11 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
 
     def per_period_CB(
         self,
-        metrics: list[str] = ["aai", "return_periods", "aai_per_group"],
+        metrics: list[str] = [
+            AAI_METRIC_NAME,
+            RETURN_PERIOD_METRIC_NAME,
+            AAI_PER_GROUP_METRIC_NAME,
+        ],
         npv: bool = True,
         include_no_measure=False,
         **kwargs,
@@ -371,12 +479,16 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         metrics_df = self.per_period_risk_metrics(metrics, **kwargs)
         cost_df = self.annual_cash_flows()
         cost_df = self._date_to_period_agg(
-            cost_df, grouper=["measure"], colname="measure net cost"
+            cost_df, grouper=[MEASURE_COL_NAME], colname=MEASURE_NET_COST_NAME
         )
-        metrics_df = metrics_df.merge(cost_df, on=["period", "measure"], how="outer")
-        metrics_df["measure net cost"] = metrics_df["measure net cost"].fillna(0.0)
+        metrics_df = metrics_df.merge(
+            cost_df, on=[PERIOD_COL_NAME, MEASURE_COL_NAME], how="outer"
+        )
+        metrics_df[MEASURE_NET_COST_NAME] = metrics_df[MEASURE_NET_COST_NAME].fillna(
+            0.0
+        )
         if not include_no_measure:
-            metrics_df = metrics_df[metrics_df["measure"] != "no_measure"]
+            metrics_df = metrics_df[metrics_df[MEASURE_COL_NAME] != NO_MEASURE_VALUE]
 
         return metrics_df
 
@@ -403,14 +515,19 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
                 disc=self.cost_disc_rates,
             )
             if need_agg:
-                df = df.groupby(df["date"].dt.year, as_index=False).agg(
-                    {"net": "sum", "cost": "sum", "income": "sum", "date": "first"}
+                df = df.groupby(df[DATE_COL_NAME].dt.year, as_index=False).agg(
+                    {
+                        "net": "sum",
+                        "cost": "sum",
+                        "income": "sum",
+                        DATE_COL_NAME: "first",
+                    }
                 )
-            df["measure"] = meas_name
+            df[MEASURE_COL_NAME] = meas_name
             res.append(df)
         df = pd.concat(res)
         df["net"] *= -1
-        df = df.rename(columns={"net": "measure net cost"})
+        df = df.rename(columns={"net": MEASURE_NET_COST_NAME})
         return df
 
     def _calc_waterfall_CB_plot_data(
@@ -422,13 +539,20 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         end_date = self.end_date if end_date is None else end_date
         risk_contributions = self.risk_contributions_metrics()
         risk_contributions = risk_contributions.loc[
-            (risk_contributions["date"] >= str(start_date))
-            & (risk_contributions["date"] <= str(end_date))
-            & (risk_contributions["measure"] != "no_measure")
+            (risk_contributions[DATE_COL_NAME] >= str(start_date))
+            & (risk_contributions[DATE_COL_NAME] <= str(end_date))
+            & (risk_contributions[MEASURE_COL_NAME] != NO_MEASURE_VALUE)
         ]
         risk_contributions = risk_contributions.set_index(
-            ["date", "measure", "metric"]
-        )[["risk", "reference risk", "averted risk", "measure net cost"]].unstack()
+            [DATE_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME]
+        )[
+            [
+                RISK_COL_NAME,
+                REFERENCE_RISK_NAME,
+                AVERTED_RISK_NAME,
+                MEASURE_NET_COST_NAME,
+            ]
+        ].unstack()
         return risk_contributions
 
     def plot_per_date_waterfall_CB(
@@ -486,12 +610,12 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
             d = df.loc[measure]
 
             # Pivot for stacked bars
-            averted = d.loc[:, "averted risk"].sum(axis=1)
-            risk = d.loc[:, "risk"].sum(axis=1)
+            averted = d.loc[:, AVERTED_RISK_NAME].sum(axis=1)
+            risk = d.loc[:, RISK_COL_NAME].sum(axis=1)
             ax.stackplot(
                 d.index.to_timestamp(),
                 [risk, averted],
-                labels=["Residual risk", "Averted"],
+                labels=[RESIDUAL_RISK_NAME, "Averted"],
                 colors=["purple", "pink"],
                 hatch=["", "/"],
             )
@@ -523,20 +647,22 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
             self.time_resolution,
         )
         risk_contribution = self.risk_contributions_metrics()
-        risk_contribution = risk_contribution.set_index("date").loc[
+        risk_contribution = risk_contribution.set_index(DATE_COL_NAME).loc[
             [risk_reference_period, measure_effect_period]
         ]
         meas = (
-            np.setdiff1d(risk_contribution.measure.unique(), ["no_measure"])
+            np.setdiff1d(risk_contribution.measure.unique(), [NO_MEASURE_VALUE])
             if measures is None
             else measures
         )
         num_cols = 2 if 2 < len(meas) else len(meas)
         num_rows = len(meas) // num_cols
         risk_contribution = risk_contribution.loc[
-            risk_contribution["measure"].isin(meas)
+            risk_contribution[MEASURE_COL_NAME].isin(meas)
         ]
-        risk_contribution.set_index(["measure", "metric"], inplace=True, append=True)
+        risk_contribution.set_index(
+            [MEASURE_COL_NAME, METRIC_COL_NAME], inplace=True, append=True
+        )
         fig, axs = plt.subplots(
             num_rows, num_cols, figsize=(num_cols * 8, num_rows * 5)
         )
@@ -550,31 +676,31 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
             f"Total risk in {measure_effect_date}",
         ]
         reference_risk = risk_contribution.loc[
-            (str(risk_reference_period), meas[0], "base risk"), "reference risk"
+            (str(risk_reference_period), meas[0], "base risk"), REFERENCE_RISK_NAME
         ]
         base_risk_when_measure_effect = risk_contribution.loc[
-            (str(measure_effect_period), meas[0]), "reference risk"
+            (str(measure_effect_period), meas[0]), REFERENCE_RISK_NAME
         ].sum()
 
         for i, measure in enumerate(meas):
             exposure_contribution = risk_contribution.loc[
                 (str(measure_effect_period), measure, "exposure contribution"),
-                "reference risk",
+                REFERENCE_RISK_NAME,
             ]
             hazard_contribution = risk_contribution.loc[
                 (str(measure_effect_period), measure, "hazard contribution"),
-                "reference risk",
+                REFERENCE_RISK_NAME,
             ]
             vulnerability_contribution = risk_contribution.loc[
                 (str(measure_effect_period), measure, "vulnerability contribution"),
-                "reference risk",
+                REFERENCE_RISK_NAME,
             ]
             interaction_contribution = risk_contribution.loc[
                 (str(measure_effect_period), measure, "interaction contribution"),
-                "reference risk",
+                REFERENCE_RISK_NAME,
             ]
             averted_risk = risk_contribution.loc[
-                (str(measure_effect_period), measure), "averted risk"
+                (str(measure_effect_period), measure), AVERTED_RISK_NAME
             ].sum()
             values = [
                 reference_risk,
@@ -661,10 +787,9 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
             dict[str, tuple[int, int]] | dict[str, tuple[datetime.date, datetime.date]]
         ),
         interval_freq: str = "YS",
-        all_groups_name: str = "All",
         risk_disc_rates: DiscRates | None = None,
         cost_disc_rates: DiscRates | None = None,
-        interpolation_strategy: InterpolationStrategy | None = None,
+        interpolation_strategy: ImpactInterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
         if all(
@@ -682,7 +807,6 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
             snapshots_list,
             measure_set=measure_set,
             time_resolution=interval_freq,
-            all_groups_name=all_groups_name,
             risk_disc_rates=risk_disc_rates,
             cost_disc_rates=cost_disc_rates,
             interpolation_strategy=interpolation_strategy,
@@ -734,25 +858,27 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
             **kwargs,
         )
         LOGGER.info(f"Computing planning metric: {metric_name}.")
-        base_metrics = base_metrics.set_index(["measure", "date"]).sort_index()
+        base_metrics = base_metrics.set_index(
+            [MEASURE_COL_NAME, DATE_COL_NAME]
+        ).sort_index()
         mask = pd.Series(False, index=base_metrics.index)
         for (start, end), measure_name_list in self._planning.items():
             start, end = pd.Timestamp(start), pd.Timestamp(end)
             mask |= (
                 (
-                    base_metrics.index.get_level_values("measure")
+                    base_metrics.index.get_level_values(MEASURE_COL_NAME)
                     == "_".join(measure_name_list)
                 )
-                & (base_metrics.index.get_level_values("date") >= start)
-                & (base_metrics.index.get_level_values("date") <= end)
+                & (base_metrics.index.get_level_values(DATE_COL_NAME) >= start)
+                & (base_metrics.index.get_level_values(DATE_COL_NAME) <= end)
             )
 
-        no_measure_mask = mask.groupby("date").sum() == 0
+        no_measure_mask = mask.groupby(DATE_COL_NAME).sum() == 0
         mask.loc[
-            pd.IndexSlice["no_measure"], no_measure_mask[no_measure_mask].index
+            pd.IndexSlice[NO_MEASURE_VALUE], no_measure_mask[no_measure_mask].index
         ] = True
 
-        return base_metrics[mask].reset_index().sort_values("date")
+        return base_metrics[mask].reset_index().sort_values(DATE_COL_NAME)
 
     def _calc_per_measure_annual_cash_flows(self, npv: bool):
         res = []
@@ -778,21 +904,26 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
                 disc=self.cost_disc_rates if npv else None,
             )
             if need_agg:
-                df = df.groupby(df["date"].dt.year, as_index=False).agg(
-                    {"net": "sum", "cost": "sum", "income": "sum", "date": "first"}
+                df = df.groupby(df[DATE_COL_NAME].dt.year, as_index=False).agg(
+                    {
+                        "net": "sum",
+                        "cost": "sum",
+                        "income": "sum",
+                        DATE_COL_NAME: "first",
+                    }
                 )
-            df["measure"] = meas_name
+            df[MEASURE_COL_NAME] = meas_name
             res.append(df)
         df = pd.concat(res)
-        df = df.groupby("date", as_index=False).agg(
+        df = df.groupby(DATE_COL_NAME, as_index=False).agg(
             {
                 col: ("sum" if is_numeric_dtype(df[col]) else lambda x: "_".join(x))
                 for col in df.columns
-                if col != "date"
+                if col != DATE_COL_NAME
             }
         )
         df["net"] *= -1
-        df = df.rename(columns={"net": "measure net cost"})
+        df = df.rename(columns={"net": MEASURE_NET_COST_NAME})
         return df
 
     def plot_per_date_waterfall_CB(
@@ -824,9 +955,11 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
         hatch_style = "///"
 
         measures = (
-            df.index.get_level_values(0).unique().drop("no_measure", errors="ignore")
+            df.index.get_level_values(0)
+            .unique()
+            .drop(NO_MEASURE_VALUE, errors="ignore")
         )
-        reference_risk = df["reference risk"].droplevel(0)
+        reference_risk = df[REFERENCE_RISK_NAME].droplevel(0)
         _, axs = plt.subplots(
             3, 1, figsize=(14, 5 * len(measures)), sharex=True, sharey=False
         )
@@ -840,15 +973,15 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
         formatter = mdates.ConciseDateFormatter(locator)
         ax = axs[1]
         ax.sharey(axs[0])
-        d = df.copy().droplevel("measure")
+        d = df.copy().droplevel(MEASURE_COL_NAME)
 
         # Pivot for stacked bars
-        averted = d.loc[:, "averted risk"].sum(axis=1)
-        risk = d.loc[:, "risk"].sum(axis=1)
+        averted = d.loc[:, AVERTED_RISK_NAME].sum(axis=1)
+        risk = d.loc[:, RISK_COL_NAME].sum(axis=1)
         ax.stackplot(
             d.index,
             [risk, averted],
-            labels=["Residual risk", "Averted"],
+            labels=[RESIDUAL_RISK_NAME, "Averted"],
             colors=["purple", "pink"],
             hatch=["", "/"],
         )
@@ -920,22 +1053,22 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
         fig, ax = plt.subplots(figsize=(8, 5))
 
         labels = [
-            "Risk",
-            "Averted Risk",
-            "Residual risk",
+            RISK_COL_NAME,
+            AVERTED_RISK_NAME,
+            RESIDUAL_RISK_NAME,
             "Measure cost",
             "Cost benefit",
         ]
-        # measure_costs = risk_contribution.loc[:,("measure net cost","base risk")].unstack().sum()
+        # measure_costs = risk_contribution.loc[:,(MEASURE_NET_COST_NAME,"base risk")].unstack().sum()
         average_risk = (
             risk_contribution.mean()
             .unstack()
             .T.agg(
                 {
-                    "averted risk": "sum",
-                    "measure net cost": "mean",
-                    "reference risk": "sum",
-                    "risk": "sum",
+                    AVERTED_RISK_NAME: "sum",
+                    MEASURE_NET_COST_NAME: "mean",
+                    REFERENCE_RISK_NAME: "sum",
+                    RISK_COL_NAME: "sum",
                 }
             )
         )
@@ -943,20 +1076,20 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
 
         m_average_risk = average_risk.copy()
         values = [
-            m_average_risk["reference risk"],
-            m_average_risk["averted risk"],
-            m_average_risk["reference risk"] - m_average_risk["averted risk"],
-            m_average_risk["measure net cost"],
-            m_average_risk["averted risk"] - m_average_risk["measure net cost"],
+            m_average_risk[REFERENCE_RISK_NAME],
+            m_average_risk[AVERTED_RISK_NAME],
+            m_average_risk[REFERENCE_RISK_NAME] - m_average_risk[AVERTED_RISK_NAME],
+            m_average_risk[MEASURE_NET_COST_NAME],
+            m_average_risk[AVERTED_RISK_NAME] - m_average_risk[MEASURE_NET_COST_NAME],
         ]
         bottoms = [
             0.0,
-            m_average_risk["reference risk"] - m_average_risk["averted risk"],
+            m_average_risk[REFERENCE_RISK_NAME] - m_average_risk[AVERTED_RISK_NAME],
             0.0,
-            m_average_risk["reference risk"] - m_average_risk["averted risk"],
-            m_average_risk["reference risk"]
-            - m_average_risk["averted risk"]
-            + m_average_risk["measure net cost"],
+            m_average_risk[REFERENCE_RISK_NAME] - m_average_risk[AVERTED_RISK_NAME],
+            m_average_risk[REFERENCE_RISK_NAME]
+            - m_average_risk[AVERTED_RISK_NAME]
+            + m_average_risk[MEASURE_NET_COST_NAME],
         ]
         ax.bar(
             labels,
@@ -983,10 +1116,13 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
             "",
             xy=(
                 1,
-                (m_average_risk["reference risk"] - m_average_risk["averted risk"]),
+                (
+                    m_average_risk[REFERENCE_RISK_NAME]
+                    - m_average_risk[AVERTED_RISK_NAME]
+                ),
             ),
             xycoords="data",
-            xytext=(1, m_average_risk["reference risk"]),
+            xytext=(1, m_average_risk[REFERENCE_RISK_NAME]),
             textcoords="data",
             arrowprops=dict(color="red", lw=2, shrink=0.1, width=12),
         )
@@ -995,13 +1131,19 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
             "",
             xy=(
                 3,
-                m_average_risk["measure net cost"]
-                + (m_average_risk["reference risk"] - m_average_risk["averted risk"]),
+                m_average_risk[MEASURE_NET_COST_NAME]
+                + (
+                    m_average_risk[REFERENCE_RISK_NAME]
+                    - m_average_risk[AVERTED_RISK_NAME]
+                ),
             ),
             xycoords="data",
             xytext=(
                 3,
-                (m_average_risk["reference risk"] - m_average_risk["averted risk"]),
+                (
+                    m_average_risk[REFERENCE_RISK_NAME]
+                    - m_average_risk[AVERTED_RISK_NAME]
+                ),
             ),
             textcoords="data",
             arrowprops=dict(color="red", lw=2, shrink=0.1, width=12),
