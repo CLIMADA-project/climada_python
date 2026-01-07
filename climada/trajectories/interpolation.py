@@ -34,14 +34,14 @@ LOGGER = logging.getLogger(__name__)
 __all__ = [
     "AllLinearStrategy",
     "ExponentialExposureStrategy",
-    "linear_interp_arrays",
-    "linear_interp_imp_mat",
-    "exponential_interp_arrays",
-    "exponential_interp_imp_mat",
+    "linear_convex_combination",
+    "linear_interp_matrix_elemwise",
+    "exponential_convex_combination",
+    "exponential_interp_matrix_elemwise",
 ]
 
 
-def linear_interp_imp_mat(
+def linear_interp_matrix_elemwise(
     mat_start: sparse.csr_matrix,
     mat_end: sparse.csr_matrix,
     number_of_interpolation_points: int,
@@ -85,7 +85,7 @@ def linear_interp_imp_mat(
     ]
 
 
-def exponential_interp_imp_mat(
+def exponential_interp_matrix_elemwise(
     mat_start: sparse.csr_matrix,
     mat_end: sparse.csr_matrix,
     number_of_interpolation_points: int,
@@ -148,9 +148,10 @@ def exponential_interp_imp_mat(
     return res
 
 
-def linear_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarray:
+def linear_convex_combination(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarray:
     r"""
-    Performs linear interpolation between two NumPy arrays over their first dimension.
+    Performs a linear convex combination between two n x m NumPy arrays over their
+    first dimension (n rows).
 
     This function interpolates each metric (column) linearly across the time steps
     (rows), including both the start and end states.
@@ -175,6 +176,13 @@ def linear_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarr
     ValueError
         If `arr_start` and `arr_end` do not have the same shape.
 
+    Example
+    --------
+        >>> arr_start = [ [ 1, 1], [1, 2], [10, 20] ]
+        >>> arr_end = [ [2, 2], [5, 6], [10, 30] ]
+        >>> linear_interp_arrays(arr_start, arr_end)
+        >>> [[1, 1], [3, 4], [10, 30]]
+
     Notes
     -----
     The interpolation is performed element-wise along the first dimension
@@ -198,13 +206,14 @@ def linear_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarr
     return np.multiply(arr_start, prop0) + np.multiply(arr_end, prop1)
 
 
-def exponential_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.ndarray:
+def exponential_convex_combination(
+    arr_start: np.ndarray, arr_end: np.ndarray
+) -> np.ndarray:
     r"""
-    Performs exponential interpolation between two NumPy arrays over their first dimension.
+    Performs exponential convex combination between two NumPy arrays over their first dimension.
 
     This function achieves an exponential-like transition by performing linear
-    interpolation in the logarithmic space, suitable to interpolate over a dimension which has
-    a growth factor.
+    interpolation in the logarithmic space.
 
     Parameters
     ----------
@@ -224,6 +233,10 @@ def exponential_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.
     ------
     ValueError
         If `arr_start` and `arr_end` do not have the same shape.
+
+    See Also
+    ---------
+         linear_interp_arrays: linear version of the interpolation.
 
     Notes
     -----
@@ -262,27 +275,49 @@ def exponential_interp_arrays(arr_start: np.ndarray, arr_end: np.ndarray) -> np.
     return np.exp(interpolated_log_arr)
 
 
-class InterpolationStrategyBase(ABC):
+class ImpactInterpolationStrategy(ABC):
     r"""
-    Base abstract class for defining a set of interpolation strategies.
+    Base abstract class for defining a set of interpolation strategies for impact outputs.
 
     This class serves as a blueprint for implementing specific interpolation
-    methods (e.g., 'Linear', 'Exponential') across different impact dimensions:
-    Exposure (matrices), Hazard, and Vulnerability (arrays/metrics).
+    methods (e.g., 'Linear', 'Exponential') describing how impact outputs
+    should evolve between two points in time.
+
+    Impacts result from three dimensions—Exposure, Hazard, and Vulnerability—
+    each of which may change differently over time. Consequently, a distinct
+    interpolation strategy is defined for each dimension.
+
+    Exposure interpolation differs from Hazard and Vulnerability interpolation.
+    Changes in exposure do not alter the shape of the impact matrices, which
+    allows direct interpolation of the matrices themselves. For the Exposure
+    dimension, interpolation therefore consists of generating intermediate
+    impact matrices between the two time points, with exposure evolving while
+    hazard and vulnerability remain fixed (to either the first or second point).
+
+    In contrast, changes in Hazard may alter the
+    set of events between the two time points, making direct interpolation of
+    impact matrices impossible. Instead, impacts are first aggregated over the
+    event dimension (i.e. the EAI metric). The evolution of impacts is then
+    interpolated as a convex combination of metric sequences computed from two
+    scenarios: one with hazard fixed at the initial time point and one with
+    hazard fixed at the final time point.
+
+    The same aggregation-based interpolation approach is applied to the
+    Vulnerability dimension.
 
     Attributes
     ----------
     exposure_interp : Callable
-        The function used to interpolate sparse impact matrices over the
-        exposure dimension.
+        The function used to interpolate sparse impact matrices over time
+        with changing exposure dimension.
         Signature: (mat_start, mat_end, num_points, **kwargs) -> list[sparse.csr_matrix].
     hazard_interp : Callable
-        The function used to interpolate NumPy arrays of metrics over the
-        hazard dimension.
+        The function used to interpolate NumPy arrays of metrics over time
+        with changing hazard dimension.
         Signature: (arr_start, arr_end, **kwargs) -> np.ndarray.
     vulnerability_interp : Callable
-        The function used to interpolate NumPy arrays of metrics over the
-        vulnerability dimension.
+        The function used to interpolate NumPy arrays of metrics over time
+        with changing vulnerability dimension.
         Signature: (arr_start, arr_end, **kwargs) -> np.ndarray.
     """
 
@@ -299,10 +334,11 @@ class InterpolationStrategyBase(ABC):
         **kwargs: Optional[Dict[str, Any]],
     ) -> List[sparse.csr_matrix]:
         """
-        Interpolates between two impact matrices using the defined exposure strategy.
+        Interpolates between two impact matrices using the defined strategy for the exposure
+        dimension.
 
         This method calls the function assigned to :attr:`exposure_interp` to generate
-        a sequence of matrices.
+        a sequence of impact matrices of length "interpolation_range".
 
         Parameters
         ----------
@@ -331,7 +367,7 @@ class InterpolationStrategyBase(ABC):
         except ValueError as err:
             if str(err) == "inconsistent shapes":
                 raise ValueError(
-                    "Tried to interpolate impact matrices of different shape. "
+                    "Tried to interpolate impact matrices of different shapes. "
                     "A possible reason could be Exposures of different shapes."
                 ) from err
 
@@ -347,7 +383,8 @@ class InterpolationStrategyBase(ABC):
         **kwargs: Optional[Dict[str, Any]],
     ) -> np.ndarray:
         """
-        Interpolates between two metric arrays using the defined hazard strategy.
+        Generates the convex combination between two arrays of metrics using
+        the defined interpolation strategy for the hazard dimension.
 
         This method calls the function assigned to :attr:`hazard_interp`.
 
@@ -375,7 +412,8 @@ class InterpolationStrategyBase(ABC):
         **kwargs: Optional[Dict[str, Any]],
     ) -> np.ndarray:
         """
-        Interpolates between two metric arrays using the defined vulnerability strategy.
+        Generates the convex combination between two arrays of metrics using
+        the defined interpolation strategy for the hazard dimension.
 
         This method calls the function assigned to :attr:`vulnerability_interp`.
 
@@ -397,10 +435,10 @@ class InterpolationStrategyBase(ABC):
         return self.vulnerability_interp(metric_0, metric_1, **kwargs)
 
 
-class InterpolationStrategy(InterpolationStrategyBase):
+class CustomImpactInterpolationStrategy(ImpactInterpolationStrategy):
     r"""Interface for interpolation strategies.
 
-    This is the class to use to define your own custom interpolation strategy.
+    This is the class to use to define custom interpolation strategies.
     """
 
     def __init__(
@@ -415,25 +453,21 @@ class InterpolationStrategy(InterpolationStrategyBase):
         self.vulnerability_interp = vulnerability_interp
 
 
-class AllLinearStrategy(InterpolationStrategyBase):
+class AllLinearStrategy(ImpactInterpolationStrategy):
     r"""Linear interpolation strategy over all dimensions."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.exposure_interp = linear_interp_imp_mat
-        self.hazard_interp = linear_interp_arrays
-        self.vulnerability_interp = linear_interp_arrays
+        self.exposure_interp = linear_interp_matrix_elemwise
+        self.hazard_interp = linear_convex_combination
+        self.vulnerability_interp = linear_convex_combination
 
 
-class ExponentialExposureStrategy(InterpolationStrategyBase):
+class ExponentialExposureStrategy(ImpactInterpolationStrategy):
     r"""Exponential interpolation strategy for exposure and linear for Hazard and Vulnerability."""
 
     def __init__(self) -> None:
         super().__init__()
-        self.exposure_interp = (
-            lambda mat_start, mat_end, points: exponential_interp_imp_mat(
-                mat_start, mat_end, points
-            )
-        )
-        self.hazard_interp = linear_interp_arrays
-        self.vulnerability_interp = linear_interp_arrays
+        self.exposure_interp = exponential_interp_matrix_elemwise
+        self.hazard_interp = linear_convex_combination
+        self.vulnerability_interp = linear_convex_combination

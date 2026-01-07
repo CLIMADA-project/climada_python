@@ -21,8 +21,9 @@ possibly interpolation of risk metric over multiple dates.
 
 """
 
-from .snapshot import Snapshot
+from .interpolation import AllLinearStrategy, ExponentialExposureStrategy
 
 __all__ = [
-    "Snapshot",
+    "AllLinearStrategy",
+    "ExponentialExposureStrategy",
 ]
