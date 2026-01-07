@@ -310,7 +310,7 @@ class CalcRiskMetricsPoints:
         ].copy()
         aai_per_group_df = eai_pres_groups.groupby(
             [DATE_COL_NAME, GROUP_COL_NAME], as_index=False, observed=True
-        )[RISK_COL_NAME].sum()
+        ).agg({RISK_COL_NAME: "sum"})
         aai_per_group_df[METRIC_COL_NAME] = AAI_METRIC_NAME
         aai_per_group_df[MEASURE_COL_NAME] = (
             self.measure.name if self.measure else NO_MEASURE_VALUE
@@ -922,7 +922,7 @@ class CalcRiskMetricsPeriod:
         ].copy()
         aai_per_group_df = eai_pres_groups.groupby(
             [DEFAULT_PERIOD_INDEX_NAME, GROUP_COL_NAME], as_index=False, observed=True
-        )[RISK_COL_NAME].sum()
+        ).agg({RISK_COL_NAME: "sum"})
         if not np.array_equal(self._group_id_E0, self._group_id_E1):
             LOGGER.warning(
                 "Group id are changing between present and future snapshot."
@@ -935,10 +935,10 @@ class CalcRiskMetricsPeriod:
             )
             aai_fut_groups = eai_fut_groups.groupby(
                 [DEFAULT_PERIOD_INDEX_NAME, GROUP_COL_NAME], as_index=False
-            )[RISK_COL_NAME].sum()
+            ).agg({RISK_COL_NAME: "sum"})
             aai_per_group_df[RISK_COL_NAME] = linear_interp_arrays(
-                aai_per_group_df[RISK_COL_NAME].values,
-                aai_fut_groups[RISK_COL_NAME].values,
+                aai_per_group_df[RISK_COL_NAME].to_numpy(),
+                aai_fut_groups[RISK_COL_NAME].to_numpy(),
             )
 
         aai_per_group_df[METRIC_COL_NAME] = AAI_METRIC_NAME
