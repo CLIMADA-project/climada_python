@@ -13,12 +13,15 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 ### Changed
+- Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
 
 ### Fixed
 
 ### Deprecated
 
 ### Removed
+- `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets).[#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
 
 ## 6.1.0
 

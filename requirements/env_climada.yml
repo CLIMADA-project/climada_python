@@ -35,7 +35,7 @@ dependencies:
   - rasterio>=1.4
   - requests>=2.32
   - rtree>=1.4
-  - salib>=1.5
+  - salib>=1.5,<1.5.2  # see https://github.com/CLIMADA-project/climada_python/issues/1081
   - scikit-learn>=1.7
   - scipy>=1.15
   - seaborn>=0.13
