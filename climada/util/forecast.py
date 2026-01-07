@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Forecast base class.
 """
 
-from typing import Literal
+from typing import Any, Literal, Mapping
 
 import numpy as np
 
@@ -155,7 +155,12 @@ class Forecast:
 
 
 def reduce_unique_selection(
-    forecast, values: np.ndarray, select: str, reduce_attr: str, **kwargs
+    forecast,
+    values: np.ndarray,
+    select: str,
+    reduce_attr: str,
+    concat_kws: Mapping[str, Any] | None = None,
+    **kwargs,
 ):
     """
     Reduce an attribute of a forecast object by selecting unique values
@@ -178,9 +183,11 @@ def reduce_unique_selection(
         Forecast object with the attribute reduced by the reduction method
         and selected by the unique values.
     """
+    concat_kws = {} if concat_kws is None else concat_kws
     return forecast.concat(
         [
             getattr(forecast.select(**{select: [val]}), reduce_attr)(dim=None, **kwargs)
             for val in np.unique(values)
-        ]
+        ],
+        **concat_kws,
     )

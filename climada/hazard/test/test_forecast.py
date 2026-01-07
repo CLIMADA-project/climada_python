@@ -400,18 +400,75 @@ def test_write_read_hazard_forecast(haz_fc, tmp_path):
 
 
 class TestReduce:
+    @pytest.fixture
+    def mat(self):
+        return np.array([[0, -1, 0], [1, 0, 0], [2, 1, 0], [3, 2, 1]], dtype="float")
 
-    @pytest.fixture(autouse=True, params=["full", "single"])
-    def prep_haz_fc(self, haz_fc, request):
-        """Test either with the full hazard forecast or one with only a single entry"""
-        if request.param == "single":
-            haz_fc = haz_fc.select(event_id=[haz_fc.event_id[0]])
+    @pytest.fixture(autouse=True)
+    def haz_fc_custom_intensity_fraction(self, mat, haz_fc):
+        haz_fc.intensity = csr_matrix(mat)
+        haz_fc.fraction = csr_matrix(mat)
+
+    @pytest.fixture
+    def haz_fc_dim_reduce(self, haz_fc):
+        """Create hazard forecast where some members/leadtimes are duplicated"""
+        haz_fc.member = np.array([1, 2, 1, 2])
+        haz_fc.lead_time = np.array(
+            [
+                np.timedelta64(1, "h"),
+                np.timedelta64(1, "h"),
+                np.timedelta64(2, "h"),
+                np.timedelta64(2, "h"),
+            ]
+        )
+        return haz_fc
+
+    @pytest.fixture
+    def q(self):
+        return 0.25
+
+    @pytest.fixture
+    def reduction_results(self):
+        return {
+            "min": [0, -1, 0],
+            "mean": [1.5, 0.5, 0.25],
+            "max": [3, 2, 1],
+            "median": [1.5, 0.5, 0.0],
+            "quantile": [0.75, -0.25, 0.0],
+        }
+
+    @pytest.fixture
+    def reduction_results_dim(self):
+        return {
+            "lead_time": {
+                "min": [[0, -1, 0], [1, 0, 0]],
+                "mean": [[1, 0, 0], [2, 1, 0.5]],
+                "median": [[1, 0, 0], [2, 1, 0.5]],
+                "max": [[2, 1, 0], [3, 2, 1]],
+                "quantile": [[0.5, -0.5, 0], [1.5, 0.5, 0.25]],
+            },
+            "member": {
+                "min": [[0, -1, 0], [2, 1, 0]],
+                "mean": [[0.5, -0.5, 0], [2.5, 1.5, 0.5]],
+                "median": [[0.5, -0.5, 0], [2.5, 1.5, 0.5]],
+                "max": [[1, 0, 0], [3, 2, 1]],
+                "quantile": [[0.25, -0.75, 0], [2.25, 1.25, 0.25]],
+            },
+        }
 
     @pytest.mark.parametrize("attr", ["min", "mean", "max", "quantile", "median"])
-    def test_reduce(self, haz_fc, attr):
+    def test_reduce(self, haz_fc, q, reduction_results, attr):
         """Check reduction methods for HazardForecast"""
-        kwargs = {"q": 0.3} if attr == "quantile" else {}
+        kwargs = {"q": q} if attr == "quantile" else {}
         haz_fcst_reduced = getattr(haz_fc, attr)(**kwargs)
+
+        # Test by checking results
+        npt.assert_array_equal(
+            haz_fcst_reduced.intensity.toarray().squeeze(), reduction_results[attr]
+        )
+        npt.assert_array_equal(
+            haz_fcst_reduced.fraction.toarray().squeeze(), reduction_results[attr]
+        )
 
         # Test by calling the same numpy function on the dense array
         npt.assert_array_equal(
@@ -424,7 +481,7 @@ class TestReduce:
         )
 
         # Check that attributes where reduced correctly
-        attr_str = "quantile_0.3" if attr == "quantile" else attr
+        attr_str = f"quantile_{q}" if attr == "quantile" else attr
         npt.assert_array_equal(haz_fcst_reduced.lead_time, [np.timedelta64("NaT")])
         npt.assert_array_equal(haz_fcst_reduced.member, [-1])
         npt.assert_array_equal(haz_fcst_reduced.event_name, [attr_str])
@@ -454,37 +511,62 @@ class TestReduce:
             np.median(haz_fc.intensity.todense(), axis=0),
         )
 
-    @pytest.fixture
-    def haz_fc_dim_reduce(self, haz_fc):
-        """Create hazard forecast where some members/leadtimes are duplicated"""
-        haz_fc.member = np.array([1, 2, 1, 2])
-        haz_fc.lead_time = np.array(
-            [
-                np.timedelta64(1, "h"),
-                np.timedelta64(1, "h"),
-                np.timedelta64(2, "h"),
-                np.timedelta64(2, "h"),
-            ]
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])
+    @pytest.mark.parametrize("dim", ["lead_time", "member", "single"])
+    def test_reduce_dim_unique_or_single(self, haz_fc, q, attr, dim):
+        """Test that reduction over a dimension with all-unique values does nothing"""
+        kwargs = {"q": q} if attr == "quantile" else {}
+        if dim == "single":
+            haz_fc = haz_fc.select(event_id=[haz_fc.event_id[0]])
+            dim = None
+
+        haz_fc_reduced = getattr(haz_fc, attr)(dim=dim, **kwargs)
+
+        npt.assert_array_equal(haz_fc_reduced.member, haz_fc.member)
+        npt.assert_array_equal(haz_fc_reduced.lead_time, haz_fc.lead_time)
+        npt.assert_array_equal(
+            haz_fc_reduced.intensity.todense(), haz_fc.intensity.todense()
         )
-        return haz_fc
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.todense(), haz_fc.fraction.todense()
+        )
+        if dim == "single":
+            npt.assert_array_equal(haz_fc_reduced.event_name, haz_fc.event_name)
+            npt.assert_array_equal(haz_fc_reduced.event_id, haz_fc.event_id)
+            npt.assert_array_equal(haz_fc_reduced.frequency, haz_fc.frequency)
+            npt.assert_array_equal(haz_fc_reduced.date, haz_fc.date)
+            npt.assert_array_equal(haz_fc_reduced.orig, haz_fc.orig)
+
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "quantile", "median"])
+    def test_reduce_dim_error(self, haz_fc, q, attr):
+        """Check reduction error message for invalid dimension name"""
+        kwargs = {"q": q} if attr == "quantile" else {}
+        with pytest.raises(ValueError, match=r"Cannot reduce over dim \'invalid_dim\'"):
+            getattr(haz_fc, attr)(dim="invalid_dim", **kwargs)
 
     @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])
     @pytest.mark.parametrize("dim", ["lead_time", "member"])
-    def test_reduce_dim(self, haz_fc_dim_reduce, attr, dim):
+    def test_reduce_dim(self, haz_fc_dim_reduce, q, reduction_results_dim, attr, dim):
         """Check reduction for HazardForecast with dim argument"""
-        kwargs = {"q": 0.3} if attr == "quantile" else {}
+        kwargs = {"q": q} if attr == "quantile" else {}
         haz_fc_reduced = getattr(haz_fc_dim_reduce, attr)(dim=dim, **kwargs)
 
         rdim = "member" if dim == "lead_time" else "lead_time"
         unique_rdim = np.unique(getattr(haz_fc_dim_reduce, rdim))
         npt.assert_array_equal(getattr(haz_fc_reduced, rdim), unique_rdim)
 
-        assert np.unique(getattr(haz_fc_reduced, dim)).size == 1
         if dim == "lead_time":
+            unique_rdim = [1, 2]
             npt.assert_array_equal(
                 haz_fc_reduced.lead_time, [np.timedelta64("NaT"), np.timedelta64("NaT")]
             )
+            npt.assert_array_equal(haz_fc_reduced.member, unique_rdim)
         else:
+            unique_rdim = [np.timedelta64(1, "h"), np.timedelta64(2, "h")]
+            npt.assert_array_equal(
+                haz_fc_reduced.lead_time,
+                unique_rdim,
+            )
             npt.assert_array_equal(haz_fc_reduced.member, [-1, -1])
 
         haz_fc_expected = haz_fc_dim_reduce.concat(
@@ -496,7 +578,12 @@ class TestReduce:
             ]
         )
         npt.assert_array_equal(
-            haz_fc_reduced.intensity.todense(), haz_fc_expected.intensity.todense()
+            haz_fc_reduced.intensity.toarray().squeeze(),
+            reduction_results_dim[dim][attr],
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.toarray().squeeze(),
+            reduction_results_dim[dim][attr],
         )
         npt.assert_array_equal(
             haz_fc_reduced.intensity.todense(), haz_fc_expected.intensity.todense()
@@ -504,35 +591,3 @@ class TestReduce:
         npt.assert_array_equal(
             haz_fc_reduced.fraction.todense(), haz_fc_expected.fraction.todense()
         )
-        npt.assert_array_equal(
-            haz_fc_reduced.fraction.todense(), haz_fc_expected.fraction.todense()
-        )
-
-    @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])
-    @pytest.mark.parametrize("dim", ["lead_time", "member"])
-    def test_reduce_dim_unique_or_single(self, haz_fc, attr, dim):
-        """Test that reduction over a dimension with all-unique values does nothing"""
-        kwargs = {"q": 0.3} if attr == "quantile" else {}
-        haz_fc_reduced = getattr(haz_fc, attr)(dim=dim, **kwargs)
-
-        npt.assert_array_equal(haz_fc_reduced.member, haz_fc.member)
-        npt.assert_array_equal(haz_fc_reduced.lead_time, haz_fc.lead_time)
-        npt.assert_array_equal(
-            haz_fc_reduced.intensity.todense(), haz_fc.intensity.todense()
-        )
-        npt.assert_array_equal(
-            haz_fc_reduced.intensity.todense(), haz_fc.intensity.todense()
-        )
-        npt.assert_array_equal(
-            haz_fc_reduced.fraction.todense(), haz_fc.fraction.todense()
-        )
-        npt.assert_array_equal(
-            haz_fc_reduced.fraction.todense(), haz_fc.fraction.todense()
-        )
-
-    @pytest.mark.parametrize("attr", ["min", "mean", "max", "quantile", "median"])
-    def test_reduce_dim_error(self, haz_fc, attr):
-        """Check reduction error message for invalid dimension name"""
-        kwargs = {"q": 0.3} if attr == "quantile" else {}
-        with pytest.raises(ValueError, match=r"Cannot reduce over dim \'invalid_dim\'"):
-            getattr(haz_fc, attr)(dim="invalid_dim", **kwargs)
