@@ -22,14 +22,13 @@ unit tests for static_risk_trajectory
 
 import datetime
 from itertools import product
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPoints
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     AAI_PER_GROUP_METRIC_NAME,
@@ -38,7 +37,6 @@ from climada.trajectories.constants import (
     GROUP_COL_NAME,
     MEASURE_COL_NAME,
     METRIC_COL_NAME,
-    RETURN_PERIOD_METRIC_NAME,
     RISK_COL_NAME,
 )
 from climada.trajectories.impact_calc_strat import ImpactCalcComputation
@@ -322,7 +320,7 @@ def test_generic_metrics_caching_and_npv(mock_components, expected_aai_data):
         pd.testing.assert_frame_equal(result, npv_data)
 
         # Verify Internal Cache
-        assert rt._aai_metrics is not None
+        assert rt._aai_metrics is not None  # type: ignore
 
         # Second call (should be cached)
         result2 = rt._generic_metrics(AAI_METRIC_NAME, "calc_aai_metric")
