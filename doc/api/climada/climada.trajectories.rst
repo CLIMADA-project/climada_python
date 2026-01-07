@@ -4,4 +4,6 @@ climada\.trajectories module
 
 .. toctree::
 
-   climada.trajectories.interpolation
+    climada.trajectories.snapshot
+    climada.trajectories.trajectories
+    climada.trajectories.impact_calc_strat

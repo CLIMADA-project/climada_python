@@ -22,22 +22,36 @@ of risk at multiple points in time (snapshots).
 """
 
 import logging
+from typing import Iterable
 
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPoints
+from climada.trajectories.constants import (
+    AAI_METRIC_NAME,
+    AAI_PER_GROUP_METRIC_NAME,
+    COORD_ID_COL_NAME,
+    DATE_COL_NAME,
+    EAI_METRIC_NAME,
+    GROUP_COL_NAME,
+    MEASURE_COL_NAME,
+    METRIC_COL_NAME,
+    RETURN_PERIOD_METRIC_NAME,
+)
 from climada.trajectories.impact_calc_strat import (
     ImpactCalcComputation,
     ImpactComputationStrategy,
 )
-from climada.trajectories.riskperiod import CalcRiskMetricsPoints
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
     DEFAULT_ALLGROUP_NAME,
+    DEFAULT_DF_COLUMN_PRIORITY,
     DEFAULT_RP,
     RiskTrajectory,
 )
 from climada.util import log_level
+from climada.util.dataframe_handling import reorder_dataframe_columns
 
 LOGGER = logging.getLogger(__name__)
 
@@ -55,26 +69,36 @@ class StaticRiskTrajectory(RiskTrajectory):
     """
 
     POSSIBLE_METRICS = [
-        "eai",
-        "aai",
-        "return_periods",
-        "aai_per_group",
+        EAI_METRIC_NAME,
+        AAI_METRIC_NAME,
+        RETURN_PERIOD_METRIC_NAME,
+        AAI_PER_GROUP_METRIC_NAME,
     ]
     """Class variable listing the risk metrics that can be computed.
 
     Currently:
 
-    - eai, expected impact (per exposure point within a period of 1/frequency unit of the hazard object)
+    - eai, expected impact (per exposure point within a period of 1/frequency
+    unit of the hazard object)
     - aai, average annual impact (aggregated eai over the whole exposure)
-    - aai_per_group, average annual impact per exposure subgroup (defined from the exposure geodataframe)
-    - return_periods, estimated impacts aggregated over the whole exposure for different return periods
+    - aai_per_group, average annual impact per exposure subgroup (defined from
+    the exposure geodataframe)
+    - return_periods, estimated impacts aggregated over the whole exposure for
+    different return periods
+
     """
+
+    _DEFAULT_ALL_METRICS = [
+        AAI_METRIC_NAME,
+        RETURN_PERIOD_METRIC_NAME,
+        AAI_PER_GROUP_METRIC_NAME,
+    ]
 
     def __init__(
         self,
-        snapshots_list: list[Snapshot],
+        snapshots_list: Iterable[Snapshot],
         *,
-        return_periods: list[int] = DEFAULT_RP,
+        return_periods: Iterable[int] = DEFAULT_RP,
         all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
@@ -89,7 +113,7 @@ class StaticRiskTrajectory(RiskTrajectory):
             The return periods to use when computing the `return_periods_metric`.
             Defaults to `DEFAULT_RP` ([20, 50, 100]).
         all_groups_name: str, optional
-            The string to use to define all exposure points subgroup.
+            The string that should be used to define "all exposure points" subgroup.
             Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
         risk_disc_rates: DiscRates, optional
             The discount rate to apply to future risk. Defaults to None.
@@ -125,6 +149,7 @@ class StaticRiskTrajectory(RiskTrajectory):
 
     def _generic_metrics(
         self,
+        /,
         metric_name: str | None = None,
         metric_meth: str | None = None,
         **kwargs,
@@ -174,37 +199,35 @@ class StaticRiskTrajectory(RiskTrajectory):
         attr_name = f"_{metric_name}_metrics"
 
         if getattr(self, attr_name) is not None:
-            LOGGER.debug(f"Returning cached {attr_name}")
+            LOGGER.debug("Returning cached %s", attr_name)
             return getattr(self, attr_name)
 
         with log_level(level="WARNING", name_prefix="climada"):
             tmp = getattr(self._risk_metrics_calculators, metric_meth)(**kwargs)
+            if tmp is None:
+                return tmp
 
-        tmp = tmp.set_index(["date", "group", "measure", "metric"])
-        if "coord_id" in tmp.columns:
-            tmp = tmp.set_index(["coord_id"], append=True)
+        tmp = tmp.set_index(
+            [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME]
+        )
+        if COORD_ID_COL_NAME in tmp.columns:
+            tmp = tmp.set_index([COORD_ID_COL_NAME], append=True)
 
         # When more than 2 snapshots, there might be duplicated rows, we need to remove them.
         # Should not be the case in static trajectory, but in any case we really don't want
         # duplicated rows, which would mess up some dataframe manipulation down the road.
         tmp = tmp[~tmp.index.duplicated(keep="first")]
         tmp = tmp.reset_index()
-        if self._all_groups_name not in tmp["group"].cat.categories:
-            tmp["group"] = tmp["group"].cat.add_categories([self._all_groups_name])
-            tmp["group"] = tmp["group"].fillna(self._all_groups_name)
-        columns_to_front = ["group", "date", "measure", "metric"]
-        tmp = tmp[
-            columns_to_front
-            + [
-                col
-                for col in tmp.columns
-                if col not in columns_to_front + ["group", "risk", "rp"]
-            ]
-            + ["risk"]
-        ]
+        if self._all_groups_name not in tmp[GROUP_COL_NAME].cat.categories:
+            tmp[GROUP_COL_NAME] = tmp[GROUP_COL_NAME].cat.add_categories(
+                [self._all_groups_name]
+            )
+            tmp[GROUP_COL_NAME] = tmp[GROUP_COL_NAME].fillna(self._all_groups_name)
 
         if self._risk_disc_rates:
             tmp = self.npv_transform(tmp, self._risk_disc_rates)
+
+        tmp = reorder_dataframe_columns(tmp, DEFAULT_DF_COLUMN_PRIORITY)
 
         setattr(self, attr_name, tmp)
         return getattr(self, attr_name)
@@ -221,10 +244,10 @@ class StaticRiskTrajectory(RiskTrajectory):
         This computation may become quite expensive for big areas with high resolution.
 
         """
-        df = self._compute_metrics(
-            metric_name="eai", metric_meth="calc_eai_gdf", **kwargs
+        metric_df = self._compute_metrics(
+            metric_name=EAI_METRIC_NAME, metric_meth="calc_eai_gdf", **kwargs
         )
-        return df
+        return metric_df
 
     def aai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the average annual impacts for each date.
@@ -234,7 +257,7 @@ class StaticRiskTrajectory(RiskTrajectory):
         """
 
         return self._compute_metrics(
-            metric_name="aai", metric_meth="calc_aai_metric", **kwargs
+            metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric", **kwargs
         )
 
     def return_periods_metrics(self, **kwargs) -> pd.DataFrame:
@@ -244,7 +267,7 @@ class StaticRiskTrajectory(RiskTrajectory):
 
         """
         return self._compute_metrics(
-            metric_name="return_periods",
+            metric_name=RETURN_PERIOD_METRIC_NAME,
             metric_meth="calc_return_periods_metric",
             return_periods=self.return_periods,
             **kwargs,
@@ -259,7 +282,7 @@ class StaticRiskTrajectory(RiskTrajectory):
         """
 
         return self._compute_metrics(
-            metric_name="aai_per_group",
+            metric_name=AAI_PER_GROUP_METRIC_NAME,
             metric_meth="calc_aai_per_group_metric",
             **kwargs,
         )
@@ -271,13 +294,13 @@ class StaticRiskTrajectory(RiskTrajectory):
         """Returns a DataFrame of risk metrics for each dates.
 
         This methods collects (and if needed computes) the `metrics`
-        (Defaulting to "aai", "return_periods" and "aai_per_group").
+        (Defaulting to AAI_METRIC_NAME, RETURN_PERIOD_METRIC_NAME and AAI_PER_GROUP_METRIC_NAME).
 
         Parameters
         ----------
         metrics : list[str], optional
             The list of metrics to return (defaults to
-            ["aai","return_periods","aai_per_group"])
+            [AAI_METRIC_NAME,RETURN_PERIOD_METRIC_NAME,AAI_PER_GROUP_METRIC_NAME])
 
         Returns
         -------
@@ -287,6 +310,11 @@ class StaticRiskTrajectory(RiskTrajectory):
         """
 
         metrics = (
-            ["aai", "return_periods", "aai_per_group"] if metrics is None else metrics
+            [AAI_METRIC_NAME, RETURN_PERIOD_METRIC_NAME, AAI_PER_GROUP_METRIC_NAME]
+            if metrics is None
+            else metrics
         )
-        return pd.concat([getattr(self, f"{metric}_metrics")() for metric in metrics])
+        return pd.concat(
+            [getattr(self, f"{metric}_metrics")() for metric in metrics],
+            ignore_index=True,
+        )

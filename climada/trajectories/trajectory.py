@@ -23,26 +23,49 @@ interpolated and static trajectories.
 
 import datetime
 import logging
-from abc import ABC
+from abc import ABC, abstractmethod
+from typing import Iterable
 
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
+from climada.trajectories.constants import (
+    DATE_COL_NAME,
+    DEFAULT_ALLGROUP_NAME,
+    DEFAULT_RP,
+    GROUP_COL_NAME,
+    MEASURE_COL_NAME,
+    METRIC_COL_NAME,
+    PERIOD_COL_NAME,
+    RISK_COL_NAME,
+    UNIT_COL_NAME,
+)
 from climada.trajectories.snapshot import Snapshot
 
 LOGGER = logging.getLogger(__name__)
 
-DEFAULT_RP = [20, 50, 100]
-"""Default return periods to use when computing return period impact estimates."""
+__all__ = ["RiskTrajectory"]
 
-DEFAULT_ALLGROUP_NAME = "All"
-"""Default string to use to define the exposure subgroup containing all exposure points."""
-
-__all__ = ["RiskTrajectory", "DEFAULT_RP", "DEFAULT_ALLGROUP_NAME"]
+DEFAULT_DF_COLUMN_PRIORITY = [
+    DATE_COL_NAME,
+    PERIOD_COL_NAME,
+    GROUP_COL_NAME,
+    MEASURE_COL_NAME,
+    METRIC_COL_NAME,
+    UNIT_COL_NAME,
+]
+INDEXING_COLUMNS = [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME]
 
 
 class RiskTrajectory(ABC):
-    _grouper = ["measure", "metric"]
+    """Base abstract class for risk trajectory objects.
+
+    See concrete implementation :class:`StaticRiskTrajectory` and
+    :class:`InterpolatedRiskTrajectory` for more details.
+
+    """
+
+    _grouper = [MEASURE_COL_NAME, METRIC_COL_NAME]
     """Results dataframe grouper used in most `groupby()` calls."""
 
     POSSIBLE_METRICS = []
@@ -50,25 +73,18 @@ class RiskTrajectory(ABC):
 
     def __init__(
         self,
-        snapshots_list: list[Snapshot],
+        snapshots_list: Iterable[Snapshot],
         *,
-        return_periods: list[int] = DEFAULT_RP,
+        return_periods: Iterable[int] = DEFAULT_RP,
         all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
     ):
-        """Base abstract class for risk trajectory objects.
-
-        See concrete implementation :class:`StaticRiskTrajectory` and
-        :class:`InterpolatedRiskTrajectory` for more details.
-
-        """
-
         self._reset_metrics()
-        self._snapshots = snapshots_list
+        self._snapshots = sorted(snapshots_list, key=lambda snap: snap.date)
         self._all_groups_name = all_groups_name
         self._return_periods = return_periods
-        self.start_date = min([snapshot.date for snapshot in snapshots_list])
-        self.end_date = max([snapshot.date for snapshot in snapshots_list])
+        self.start_date = min((snapshot.date for snapshot in snapshots_list))
+        self.end_date = max((snapshot.date for snapshot in snapshots_list))
         self._risk_disc_rates = risk_disc_rates
 
     def _reset_metrics(self) -> None:
@@ -85,6 +101,7 @@ class RiskTrajectory(ABC):
         for metric in self.POSSIBLE_METRICS:
             setattr(self, "_" + metric + "_metrics", None)
 
+    @abstractmethod
     def _generic_metrics(
         self, /, metric_name: str, metric_meth: str, **kwargs
     ) -> pd.DataFrame:
@@ -100,7 +117,9 @@ class RiskTrajectory(ABC):
         - :method:`_compute_metrics`
 
         """
-        ...
+        raise NotImplementedError(
+            f"'_generic_metrics' must be implemented by subclasses of {self.__class__.__name__}"
+        )
 
     def _compute_metrics(
         self, /, metric_name: str, metric_meth: str, **kwargs
@@ -119,7 +138,7 @@ class RiskTrajectory(ABC):
         )
 
     @property
-    def return_periods(self) -> list[int]:
+    def return_periods(self) -> Iterable[int]:
         """The return period values to use when computing risk period metrics.
 
         Notes
@@ -152,7 +171,7 @@ class RiskTrajectory(ABC):
 
     @risk_disc_rates.setter
     def risk_disc_rates(self, value, /):
-        if not isinstance(value, DiscRates):
+        if value is not None and not isinstance(value, (DiscRates)):
             raise ValueError("Risk discount needs to be a `DiscRates` object.")
 
         self._reset_metrics()
@@ -160,13 +179,13 @@ class RiskTrajectory(ABC):
 
     @classmethod
     def npv_transform(
-        cls, df: pd.DataFrame, risk_disc_rates: DiscRates
+        cls, metric_df: pd.DataFrame, risk_disc_rates: DiscRates
     ) -> pd.DataFrame:
         """Apply provided discount rate to the provided metric `DataFrame`.
 
         Parameters
         ----------
-        df : pd.DataFrame
+        metric_df : pd.DataFrame
             The `DataFrame` of the metric to discount.
         risk_disc_rates : DiscRate
             The discount rate to apply.
@@ -179,27 +198,27 @@ class RiskTrajectory(ABC):
         """
 
         def _npv_group(group, disc):
-            start_date = group.index.get_level_values("date").min()
+            start_date = group.index.get_level_values(DATE_COL_NAME).min()
             return cls._calc_npv_cash_flows(group, start_date, disc)
 
-        df = df.set_index("date")
+        metric_df = metric_df.set_index(DATE_COL_NAME)
         grouper = cls._grouper
-        if "group" in df.columns:
-            grouper = ["group"] + grouper
+        if GROUP_COL_NAME in metric_df.columns:
+            grouper = [GROUP_COL_NAME] + grouper
 
-        df["risk"] = df.groupby(
+        metric_df[RISK_COL_NAME] = metric_df.groupby(
             grouper,
             dropna=False,
             as_index=False,
             group_keys=False,
             observed=True,
-        )["risk"].transform(_npv_group, risk_disc_rates)
-        df = df.reset_index()
-        return df
+        )[RISK_COL_NAME].transform(_npv_group, risk_disc_rates)
+        metric_df = metric_df.reset_index()
+        return metric_df
 
     @staticmethod
     def _calc_npv_cash_flows(
-        cash_flows: pd.DataFrame,
+        cash_flows: pd.DataFrame | pd.Series,
         start_date: datetime.date,
         disc_rates: DiscRates | None = None,
     ):
@@ -228,25 +247,28 @@ class RiskTrajectory(ABC):
         if not disc_rates:
             return cash_flows
 
-        if not isinstance(cash_flows.index, pd.PeriodIndex):
-            raise ValueError("cash_flows must be a pandas Series with a PeriodIndex")
+        if not isinstance(cash_flows.index, (pd.PeriodIndex, pd.DatetimeIndex)):
+            raise ValueError(
+                "cash_flows must be a pandas Series with a PeriodIndex or DatetimeIndex"
+            )
 
-        df = cash_flows.to_frame(name="cash_flow")  # type: ignore
-        df["year"] = df.index.year
+        metric_df = cash_flows.to_frame(name="cash_flow")  # type: ignore
+        metric_df["year"] = metric_df.index.year
 
         # Merge with the discount rates based on the year
-        tmp = df.merge(
+        tmp = metric_df.merge(
             pd.DataFrame({"year": disc_rates.years, "rate": disc_rates.rates}),
             on="year",
             how="left",
         )
-        tmp.index = df.index
-        df = tmp.copy()
-        df["discount_factor"] = (1 / (1 + df["rate"])) ** (
-            (df.index.year - start_date.year)
+        tmp.index = metric_df.index
+        metric_df = tmp.copy()
+        metric_df["discount_factor"] = (1 / (1 + metric_df["rate"])) ** (
+            metric_df.index.year - start_date.year
         )
 
         # Apply the discount factors to the cash flows
-        df["npv_cash_flow"] = df["cash_flow"] * df["discount_factor"]
-
-        return df["npv_cash_flow"]
+        metric_df["npv_cash_flow"] = (
+            metric_df["cash_flow"] * metric_df["discount_factor"]
+        )
+        return metric_df["npv_cash_flow"]
