@@ -293,6 +293,17 @@ class StaticAppraiser(StaticRiskTrajectory):
 
 
 class InterpolatedAppraiser(InterpolatedRiskTrajectory):
+    """This class implements interpolated options appraiser trajectories,
+    objects that regroup impacts computations for multiple dates and one or
+    more adaptation option, and interpolate risk metrics in between dates.
+
+    This class computes risk metrics over a series of snapshots with and
+    without adaptation options in place, optionally applying risk and cost
+    discounting. It interpolate risk between each pair of snapshots and
+    provides dataframes of risk metric on a given time resolution.
+
+    """
+
     _risk_vars = [
         REFERENCE_RISK_NAME,
         AVERTED_RISK_NAME,
@@ -311,6 +322,34 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         interpolation_strategy: ImpactInterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
+        """Initialize a new `StaticRiskTrajectory`.
+
+        Parameters
+        ----------
+        snapshot_list : list[Snapshot]
+            The list of `Snapshot` object to compute risk from.
+        return_periods: list[int], optional
+            The return periods to use when computing the `return_periods_metric`.
+            Defaults to `DEFAULT_RP` ([20, 50, 100]).
+        time_resolution: str, optional
+            The time resolution to use for interpolation.
+            It must be a valid pandas string used to define periods,
+            e.g., "Y" for years, "M" for months, "3M" for trimester, etc.
+            Defaults to `DEFAULT_TIME_RESOLUTION` ("Y").
+        all_groups_name: str, optional
+            The string to use to define all exposure points subgroup.
+            Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
+        risk_disc_rates: DiscRates, optional
+            The discount rate to apply to future risk. Defaults to None.
+        interpolation_strategy: InterpolationStrategyBase, optional
+            The interpolation strategy to use when interpolating.
+            Defaults to :class:`AllLinearStrategy`
+        impact_computation_strategy: ImpactComputationStrategy, optional
+            The method used to calculate the impact from the (Haz,Exp,Vul)
+            of the two snapshots. Defaults to :class:`ImpactCalcComputation`.
+
+        """
+
         self._cost_disc_rates = cost_disc_rates
         self.measure_set = copy.deepcopy(measure_set)
         super().__init__(
