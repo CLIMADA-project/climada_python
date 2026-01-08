@@ -234,7 +234,7 @@ class ImpactCalc:
             )
             if isinstance(self.hazard, HazardForecast):
                 eai_exp = np.full_like(eai_exp, np.nan, dtype=eai_exp.dtype)
-                aai_agg = np.full_like(aai_agg, np.nan, dtype=aai_agg.dtype)
+                aai_agg = np.nan
                 LOGGER.warning(
                     "eai_exp and aai_agg are undefined with forecasts. "
                     "Setting them to NaN arrays."
