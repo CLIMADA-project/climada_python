@@ -21,8 +21,9 @@ You can then go on to more specific tutorial about `Hazard <hazard>`_,
    Impact <impact>
    Local exceedance intensities <climada_util_local_exceedance_values>
    Uncertainty Quantification <unsequa>
-   climada_engine_Forecast
+   Forecasts <climada_engine_ImpactForecast>
    climada_util_calibrate
    Google Earth Engine <climada_util_earth_engine>
    climada_util_api_client
+   Forecast class (outdated) <climada_engine_Forecast>
    How to cite CLIMADA <../misc/citation>
