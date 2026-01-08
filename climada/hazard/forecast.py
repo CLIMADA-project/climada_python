@@ -25,6 +25,7 @@ from typing import Any, Dict, Literal, Optional
 
 import numpy as np
 import xarray as xr
+from packaging.version import Version
 from scipy import sparse
 
 from climada.hazard.xarray import HazardXarrayReader
@@ -34,6 +35,19 @@ from ..util.forecast import Forecast, reduce_unique_selection
 from .base import Hazard
 
 LOGGER = logging.getLogger(__name__)
+
+XARRAY_TIMEDELTA_BUG_BEGIN = Version("2025.04.0")
+XARRAY_TIMEDELTA_BUG_END = Version("2025.07.0")
+
+
+def xarray_has_timedelta_bug() -> bool:
+    """Return True if xarray contains the timedelta bug
+
+    See https://docs.xarray.dev/en/stable/whats-new.html#id80
+    """
+    return (Version(xr.__version__) >= XARRAY_TIMEDELTA_BUG_BEGIN) and (
+        Version(xr.__version__) < XARRAY_TIMEDELTA_BUG_END
+    )
 
 
 class HazardForecast(Forecast, Hazard):
@@ -417,6 +431,15 @@ class HazardForecast(Forecast, Hazard):
         :py:meth:`climada.hazard.base.Hazard.from_xarray_raster`
             Parent method documentation for standard hazard loading
         """
+        if xarray_has_timedelta_bug():
+            LOGGER.warning(
+                "xarray version %s contains a bug that prevents proper timedelta "
+                "parsing. Consider updating to version %s or later, or downgrading to "
+                "before version %s",
+                xr.__version__,
+                XARRAY_TIMEDELTA_BUG_END,
+                XARRAY_TIMEDELTA_BUG_BEGIN,
+            )
 
         # Open dataset if needed
         if isinstance(data, (pathlib.Path, str)):

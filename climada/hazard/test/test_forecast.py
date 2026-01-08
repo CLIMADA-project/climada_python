@@ -26,18 +26,15 @@ import numpy.testing as npt
 import pandas as pd
 import pytest
 import xarray as xr
-from packaging.version import Version
 from scipy.sparse import csr_matrix
 
 from climada.hazard.base import Hazard
-from climada.hazard.forecast import HazardForecast
+from climada.hazard.forecast import HazardForecast, xarray_has_timedelta_bug
 from climada.hazard.test.test_base import hazard_kwargs
 
 # See https://docs.xarray.dev/en/stable/whats-new.html#id80
 xarray_leadtime = pytest.mark.skipif(
-    (Version(xr.__version__) < Version("2025.07.0"))
-    and (Version(xr.__version__) >= Version("2025.04.0")),
-    reason="xarray timedelta bug",
+    xarray_has_timedelta_bug(), reason="xarray timedelta bug"
 )
 
 
