@@ -149,9 +149,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             It must be a valid pandas string used to define periods,
             e.g., "Y" for years, "M" for months, "3M" for trimester, etc.
             Defaults to `DEFAULT_TIME_RESOLUTION` ("Y").
-        all_groups_name: str, optional
-            The string to use to define all exposure points subgroup.
-            Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
         risk_disc_rates: DiscRates, optional
             The discount rate to apply to future risk. Defaults to None.
         interpolation_strategy: InterpolationStrategyBase, optional
@@ -165,7 +162,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         super().__init__(
             snapshots_list,
             return_periods=return_periods,
-            all_groups_name=DEFAULT_ALLGROUP_NAME,
             risk_disc_rates=risk_disc_rates,
         )
         self.start_date = min((snapshot.date for snapshot in snapshots_list))
