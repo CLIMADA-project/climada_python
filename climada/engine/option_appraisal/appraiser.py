@@ -245,7 +245,7 @@ class StaticAppraiser(StaticRiskTrajectory):
             LOGGER.debug("Found risk discount rate. Computing NPV.")
             metric_df = self.npv_transform(metric_df, self._risk_disc_rates)
 
-        LOGGER.debug(f"Computing averted risk for: {metric_name}.")
+        LOGGER.debug("Computing averted risk for: %s.", metric_name)
         metric_df = self._calc_averted(metric_df)
         metric_df = reorder_dataframe_columns(metric_df, DEFAULT_DF_COLUMN_PRIORITY)
         return metric_df
@@ -331,7 +331,7 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
     ) -> list[CalcRiskMetricsPeriod]:
         adapt_calc = []
         for _, measure in measure_set.measures().items():
-            LOGGER.debug(f"Creating measures risk_period for measure {measure.name}")
+            LOGGER.debug("Creating measures risk_period for measure %s", measure.name)
             meas_p = [
                 rmcalc.apply_measure(measure) for rmcalc in risk_metrics_calculators
             ]
@@ -365,10 +365,10 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         measures: list[str] | None = None,
         **kwargs,
     ) -> pd.DataFrame:
-        LOGGER.debug(f"Computing base metric: {metric_name}.")
+        LOGGER.debug("Computing base metric: %s.", metric_name)
         base_metrics = super()._generic_metrics(metric_name, metric_meth, **kwargs)
         if base_metrics is not None:
-            LOGGER.debug(f"Computing averted risk for: {metric_name}.")
+            LOGGER.debug("Computing averted risk for: %s.", metric_name)
             base_metrics = self._calc_averted(base_metrics)
             no_measures = base_metrics[
                 base_metrics[MEASURE_COL_NAME] == NO_MEASURE_VALUE
@@ -376,16 +376,16 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
             no_measures[REFERENCE_RISK_NAME] = no_measures[RISK_COL_NAME]
             no_measures[AVERTED_RISK_NAME] = 0.0
             no_measures[MEASURE_NET_COST_NAME] = 0.0
-            LOGGER.debug(f"Computing cash flow for: {metric_name}.")
+            LOGGER.debug("Computing cash flow for: %s.", metric_name)
             cash_flow_metrics = self.annual_cash_flows()
-            LOGGER.debug(f"Merging with base metric: {metric_name}.")
+            LOGGER.debug("Merging with base metric: %s.", metric_name)
             base_metrics = base_metrics.merge(
                 cash_flow_metrics[
                     [DATE_COL_NAME, MEASURE_COL_NAME, MEASURE_NET_COST_NAME]
                 ],
                 on=[MEASURE_COL_NAME, DATE_COL_NAME],
             )
-            LOGGER.debug(f"Merging with no measure: {metric_name}.")
+            LOGGER.debug("Merging with no measure: %s.", metric_name)
             base_metrics = pd.concat([no_measures, base_metrics])
 
             if measures is not None:
@@ -798,8 +798,7 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
             for value in planner.values()
         ):
             planner = {
-                k: (datetime.date(v1, 1, 1), datetime.date(v2, 1, 1))  # type: ignore
-                for k, (v1, v2) in planner.items()
+                k: (datetime.date(v1, 1, 1), datetime.date(v2, 1, 1)) for k, (v1, v2) in planner.items()  # type: ignore
             }
         self.planner: dict[str, tuple[datetime.date, datetime.date]] = planner
         self._planning = _get_unique_measure_periods(self.planner)
@@ -816,7 +815,7 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
     def _calc_measure_periods(self, risk_periods):
         # For each planned period, find correponding risk periods and create the periods with measure from planning
         LOGGER.debug(
-            f"{self.__class__.__name__}: Calc risk periods with planned measures"
+            "%s: Calc risk periods with planned measures", self.__class__.__name__
         )
         res = []
         for (start_date, end_date), measure_name_list in self._planning.items():
@@ -829,13 +828,15 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
             else:
                 measure = None
 
-            LOGGER.debug(f"Fetching risk_periods within {start_date} and {end_date}")
+            LOGGER.debug("Fetching risk_periods within %s and %s", start_date, end_date)
             periods = self._get_risk_periods(
                 risk_periods, start_date, end_date, strict=False
             )
             if measure:
                 LOGGER.debug(
-                    f"Creating measures risk_period for measure {measure.name} on {periods}"
+                    "Creating measures risk_period for measure %s on %s",
+                    measure.name,
+                    periods,
                 )
                 meas_periods = [period.apply_measure(measure) for period in periods]
                 res += meas_periods
@@ -849,7 +850,7 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
         measures: list[str] | None = None,
         **kwargs,
     ):
-        LOGGER.info(f"Computing base metric: {metric_name}.")
+        LOGGER.info("Computing base metric: %s.", metric_name)
         base_metrics = super()._generic_metrics(
             npv,
             metric_name,
@@ -857,7 +858,7 @@ class PlannedAdaptationAppraiser(InterpolatedAppraiser):
             measures,
             **kwargs,
         )
-        LOGGER.info(f"Computing planning metric: {metric_name}.")
+        LOGGER.info("Computing planning metric: %s.", metric_name)
         base_metrics = base_metrics.set_index(
             [MEASURE_COL_NAME, DATE_COL_NAME]
         ).sort_index()
