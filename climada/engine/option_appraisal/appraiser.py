@@ -22,7 +22,7 @@ import copy
 import datetime
 import logging
 import warnings
-from typing import Iterable
+from typing import Iterable, cast
 
 import matplotlib.dates as mdates
 import matplotlib.patches as mpatches
@@ -322,12 +322,14 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         interpolation_strategy: ImpactInterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        """Initialize a new `StaticRiskTrajectory`.
+        """Initialize a new `InterpolatedAppraiser`.
 
         Parameters
         ----------
         snapshot_list : list[Snapshot]
             The list of `Snapshot` object to compute risk from.
+        measure_set : MeasureSet
+            The set of adaptation measures to appraise.
         return_periods: list[int], optional
             The return periods to use when computing the `return_periods_metric`.
             Defaults to `DEFAULT_RP` ([20, 50, 100]).
@@ -336,9 +338,6 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
             It must be a valid pandas string used to define periods,
             e.g., "Y" for years, "M" for months, "3M" for trimester, etc.
             Defaults to `DEFAULT_TIME_RESOLUTION` ("Y").
-        all_groups_name: str, optional
-            The string to use to define all exposure points subgroup.
-            Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
         risk_disc_rates: DiscRates, optional
             The discount rate to apply to future risk. Defaults to None.
         interpolation_strategy: InterpolationStrategyBase, optional
@@ -406,32 +405,30 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
     ) -> pd.DataFrame:
         LOGGER.debug("Computing base metric: %s.", metric_name)
         base_metrics = super()._generic_metrics(metric_name, metric_meth, **kwargs)
-        if base_metrics is not None:
-            LOGGER.debug("Computing averted risk for: %s.", metric_name)
-            base_metrics = self._calc_averted(base_metrics)
-            no_measures = base_metrics[
-                base_metrics[MEASURE_COL_NAME] == NO_MEASURE_VALUE
-            ].copy()
-            no_measures[REFERENCE_RISK_NAME] = no_measures[RISK_COL_NAME]
-            no_measures[AVERTED_RISK_NAME] = 0.0
-            no_measures[MEASURE_NET_COST_NAME] = 0.0
-            LOGGER.debug("Computing cash flow for: %s.", metric_name)
-            cash_flow_metrics = self.annual_cash_flows()
-            LOGGER.debug("Merging with base metric: %s.", metric_name)
-            base_metrics = base_metrics.merge(
-                cash_flow_metrics[
-                    [DATE_COL_NAME, MEASURE_COL_NAME, MEASURE_NET_COST_NAME]
-                ],
-                on=[MEASURE_COL_NAME, DATE_COL_NAME],
-            )
-            LOGGER.debug("Merging with no measure: %s.", metric_name)
-            base_metrics = pd.concat([no_measures, base_metrics])
 
-            if measures is not None:
-                base_metrics = base_metrics.loc[
-                    base_metrics[MEASURE_COL_NAME].isin(measures)
-                ].reset_index()
+        LOGGER.debug("Computing averted risk for: %s.", metric_name)
+        base_metrics = self._calc_averted(base_metrics)
+        no_measures = base_metrics[
+            base_metrics[MEASURE_COL_NAME] == NO_MEASURE_VALUE
+        ].copy()
+        no_measures[REFERENCE_RISK_NAME] = no_measures[RISK_COL_NAME]
+        no_measures[AVERTED_RISK_NAME] = 0.0
+        no_measures[MEASURE_NET_COST_NAME] = 0.0
+        LOGGER.debug("Computing cash flow for: %s.", metric_name)
+        cash_flow_metrics = self.annual_cash_flows()
+        LOGGER.debug("Merging with base metric: %s.", metric_name)
+        base_metrics = base_metrics.merge(
+            cash_flow_metrics[[DATE_COL_NAME, MEASURE_COL_NAME, MEASURE_NET_COST_NAME]],
+            on=[MEASURE_COL_NAME, DATE_COL_NAME],
+        )
+        LOGGER.debug("Merging with no measure: %s.", metric_name)
+        base_metrics = pd.concat([no_measures, base_metrics])
 
+        if measures is not None:
+            col = cast(pd.Series, base_metrics[MEASURE_COL_NAME])  # For LSP
+            base_metrics = base_metrics.loc[col.isin(measures)].reset_index()
+
+        base_metrics = cast(pd.DataFrame, base_metrics)  # For LSP
         return base_metrics
 
     @staticmethod
@@ -491,7 +488,9 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
         if not include_no_measure:
             metrics_df = metrics_df[metrics_df[MEASURE_COL_NAME] != NO_MEASURE_VALUE]
 
-        metrics_df.rename(columns={RISK_COL_NAME: RESIDUAL_RISK_NAME}, inplace=True)
+        metrics_df.rename(columns={RISK_COL_NAME: RESIDUAL_RISK_NAME}, inplace=True)  # type: ignore
+        # (Dict[str,str] not accepted as a Mapping for some reason)
+
         metrics_df["cumulated measure cost"] = metrics_df.groupby(
             [GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME], observed=True
         )[MEASURE_NET_COST_NAME].cumsum()
@@ -511,7 +510,6 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
             RETURN_PERIOD_METRIC_NAME,
             AAI_PER_GROUP_METRIC_NAME,
         ],
-        npv: bool = True,
         include_no_measure=False,
         **kwargs,
     ) -> pd.DataFrame | pd.Series:
@@ -562,6 +560,7 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
                         DATE_COL_NAME: "first",
                     }
                 )
+                df = cast(pd.DataFrame, df)  # LSP
             df[MEASURE_COL_NAME] = meas_name
             res.append(df)
         df = pd.concat(res)
@@ -642,7 +641,7 @@ class InterpolatedAppraiser(InterpolatedRiskTrajectory):
             sharex=False,
             sharey=False,
         )
-        self.plot_time_waterfall(ax=axs[0], start_date=start_date, end_date=end_date)
+        self.plot_time_waterfall(ax=axs[0])
 
         for i, measure in enumerate(measures):
             ax = axs[i + 1]
