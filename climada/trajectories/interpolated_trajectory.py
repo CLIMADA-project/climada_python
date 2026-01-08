@@ -135,7 +135,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         interpolation_strategy: InterpolationStrategyBase | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
-        """Initialize a new `StaticRiskTrajectory`.
+        """Initialize a new `InterpolatedRiskTrajectory`.
 
         Parameters
         ----------
