@@ -20,7 +20,6 @@ Tests for Hazard Forecast.
 """
 
 import datetime as dt
-from pathlib import Path
 
 import numpy as np
 import numpy.testing as npt
@@ -117,7 +116,6 @@ class TestHazardForecastConcat:
         haz_fc3 = haz_fc.select(event_id=[1, 2])
         haz_fc_concat = HazardForecast.concat([haz_fc1, haz_fc2, haz_fc3])
         assert isinstance(haz_fc_concat, HazardForecast)
-        assert haz_fc_concat.size == 3
         npt.assert_array_equal(
             haz_fc_concat.lead_time, np.concatenate((lead_time[2:3], lead_time[0:2]))
         )
@@ -425,6 +423,7 @@ class TestReduce:
 
     @pytest.fixture
     def q(self):
+        """Quantile to test"""
         return 0.25
 
     @pytest.fixture

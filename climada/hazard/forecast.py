@@ -24,8 +24,8 @@ import pathlib
 from typing import Any, Dict, Literal, Optional
 
 import numpy as np
-import scipy.sparse as sparse
 import xarray as xr
+from scipy import sparse
 
 from climada.hazard.xarray import HazardXarrayReader
 

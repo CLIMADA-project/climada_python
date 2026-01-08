@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Literal, Union
 
 import numpy as np
-import scipy.sparse as sparse
+from scipy import sparse
 
 from ..util import log_level
 from ..util.checker import size
