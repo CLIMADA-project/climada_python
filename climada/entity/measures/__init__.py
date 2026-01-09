@@ -19,5 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 init measures
 """
 
-from .base import *
-from .measure_set import *
+from .base import Measure
+from .measure_set import MeasureSet
+
+__all__ = ["Measure", "MeasureSet"]
