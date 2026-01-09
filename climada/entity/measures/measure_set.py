@@ -22,19 +22,18 @@ Define MeasureSet class.
 __all__ = ["MeasureSet"]
 
 import logging
-from typing import Iterable
+from typing import Any, Callable, Dict, Iterable, List, Optional, cast
 
 import numpy as np
 from scipy.sparse import csr_matrix
 
-import climada.util.hdf5_handler as u_hdf5
+from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
 from climada.entity.measures.base import Measure
 from climada.entity.measures.cost_income import CostIncome
+from climada.hazard.base import Hazard
 
 LOGGER = logging.getLogger(__name__)
-
-# TODOS:
-# Implement __contains__ method
 
 
 class MeasureSet:
@@ -43,55 +42,58 @@ class MeasureSet:
     Attributes
     ----------
     _data : dict
-        Contains Measure objects. This attribute is not suppossed to be accessed directly.
-        Use the available methods instead.
+        Contains Measure objects keyed by their name.
     """
 
     def __init__(self, measures: Iterable[Measure]):
-        """Initialize a new MeasureSet object with specified data.
+        """Initialize a new MeasureSet object.
 
         Parameters
         ----------
-        measures : iterable of Measure objects.
-            The measures to include in the MeasureSet
+        measures : Iterable[Measure].
+            The measures to include in the MeasureSet.
 
         """
-        haz_type = np.unique([meas.haz_type for meas in measures])[0]
-        self.haz_type = haz_type
-        self._data = {meas.name: meas for meas in measures}
+        self._data: Dict[str, Measure] = {meas.name: meas for meas in measures}
 
-    def append(self, measure):
-        """Append an Measure. Override if same name and haz_type.
+    def append(self, measure: Measure):
+        """
+        Append a Measure. Overwrites if a measure with the same name exists.
 
         Parameters
         ----------
-        meas : Measure
-            Measure instance
+        measure : Measure
+            The Measure instance to add.
 
         Raises
         ------
-        ValueError
+        TypeError
+            If input is not an instance of Measure.
+
         """
         if not isinstance(measure, Measure):
-            raise ValueError("Input value is not of type Measure.")
-        if measure.haz_type != self.haz_type:
-            raise ValueError("Input measures for different hazard type")
+            raise TypeError(f"Expected Measure, got {type(measure).__name__}")
+
         self._data[measure.name] = measure
 
-    def measures(self, names=None):
-        """Get measures
+    def measures(self, names: Optional[Iterable[str]] = None) -> Dict[str, Measure]:
+        """
+        Get a dictionary of measures.
 
         Parameters
         ----------
-        name : str, optional
-            measure name
+        names : Iterable[str], optional
+            Filter by these measure names. If None, returns all.
 
         Returns
         -------
+        Dict[str, Measure]
+            Dictionary of measure names and objects.
+
         """
         if names is None:
             return self._data
-        return {name: meas for name, meas in self._data.items() if name in names}
+        return {name: self._data[name] for name in names if name in self._data}
 
     @property
     def names(self):
@@ -111,16 +113,9 @@ class MeasureSet:
         return list(self._data.keys())
 
     @property
-    def size(self):
-        """Get number of measures contained with input hazard type and
-        /or id. If no input provided, get total number of impact functions.
-
-        Parameters
-        ----------
-        haz_type : str, optional
-            hazard type
-        name : str, optional
-            measure name
+    def size(self) -> int:
+        """
+        Number of measures in the set.
 
         Returns
         -------
@@ -128,86 +123,107 @@ class MeasureSet:
         """
         return len(self._data)
 
-    # def combine(self, names=None, start_year=None, end_year=None, combo_name=None):
-    def combine(self, names=None, combo_name=None) -> Measure:
+    def __contains__(self, item: str) -> bool:
+        """Check if a measure name exists in the set."""
+        return item in self._data
+
+    def combine(
+        self, names: Optional[List[str]] = None, combo_name: Optional[str] = None
+    ) -> Measure:
+        """
+        Combine multiple measures into a single representative Measure.
+
+        The combination is maximalistic, the combined measure has the maximum
+        effect of each of its members.
+
+        Parameters
+        ----------
+        names : List[str], optional
+            Names of measures to combine. Defaults to all measures.
+        combo_name : str, optional
+            Name for the combined measure. Defaults to joined names.
+
+        Returns
+        -------
+        Measure
+            A new combined Measure object.
+        """
         names = self.names if names is None else names
-        # if start_year is None:
-        #     start_year = np.min([meas.start_year for meas in self.measures(names).values()])
-        # if end_year is None:
-        #     end_year = np.max([meas.end_year for meas in self.measures(names).values()])
         meas_list = list(self.measures(names).values())
 
-        def comb_haz_map(hazard, year=None):
-            hazard_modified = meas_list[0].apply_to_hazard(hazard)
+        if not meas_list:
+            raise ValueError("No measures found to combine.")
+
+        def comb_haz_map(hazard: Hazard) -> Hazard:
+            """Apply measures sequentially and reduce hazard intensity/frequency."""
+            hazard_mod = meas_list[0].apply_to_hazard(hazard)
             for measure in meas_list[1:]:
                 new_haz = measure.apply_to_hazard(hazard)
-                hazard_modified.intensity = csr_matrix(
+                hazard_mod.intensity = csr_matrix(
                     np.minimum(
-                        new_haz.intensity.todense(), hazard_modified.intensity.todense()
+                        new_haz.intensity.toarray(), hazard_mod.intensity.toarray()
                     )
                 )
-                hazard_modified.fraction = csr_matrix(
+                hazard_mod.fraction = csr_matrix(
                     np.minimum(
-                        new_haz.fraction.todense(), hazard_modified.fraction.todense()
+                        new_haz.fraction.toarray(), hazard_mod.fraction.toarray()
                     )
                 )
-                hazard_modified.frequency = np.minimum(
-                    new_haz.frequency, hazard_modified.frequency
+                hazard_mod.frequency = np.minimum(
+                    new_haz.frequency, hazard_mod.frequency
                 )
-            return hazard_modified
+            return hazard_mod
 
-        def comb_impfset_map(impfset, year=None):
-            impfset_modified = meas_list[0].apply_to_impfset(impfset)
+        def comb_impfset_map(impfset: ImpactFuncSet) -> ImpactFuncSet:
+            """Apply measures and reduce impact function parameters."""
+            impfset_mod = meas_list[0].apply_to_impfset(impfset)
             for measure in meas_list[1:]:
                 new_impfset = measure.apply_to_impfset(impfset)
-                for new_impf in new_impfset.get_func(self.haz_type):
-                    impf_modified = impfset_modified.get_func(
-                        self.haz_type, new_impf.id
+                for new_impf in new_impfset.get_func():
+                    impf_mod = impfset_mod.get_func(new_impf.id)
+                    impf_mod = cast(ImpactFunc, impf_mod)
+                    impf_mod.paa = np.minimum(new_impf.paa, impf_mod.paa)
+                    impf_mod.mdd = np.minimum(new_impf.mdd, impf_mod.mdd)
+                    impf_mod.intensity = np.maximum(
+                        new_impf.intensity, impf_mod.intensity
                     )
-                    impf_modified.paa = np.minimum(new_impf.paa, impf_modified.paa)
-                    impf_modified.mdd = np.minimum(new_impf.mdd, impf_modified.mdd)
-                    impf_modified.intensity = np.maximum(
-                        new_impf.intensity, impf_modified.intensity
-                    )
-            return impfset_modified
+            return impfset_mod
 
-        def comb_exp_map(exposures, year=None):
-            exposures_modified = meas_list[0].apply_to_exposures(exposures)
+        def comb_exp_map(exposures: Exposures) -> Exposures:
+            """Apply measures and update exposure values and impact function IDs."""
+            exp_mod = meas_list[0].apply_to_exposures(exposures)
             for measure in meas_list[1:]:
-                new_exposures = measure.apply_to_exposures(exposures)
-                exposures_modified.gdf["value"] = np.minimum(
-                    new_exposures.gdf["value"], exposures_modified.gdf["value"]
+                new_exp = measure.apply_to_exposures(exposures)
+                exp_mod.gdf["value"] = np.minimum(
+                    new_exp.gdf["value"], exp_mod.gdf["value"]
                 )
-                impf_col = f"impf_{measure.haz_type}"
-                changed_impf_ids = np.array(
-                    new_exposures.gdf[impf_col] != exposures.gdf[impf_col]
-                )
-                exposures_modified.gdf[changed_impf_ids] = new_exposures.gdf[
-                    changed_impf_ids
-                ]
-            return exposures_modified
 
-        def comb_cost_income():
-            combined_cost_income = CostIncome(
-                mkt_price_year=meas_list[0].cost_income.mkt_price_year.year,
-                cost_yearly_growth_rate=meas_list[0].cost_income.cost_growth_rate,
-                init_cost=sum([meas.cost_income.init_cost for meas in meas_list]),
-                periodic_cost=sum(
-                    [meas.cost_income.periodic_cost for meas in meas_list]
-                ),
-                periodic_income=sum(
-                    [meas.cost_income.periodic_income for meas in meas_list]
-                ),
-                income_yearly_growth_rate=meas_list[0].cost_income.income_growth_rate,
+                # TODO make a choice here
+                impf_col = f"impf_{measure.haz_type}"
+                if impf_col in new_exp.gdf.columns:
+                    changed_ids = new_exp.gdf[impf_col] != exposures.gdf[impf_col]
+                    exp_mod.gdf.loc[changed_ids, impf_col] = new_exp.gdf.loc[
+                        changed_ids, impf_col
+                    ]
+            return exp_mod
+
+        def comb_cost_income() -> CostIncome:
+            """Sum costs and incomes from all measures."""
+            first_ci = meas_list[0].cost_income
+            return CostIncome(
+                mkt_price_year=first_ci.mkt_price_year.year,
+                cost_yearly_growth_rate=first_ci.cost_growth_rate,
+                init_cost=sum(m.cost_income.init_cost for m in meas_list),
+                periodic_cost=sum(m.cost_income.periodic_cost for m in meas_list),
+                periodic_income=sum(m.cost_income.periodic_income for m in meas_list),
+                income_yearly_growth_rate=first_ci.income_growth_rate,
             )
-            return combined_cost_income
 
         return Measure(
-            name="_".join(names) if combo_name is None else combo_name,
-            haz_type=self.haz_type,
+            name=combo_name or "_".join(names),
             exposures_change=comb_exp_map,
             impfset_change=comb_impfset_map,
             hazard_change=comb_haz_map,
-            combo=names,
+            sub_measures=names,
             cost_income=comb_cost_income(),
         )
