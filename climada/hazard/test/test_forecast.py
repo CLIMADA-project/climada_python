@@ -19,18 +19,26 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Tests for Hazard Forecast.
 """
 
+import datetime as dt
+
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
+import xarray as xr
 from scipy.sparse import csr_matrix
 
 from climada.hazard.base import Hazard
-from climada.hazard.forecast import HazardForecast
+from climada.hazard.forecast import HazardForecast, xarray_has_timedelta_bug
 from climada.hazard.test.test_base import hazard_kwargs
 
+# See https://docs.xarray.dev/en/stable/whats-new.html#id80
+xarray_leadtime = pytest.mark.skipif(
+    xarray_has_timedelta_bug(), reason="xarray timedelta bug"
+)
 
-@pytest.fixture
+
+@pytest.fixture(scope="module")
 def haz_kwargs():
     return hazard_kwargs()
 
@@ -42,7 +50,7 @@ def hazard(haz_kwargs):
 
 @pytest.fixture
 def lead_time(haz_kwargs):
-    return pd.timedelta_range("1h", periods=len(haz_kwargs["event_id"])).to_numpy()
+    return pd.timedelta_range("1h", periods=len(haz_kwargs["event_id"]))
 
 
 @pytest.fixture
@@ -105,7 +113,6 @@ class TestHazardForecastConcat:
         haz_fc3 = haz_fc.select(event_id=[1, 2])
         haz_fc_concat = HazardForecast.concat([haz_fc1, haz_fc2, haz_fc3])
         assert isinstance(haz_fc_concat, HazardForecast)
-        assert haz_fc_concat.size == 3
         npt.assert_array_equal(
             haz_fc_concat.lead_time, np.concatenate((lead_time[2:3], lead_time[0:2]))
         )
@@ -126,6 +133,156 @@ class TestHazardForecastConcat:
             HazardForecast.concat([haz_fc, hazard])
         with pytest.raises(TypeError, match="different classes"):
             Hazard.concat([haz_fc, hazard])
+
+
+class TestXarrayReader:
+
+    @pytest.fixture()
+    def forecast_netcdf_file(self, tmp_path_factory):
+        """Create a NetCDF file with forecast data structure"""
+        tmpdir = tmp_path_factory.mktemp("forecast_data")
+        netcdf_path = tmpdir / "forecast_data.nc"
+
+        crs = "EPSG:4326"
+
+        n_eps = 5
+        n_lead_time = 4
+        n_lat = 3
+        n_lon = 4
+
+        eps = np.array([3, 8, 13, 16, 20])
+        ref_time = np.array([dt.datetime(2025, 12, 8, 6, 0, 0)], dtype="datetime64[ns]")
+        lead_time_vals = pd.timedelta_range(
+            "3h", periods=n_lead_time, freq="2h"
+        ).to_numpy()
+        lon = np.array([10.0, 10.5, 11.0, 11.5])
+        lat = np.array([45.0, 45.5, 46.0])
+
+        valid_time = ref_time[0] + lead_time_vals
+
+        np.random.seed(42)
+        intensity = np.random.rand(n_eps, 1, n_lead_time, n_lat, n_lon) * 10
+
+        # Create xarray Dataset
+        dset = xr.Dataset(
+            {
+                "__xarray_dataarray_variable__": (
+                    ["eps", "ref_time", "lead_time", "lat", "lon"],
+                    intensity,
+                ),
+            },
+            coords={
+                "eps": eps,
+                "ref_time": ref_time,
+                "lead_time": lead_time_vals,
+                "lon": lon,
+                "lat": lat,
+                "valid_time": (["lead_time"], valid_time),
+            },
+        )
+        dset.to_netcdf(netcdf_path)
+
+        return {
+            "path": netcdf_path,
+            "n_eps": n_eps,
+            "n_lead_time": n_lead_time,
+            "n_lat": n_lat,
+            "n_lon": n_lon,
+            "eps": eps,
+            "lead_time": lead_time_vals,
+            "lon": lon,
+            "lat": lat,
+            "crs": crs,
+        }
+
+    @xarray_leadtime
+    def test_from_xarray_raster_basic(self, forecast_netcdf_file):
+        """Test basic loading of forecast hazard from xarray"""
+        haz_fc = HazardForecast.from_xarray_raster(
+            forecast_netcdf_file["path"],
+            hazard_type="PR",
+            intensity_unit="mm/h",
+            coordinate_vars={
+                "longitude": "lon",
+                "latitude": "lat",
+                "lead_time": "lead_time",
+                "member": "eps",
+            },
+        )
+
+        # Check that it's a HazardForecast instance
+        assert isinstance(haz_fc, HazardForecast)
+
+        # Check dimensions - after stacking, we should have n_eps * n_lead_time events
+        expected_n_events = (
+            forecast_netcdf_file["n_eps"] * forecast_netcdf_file["n_lead_time"]
+        )
+        assert len(haz_fc.event_id) == expected_n_events
+        assert len(haz_fc.lead_time) == expected_n_events
+        assert len(haz_fc.member) == expected_n_events
+
+        # Check that lead_time and member are correctly extracted
+        npt.assert_array_equal(np.unique(haz_fc.member), forecast_netcdf_file["eps"])
+
+        # Check intensity shape (events x centroids)
+        expected_n_centroids = (
+            forecast_netcdf_file["n_lat"] * forecast_netcdf_file["n_lon"]
+        )
+        assert haz_fc.intensity.shape == (expected_n_events, expected_n_centroids)
+
+        # Check centroids
+        assert len(haz_fc.centroids.lat) == expected_n_centroids
+        assert len(haz_fc.centroids.lon) == expected_n_centroids
+
+    @xarray_leadtime
+    def test_from_xarray_raster_event_names(self, forecast_netcdf_file):
+        """Test that event names are auto-generated from lead_time and member"""
+        haz_fc = HazardForecast.from_xarray_raster(
+            forecast_netcdf_file["path"],
+            hazard_type="PR",
+            intensity_unit="mm/h",
+            coordinate_vars={
+                "longitude": "lon",
+                "latitude": "lat",
+                "lead_time": "lead_time",
+                "member": "eps",
+            },
+            crs=forecast_netcdf_file["crs"],
+        )
+
+        # Check that event names are generated with lead_time in hours
+        expected_n_events = (
+            forecast_netcdf_file["n_eps"] * forecast_netcdf_file["n_lead_time"]
+        )
+        assert len(haz_fc.event_name) == expected_n_events
+
+        event_names_expected = [
+            f"lt_{lt / np.timedelta64(1, 'h'):.0f}h_m_{mm}"
+            for lt, mm in zip(haz_fc.lead_time, haz_fc.member)
+        ]
+        npt.assert_array_equal(haz_fc.event_name, event_names_expected)
+
+    @xarray_leadtime
+    def test_from_xarray_raster_dates(self, forecast_netcdf_file):
+        """Test that dates are set to 0 for forecast events"""
+        haz_fc = HazardForecast.from_xarray_raster(
+            forecast_netcdf_file["path"],
+            hazard_type="PR",
+            intensity_unit="mm/h",
+            coordinate_vars={
+                "longitude": "lon",
+                "latitude": "lat",
+                "lead_time": "lead_time",
+                "member": "eps",
+            },
+            crs=forecast_netcdf_file["crs"],
+        )
+
+        # Check that all dates are 0 (undefined for forecast)
+        expected_n_events = (
+            forecast_netcdf_file["n_eps"] * forecast_netcdf_file["n_lead_time"]
+        )
+        npt.assert_array_equal(haz_fc.date, np.zeros(expected_n_events, dtype=int))
 
 
 class TestSelect:
@@ -211,8 +368,10 @@ class TestSelect:
         with pytest.raises(IndexError):
             haz_fc.select(event_id=[-1])
         with pytest.raises(IndexError):
+            haz_fc.select(event_id=[])
+        with pytest.raises(ValueError, match="Empty selection"):
             haz_fc.select(member=[-1])
-        with pytest.raises(IndexError):
+        with pytest.raises(ValueError, match="Empty selection"):
             haz_fc.select(
                 lead_time=[np.timedelta64("2", "Y").astype("timedelta64[ns]")]
             )
@@ -235,84 +394,196 @@ def test_write_read_hazard_forecast(haz_fc, tmp_path):
             npt.assert_array_equal(haz_fc.__dict__[key], haz_fc_read.__dict__[key])
 
 
-@pytest.mark.parametrize("attr", ["min", "mean", "max"])
-def test_hazard_forecast_mean_min_max(haz_fc, attr):
-    """Check mean, min, and max methods for ImpactForecast"""
-    haz_fcst_reduced = getattr(haz_fc, attr)()
+class TestReduce:
+    @pytest.fixture
+    def mat(self):
+        return np.array([[0, -1, 0], [1, 0, 0], [2, 1, 0], [3, 2, 1]], dtype="float")
 
-    # Assert sparse matrices
-    npt.assert_array_equal(
-        haz_fcst_reduced.intensity.todense(),
-        getattr(haz_fc.intensity.todense(), attr)(axis=0),
-    )
-    npt.assert_array_equal(
-        haz_fcst_reduced.fraction.todense(),
-        getattr(haz_fc.fraction.todense(), attr)(axis=0),
-    )
+    @pytest.fixture(autouse=True)
+    def haz_fc_custom_intensity_fraction(self, mat, haz_fc):
+        haz_fc.intensity = csr_matrix(mat)
+        haz_fc.fraction = csr_matrix(mat)
 
-    # Check that attributes where reduced correctly
-    npt.assert_array_equal(np.isnat(haz_fcst_reduced.lead_time), [True])
-    npt.assert_array_equal(haz_fcst_reduced.member, [-1])
-    npt.assert_array_equal(haz_fcst_reduced.event_name, [attr])
-    npt.assert_array_equal(haz_fcst_reduced.event_id, [0])
-    npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
-    npt.assert_array_equal(haz_fcst_reduced.date, [0])
-    npt.assert_array_equal(haz_fcst_reduced.orig, [True])
+    @pytest.fixture
+    def haz_fc_dim_reduce(self, haz_fc):
+        """Create hazard forecast where some members/leadtimes are duplicated"""
+        haz_fc.member = np.array([1, 2, 1, 2])
+        haz_fc.lead_time = np.array(
+            [
+                np.timedelta64(1, "h"),
+                np.timedelta64(1, "h"),
+                np.timedelta64(2, "h"),
+                np.timedelta64(2, "h"),
+            ]
+        )
+        return haz_fc
 
+    @pytest.fixture
+    def q(self):
+        """Quantile to test"""
+        return 0.25
 
-@pytest.mark.parametrize("quantile", [0.3, 0.6, 0.8])
-def test_hazard_forecast_quantile(haz_fc, quantile):
-    """Check quantile method for HazardForecast"""
-    haz_fcst_quantile = haz_fc.quantile(q=quantile)
+    @pytest.fixture
+    def reduction_results(self):
+        return {
+            "min": [0, -1, 0],
+            "mean": [1.5, 0.5, 0.25],
+            "max": [3, 2, 1],
+            "median": [1.5, 0.5, 0.0],
+            "quantile": [0.75, -0.25, 0.0],
+        }
 
-    # assert intensity
-    npt.assert_array_equal(
-        haz_fcst_quantile.intensity.toarray().squeeze(),
-        np.quantile(haz_fc.intensity.toarray(), quantile, axis=0),
-    )
-    # assert fraction
-    npt.assert_array_equal(
-        haz_fcst_quantile.fraction.toarray().squeeze(),
-        np.quantile(haz_fc.fraction.toarray(), quantile, axis=0),
-    )
+    @pytest.fixture
+    def reduction_results_dim(self):
+        return {
+            "lead_time": {
+                "min": [[0, -1, 0], [1, 0, 0]],
+                "mean": [[1, 0, 0], [2, 1, 0.5]],
+                "median": [[1, 0, 0], [2, 1, 0.5]],
+                "max": [[2, 1, 0], [3, 2, 1]],
+                "quantile": [[0.5, -0.5, 0], [1.5, 0.5, 0.25]],
+            },
+            "member": {
+                "min": [[0, -1, 0], [2, 1, 0]],
+                "mean": [[0.5, -0.5, 0], [2.5, 1.5, 0.5]],
+                "median": [[0.5, -0.5, 0], [2.5, 1.5, 0.5]],
+                "max": [[1, 0, 0], [3, 2, 1]],
+                "quantile": [[0.25, -0.75, 0], [2.25, 1.25, 0.25]],
+            },
+        }
 
-    # check that attributes where reduced correctly
-    npt.assert_array_equal(
-        haz_fcst_quantile.lead_time, np.array([np.timedelta64("NaT")])
-    )
-    npt.assert_array_equal(haz_fcst_quantile.member, np.array([-1]))
-    npt.assert_array_equal(
-        haz_fcst_quantile.event_name, np.array([f"quantile_{quantile}"])
-    )
-    npt.assert_array_equal(haz_fcst_quantile.event_id, np.array([0]))
-    npt.assert_array_equal(haz_fcst_quantile.frequency, np.array([1]))
-    npt.assert_array_equal(haz_fcst_quantile.date, np.array([0]))
-    npt.assert_array_equal(haz_fcst_quantile.orig, np.array([True]))
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "quantile", "median"])
+    def test_reduce(self, haz_fc, q, reduction_results, attr):
+        """Check reduction methods for HazardForecast"""
+        kwargs = {"q": q} if attr == "quantile" else {}
+        haz_fcst_reduced = getattr(haz_fc, attr)(**kwargs)
 
+        # Test by checking results
+        npt.assert_array_equal(
+            haz_fcst_reduced.intensity.toarray().squeeze(), reduction_results[attr]
+        )
+        npt.assert_array_equal(
+            haz_fcst_reduced.fraction.toarray().squeeze(), reduction_results[attr]
+        )
 
-def test_median(haz_fc):
-    haz_fcst_median = haz_fc.median()
-    haz_fcst_quantile = haz_fc.quantile(q=0.5)
-    npt.assert_array_equal(
-        haz_fcst_median.intensity.todense(), haz_fcst_quantile.intensity.todense()
-    )
-    npt.assert_array_equal(
-        haz_fcst_median.intensity.todense(),
-        np.median(haz_fc.intensity.todense(), axis=0),
-    )
-    npt.assert_array_equal(
-        haz_fcst_median.fraction.todense(), haz_fcst_quantile.fraction.todense()
-    )
-    npt.assert_array_equal(
-        haz_fcst_median.fraction.todense(),
-        np.median(haz_fc.fraction.todense(), axis=0),
-    )
+        # Test by calling the same numpy function on the dense array
+        npt.assert_array_equal(
+            haz_fcst_reduced.intensity.toarray().squeeze(),
+            getattr(np, attr)(haz_fc.intensity.toarray(), axis=0, **kwargs),
+        )
+        npt.assert_array_equal(
+            haz_fcst_reduced.fraction.toarray().squeeze(),
+            getattr(np, attr)(haz_fc.fraction.toarray(), axis=0, **kwargs),
+        )
 
-    # check that attributes where reduced correctly
-    npt.assert_array_equal(haz_fcst_median.member, np.array([-1]))
-    npt.assert_array_equal(haz_fcst_median.lead_time, np.array([np.timedelta64("NaT")]))
-    npt.assert_array_equal(haz_fcst_median.event_id, np.array([0]))
-    npt.assert_array_equal(haz_fcst_median.event_name, np.array(["median"]))
-    npt.assert_array_equal(haz_fcst_median.frequency, np.array([1]))
-    npt.assert_array_equal(haz_fcst_median.date, np.array([0]))
-    npt.assert_array_equal(haz_fcst_median.orig, np.array([True]))
+        # Check that attributes where reduced correctly
+        attr_str = f"quantile_{q}" if attr == "quantile" else attr
+        npt.assert_array_equal(haz_fcst_reduced.lead_time, [np.timedelta64("NaT")])
+        npt.assert_array_equal(haz_fcst_reduced.member, [-1])
+        npt.assert_array_equal(haz_fcst_reduced.event_name, [attr_str])
+        npt.assert_array_equal(haz_fcst_reduced.event_id, [1])
+        npt.assert_array_equal(haz_fcst_reduced.frequency, [1])
+        npt.assert_array_equal(haz_fcst_reduced.date, [0])
+        npt.assert_array_equal(haz_fcst_reduced.orig, [True])
+
+    @pytest.mark.parametrize("quantile,reduce", [(0.0, "min"), (1.0, "max")])
+    def test_quantile_min_max(self, haz_fc, quantile, reduce):
+        """Compare min/max with quantiles 0/1"""
+        haz_fcst_quantile = haz_fc.quantile(q=quantile)
+        haz_fcst_reduce = getattr(haz_fc, reduce)()
+        npt.assert_array_equal(
+            haz_fcst_quantile.intensity.todense(), haz_fcst_reduce.intensity.todense()
+        )
+
+    def test_median_quantile(self, haz_fc):
+        """Compare median with quantile 0.5"""
+        haz_fcst_median = haz_fc.median()
+        haz_fcst_quantile = haz_fc.quantile(q=0.5)
+        npt.assert_array_equal(
+            haz_fcst_median.intensity.todense(), haz_fcst_quantile.intensity.todense()
+        )
+        npt.assert_array_equal(
+            haz_fcst_median.intensity.todense(),
+            np.median(haz_fc.intensity.todense(), axis=0),
+        )
+
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])
+    @pytest.mark.parametrize("dim", ["lead_time", "member", "single"])
+    def test_reduce_dim_unique_or_single(self, haz_fc, q, attr, dim):
+        """Test that reduction over a dimension with all-unique values does nothing"""
+        kwargs = {"q": q} if attr == "quantile" else {}
+        if dim == "single":
+            haz_fc = haz_fc.select(event_id=[haz_fc.event_id[0]])
+            dim = None
+
+        haz_fc_reduced = getattr(haz_fc, attr)(dim=dim, **kwargs)
+
+        npt.assert_array_equal(haz_fc_reduced.member, haz_fc.member)
+        npt.assert_array_equal(haz_fc_reduced.lead_time, haz_fc.lead_time)
+        npt.assert_array_equal(
+            haz_fc_reduced.intensity.todense(), haz_fc.intensity.todense()
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.todense(), haz_fc.fraction.todense()
+        )
+        if dim == "single":
+            npt.assert_array_equal(haz_fc_reduced.event_name, haz_fc.event_name)
+            npt.assert_array_equal(haz_fc_reduced.event_id, haz_fc.event_id)
+            npt.assert_array_equal(haz_fc_reduced.frequency, haz_fc.frequency)
+            npt.assert_array_equal(haz_fc_reduced.date, haz_fc.date)
+            npt.assert_array_equal(haz_fc_reduced.orig, haz_fc.orig)
+
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "quantile", "median"])
+    def test_reduce_dim_error(self, haz_fc, q, attr):
+        """Check reduction error message for invalid dimension name"""
+        kwargs = {"q": q} if attr == "quantile" else {}
+        with pytest.raises(ValueError, match=r"Cannot reduce over dim \'invalid_dim\'"):
+            getattr(haz_fc, attr)(dim="invalid_dim", **kwargs)
+
+    @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])
+    @pytest.mark.parametrize("dim", ["lead_time", "member"])
+    def test_reduce_dim(self, haz_fc_dim_reduce, q, reduction_results_dim, attr, dim):
+        """Check reduction for HazardForecast with dim argument"""
+        kwargs = {"q": q} if attr == "quantile" else {}
+        haz_fc_reduced = getattr(haz_fc_dim_reduce, attr)(dim=dim, **kwargs)
+
+        rdim = "member" if dim == "lead_time" else "lead_time"
+        unique_rdim = np.unique(getattr(haz_fc_dim_reduce, rdim))
+        npt.assert_array_equal(getattr(haz_fc_reduced, rdim), unique_rdim)
+
+        if dim == "lead_time":
+            unique_rdim = [1, 2]
+            npt.assert_array_equal(
+                haz_fc_reduced.lead_time, [np.timedelta64("NaT"), np.timedelta64("NaT")]
+            )
+            npt.assert_array_equal(haz_fc_reduced.member, unique_rdim)
+        else:
+            unique_rdim = [np.timedelta64(1, "h"), np.timedelta64(2, "h")]
+            npt.assert_array_equal(
+                haz_fc_reduced.lead_time,
+                unique_rdim,
+            )
+            npt.assert_array_equal(haz_fc_reduced.member, [-1, -1])
+
+        haz_fc_expected = haz_fc_dim_reduce.concat(
+            [
+                getattr(haz_fc_dim_reduce.select(**{rdim: val}), attr)(
+                    dim=None, **kwargs
+                )
+                for val in unique_rdim
+            ]
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.intensity.toarray().squeeze(),
+            reduction_results_dim[dim][attr],
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.toarray().squeeze(),
+            reduction_results_dim[dim][attr],
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.intensity.todense(), haz_fc_expected.intensity.todense()
+        )
+        npt.assert_array_equal(
+            haz_fc_reduced.fraction.todense(), haz_fc_expected.fraction.todense()
+        )
