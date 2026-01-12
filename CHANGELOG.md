@@ -12,7 +12,10 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- Support for ensemble forecast data as hazard via `HazardForecast` and `ImpactForecast`, see `doc.user_guide.climada_engine_ImpactForecast.ipynb` [#1115](https://github.com/CLIMADA-project/climada_python/pull/)
+
 ### Changed
+
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
 
 ### Fixed
