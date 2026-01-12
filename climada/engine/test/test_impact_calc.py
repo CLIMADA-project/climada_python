@@ -701,7 +701,7 @@ class TestImpactCalcForecast:
     @pytest.fixture
     def impact_calc_forecast(self, impact_calc):
         """Write NaNs to attributes that are not used"""
-        impact_calc["aai_agg"] = np.full_like(impact_calc["aai_agg"], np.nan)
+        impact_calc["aai_agg"] = np.nan
         impact_calc["eai_exp"] = np.full_like(impact_calc["eai_exp"], np.nan)
 
     def test_impact_forecast(
