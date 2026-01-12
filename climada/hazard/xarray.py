@@ -238,6 +238,8 @@ class HazardXarrayReader:
     ----------
     data : xr.Dataset
         The data to be read as hazard.
+    data_stacked : xr.Dataset
+        The internally stacked (vectorized) version of ``data``.
     intensity : str
         The name of the variable containing the hazard intensity information.
         Default: ``"intensity"``
@@ -254,6 +256,7 @@ class HazardXarrayReader:
     """
 
     data: xr.Dataset
+    data_stacked: xr.Dataset = field(init=False)
     intensity: str = "intensity"
     coordinate_vars: InitVar[dict[str, str] | None] = field(default=None, kw_only=True)
     data_vars: dict[str, str] | None = field(default=None, kw_only=True)
@@ -344,7 +347,7 @@ class HazardXarrayReader:
         #       preserve order. However, we want longitude to run faster than latitude.
         #       So we use 'dict' without values, as 'dict' preserves insertion order
         #       (dict keys behave like a set).
-        data = data.stack(
+        self.data_stacked = data.stack(
             event=self.data_dims["event"],
             lat_lon=list(
                 dict.fromkeys(
@@ -355,20 +358,20 @@ class HazardXarrayReader:
 
         # Transform coordinates into centroids
         centroids = Centroids(
-            lat=data[self.coords["latitude"]].to_numpy(),
-            lon=data[self.coords["longitude"]].to_numpy(),
+            lat=self.data_stacked[self.coords["latitude"]].to_numpy(),
+            lon=self.data_stacked[self.coords["longitude"]].to_numpy(),
             crs=self.crs,
         )
 
         # Read the intensity data
         LOGGER.debug("Loading Hazard intensity from DataArray '%s'", self.intensity)
-        intensity_matrix = _to_csr_matrix(data[self.intensity])
+        intensity_matrix = _to_csr_matrix(self.data_stacked[self.intensity])
 
         # Create a DataFrame storing access information for each of data_vars
         # NOTE: Each row will be passed as arguments to
         #       `load_from_xarray_or_return_default`, see its docstring for further
         #       explanation of the DataFrame columns / keywords.
-        num_events = data.sizes["event"]
+        num_events = self.data_stacked.sizes["event"]
         data_ident = pd.DataFrame(
             data={
                 # The attribute of the Hazard class where the data will be stored
@@ -384,10 +387,12 @@ class HazardXarrayReader:
                     np.array(range(num_events), dtype=int) + 1,
                     list(
                         _year_month_day_accessor(
-                            data[self.coords["event"]], strict=False
+                            self.data_stacked[self.coords["event"]], strict=False
                         ).flat
                     ),
-                    _date_to_ordinal_accessor(data[self.coords["event"]], strict=False),
+                    _date_to_ordinal_accessor(
+                        self.data_stacked[self.coords["event"]], strict=False
+                    ),
                 ],
                 # The accessor for the data in the Dataset
                 "accessor": [
@@ -411,10 +416,11 @@ class HazardXarrayReader:
         # Set the Hazard attributes
         for _, ident in data_ident.iterrows():
             self.hazard_kwargs[ident["hazard_attr"]] = (
-                _load_from_xarray_or_return_default(data=data, **ident)
+                _load_from_xarray_or_return_default(data=self.data_stacked, **ident)
             )
 
         # Done!
+
         LOGGER.debug("Hazard successfully loaded. Number of events: %i", num_events)
         self.hazard_kwargs.update(centroids=centroids, intensity=intensity_matrix)
         return self.hazard_kwargs
