@@ -57,7 +57,7 @@ def mock_context(shared_data):
         "mod_exp": modified_exp,
         "mod_haz": modified_haz,
         "mod_imp": modified_imp,
-        "date": pd.Timestamp(2023),
+        "date": pd.Timestamp("2023"),
     }
 
 
@@ -72,14 +72,14 @@ def test_not_from_factory_warning(mock_context):
             hazard=mock_context["haz"],
             impfset=mock_context["imp"],
             measure=None,
-            date=2001,
+            date="2001",
         )
 
 
 @pytest.mark.parametrize(
     "input_date,expected",
     [
-        (2023, pd.Timestamp(2023, 1, 1)),
+        ("2023", pd.Timestamp(2023, 1, 1)),
         ("2023-01-01", pd.Timestamp(2023, 1, 1)),
         (datetime.date(2023, 1, 1), pd.Timestamp(2023, 1, 1)),
     ],
@@ -108,9 +108,14 @@ def test_init_invalid_date_format(mock_context):
 def test_init_invalid_date_type(mock_context):
     with pytest.raises(
         TypeError,
-        match=r"date_arg must be an int, str, datetime.date or pandas.Timestamp",
+        match=r"date_arg must be an str, datetime.date or pandas.Timestamp",
     ):
-        Snapshot.from_triplet(exposure=mock_context["exp"], hazard=mock_context["haz"], impfset=mock_context["imp"], date=2023.5)  # type: ignore
+        Snapshot.from_triplet(
+            exposure=mock_context["exp"],
+            hazard=mock_context["haz"],
+            impfset=mock_context["imp"],
+            date=2023.5,
+        )  # type: ignore
 
 
 def test_properties(mock_context):

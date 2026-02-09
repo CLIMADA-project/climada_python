@@ -49,8 +49,8 @@ class Snapshot:
     exposure : Exposures
     hazard : Hazard
     impfset : ImpactFuncSet
-    date : int | datetime.date | str | pd.Timestamp
-        The date of the Snapshot, it can be an integer representing a year,
+    date : datetime.date | str | pd.Timestamp
+        The date of the Snapshot, it can be an string representing a year,
         a datetime object or a string representation of a datetime object.
     ref_only : bool, default False
         Should the `Snapshot` contain deep copies of the Exposures, Hazard and Impfset (False)
@@ -83,7 +83,7 @@ class Snapshot:
         hazard: Hazard,
         impfset: ImpactFuncSet,
         measure: Measure | None,
-        date: int | datetime.date | str | pd.Timestamp,
+        date: datetime.date | str | pd.Timestamp,
         ref_only: bool = False,
         _from_factory: bool = False,
     ) -> None:
@@ -107,7 +107,7 @@ class Snapshot:
         exposure: Exposures,
         hazard: Hazard,
         impfset: ImpactFuncSet,
-        date: int | datetime.date | str | pd.Timestamp,
+        date: datetime.date | str | pd.Timestamp,
         ref_only: bool = False,
     ) -> "Snapshot":
         """Create a Snapshot from exposure, hazard and impact functions set
@@ -122,7 +122,7 @@ class Snapshot:
         exposure : Exposures
         hazard : Hazard
         impfset : ImpactFuncSet
-        date : int | datetime.date | str | pd.Timestamp
+        date : datetime.date | str | pd.Timestamp
         ref_only : bool
             If true, uses references to the exposure, hazard and impact
             function objects. Note that modifying the original objects after
@@ -186,10 +186,7 @@ class Snapshot:
 
     @staticmethod
     def _convert_to_timestamp(date_arg) -> pd.Timestamp:
-        """Convert date argument of type int or str or datetime.date to pandas Timestamp object."""
-        if isinstance(date_arg, int):
-            # Assume the integer represents a year
-            return pd.Timestamp(year=date_arg, month=1, day=1)
+        """Convert date argument of type str or datetime.date to pandas Timestamp object."""
         if isinstance(date_arg, str):
             # Try to parse the string as a date
             try:
@@ -201,9 +198,7 @@ class Snapshot:
         if isinstance(date_arg, pd.Timestamp):
             return date_arg
 
-        raise TypeError(
-            "date_arg must be an int, str, datetime.date or pandas.Timestamp"
-        )
+        raise TypeError("date_arg must be an str, datetime.date or pandas.Timestamp")
 
     def apply_measure(self, measure: Measure) -> "Snapshot":
         """Create a new snapshot by applying a Measure object.
