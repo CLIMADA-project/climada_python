@@ -217,7 +217,7 @@ class RiskTrajectory(ABC):
 
     @staticmethod
     def _calc_npv_cash_flows(
-        cash_flows: pd.DataFrame,
+        cash_flows: pd.DataFrame | pd.Series,
         start_date: datetime.date,
         disc_rates: DiscRates | None = None,
     ):
