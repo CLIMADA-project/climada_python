@@ -57,6 +57,7 @@ def mock_context(shared_data):
         "mod_exp": modified_exp,
         "mod_haz": modified_haz,
         "mod_imp": modified_imp,
+        "date": pd.Timestamp("2023"),
     }
 
 
@@ -71,16 +72,16 @@ def test_not_from_factory_warning(mock_context):
             hazard=mock_context["haz"],
             impfset=mock_context["imp"],
             measure=None,
-            date=2001,
+            date="2001",
         )
 
 
 @pytest.mark.parametrize(
     "input_date,expected",
     [
-        (2023, datetime.date(2023, 1, 1)),
-        ("2023-01-01", datetime.date(2023, 1, 1)),
-        (datetime.date(2023, 1, 1), datetime.date(2023, 1, 1)),
+        ("2023", pd.Timestamp(2023, 1, 1)),
+        ("2023-01-01", pd.Timestamp(2023, 1, 1)),
+        (datetime.date(2023, 1, 1), pd.Timestamp(2023, 1, 1)),
     ],
 )
 def test_init_valid_dates(mock_context, input_date, expected):
@@ -106,9 +107,15 @@ def test_init_invalid_date_format(mock_context):
 
 def test_init_invalid_date_type(mock_context):
     with pytest.raises(
-        TypeError, match=r"date_arg must be an int, str, or datetime.date"
+        TypeError,
+        match=r"date_arg must be an str, datetime.date or pandas.Timestamp",
     ):
-        Snapshot.from_triplet(exposure=mock_context["exp"], hazard=mock_context["haz"], impfset=mock_context["imp"], date=2023.5)  # type: ignore
+        Snapshot.from_triplet(
+            exposure=mock_context["exp"],
+            hazard=mock_context["haz"],
+            impfset=mock_context["imp"],
+            date=2023.5,
+        )  # type: ignore
 
 
 def test_properties(mock_context):
@@ -116,7 +123,7 @@ def test_properties(mock_context):
         exposure=mock_context["exp"],
         hazard=mock_context["haz"],
         impfset=mock_context["imp"],
-        date=2023,
+        date=mock_context["date"],
     )
 
     # Check that it's a deep copy (new reference)
@@ -129,6 +136,7 @@ def test_properties(mock_context):
     pd.testing.assert_frame_equal(snapshot.exposure.gdf, mock_context["exp"].gdf)
     assert snapshot.hazard.haz_type == mock_context["haz"].haz_type
     assert snapshot.impfset == mock_context["imp"]
+    assert snapshot.date == mock_context["date"]
 
 
 def test_reference(mock_context):
@@ -136,7 +144,7 @@ def test_reference(mock_context):
         exposure=mock_context["exp"],
         hazard=mock_context["haz"],
         impfset=mock_context["imp"],
-        date=2023,
+        date=mock_context["date"],
         ref_only=True,
     )
 
@@ -146,18 +154,13 @@ def test_reference(mock_context):
     assert snapshot.impfset is mock_context["imp"]
     assert snapshot.measure is None
 
-    # Check data equality
-    pd.testing.assert_frame_equal(snapshot.exposure.gdf, mock_context["exp"].gdf)
-    assert snapshot.hazard.haz_type == mock_context["haz"].haz_type
-    assert snapshot.impfset == mock_context["imp"]
-
 
 def test_apply_measure(mock_context):
     snapshot = Snapshot.from_triplet(
         exposure=mock_context["exp"],
         hazard=mock_context["haz"],
         impfset=mock_context["imp"],
-        date=2023,
+        date=mock_context["date"],
     )
     new_snapshot = snapshot.apply_measure(mock_context["measure"])
 
@@ -166,3 +169,4 @@ def test_apply_measure(mock_context):
     assert new_snapshot.exposure == mock_context["mod_exp"]
     assert new_snapshot.hazard == mock_context["mod_haz"]
     assert new_snapshot.impfset == mock_context["mod_imp"]
+    assert new_snapshot.date == mock_context["date"]
