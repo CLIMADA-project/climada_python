@@ -99,7 +99,6 @@ class StaticRiskTrajectory(RiskTrajectory):
         snapshots_list: Iterable[Snapshot],
         *,
         return_periods: Iterable[int] = DEFAULT_RP,
-        all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
@@ -112,9 +111,6 @@ class StaticRiskTrajectory(RiskTrajectory):
         return_periods: list[int], optional
             The return periods to use when computing the `return_periods_metric`.
             Defaults to `DEFAULT_RP` ([20, 50, 100]).
-        all_groups_name: str, optional
-            The string that should be used to define "all exposure points" subgroup.
-            Defaults to `DEFAULT_ALLGROUP_NAME` ("All").
         risk_disc_rates: DiscRates, optional
             The discount rate to apply to future risk. Defaults to None.
         impact_computation_strategy: ImpactComputationStrategy, optional
@@ -125,7 +121,6 @@ class StaticRiskTrajectory(RiskTrajectory):
         super().__init__(
             snapshots_list,
             return_periods=return_periods,
-            all_groups_name=all_groups_name,
             risk_disc_rates=risk_disc_rates,
         )
         self._risk_metrics_calculators = CalcRiskMetricsPoints(
