@@ -1,9 +1,9 @@
 import datetime
-import unittest
 from unittest.mock import MagicMock
 
 import numpy as np
 import pandas as pd
+import pytest
 
 from climada.entity.exposures import Exposures
 from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
@@ -12,121 +12,161 @@ from climada.hazard import Hazard
 from climada.trajectories.snapshot import Snapshot
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
 
+# --- Fixtures ---
 
-class TestSnapshot(unittest.TestCase):
 
-    def setUp(self):
-        # Create mock objects for testing
-        self.mock_exposure = Exposures.from_hdf5(EXP_DEMO_H5)
-        self.mock_hazard = Hazard.from_hdf5(HAZ_DEMO_H5)
-        self.mock_impfset = ImpactFuncSet(
-            [
-                ImpactFunc(
-                    "TC",
-                    3,
-                    intensity=np.array([0, 20]),
-                    mdd=np.array([0, 0.5]),
-                    paa=np.array([0, 1]),
-                )
-            ]
-        )
-        self.mock_measure = MagicMock(spec=Measure)
-        self.mock_measure.name = "Test Measure"
-
-        # Setup mock return values for measure.apply
-        self.mock_modified_exposure = MagicMock(spec=Exposures)
-        self.mock_modified_hazard = MagicMock(spec=Hazard)
-        self.mock_modified_impfset = MagicMock(spec=ImpactFuncSet)
-        self.mock_measure.apply.return_value = (
-            self.mock_modified_exposure,
-            self.mock_modified_impfset,
-            self.mock_modified_hazard,
-        )
-
-    def test_init_with_int_date(self):
-        snapshot = Snapshot(
-            exposure=self.mock_exposure,
-            hazard=self.mock_hazard,
-            impfset=self.mock_impfset,
-            date=2023,
-        )
-        self.assertEqual(snapshot.date, datetime.date(2023, 1, 1))
-
-    def test_init_with_str_date(self):
-        snapshot = Snapshot(
-            exposure=self.mock_exposure,
-            hazard=self.mock_hazard,
-            impfset=self.mock_impfset,
-            date="2023-01-01",
-        )
-        self.assertEqual(snapshot.date, datetime.date(2023, 1, 1))
-
-    def test_init_with_date_object(self):
-        date_obj = datetime.date(2023, 1, 1)
-        snapshot = Snapshot(
-            exposure=self.mock_exposure,
-            hazard=self.mock_hazard,
-            impfset=self.mock_impfset,
-            date=date_obj,
-        )
-        self.assertEqual(snapshot.date, date_obj)
-
-    def test_init_with_invalid_date(self):
-        with self.assertRaises(ValueError):
-            Snapshot(
-                exposure=self.mock_exposure,
-                hazard=self.mock_hazard,
-                impfset=self.mock_impfset,
-                date="invalid-date",
+@pytest.fixture(scope="module")
+def shared_data():
+    """Load heavy HDF5 data once per module to speed up tests."""
+    exposure = Exposures.from_hdf5(EXP_DEMO_H5)
+    hazard = Hazard.from_hdf5(HAZ_DEMO_H5)
+    impfset = ImpactFuncSet(
+        [
+            ImpactFunc(
+                "TC",
+                3,
+                intensity=np.array([0, 20]),
+                mdd=np.array([0, 0.5]),
+                paa=np.array([0, 1]),
             )
+        ]
+    )
+    return exposure, hazard, impfset
 
-    def test_init_with_invalid_type(self):
-        with self.assertRaises(TypeError):
-            Snapshot(
-                exposure=self.mock_exposure,
-                hazard=self.mock_hazard,
-                impfset=self.mock_impfset,
-                date=2023.5,  # type: ignore
-            )
 
-    def test_properties(self):
-        snapshot = Snapshot(
-            exposure=self.mock_exposure,
-            hazard=self.mock_hazard,
-            impfset=self.mock_impfset,
-            date=2023,
+@pytest.fixture
+def mock_context(shared_data):
+    """Provides the exposure/hazard/impfset and a pre-configured mock measure."""
+    exp, haz, impf = shared_data
+
+    # Setup Mock Measure
+    mock_measure = MagicMock(spec=Measure)
+    mock_measure.name = "Test Measure"
+
+    modified_exp = MagicMock(spec=Exposures)
+    modified_haz = MagicMock(spec=Hazard)
+    modified_imp = MagicMock(spec=ImpactFuncSet)
+
+    mock_measure.apply.return_value = (modified_exp, modified_imp, modified_haz)
+
+    return {
+        "exp": exp,
+        "haz": haz,
+        "imp": impf,
+        "measure": mock_measure,
+        "mod_exp": modified_exp,
+        "mod_haz": modified_haz,
+        "mod_imp": modified_imp,
+        "date": pd.Timestamp("2023"),
+    }
+
+
+# --- Tests ---
+
+
+def test_not_from_factory_warning(mock_context):
+    """Test that direct __init__ call raises a warning"""
+    with pytest.warns(UserWarning):
+        Snapshot(
+            exposure=mock_context["exp"],
+            hazard=mock_context["haz"],
+            impfset=mock_context["imp"],
+            measure=None,
+            date="2001",
         )
 
-        # We want a new reference
-        self.assertIsNot(snapshot.exposure, self.mock_exposure)
-        self.assertIsNot(snapshot.hazard, self.mock_hazard)
-        self.assertIsNot(snapshot.impfset, self.mock_impfset)
 
-        # But we want equality
-        pd.testing.assert_frame_equal(snapshot.exposure.gdf, self.mock_exposure.gdf)
+@pytest.mark.parametrize(
+    "input_date,expected",
+    [
+        ("2023", pd.Timestamp(2023, 1, 1)),
+        ("2023-01-01", pd.Timestamp(2023, 1, 1)),
+        (datetime.date(2023, 1, 1), pd.Timestamp(2023, 1, 1)),
+    ],
+)
+def test_init_valid_dates(mock_context, input_date, expected):
+    """Test various valid date input formats using parametrization."""
+    snapshot = Snapshot.from_triplet(
+        exposure=mock_context["exp"],
+        hazard=mock_context["haz"],
+        impfset=mock_context["imp"],
+        date=input_date,
+    )
+    assert snapshot.date == expected
 
-        self.assertEqual(snapshot.hazard.haz_type, self.mock_hazard.haz_type)
-        self.assertEqual(snapshot.hazard.intensity.nnz, self.mock_hazard.intensity.nnz)
-        self.assertEqual(snapshot.hazard.size, self.mock_hazard.size)
 
-        self.assertEqual(snapshot.impfset, self.mock_impfset)
-
-    def test_apply_measure(self):
-        snapshot = Snapshot(
-            exposure=self.mock_exposure,
-            hazard=self.mock_hazard,
-            impfset=self.mock_impfset,
-            date=2023,
+def test_init_invalid_date_format(mock_context):
+    with pytest.raises(ValueError, match="String must be in the format"):
+        Snapshot.from_triplet(
+            exposure=mock_context["exp"],
+            hazard=mock_context["haz"],
+            impfset=mock_context["imp"],
+            date="invalid-date",
         )
-        new_snapshot = snapshot.apply_measure(self.mock_measure)
-
-        self.assertIsNotNone(new_snapshot.measure)
-        self.assertEqual(new_snapshot.measure.name, "Test Measure")  # type: ignore
-        self.assertEqual(new_snapshot.exposure, self.mock_modified_exposure)
-        self.assertEqual(new_snapshot.hazard, self.mock_modified_hazard)
-        self.assertEqual(new_snapshot.impfset, self.mock_modified_impfset)
 
 
-if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestSnapshot)
-    unittest.TextTestRunner(verbosity=2).run(TESTS)
+def test_init_invalid_date_type(mock_context):
+    with pytest.raises(
+        TypeError,
+        match=r"date_arg must be an str, datetime.date or pandas.Timestamp",
+    ):
+        Snapshot.from_triplet(
+            exposure=mock_context["exp"],
+            hazard=mock_context["haz"],
+            impfset=mock_context["imp"],
+            date=2023.5,
+        )  # type: ignore
+
+
+def test_properties(mock_context):
+    snapshot = Snapshot.from_triplet(
+        exposure=mock_context["exp"],
+        hazard=mock_context["haz"],
+        impfset=mock_context["imp"],
+        date=mock_context["date"],
+    )
+
+    # Check that it's a deep copy (new reference)
+    assert snapshot.exposure is not mock_context["exp"]
+    assert snapshot.hazard is not mock_context["haz"]
+
+    assert snapshot.measure is None
+
+    # Check data equality
+    pd.testing.assert_frame_equal(snapshot.exposure.gdf, mock_context["exp"].gdf)
+    assert snapshot.hazard.haz_type == mock_context["haz"].haz_type
+    assert snapshot.impfset == mock_context["imp"]
+    assert snapshot.date == mock_context["date"]
+
+
+def test_reference(mock_context):
+    snapshot = Snapshot.from_triplet(
+        exposure=mock_context["exp"],
+        hazard=mock_context["haz"],
+        impfset=mock_context["imp"],
+        date=mock_context["date"],
+        ref_only=True,
+    )
+
+    # Check that it is a reference
+    assert snapshot.exposure is mock_context["exp"]
+    assert snapshot.hazard is mock_context["haz"]
+    assert snapshot.impfset is mock_context["imp"]
+    assert snapshot.measure is None
+
+
+def test_apply_measure(mock_context):
+    snapshot = Snapshot.from_triplet(
+        exposure=mock_context["exp"],
+        hazard=mock_context["haz"],
+        impfset=mock_context["imp"],
+        date=mock_context["date"],
+    )
+    new_snapshot = snapshot.apply_measure(mock_context["measure"])
+
+    assert new_snapshot.measure is not None
+    assert new_snapshot.measure.name == "Test Measure"
+    assert new_snapshot.exposure == mock_context["mod_exp"]
+    assert new_snapshot.hazard == mock_context["mod_haz"]
+    assert new_snapshot.impfset == mock_context["mod_imp"]
+    assert new_snapshot.date == mock_context["date"]

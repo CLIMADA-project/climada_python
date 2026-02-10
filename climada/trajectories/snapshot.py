@@ -26,6 +26,9 @@ at a specific date.
 import copy
 import datetime
 import logging
+import warnings
+
+import pandas as pd
 
 from climada.entity.exposures import Exposures
 from climada.entity.impact_funcs import ImpactFuncSet
@@ -46,10 +49,9 @@ class Snapshot:
     exposure : Exposures
     hazard : Hazard
     impfset : ImpactFuncSet
-    date : int | datetime.date | str
-        The date of the Snapshot, it can be an integer representing a year,
-        a datetime object or a string representation of a datetime object
-        with format "YYYY-MM-DD".
+    date : datetime.date | str | pd.Timestamp
+        The date of the Snapshot, it can be an string representing a year,
+        a datetime object or a string representation of a datetime object.
     ref_only : bool, default False
         Should the `Snapshot` contain deep copies of the Exposures, Hazard and Impfset (False)
         or references only (True).
@@ -81,14 +83,22 @@ class Snapshot:
         hazard: Hazard,
         impfset: ImpactFuncSet,
         measure: Measure | None,
-        date: int | datetime.date | str,
+        date: datetime.date | str | pd.Timestamp,
         ref_only: bool = False,
+        _from_factory: bool = False,
     ) -> None:
+        if not _from_factory:
+            warnings.warn(
+                "Direct instantiation of 'Snapshot' is discouraged. "
+                "Use 'Snapshot.from_triplet()' instead.",
+                UserWarning,
+                stacklevel=2,
+            )
         self._exposure = exposure if ref_only else copy.deepcopy(exposure)
         self._hazard = hazard if ref_only else copy.deepcopy(hazard)
         self._impfset = impfset if ref_only else copy.deepcopy(impfset)
-        self._measure = measure if ref_only else copy.deepcopy(impfset)
-        self._date = self._convert_to_date(date)
+        self._measure = measure if ref_only else copy.deepcopy(measure)
+        self._date = self._convert_to_timestamp(date)
 
     @classmethod
     def from_triplet(
@@ -97,7 +107,7 @@ class Snapshot:
         exposure: Exposures,
         hazard: Hazard,
         impfset: ImpactFuncSet,
-        date: int | datetime.date | str,
+        date: datetime.date | str | pd.Timestamp,
         ref_only: bool = False,
     ) -> "Snapshot":
         """Create a Snapshot from exposure, hazard and impact functions set
@@ -112,7 +122,7 @@ class Snapshot:
         exposure : Exposures
         hazard : Hazard
         impfset : ImpactFuncSet
-        date : int | datetime.date | str
+        date : datetime.date | str | pd.Timestamp
         ref_only : bool
             If true, uses references to the exposure, hazard and impact
             function objects. Note that modifying the original objects after
@@ -137,6 +147,7 @@ class Snapshot:
             measure=None,
             date=date,
             ref_only=ref_only,
+            _from_factory=True,
         )
 
     @property
@@ -160,7 +171,7 @@ class Snapshot:
         return self._measure
 
     @property
-    def date(self) -> datetime.date:
+    def date(self) -> pd.Timestamp:
         """Date of the snapshot."""
         return self._date
 
@@ -174,24 +185,22 @@ class Snapshot:
         }
 
     @staticmethod
-    def _convert_to_date(date_arg) -> datetime.date:
-        """Convert date argument of type int or str to a datetime.date object."""
-        if isinstance(date_arg, int):
-            # Assume the integer represents a year
-            return datetime.date(date_arg, 1, 1)
+    def _convert_to_timestamp(date_arg) -> pd.Timestamp:
+        """Convert date argument of type str or datetime.date to pandas Timestamp object."""
         if isinstance(date_arg, str):
             # Try to parse the string as a date
             try:
-                return datetime.datetime.strptime(date_arg, "%Y-%m-%d").date()
+                return pd.Timestamp(date_arg)
             except ValueError as exc:
                 raise ValueError("String must be in the format 'YYYY-MM-DD'") from exc
         if isinstance(date_arg, datetime.date):
-            # Already a date object
+            return pd.Timestamp(date_arg)
+        if isinstance(date_arg, pd.Timestamp):
             return date_arg
 
-        raise TypeError("date_arg must be an int, str, or datetime.date")
+        raise TypeError("date_arg must be an str, datetime.date or pandas.Timestamp")
 
-    def apply_measure(self, measure: Measure, ref_only: bool = False) -> "Snapshot":
+    def apply_measure(self, measure: Measure) -> "Snapshot":
         """Create a new snapshot by applying a Measure object.
 
         This method creates a new `Snapshot` object by applying a measure on
@@ -216,6 +225,7 @@ class Snapshot:
             impfset=impfset,
             date=self.date,
             measure=measure,
-            ref_only=ref_only,
+            ref_only=True,  # Avoid unecessary copies of new objects
+            _from_factory=True,
         )
         return snap
