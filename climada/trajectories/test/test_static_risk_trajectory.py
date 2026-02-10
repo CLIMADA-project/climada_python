@@ -149,7 +149,7 @@ def test_init_args(mock_snapshots, mock_disc_rates):
     rt = StaticRiskTrajectory(
         mock_snapshots,
         return_periods=custom_rp,
-        all_groups_name=custom_name,
+        _all_groups_name=custom_name,
         risk_disc_rates=mock_disc_rates,
     )
     assert rt._risk_disc_rates == mock_disc_rates
