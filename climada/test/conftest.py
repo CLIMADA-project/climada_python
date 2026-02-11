@@ -35,7 +35,12 @@ Values are chosen such that:
         * Event 5: max intensity everywhere (but zero frequency)
       With max intensity set at 100
     - Impact function is the "identity function", x intensity is x% damages
-    - Impact values should be round.
+    - Impact values should be:
+        * AAI = 18 = 1000*1/2*0.006+(1000+2000+3000+4000+5000)*0.25*0.004
+        * RP20 = event1 = 0
+        * RP50 = event2 = 0
+        * RP100 = event3 = 500 = 1000*1/2
+        * RP250 = event4 = 3750 = (1000+2000+3000+4000+5000)*0.25
 
 """
 
