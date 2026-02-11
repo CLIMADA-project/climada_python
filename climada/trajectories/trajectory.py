@@ -150,7 +150,7 @@ class RiskTrajectory(ABC):
 
     @return_periods.setter
     def return_periods(self, value, /):
-        if not isinstance(value, list):
+        if not isinstance(value, Iterable):
             raise ValueError("Return periods need to be a list of int.")
         if any(not isinstance(i, int) for i in value):
             raise ValueError("Return periods need to be a list of int.")
@@ -256,19 +256,18 @@ class RiskTrajectory(ABC):
         metric_df["year"] = metric_df.index.year
 
         # Merge with the discount rates based on the year
-        tmp = metric_df.merge(
-            pd.DataFrame({"year": disc_rates.years, "rate": disc_rates.rates}),
+        tmp = pd.Series(index=disc_rates.years, data=disc_rates.rates, name="rate")
+        tmp = tmp.loc[tmp.index >= start_date.year]
+        tmp = 1 / tmp.shift(1, fill_value=0).add(1).cumprod()
+        tmp = tmp.to_frame()
+        tmp["year"] = tmp.index
+        metric_df = metric_df.merge(
+            tmp,
             on="year",
             how="left",
         )
-        tmp.index = metric_df.index
-        metric_df = tmp.copy()
-        metric_df["discount_factor"] = (1 / (1 + metric_df["rate"])) ** (
-            metric_df.index.year - start_date.year
-        )
 
         # Apply the discount factors to the cash flows
-        metric_df["npv_cash_flow"] = (
-            metric_df["cash_flow"] * metric_df["discount_factor"]
-        )
-        return metric_df["npv_cash_flow"]
+
+        metric_df["npv_cash_flow"] = metric_df["cash_flow"] * metric_df["rate"]
+        return metric_df["npv_cash_flow"].values
