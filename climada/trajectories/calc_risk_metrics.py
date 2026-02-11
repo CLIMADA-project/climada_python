@@ -935,7 +935,9 @@ class CalcRiskMetricsPeriod:
                 categories=self._groups_id,
             )
             aai_fut_groups = eai_fut_groups.groupby(
-                [DEFAULT_PERIOD_INDEX_NAME, GROUP_COL_NAME], as_index=False
+                [DEFAULT_PERIOD_INDEX_NAME, GROUP_COL_NAME],
+                as_index=False,
+                observed=False,
             ).agg({RISK_COL_NAME: "sum"})
             aai_per_group_df[RISK_COL_NAME] = linear_interp_arrays(
                 aai_per_group_df[RISK_COL_NAME].to_numpy(),
