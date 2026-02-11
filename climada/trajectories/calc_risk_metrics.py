@@ -164,7 +164,8 @@ class CalcRiskMetricsPoints:
         self.snapshots = snapshots
         self.impact_computation_strategy = impact_computation_strategy
         self._date_idx = pd.DatetimeIndex(
-            [snap.date for snap in self.snapshots], name=DATE_COL_NAME
+            [snap.date for snap in self.snapshots],
+            name=DATE_COL_NAME,
         )
         self.measure = None
         try:
@@ -253,7 +254,7 @@ class CalcRiskMetricsPoints:
         eai_gdf = pd.concat(
             [
                 snap.exposure.gdf.reset_index(names=[COORD_ID_COL_NAME]).assign(
-                    date=pd.to_datetime(snap.date)
+                    date=snap.date.as_unit(self._date_idx.unit)
                 )
                 for snap in self.snapshots
             ]
