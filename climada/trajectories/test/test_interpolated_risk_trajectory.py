@@ -53,7 +53,10 @@ from climada.trajectories.constants import (
     RISK_COL_NAME,
     UNIT_COL_NAME,
 )
-from climada.trajectories.impact_calc_strat import ImpactCalcComputation
+from climada.trajectories.impact_calc_strat import (
+    ImpactCalcComputation,
+    ImpactComputationStrategy,
+)
 from climada.trajectories.interpolated_trajectory import (
     INDEXING_COLUMNS,
     InterpolatedRiskTrajectory,
@@ -61,6 +64,7 @@ from climada.trajectories.interpolated_trajectory import (
 from climada.trajectories.interpolation import (
     AllLinearStrategy,
     ExponentialExposureStrategy,
+    InterpolationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
 
@@ -221,21 +225,23 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
         for metric in InterpolatedRiskTrajectory.POSSIBLE_METRICS:
             self.assertIsNone(getattr(rt, "_" + metric + "_metrics"))
 
-    @patch.object(
-        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", return_value=1
-    )
-    def test_init_with_custom_params(self, _):
+    @patch.object(InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators")
+    def test_init_with_custom_params(self, mock_reset_calculators):
         # Test initialization with custom parameters
         mock_disc = Mock(spec=DiscRates)
+        mock_interp = Mock(spec=InterpolationStrategy)
+        mock_impact_compute = Mock(spec=ImpactComputationStrategy)
         rt = InterpolatedRiskTrajectory(
             self.snapshots_list,
             time_resolution="MS",
-            all_groups_name="CustomAll",
             risk_disc_rates=mock_disc,
-            interpolation_strategy=Mock(),
-            impact_computation_strategy=Mock(),
+            interpolation_strategy=mock_interp,
+            impact_computation_strategy=mock_impact_compute,
         )
-        self.assertEqual(rt._all_groups_name, "CustomAll")
+
+        mock_reset_calculators.assert_has_calls(
+            [call(self.snapshots_list, "MS", mock_interp, mock_impact_compute)]
+        )
         self.assertEqual(rt._risk_disc_rates, mock_disc)
 
     @patch.object(InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators")
@@ -1213,12 +1219,12 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
         )  # Check x-axis data
         self.assertEqual(
             mock_ax.stackplot.call_args[0][1][0].tolist(),
-            mock_df_data[CONTRIBUTION_BASE_RISK_NAME].tolist(),
+            mock_df_data[CONTRIBUTION_EXPOSURE_NAME].tolist(),
         )  # Check first stacked data
         mock_ax.set_title.assert_called_once_with(
-            "Risk between 2023-01-01 and 2023-01-02 (Average impact)"
+            "Contributions to change in risk between 2023-01-01 and 2023-01-02 (Average)"
         )
-        mock_ax.set_ylabel.assert_called_once_with("USD")
+        mock_ax.set_ylabel.assert_called_once_with("Deviation from base risk")
         mock_ax.set_ylim.assert_called_once()  # Check ylim was set
         mock_ax.xaxis.set_major_locator.assert_called_once()
         mock_ax.xaxis.set_major_formatter.assert_called_once()

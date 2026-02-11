@@ -164,7 +164,8 @@ class CalcRiskMetricsPoints:
         self.snapshots = snapshots
         self.impact_computation_strategy = impact_computation_strategy
         self._date_idx = pd.DatetimeIndex(
-            [snap.date for snap in self.snapshots], name=DATE_COL_NAME
+            [snap.date for snap in self.snapshots],
+            name=DATE_COL_NAME,
         )
         self.measure = None
         try:
@@ -253,7 +254,7 @@ class CalcRiskMetricsPoints:
         eai_gdf = pd.concat(
             [
                 snap.exposure.gdf.reset_index(names=[COORD_ID_COL_NAME]).assign(
-                    date=pd.to_datetime(snap.date)
+                    date=snap.date.as_unit(self._date_idx.unit)
                 )
                 for snap in self.snapshots
             ]
@@ -934,7 +935,9 @@ class CalcRiskMetricsPeriod:
                 categories=self._groups_id,
             )
             aai_fut_groups = eai_fut_groups.groupby(
-                [DEFAULT_PERIOD_INDEX_NAME, GROUP_COL_NAME], as_index=False
+                [DEFAULT_PERIOD_INDEX_NAME, GROUP_COL_NAME],
+                as_index=False,
+                observed=False,
             ).agg({RISK_COL_NAME: "sum"})
             aai_per_group_df[RISK_COL_NAME] = linear_interp_arrays(
                 aai_per_group_df[RISK_COL_NAME].to_numpy(),

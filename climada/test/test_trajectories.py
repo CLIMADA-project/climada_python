@@ -113,11 +113,11 @@ def snapshot_factory(
             paa_scale=paa_scale,
         )
 
-        return Snapshot(
+        return Snapshot.from_triplet(
             exposure=exposures,
             hazard=hazard,
             impfset=impfset,
-            date=date,
+            date=str(date),
         )
 
     return _make_snapshot
@@ -137,13 +137,23 @@ def snapshot_future(snapshot_factory):
     )
 
 
-def expected_static_metrics_from_snapshots(snapshots):
+def expected_static_metrics_from_snapshots(
+    snapshots, return_periods=DEFAULT_RP, disc_rates=None
+):
     rows = []
-    group_p = False
+    if disc_rates is not None:
+        discount_factor = pd.Series(index=disc_rates.years, data=1 + disc_rates.rates)
+        discount_factor = 1 / ((discount_factor.shift(1, fill_value=1)).cumprod())
+    else:
+        discount_factor = None
+
     for snap in snapshots:
         imp = ImpactCalc(**snap.impact_calc_data).impact()
-        curve = imp.calc_freq_curve(DEFAULT_RP)
-
+        curve = imp.calc_freq_curve(return_periods)
+        if discount_factor is not None:
+            discount = discount_factor.loc[pd.Timestamp(str(snap.date)).year]
+        else:
+            discount = 1
         rows.append(
             [
                 pd.Timestamp(str(snap.date)),
@@ -151,7 +161,7 @@ def expected_static_metrics_from_snapshots(snapshots):
                 NO_MEASURE_VALUE,
                 "aai",
                 "USD",
-                imp.aai_agg,
+                imp.aai_agg * discount,
             ]
         )
 
@@ -163,13 +173,12 @@ def expected_static_metrics_from_snapshots(snapshots):
                     NO_MEASURE_VALUE,
                     f"rp_{rp}",
                     "USD",
-                    val,
+                    val * discount,
                 ]
                 for rp, val in zip(curve.return_per, curve.impact)
             ]
         )
         if "group_id" in snap.exposure.gdf.columns:
-            group_p = True
             aai_per_group = [
                 [
                     pd.Timestamp(str(snap.date)),
@@ -177,21 +186,11 @@ def expected_static_metrics_from_snapshots(snapshots):
                     NO_MEASURE_VALUE,
                     "aai",
                     "USD",
-                    val,
+                    val * discount,
                 ]
                 for group, val in zip(snap.exposure.gdf["group_id"], imp.eai_exp)
             ]
-            group_df = pd.DataFrame(
-                aai_per_group,
-                columns=[
-                    DATE_COL_NAME,
-                    GROUP_COL_NAME,
-                    MEASURE_COL_NAME,
-                    METRIC_COL_NAME,
-                    UNIT_COL_NAME,
-                    RISK_COL_NAME,
-                ],
-            )
+            rows.extend(aai_per_group)
 
     res = pd.DataFrame(
         rows,
@@ -204,8 +203,17 @@ def expected_static_metrics_from_snapshots(snapshots):
             RISK_COL_NAME,
         ],
     )
-    if group_p:
-        res = pd.concat([res, group_df])
+
+    res = res.groupby(
+        [
+            DATE_COL_NAME,
+            GROUP_COL_NAME,
+            MEASURE_COL_NAME,
+            METRIC_COL_NAME,
+            UNIT_COL_NAME,
+        ],
+        as_index=False,
+    ).sum()
 
     return res.set_index(
         [
@@ -340,489 +348,575 @@ def test_static_trajectory_with_group(snapshot_factory):
     )
 
 
-class TestStaticTrajectory:
+def test_static_trajectory_change_rp(snapshot_factory):
+    present_date = 2020
+    future_date = 2040
 
-    def test_static_trajectory_with_group(self):
-        exp0 = reusable_minimal_exposures(group_id=CATEGORIES)
-        exp1 = reusable_minimal_exposures(
-            group_id=CATEGORIES, increase_value_factor=self.EXP_INCREASE_VALUE_FACTOR
-        )
-        snap0 = Snapshot(
-            exposure=exp0,
-            hazard=reusable_minimal_hazard(),
-            impfset=reusable_minimal_impfset(),
-            date=self.PRESENT_DATE,
-        )
-        snap1 = Snapshot(
-            exposure=exp1,
-            hazard=reusable_minimal_hazard(
-                intensity_factor=self.HAZ_INCREASE_INTENSITY_FACTOR
-            ),
-            impfset=reusable_minimal_impfset(),
-            date=self.FUTURE_DATE,
-        )
+    hazard_intensity_factor = 2.0
+    exposure_value_factor = 10.0
 
-        expected_static_metrics = pd.concat(
+    snapshot_base = snapshot_factory(date=present_date, group_id=CATEGORIES)
+
+    snapshot_fut = snapshot_factory(
+        date=future_date,
+        hazard_intensity_factor=hazard_intensity_factor,
+        exposure_value_factor=exposure_value_factor,
+        group_id=CATEGORIES,
+    )
+
+    expected_static_metrics = expected_static_metrics_from_snapshots(
+        [snapshot_base, snapshot_fut], return_periods=[10, 60, 1000]
+    )
+    static_traj = StaticRiskTrajectory(
+        [snapshot_base, snapshot_fut], return_periods=[10, 60, 1000]
+    )
+    result = (
+        static_traj.per_date_risk_metrics()
+        .set_index(
             [
-                self.expected_static_metrics,
-                pd.DataFrame.from_dict(
-                    # fmt: off
-                    {
-                        "index": [8, 9, 10, 11],
-                        "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-                        "data": [
-                            [pd.Timestamp(str(self.PRESENT_DATE)), 1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.eai_exp[CATEGORIES == 1].sum(),],
-                            [pd.Timestamp(str(self.PRESENT_DATE)), 2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.eai_exp[CATEGORIES == 2].sum(),],
-                            [pd.Timestamp(str(self.FUTURE_DATE)), 1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_future_imp.eai_exp[CATEGORIES == 1].sum(),],
-                            [pd.Timestamp(str(self.FUTURE_DATE)), 2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_future_imp.eai_exp[CATEGORIES == 2].sum(),],
-                        ],
-                        "index_names": [None],
-                        "column_names": [None],
-                    },
-                    # fmt: on
-                    orient="tight",
-                ),
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                UNIT_COL_NAME,
             ]
         )
+        .sort_index()
+    )
 
-        static_traj = StaticRiskTrajectory([snap0, snap1])
-        pd.testing.assert_frame_equal(
-            static_traj.per_date_risk_metrics(),
-            expected_static_metrics,
-            check_dtype=False,
-            check_categorical=False,
-        )
+    # --- Assertion ----------------------------------------------------------
+    pd.testing.assert_frame_equal(
+        result,
+        expected_static_metrics,
+        check_index_type=False,
+        check_categorical=False,
+        check_like=False,
+    )
 
-    def test_static_trajectory_change_rp(self):
-        static_traj = StaticRiskTrajectory(
-            [self.base_snapshot, self.future_snapshot], return_periods=[10, 60, 1000]
-        )
-        expected = pd.DataFrame.from_dict(
-            # fmt: off
-            {
-                "index": [0, 1, 2, 3, 4, 5, 6, 7],
-                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-                "data": [
-                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.aai_agg,],
-                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_future_imp.aai_agg,],
-                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, "rp_10", "USD", 0.0,],
-                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, "rp_10", "USD", 0.0,],
-                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, "rp_60", "USD", 700.0,],
-                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, "rp_60", "USD", 14000.0,],
-                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, "rp_1000", "USD", 1500.0,],
-                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, "rp_1000", "USD", 30000.0,],
-                ],
-                "index_names": [None],
-                "column_names": [None],
-            },
-            # fmt: on
-            orient="tight",
-        )
-        pd.testing.assert_frame_equal(
-            static_traj.per_date_risk_metrics(),
-            expected,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-        # Also check change to other return period
-        static_traj.return_periods = DEFAULT_RP
-        pd.testing.assert_frame_equal(
-            static_traj.per_date_risk_metrics(),
-            self.expected_static_metrics,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-    def test_static_trajectory_risk_disc_rate(self):
-        risk_disc_rate = DiscRates(
-            years=np.array(range(self.PRESENT_DATE, 2041)), rates=np.ones(21) * 0.01
-        )
-        static_traj = StaticRiskTrajectory(
-            [self.base_snapshot, self.future_snapshot], risk_disc_rates=risk_disc_rate
-        )
-        expected = pd.DataFrame.from_dict(
-            # fmt: off
-            {
-                "index": [0, 1, 2, 3, 4, 5, 6, 7],
-                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-                "data": [
-                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_base_imp.aai_agg,],
-                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", self.expected_future_imp.aai_agg * ((1 / (1 + 0.01)) ** 20),],
-                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[0]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[0]],],
-                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[0]}", "USD", self.expected_future_return_period_impacts[DEFAULT_RP[0]] * ((1 / (1 + 0.01)) ** 20),],
-                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[1]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[1]],],
-                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[1]}", "USD", self.expected_future_return_period_impacts[DEFAULT_RP[1]] * ((1 / (1 + 0.01)) ** 20),],
-                    [pd.Timestamp(str(self.PRESENT_DATE)),"All",  NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[2]}", "USD", self.expected_base_return_period_impacts[DEFAULT_RP[2]],],
-                    [pd.Timestamp(str(self.FUTURE_DATE)), "All", NO_MEASURE_VALUE, f"rp_{DEFAULT_RP[2]}", "USD", self.expected_future_return_period_impacts[DEFAULT_RP[2]] * ((1 / (1 + 0.01)) ** 20),],
-                ],
-                "index_names": [None],
-                "column_names": [None],
-            },
-            # fmt: on
-            orient="tight",
-        )
-        pd.testing.assert_frame_equal(
-            static_traj.per_date_risk_metrics(),
-            expected,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-        # Also check change to other return period
-        static_traj.risk_disc_rates = None
-        pd.testing.assert_frame_equal(
-            static_traj.per_date_risk_metrics(),
-            self.expected_static_metrics,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-
-class TestInterpolatedTrajectory(TestCase):
-    PRESENT_DATE = 2020
-    HAZ_INCREASE_INTENSITY_FACTOR = 2
-    EXP_INCREASE_VALUE_FACTOR = 6
-    FUTURE_DATE = 2022
-
-    def setUp(self) -> None:
-        self.base_snapshot = reusable_snapshot(date=self.PRESENT_DATE)
-        self.future_snapshot = reusable_snapshot(
-            hazard_intensity_increase_factor=self.HAZ_INCREASE_INTENSITY_FACTOR,
-            exposure_value_increase_factor=self.EXP_INCREASE_VALUE_FACTOR,
-            date=self.FUTURE_DATE,
-        )
-
-        self.expected_base_imp = ImpactCalc(
-            **self.base_snapshot.impact_calc_data
-        ).impact()
-        self.expected_future_imp = ImpactCalc(
-            **self.future_snapshot.impact_calc_data
-        ).impact()
-        # self.group_vector = self.base_snapshot.exposure.gdf[GROUP_ID_COL_NAME]
-        self.expected_base_return_period_impacts = {
-            rp: imp
-            for rp, imp in zip(
-                self.expected_base_imp.calc_freq_curve(DEFAULT_RP).return_per,
-                self.expected_base_imp.calc_freq_curve(DEFAULT_RP).impact,
-            )
-        }
-        self.expected_future_return_period_impacts = {
-            rp: imp
-            for rp, imp in zip(
-                self.expected_future_imp.calc_freq_curve(DEFAULT_RP).return_per,
-                self.expected_future_imp.calc_freq_curve(DEFAULT_RP).impact,
-            )
-        }
-
-        # fmt: off
-        self.expected_interp_metrics = pd.DataFrame.from_dict(
-            {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-             'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
-             'data': [[ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 20.0],
-                      [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 105.0], # This should indeed not be 240+20 / 2 (because we interpolate each contributor separately)
-                      [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 240.0],
-                      [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                      [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                      [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                      [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 500.0],
-                      [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 2625.0],
-                      [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 6000.0],
-                      [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 1500.0],
-                      [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 7875.0],
-                      [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 18000.0]],
-             'index_names': [None],
-             'column_names': [None]},
-            orient="tight"
-        )
-
-        self.expected_period_metrics = pd.DataFrame.from_dict(
-            {'index': [0, 1, 2, 3],
-             'columns': [PERIOD_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
-             'data': [[f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", 'All', NO_MEASURE_VALUE, 'aai', 'USD', 365.0/3],
-                      [f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", 'All', NO_MEASURE_VALUE, 'rp_100', 'USD', 27375/3],
-                      [f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", 'All', NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                      [f"{self.PRESENT_DATE} to {self.FUTURE_DATE}", 'All', NO_MEASURE_VALUE, 'rp_50', 'USD', 9125.0/3]],
-             'index_names': [None],
-             'column_names': [None]},
-            orient="tight"
-        )
-        # fmt: on
-
-    def test_interp_trajectory(self):
-        interp_traj = InterpolatedRiskTrajectory(
-            [self.base_snapshot, self.future_snapshot]
-        )
-        pd.testing.assert_frame_equal(
-            interp_traj.per_date_risk_metrics(),
-            self.expected_interp_metrics,
-            check_dtype=False,
-            check_categorical=False,
-        )
-        pd.testing.assert_frame_equal(
-            interp_traj.per_period_risk_metrics(),
-            self.expected_period_metrics,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-    def test_interp_trajectory_with_group(self):
-        exp0 = reusable_minimal_exposures(group_id=CATEGORIES)
-        exp1 = reusable_minimal_exposures(
-            group_id=CATEGORIES, increase_value_factor=self.EXP_INCREASE_VALUE_FACTOR
-        )
-        snap0 = Snapshot(
-            exposure=exp0,
-            hazard=reusable_minimal_hazard(),
-            impfset=reusable_minimal_impfset(),
-            date=self.PRESENT_DATE,
-        )
-        snap1 = Snapshot(
-            exposure=exp1,
-            hazard=reusable_minimal_hazard(
-                intensity_factor=self.HAZ_INCREASE_INTENSITY_FACTOR
-            ),
-            impfset=reusable_minimal_impfset(),
-            date=self.FUTURE_DATE,
-        )
-
-        expected_interp_metrics = pd.concat(
+    # Also check change to other return period
+    static_traj.return_periods = DEFAULT_RP
+    expected_static_metrics = expected_static_metrics_from_snapshots(
+        [snapshot_base, snapshot_fut], return_periods=DEFAULT_RP
+    )
+    result = (
+        static_traj.per_date_risk_metrics()
+        .set_index(
             [
-                self.expected_interp_metrics,
-                # fmt: off
-                pd.DataFrame.from_dict(
-                    {
-                        "index": [0, 1, 2, 3, 4, 5],
-                        "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-                        "data": [
-                            [pd.Period("2020"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 15.0,],
-                            [pd.Period("2020"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 5.0,],
-                            [pd.Period("2021"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 78.75,],
-                            [pd.Period("2021"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 26.25,],
-                            [pd.Period("2022"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 180.0,],
-                            [pd.Period("2022"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 60.0,],
-                        ],
-                        "index_names": [None],
-                        "column_names": [None],
-                    },
-                    orient="tight",
-                ),
-                # fmt: on
-            ],
-            ignore_index=True,
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                UNIT_COL_NAME,
+            ]
         )
+        .sort_index()
+    )
+    pd.testing.assert_frame_equal(
+        result,
+        expected_static_metrics,
+        check_index_type=False,
+        check_categorical=False,
+        check_like=False,
+    )
 
-        interp_traj = InterpolatedRiskTrajectory([snap0, snap1])
-        pd.testing.assert_frame_equal(
-            interp_traj.per_date_risk_metrics(),
+
+def test_static_trajectory_risk_disc_rate(snapshot_base, snapshot_future):
+    risk_disc_rate = DiscRates(
+        years=np.array(range(EXPOSURE_REF_YEAR, EXPOSURE_FUTURE_YEAR + 1)),
+        rates=np.ones(EXPOSURE_FUTURE_YEAR - EXPOSURE_REF_YEAR + 1) * 0.01,
+    )
+    static_traj = StaticRiskTrajectory(
+        [snapshot_base, snapshot_future], risk_disc_rates=risk_disc_rate
+    )
+    expected_static_metrics = expected_static_metrics_from_snapshots(
+        [snapshot_base, snapshot_future], disc_rates=risk_disc_rate
+    )
+
+    result = (
+        static_traj.per_date_risk_metrics()
+        .set_index(
+            [
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                UNIT_COL_NAME,
+            ]
+        )
+        .sort_index()
+    )
+    pd.testing.assert_frame_equal(
+        result,
+        expected_static_metrics,
+        check_index_type=False,
+        check_categorical=False,
+        check_like=False,
+    )
+
+    # Also check change to other disc_rate
+    expected_static_metrics = expected_static_metrics_from_snapshots(
+        [snapshot_base, snapshot_future]
+    )
+
+    static_traj.risk_disc_rates = None
+    result = (
+        static_traj.per_date_risk_metrics()
+        .set_index(
+            [
+                DATE_COL_NAME,
+                GROUP_COL_NAME,
+                MEASURE_COL_NAME,
+                METRIC_COL_NAME,
+                UNIT_COL_NAME,
+            ]
+        )
+        .sort_index()
+    )
+    pd.testing.assert_frame_equal(
+        result,
+        expected_static_metrics,
+        check_index_type=False,
+        check_categorical=False,
+        check_like=False,
+    )
+
+
+# ----------- INTERPOLATED TRAJ ----------------
+
+
+@pytest.fixture(scope="session")
+def snapshot_future_interp(snapshot_factory):
+    return snapshot_factory(
+        date=2022,  # Closer date for less rows
+        exposure_value_factor=6.0,
+        hazard_intensity_factor=2.0,  # Different factor for contributors
+    )
+
+
+@pytest.fixture(scope="session")
+def snapshot_future_interp_vulchange(snapshot_factory):
+    return snapshot_factory(
+        date=2022,  # Closer date for less rows
+        exposure_value_factor=6.0,
+        hazard_intensity_factor=2.0,  # Different factor for contributors
+        paa_scale=0.5,
+    )
+
+
+@pytest.fixture(scope="session")
+def expected_interp_metrics():
+    # fmt: off
+    return pd.DataFrame.from_dict(
+        {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+         'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+         'data': [[ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 94.5],
+                  # Above should indeed not be 216+18 / 2 and slightly
+                  # because as we interpolate each contributor separately,
+                  # the interaction term grows slower.
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 216.0],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 500.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 2625.0],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 6000.0],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 3750.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 19687.5],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 45000.0]],
+         'index_names': [None],
+         'column_names': [None]
+         },
+        orient="tight"
+    )
+    # fmt: on
+
+
+@pytest.fixture(scope="session")
+def expected_interp_metrics_wgroup(expected_interp_metrics):
+    return pd.concat(
+        [
             expected_interp_metrics,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-    def test_interp_trajectory_change_rp(self):
-        interp_traj = InterpolatedRiskTrajectory(
-            [self.base_snapshot, self.future_snapshot], return_periods=[10, 60, 1000]
-        )
-        expected = pd.DataFrame.from_dict(
             # fmt: off
-            {
-                "index": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-                "data": [
-                    [pd.Period(2020), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 20.0,],
-                    [pd.Period(2021), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 105.0,],
-                    [pd.Period(2022), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 240.0,],
-                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
-                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
-                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_10", "USD", 0.0],
-                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_60", "USD", 700.0],
-                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_60", "USD", 3675.0],
-                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_60", "USD", 8400.0],
-                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_1000", "USD", 1500.0,],
-                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_1000", "USD", 7875.0,],
-                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_1000", "USD", 18000.0,],
-                ],
-                "index_names": [None],
-                "column_names": [None],
-            },
-            # fmt: on
-            orient="tight",
-        )
-        pd.testing.assert_frame_equal(
-            interp_traj.per_date_risk_metrics(),
-            expected,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-        # Also check change to other return period
-        interp_traj.return_periods = DEFAULT_RP
-        pd.testing.assert_frame_equal(
-            interp_traj.per_date_risk_metrics(),
-            self.expected_interp_metrics,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-    def test_interp_trajectory_risk_disc_rate(self):
-        risk_disc_rate = DiscRates(
-            years=np.array(range(2020, 2023)), rates=np.ones(3) * 0.05
-        )  # Easy check for year 2021 -> 105.0 * 1/(1+0.05) == 100.
-        interp_traj = InterpolatedRiskTrajectory(
-            [self.base_snapshot, self.future_snapshot], risk_disc_rates=risk_disc_rate
-        )
-        expected = pd.DataFrame.from_dict(
-            # fmt: off
-            {
-                "index": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
-                "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-                "data": [
-                    [pd.Period(2020), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 20.0,],
-                    [pd.Period(2021), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 100.0,],
-                    [pd.Period(2022), "All", NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 217.68707482993196,],
-                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
-                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
-                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_20", "USD", 0.0],
-                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_50", "USD", 500.0],
-                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_50", "USD", 2500.0],
-                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_50", "USD", 5442.176870748299,],
-                    [pd.Period(2020), "All", NO_MEASURE_VALUE, "rp_100", "USD", 1500.0],
-                    [pd.Period(2021), "All", NO_MEASURE_VALUE, "rp_100", "USD", 7500.0],
-                    [pd.Period(2022), "All", NO_MEASURE_VALUE, "rp_100", "USD", 16326.530612244896,],
-                ],
-                "index_names": [None],
-                "column_names": [None],
-            },
-            # fmt: on
-            orient="tight",
-        )
-        pd.testing.assert_frame_equal(
-            interp_traj.per_date_risk_metrics(),
-            expected,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-        # Also check change to other return period
-        interp_traj.risk_disc_rates = None
-        pd.testing.assert_frame_equal(
-            interp_traj.per_date_risk_metrics(),
-            self.expected_interp_metrics,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-    def test_interp_trajectory_risk_contributions(self):
-        interp_traj = InterpolatedRiskTrajectory(
-            [self.base_snapshot, self.future_snapshot]
-        )
-        expected = pd.DataFrame.from_dict(
-            # fmt: off
-            {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-             'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-             'data': [
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 0.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 50.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 100.0],
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 0.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 10.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 20.0],
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 0.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 25.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 100.0]],
-             'index_names': [None],
-             'column_names': [None]},
-            # fmt: on
-            orient="tight",
-        )
-        pd.testing.assert_frame_equal(
-            interp_traj.risk_contributions_metrics(),
-            expected,
-            check_dtype=False,
-            check_categorical=False,
-        )
-
-        # With changing vulnerability
-        hazard = reusable_minimal_hazard()
-        impfset1 = ImpactFuncSet(
-            [
-                ImpactFunc(
-                    haz_type=hazard.haz_type,
-                    intensity_unit=hazard.units,
-                    name="linear",
-                    intensity=np.array([0, 100 / 2, 100]),
-                    mdd=np.array([0, 0.5, 1]),
-                    paa=np.array([1, 1, 1]),
-                    id=1,
-                ),
-            ]
-        )
-        impfset2 = ImpactFuncSet(
-            [
-                ImpactFunc(
-                    haz_type=hazard.haz_type,
-                    intensity_unit=hazard.units,
-                    name="linear-half-paa",
-                    intensity=np.array([0, 100 / 2, 100]),
-                    mdd=np.array([0, 0.5, 1]),
-                    paa=np.array([0.5, 0.5, 0.5]),
-                    id=1,
-                )
-            ]
-        )
-        base_snapshot = Snapshot(
-            exposure=reusable_minimal_exposures(),
-            hazard=hazard,
-            impfset=impfset1,
-            date=2020,
-        )
-        future_snapshot = Snapshot(
-            exposure=reusable_minimal_exposures(
-                increase_value_factor=self.EXP_INCREASE_VALUE_FACTOR,
+            pd.DataFrame.from_dict(
+                {
+                    "index": [0, 1, 2, 3, 4, 5, 6, 7, 8],
+                    "columns": [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
+                    "data": [
+                        [pd.Period("2020"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 11.0,],
+                        [pd.Period("2020"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 2.0,],
+                        [pd.Period("2020"),  3, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 5.0,],
+                        [pd.Period("2021"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 57.75,],
+                        [pd.Period("2021"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 10.50,],
+                        [pd.Period("2021"),  3, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 26.25,],
+                        [pd.Period("2022"),  1, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 132.0,],
+                        [pd.Period("2022"),  2, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 24.0,],
+                        [pd.Period("2022"),  3, NO_MEASURE_VALUE, AAI_METRIC_NAME, "USD", 60.0,],
+                    ],
+                    "index_names": [None],
+                    "column_names": [None],
+                },
+                orient="tight",
             ),
-            hazard=reusable_minimal_hazard(
-                intensity_factor=self.HAZ_INCREASE_INTENSITY_FACTOR
-            ),
-            impfset=impfset2,
-            date=2022,
-        )
-
-        interp_traj = InterpolatedRiskTrajectory([base_snapshot, future_snapshot])
-        expected = pd.DataFrame.from_dict(
-            # fmt: off
-            {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
-             'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
-             'data': [
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 20.0],
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 0.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 50.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 100.0],
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 0.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 10.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 20.0],
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', -5.0],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', -10.0],
-                 [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 0.0],
-                 [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 3.75],
-                 [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', -10.0]],
-             'index_names': [None],
-             'column_names': [None]},
             # fmt: on
-            orient="tight",
-        )
-        pd.testing.assert_frame_equal(
-            interp_traj.risk_contributions_metrics(),
-            expected,
-            check_dtype=False,
-            check_categorical=False,
-        )
+        ],
+        ignore_index=True,
+    )
+
+
+@pytest.fixture(scope="session")
+def expected_period_metrics():
+    # fmt: off
+    return pd.DataFrame.from_dict(
+        {'index': [0, 1, 2, 3],
+         'columns': [PERIOD_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+         'data': [[f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'aai', 'USD', 328.5/3],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_100', 'USD', 9125/3],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_250', 'USD', 68437.5/3],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  ],
+         'index_names': [None],
+         'column_names': [None]},
+        orient="tight"
+    )
+    # fmt: on
+
+
+@pytest.fixture(scope="session")
+def expected_interp_period_wgroup(expected_period_metrics):
+    return pd.concat(
+        [
+            # fmt: off
+            pd.DataFrame.from_dict(
+                {'index': [0, 1, 2],
+                 'columns': [PERIOD_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+                 'data': [
+                     [f"{EXPOSURE_REF_YEAR} to 2022", 1, NO_MEASURE_VALUE, 'aai', 'USD', 66.91666666666667],
+                     [f"{EXPOSURE_REF_YEAR} to 2022", 2, NO_MEASURE_VALUE, 'aai', 'USD', 12.166666666666666],
+                     [f"{EXPOSURE_REF_YEAR} to 2022", 3, NO_MEASURE_VALUE, 'aai', 'USD', 30.416666666666668],
+                          ],
+                 'index_names': [None],
+                 'column_names': [None]},
+                orient="tight"
+            ),
+            expected_period_metrics
+            # fmt: on
+        ],
+        ignore_index=True,
+    )
+
+
+@pytest.fixture(scope="session")
+def expected_interp_metrics_rpchange():
+    # fmt: off
+    return pd.DataFrame.from_dict(
+        {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+         'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+         'data': [[ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 94.5],
+                  # Above should indeed not be 216+18 / 2 and slightly
+                  # because as we interpolate each contributor separately,
+                  # the interaction term grows slower.
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 216.0],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 3750.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 19687.5],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 45000.0]],
+         'index_names': [None],
+         'column_names': [None]
+         },
+        orient="tight"
+    )
+    # fmt: on
+
+
+@pytest.fixture(scope="session")
+def expected_period_metrics_rpchange():
+    # fmt: off
+    return pd.DataFrame.from_dict(
+        {'index': [0, 1, 2, 3],
+         'columns': [PERIOD_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+         'data': [[f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'aai', 'USD', 328.5/3],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_20', 'USD', 0.],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_500', 'USD', 22812.5],
+                  ],
+         'index_names': [None],
+         'column_names': [None]},
+        orient="tight"
+    )
+    # fmt: on
+
+
+@pytest.fixture(scope="session")
+def expected_interp_metrics_ratechange():
+    # fmt: off
+    return pd.DataFrame.from_dict(
+        {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
+         'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+         'data': [[ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 90.0],
+                  # Above should indeed not be 216+18 / 2 and slightly
+                  # because as we interpolate each contributor separately,
+                  # the interaction term grows slower.
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 195.9183673469],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 500.0],
+                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 2500.0],
+                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 5442.176870]],
+         'index_names': [None],
+         'column_names': [None]
+         },
+        orient="tight"
+    )
+    # fmt: on
+
+
+@pytest.fixture(scope="session")
+def expected_period_metrics_ratechange():
+    # fmt: off
+    return pd.DataFrame.from_dict(
+        {'index': [0, 1, 2, 3],
+         'columns': [PERIOD_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
+         'data': [[f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'aai', 'USD', 101.3061224489],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_100', 'USD', 2814.0589],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [f"{EXPOSURE_REF_YEAR} to 2022", 'All', NO_MEASURE_VALUE, 'rp_50', 'USD', 0.],
+                  ],
+         'index_names': [None],
+         'column_names': [None]},
+        orient="tight"
+    )
+    # fmt: on
+
+
+@pytest.fixture(scope="session")
+def expected_interp_metrics_contributions():
+    return pd.DataFrame.from_dict(
+        # fmt: off
+        {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+         'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
+         'data': [
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 18.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 18.0],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 18.0],
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 0.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 45.0],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 90.0],
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 0.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 9.0],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 18.0],
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 0.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 22.5],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 90.0]],
+             'index_names': [None],
+            'column_names': [None]},
+        # fmt: on
+        orient="tight",
+    )
+
+
+@pytest.fixture(scope="session")
+def expected_interp_metrics_contributions_vulchange():
+    return pd.DataFrame.from_dict(
+        # fmt: off
+        {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14],
+         'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME,],
+         'data': [
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 18.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 18.0],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_BASE_RISK_NAME, 'USD', 18.0],
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 0.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 45.0],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_EXPOSURE_NAME, 'USD', 90.0],
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 0.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 9.0],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_HAZARD_NAME, 'USD', 18.0],
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', 0.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', -4.5],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_VULNERABILITY_NAME, 'USD', -9.0],
+             [pd.Period(str(2020)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 0.0],
+             [pd.Period(str(2021)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', 3.375],
+             [pd.Period(str(2022)), 'All', NO_MEASURE_VALUE, CONTRIBUTION_INTERACTION_TERM_NAME, 'USD', -9.0]],
+             'index_names': [None],
+            'column_names': [None]},
+        # fmt: on
+        orient="tight",
+    )
+
+
+def test_interpolated_trajectory(
+    snapshot_base,
+    snapshot_future_interp,
+    expected_interp_metrics,
+    expected_period_metrics,
+):
+    interp_traj = InterpolatedRiskTrajectory(
+        [snapshot_base, snapshot_future_interp], return_periods=[50, 100, 250]
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_date_risk_metrics(),
+        expected_interp_metrics,
+        check_dtype=False,
+        check_categorical=False,
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_period_risk_metrics(),
+        expected_period_metrics,
+        check_dtype=False,
+        check_categorical=False,
+    )
+
+
+def test_interp_trajectory_with_group(
+    snapshot_factory, expected_interp_metrics_wgroup, expected_interp_period_wgroup
+):
+    snapshot_base = snapshot_factory(
+        group_id=CATEGORIES,
+    )
+    snapshot_future = snapshot_factory(
+        date=2022,
+        exposure_value_factor=6.0,
+        hazard_intensity_factor=2.0,
+        group_id=CATEGORIES,
+    )
+    interp_traj = InterpolatedRiskTrajectory(
+        [snapshot_base, snapshot_future], return_periods=[50, 100, 250]
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_date_risk_metrics(),
+        expected_interp_metrics_wgroup,
+        check_dtype=False,
+        check_categorical=False,
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_period_risk_metrics(),
+        expected_interp_period_wgroup,
+        check_dtype=False,
+        check_categorical=False,
+    )
+
+
+def test_interp_trajectory_change_rp(
+    snapshot_base,
+    snapshot_future_interp,
+    expected_interp_metrics,
+    expected_interp_metrics_rpchange,
+    expected_period_metrics,
+    expected_period_metrics_rpchange,
+):
+    interp_traj = InterpolatedRiskTrajectory(
+        [snapshot_base, snapshot_future_interp], return_periods=[20, 50, 500]
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_date_risk_metrics(),
+        expected_interp_metrics_rpchange,
+        check_dtype=False,
+        check_categorical=False,
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_period_risk_metrics(),
+        expected_period_metrics_rpchange,
+        check_dtype=False,
+        check_categorical=False,
+    )
+
+    # Also check change to other return period
+    interp_traj.return_periods = [50, 100, 250]
+    pd.testing.assert_frame_equal(
+        interp_traj.per_date_risk_metrics(),
+        expected_interp_metrics,
+        check_dtype=False,
+        check_categorical=False,
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_period_risk_metrics(),
+        expected_period_metrics,
+        check_dtype=False,
+        check_categorical=False,
+    )
+
+
+def test_interp_trajectory_risk_disc_rate(
+    snapshot_base,
+    snapshot_future_interp,
+    expected_interp_metrics,
+    expected_interp_metrics_ratechange,
+    expected_period_metrics,
+    expected_period_metrics_ratechange,
+):
+    risk_disc_rate = DiscRates(
+        years=np.array(range(2020, 2023)), rates=np.ones(3) * 0.05
+    )
+    interp_traj = InterpolatedRiskTrajectory(
+        [snapshot_base, snapshot_future_interp], risk_disc_rates=risk_disc_rate
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_date_risk_metrics(),
+        expected_interp_metrics_ratechange,
+        check_dtype=False,
+        check_categorical=False,
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_period_risk_metrics(),
+        expected_period_metrics_ratechange,
+        check_dtype=False,
+        check_categorical=False,
+    )
+
+    # Also check change to other return period
+    interp_traj.return_periods = [50, 100, 250]
+    interp_traj.risk_disc_rates = None
+    pd.testing.assert_frame_equal(
+        interp_traj.per_date_risk_metrics(),
+        expected_interp_metrics,
+        check_dtype=False,
+        check_categorical=False,
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_period_risk_metrics(),
+        expected_period_metrics,
+        check_dtype=False,
+        check_categorical=False,
+    )
+
+
+def test_interp_trajectory_risk_contributions(
+    snapshot_base, snapshot_future_interp, expected_interp_metrics_contributions
+):
+    interp_traj = InterpolatedRiskTrajectory([snapshot_base, snapshot_future_interp])
+    pd.testing.assert_frame_equal(
+        interp_traj.risk_contributions_metrics(),
+        expected_interp_metrics_contributions,
+        check_dtype=False,
+        check_categorical=False,
+    )
+
+
+def test_interp_trajectory_risk_contributions_vulchange(
+    snapshot_base,
+    snapshot_future_interp_vulchange,
+    expected_interp_metrics_contributions_vulchange,
+):
+    interp_traj = InterpolatedRiskTrajectory(
+        [snapshot_base, snapshot_future_interp_vulchange]
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.risk_contributions_metrics(),
+        expected_interp_metrics_contributions_vulchange,
+        check_dtype=False,
+        check_categorical=False,
+    )

@@ -21,18 +21,14 @@ unit tests for static_risk_trajectory
 """
 
 import datetime
-import types
-import unittest
 from itertools import product
-from unittest.mock import MagicMock, Mock, call, patch
+from unittest.mock import MagicMock, patch
 
-import numpy as np  # For potential NaN/NA comparisons
+import numpy as np
 import pandas as pd
+import pytest
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.calc_risk_metrics import (  # ImpactComputationStrategy, # If needed to mock its base class directly
-    CalcRiskMetricsPoints,
-)
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     AAI_PER_GROUP_METRIC_NAME,
@@ -41,7 +37,6 @@ from climada.trajectories.constants import (
     GROUP_COL_NAME,
     MEASURE_COL_NAME,
     METRIC_COL_NAME,
-    RETURN_PERIOD_METRIC_NAME,
     RISK_COL_NAME,
 )
 from climada.trajectories.impact_calc_strat import ImpactCalcComputation
@@ -51,329 +46,326 @@ from climada.trajectories.static_trajectory import (
     DEFAULT_RP,
     StaticRiskTrajectory,
 )
+from climada.trajectories.trajectory import RiskTrajectory
+
+# --- Fixtures ---
 
 
-class TestStaticRiskTrajectory(unittest.TestCase):
-    def setUp(self) -> None:
-        self.dates1 = [pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")]
-        self.dates2 = [pd.Timestamp("2026-01-01")]
-        self.groups = ["GroupA", "GroupB", pd.NA]
-        self.measures = ["MEAS1", "MEAS2"]
-        self.metrics = [AAI_METRIC_NAME]
-        self.aai_dates1 = pd.DataFrame(
-            product(self.groups, self.dates1, self.measures, self.metrics),
-            columns=[GROUP_COL_NAME, DATE_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
-        )
-        self.aai_dates1[RISK_COL_NAME] = np.arange(12) * 100
-        self.aai_dates1[GROUP_COL_NAME] = self.aai_dates1[GROUP_COL_NAME].astype(
-            "category"
-        )
+@pytest.fixture
+def mock_snapshots():
+    """Provides a list of mock Snapshot objects with sequential dates."""
+    snaps = []
+    for year in [2023, 2024, 2025]:
+        m = MagicMock(spec=Snapshot)
+        m.date = datetime.date(year, 1, 1)
+        snaps.append(m)
+    return snaps
 
-        self.aai_dates2 = pd.DataFrame(
-            product(self.groups, self.dates2, self.measures, self.metrics),
-            columns=[GROUP_COL_NAME, DATE_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
-        )
-        self.aai_dates2[RISK_COL_NAME] = np.arange(6) * 100 + 1200
-        self.aai_dates2[GROUP_COL_NAME] = self.aai_dates2[GROUP_COL_NAME].astype(
-            "category"
-        )
 
-        self.aai_alldates = pd.DataFrame(
-            product(
-                self.groups, self.dates1 + self.dates2, self.measures, self.metrics
+@pytest.fixture
+def mock_disc_rates():
+    """Provides a mock DiscRates object."""
+    dr = MagicMock(spec=DiscRates)
+    dr.years = [2023, 2024, 2025]
+    dr.rates = [0.01, 0.02, 0.03]
+    return dr
+
+
+@pytest.fixture
+def rt_basic(mock_snapshots):
+    """A basic StaticRiskTrajectory instance."""
+    return StaticRiskTrajectory(mock_snapshots)
+
+
+@pytest.fixture
+def trajectory_metadata():
+    """Common metadata for DataFrame generation."""
+    return {
+        "dates1": [pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")],
+        "dates2": [pd.Timestamp("2026-01-01")],
+        "groups": ["GroupA", "GroupB", pd.NA],
+        "measures": ["MEAS1", "MEAS2"],
+        "metrics": [AAI_METRIC_NAME],
+    }
+
+
+@pytest.fixture
+def expected_aai_data(trajectory_metadata):
+    """Generates the expected AAI DataFrames used for comparison."""
+    meta = trajectory_metadata
+    all_dates = meta["dates1"] + meta["dates2"]
+
+    df = pd.DataFrame(
+        product(meta["groups"], all_dates, meta["measures"], meta["metrics"]),
+        columns=[GROUP_COL_NAME, DATE_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
+    )
+    df[RISK_COL_NAME] = np.arange(len(df)) * 100.0
+
+    # Handle Categories and Nulls
+    df[GROUP_COL_NAME] = df[GROUP_COL_NAME].astype("category")
+    df[GROUP_COL_NAME] = df[GROUP_COL_NAME].cat.add_categories([DEFAULT_ALLGROUP_NAME])
+    df[GROUP_COL_NAME] = df[GROUP_COL_NAME].fillna(DEFAULT_ALLGROUP_NAME)
+
+    cols = [
+        DATE_COL_NAME,
+        GROUP_COL_NAME,
+        MEASURE_COL_NAME,
+        METRIC_COL_NAME,
+        RISK_COL_NAME,
+    ]
+    return df[cols]
+
+
+@pytest.fixture
+def mock_components():
+    """Provides standard CLIMADA mock objects."""
+    snaps = [
+        MagicMock(spec=Snapshot, date=datetime.date(2023 + i, 1, 1)) for i in range(3)
+    ]
+    strat = MagicMock(spec=ImpactCalcComputation)
+    dr = MagicMock(
+        spec=DiscRates, years=[2023, 2024, 2025, 2026], rates=[0.01, 0.02, 0.03, 0.04]
+    )
+    return {"snaps": snaps, "strat": strat, "disc_rates": dr}
+
+
+# --- Pure RiskTrajectory Tests ---
+
+
+def test_init_basic(rt_basic, mock_snapshots):
+    assert rt_basic.start_date == mock_snapshots[0].date
+    assert rt_basic.end_date == mock_snapshots[-1].date
+    assert rt_basic._risk_disc_rates is None
+    assert rt_basic._all_groups_name == DEFAULT_ALLGROUP_NAME
+    assert rt_basic._return_periods == DEFAULT_RP
+
+    for metric in StaticRiskTrajectory.POSSIBLE_METRICS:
+        assert getattr(rt_basic, f"_{metric}_metrics") is None
+
+
+def test_init_args(mock_snapshots, mock_disc_rates):
+    custom_rp = [10, 20]
+    rt = StaticRiskTrajectory(
+        mock_snapshots,
+        return_periods=custom_rp,
+        risk_disc_rates=mock_disc_rates,
+    )
+    assert rt._risk_disc_rates == mock_disc_rates
+    assert rt.return_periods == custom_rp
+
+
+# --- Property & Setter Tests ---
+
+
+def test_set_return_periods(rt_basic):
+    with pytest.raises(ValueError):
+        rt_basic.return_periods = "A"
+
+    rt_basic.return_periods = [1, 2]
+    assert rt_basic.return_periods == [1, 2]
+
+
+def test_set_disc_rates(rt_basic, mock_disc_rates):
+    # Mock the reset_metrics method on the instance
+    with patch.object(rt_basic, "_reset_metrics", wraps=rt_basic._reset_metrics) as spy:
+        with pytest.raises(ValueError):
+            rt_basic.risk_disc_rates = "A"
+
+        rt_basic.risk_disc_rates = mock_disc_rates
+        # Once in __init__, once in setter
+        assert spy.call_count == 1
+        assert rt_basic.risk_disc_rates == mock_disc_rates
+
+
+# --- NPV Transformation Tests ---
+
+
+def test_npv_transform_no_group_col(mock_disc_rates):
+    df_input = pd.DataFrame(
+        {
+            "date": pd.to_datetime(["2023-01-01", "2024-01-01"] * 2),
+            "measure": ["m1", "m1", "m2", "m2"],
+            "metric": [AAI_METRIC_NAME] * 4,
+            "risk": [100.0, 200.0, 80.0, 180.0],
+        }
+    )
+
+    with patch(
+        "climada.trajectories.trajectory.RiskTrajectory._calc_npv_cash_flows"
+    ) as mock_calc:
+        # Side effects to simulate discounted values
+        mock_calc.side_effect = [
+            pd.Series(
+                [99.0, 196.0], index=pd.to_datetime(["2023-01-01", "2024-01-01"])
             ),
-            columns=[GROUP_COL_NAME, DATE_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
-        )
-        self.aai_alldates[RISK_COL_NAME] = np.arange(18) * 100
-        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[GROUP_COL_NAME].astype(
-            "category"
-        )
-        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[
-            GROUP_COL_NAME
-        ].cat.add_categories([DEFAULT_ALLGROUP_NAME])
-        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[GROUP_COL_NAME].fillna(
-            DEFAULT_ALLGROUP_NAME
-        )
-        self.expected_pre_npv_aai = self.aai_alldates
-        self.expected_pre_npv_aai = self.expected_pre_npv_aai[
-            [
-                DATE_COL_NAME,
-                GROUP_COL_NAME,
-                MEASURE_COL_NAME,
-                METRIC_COL_NAME,
-                RISK_COL_NAME,
-            ]
-        ]
-
-        self.expected_npv_aai = pd.DataFrame(
-            product(
-                self.dates1 + self.dates2, self.groups, self.measures, self.metrics
+            pd.Series(
+                [79.2, 176.4], index=pd.to_datetime(["2023-01-01", "2024-01-01"])
             ),
-            columns=[DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME],
-        )
-        self.expected_npv_aai[RISK_COL_NAME] = np.arange(18) * 90
-        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
-            GROUP_COL_NAME
-        ].astype("category")
-        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
-            GROUP_COL_NAME
-        ].cat.add_categories(["All"])
-        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
-            GROUP_COL_NAME
-        ].fillna(DEFAULT_ALLGROUP_NAME)
-        expected_npv_df = self.expected_npv_aai
-        expected_npv_df = expected_npv_df[
-            [
-                DATE_COL_NAME,
-                GROUP_COL_NAME,
-                MEASURE_COL_NAME,
-                METRIC_COL_NAME,
-                RISK_COL_NAME,
-            ]
         ]
 
-        self.mock_snapshot1 = MagicMock(spec=Snapshot)
-        self.mock_snapshot1.date = datetime.date(2023, 1, 1)
+        _ = RiskTrajectory.npv_transform(df_input.copy(), mock_disc_rates)
 
-        self.mock_snapshot2 = MagicMock(spec=Snapshot)
-        self.mock_snapshot2.date = datetime.date(2024, 1, 1)
+        # Check calls: Grouping should happen by (measure, metric)
+        assert mock_calc.call_count == 2
+        # Verify first group args
+        args, _ = mock_calc.call_args_list[0]
+        assert args[1] == pd.Timestamp("2023-01-01")
+        assert args[2] == mock_disc_rates
 
-        self.mock_snapshot3 = MagicMock(spec=Snapshot)
-        self.mock_snapshot3.date = datetime.date(2026, 1, 1)
 
-        self.snapshots_list: list[Snapshot] = [
-            self.mock_snapshot1,
-            self.mock_snapshot2,
-            self.mock_snapshot3,
-        ]
-
-        self.risk_disc_rates = MagicMock(spec=DiscRates)
-        self.risk_disc_rates.years = [2023, 2024, 2025, 2026]
-        self.risk_disc_rates.rates = [0.01, 0.02, 0.03, 0.04]  # Example rates
-
-        self.mock_impact_computation_strategy = MagicMock(spec=ImpactCalcComputation)
-
-        self.custom_all_groups_name = "custom"
-        self.custom_return_periods = [10, 20]
-
-        self.mock_static_traj = MagicMock(spec=StaticRiskTrajectory)
-        self.mock_static_traj._all_groups_name = DEFAULT_ALLGROUP_NAME
-        self.mock_static_traj._risk_disc_rates = None
-        self.mock_static_traj._risk_metrics_calculators = MagicMock(
-            spec=CalcRiskMetricsPoints
-        )
-
-    @patch(
-        "climada.trajectories.static_trajectory.CalcRiskMetricsPoints",
-        autospec=True,
+def test_calc_npv_cash_flows_logic(mock_disc_rates):
+    """Standalone test for the math inside _calc_npv_cash_flows."""
+    cash_flows = pd.Series(
+        [100, 200, 300],
+        index=pd.to_datetime(["2023-01-01", "2024-01-01", "2025-01-01"]),
     )
-    def test_init_basic(self, MockCalcRiskPoints):
-        mock_calculator = MagicMock(spec=CalcRiskMetricsPoints)
-        mock_calculator.impact_computation_strategy = (
-            self.mock_impact_computation_strategy
+    start_date = datetime.date(2023, 1, 1)
+
+    # NPV Factor: (1 / (1 + rate)) ^ year_delta
+    # 2023: (1/1.01)^0 = 1.0 -> 100
+    # 2024: (1/1.02)^1 = 0.98039... -> 196.078...
+    # 2025: (1/1.03)^2 = 0.94259... -> 282.778...
+
+    result = RiskTrajectory._calc_npv_cash_flows(
+        cash_flows, start_date, mock_disc_rates
+    )
+
+    assert result.iloc[0] == pytest.approx(100.0)
+    assert result.iloc[1] == pytest.approx(200 / 1.02)
+    assert result.iloc[2] == pytest.approx(300 / (1.03**2))
+
+
+def test_calc_npv_cash_flows_invalid_index(mock_disc_rates):
+    cash_flows = pd.Series([100, 200])  # No datetime index
+    with pytest.raises(ValueError, match="PeriodIndex or DatetimeIndex"):
+        RiskTrajectory._calc_npv_cash_flows(
+            cash_flows, datetime.date(2023, 1, 1), mock_disc_rates
         )
-        MockCalcRiskPoints.return_value = mock_calculator
+
+
+# ---- StaticRiskTrajectory tests ---
+
+# ---  Metric Computation Tests   ---
+
+
+def test_compute_metrics(rt_basic):
+    with patch.object(
+        StaticRiskTrajectory, "_generic_metrics", return_value="42"
+    ) as mock_generic:
+        result = rt_basic._compute_metrics(
+            metric_name="dummy", metric_meth="meth", arg1="A", arg2=12
+        )
+
+        mock_generic.assert_called_once_with(
+            metric_name="dummy", metric_meth="meth", arg1="A", arg2=12
+        )
+        assert result == "42"
+
+
+def test_init_basic_static(mock_components):
+    # Patch the calculator class used inside __init__
+    with patch(
+        "climada.trajectories.static_trajectory.CalcRiskMetricsPoints", autospec=True
+    ) as mock_calc_cls:
         rt = StaticRiskTrajectory(
-            self.snapshots_list,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
-        )
-        MockCalcRiskPoints.assert_has_calls(
-            [
-                call(
-                    self.snapshots_list,
-                    impact_computation_strategy=self.mock_impact_computation_strategy,
-                ),
-            ]
-        )
-        self.assertEqual(rt.start_date, self.mock_snapshot1.date)
-        self.assertEqual(rt.end_date, self.mock_snapshot3.date)
-        self.assertIsNone(rt._risk_disc_rates)
-        self.assertEqual(rt._all_groups_name, DEFAULT_ALLGROUP_NAME)
-        self.assertEqual(rt._return_periods, DEFAULT_RP)
-        self.assertEqual(
-            rt.impact_computation_strategy, self.mock_impact_computation_strategy
-        )
-        # Check that metrics are reset (initially None)
-        for metric in StaticRiskTrajectory.POSSIBLE_METRICS:
-            self.assertIsNone(getattr(rt, "_" + metric + "_metrics"))
-
-    @patch(
-        "climada.trajectories.static_trajectory.CalcRiskMetricsPoints",
-        autospec=True,
-    )
-    def test_init_args(self, mock_calc_risk_metrics_points):
-        rt = StaticRiskTrajectory(
-            self.snapshots_list,
-            return_periods=self.custom_return_periods,
-            all_groups_name=self.custom_all_groups_name,
-            risk_disc_rates=self.risk_disc_rates,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
-        )
-        self.assertEqual(rt.start_date, self.mock_snapshot1.date)
-        self.assertEqual(rt.end_date, self.mock_snapshot3.date)
-        self.assertEqual(rt._risk_disc_rates, self.risk_disc_rates)
-        self.assertEqual(rt._all_groups_name, self.custom_all_groups_name)
-        self.assertEqual(rt._return_periods, self.custom_return_periods)
-        self.assertEqual(rt.return_periods, self.custom_return_periods)
-        # Check that metrics are reset (initially None)
-        for metric in StaticRiskTrajectory.POSSIBLE_METRICS:
-            self.assertIsNone(getattr(rt, "_" + metric + "_metrics"))
-        self.assertIsInstance(rt._risk_metrics_calculators, CalcRiskMetricsPoints)
-        mock_calc_risk_metrics_points.assert_called_with(
-            self.snapshots_list,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
+            mock_components["snaps"],
+            impact_computation_strategy=mock_components["strat"],
         )
 
-    @patch.object(StaticRiskTrajectory, "_reset_metrics", new_callable=Mock)
-    @patch(
-        "climada.trajectories.static_trajectory.CalcRiskMetricsPoints",
-        autospec=True,
+        mock_calc_cls.assert_called_once_with(
+            mock_components["snaps"],
+            impact_computation_strategy=mock_components["strat"],
+        )
+        assert rt.start_date == mock_components["snaps"][0].date
+
+
+def test_set_impact_strategy_resets(mock_components):
+    rt = StaticRiskTrajectory(mock_components["snaps"])
+    with patch.object(rt, "_reset_metrics", wraps=rt._reset_metrics) as spy_reset:
+        new_strat = ImpactCalcComputation()
+        rt.impact_computation_strategy = new_strat
+
+        assert rt.impact_computation_strategy == new_strat
+        # Called once in init, once in setter
+        assert spy_reset.call_count == 1
+
+
+# --- Logic & Metric Tests ---
+
+
+def test_generic_metrics_caching_and_npv(mock_components, expected_aai_data):
+    """Tests the complex logic of _generic_metrics including NPV transform and caching."""
+    rt = StaticRiskTrajectory(
+        mock_components["snaps"], risk_disc_rates=mock_components["disc_rates"]
     )
-    def test_set_impact_computation_strategy(
-        self, mock_calc_risk_metrics_points, mock_reset_metrics
+
+    # Mock the internal calculator's method
+    mock_calc = MagicMock()
+    mock_calc.calc_aai_metric.return_value = expected_aai_data
+    rt._risk_metrics_calculators = mock_calc
+
+    # Mock NPV transform to return a modified version
+    npv_data = expected_aai_data.copy()
+    npv_data[RISK_COL_NAME] *= 0.9
+    with patch.object(rt, "npv_transform", return_value=npv_data) as mock_npv:
+
+        # First call
+        result = rt._generic_metrics(AAI_METRIC_NAME, "calc_aai_metric")
+
+        mock_calc.calc_aai_metric.assert_called_once()
+        mock_npv.assert_called_once()
+        pd.testing.assert_frame_equal(result, npv_data)
+
+        # Verify Internal Cache
+        assert rt._aai_metrics is not None  # type: ignore
+
+        # Second call (should be cached)
+        result2 = rt._generic_metrics(AAI_METRIC_NAME, "calc_aai_metric")
+        assert mock_calc.calc_aai_metric.call_count == 1  # No new call
+        pd.testing.assert_frame_equal(result2, npv_data)
+
+
+@pytest.mark.parametrize(
+    "metric_name, method_name, attr_name",
+    [
+        (EAI_METRIC_NAME, "calc_eai_gdf", "eai_metrics"),
+        (AAI_METRIC_NAME, "calc_aai_metric", "aai_metrics"),
+        (
+            AAI_PER_GROUP_METRIC_NAME,
+            "calc_aai_per_group_metric",
+            "aai_per_group_metrics",
+        ),
+    ],
+)
+def test_metric_wrappers(mock_components, metric_name, method_name, attr_name):
+    """Uses parametrization to test all simple metric wrapper methods at once."""
+    rt = StaticRiskTrajectory(mock_components["snaps"])
+    with patch.object(rt, "_compute_metrics") as mock_compute:
+        wrapper_func = getattr(rt, attr_name)
+        wrapper_func(test_arg="val")
+        mock_compute.assert_called_once_with(
+            metric_name=metric_name, metric_meth=method_name, test_arg="val"
+        )
+
+
+def test_per_date_risk_metrics_aggregation(mock_components):
+    rt = StaticRiskTrajectory(mock_components["snaps"])
+
+    # Setup mock returns for the constituent parts
+    df_aai = pd.DataFrame({METRIC_COL_NAME: ["aai"], RISK_COL_NAME: [100]})
+    df_rp = pd.DataFrame({METRIC_COL_NAME: ["rp"], RISK_COL_NAME: [50]})
+    df_grp = pd.DataFrame({METRIC_COL_NAME: ["grp"], RISK_COL_NAME: [10]})
+
+    with (
+        patch.object(rt, "aai_metrics", return_value=df_aai) as m1,
+        patch.object(rt, "return_periods_metrics", return_value=df_rp) as m2,
+        patch.object(rt, "aai_per_group_metrics", return_value=df_grp) as m3,
     ):
-        rt = StaticRiskTrajectory(
-            self.snapshots_list,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
-        )
-        mock_reset_metrics.assert_called_once()  # Called during init
-        with self.assertRaises(ValueError):
-            rt.impact_computation_strategy = "A"
 
-        # There is only one possibility at the moment so we just check against a new object
-        new_impact_calc = ImpactCalcComputation()
-        rt.impact_computation_strategy = new_impact_calc
-        self.assertEqual(rt.impact_computation_strategy, new_impact_calc)
-        mock_reset_metrics.assert_has_calls([call(), call()])
-
-    def test_generic_metrics(self):
-        self.mock_static_traj.POSSIBLE_METRICS = StaticRiskTrajectory.POSSIBLE_METRICS
-        self.mock_static_traj._generic_metrics = types.MethodType(
-            StaticRiskTrajectory._generic_metrics, self.mock_static_traj
-        )
-        self.mock_static_traj._risk_disc_rates = self.risk_disc_rates
-        self.mock_static_traj._aai_metrics = None
-        with self.assertRaises(ValueError):
-            self.mock_static_traj._generic_metrics(None, "dummy_meth")
-
-        with self.assertRaises(NotImplementedError):
-            self.mock_static_traj._generic_metrics("dummy_name", "dummy_meth")
-
-        self.mock_static_traj._risk_metrics_calculators.calc_aai_metric.return_value = (
-            self.aai_alldates
-        )
-        self.mock_static_traj.npv_transform.return_value = self.expected_npv_aai
-        result = self.mock_static_traj._generic_metrics(
-            AAI_METRIC_NAME, "calc_aai_metric"
-        )
-
-        self.mock_static_traj._risk_metrics_calculators.calc_aai_metric.assert_called_once_with()
-        self.mock_static_traj.npv_transform.assert_called_once()
-        pd.testing.assert_frame_equal(
-            self.mock_static_traj.npv_transform.call_args[0][0].reset_index(drop=True),
-            self.expected_pre_npv_aai.reset_index(drop=True),
-        )
-        self.assertEqual(
-            self.mock_static_traj.npv_transform.call_args[0][1], self.risk_disc_rates
-        )
-        pd.testing.assert_frame_equal(
-            result, self.expected_npv_aai
-        )  # Final result is from NPV transform
-
-        # Check internal storage
-        stored_df = getattr(self.mock_static_traj, "_aai_metrics")
-        # Assert that the stored DF is the one *before* NPV transformation
-        pd.testing.assert_frame_equal(
-            stored_df.reset_index(drop=True),
-            self.expected_npv_aai.reset_index(drop=True),
-        )
-
-        result2 = self.mock_static_traj._generic_metrics(
-            AAI_METRIC_NAME, "calc_aai_metric"
-        )
-        # Check no new call
-        self.mock_static_traj._risk_metrics_calculators.calc_aai_metric.assert_called_once_with()
-        pd.testing.assert_frame_equal(
-            result2,
-            self.expected_npv_aai.reset_index(drop=True),
-        )
-
-    def test_eai_metrics(self):
-        self.mock_static_traj.eai_metrics = types.MethodType(
-            StaticRiskTrajectory.eai_metrics, self.mock_static_traj
-        )
-        self.mock_static_traj.eai_metrics(some_arg="test")
-        self.mock_static_traj._compute_metrics.assert_called_once_with(
-            metric_name=EAI_METRIC_NAME, metric_meth="calc_eai_gdf", some_arg="test"
-        )
-
-    def test_aai_metrics(self):
-        self.mock_static_traj.aai_metrics = types.MethodType(
-            StaticRiskTrajectory.aai_metrics, self.mock_static_traj
-        )
-        self.mock_static_traj.aai_metrics(some_arg="test")
-        self.mock_static_traj._compute_metrics.assert_called_once_with(
-            metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric", some_arg="test"
-        )
-
-    def test_return_periods_metrics(self):
-        self.mock_static_traj.return_periods = [1, 2]
-        self.mock_static_traj.return_periods_metrics = types.MethodType(
-            StaticRiskTrajectory.return_periods_metrics, self.mock_static_traj
-        )
-        self.mock_static_traj.return_periods_metrics(some_arg="test")
-        self.mock_static_traj._compute_metrics.assert_called_once_with(
-            metric_name=RETURN_PERIOD_METRIC_NAME,
-            metric_meth="calc_return_periods_metric",
-            return_periods=[1, 2],
-            some_arg="test",
-        )
-
-    def test_aai_per_group_metrics(self):
-        self.mock_static_traj.aai_per_group_metrics = types.MethodType(
-            StaticRiskTrajectory.aai_per_group_metrics, self.mock_static_traj
-        )
-        self.mock_static_traj.aai_per_group_metrics(some_arg="test")
-        self.mock_static_traj._compute_metrics.assert_called_once_with(
-            metric_name=AAI_PER_GROUP_METRIC_NAME,
-            metric_meth="calc_aai_per_group_metric",
-            some_arg="test",
-        )
-
-    def test_per_date_risk_metrics_defaults(self):
-        self.mock_static_traj.per_date_risk_metrics = types.MethodType(
-            StaticRiskTrajectory.per_date_risk_metrics, self.mock_static_traj
-        )
-        # Set up mock return values for each method
-        self.mock_static_traj.aai_metrics.return_value = pd.DataFrame(
-            {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
-        )
-        self.mock_static_traj.return_periods_metrics.return_value = pd.DataFrame(
-            {METRIC_COL_NAME: ["rp"], RISK_COL_NAME: [50]}
-        )
-        self.mock_static_traj.aai_per_group_metrics.return_value = pd.DataFrame(
-            {METRIC_COL_NAME: ["aai_grp"], RISK_COL_NAME: [10]}
-        )
-        result = self.mock_static_traj.per_date_risk_metrics()
-
-        # Assert calls with default arguments
-        self.mock_static_traj.aai_metrics.assert_called_once_with()
-        self.mock_static_traj.return_periods_metrics.assert_called_once_with()
-        self.mock_static_traj.aai_per_group_metrics.assert_called_once_with()
-
-        # Assert concatenation
-        expected_df = pd.concat(
-            [
-                self.mock_static_traj.aai_metrics.return_value,
-                self.mock_static_traj.return_periods_metrics.return_value,
-                self.mock_static_traj.aai_per_group_metrics.return_value,
-            ]
-        )
-        pd.testing.assert_frame_equal(
-            result.reset_index(drop=True), expected_df.reset_index(drop=True)
-        )
-
-
-if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestStaticRiskTrajectory)
-    unittest.TextTestRunner(verbosity=2).run(TESTS)
+        result = rt.per_date_risk_metrics()
+        assert len(result) == 3
+        assert list(result[METRIC_COL_NAME]) == ["aai", "rp", "grp"]
+        # Verify it called all three internal methods
+        m1.assert_called_once()
+        m2.assert_called_once()
+        m3.assert_called_once()

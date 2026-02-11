@@ -95,7 +95,7 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         vul: ImpactFuncSet,
     ) -> Impact:
         """
-        Calculates the impact and applies the "global" risk transfer mechanism.
+        Calculates the impact.
 
         Parameters
         ----------
@@ -110,31 +110,5 @@ class ImpactCalcComputation(ImpactComputationStrategy):
         -------
         Impact
             The final impact object.
-        """
-        impact = self.compute_impacts_pre_transfer(exp, haz, vul)
-        return impact
-
-    def compute_impacts_pre_transfer(
-        self,
-        exp: Exposures,
-        haz: Hazard,
-        vul: ImpactFuncSet,
-    ) -> Impact:
-        """
-        Calculates the raw impact matrix before any risk transfer is applied.
-
-        Parameters
-        ----------
-        exp : Exposures
-            The exposure data.
-        haz : Hazard
-            The hazard data.
-        vul : ImpactFuncSet
-            The set of vulnerability functions.
-
-        Returns
-        -------
-        Impact
-            An Impact object containing the raw, pre-transfer impact matrix.
         """
         return ImpactCalc(exposures=exp, impfset=vul, hazard=haz).impact()
