@@ -221,18 +221,18 @@ def test_calc_npv_cash_flows_logic(mock_disc_rates):
     )
     start_date = datetime.date(2023, 1, 1)
 
-    # NPV Factor: (1 / (1 + rate)) ^ year_delta
+    # NPV Factor: Product[ (1 / (1 + rate_i))]
+    # For a constant rate or 0.01
     # 2023: (1/1.01)^0 = 1.0 -> 100
-    # 2024: (1/1.02)^1 = 0.98039... -> 196.078...
-    # 2025: (1/1.03)^2 = 0.94259... -> 282.778...
+    # 2024: (1/1.01)^1 = 0.99099... -> 198.019...
+    # 2025: (1/1.01)^2 = 0.98029... -> 294.088...
 
     result = RiskTrajectory._calc_npv_cash_flows(
         cash_flows, start_date, mock_disc_rates
     )
-
     assert result.iloc[0] == pytest.approx(100.0)
-    assert result.iloc[1] == pytest.approx(200 / 1.02)
-    assert result.iloc[2] == pytest.approx(300 / (1.03**2))
+    assert result.iloc[1] == pytest.approx(200 / (1.02))
+    assert result.iloc[2] == pytest.approx(300 * (1 / 1.02) * (1 / 1.03))
 
 
 def test_calc_npv_cash_flows_invalid_index(mock_disc_rates):
