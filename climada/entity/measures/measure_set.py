@@ -274,13 +274,14 @@ class MeasureSet:
             impfset_mod = mod_sets[0]
 
             # 3. Iterate through each impact function in the base set
-            for impf_base in impfset_mod.get_func():
-                # Get all modified versions of THIS specific impact function ID
-                # We use a list comprehension to find the same ID in all other sets
-                versions = [
-                    s.get_func(haz_type=impf_base.haz_type, fun_id=impf_base.id)
-                    for s in mod_sets
-                ]
+            for haz_type, haz_dict in impfset_mod.get_func().items():
+                for impf_id, impf in haz_dict.items():
+                    # Get all modified versions of THIS specific impact function ID
+                    # We use a list comprehension to find the same ID in all other sets
+                    versions = [
+                        s.get_func(haz_type=impf.haz_type, fun_id=impf.id)
+                        for s in mod_sets
+                    ]
 
                 # 4. Apply vectorized reduction to the attributes
                 # paa and mdd: minimize damage
