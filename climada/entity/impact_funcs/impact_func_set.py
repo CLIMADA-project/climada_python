@@ -187,11 +187,13 @@ class ImpactFuncSet:
     @overload
     def get_func(
         self, haz_type: None = None, fun_id: None = None
-    ) -> Dict[str, Dict[int, ImpactFunc]]: ...
+    ) -> Dict[str, Dict[Union[int, str], ImpactFunc]]: ...
 
     def get_func(
         self, haz_type: Optional[str] = None, fun_id: Optional[int | str] = None
-    ) -> Union[ImpactFunc, list[ImpactFunc], Dict[str, Dict[int, ImpactFunc]]]:
+    ) -> Union[
+        ImpactFunc, list[ImpactFunc], Dict[str, Dict[Union[int, str], ImpactFunc]]
+    ]:
         """Get ImpactFunc(s) of input hazard type and/or id.
         If no input provided, all impact functions are returned.
 
