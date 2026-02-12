@@ -229,7 +229,7 @@ class ImpactFuncSet:
         else:
             return self._data
 
-    def get_hazard_types(self, fun_id: Optional[str | int]) -> list[str]:
+    def get_hazard_types(self, fun_id: Optional[str | int] = None) -> list[str]:
         """Get impact functions hazard types contained for the id provided.
         Return all hazard types if no input id.
 
