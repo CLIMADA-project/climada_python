@@ -323,3 +323,41 @@ class CostIncome:
         return pd.DataFrame(
             {"date": periods, "net": net, "cost": costs, "income": incs}
         )
+
+    @staticmethod
+    def comb_cost_income(cost_incomes: list["CostIncome"]) -> "CostIncome":
+        """Sum costs and incomes from all measures."""
+        first_ci = cost_incomes[0]
+
+        if not all(
+            [
+                first_ci.mkt_price_year.year == c.mkt_price_year.year
+                for c in cost_incomes
+            ]
+        ):
+            raise ValueError(
+                "Measure cost incomes have different market price years, combination is not possible."
+            )
+
+        if not all(
+            [first_ci.cost_growth_rate == c.cost_growth_rate for c in cost_incomes]
+        ):
+            raise ValueError(
+                "Measure cost incomes have different cost_growth_rate, combination is not possible."
+            )
+
+        if not all(
+            [first_ci.income_growth_rate == c.income_growth_rate for c in cost_incomes]
+        ):
+            raise ValueError(
+                "Measure cost incomes have different income_growth_rate, combination is not possible."
+            )
+
+        return CostIncome(
+            mkt_price_year=first_ci.mkt_price_year.year,
+            cost_yearly_growth_rate=first_ci.cost_growth_rate,
+            init_cost=sum(c.init_cost for c in cost_incomes),
+            periodic_cost=sum(c.periodic_cost for c in cost_incomes),
+            periodic_income=sum(c.periodic_income for c in cost_incomes),
+            income_yearly_growth_rate=first_ci.income_growth_rate,
+        )

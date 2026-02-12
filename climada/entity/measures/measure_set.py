@@ -176,7 +176,7 @@ class MeasureSet:
         meas_list = list(self.measures(names).values())
 
         if not meas_list:
-            raise ValueError("No measures found to combine.")
+            raise ValueError("No measures found to compose.")
 
         def composite_fun(*funcs: Callable[[T], T]) -> Callable[[T], T]:
             def compose(f: Callable[[T], T], g: Callable[[T], T]) -> Callable[[T], T]:
@@ -198,25 +198,13 @@ class MeasureSet:
             """Apply measures sequentially and reduce hazard intensity/frequency."""
             return composite_fun(*[meas.impfset_change for meas in meas_list])(impfset)
 
-        def comb_cost_income() -> CostIncome:
-            """Sum costs and incomes from all measures."""
-            first_ci = meas_list[0].cost_income
-            return CostIncome(
-                mkt_price_year=first_ci.mkt_price_year.year,
-                cost_yearly_growth_rate=first_ci.cost_growth_rate,
-                init_cost=sum(m.cost_income.init_cost for m in meas_list),
-                periodic_cost=sum(m.cost_income.periodic_cost for m in meas_list),
-                periodic_income=sum(m.cost_income.periodic_income for m in meas_list),
-                income_yearly_growth_rate=first_ci.income_growth_rate,
-            )
-
         return Measure(
             name=combo_name or "_".join(names) + "composed",
             exposures_change=comb_exp_map,
             impfset_change=comb_impfset_map,
             hazard_change=comb_haz_map,
             sub_measures=names,
-            cost_income=comb_cost_income(),
+            cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
         )
 
     def combine(
@@ -270,12 +258,11 @@ class MeasureSet:
             # 1. Generate all modified sets
             mod_sets = [m.apply_to_impfset(impfset) for m in meas_list]
 
-            # 2. Use the first set as the base for the result
-            impfset_mod = mod_sets[0]
+            impfset_final = ImpactFuncSet()
 
             # 3. Iterate through each impact function in the base set
-            for haz_type, haz_dict in impfset_mod.get_func().items():
-                for impf_id, impf in haz_dict.items():
+            for haz_dict in impfset.get_func().values():
+                for impf in haz_dict.values():
                     # Get all modified versions of THIS specific impact function ID
                     # We use a list comprehension to find the same ID in all other sets
                     versions = [
@@ -283,16 +270,28 @@ class MeasureSet:
                         for s in mod_sets
                     ]
 
-                # 4. Apply vectorized reduction to the attributes
-                # paa and mdd: minimize damage
-                impf_base.paa = np.minimum.reduce([v.paa for v in versions])
-                impf_base.mdd = np.minimum.reduce([v.mdd for v in versions])
+                    # 4. Apply vectorized reduction to the attributes
+                    # paa and mdd: minimize damage
+                    paa = np.minimum.reduce([v.paa for v in versions])
+                    mdd = np.minimum.reduce([v.mdd for v in versions])
 
-                # intensity: typically we take the union/max of the intensity bins
-                # (assuming they are aligned; if not, interpolation is required)
-                impf_base.intensity = np.maximum.reduce([v.intensity for v in versions])
+                    # intensity: typically we take the union/max of the intensity bins
+                    # (assuming they are aligned; if not, interpolation is required)
+                    intensity = np.maximum.reduce([v.intensity for v in versions])
 
-            return impfset_mod
+                    impfset_final.append(
+                        ImpactFunc(
+                            impf.haz_type,
+                            impf.id,
+                            intensity,
+                            mdd,
+                            paa,
+                            impf.intensity_unit,
+                            impf.name,
+                        )
+                    )
+
+            return impfset_final
 
         def comb_exp_map(base_exposures: Exposures) -> Exposures:
             """Apply measures and update exposure values and impact function IDs."""
@@ -359,23 +358,11 @@ class MeasureSet:
                 value_unit=base_exposures.value_unit,
             )
 
-        def comb_cost_income() -> CostIncome:
-            """Sum costs and incomes from all measures."""
-            first_ci = meas_list[0].cost_income
-            return CostIncome(
-                mkt_price_year=first_ci.mkt_price_year.year,
-                cost_yearly_growth_rate=first_ci.cost_growth_rate,
-                init_cost=sum(m.cost_income.init_cost for m in meas_list),
-                periodic_cost=sum(m.cost_income.periodic_cost for m in meas_list),
-                periodic_income=sum(m.cost_income.periodic_income for m in meas_list),
-                income_yearly_growth_rate=first_ci.income_growth_rate,
-            )
-
         return Measure(
             name=combo_name or "_".join(names),
             exposures_change=comb_exp_map,
             impfset_change=comb_impfset_map,
             hazard_change=comb_haz_map,
             sub_measures=names,
-            cost_income=comb_cost_income(),
+            cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
         )
