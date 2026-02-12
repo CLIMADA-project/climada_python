@@ -23,12 +23,19 @@ __all__ = ["Measure"]
 
 import copy
 import logging
-from typing import Callable, Dict, Optional, TypeVar, Union
+from collections.abc import Callable
+from typing import Dict, Optional, Tuple, TypeVar, Union
 
 import pandas as pd
 
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+from climada.entity.measures.helper import (
+    helper_exposure,
+    helper_hazard,
+    helper_impfset,
+    impact_intensity_rp_cutoff_helper,
+)
 from climada.hazard.base import Hazard
 
 from .cost_income import CostIncome
@@ -37,6 +44,9 @@ LOGGER = logging.getLogger(__name__)
 
 T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
+MeasureEffect = Callable[
+    [Exposures, ImpactFuncSet, Hazard], Tuple[Exposures, ImpactFuncSet, Hazard]
+]
 HazardChange = Callable[[Hazard], Hazard]
 ImpfsetChange = Callable[[ImpactFuncSet], ImpactFuncSet]
 ExposuresChange = Callable[[Exposures], Exposures]
@@ -70,9 +80,11 @@ class Measure:
         self,
         name: str,
         *,
-        exposures_change: ExposuresChange = lambda x: x,
-        impfset_change: ImpfsetChange = lambda x: x,
-        hazard_change: HazardChange = lambda x: x,
+        measure_effects: MeasureEffect = lambda exposures, impfset, hazard: (
+            exposures,
+            impfset,
+            hazard,
+        ),
         sub_measures: Optional[list[str]] = None,
         cost_income: Optional[CostIncome] = None,
         implementation_duration: Optional[pd.DateOffset] = None,
@@ -99,37 +111,35 @@ class Measure:
         """
 
         self.name = name
-        self.exposures_change = exposures_change
-        self.impfset_change = impfset_change
-        self.hazard_change = hazard_change
+        self.measure_effects = measure_effects
         self.sub_measures = sub_measures
         self.cost_income = cost_income if cost_income is not None else CostIncome()
         self.implementation_duration = implementation_duration
 
-    def _apply_transformation(
-        self, obj: T, func: Callable[[T], T], enforce_copy: bool = True
-    ) -> T:
-        """Helper to handle the boilerplate of copying and applying changes."""
-        obj_to_mod = copy.deepcopy(obj) if enforce_copy else obj
-        return func(obj_to_mod)
+    @classmethod
+    def from_changes(
+        cls,
+        name: str,
+        *,
+        exposures_change: ExposuresChange,
+        impfset_change: ImpfsetChange,
+        hazard_change: HazardChange,
+        sub_measures: Optional[list[str]] = None,
+        cost_income: Optional[CostIncome] = None,
+        implementation_duration: Optional[pd.DateOffset] = None,
+    ):
+        def measure_effects(
+            exp: Exposures, impfs: ImpactFuncSet, haz: Hazard
+        ) -> tuple[Exposures, ImpactFuncSet, Hazard]:
+            return (exposures_change(exp), impfset_change(impfs), hazard_change(haz))
 
-    def apply_to_exposures(
-        self, exposures: Exposures, enforce_copy: bool = True
-    ) -> Exposures:
-        """Apply measure changes to an Exposures instance."""
-        return self._apply_transformation(
-            exposures, self.exposures_change, enforce_copy
+        return cls(
+            name,
+            measure_effects=measure_effects,
+            sub_measures=sub_measures,
+            cost_income=cost_income,
+            implementation_duration=implementation_duration,
         )
-
-    def apply_to_impfset(
-        self, impfset: ImpactFuncSet, enforce_copy: bool = True
-    ) -> ImpactFuncSet:
-        """Apply measure changes to an ImpactFuncSet instance."""
-        return self._apply_transformation(impfset, self.impfset_change, enforce_copy)
-
-    def apply_to_hazard(self, hazard: Hazard, enforce_copy: bool = True) -> Hazard:
-        """Apply measure changes to a Hazard instance."""
-        return self._apply_transformation(hazard, self.hazard_change, enforce_copy)
 
     def apply(
         self,
@@ -146,8 +156,13 @@ class Measure:
         dict
             Dictionary with keys 'exposure', 'impfset', and 'hazard'.
         """
-        return {
-            "exposure": self.apply_to_exposures(exposures, enforce_copy),
-            "impfset": self.apply_to_impfset(impfset, enforce_copy),
-            "hazard": self.apply_to_hazard(hazard, enforce_copy),
-        }
+        changed_exp = copy.deepcopy(exposures) if enforce_copy else exposures
+        changed_impfset = copy.deepcopy(impfset) if enforce_copy else impfset
+        changed_haz = copy.deepcopy(hazard) if enforce_copy else hazard
+
+        return dict(
+            zip(
+                ("exposures", "impfset", "hazard"),
+                self.measure_effects(changed_exp, changed_impfset, changed_haz),
+            )
+        )

@@ -23,7 +23,7 @@ __all__ = ["MeasureSet"]
 
 import logging
 from functools import reduce
-from typing import Any, Callable, Dict, Iterable, List, Optional, TypeVar, cast
+from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar, cast
 
 import numpy as np
 import pandas as pd
@@ -32,7 +32,7 @@ from scipy.sparse import csr_matrix
 
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
-from climada.entity.measures.base import Measure
+from climada.entity.measures.base import Measure, MeasureEffect
 from climada.entity.measures.cost_income import CostIncome
 from climada.hazard.base import Hazard
 
@@ -178,191 +178,168 @@ class MeasureSet:
         if not meas_list:
             raise ValueError("No measures found to compose.")
 
-        def composite_fun(*funcs: Callable[[T], T]) -> Callable[[T], T]:
-            def compose(f: Callable[[T], T], g: Callable[[T], T]) -> Callable[[T], T]:
-                return lambda x: f(g(x))
+        def composite_fun(*funcs: MeasureEffect) -> MeasureEffect:
 
-            return reduce(compose, funcs, lambda x: x)
+            def compose(f: MeasureEffect, g: MeasureEffect) -> MeasureEffect:
+                return lambda exp, impfs, haz: f(*g(exp, impfs, haz))
 
-        def comb_haz_map(hazard: Hazard) -> Hazard:
-            """Apply measures sequentially and reduce hazard intensity/frequency."""
-            return composite_fun(*[meas.hazard_change for meas in meas_list])(hazard)
-
-        def comb_exp_map(exposures: Exposures) -> Exposures:
-            """Apply measures sequentially and reduce hazard intensity/frequency."""
-            return composite_fun(*[meas.exposures_change for meas in meas_list])(
-                exposures
+            return reduce(
+                compose,
+                funcs,
+                lambda exposures, impfset, hazard: (
+                    exposures,
+                    impfset,
+                    hazard,
+                ),
             )
 
-        def comb_impfset_map(impfset: ImpactFuncSet) -> ImpactFuncSet:
-            """Apply measures sequentially and reduce hazard intensity/frequency."""
-            return composite_fun(*[meas.impfset_change for meas in meas_list])(impfset)
+        def measure_effects(
+            exp: Exposures, impfs: ImpactFuncSet, haz: Hazard
+        ) -> tuple[Exposures, ImpactFuncSet, Hazard]:
+            return composite_fun(*[meas.measure_effects for meas in meas_list])(
+                exp, impfs, haz
+            )
 
         return Measure(
             name=combo_name or "_".join(names) + "composed",
-            exposures_change=comb_exp_map,
-            impfset_change=comb_impfset_map,
-            hazard_change=comb_haz_map,
+            measure_effects=measure_effects,
             sub_measures=names,
             cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
         )
 
+    @staticmethod
+    def _combine_hazards(modified_hazards: list[Hazard]) -> Hazard:
+        """Finds the maximum effect (minimum intensity/freq) across hazards."""
+        intensities = [h.intensity for h in modified_hazards]
+        fractions = [h.fraction for h in modified_hazards]
+        frequencies = [h.frequency for h in modified_hazards]
+
+        hazard_mod = modified_hazards[0]
+        hazard_mod.intensity = reduce(lambda a, b: a.minimum(b), intensities)
+        hazard_mod.fraction = reduce(lambda a, b: a.minimum(b), fractions)
+        hazard_mod.frequency = np.minimum.reduce(frequencies)
+        return hazard_mod
+
+    @staticmethod
+    def _combine_impfsets(
+        base_set: ImpactFuncSet, modified_sets: list[ImpactFuncSet]
+    ) -> ImpactFuncSet:
+        """Merges impact functions by taking the safest (minimum) damage parameters."""
+        combined = ImpactFuncSet()
+        for haz_dict in base_set.get_func().values():
+            for impf in haz_dict.values():
+                versions = [
+                    s.get_func(haz_type=impf.haz_type, fun_id=impf.id)
+                    for s in modified_sets
+                ]
+
+                combined.append(
+                    ImpactFunc(
+                        impf.haz_type,
+                        impf.id,
+                        intensity=np.maximum.reduce([v.intensity for v in versions]),
+                        mdd=np.minimum.reduce([v.mdd for v in versions]),
+                        paa=np.minimum.reduce([v.paa for v in versions]),
+                        intensity_unit=impf.intensity_unit,
+                        name=impf.name,
+                    )
+                )
+        return combined
+
+    @staticmethod
+    def _combine_exposures(
+        base_exp: Exposures, modified_exps: list[Exposures]
+    ) -> Exposures:
+        """Merges exposure changes, raising ValueError if two measures touch the same cell."""
+        new_exps_gdfs = [exp.gdf for exp in modified_exps]
+        if not all(
+            set(new_gdf.columns) == set(base_exp.gdf.columns)
+            for new_gdf in new_exps_gdfs
+        ):
+            raise ValueError(
+                "All change DataFrames must have identical column structure and order."
+            )
+
+        # Align all changes into a single MultiIndexed DataFrame
+        # This stacks all change-sets on top of each other
+        stack = pd.concat(
+            new_exps_gdfs,
+            keys=range(len(new_exps_gdfs)),
+            names=["change_idx", "row_idx"],
+        )
+
+        # Create a broadcasted baseline to match the stack's shape
+        # We use take() to repeat baseline rows for every change-set
+        baseline_repeated = base_exp.gdf.iloc[
+            np.tile(np.arange(len(base_exp.gdf)), len(base_exp.gdf))
+        ]
+        baseline_repeated.index = stack.index  # Align indices for direct comparison
+
+        # Identify changes: Mask is True where a cell differs from baseline
+        diff_mask = stack != baseline_repeated
+
+        # Check for Conflicts:
+        # Sum the True values across the 'change_idx' level for every (row, col)
+        # If any cell has > 1 change, it's a conflict.
+        change_counts = diff_mask.groupby(level="row_idx").sum()
+        if (change_counts > 1).any().any():
+            # Identify exactly where the conflict is for the error message
+            conflicting_cells = (
+                change_counts[change_counts > 1]
+                .dropna(how="all")
+                .dropna(axis=1, how="all")
+            )
+            raise ValueError(
+                f"Conflict: Multiple measures change the same cells:\n{conflicting_cells}"
+            )
+
+        # Merge:
+        # We take the baseline and update it with the sum of differences
+        # Only works if the data is numeric. For general objects (like 'if_' IDs):
+        result = base_exp.gdf.copy()
+
+        # Efficiently collapse the stack:
+        # Since only one change exists per cell (checked in step 5),
+        # we can 'first' or 'max' to get the non-baseline value.
+        updates = stack.where(diff_mask).groupby(level="row_idx").first()
+
+        exp_mod = Exposures(
+            updates.combine_first(result),
+            crs=base_exp.crs,
+            description=base_exp.description,
+            ref_year=base_exp.ref_year,
+            value_unit=base_exp.value_unit,
+        )
+        return exp_mod
+
     def combine(
-        self, names: Optional[List[str]] = None, combo_name: Optional[str] = None
+        self, names: Optional[list[str]] = None, combo_name: Optional[str] = None
     ) -> Measure:
-        """
-        Combine multiple measures into a single representative Measure.
-
-        The combination is maximalistic, the combined measure has the maximum
-        effect of each of its members.
-
-        Parameters
-        ----------
-        names : List[str], optional
-            Names of measures to combine. Defaults to all measures.
-        combo_name : str, optional
-            Name for the combined measure. Defaults to joined names.
-
-        Returns
-        -------
-        Measure
-            A new combined Measure object.
-        """
         names = self.names if names is None else names
         meas_list = list(self.measures(names).values())
 
         if not meas_list:
             raise ValueError("No measures found to combine.")
 
-        def comb_haz_map(hazard: Hazard) -> Hazard:
-            """Apply measures sequentially and reduce hazard intensity/frequency."""
-            modified_hazards = [m.apply_to_hazard(hazard) for m in meas_list]
-
-            # 2. Extract attributes into lists
-            intensities = [h.intensity for h in modified_hazards]
-            fractions = [h.fraction for h in modified_hazards]
-            frequencies = [h.frequency for h in modified_hazards]
-
-            # 3. Create a result hazard (copy from first modification)
-            hazard_mod = modified_hazards[0]
-
-            # 4. Use reduce to find the minimum across all elements
-            hazard_mod.intensity = reduce(lambda a, b: a.minimum(b), intensities)
-            hazard_mod.fraction = reduce(lambda a, b: a.minimum(b), fractions)
-            hazard_mod.frequency = np.minimum.reduce(frequencies)
-
-            return hazard_mod
-
-        def comb_impfset_map(impfset: ImpactFuncSet) -> ImpactFuncSet:
-            """Apply measures and reduce impact function parameters."""
-            # 1. Generate all modified sets
-            mod_sets = [m.apply_to_impfset(impfset) for m in meas_list]
-
-            impfset_final = ImpactFuncSet()
-
-            # 3. Iterate through each impact function in the base set
-            for haz_dict in impfset.get_func().values():
-                for impf in haz_dict.values():
-                    # Get all modified versions of THIS specific impact function ID
-                    # We use a list comprehension to find the same ID in all other sets
-                    versions = [
-                        s.get_func(haz_type=impf.haz_type, fun_id=impf.id)
-                        for s in mod_sets
-                    ]
-
-                    # 4. Apply vectorized reduction to the attributes
-                    # paa and mdd: minimize damage
-                    paa = np.minimum.reduce([v.paa for v in versions])
-                    mdd = np.minimum.reduce([v.mdd for v in versions])
-
-                    # intensity: typically we take the union/max of the intensity bins
-                    # (assuming they are aligned; if not, interpolation is required)
-                    intensity = np.maximum.reduce([v.intensity for v in versions])
-
-                    impfset_final.append(
-                        ImpactFunc(
-                            impf.haz_type,
-                            impf.id,
-                            intensity,
-                            mdd,
-                            paa,
-                            impf.intensity_unit,
-                            impf.name,
-                        )
-                    )
-
-            return impfset_final
-
-        def comb_exp_map(base_exposures: Exposures) -> Exposures:
-            """Apply measures and update exposure values and impact function IDs."""
-            new_exps_gdfs = [
-                meas.apply_to_exposures(base_exposures).gdf for meas in meas_list
-            ]
-
-            if not all(
-                set(new_gdf.columns) == set(base_exposures.gdf.columns)
-                for new_gdf in new_exps_gdfs
-            ):
-                raise ValueError(
-                    "All change DataFrames must have identical column structure and order."
-                )
-
-            # 2. Align all changes into a single MultiIndexed DataFrame
-            # This stacks all change-sets on top of each other
-            stack = pd.concat(
-                new_exps_gdfs,
-                keys=range(len(new_exps_gdfs)),
-                names=["change_idx", "row_idx"],
+        def comb_effect(
+            base_exp: Exposures, base_impfs: ImpactFuncSet, base_haz: Hazard
+        ):
+            # 1. Apply all measures individually
+            results = [m.apply(base_exp, base_impfs, base_haz) for m in meas_list]
+            mod_exps, mod_impfs, mod_hazs = zip(
+                *[(r["exposures"], r["impfset"], r["hazard"]) for r in results]
             )
 
-            # 3. Create a broadcasted baseline to match the stack's shape
-            # We use take() to repeat baseline rows for every change-set
-            baseline_repeated = base_exposures.gdf.iloc[
-                np.tile(np.arange(len(base_exposures.gdf)), len(base_exposures.gdf))
-            ]
-            baseline_repeated.index = stack.index  # Align indices for direct comparison
-
-            # 4. Identify changes: Mask is True where a cell differs from baseline
-            diff_mask = stack != baseline_repeated
-
-            # 5. Check for Conflicts:
-            # Sum the True values across the 'change_idx' level for every (row, col)
-            # If any cell has > 1 change, it's a conflict.
-            change_counts = diff_mask.groupby(level="row_idx").sum()
-            if (change_counts > 1).any().any():
-                # Identify exactly where the conflict is for the error message
-                conflicting_cells = (
-                    change_counts[change_counts > 1]
-                    .dropna(how="all")
-                    .dropna(axis=1, how="all")
-                )
-                raise ValueError(
-                    f"Conflict: Multiple measures change the same cells:\n{conflicting_cells}"
-                )
-
-            # 6. Merge:
-            # We take the baseline and update it with the sum of differences
-            # Only works if the data is numeric. For general objects (like 'if_' IDs):
-            result = base_exposures.gdf.copy()
-
-            # Efficiently collapse the stack:
-            # Since only one change exists per cell (checked in step 5),
-            # we can 'first' or 'max' to get the non-baseline value.
-            updates = stack.where(diff_mask).groupby(level="row_idx").first()
-
-            return Exposures(
-                updates.combine_first(result),
-                crs=base_exposures.crs,
-                description=base_exposures.description,
-                ref_year=base_exposures.ref_year,
-                value_unit=base_exposures.value_unit,
+            # 2. Delegate combination to specialized methods
+            return (
+                self._combine_exposures(base_exp, mod_exps),
+                self._combine_impfsets(base_impfs, mod_impfs),
+                self._combine_hazards(mod_hazs),
             )
 
         return Measure(
             name=combo_name or "_".join(names),
-            exposures_change=comb_exp_map,
-            impfset_change=comb_impfset_map,
-            hazard_change=comb_haz_map,
+            measure_effects=comb_effect,
             sub_measures=names,
             cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
         )
