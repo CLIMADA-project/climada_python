@@ -24,7 +24,7 @@ __all__ = ["ImpactFuncSet"]
 import copy
 import logging
 from itertools import repeat
-from typing import Dict, Iterable, Optional, Union, overload
+from typing import Iterable, Optional, Union, overload
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -178,7 +178,7 @@ class ImpactFuncSet:
     @overload
     def get_func(
         self, haz_type: None = None, fun_id: None = None
-    ) -> Dict[str, Dict[Union[int, str], ImpactFunc]]: ...
+    ) -> dict[str, dict[Union[int, str], ImpactFunc]]: ...
 
     @overload
     def get_func(
@@ -196,7 +196,7 @@ class ImpactFuncSet:
     def get_func(
         self, haz_type: Optional[str] = None, fun_id: Optional[int | str] = None
     ) -> Union[
-        ImpactFunc, list[ImpactFunc], Dict[str, Dict[Union[int, str], ImpactFunc]]
+        ImpactFunc, list[ImpactFunc], dict[str, dict[Union[int, str], ImpactFunc]]
     ]:
         """Get ImpactFunc(s) of input hazard type and/or id.
         If no input provided, all impact functions are returned.
