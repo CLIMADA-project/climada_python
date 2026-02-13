@@ -361,3 +361,14 @@ class CostIncome:
             periodic_income=sum(c.periodic_income for c in cost_incomes),
             income_yearly_growth_rate=first_ci.income_growth_rate,
         )
+
+    @staticmethod
+    def from_kwargs(kwargs) -> "CostIncome":
+        """Extracts financial keys from the excel row data."""
+        return CostIncome(
+            init_cost=kwargs.get("init_cost", 0.0),
+            periodic_cost=kwargs.get("periodic_cost", 0.0),
+            periodic_income=kwargs.get("periodic_income", 0.0),
+            income_yearly_growth_rate=kwargs.get("income_yearly_growth_rate", 0.0),
+            cost_yearly_growth_rate=kwargs.get("cost_yearly_growth_rate", 0.0),
+        )
