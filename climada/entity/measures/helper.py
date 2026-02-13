@@ -19,39 +19,45 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Measure class.
 """
 
-import copy
+from __future__ import annotations
+
 import logging
-from typing import Dict, Optional, cast
+from typing import TYPE_CHECKING, Dict, Optional, cast
 
 import numpy as np
 import pandas as pd
-from scipy import sparse
 
-from climada.engine.impact_calc import ImpactCalc
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.base import ImpactFunc
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.entity.measures.base import ExposuresChange, HazardChange, ImpfsetChange
-from climada.hazard.base import Hazard
+
+if TYPE_CHECKING:
+    from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+    from climada.entity.measures.types import (
+        ExposuresChange,
+        HazardChange,
+        ImpfsetChange,
+        MeasureEffect,
+    )
+    from climada.hazard.base import Hazard
 
 LOGGER = logging.getLogger(__name__)
 
 
 def helper_hazard(
     intensity_multiplier: Optional[float] = None,
-    intensity_subtract: Optional[float] = None,
-    new_hazard: Optional[Hazard] = None,
+    intensity_add: Optional[float] = None,
+    new_hazard: Hazard | None = None,
 ) -> HazardChange:
     """Returns a function that scales and shifts hazard intensity."""
 
     intensity_multiplier = 1 if intensity_multiplier is None else intensity_multiplier
-    intensity_subtract = 1 if intensity_subtract is None else intensity_subtract
+    intensity_add = 1 if intensity_add is None else intensity_add
 
     def hazard_change(hazard: Hazard) -> Hazard:
         changed_hazard = new_hazard if new_hazard is not None else hazard
         data = cast(np.ndarray, changed_hazard.intensity.data)
         data *= intensity_multiplier
-        data -= intensity_subtract
+        data += intensity_add
         data[data < 0] = 0
         changed_hazard.intensity.eliminate_zeros()
         return changed_hazard
@@ -79,6 +85,7 @@ def impact_intensity_rp_cutoff_helper(
     Identifies events exceeding a return period and returns the hazard intensity
     matrix with those event intensities zeroed out.
     """
+    from climada.engine.impact_calc import ImpactCalc
 
     def hazard_change(hazard: Hazard) -> Hazard:
 
@@ -193,3 +200,40 @@ def helper_exposure(
         return changed_exposures
 
     return exposures_change
+
+
+@staticmethod
+def build_measure_effects(haz_type, **kwargs) -> MeasureEffect:
+    """Returns the closure that transforms Exposures, ImpfSet, and Hazard."""
+
+    # Pre-generate the static helpers
+    impfset_change = helper_impfset(
+        haz_type,
+        kwargs.get("impf_id"),
+        impf_mdd_modifier=kwargs.get("impf_mdd_modifier"),
+        impf_paa_modifier=kwargs.get("impf_paa_modifier"),
+        impf_intensity_modifier=kwargs.get("impf_intensity_modifier"),
+        new_impfset=kwargs.get("new_impfset"),
+    )
+
+    exp_change = helper_exposure(
+        reassign_impf_id=kwargs.get("reassign_impf_id"),
+        set_to_zero=kwargs.get("set_to_zero"),
+        new_exposure=kwargs.get("new_exposure"),
+    )
+
+    def measure_effects(exp, impfs, haz):
+        # Decide which hazard helper to use at runtime
+        rp_cutoff = kwargs.get("impact_rp_cutoff")
+        if rp_cutoff:
+            haz_change = impact_intensity_rp_cutoff_helper(rp_cutoff, exp, impfs, haz)
+        else:
+            haz_change = helper_hazard(
+                kwargs.get("haz_intensity_multiplier"),
+                kwargs.get("haz_intensity_add"),
+                kwargs.get("new_hazard"),
+            )
+
+        return exp_change(exp), impfset_change(impfs), haz_change(haz)
+
+    return measure_effects

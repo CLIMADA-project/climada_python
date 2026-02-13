@@ -19,37 +19,35 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Measure class.
 """
 
+from __future__ import annotations
+
 __all__ = ["Measure"]
 
 import copy
 import logging
-from collections.abc import Callable
-from typing import Dict, Optional, Tuple, TypeVar, Union
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, TypeVar, Union
 
 import pandas as pd
 
-from climada.entity.exposures.base import Exposures
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.entity.measures.helper import (
-    helper_exposure,
-    helper_hazard,
-    helper_impfset,
-    impact_intensity_rp_cutoff_helper,
-)
-from climada.hazard.base import Hazard
+from climada.entity.measures.helper import build_measure_effects
+
+if TYPE_CHECKING:
+    from climada.entity.exposures.base import Exposures
+    from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+    from climada.entity.measures.types import (
+        ExposuresChange,
+        HazardChange,
+        ImpfsetChange,
+        MeasureEffect,
+    )
+    from climada.hazard.base import Hazard
+
+    T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
 from .cost_income import CostIncome
 
 LOGGER = logging.getLogger(__name__)
 
-T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
-
-MeasureEffect = Callable[
-    [Exposures, ImpactFuncSet, Hazard], Tuple[Exposures, ImpactFuncSet, Hazard]
-]
-HazardChange = Callable[[Hazard], Hazard]
-ImpfsetChange = Callable[[ImpactFuncSet], ImpactFuncSet]
-ExposuresChange = Callable[[Exposures], Exposures]
 
 # TODO: risk transfer?
 
@@ -88,6 +86,7 @@ class Measure:
         sub_measures: Optional[list[str]] = None,
         cost_income: Optional[CostIncome] = None,
         implementation_duration: Optional[pd.DateOffset] = None,
+        color_rgb: Optional[Tuple[float, float, float]] = None,
     ):
         """
         Initialize a new Measure object.
@@ -115,6 +114,7 @@ class Measure:
         self.sub_measures = sub_measures
         self.cost_income = cost_income if cost_income is not None else CostIncome()
         self.implementation_duration = implementation_duration
+        self.color_rgb = (0, 0, 0) if color_rgb is None else color_rgb
 
     @classmethod
     def from_changes(
@@ -147,7 +147,7 @@ class Measure:
         impfset: ImpactFuncSet,
         hazard: Hazard,
         enforce_copy: bool = True,
-    ) -> Dict[str, Union[Exposures, ImpactFuncSet, Hazard]]:
+    ) -> Tuple[Exposures, ImpactFuncSet, Hazard]:
         """
         Apply all measure transformations to the provided entities.
 
@@ -160,9 +160,29 @@ class Measure:
         changed_impfset = copy.deepcopy(impfset) if enforce_copy else impfset
         changed_haz = copy.deepcopy(hazard) if enforce_copy else hazard
 
-        return dict(
-            zip(
-                ("exposures", "impfset", "hazard"),
-                self.measure_effects(changed_exp, changed_impfset, changed_haz),
-            )
+        return self.measure_effects(changed_exp, changed_impfset, changed_haz)
+
+    @classmethod
+    def _from_xls_row_args(cls, name: str, haz_type: str, **kwargs):
+        # 1. Validation
+        has_haz_mod = any(
+            kwargs.get(k)
+            for k in ["haz_intensity_multiplier", "haz_intensity_add", "new_hazard"]
         )
+        if has_haz_mod and kwargs.get("impact_rp_cutoff"):
+            raise ValueError(
+                "Cannot apply impact return period cutoff AND base hazard changes."
+            )
+
+        if kwargs.get("impact_rp_cutoff"):
+            LOGGER.warning(
+                "Impact return period cutoff provided. You should know about it subtleties."
+            )
+
+        # 2. Financials
+        cost_inc = CostIncome.from_kwargs(kwargs)
+
+        # 3. Transformation Logic
+        effects = build_measure_effects(haz_type, **kwargs)
+
+        return cls(name, measure_effects=effects, cost_income=cost_inc)

@@ -23,22 +23,55 @@ __all__ = ["MeasureSet"]
 
 import logging
 from functools import reduce
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, TypeVar, cast
+from itertools import chain
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, TypeVar
 
 import numpy as np
 import pandas as pd
-from dask.dataframe.core import _reduction_chunk
-from scipy.sparse import csr_matrix
 
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
-from climada.entity.measures.base import Measure, MeasureEffect
+from climada.entity.measures.base import Measure
 from climada.entity.measures.cost_income import CostIncome
 from climada.hazard.base import Hazard
+from climada.util.string_parsers import parse_mapping_string, parse_range
+
+if TYPE_CHECKING:
+    from climada.entity.measures.types import MeasureEffect
+
+    T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
+
 
 LOGGER = logging.getLogger(__name__)
 
-T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
+
+DEF_VAR_EXCEL = {
+    "sheet_name": "measures",
+    "col_name": {
+        "name": "name",
+        "color": "color",
+        "cost": "cost",
+        "periodic_cost": "periodic cost",
+        "periodic_income": "periodic income",
+        "income_yearly_growth_rate": "income growth rate (yearly)",
+        "cost_yearly_growth_rate": "cost growth rate (yearly)",
+        "impf_id": "impact function id",
+        "haz_int_a": "hazard intensity impact a",
+        "haz_int_b": "hazard intensity impact b",
+        "haz_set": "hazard event set",
+        "mdd_a": "MDD impact a",
+        "mdd_b": "MDD impact b",
+        "paa_a": "PAA impact a",
+        "paa_b": "PAA impact b",
+        "fun_map": "damagefunctions map",
+        "exp_set": "assets file",
+        "exp_reg": "Region_ID",
+        "haz_type": "peril_ID",
+        "impact_rp_cutoff": "Impact RP cutoff",
+        "assets_to_zero": "assets zeroing",
+    },
+}
+"""Excel variable names"""
 
 
 class MeasureSet:
@@ -343,3 +376,87 @@ class MeasureSet:
             sub_measures=names,
             cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
         )
+
+    @classmethod
+    def from_excel(cls, file_name: str, var_names: Optional[dict] = None):
+        """Read excel file following template and return a MeasureSet."""
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
+
+        # 1. Load and clean DataFrame
+        df = pd.read_excel(file_name, sheet_name=var_names["sheet_name"])
+
+        # 2. Reverse map the Excel columns to our internal argument names
+        # This removes the need for most of those 'try-except' blocks
+        inv_map = {v: k for k, v in var_names["col_name"].items()}
+        df = df.rename(columns=inv_map)
+
+        meas_set = []
+
+        # 3. Iterate through rows and instantiate
+        for _, row in df.iterrows():
+            # Handle the special (a, b) tuple logic for modifiers
+            # We group them into the format expected by _from_xls_row_args
+
+            haz_type = row["haz_type"]
+            impf_id = row.get("impf_id", 1)
+            # Prepare modifiers (mapping the Excel a/b columns to our tuple format)
+            # Note: If your excel has specific IDs, you'd map them here.
+            # For now, we assume ID 1 as per your previous logic.
+            mdd_mod = {impf_id: (row.get("mdd_a", 1.0), row.get("mdd_b", 0.0))}
+            paa_mod = {impf_id: (row.get("paa_a", 1.0), row.get("paa_b", 0.0))}
+            int_mod = {impf_id: (row.get("int_a", 1.0), row.get("int_b", 0.0))}
+
+            zeros_idx = (
+                parse_range(assets_to_zero)
+                if (assets_to_zero := row.get("assets_to_zero"))
+                else None
+            )
+            reassign_impf_id = (
+                parse_mapping_string(fun_map)
+                if (fun_map := row.get("fun_map"))
+                else None
+            )
+
+            new_exposure = None
+            if path := row.get("exp_set"):
+                if path != "nil":
+                    new_exposure = Exposures.from_hdf5(path)
+
+            new_hazard = None
+            if path := row.get("haz_set"):
+                if path != "nil":
+                    new_hazard = Hazard.from_hdf5(path)
+
+            # Build the Measure using the refactored classmethod
+            measure = Measure._from_xls_row_args(
+                name=row.get("name", "unnamed"),
+                # Hazard modifs
+                haz_type=haz_type,
+                haz_intensity_multiplier=row.get("haz_int_a", 1.0),
+                haz_intensity_add=row.get("haz_int_b", 0.0),
+                impact_rp_cutoff=row.get("impact_rp_cutoff"),
+                new_hazard=new_hazard,
+                # Impfset modifs
+                impf_mdd_modifier=mdd_mod,
+                impf_paa_modifier=paa_mod,
+                impf_intensity_modifier=int_mod,
+                # Exp modifs
+                reassign_impf_id=reassign_impf_id,
+                set_to_zero=zeros_idx,
+                new_exposure=new_exposure,
+                # CostIncome
+                init_cost=row.get("cost", 0.0),
+                periodic_cost=row.get("periodic_cost", 0.0),
+                periodic_income=row.get("periodic_income", 0.0),
+                income_yearly_growth_rate=row.get("income_yearly_growth_rate", 0.0),
+                cost_yearly_growth_rate=row.get("cost_yearly_growth_rate", 0.0),
+            )
+
+            # Handle the color conversion separately if needed
+            if "color" in row and isinstance(row["color"], str):
+                measure.color_rgb = tuple(row["color"].split(" "))
+
+            meas_set.append(measure)
+
+        return MeasureSet(meas_set)

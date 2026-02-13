@@ -218,11 +218,13 @@ class Snapshot:
         """
 
         LOGGER.debug("Applying measure %s on snapshot %s", measure.name, id(self))
-        exp, impfset, haz = measure.apply(self.exposure, self.impfset, self.hazard)
+        exposure, impfset, hazard = measure.apply(
+            self.exposure, self.impfset, self.hazard
+        )
         snap = Snapshot(
-            exposure=exp,
-            hazard=haz,
+            exposure=exposure,
             impfset=impfset,
+            hazard=hazard,
             date=self.date,
             measure=measure,
             ref_only=True,  # Avoid unecessary copies of new objects
