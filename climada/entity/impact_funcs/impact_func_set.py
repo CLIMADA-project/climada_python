@@ -176,18 +176,22 @@ class ImpactFuncSet:
             self._data = dict()
 
     @overload
-    def get_func(self, haz_type: str, fun_id: int | str) -> ImpactFunc: ...
-
-    @overload
-    def get_func(self, haz_type: str, fun_id: None = None) -> list[ImpactFunc]: ...
-
-    @overload
-    def get_func(self, haz_type: None, fun_id: int | str) -> list[ImpactFunc]: ...
-
-    @overload
     def get_func(
         self, haz_type: None = None, fun_id: None = None
     ) -> Dict[str, Dict[Union[int, str], ImpactFunc]]: ...
+
+    @overload
+    def get_func(
+        self, haz_type: None = ..., fun_id: int | str = ...
+    ) -> list[ImpactFunc]: ...
+
+    @overload
+    def get_func(
+        self, haz_type: str = ..., fun_id: None = None
+    ) -> list[ImpactFunc]: ...
+
+    @overload
+    def get_func(self, haz_type: str = ..., fun_id: int | str = ...) -> ImpactFunc: ...
 
     def get_func(
         self, haz_type: Optional[str] = None, fun_id: Optional[int | str] = None
