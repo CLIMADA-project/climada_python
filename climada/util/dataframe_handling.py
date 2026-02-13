@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define functions to handle with coordinates
+Define functions to handle dataframes
 """
 
 import pandas as pd

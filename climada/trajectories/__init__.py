@@ -32,4 +32,6 @@ __all__ = [
     "Snapshot",
     "StaticRiskTrajectory",
     "InterpolatedRiskTrajectory",
+    "AllLinearStrategy",
+    "ExponentialExposureStrategy",
 ]

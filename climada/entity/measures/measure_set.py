@@ -22,19 +22,56 @@ Define MeasureSet class.
 __all__ = ["MeasureSet"]
 
 import logging
-from typing import Iterable
+from functools import reduce
+from itertools import chain
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, TypeVar
 
 import numpy as np
-from scipy.sparse import csr_matrix
+import pandas as pd
 
-import climada.util.hdf5_handler as u_hdf5
+from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
 from climada.entity.measures.base import Measure
 from climada.entity.measures.cost_income import CostIncome
+from climada.hazard.base import Hazard
+from climada.util.string_parsers import parse_mapping_string, parse_range
+
+if TYPE_CHECKING:
+    from climada.entity.measures.types import MeasureEffect
+
+    T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
+
 
 LOGGER = logging.getLogger(__name__)
 
-# TODOS:
-# Implement __contains__ method
+
+DEF_VAR_EXCEL = {
+    "sheet_name": "measures",
+    "col_name": {
+        "name": "name",
+        "color": "color",
+        "cost": "cost",
+        "periodic_cost": "periodic cost",
+        "periodic_income": "periodic income",
+        "income_yearly_growth_rate": "income growth rate (yearly)",
+        "cost_yearly_growth_rate": "cost growth rate (yearly)",
+        "impf_id": "impact function id",
+        "haz_int_a": "hazard intensity impact a",
+        "haz_int_b": "hazard intensity impact b",
+        "haz_set": "hazard event set",
+        "mdd_a": "MDD impact a",
+        "mdd_b": "MDD impact b",
+        "paa_a": "PAA impact a",
+        "paa_b": "PAA impact b",
+        "fun_map": "damagefunctions map",
+        "exp_set": "assets file",
+        "exp_reg": "Region_ID",
+        "haz_type": "peril_ID",
+        "impact_rp_cutoff": "Impact RP cutoff",
+        "assets_to_zero": "assets zeroing",
+    },
+}
+"""Excel variable names"""
 
 
 class MeasureSet:
@@ -43,55 +80,58 @@ class MeasureSet:
     Attributes
     ----------
     _data : dict
-        Contains Measure objects. This attribute is not suppossed to be accessed directly.
-        Use the available methods instead.
+        Contains Measure objects keyed by their name.
     """
 
     def __init__(self, measures: Iterable[Measure]):
-        """Initialize a new MeasureSet object with specified data.
+        """Initialize a new MeasureSet object.
 
         Parameters
         ----------
-        measures : iterable of Measure objects.
-            The measures to include in the MeasureSet
+        measures : Iterable[Measure].
+            The measures to include in the MeasureSet.
 
         """
-        haz_type = np.unique([meas.haz_type for meas in measures])[0]
-        self.haz_type = haz_type
-        self._data = {meas.name: meas for meas in measures}
+        self._data: Dict[str, Measure] = {meas.name: meas for meas in measures}
 
-    def append(self, measure):
-        """Append an Measure. Override if same name and haz_type.
+    def append(self, measure: Measure):
+        """
+        Append a Measure. Overwrites if a measure with the same name exists.
 
         Parameters
         ----------
-        meas : Measure
-            Measure instance
+        measure : Measure
+            The Measure instance to add.
 
         Raises
         ------
-        ValueError
+        TypeError
+            If input is not an instance of Measure.
+
         """
         if not isinstance(measure, Measure):
-            raise ValueError("Input value is not of type Measure.")
-        if measure.haz_type != self.haz_type:
-            raise ValueError("Input measures for different hazard type")
+            raise TypeError(f"Expected Measure, got {type(measure).__name__}")
+
         self._data[measure.name] = measure
 
-    def measures(self, names=None):
-        """Get measures
+    def measures(self, names: Optional[Iterable[str]] = None) -> Dict[str, Measure]:
+        """
+        Get a dictionary of measures.
 
         Parameters
         ----------
-        name : str, optional
-            measure name
+        names : Iterable[str], optional
+            Filter by these measure names. If None, returns all.
 
         Returns
         -------
+        Dict[str, Measure]
+            Dictionary of measure names and objects.
+
         """
         if names is None:
             return self._data
-        return {name: meas for name, meas in self._data.items() if name in names}
+        return {name: self._data[name] for name in names if name in self._data}
 
     @property
     def names(self):
@@ -111,16 +151,9 @@ class MeasureSet:
         return list(self._data.keys())
 
     @property
-    def size(self):
-        """Get number of measures contained with input hazard type and
-        /or id. If no input provided, get total number of impact functions.
-
-        Parameters
-        ----------
-        haz_type : str, optional
-            hazard type
-        name : str, optional
-            measure name
+    def size(self) -> int:
+        """
+        Number of measures in the set.
 
         Returns
         -------
@@ -128,86 +161,302 @@ class MeasureSet:
         """
         return len(self._data)
 
-    # def combine(self, names=None, start_year=None, end_year=None, combo_name=None):
-    def combine(self, names=None, combo_name=None) -> Measure:
-        names = self.names if names is None else names
-        # if start_year is None:
-        #     start_year = np.min([meas.start_year for meas in self.measures(names).values()])
-        # if end_year is None:
-        #     end_year = np.max([meas.end_year for meas in self.measures(names).values()])
+    def __contains__(self, item: str) -> bool:
+        """Check if a measure name exists in the set."""
+        return item in self._data
+
+    def compose(self, names: List[str], combo_name: Optional[str] = None) -> Measure:
+        """
+        Compose multiple measures into a single meta-Measure.
+
+        This method creates a new Measure where the transformation functions
+        (hazard, exposures, impfset) are mathematically composed and financial
+        values are aggregated.
+
+        Execution Order:
+        The composition follows a right-to-left nesting. For a list of
+        measures [m1, m2, m3], the resulting transformation is:
+        m1(m2(m3(x)))
+        This means m3 is applied first, then m2, then m1.
+
+        Financial Aggregation:
+        - Costs and incomes are summed across all selected measures.
+        - Growth rates and market price years are inherited from the
+          first measure in the list.
+
+        Parameters
+        ----------
+        names : list of str
+            Ordered list of measure names to combine.
+        combo_name : str, optional
+            The name for the resulting Measure. If None, a name is
+            generated by joining names with an underscore and
+            appending 'composed'.
+
+        Returns
+        -------
+        Measure
+            A new Measure object representing the sequential application
+            of the component measures.
+
+        Raises
+        ------
+        ValueError
+            If the provided names do not match any measures in the set,
+            or if the MeasureSet is empty.
+
+        """
         meas_list = list(self.measures(names).values())
 
-        def comb_haz_map(hazard, year=None):
-            hazard_modified = meas_list[0].apply_to_hazard(hazard)
-            for measure in meas_list[1:]:
-                new_haz = measure.apply_to_hazard(hazard)
-                hazard_modified.intensity = csr_matrix(
-                    np.minimum(
-                        new_haz.intensity.todense(), hazard_modified.intensity.todense()
-                    )
-                )
-                hazard_modified.fraction = csr_matrix(
-                    np.minimum(
-                        new_haz.fraction.todense(), hazard_modified.fraction.todense()
-                    )
-                )
-                hazard_modified.frequency = np.minimum(
-                    new_haz.frequency, hazard_modified.frequency
-                )
-            return hazard_modified
+        if not meas_list:
+            raise ValueError("No measures found to compose.")
 
-        def comb_impfset_map(impfset, year=None):
-            impfset_modified = meas_list[0].apply_to_impfset(impfset)
-            for measure in meas_list[1:]:
-                new_impfset = measure.apply_to_impfset(impfset)
-                for new_impf in new_impfset.get_func(self.haz_type):
-                    impf_modified = impfset_modified.get_func(
-                        self.haz_type, new_impf.id
-                    )
-                    impf_modified.paa = np.minimum(new_impf.paa, impf_modified.paa)
-                    impf_modified.mdd = np.minimum(new_impf.mdd, impf_modified.mdd)
-                    impf_modified.intensity = np.maximum(
-                        new_impf.intensity, impf_modified.intensity
-                    )
-            return impfset_modified
+        def composite_fun(*funcs: MeasureEffect) -> MeasureEffect:
 
-        def comb_exp_map(exposures, year=None):
-            exposures_modified = meas_list[0].apply_to_exposures(exposures)
-            for measure in meas_list[1:]:
-                new_exposures = measure.apply_to_exposures(exposures)
-                exposures_modified.gdf["value"] = np.minimum(
-                    new_exposures.gdf["value"], exposures_modified.gdf["value"]
-                )
-                impf_col = f"impf_{measure.haz_type}"
-                changed_impf_ids = np.array(
-                    new_exposures.gdf[impf_col] != exposures.gdf[impf_col]
-                )
-                exposures_modified.gdf[changed_impf_ids] = new_exposures.gdf[
-                    changed_impf_ids
-                ]
-            return exposures_modified
+            def compose(f: MeasureEffect, g: MeasureEffect) -> MeasureEffect:
+                return lambda exp, impfs, haz: f(*g(exp, impfs, haz))
 
-        def comb_cost_income():
-            combined_cost_income = CostIncome(
-                mkt_price_year=meas_list[0].cost_income.mkt_price_year.year,
-                cost_yearly_growth_rate=meas_list[0].cost_income.cost_growth_rate,
-                init_cost=sum([meas.cost_income.init_cost for meas in meas_list]),
-                periodic_cost=sum(
-                    [meas.cost_income.periodic_cost for meas in meas_list]
+            return reduce(
+                compose,
+                funcs,
+                lambda exposures, impfset, hazard: (
+                    exposures,
+                    impfset,
+                    hazard,
                 ),
-                periodic_income=sum(
-                    [meas.cost_income.periodic_income for meas in meas_list]
-                ),
-                income_yearly_growth_rate=meas_list[0].cost_income.income_growth_rate,
             )
-            return combined_cost_income
+
+        def measure_effects(
+            exp: Exposures, impfs: ImpactFuncSet, haz: Hazard
+        ) -> tuple[Exposures, ImpactFuncSet, Hazard]:
+            return composite_fun(*[meas.measure_effects for meas in meas_list])(
+                exp, impfs, haz
+            )
 
         return Measure(
-            name="_".join(names) if combo_name is None else combo_name,
-            haz_type=self.haz_type,
-            exposures_change=comb_exp_map,
-            impfset_change=comb_impfset_map,
-            hazard_change=comb_haz_map,
-            combo=names,
-            cost_income=comb_cost_income(),
+            name=combo_name or "_".join(names) + "composed",
+            measure_effects=measure_effects,
+            sub_measures=names,
+            cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
         )
+
+    @staticmethod
+    def _combine_hazards(modified_hazards: list[Hazard]) -> Hazard:
+        """Finds the maximum effect (minimum intensity/freq) across hazards."""
+        intensities = [h.intensity for h in modified_hazards]
+        fractions = [h.fraction for h in modified_hazards]
+        frequencies = [h.frequency for h in modified_hazards]
+
+        hazard_mod = modified_hazards[0]
+        hazard_mod.intensity = reduce(lambda a, b: a.minimum(b), intensities)
+        hazard_mod.fraction = reduce(lambda a, b: a.minimum(b), fractions)
+        hazard_mod.frequency = np.minimum.reduce(frequencies)
+        return hazard_mod
+
+    @staticmethod
+    def _combine_impfsets(
+        base_set: ImpactFuncSet, modified_sets: list[ImpactFuncSet]
+    ) -> ImpactFuncSet:
+        """Merges impact functions by taking the safest (minimum) damage parameters."""
+        combined = ImpactFuncSet()
+        for haz_dict in base_set.get_func().values():
+            for impf in haz_dict.values():
+                versions = [
+                    s.get_func(haz_type=impf.haz_type, fun_id=impf.id)
+                    for s in modified_sets
+                ]
+
+                combined.append(
+                    ImpactFunc(
+                        impf.haz_type,
+                        impf.id,
+                        intensity=np.maximum.reduce([v.intensity for v in versions]),
+                        mdd=np.minimum.reduce([v.mdd for v in versions]),
+                        paa=np.minimum.reduce([v.paa for v in versions]),
+                        intensity_unit=impf.intensity_unit,
+                        name=impf.name,
+                    )
+                )
+        return combined
+
+    @staticmethod
+    def _combine_exposures(
+        base_exp: Exposures, modified_exps: list[Exposures]
+    ) -> Exposures:
+        """Merges exposure changes, raising ValueError if two measures touch the same cell."""
+        new_exps_gdfs = [exp.gdf for exp in modified_exps]
+        if not all(
+            set(new_gdf.columns) == set(base_exp.gdf.columns)
+            for new_gdf in new_exps_gdfs
+        ):
+            raise ValueError(
+                "All change DataFrames must have identical column structure and order."
+            )
+
+        # Align all changes into a single MultiIndexed DataFrame
+        # This stacks all change-sets on top of each other
+        stack = pd.concat(
+            new_exps_gdfs,
+            keys=range(len(new_exps_gdfs)),
+            names=["change_idx", "row_idx"],
+        )
+
+        # Create a broadcasted baseline to match the stack's shape
+        # We use take() to repeat baseline rows for every change-set
+        baseline_repeated = base_exp.gdf.iloc[
+            np.tile(np.arange(len(base_exp.gdf)), len(base_exp.gdf))
+        ]
+        baseline_repeated.index = stack.index  # Align indices for direct comparison
+
+        # Identify changes: Mask is True where a cell differs from baseline
+        diff_mask = stack != baseline_repeated
+
+        # Check for Conflicts:
+        # Sum the True values across the 'change_idx' level for every (row, col)
+        # If any cell has > 1 change, it's a conflict.
+        change_counts = diff_mask.groupby(level="row_idx").sum()
+        if (change_counts > 1).any().any():
+            # Identify exactly where the conflict is for the error message
+            conflicting_cells = (
+                change_counts[change_counts > 1]
+                .dropna(how="all")
+                .dropna(axis=1, how="all")
+            )
+            raise ValueError(
+                f"Conflict: Multiple measures change the same cells:\n{conflicting_cells}"
+            )
+
+        # Merge:
+        # We take the baseline and update it with the sum of differences
+        # Only works if the data is numeric. For general objects (like 'if_' IDs):
+        result = base_exp.gdf.copy()
+
+        # Efficiently collapse the stack:
+        # Since only one change exists per cell (checked in step 5),
+        # we can 'first' or 'max' to get the non-baseline value.
+        updates = stack.where(diff_mask).groupby(level="row_idx").first()
+
+        exp_mod = Exposures(
+            updates.combine_first(result),
+            crs=base_exp.crs,
+            description=base_exp.description,
+            ref_year=base_exp.ref_year,
+            value_unit=base_exp.value_unit,
+        )
+        return exp_mod
+
+    def combine(
+        self, names: Optional[list[str]] = None, combo_name: Optional[str] = None
+    ) -> Measure:
+        names = self.names if names is None else names
+        meas_list = list(self.measures(names).values())
+
+        if not meas_list:
+            raise ValueError("No measures found to combine.")
+
+        def comb_effect(
+            base_exp: Exposures, base_impfs: ImpactFuncSet, base_haz: Hazard
+        ):
+            # 1. Apply all measures individually
+            results = [m.apply(base_exp, base_impfs, base_haz) for m in meas_list]
+            mod_exps, mod_impfs, mod_hazs = zip(
+                *[(r["exposures"], r["impfset"], r["hazard"]) for r in results]
+            )
+
+            # 2. Delegate combination to specialized methods
+            return (
+                self._combine_exposures(base_exp, mod_exps),
+                self._combine_impfsets(base_impfs, mod_impfs),
+                self._combine_hazards(mod_hazs),
+            )
+
+        return Measure(
+            name=combo_name or "_".join(names),
+            measure_effects=comb_effect,
+            sub_measures=names,
+            cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
+        )
+
+    @classmethod
+    def from_excel(cls, file_name: str, var_names: Optional[dict] = None):
+        """Read excel file following template and return a MeasureSet."""
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
+
+        # 1. Load and clean DataFrame
+        df = pd.read_excel(file_name, sheet_name=var_names["sheet_name"])
+
+        # 2. Reverse map the Excel columns to our internal argument names
+        # This removes the need for most of those 'try-except' blocks
+        inv_map = {v: k for k, v in var_names["col_name"].items()}
+        df = df.rename(columns=inv_map)
+
+        meas_set = []
+
+        # 3. Iterate through rows and instantiate
+        for _, row in df.iterrows():
+            # Handle the special (a, b) tuple logic for modifiers
+            # We group them into the format expected by _from_xls_row_args
+
+            haz_type = row["haz_type"]
+            impf_id = row.get("impf_id", 1)
+            # Prepare modifiers (mapping the Excel a/b columns to our tuple format)
+            # Note: If your excel has specific IDs, you'd map them here.
+            # For now, we assume ID 1 as per your previous logic.
+            mdd_mod = {impf_id: (row.get("mdd_a", 1.0), row.get("mdd_b", 0.0))}
+            paa_mod = {impf_id: (row.get("paa_a", 1.0), row.get("paa_b", 0.0))}
+            int_mod = {impf_id: (row.get("int_a", 1.0), row.get("int_b", 0.0))}
+
+            zeros_idx = (
+                parse_range(assets_to_zero)
+                if (assets_to_zero := row.get("assets_to_zero"))
+                else None
+            )
+            reassign_impf_id = (
+                parse_mapping_string(fun_map)
+                if (fun_map := row.get("fun_map"))
+                else None
+            )
+
+            new_exposure = None
+            if path := row.get("exp_set"):
+                if path != "nil":
+                    new_exposure = Exposures.from_hdf5(path)
+
+            new_hazard = None
+            if path := row.get("haz_set"):
+                if path != "nil":
+                    new_hazard = Hazard.from_hdf5(path)
+
+            # Build the Measure using the refactored classmethod
+            measure = Measure._from_xls_row_args(
+                name=row.get("name", "unnamed"),
+                # Hazard modifs
+                haz_type=haz_type,
+                haz_intensity_multiplier=row.get("haz_int_a", 1.0),
+                haz_intensity_add=row.get("haz_int_b", 0.0),
+                impact_rp_cutoff=row.get("impact_rp_cutoff"),
+                new_hazard=new_hazard,
+                # Impfset modifs
+                impf_mdd_modifier=mdd_mod,
+                impf_paa_modifier=paa_mod,
+                impf_intensity_modifier=int_mod,
+                # Exp modifs
+                reassign_impf_id=reassign_impf_id,
+                set_to_zero=zeros_idx,
+                new_exposure=new_exposure,
+                # CostIncome
+                init_cost=row.get("cost", 0.0),
+                periodic_cost=row.get("periodic_cost", 0.0),
+                periodic_income=row.get("periodic_income", 0.0),
+                income_yearly_growth_rate=row.get("income_yearly_growth_rate", 0.0),
+                cost_yearly_growth_rate=row.get("cost_yearly_growth_rate", 0.0),
+            )
+
+            # Handle the color conversion separately if needed
+            if "color" in row and isinstance(row["color"], str):
+                measure.color_rgb = tuple(row["color"].split(" "))
+
+            meas_set.append(measure)
+
+        return MeasureSet(meas_set)

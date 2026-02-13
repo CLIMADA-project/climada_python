@@ -19,275 +19,170 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Measure class.
 """
 
+from __future__ import annotations
+
 __all__ = ["Measure"]
 
 import copy
 import logging
-from typing import Any, Callable, Optional
+from typing import TYPE_CHECKING, Dict, Optional, Tuple, TypeVar, Union
 
-import numpy as np
+import pandas as pd
+
+from climada.entity.measures.helper import build_measure_effects
+
+if TYPE_CHECKING:
+    from climada.entity.exposures.base import Exposures
+    from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+    from climada.entity.measures.types import (
+        ExposuresChange,
+        HazardChange,
+        ImpfsetChange,
+        MeasureEffect,
+    )
+    from climada.hazard.base import Hazard
+
+    T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
 from .cost_income import CostIncome
 
 LOGGER = logging.getLogger(__name__)
 
 
-##todo: risk transfer, change hazard/exposures/impfset completely
+# TODO: risk transfer?
+
+
 class Measure:
-    """Contains a measure to be applied to a set of exposures, impact functions and hazard.
+    """
+    Contains a measure to be applied to a set of exposures, impact functions, and hazard.
 
     Attributes
     ----------
     name : str
-        Name of the measure
-    start_year : int
-        Start year of the measure
-    end_year : int
-        End year of the measure
-    haz_type : str
-        Type of hazard
+        Name of the measure.
     exposures_change : callable
-        Function to change exposures
+        Function to change exposures.
     impfset_change : callable
-        Function to change impact function set
+        Function to change impact function set.
     hazard_change : callable
-        Function to change hazard
+        Function to change hazard.
+    sub_measures : list of str, optional
+        List of measure names that this measure is a combination of.
     cost_income : climada.entity.measures.cost_income.CostIncome
-        Cost and income object
+        Cost and income object associated with the measure.
+    implementation_duration : pd.DateOffset, optional
+        Duration of implementation before the measure is fully functional.
     """
 
     def __init__(
         self,
         name: str,
-        # start_year: int,
-        # end_year: int,
-        haz_type: str,
-        exposures_change: Callable[[Any, int], Any] = lambda x, y: x,
-        impfset_change: Callable[[Any, int], Any] = lambda x, y: x,
-        hazard_change: Callable[[Any, int], Any] = lambda x, y: x,
-        combo: (
-            list[str] | None
-        ) = None,  # list of measure names that this measure is a combination of (Probably better to stire the other measures in the measure object)
+        *,
+        measure_effects: MeasureEffect = lambda exposures, impfset, hazard: (
+            exposures,
+            impfset,
+            hazard,
+        ),
+        sub_measures: Optional[list[str]] = None,
         cost_income: Optional[CostIncome] = None,
-        implementation_duration: int = 0,  # duration of implementation in years before the measure is fully implemented (or should this be made later ... )
+        implementation_duration: Optional[pd.DateOffset] = None,
+        color_rgb: Optional[Tuple[float, float, float]] = None,
     ):
         """
-        Initialize a new Measure object with specified data.
+        Initialize a new Measure object.
 
         Parameters
         ----------
         name : str
-            Name of the measure
-            End year of the measure
-        haz_type : str
-            Type of hazard
-        exposures_change : callable
-            Function to change exposures
-        impfset_change : callable
-            Function to change impact function set
-        hazard_change : callable
-            Function to change hazard
-        CostIncome : climada.entity.measures.cost_income.CostIncome
-            Cost and income object
-        implenmentation_duration : int
-            Duration of implementation in years before the measure is fully implemented
-
+            Name of the measure.
+        exposures_change : callable, optional
+            Transformation function for Exposures. Defaults to identity.
+        impfset_change : callable, optional
+            Transformation function for ImpactFuncSet. Defaults to identity.
+        hazard_change : callable, optional
+            Transformation function for Hazard. Defaults to identity.
+        sub_measures : list of str, optional
+            Names of component measures.
+        cost_income : CostIncome, optional
+            Financial data. If None, an empty CostIncome is initialized.
+        implementation_duration : pd.DateOffset, optional
+            Time offset for full implementation.
         """
+
         self.name = name
-        self.exp_map = exposures_change
-        self.impfset_map = impfset_change
-        self.haz_map = hazard_change
-        self.haz_type = haz_type
-        self.combo = combo
+        self.measure_effects = measure_effects
+        self.sub_measures = sub_measures
         self.cost_income = cost_income if cost_income is not None else CostIncome()
         self.implementation_duration = implementation_duration
+        self.color_rgb = (0, 0, 0) if color_rgb is None else color_rgb
 
-    # @property
-    # def start_year(self):
-    #     return self.years[0]
+    @classmethod
+    def from_changes(
+        cls,
+        name: str,
+        *,
+        exposures_change: ExposuresChange,
+        impfset_change: ImpfsetChange,
+        hazard_change: HazardChange,
+        sub_measures: Optional[list[str]] = None,
+        cost_income: Optional[CostIncome] = None,
+        implementation_duration: Optional[pd.DateOffset] = None,
+    ):
+        def measure_effects(
+            exp: Exposures, impfs: ImpactFuncSet, haz: Hazard
+        ) -> tuple[Exposures, ImpactFuncSet, Hazard]:
+            return (exposures_change(exp), impfset_change(impfs), hazard_change(haz))
 
-    # @property
-    # def end_year(self):
-    #     return self.years[1]
-
-    def apply_to_exposures(self, exposures, year=None):
-        """
-        Implement measure to exposures.
-
-        Parameters
-        ----------
-        exposures : climada.entity.Exposures
-            exposures instance
-
-        Returns
-        -------
-        new_exp : climada.entity.Exposure
-            Exposure with implemented measure with all defined parameters
-        """
-        return self.exp_map(exposures, year)
-
-    def apply_to_impfset(self, impfset, year=None):
-        """
-        Implement measure to impact function set
-
-        Parameters
-        ----------
-        impfset : climada.entity.ImpactFuncSet
-            impact function set instance
-
-        Returns
-        -------
-        new_impfset : climada.entity.ImpactFuncSet
-            Impact function set with implemented measure with all defined parameters
-        """
-        impfset_modified = copy.deepcopy(impfset)
-        return self.impfset_map(impfset_modified, year)
-
-    def apply_to_hazard(self, hazard, year=None):
-        """
-        Implement measure to hazard.
-
-        Parameters
-        ----------
-        hazard : climada.hazard.Hazard
-            hazard instance
-
-        Returns
-        -------
-        new_haz : climada.hazard.Hazard
-            Hazard with implemented measure with all defined parameters
-        """
-        return self.haz_map(hazard, year)
-
-    def apply(self, exposures, impfset, hazard, year=None):
-        """
-        Implement measure with all its defined parameters.
-
-        Parameters
-        ----------
-        exposures : climada.entity.Exposures
-            exposures instance
-        imp_fun_set : climada.entity.ImpactFuncSet
-            impact function set instance
-        hazard : climada.hazard.Hazard
-            hazard instance
-
-        Returns
-        -------
-        new_exp : climada.entity.Exposure
-            Exposure with implemented measure with all defined parameters
-        new_ifs : climada.entity.ImpactFuncSet
-            Impact function set with implemented measure with all defined parameters
-        new_haz : climada.hazard.Hazard
-            Hazard with implemented measure with all defined parameters
-        """
-        # change exposures
-        new_exp = self.exp_map(exposures, year)
-        # change impact functions
-        # For some reason we NEED a deepcopy here!
-        new_impfs = copy.deepcopy(impfset)
-        new_impfs = self.impfset_map(new_impfs, year)
-        # change hazard
-        new_haz = self.haz_map(hazard, year)
-        return {"exposure": new_exp, "impfset": new_impfs, "hazard": new_haz}
-
-    def impact(self, exposures, impfset, hazard, year=None, **kwargs):
-        from climada.engine import ImpactCalc
-
-        meas_exp, meas_impfset, meas_haz = self.apply(
-            exposures, impfset, hazard, year=year
+        return cls(
+            name,
+            measure_effects=measure_effects,
+            sub_measures=sub_measures,
+            cost_income=cost_income,
+            implementation_duration=implementation_duration,
         )
-        return ImpactCalc(meas_exp, meas_impfset, meas_haz).impact(**kwargs)
 
+    def apply(
+        self,
+        exposures: Exposures,
+        impfset: ImpactFuncSet,
+        hazard: Hazard,
+        enforce_copy: bool = True,
+    ) -> Tuple[Exposures, ImpactFuncSet, Hazard]:
+        """
+        Apply all measure transformations to the provided entities.
 
-def helper_hazard(intensity_multiplier=1, intensity_substract=0):
-    def hazard_change(hazard, year=None):
-        haz_modified = copy.deepcopy(hazard)
-        haz_modified.intensity.data *= intensity_multiplier
-        haz_modified.intensity.data -= intensity_substract
-        haz_modified.intensity.data[haz_modified.intensity.data < 0] = 0
-        haz_modified.intensity.eliminate_zeros()
-        return haz_modified
+        Returns
+        -------
+        dict
+            Dictionary with keys 'exposure', 'impfset', and 'hazard'.
+        """
+        changed_exp = copy.deepcopy(exposures) if enforce_copy else exposures
+        changed_impfset = copy.deepcopy(impfset) if enforce_copy else impfset
+        changed_haz = copy.deepcopy(hazard) if enforce_copy else hazard
 
-    return hazard_change
+        return self.measure_effects(changed_exp, changed_impfset, changed_haz)
 
-
-def replace_hazard(measure_hazards):
-    def hazard_change(hazard, year):
-        return measure_hazards[year]
-
-    return hazard_change
-
-
-def hazard_intensity_rp_cutoff(cut_off_rp, hazard):
-    return hazard.local_exceedance_inten(return_periods=(cut_off_rp))
-
-
-def impact_intensity_rp_cutoff(
-    cut_off_rp, exposures, impfset, hazard, exposures_region_id
-):
-    from climada.engine import ImpactCalc
-    from climada.entity import Exposures
-
-    if exposures_region_id:
-        # compute impact only in selected region
-        in_reg = np.logical_or.reduce(
-            [exposures.gdf.region_id.values == reg for reg in exposures_region_id]
+    @classmethod
+    def _from_xls_row_args(cls, name: str, haz_type: str, **kwargs):
+        # 1. Validation
+        has_haz_mod = any(
+            kwargs.get(k)
+            for k in ["haz_intensity_multiplier", "haz_intensity_add", "new_hazard"]
         )
-        exp_imp = Exposures(exposures.gdf[in_reg], crs=exposures.crs)
-    else:
-        exp_imp = exposures
-    imp = ImpactCalc(exp_imp, impfset, hazard).impact(save_mat=False)
-    sort_idxs = np.argsort(imp.at_event)[::-1]
-    exceed_freq = np.cumsum(imp.frequency[sort_idxs])
-    events_above_cutoff = sort_idxs[exceed_freq > cut_off_rp]
-    intensity_substract = hazard.intensity.data
-    for event in events_above_cutoff:
-        intensity_substract[
-            hazard.intensity.indptr[event] : hazard.intensity.indptr[event + 1]
-        ] = 0
-    return intensity_substract
+        if has_haz_mod and kwargs.get("impact_rp_cutoff"):
+            raise ValueError(
+                "Cannot apply impact return period cutoff AND base hazard changes."
+            )
 
+        if kwargs.get("impact_rp_cutoff"):
+            LOGGER.warning(
+                "Impact return period cutoff provided. You should know about it subtleties."
+            )
 
-def change_impfset(measure_impfsets):
-    def impfset_change(impfset, year):
-        return measure_impfsets[year]
+        # 2. Financials
+        cost_inc = CostIncome.from_kwargs(kwargs)
 
-    return impfset_change
+        # 3. Transformation Logic
+        effects = build_measure_effects(haz_type, **kwargs)
 
-
-def helper_impfset(
-    haz_type,
-    impf_mdd_modifier={1: (1, 0)},
-    impf_paa_modifier={1: (1, 0)},
-    impf_intensity_modifier={1: (1, 0)},
-):
-    def impfset_change(impfset, year=None):
-        for impf in impfset.get_func(haz_type):
-            if impf.id in impf_intensity_modifier.keys():
-                impf_inten = impf_intensity_modifier[impf.id]
-                impf.intensity = np.maximum(
-                    impf.intensity * impf_inten[0] - impf_inten[1], 0.0
-                )
-            if impf.id in impf_mdd_modifier.keys():
-                impf_mdd = impf_mdd_modifier[impf.id]
-                impf.mdd = np.maximum(impf.mdd * impf_mdd[0] + impf_mdd[1], 0.0)
-            if impf.id in impf_paa_modifier.keys():
-                impf_paa = impf_paa_modifier[impf.id]
-                impf.paa = np.maximum(impf.paa * impf_paa[0] + impf_paa[1], 0.0)
-        return impfset
-
-    return impfset_change
-
-
-def helper_exposure(reassign_impf_id, haz_type, set_to_zero=None):
-    if set_to_zero is None:
-        set_to_zero = []
-
-    def exposures_change(exposures, year=None):
-        exp_modified = exposures.copy()
-        exp_modified.gdf[f"impf_{haz_type}"] = reassign_impf_id
-        exp_modified.gdf["value"][set_to_zero] = 0
-        return exp_modified
-
-    return exposures_change
+        return cls(name, measure_effects=effects, cost_income=cost_inc)
