@@ -1,0 +1,34 @@
+# Check if installation with conda/mamba works
+
+name: Install Test
+
+on:
+  schedule:
+     - cron: "0 6 * * *"
+  workflow_dispatch:
+  push:  # TODO: Remove before merge!
+
+jobs:
+  install-conda:
+    name: Install from Conda
+    timeout-minutes: 10
+
+    strategy:
+      matrix:
+        fail-fast: false
+        python-version: ["3.10", "3.11", "3.12"]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      -
+        name: Install with Mamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: climada_env_${{ matrix.python-version }}
+          create-args: >-
+            python=${{ matrix.python-version }}
+            climada
+          cache-environment: false  # Recompute environment for each run
+          cache-downloads: true
