@@ -37,5 +37,11 @@ jobs:
           cache-downloads-key: downloads-${{ matrix.os }}-py${{ matrix.python-version }}
 
       -
-        name: Import CLIMADA
+        name: Import CLIMADA (bash)
         run: python -c "import climada"
+        shell: bash -el {0}
+      -
+        name: Import CLIMADA (powershell)
+        run: python -c "import climada"
+        shell: pwsh
+        if: ${{ matrix.os == 'windows-latest' }}
