@@ -23,6 +23,7 @@ __all__ = ["ImpfTropCyclone", "ImpfSetTropCyclone", "IFTropCyclone"]
 
 import logging
 from enum import Enum
+from typing import Literal, overload
 
 import numpy as np
 import pandas as pd
@@ -362,6 +363,33 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             df_reg = df_reg.reset_index(drop=True)
             reg_v_half[regions_short[-1]] = np.round(df_reg["v_half"].values[0], 5)
         return reg_v_half
+
+    @overload
+    @staticmethod
+    def get_countries_per_region(
+        region: Literal["all"] = "all",
+    ) -> tuple[
+        dict[str, str],  # region_name
+        dict[str, int],  # impf_id
+        dict[str, list[int]],  # numeric
+        dict[str, list[str]],  # alpha3
+    ]: ...
+
+    @overload
+    @staticmethod
+    def get_countries_per_region(
+        region: None,
+    ) -> tuple[
+        dict[str, str], dict[str, int], dict[str, list[int]], dict[str, list[str]]
+    ]: ...
+
+    @overload
+    @staticmethod
+    def get_countries_per_region(
+        region: str,
+    ) -> tuple[
+        str, int, list[int], list[str]  # region_name  # impf_id  # numeric  # alpha3
+    ]: ...
 
     @staticmethod
     def get_countries_per_region(region=None):
