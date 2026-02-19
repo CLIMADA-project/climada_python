@@ -30,5 +30,12 @@ jobs:
           create-args: >-
             python=${{ matrix.python-version }}
             climada
-          cache-environment: false  # Recompute environment for each run
+          init-shell: bash powershell
+          # Recompute environment for each run, but possibly use cached downloads
+          cache-environment: false
           cache-downloads: true
+          cache-downloads-key: downloads-${{ matrix.os }}-py${{ matrix.python-version }}
+
+      -
+        name: Import CLIMADA
+        run: python -c "import climada"
