@@ -92,13 +92,14 @@ def test_notebook(nb, name):
                     re.sub(r"pool=\w+", "pool=None", ln)
                     for ln in c["source"].split("\n")
                     if not ln.startswith("%")
+                    and not ln.startswith("?")
+                    and not ln.strip().endswith("?")
                     and not ln.startswith("help(")
                     and not ln.startswith("ask_ok(")
                     and not ln.startswith("ask_ok(")
                     and not ln.startswith(
                         "pool"
                     )  # by convention Pool objects are called pool
-                    and not ln.strip().endswith("?")
                     and not re.search(
                         r"(\W|^)Pool\(", ln
                     )  # prevent Pool object creation

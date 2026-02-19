@@ -23,6 +23,5 @@ You can then go on to more specific tutorial about `Hazard <hazard>`_,
    Uncertainty Quantification <unsequa>
    climada_engine_Forecast
    climada_util_calibrate
-   Google Earth Engine <climada_util_earth_engine>
    climada_util_api_client
    How to cite CLIMADA <../misc/citation>
