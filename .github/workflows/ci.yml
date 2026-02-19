@@ -13,9 +13,6 @@ jobs:
     name: 'Core / Unit Test Pipeline'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      # For publishing results
-      checks: write
 
     # Run this test for different Python versions
     strategy:
@@ -53,20 +50,43 @@ jobs:
         run: |
           make unit_test
       -
-        name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
+        name: Upload Test Reports
+        if: (!cancelled())
+        uses: actions/upload-artifact@v6
         with:
-          junit_files: tests_xml/tests.xml
-          check_name: "Core / Unit Test Results (${{ matrix.python-version }})"
-          comment_mode: "off"
+          name: test-results-python-${{ matrix.python-version }}
+          path: tests_xml/tests.xml
       -
         name: Upload Coverage Reports
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: (!cancelled())
+        uses: actions/upload-artifact@v6
         with:
           name: coverage-report-core-unittests-py${{ matrix.python-version }}
           path: coverage/
+
+  publish-test-results:
+    name: "Tests Results"
+    needs: build-and-test
+    runs-on: ubuntu-latest
+    permissions:
+      # For publishing results
+      checks: write
+
+    if: (!cancelled())
+    steps:
+      -
+        name: Download Artifacts
+        uses: actions/download-artifact@v7
+        with:
+          path: artifacts
+          pattern: test-results-python-*
+      -
+        name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          junit_files: artifacts/**/*.xml
+          check_name: "Core / Unit Test"
+          comment_mode: "off"
 
   test-petals:
     name: Petals Compatibility
