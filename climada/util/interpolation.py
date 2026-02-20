@@ -29,7 +29,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 def preprocess_and_interpolate_ev(
-    test_frequency,
+    exceedance_frequency,
     test_values,
     frequency,
     values,
@@ -46,11 +46,11 @@ def preprocess_and_interpolate_ev(
 
     Parameters
     ----------
-    test_frequency : array_like
-        1-D array of test frequencies for which values (e.g., intensities or impacts) should be
+    exceedance_frequency : array_like
+        1-D array of test exceedance frequencies for which values (e.g., intensities or impacts) should be
         assigned. If given, test_values must be None.
     test_values : array_like
-        1-D array of test values (e.g., intensities or impacts) for which frequencies should be
+        1-D array of test values (e.g., intensities or impacts) for which exceedance frequencies should be
         assigned. If given, test_frequency must be None.
     frequency : array_like
         1-D array of frequencies to be interpolated.
@@ -106,13 +106,22 @@ def preprocess_and_interpolate_ev(
     could use bin_decimals=5.
     """
 
+    # check method
+    if method not in [
+        "interpolate",
+        "extrapolate",
+        "extrapolate_constant",
+        "stepfunction",
+    ]:
+        raise ValueError(f"Unknown method: {method}")
+
     # check that only test frequencies or only test values are given
-    if test_frequency is not None and test_values is not None:
+    if exceedance_frequency is not None and test_values is not None:
         raise ValueError(
             "Both test frequencies and test values are given. This method only handles one of "
             "the two. To use this method, please only use one of them."
         )
-    if test_frequency is None and test_values is None:
+    if exceedance_frequency is None and test_values is None:
         raise ValueError("No test values or test frequencies are given.")
 
     # sort values and frequencies
@@ -128,10 +137,10 @@ def preprocess_and_interpolate_ev(
     frequency = np.cumsum(frequency[::-1])[::-1]
 
     # if test frequencies are provided
-    if test_frequency is not None:
+    if exceedance_frequency is not None:
         if method == "stepfunction":
             return _stepfunction_ev(
-                test_frequency,
+                exceedance_frequency,
                 frequency[::-1],
                 values[::-1],
                 y_threshold=value_threshold,
@@ -139,7 +148,7 @@ def preprocess_and_interpolate_ev(
             )
         extrapolation = None if method == "interpolate" else method
         return _interpolate_ev(
-            test_frequency,
+            exceedance_frequency,
             frequency[::-1],
             values[::-1],
             logx=log_frequency,

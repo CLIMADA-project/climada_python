@@ -576,15 +576,6 @@ class Impact:
             self.frequency_unit
         )
 
-        # check method
-        if method not in [
-            "interpolate",
-            "extrapolate",
-            "extrapolate_constant",
-            "stepfunction",
-        ]:
-            raise ValueError(f"Unknown method: {method}")
-
         # calculate local exceedance impact
         test_frequency = 1 / np.array(return_periods)
 
@@ -731,15 +722,6 @@ class Impact:
         return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
             self.frequency_unit
         )
-
-        # check method
-        if method not in [
-            "interpolate",
-            "extrapolate",
-            "extrapolate_constant",
-            "stepfunction",
-        ]:
-            raise ValueError(f"Unknown method: {method}")
 
         return_periods = np.full((self.imp_mat.shape[1], len(threshold_impact)), np.nan)
 
@@ -2299,15 +2281,117 @@ class ImpactFreqCurve:
         -------
         matplotlib.axes.Axes
         """
+
+        return self._plot(
+            self.return_per,
+            self.impact,
+            axis,
+            log_frequency,
+            self.frequency_unit,
+            self.unit,
+            self.label,
+            **kwargs,
+        )
+
+    def evaluate(
+        self,
+        return_period,
+        *,
+        method="interpolate",
+        log_frequency=True,
+        log_impact=True,
+        min_impact=0,
+        bin_decimals=None,
+    ):
+
+        # sort values of ImpactFreqCurve
+
+        exceedance_frequency = 1 / np.array(return_period)
+        frequency = np.diff(1 / np.array(self.return_per)[::-1], prepend=0)
+
+        return u_interp.preprocess_and_interpolate_ev(
+            exceedance_frequency,
+            None,
+            frequency,
+            self.impact,
+            log_frequency=log_frequency,
+            log_values=log_impact,
+            value_threshold=min_impact,
+            method=method,
+            y_asymptotic=0.0,
+            bin_decimals=bin_decimals,
+        )
+
+    def plot_extended(
+        self,
+        *,
+        return_period_range=None,
+        axis=None,
+        log_frequency=False,
+        kwargs_interp=None,
+        **kwargs,
+    ):
+        if kwargs_interp is None:
+            kwargs_interp = {}
+        kwargs_interp = {
+            "method": "interpolate",
+            "log_frequency": True,
+            "log_impact": True,
+            "min_impact": 0,
+            "bin_decimals": None,
+        } | kwargs_interp
+
+        if return_period_range is None:
+            return_periods = np.linspace(
+                0.5 * min(self.return_per), 1.2 * max(self.return_per), 500
+            )
+        else:
+            return_periods = np.linspace(
+                return_period_range[0], return_period_range[1], 500
+            )
+
+        impacts = self.evaluate(return_periods, **kwargs_interp)
+
+        axis = self._plot(
+            return_periods,
+            impacts,
+            axis,
+            log_frequency,
+            self.frequency_unit,
+            self.unit,
+            self.label,
+            **kwargs,
+        )
+        # axis = self._plot(self.return_per, self.evaluate(self.return_per, **(kwargs_interp|{"method": "interpolate"})), axis, log_frequency, self.frequency_unit, self.unit, self.label, **kwargs)
+        for rp in [min(self.return_per), max(self.return_per)]:
+            axis.axvline(x=1 / rp if log_frequency else rp, linestyle="--", c="gray")
+
+        return axis
+
+    @classmethod
+    def _plot(
+        cls,
+        return_per,
+        impact,
+        axis,
+        log_frequency,
+        frequency_unit,
+        unit,
+        title,
+        **kwargs,
+    ):
+        # check frequency unit
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(frequency_unit)
+
         if not axis:
             _, axis = plt.subplots(1, 1)
-        axis.set_title(self.label)
-        axis.set_ylabel("Impact (" + self.unit + ")")
+        axis.set_title(title)
+        axis.set_ylabel("Impact (" + unit + ")")
         if log_frequency:
-            axis.set_xlabel(f"Exceedance frequency ({self.frequency_unit})")
+            axis.set_xlabel(f"Exceedance frequency ({frequency_unit})")
             axis.set_xscale("log")
-            axis.plot(self.return_per**-1, self.impact, **kwargs)
+            axis.plot(return_per**-1, impact, **kwargs)
         else:
-            axis.set_xlabel("Return period (year)")
-            axis.plot(self.return_per, self.impact, **kwargs)
+            axis.set_xlabel(f"Return period ({return_period_unit})")
+            axis.plot(return_per, impact, **kwargs)
         return axis
