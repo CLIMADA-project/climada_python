@@ -2293,7 +2293,7 @@ class ImpactFreqCurve:
             **kwargs,
         )
 
-    def evaluate(
+    def extrapolate(
         self,
         return_period,
         *,
@@ -2303,7 +2303,7 @@ class ImpactFreqCurve:
         min_impact=0,
         bin_decimals=None,
     ):
-        """Evaluate impact frequency curve with different extrapolation options.
+        """Extrapolate impact frequency curve with different interpolation and extrapolation options.
 
         Parameters
         ----------
@@ -2339,6 +2339,11 @@ class ImpactFreqCurve:
         -------
         np.array
             array of exceeded impacts at given return periods
+
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
         """
         exceedance_frequency = 1 / np.array(return_period)
 
@@ -2346,9 +2351,7 @@ class ImpactFreqCurve:
         sorted_idxs = np.argsort(self.return_per)
         impacts = np.squeeze(np.array(self.impact)[sorted_idxs])
         rps = np.asarray(self.return_per)[sorted_idxs]
-
-        frequency = np.diff(1 / np.array(rps)[::-1], prepend=0)
-
+        frequency = np.diff(1 / np.array(rps)[::-1], prepend=0)[::-1]
         return u_interp.preprocess_and_interpolate_ev(
             exceedance_frequency,
             None,
@@ -2362,7 +2365,7 @@ class ImpactFreqCurve:
             bin_decimals=bin_decimals,
         )
 
-    def plot_extended(
+    def plot_extrapolate(
         self,
         *,
         return_period_range=None,
@@ -2371,7 +2374,7 @@ class ImpactFreqCurve:
         kwargs_interp=None,
         **kwargs,
     ):
-        """Plot impact frequency curve with extrapolation options.
+        """Plot impact frequency curve with interpolation and extrapolation options.
 
         Parameters
         ----------
@@ -2418,6 +2421,13 @@ class ImpactFreqCurve:
         Returns
         -------
         matplotlib.axes.Axes
+
+        See Also
+        --------
+        climada.engine.impact.ImpactFreqCurve.extrapolate:
+            extrapolation method used in the plotting function
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
         """
         if kwargs_interp is None:
             kwargs_interp = {}
@@ -2438,7 +2448,7 @@ class ImpactFreqCurve:
                 min(return_period_range), max(return_period_range), 500
             )
 
-        impacts = self.evaluate(return_periods, **kwargs_interp)
+        impacts = self.extrapolate(return_periods, **kwargs_interp)
 
         axis = self._plot(
             return_periods,
@@ -2456,9 +2466,8 @@ class ImpactFreqCurve:
 
         return axis
 
-    @classmethod
+    @staticmethod
     def _plot(
-        cls,
         return_per,
         impact,
         axis,
