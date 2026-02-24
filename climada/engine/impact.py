@@ -2309,7 +2309,7 @@ class ImpactFreqCurve:
         ----------
         return_period : Iterable[float]
             return periods for which to evaluate the impact frequency curve
-            axis to use
+
         method : str, optional
             Method to interpolate to new return periods. Currently available are "interpolate",
             "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
@@ -2450,7 +2450,7 @@ class ImpactFreqCurve:
             self.label,
             **kwargs,
         )
-        # axis = self._plot(self.return_per, self.evaluate(self.return_per, **(kwargs_interp|{"method": "interpolate"})), axis, log_frequency, self.frequency_unit, self.unit, self.label, **kwargs)
+
         for rp in [min(self.return_per), max(self.return_per)]:
             axis.axvline(x=1 / rp if log_frequency else rp, linestyle="--", c="gray")
 

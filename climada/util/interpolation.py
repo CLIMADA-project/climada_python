@@ -51,7 +51,7 @@ def preprocess_and_interpolate_ev(
         assigned. If given, test_values must be None.
     test_values : array_like
         1-D array of test values (e.g., intensities or impacts) for which exceedance frequencies should be
-        assigned. If given, test_frequency must be None.
+        assigned. If given, exceedance_frequency must be None.
     frequency : array_like
         1-D array of frequencies to be interpolated.
     values : array_like
