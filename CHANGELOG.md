@@ -13,6 +13,7 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
+- Add inter- and extrapolation options to `ImpactFreqCurve` with methods `extrapolate` and `plot_extrapolate` [#1252](https://github.com/CLIMADA-project/climada_python/pull/1252)
 
 ### Changed
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
