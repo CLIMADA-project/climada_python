@@ -2340,16 +2340,20 @@ class ImpactFreqCurve:
         np.array
             array of exceeded impacts at given return periods
         """
-
-        # sort values of ImpactFreqCurve
         exceedance_frequency = 1 / np.array(return_period)
-        frequency = np.diff(1 / np.array(self.return_per)[::-1], prepend=0)
+
+        # sort return periods of ImpactFreqCurve
+        sorted_idxs = np.argsort(self.return_per)
+        impacts = np.squeeze(np.array(self.impact)[sorted_idxs])
+        rps = np.asarray(self.return_per)[sorted_idxs]
+
+        frequency = np.diff(1 / np.array(rps)[::-1], prepend=0)
 
         return u_interp.preprocess_and_interpolate_ev(
             exceedance_frequency,
             None,
             frequency,
-            self.impact,
+            impacts,
             log_frequency=log_frequency,
             log_values=log_impact,
             value_threshold=min_impact,

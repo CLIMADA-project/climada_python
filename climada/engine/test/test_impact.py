@@ -321,6 +321,42 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual("USD", ifc.unit)
         self.assertEqual("1/week", ifc.frequency_unit)
 
+    def test_evaluate_freq_curve(self):
+        """Test evaluate method of freq curve"""
+        imp = Impact()
+        imp.frequency = np.ones(4) * 0.1
+        imp.at_event = np.zeros(4)
+        imp.at_event[0] = 0.0
+        imp.at_event[1] = 100.0
+        imp.at_event[2] = 50.0
+        imp.at_event[3] = 110.0
+        imp.unit = "USD"
+        imp.frequency_unit = "1/year"
+
+        ifc = imp.calc_freq_curve()
+        npt.assert_array_almost_equal(
+            ifc.evaluate([1, 5, 20], method="stepfunction"), [0.0, 100.0, 110.0]
+        )
+        npt.assert_array_almost_equal(
+            ifc.evaluate([1, 5, 20], method="interpolate"), [np.nan, 100.0, np.nan]
+        )
+        npt.assert_array_almost_equal(
+            ifc.evaluate([1, 5, 20], method="extrapolate_constant"), [0.0, 100.0, 110.0]
+        )
+        npt.assert_array_almost_equal(
+            ifc.evaluate([1, 5, 20], method="extrapolate_constant", bin_decimals=-2),
+            [0.0, 100.0, 100.0],
+        )
+        npt.assert_array_almost_equal(
+            ifc.evaluate(
+                [1.0, 2.5, 4, 20],
+                method="extrapolate",
+                log_frequency=False,
+                log_impact=False,
+            ),
+            [-300.0, 0.0, 75.0, 115.0],
+        )
+
 
 class TestImpactPerYear(unittest.TestCase):
     """Test calc_impact_year_set method"""
