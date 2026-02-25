@@ -89,13 +89,13 @@ def sample_data():
 
     return {
         "snapshots": [
-            Snapshot.from_triplet(
+            Snapshot(
                 exposure=exp_present,
                 hazard=haz_present,
                 impfset=impfset_present,
                 date=str(present_date),
             ),
-            Snapshot.from_triplet(
+            Snapshot(
                 exposure=exp_future,
                 hazard=haz_future,
                 impfset=impfset_future,

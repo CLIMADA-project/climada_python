@@ -27,9 +27,9 @@ from .snapshot import Snapshot
 from .static_trajectory import StaticRiskTrajectory
 
 __all__ = [
+    "AllLinearStrategy",
+    "ExponentialExposureStrategy",
     "Snapshot",
     "StaticRiskTrajectory",
     "InterpolatedRiskTrajectory",
-    "AllLinearStrategy",
-    "ExponentialExposureStrategy",
 ]
