@@ -64,29 +64,19 @@ def mock_context(shared_data):
 # --- Tests ---
 
 
-def test_not_from_factory_warning(mock_context):
-    """Test that direct __init__ call raises a warning"""
-    with pytest.warns(UserWarning):
-        Snapshot(
-            exposure=mock_context["exp"],
-            hazard=mock_context["haz"],
-            impfset=mock_context["imp"],
-            measure=None,
-            date="2001",
-        )
-
-
 @pytest.mark.parametrize(
     "input_date,expected",
     [
         ("2023", pd.Timestamp(2023, 1, 1)),
         ("2023-01-01", pd.Timestamp(2023, 1, 1)),
+        (np.datetime64("2023-01-01"), pd.Timestamp(2023, 1, 1)),
         (datetime.date(2023, 1, 1), pd.Timestamp(2023, 1, 1)),
+        (pd.Timestamp(2023, 1, 1), pd.Timestamp(2023, 1, 1)),
     ],
 )
 def test_init_valid_dates(mock_context, input_date, expected):
     """Test various valid date input formats using parametrization."""
-    snapshot = Snapshot.from_triplet(
+    snapshot = Snapshot(
         exposure=mock_context["exp"],
         hazard=mock_context["haz"],
         impfset=mock_context["imp"],
@@ -96,8 +86,8 @@ def test_init_valid_dates(mock_context, input_date, expected):
 
 
 def test_init_invalid_date_format(mock_context):
-    with pytest.raises(ValueError, match="String must be in the format"):
-        Snapshot.from_triplet(
+    with pytest.raises(ValueError, match=r"String must be in a valid date format"):
+        Snapshot(
             exposure=mock_context["exp"],
             hazard=mock_context["haz"],
             impfset=mock_context["imp"],
@@ -108,18 +98,18 @@ def test_init_invalid_date_format(mock_context):
 def test_init_invalid_date_type(mock_context):
     with pytest.raises(
         TypeError,
-        match=r"date_arg must be an str, datetime.date or pandas.Timestamp",
+        match=r"Unsupported type",
     ):
-        Snapshot.from_triplet(
+        Snapshot(
             exposure=mock_context["exp"],
             hazard=mock_context["haz"],
             impfset=mock_context["imp"],
-            date=2023.5,
-        )  # type: ignore
+            date=2023.5,  # type: ignore
+        )
 
 
 def test_properties(mock_context):
-    snapshot = Snapshot.from_triplet(
+    snapshot = Snapshot(
         exposure=mock_context["exp"],
         hazard=mock_context["haz"],
         impfset=mock_context["imp"],
@@ -140,7 +130,7 @@ def test_properties(mock_context):
 
 
 def test_reference(mock_context):
-    snapshot = Snapshot.from_triplet(
+    snapshot = Snapshot(
         exposure=mock_context["exp"],
         hazard=mock_context["haz"],
         impfset=mock_context["imp"],
@@ -156,7 +146,7 @@ def test_reference(mock_context):
 
 
 def test_apply_measure(mock_context):
-    snapshot = Snapshot.from_triplet(
+    snapshot = Snapshot(
         exposure=mock_context["exp"],
         hazard=mock_context["haz"],
         impfset=mock_context["imp"],
