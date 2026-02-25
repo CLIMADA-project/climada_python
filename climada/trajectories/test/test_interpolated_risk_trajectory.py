@@ -64,7 +64,7 @@ from climada.trajectories.interpolated_trajectory import (
 from climada.trajectories.interpolation import (
     AllLinearStrategy,
     ExponentialExposureStrategy,
-    InterpolationStrategy,
+    ImpactInterpolationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
 
@@ -229,7 +229,7 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
     def test_init_with_custom_params(self, mock_reset_calculators):
         # Test initialization with custom parameters
         mock_disc = Mock(spec=DiscRates)
-        mock_interp = Mock(spec=InterpolationStrategy)
+        mock_interp = Mock(spec=ImpactInterpolationStrategy)
         mock_impact_compute = Mock(spec=ImpactComputationStrategy)
         rt = InterpolatedRiskTrajectory(
             self.snapshots_list,

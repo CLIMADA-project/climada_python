@@ -61,8 +61,8 @@ from climada.trajectories.constants import (
 )
 from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
 from climada.trajectories.interpolation import (
-    InterpolationStrategyBase,
-    linear_interp_arrays,
+    ImpactInterpolationStrategy,
+    linear_convex_combination,
 )
 from climada.trajectories.snapshot import Snapshot
 from climada.util.config import CONFIG
@@ -415,7 +415,7 @@ class CalcRiskMetricsPeriod:
         snapshot_end: Snapshot,
         *,
         time_resolution: str,
-        interpolation_strategy: InterpolationStrategyBase,
+        interpolation_strategy: ImpactInterpolationStrategy,
         impact_computation_strategy: ImpactComputationStrategy,
     ):
         """Initialize a new `CalcRiskMetricsPeriod`
@@ -565,13 +565,13 @@ class CalcRiskMetricsPeriod:
         )
 
     @property
-    def interpolation_strategy(self) -> InterpolationStrategyBase:
+    def interpolation_strategy(self) -> ImpactInterpolationStrategy:
         """The approach used to interpolate impact matrices in between the two snapshots."""
         return self._interpolation_strategy
 
     @interpolation_strategy.setter
     def interpolation_strategy(self, value, /):
-        if not isinstance(value, InterpolationStrategyBase):
+        if not isinstance(value, ImpactInterpolationStrategy):
             raise ValueError("Not an interpolation strategy")
 
         self._interpolation_strategy = value
@@ -939,7 +939,7 @@ class CalcRiskMetricsPeriod:
                 as_index=False,
                 observed=False,
             ).agg({RISK_COL_NAME: "sum"})
-            aai_per_group_df[RISK_COL_NAME] = linear_interp_arrays(
+            aai_per_group_df[RISK_COL_NAME] = linear_convex_combination(
                 aai_per_group_df[RISK_COL_NAME].to_numpy(),
                 aai_fut_groups[RISK_COL_NAME].to_numpy(),
             )

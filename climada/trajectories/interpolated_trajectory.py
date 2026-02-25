@@ -61,7 +61,7 @@ from climada.trajectories.impact_calc_strat import (
 )
 from climada.trajectories.interpolation import (
     AllLinearStrategy,
-    InterpolationStrategyBase,
+    ImpactInterpolationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
@@ -132,7 +132,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         return_periods: Iterable[int] = DEFAULT_RP,
         time_resolution: str = DEFAULT_TIME_RESOLUTION,
         risk_disc_rates: DiscRates | None = None,
-        interpolation_strategy: InterpolationStrategyBase | None = None,
+        interpolation_strategy: ImpactInterpolationStrategy | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
     ):
         """Initialize a new `InterpolatedRiskTrajectory`.
@@ -151,7 +151,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             Defaults to `DEFAULT_TIME_RESOLUTION` ("Y").
         risk_disc_rates: DiscRates, optional
             The discount rate to apply to future risk. Defaults to None.
-        interpolation_strategy: InterpolationStrategyBase, optional
+        interpolation_strategy: ImpactInterpolationStrategy, optional
             The interpolation strategy to use when interpolating.
             Defaults to :class:`AllLinearStrategy`
         impact_computation_strategy: ImpactComputationStrategy, optional
@@ -174,13 +174,13 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         )
 
     @property
-    def interpolation_strategy(self) -> InterpolationStrategyBase:
+    def interpolation_strategy(self) -> ImpactInterpolationStrategy:
         """The approach used to interpolate impact matrices in between the two snapshots."""
         return self._risk_metrics_calculators[0].interpolation_strategy
 
     @interpolation_strategy.setter
     def interpolation_strategy(self, value, /):
-        if not isinstance(value, InterpolationStrategyBase):
+        if not isinstance(value, ImpactInterpolationStrategy):
             raise ValueError("Not an interpolation strategy")
 
         self._reset_metrics()
