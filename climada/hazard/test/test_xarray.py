@@ -28,7 +28,7 @@ from unittest.mock import patch
 import numpy as np
 import xarray as xr
 from pyproj import CRS
-from scipy.sparse import csr_matrix
+from scipy.sparse import csr_array, csr_matrix
 
 from climada.hazard.base import Hazard
 from climada.util.constants import DEF_CRS
@@ -104,8 +104,8 @@ class TestReadDefaultNetCDF(unittest.TestCase):
         self.assertIsInstance(hazard.event_id, np.ndarray)
         self.assertIsInstance(hazard.event_name, list)
         self.assertIsInstance(hazard.frequency, np.ndarray)
-        self.assertIsInstance(hazard.intensity, csr_matrix)
-        self.assertIsInstance(hazard.fraction, csr_matrix)
+        self.assertIsInstance(hazard.intensity, csr_matrix | csr_array)
+        self.assertIsInstance(hazard.fraction, csr_matrix | csr_array)
         self.assertIsInstance(hazard.date, np.ndarray)
 
     def test_load_path(self):
@@ -149,8 +149,11 @@ class TestReadDefaultNetCDF(unittest.TestCase):
     def test_type_error(self):
         """Calling 'from_xarray_raster' with wrong data type should throw"""
         # Passing a DataArray
-        with xr.open_dataset(self.netcdf_path) as dset, self.assertRaisesRegex(
-            TypeError, "This method only supports passing xr.Dataset"
+        with (
+            xr.open_dataset(self.netcdf_path) as dset,
+            self.assertRaisesRegex(
+                TypeError, "This method only supports passing xr.Dataset"
+            ),
         ):
             Hazard.from_xarray_raster(dset["intensity"], "", "")
 
