@@ -113,7 +113,7 @@ def snapshot_factory(
             paa_scale=paa_scale,
         )
 
-        return Snapshot.from_triplet(
+        return Snapshot(
             exposure=exposures,
             hazard=hazard,
             impfset=impfset,
@@ -148,7 +148,7 @@ def expected_static_metrics_from_snapshots(
         discount_factor = None
 
     for snap in snapshots:
-        imp = ImpactCalc(**snap.impact_calc_data).impact()
+        imp = ImpactCalc(**snap.impact_calc_kwargs).impact()
         curve = imp.calc_freq_curve(return_periods)
         if discount_factor is not None:
             discount = discount_factor.loc[pd.Timestamp(str(snap.date)).year]
