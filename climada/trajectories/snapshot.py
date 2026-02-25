@@ -56,7 +56,8 @@ class Snapshot:
     measure : Measure | None, default None.
         Measure associated with the Snapshot. The measure object is *not* applied
         to the other parameters of the object (Exposure, Hazard, Impfset).
-        Users should leave it to None, and use `apply_measure()` instead (see notes).
+        To create a `Snapshot` with a measure use `apply_measure()` instead (see notes).
+        The use of anything but None should be reserved for advanced users.
     ref_only : bool, default False
         Should the `Snapshot` contain deep copies of the Exposures, Hazard and Impfset (False)
         or references only (True).
@@ -72,8 +73,8 @@ class Snapshot:
     -----
 
     Providing a measure to the init assumes that the (Exposure, Hazard, Impfset) triplet
-    already corresponds to the triplet once the measure is applied. As Measure objects
-    contain "the changes to apply", the creating a consistent Snapshot with a measure should
+    already corresponds to the triplet once the measure is applied. Measure objects
+    contain "the changes to apply". Creating a consistent Snapshot with a measure should
     be done by first creating a Snapshot with the "baseline" (Exposure, Hazard, Impfset) triplet
     and calling `<Snapshot>.apply_measure(<measure>)`, which returns a new Snapshot object
     with the measure applied.
