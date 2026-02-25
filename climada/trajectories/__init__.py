@@ -21,10 +21,13 @@ possibly interpolation of risk metric over multiple dates.
 
 """
 
+from .interpolation import AllLinearStrategy, ExponentialExposureStrategy
 from .snapshot import Snapshot
 from .static_trajectory import StaticRiskTrajectory
 
 __all__ = [
+    "AllLinearStrategy",
+    "ExponentialExposureStrategy",
     "Snapshot",
     "StaticRiskTrajectory",
 ]
