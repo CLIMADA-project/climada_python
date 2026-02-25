@@ -7,4 +7,5 @@ Software documentation per package
     climada.engine
     climada.entity
     climada.hazard
+    climada.trajectories
     climada.util
