@@ -2281,7 +2281,9 @@ class TCTracks:
         wind_min: float = None,
         wind_max: float = None,
     ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-        """Compute tropical cyclone track density. Before using this function,
+        """Compute tropical cyclone track density.
+
+        Before using this function,
         apply the same temporal resolution to all tracks by calling :py:meth:`equal_timestep` on
         the TCTrack object. Due to the computational cost of the this function, it is not
         recommended to use a grid resolution higher tha 0.1°. Also note that the time step (in hours)
@@ -2291,7 +2293,7 @@ class TCTracks:
         it returns the absolute count per bin. To plot the output of this function,
         use :py:meth:`plot_track_density`.
 
-        Parameters:
+        Parameters
         ----------
         tc_track: TCTracks object
             track object containing a list of all tracks
@@ -2310,7 +2312,8 @@ class TCTracks:
         wind_max: float (optional), default: None
             Maximal wind speed below which to select tracks (exclusive if wind_min is also provided,
             otherwise inclusive).
-        Returns:
+
+        Returns
         -------
         hist_count: np.ndarray
             2D matrix containing the absolute count per grid cell of track point.
@@ -2319,8 +2322,8 @@ class TCTracks:
         lon_bins: np.ndarray
             longitude bins in which the point were counted
 
-        Example:
-        --------
+        Example
+        -------
         >>> tc_tracks = TCTrack.from_ibtracs_netcdf("path_to_file")
         >>> tc_tracks.equal_timestep(time_step_h = 1)
         >>> hist_count, _, _ = compute_track_density(tc_track = tc_tracks, res = 2)
