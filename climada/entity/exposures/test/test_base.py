@@ -448,7 +448,7 @@ class TestIO(unittest.TestCase):
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
         exp = Exposures(
-            pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632", ref_year = 2020
+            pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632", ref_year=2020
         )
 
         # add another geometry column
