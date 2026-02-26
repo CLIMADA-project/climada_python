@@ -431,7 +431,7 @@ class TestIO(unittest.TestCase):
         exp_df.ref_year = 2020
         exp_df.value_unit = "PAK"
         exp_df.check()
-    
+
     def test_handling_unit_conflicts_pass(self):
         """Check that the value_unit is correctly set when there are conflicting value_unit definitions in the data frame and the meta attribute."""
         df = pd.read_excel(ENT_TEMPLATE_XLS)
@@ -445,13 +445,12 @@ class TestIO(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             exp_df = Exposures(df, meta={"value_unit": "PAK"}, value_unit="PAK")
 
-
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
         exp = Exposures(
             pd.read_excel(ENT_TEMPLATE_XLS),
             crs="epsg:32632",
-            ref_year = 2020,
+            ref_year = 2020
         )
 
         # add another geometry column
