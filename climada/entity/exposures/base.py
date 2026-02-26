@@ -406,7 +406,9 @@ class Exposures:
 
         if geodata.shape[0] > 0:
             value_unit = self._consolidate(geodata.iloc[0], "value_unit", value_unit)
-        self.value_unit = self._consolidate(meta, "value_unit", value_unit, DEF_VALUE_UNIT)
+        self.value_unit = self._consolidate(
+            meta, "value_unit", value_unit, DEF_VALUE_UNIT
+        )
 
         crs = self._consolidate(meta, "crs", crs, equals=u_coord.equal_crs)
 
