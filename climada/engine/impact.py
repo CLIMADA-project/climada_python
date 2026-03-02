@@ -2295,19 +2295,20 @@ class ImpactFreqCurve:
 
     def extrapolate(
         self,
-        return_period,
+        return_periods,
         *,
         method="interpolate",
         log_frequency=True,
         log_impact=True,
         min_impact=0,
         bin_decimals=None,
+        y_asymptotic=0.0,
     ):
         """Extrapolate impact frequency curve with different interpolation and extrapolation options.
 
         Parameters
         ----------
-        return_period : Iterable[float]
+        return_periods : Iterable[float]
             return periods for which to evaluate the impact frequency curve
 
         method : str, optional
@@ -2334,6 +2335,10 @@ class ImpactFreqCurve:
             Number of decimals to group and bin impact values. Binning results in smoother (and
             coarser) interpolation and more stable extrapolation. For more details and sensible
             values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
+        y_asymptotic : float, optional
+            Has no effect if method is "interpolate". Else, if data size < 2 or if method
+            is set to "extrapolate_constant" or "stepfunction", it provides return value for
+            exceeded impact for return periods smaller than the data range. Defaults to 0.
 
         Returns
         -------
@@ -2345,7 +2350,7 @@ class ImpactFreqCurve:
         util.interpolation.preprocess_and_interpolate_ev :
             inter- and extrapolation method
         """
-        exceedance_frequency = 1 / np.array(return_period)
+        exceedance_frequency = 1 / np.array(return_periods)
 
         # sort return periods of ImpactFreqCurve
         sorted_idxs = np.argsort(self.return_per)
@@ -2361,14 +2366,14 @@ class ImpactFreqCurve:
             log_values=log_impact,
             value_threshold=min_impact,
             method=method,
-            y_asymptotic=0.0,
+            y_asymptotic=y_asymptotic,
             bin_decimals=bin_decimals,
         )
 
     def plot_extrapolate(
         self,
         *,
-        return_period_range=None,
+        return_periods=None,
         axis=None,
         log_frequency=False,
         kwargs_interp=None,
@@ -2378,9 +2383,9 @@ class ImpactFreqCurve:
 
         Parameters
         ----------
-        return_period_range : tuple(float), optional
-            range of return period values to plot, e.g. (5, 500) to plot between 5 and 500 years.
-            If None, the plot range is between 0.5*min(data_return_periods) and
+        return_periods : Iterable[float], optional
+            Return period values to plot, e.g. np.linspace(5, 500, 1000) to plot between 5 and
+            500 years. If None, the plot range defined between 0.5*min(data_return_periods) and
             1.2*max(data_return_periods), where data_return_periods are the return period values
             extracted from the impact object's data. Defaults to None.
         axis : matplotlib.axes.Axes, optional
@@ -2392,17 +2397,17 @@ class ImpactFreqCurve:
             {"method": "extrapolate"}. Default is {"method": "interpolate", "log_frequency": True,
             "log_impact": True, "min_impact": 0, "bin_decimals": None}. Available options are
             method : str, optional
-                Method to interpolate to new return periods. Currently available are "interpolate",
-                "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
-                return periods outside the range of the Impact object's observed return periods
-                will be assigned NaN. If set to "extrapolate_constant" or "stepfunction",
-                return periods larger than the Impact object's observed return periods will be
-                assigned the largest impact, and return periods smaller than the Impact object's
-                observed return periods will be assigned 0. If set to "extrapolate",
-                exceedance impacts will be extrapolated (and interpolated). The extrapolation to
-                large return periods uses the two highest impacts of the centroid and their return
-                periods and extends the interpolation between these points to the given return period
-                (similar for small return periods). Defauls to "interpolate".
+                Method to interpolate to new return periods. Currently available are
+                "interpolate", "extrapolate", "extrapolate_constant" and "stepfunction". If set
+                to "interpolate", return periods outside the range of the Impact object's observed
+                return periods will be assigned NaN. If set to "extrapolate_constant" or
+                "stepfunction", return periods larger than the Impact object's observed return
+                periods will be assigned the largest impact, and return periods smaller than the
+                Impact object's observed return periods will be assigned 0. If set to
+                "extrapolate", exceedance impacts will be extrapolated (and interpolated). The
+                extrapolation to large return periods uses the two highest impacts of the centroid
+                and their return periods and extends the interpolation between these points to the
+                given return period (similar for small return periods). Defauls to "interpolate".
             min_impact : float, optional
                 Minimum threshold to filter the impact. Defaults to 0.
             log_frequency : bool, optional
@@ -2412,9 +2417,14 @@ class ImpactFreqCurve:
                 If set to True, impact values are converted to log scale before
                 inter- and extrapolation. Defaults to True.
             bin_decimals : int, optional
-                Number of decimals to group and bin impact values. Binning results in smoother (and
-                coarser) interpolation and more stable extrapolation. For more details and sensible
-                values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
+                Number of decimals to group and bin impact values. Binning results in smoother
+                (and coarser) interpolation and more stable extrapolation. For more details and
+                sensible values for bin_decimals, see Notes. If None, values are not binned.
+                Defaults to None.
+            y_asymptotic : float, optional
+                Has no effect if method is "interpolate". Else, if data size < 2 or if method
+                is set to "extrapolate_constant" or "stepfunction", it provides return value for
+                exceeded impact for return periods smaller than the data range. Defaults to 0.
         kwargs : dict, optional
             arguments for plot matplotlib function, e.g. color='b'
 
@@ -2435,17 +2445,14 @@ class ImpactFreqCurve:
             "method": "interpolate",
             "log_frequency": True,
             "log_impact": True,
-            "min_impact": 0,
+            "min_impact": 0.0,
             "bin_decimals": None,
+            "y_asymptotic": 0.0,
         } | kwargs_interp
 
-        if return_period_range is None:
+        if return_periods is None:
             return_periods = np.linspace(
                 0.5 * min(self.return_per), 1.2 * max(self.return_per), 500
-            )
-        else:
-            return_periods = np.linspace(
-                min(return_period_range), max(return_period_range), 500
             )
 
         impacts = self.extrapolate(return_periods, **kwargs_interp)
