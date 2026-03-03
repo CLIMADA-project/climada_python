@@ -24,6 +24,7 @@ import logging
 
 import numpy as np
 from scipy import interpolate
+from scipy.optimize import minimize
 
 LOGGER = logging.getLogger(__name__)
 
@@ -396,3 +397,82 @@ def _group_frequency(frequency, value, bin_decimals):
         return frequency, value_unique
 
     return frequency, value
+
+
+def extrapolate_with_GPD(
+    test_frequency,
+    test_values,
+    frequency,
+    values,
+    # log_frequency=False,
+    # log_values=False,
+    value_threshold=None,
+    # method="interpolate",
+    # y_asymptotic=np.nan,
+    # bin_decimals=None,
+    threshold_percentile=90,
+):
+
+    frequency = frequency[values > value_threshold]
+    values = values[values > value_threshold]
+
+    # sort values and frequencies
+    sorted_idxs = np.argsort(values)
+    values = np.squeeze(values[sorted_idxs])
+    frequency = frequency[sorted_idxs]
+    ex_freq = np.cumsum(frequency[::-1])[::-1]
+
+    threshold = np.percentile(values, threshold_percentile)
+    mask = values > threshold
+    x_tail = values[mask]
+    lambda_tail = ex_freq[mask]
+    lambda_u = lambda_tail[0]
+    init = [0.1, np.std(x_tail - threshold)]
+
+    def gpd_exceedance_negerror(params):
+        xi, beta = params
+        if beta <= 0:
+            return np.inf
+
+        # model = lambda_u * (1 + xi*(x_tail - threshold)/beta)**(-1/xi)
+        model = _gpd_distribution(x_tail, xi, beta, lambda_u, threshold)
+        return np.sum((np.log(lambda_tail) - np.log(model)) ** 2)
+
+    res_gpd = minimize(gpd_exceedance_negerror, init, bounds=[(-1, None), (1e-6, None)])
+    xi_hat, beta_hat = res_gpd.x
+    print(xi_hat, beta_hat)
+
+    # compute values for input
+    #     # Return periods
+    # RP_emp = 1 / exceed_freq
+
+    # # --- Lognormal model ---
+    # x_plot = np.linspace(min(impacts), 2*max(impacts), 2000)
+
+    #     # --- GPD tail model ---
+    #     u = threshold
+    #     lambda_u = exceed_freq[impacts >= u][0]
+    if test_values:
+        mask_tail = test_values > threshold
+        lambda_gpd = _gpd_distribution(
+            test_values[mask_tail], xi_hat, beta_hat, lambda_u, threshold
+        )
+        return lambda_gpd, test_values[mask_tail]
+    else:
+        vals = _gpd_inverse_distribution(
+            test_frequency, xi_hat, beta_hat, lambda_u, threshold
+        )
+        return test_frequency, vals
+    # lambda_u * (
+    #     1 + xi_hat * (test_values[mask_tail] - threshold) / beta_hat
+    # ) ** (-1 / xi_hat)
+
+
+def _gpd_distribution(values, xi, beta, lambda_u, threshold):
+    values = np.asarray(values)
+    return lambda_u * (1 + xi * (values - threshold) / beta) ** (-1 / xi)
+
+
+def _gpd_inverse_distribution(lambdas, xi, beta, lambda_u, threshold):
+    lambdas = np.asarray(lambdas)
+    return threshold + (beta / xi) * ((lambdas / lambda_u) ** (-xi) - 1)
