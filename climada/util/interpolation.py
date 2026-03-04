@@ -436,7 +436,7 @@ def extrapolate_with_GPD(
     mask = values > threshold
     if sum(mask) < min_sample_size:
         raise ValueError(
-            f"Not enough data points above the threshold for fitting the GPD. You can try to"
+            f"Not enough data points above the threshold for fitting the GPD. You can try to "
             f"choose a smaller threshold_percentile={threshold_percentile} or a smaller "
             f"value_threshold={value_threshold}."
         )
@@ -473,7 +473,9 @@ def extrapolate_with_GPD(
         vals = _gpd_inverse_distribution(
             test_frequency, xi_hat, beta_hat, lambda_u, threshold
         )
-        return test_frequency, vals
+        print(threshold)
+        mask_tail = vals > threshold
+        return test_frequency[mask_tail], vals[mask_tail]
 
 
 def _gpd_distribution(values, xi, beta, lambda_u, threshold):

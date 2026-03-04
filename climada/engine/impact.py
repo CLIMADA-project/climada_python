@@ -2303,6 +2303,8 @@ class ImpactFreqCurve:
         min_impact=0,
         bin_decimals=None,
         y_asymptotic=0.0,
+        threshold_percentile_GPD=90,
+        min_sample_size_GPD=10,
     ):
         """Extrapolate impact frequency curve with different interpolation and extrapolation options.
 
@@ -2357,18 +2359,33 @@ class ImpactFreqCurve:
         impacts = np.squeeze(np.array(self.impact)[sorted_idxs])
         rps = np.asarray(self.return_per)[sorted_idxs]
         frequency = np.diff(1 / np.array(rps)[::-1], prepend=0)[::-1]
-        return u_interp.preprocess_and_interpolate_ev(
-            exceedance_frequency,
-            None,
-            frequency,
-            impacts,
-            log_frequency=log_frequency,
-            log_values=log_impact,
-            value_threshold=min_impact,
-            method=method,
-            y_asymptotic=y_asymptotic,
-            bin_decimals=bin_decimals,
-        )
+        if method == "fit_GPD":
+            ex_freq, imp = u_interp.extrapolate_with_GPD(
+                exceedance_frequency,
+                None,
+                frequency,
+                impacts,
+                value_threshold=min_impact,
+                min_sample_size=min_sample_size_GPD,
+                threshold_percentile=threshold_percentile_GPD,
+            )
+            return 1 / ex_freq, imp
+        else:
+            return (
+                1 / exceedance_frequency,
+                u_interp.preprocess_and_interpolate_ev(
+                    exceedance_frequency,
+                    None,
+                    frequency,
+                    impacts,
+                    log_frequency=log_frequency,
+                    log_values=log_impact,
+                    value_threshold=min_impact,
+                    method=method,
+                    y_asymptotic=y_asymptotic,
+                    bin_decimals=bin_decimals,
+                ),
+            )
 
     def plot_extrapolate(
         self,
@@ -2448,6 +2465,8 @@ class ImpactFreqCurve:
             "min_impact": 0.0,
             "bin_decimals": None,
             "y_asymptotic": 0.0,
+            "min_sample_size_GPD": 10,
+            "threshold_percentile_GPD": 90,
         } | kwargs_interp
 
         if return_periods is None:
@@ -2455,7 +2474,7 @@ class ImpactFreqCurve:
                 0.5 * min(self.return_per), 1.2 * max(self.return_per), 500
             )
 
-        impacts = self.extrapolate(return_periods, **kwargs_interp)
+        return_periods, impacts = self.extrapolate(return_periods, **kwargs_interp)
 
         axis = self._plot(
             return_periods,
