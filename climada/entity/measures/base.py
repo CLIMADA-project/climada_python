@@ -29,6 +29,7 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 from geopandas import GeoDataFrame
+from scipy.sparse import csr_matrix
 
 import climada.util.checker as u_check
 from climada.entity.exposures.base import INDICATOR_CENTR, INDICATOR_IMPF, Exposures
@@ -565,6 +566,6 @@ class Measure:
             centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
             new_haz_inten = new_haz.intensity.tolil()
             new_haz_inten[:, centr] = hazard.intensity[:, centr]
-            new_haz.intensity = new_haz_inten.tocsr()
+            new_haz.intensity = csr_matrix(new_haz_inten.tocsr())
 
         return new_exp, new_impfs, new_haz
