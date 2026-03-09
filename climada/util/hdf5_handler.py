@@ -149,11 +149,9 @@ def get_sparse_csr_mat(mat_dict, shape):
     if ("data" not in mat_dict) or ("ir" not in mat_dict) or ("jc" not in mat_dict):
         raise ValueError("Input data is not a sparse matrix.")
 
-    return sparse.csr_matrix(
-        sparse.csc_matrix(
-            (mat_dict["data"], mat_dict["ir"], mat_dict["jc"]), shape
-        ).tocsr()
-    )
+    return sparse.csc_matrix(
+        (mat_dict["data"], mat_dict["ir"], mat_dict["jc"]), shape
+    ).tocsr()
 
 
 def to_string(str_or_bytes):
