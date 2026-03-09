@@ -566,6 +566,6 @@ class Measure:
             centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
             new_haz_inten = new_haz.intensity.tolil()
             new_haz_inten[:, centr] = hazard.intensity[:, centr]
-            new_haz.intensity = new_haz_inten.tocsr()
+            new_haz.intensity = csr_matrix(new_haz_inten.tocsr())
 
         return new_exp, new_impfs, new_haz
