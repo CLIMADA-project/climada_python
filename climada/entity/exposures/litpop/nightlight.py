@@ -549,7 +549,7 @@ def unzip_tif_to_py(file_gz):
     nightlight = sparse.csc_matrix(plt.imread(file_name))
     # flip X axis
     nightlight.indices = -nightlight.indices + nightlight.shape[0] - 1
-    nightlight = nightlight.tocsr()
+    nightlight = sparse.csr_matrix(nightlight.tocsr())
     file_name.unlink()
     file_path = SYSTEM_DIR.joinpath(file_name.stem + ".p")
     save(file_path, nightlight)

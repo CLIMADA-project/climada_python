@@ -58,7 +58,9 @@ def _to_csr_matrix(array: xr.DataArray) -> sparse.csr_matrix:
         output_dtypes=[array.dtype],
     )
     sparse_coo = array.compute().data  # Load into memory
-    return sparse_coo.tocsr()  # Convert sparse.COO to scipy.sparse.csr_array
+    return sparse.csr_matrix(
+        sparse_coo.tocsr()
+    )  # Convert sparse.COO to scipy.sparse.csr_array
 
 
 # Define accessors for xarray DataArrays
