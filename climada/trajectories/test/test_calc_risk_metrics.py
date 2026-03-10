@@ -50,173 +50,34 @@ from climada.trajectories.impact_calc_strat import (
     ImpactComputationStrategy,
 )
 from climada.trajectories.snapshot import Snapshot
-from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
+from climada.trajectories.test.conftest import CATEGORIES
 
 
 @pytest.fixture(scope="module")
-def sample_data():
+def sample_data(snapshot_factory):
     """Fixture to manage expensive data loading and setup once for the module."""
-    present_date = 2020
-    future_date = 2025
-
-    # Present Data Setup
-    exp_present = Exposures.from_hdf5(EXP_DEMO_H5)
-    exp_present.gdf.rename(columns={"impf_": "impf_TC"}, inplace=True)
-    exp_present.gdf["impf_TC"] = 1
-    exp_present.gdf[GROUP_ID_COL_NAME] = (
-        exp_present.gdf["value"] > exp_present.gdf["value"].mean()
-    ) * 1
-    haz_present = Hazard.from_hdf5(HAZ_DEMO_H5)
-    exp_present.assign_centroids(haz_present, distance="approx")
-    impfset_present = ImpactFuncSet([ImpfTropCyclone.from_emanuel_usa()])
-
-    # Future Data Setup
-    exp_future = Exposures.from_hdf5(EXP_DEMO_H5)
-    n_years = future_date - present_date + 1
-    growth = 1.02**n_years
-    exp_future.gdf["value"] *= growth
-    exp_future.gdf.rename(columns={"impf_": "impf_TC"}, inplace=True)
-    exp_future.gdf["impf_TC"] = 1
-    exp_future.gdf[GROUP_ID_COL_NAME] = (
-        exp_future.gdf["value"] > exp_future.gdf["value"].mean()
-    ) * 1
-    haz_future = Hazard.from_hdf5(HAZ_DEMO_H5)
-    haz_future.intensity *= 1.1
-    exp_future.assign_centroids(haz_future, distance="approx")
-    impfset_future = ImpactFuncSet(
-        [ImpfTropCyclone.from_emanuel_usa(impf_id=1, v_half=60.0)]
+    snap1 = snapshot_factory(date=2020, group_id=CATEGORIES)
+    snap2 = snapshot_factory(date=2022, hazard_intensity_factor=2, group_id=CATEGORIES)
+    snap3 = snapshot_factory(
+        date=2025,
+        hazard_intensity_factor=2,
+        exposure_value_factor=3,
+        group_id=CATEGORIES,
     )
-
     return {
-        "snapshots": [
-            Snapshot(
-                exposure=exp_present,
-                hazard=haz_present,
-                impfset=impfset_present,
-                date=str(present_date),
-            ),
-            Snapshot(
-                exposure=exp_future,
-                hazard=haz_future,
-                impfset=impfset_future,
-                date=str(future_date),
-            ),
-        ],
+        "snapshots": [snap1, snap2, snap3],
         "expected_eai": np.array(
             [
-                [
-                    8702904.63375606,
-                    7870925.19290905,
-                    1805021.12653289,
-                    3827196.02428828,
-                    5815346.97427834,
-                    7870925.19290905,
-                    7871847.53906951,
-                    7870925.19290905,
-                    7886487.76136572,
-                    7870925.19290905,
-                    7876058.84500811,
-                    3858228.67061225,
-                    8401461.85304853,
-                    9210350.19520265,
-                    1806363.23553602,
-                    6922250.59852326,
-                    6711006.70101515,
-                    6886568.00391817,
-                    6703749.80009753,
-                    6704689.17531993,
-                    6703401.93516038,
-                    6818839.81873556,
-                    6716262.5286998,
-                    6703369.87656195,
-                    6703952.06070945,
-                    5678897.05935781,
-                    4984034.77073219,
-                    6708908.84462217,
-                    6702586.9472999,
-                    4961843.43826371,
-                    5139913.92380089,
-                    5255310.96072403,
-                    4981705.85074492,
-                    4926529.74583162,
-                    4973726.6063121,
-                    4926015.68274236,
-                    4937618.79350358,
-                    4926144.19851468,
-                    4926015.68274236,
-                    9575288.06765627,
-                    5100904.22956578,
-                    3501325.10900064,
-                    5093920.89144773,
-                    3505527.05928994,
-                    4002552.92232482,
-                    3512012.80001039,
-                    3514993.26161994,
-                    3562009.79687436,
-                    3869298.39771648,
-                    3509317.94922485,
-                ],
-                [
-                    46651387.10647343,
-                    42191612.28496882,
-                    14767621.68800634,
-                    24849532.38841432,
-                    32260334.11128166,
-                    42191612.28496882,
-                    42196556.46505447,
-                    42191612.28496882,
-                    42275034.47974126,
-                    42191612.28496882,
-                    42219130.91253302,
-                    24227735.90988531,
-                    45035521.54835925,
-                    49371517.94999501,
-                    14778602.03484606,
-                    39909758.65668079,
-                    38691846.52720026,
-                    39834520.43061425,
-                    38650007.36519716,
-                    38655423.2682883,
-                    38648001.77388126,
-                    39313550.93419428,
-                    38722148.63941796,
-                    38647816.9422419,
-                    38651173.48481285,
-                    33700748.42359267,
-                    30195870.8789255,
-                    38679751.48077733,
-                    38643303.01755095,
-                    30061424.26274527,
-                    31140267.73715352,
-                    31839402.91317674,
-                    30181761.07222111,
-                    29847475.57538872,
-                    30133418.66577969,
-                    29844361.11423809,
-                    29914658.78479145,
-                    29845139.72952577,
-                    29844361.11423809,
-                    58012067.61585025,
-                    30903926.75151934,
-                    23061159.87895984,
-                    33550647.3781805,
-                    23088835.64296583,
-                    26362451.35547444,
-                    23131553.38525813,
-                    23151183.92499699,
-                    23460854.06493051,
-                    24271571.95828693,
-                    23113803.99527559,
-                ],
+                [0.0, 4.0, 2.0, 3.0, 4.0, 5.0],
+                [0.0, 8.0, 4.0, 6.0, 8.0, 10.0],
+                [0.0, 24.0, 12.0, 18.0, 24.0, 30.0],
             ]
         ),
-        "expected_aai": np.array([2.88895461e08, 1.69310367e09]),
+        "expected_aai": np.array([18.0, 36.0, 108.0]),
         "expected_aai_per_group": np.array(
-            [2.33513758e08, 5.53817034e07, 1.37114041e09, 3.21963264e08]
+            [11.0, 2.0, 5.0, 22.0, 4.0, 10.0, 66.0, 12.0, 30.0]
         ),
-        "expected_rp": np.array(
-            [0.0, 0.0, 7.10925472e09, 4.53975437e10, 1.36547014e10, 7.69981714e10]
-        ),
+        "expected_rp": np.array([0.0, 0.0, 0.0, 0.0, 0.0, 0.0, 500.0, 1000.0, 3000.0]),
     }
 
 
@@ -258,12 +119,12 @@ class TestCalcRiskMetricsPoints:
 
     @patch.object(CalcRiskMetricsPoints, "impact_computation_strategy")
     def test_impacts_arrays(self, mock_impact_compute):
-        mock_impact_compute.compute_impacts.side_effect = ["A", "B"]
+        mock_impact_compute.compute_impacts.side_effect = ["A", "B", "C"]
         results = self.calc.impacts
 
         expected_calls = [call(s.exposure, s.hazard, s.impfset) for s in self.snapshots]
         mock_impact_compute.compute_impacts.assert_has_calls(expected_calls)
-        assert results == ["A", "B"]
+        assert results == ["A", "B", "C"]
 
     def test_per_date_eai(self):
         np.testing.assert_allclose(
@@ -342,7 +203,8 @@ class TestCalcRiskMetricsPoints:
 
         assert mock_snap_apply.call_count == len(self.snapshots)
         mock_calc_class.assert_called_with(
-            ["MockedSnapshot", "MockedSnapshot"], self.calc.impact_computation_strategy
+            ["MockedSnapshot", "MockedSnapshot", "MockedSnapshot"],
+            self.calc.impact_computation_strategy,
         )
         # Note: In the original test, result.measure was checked.
         # Since we mocked the return of CalcRiskMetricsPoints, we check the mock instance.
