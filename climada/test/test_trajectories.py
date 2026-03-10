@@ -68,7 +68,6 @@ class TestStaticTrajectory(TestCase):
         self.expected_future_imp = ImpactCalc(
             **self.future_snapshot.impact_calc_data
         ).impact()
-        # self.group_vector = self.base_snapshot.exposure.gdf[GROUP_ID_COL_NAME]
         self.expected_base_return_period_impacts = {
             rp: imp
             for rp, imp in zip(

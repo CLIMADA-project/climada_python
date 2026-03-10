@@ -59,12 +59,16 @@ __all__ = ["StaticRiskTrajectory"]
 
 
 class StaticRiskTrajectory(RiskTrajectory):
-    """This class implements static risk trajectories, objects that
+    """This class implements static risk trajectories: objects that
     regroup impacts computations for multiple dates.
 
-    This class computes risk metrics over a series of snapshots,
-    optionally applying risk discounting. It does not interpolate risk
-    between the snapshot and only provides results for each snapshot.
+    This class computes risk metrics over a series of `Snapshot` objects,
+    optionally applying risk discounting, and offers access to the results
+    in tidy formatted pandas DataFrames.
+
+    Contrary to InterpolatedRiskTrajectories, it does not interpolate risk
+    between the snapshot and only provides results at each snapshot specific
+    date.
 
     """
 
@@ -115,7 +119,7 @@ class StaticRiskTrajectory(RiskTrajectory):
             The discount rate to apply to future risk. Defaults to None.
         impact_computation_strategy: ImpactComputationStrategy, optional
             The method used to calculate the impact from the (Haz,Exp,Vul)
-            of the two snapshots. Defaults to :class:`ImpactCalcComputation`.
+            for each snapshot. Defaults to :class:`ImpactCalcComputation`.
 
         """
         super().__init__(
@@ -137,7 +141,11 @@ class StaticRiskTrajectory(RiskTrajectory):
     @impact_computation_strategy.setter
     def impact_computation_strategy(self, value, /):
         if not isinstance(value, ImpactComputationStrategy):
-            raise ValueError("Not an interpolation strategy")
+            raise ValueError(
+                "The provided impact computation strategy is not an ImpactComputationStrategy, "
+                "please refer to the documentation to define your own strategies or stick to the "
+                "default one"
+            )
 
         self._reset_metrics()
         self._risk_metrics_calculators.impact_computation_strategy = value
@@ -173,6 +181,15 @@ class StaticRiskTrajectory(RiskTrajectory):
         pd.DataFrame
             A tidy formatted dataframe of the risk metric computed for the
             different snapshots.
+
+        Notes
+        -----
+
+        The computation checks that there are no duplicated rows of results
+        for the same tuples (Date, Group, Measure, Metric,
+        [Coordinates for metrics on that level]) and takes the first row in
+        this case.
+
 
         Raises
         ------
@@ -211,7 +228,12 @@ class StaticRiskTrajectory(RiskTrajectory):
         # When more than 2 snapshots, there might be duplicated rows, we need to remove them.
         # Should not be the case in static trajectory, but in any case we really don't want
         # duplicated rows, which would mess up some dataframe manipulation down the road.
-        tmp = tmp[~tmp.index.duplicated(keep="first")]
+        if tmp.index.duplicated().any():
+            LOGGER.warning(
+                "Duplicated rows were found in the results. Will keep the first one."
+            )
+            tmp = tmp[~tmp.index.duplicated(keep="first")]
+
         tmp = tmp.reset_index()
         if self._all_groups_name not in tmp[GROUP_COL_NAME].cat.categories:
             tmp[GROUP_COL_NAME] = tmp[GROUP_COL_NAME].cat.add_categories(
@@ -236,7 +258,8 @@ class StaticRiskTrajectory(RiskTrajectory):
         Notes
         -----
 
-        This computation may become quite expensive for big areas with high resolution.
+        This computation may become quite expensive for exposures with many points
+        (e.g., big areas with high resolution).
 
         """
         metric_df = self._compute_metrics(

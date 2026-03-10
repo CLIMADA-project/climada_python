@@ -202,4 +202,4 @@ def reusable_snapshot(
     )
     hazard = reusable_minimal_hazard(intensity_factor=hazard_intensity_increase_factor)
     impfset = reusable_minimal_impfset()
-    return Snapshot(exposure=exposures, hazard=hazard, impfset=impfset, date=date)
+    return Snapshot(exposure=exposures, hazard=hazard, impfset=impfset, date=str(date))
