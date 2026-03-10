@@ -250,7 +250,10 @@ class TestCalcRiskMetricsPoints:
         assert self.calc.impact_computation_strategy == mock_strat
 
     def test_set_impact_computation_strategy_wtype(self):
-        with pytest.raises(ValueError, match="Not an impact computation strategy"):
+        with pytest.raises(
+            ValueError,
+            match="The provided value is not an ImpactComputationStrategy object",
+        ):
             self.calc.impact_computation_strategy = "NotAStrategy"
 
     @patch.object(CalcRiskMetricsPoints, "impact_computation_strategy")

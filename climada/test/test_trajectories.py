@@ -63,10 +63,10 @@ class TestStaticTrajectory(TestCase):
         )
 
         self.expected_base_imp = ImpactCalc(
-            **self.base_snapshot.impact_calc_data
+            **self.base_snapshot.impact_calc_kwargs
         ).impact()
         self.expected_future_imp = ImpactCalc(
-            **self.future_snapshot.impact_calc_data
+            **self.future_snapshot.impact_calc_kwargs
         ).impact()
         self.expected_base_return_period_impacts = {
             rp: imp
@@ -149,7 +149,7 @@ class TestStaticTrajectory(TestCase):
             exposure=exp0,
             hazard=reusable_minimal_hazard(),
             impfset=reusable_minimal_impfset(),
-            date=self.PRESENT_DATE,
+            date=str(self.PRESENT_DATE),
         )
         snap1 = Snapshot(
             exposure=exp1,
@@ -157,7 +157,7 @@ class TestStaticTrajectory(TestCase):
                 intensity_factor=self.HAZ_INCREASE_INTENSITY_FACTOR
             ),
             impfset=reusable_minimal_impfset(),
-            date=self.FUTURE_DATE,
+            date=str(self.FUTURE_DATE),
         )
 
         expected_static_metrics = pd.concat(
