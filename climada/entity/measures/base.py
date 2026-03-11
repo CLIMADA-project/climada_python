@@ -29,7 +29,6 @@ from typing import Optional, Tuple
 import numpy as np
 import pandas as pd
 from geopandas import GeoDataFrame
-from scipy.sparse import csr_matrix
 
 import climada.util.checker as u_check
 from climada.entity.exposures.base import INDICATOR_CENTR, INDICATOR_IMPF, Exposures
