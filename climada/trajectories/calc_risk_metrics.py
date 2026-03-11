@@ -160,7 +160,7 @@ class CalcRiskMetricsPoints:
 
         """
 
-        self._reset_impact_data()
+        self._init_impact_data()
         self.snapshots = snapshots
         self.impact_computation_strategy = impact_computation_strategy
         self._date_idx = pd.DatetimeIndex(
@@ -182,8 +182,10 @@ class CalcRiskMetricsPoints:
             error_message = str(exc).lower()
             if "need at least one array to concatenate" in error_message:
                 self._group_id = np.array([])
+            else:
+                raise
 
-    def _reset_impact_data(self):
+    def _init_impact_data(self):
         """Util method that resets computed data, for instance when
         changing the computation strategy.
 
@@ -192,6 +194,8 @@ class CalcRiskMetricsPoints:
         self._eai_gdf = None
         self._per_date_eai = None
         self._per_date_aai = None
+
+    _reset_impact_data = _init_impact_data
 
     @property
     def impact_computation_strategy(self) -> ImpactComputationStrategy:
@@ -204,7 +208,9 @@ class CalcRiskMetricsPoints:
     @impact_computation_strategy.setter
     def impact_computation_strategy(self, value, /):
         if not isinstance(value, ImpactComputationStrategy):
-            raise ValueError("Not an impact computation strategy")
+            raise ValueError(
+                "The provided value is not an ImpactComputationStrategy object. See the trajectory module documentation for more information on how to define your own impact computation strategies."
+            )
 
         self._impact_computation_strategy = value
         self._reset_impact_data()
@@ -352,9 +358,12 @@ class CalcRiskMetricsPoints:
         return rp_df
 
     def apply_measure(self, measure: Measure) -> "CalcRiskMetricsPoints":
-        """Creates a new `CalcRiskMetricsPoints` object with a measure.
+        """Creates a new `CalcRiskMetricsPoints` object by applying the effects
+        of the given measure.
 
-        The given measure is applied to both snapshot of the risk period.
+        The effects of the measure are applied to all the snapshots contained
+        in the initial `CalcRiskMetricsPoints` and a new `CalcRiskMetricsPoints`
+        containing the modified snapshots is returned.
 
         Parameters
         ----------
@@ -364,7 +373,7 @@ class CalcRiskMetricsPoints:
         Returns
         -------
 
-        CalcRiskPeriod
+        CalcRiskMetricsPoints
             The risk period with given measure applied.
 
         """

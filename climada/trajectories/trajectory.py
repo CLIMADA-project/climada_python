@@ -171,7 +171,9 @@ class RiskTrajectory(ABC):
     @risk_disc_rates.setter
     def risk_disc_rates(self, value, /):
         if value is not None and not isinstance(value, (DiscRates)):
-            raise ValueError("Risk discount needs to be a `DiscRates` object.")
+            raise ValueError(
+                "The discount rate applied to risk values needs to be a `DiscRates` object."
+            )
 
         self._reset_metrics()
         self._risk_disc_rates = value

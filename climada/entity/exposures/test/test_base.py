@@ -182,7 +182,7 @@ class TestFuncs(unittest.TestCase):
     def test_read_raster_pass(self):
         """from_raster"""
         exp = Exposures.from_raster(
-            HAZ_DEMO_FL, window=Window(10, 20, 50, 60), attrs={"value_unit": "USD"}
+            HAZ_DEMO_FL, window=Window(10, 20, 50, 60), attrs={"value_unit": "PKR"}
         )
         exp.check()
         self.assertTrue(u_coord.equal_crs(exp.crs, DEF_CRS))
@@ -204,7 +204,7 @@ class TestFuncs(unittest.TestCase):
         self.assertAlmostEqual(
             exp.gdf["value"].values.reshape((60, 50))[25, 12], 0.056825936
         )
-        self.assertEqual(exp.value_unit, "USD")
+        self.assertEqual(exp.value_unit, "PKR")
 
     def test_assign_raster_pass(self):
         """Test assign_centroids with raster hazard"""
@@ -429,16 +429,27 @@ class TestIO(unittest.TestCase):
         exp_df = Exposures(df)
         # set metadata
         exp_df.ref_year = 2020
-        exp_df.value_unit = "XSD"
+        exp_df.value_unit = "PAK"
         exp_df.check()
+
+    def test_handling_unit_conflicts_pass(self):
+        """Check that the value_unit is correctly set when there are conflicting value_unit definitions in the data frame and the meta attribute."""
+        df = pd.read_excel(ENT_TEMPLATE_XLS)
+        exp_df = Exposures(df, meta={"value_unit": "XSD"}, value_unit="XSD")
+        exp_df.check()
+        self.assertEqual(exp_df.value_unit, "XSD")
+        with self.assertRaises(ValueError) as cm:
+            exp_df = Exposures(df, meta={"value_unit": "XSD"}, value_unit="PAK")
+        with self.assertRaises(ValueError) as cm:
+            exp_df = Exposures(df, meta={"value_unit": "PAK"}, value_unit="XSD")
+        with self.assertRaises(ValueError) as cm:
+            exp_df = Exposures(df, meta={"value_unit": "PAK"}, value_unit="PAK")
 
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
-        exp = Exposures(pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632")
-
-        # set metadata
-        exp.ref_year = 2020
-        exp.value_unit = "XSD"
+        exp = Exposures(
+            pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632", ref_year=2020
+        )
 
         # add another geometry column
         exp.data["geocol2"] = exp.data.geometry.copy(deep=True)
