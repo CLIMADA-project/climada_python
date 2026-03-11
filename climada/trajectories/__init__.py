@@ -17,7 +17,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 ---
 
 This module implements risk trajectory objects which enable computation and
-possibly interpolation of risk metric over multiple dates.
+possibly interpolation of risk metrics over multiple dates.
 
 """
 

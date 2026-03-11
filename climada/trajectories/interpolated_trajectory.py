@@ -65,7 +65,6 @@ from climada.trajectories.interpolation import (
 )
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
-    DEFAULT_ALLGROUP_NAME,
     DEFAULT_DF_COLUMN_PRIORITY,
     DEFAULT_RP,
     INDEXING_COLUMNS,
@@ -677,7 +676,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)[
                 colname
             ]
-            .apply("mean")
+            .mean()
             .reset_index()
         )
         df_periods = pd.merge(

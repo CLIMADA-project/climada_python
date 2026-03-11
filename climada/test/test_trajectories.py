@@ -19,63 +19,34 @@ Test trajectories.
 
 """
 
-import copy
-from itertools import groupby
-from unittest import TestCase
-
-import geopandas as gpd
 import numpy as np
 import pandas as pd
 import pytest
 
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.exposures.base import Exposures
-from climada.entity.impact_funcs.base import ImpactFunc
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.hazard.base import Hazard
-from climada.test.conftest import (
-    CATEGORIES,
-    DATES,
-    EVENT_IDS,
-    EVENT_NAMES,
-    EXPOSURE_REF_YEAR,
-    FREQUENCY,
-    FREQUENCY_UNIT,
-    HAZARD_MAX_INTENSITY,
-    HAZARD_TYPE,
-    HAZARD_UNIT,
-    IMPF_ID,
-    IMPF_NAME,
-)
+from climada.test.conftest import CATEGORIES, EXPOSURE_REF_YEAR
 from climada.trajectories import InterpolatedRiskTrajectory, StaticRiskTrajectory
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
-    AAI_PER_GROUP_METRIC_NAME,
     CONTRIBUTION_BASE_RISK_NAME,
     CONTRIBUTION_EXPOSURE_NAME,
     CONTRIBUTION_HAZARD_NAME,
     CONTRIBUTION_INTERACTION_TERM_NAME,
     CONTRIBUTION_VULNERABILITY_NAME,
-    COORD_ID_COL_NAME,
     DATE_COL_NAME,
-    EAI_METRIC_NAME,
     GROUP_COL_NAME,
     MEASURE_COL_NAME,
     METRIC_COL_NAME,
     NO_MEASURE_VALUE,
     PERIOD_COL_NAME,
-    RETURN_PERIOD_METRIC_NAME,
     RISK_COL_NAME,
-    RP_VALUE_PREFIX,
     UNIT_COL_NAME,
 )
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import DEFAULT_RP
 
 EXPOSURE_FUTURE_YEAR = 2040
-
-from climada.trajectories.snapshot import Snapshot
 
 
 @pytest.fixture(scope="session")
@@ -509,21 +480,21 @@ def expected_interp_metrics():
     return pd.DataFrame.from_dict(
         {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
          'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
-         'data': [[ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 94.5],
+         'data': [[ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 94.5],
                   # Above should indeed not be 216+18 / 2 and slightly
                   # because as we interpolate each contributor separately,
                   # the interaction term grows slower.
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 216.0],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 500.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 2625.0],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 6000.0],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 3750.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 19687.5],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 45000.0]],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 216.0],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 500.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 2625.0],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 6000.0],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 3750.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 19687.5],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_250', 'USD', 45000.0]],
          'index_names': [None],
          'column_names': [None]
          },
@@ -612,21 +583,21 @@ def expected_interp_metrics_rpchange():
     return pd.DataFrame.from_dict(
         {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
          'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
-         'data': [[ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 94.5],
+         'data': [[ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 94.5],
                   # Above should indeed not be 216+18 / 2 and slightly
                   # because as we interpolate each contributor separately,
                   # the interaction term grows slower.
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 216.0],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 3750.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 19687.5],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 45000.0]],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 216.0],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 3750.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 19687.5],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_500', 'USD', 45000.0]],
          'index_names': [None],
          'column_names': [None]
          },
@@ -659,21 +630,21 @@ def expected_interp_metrics_ratechange():
     return pd.DataFrame.from_dict(
         {'index': [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11],
          'columns': [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME, UNIT_COL_NAME, RISK_COL_NAME],
-         'data': [[ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 90.0],
+         'data': [[ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 18.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 90.0],
                   # Above should indeed not be 216+18 / 2 and slightly
                   # because as we interpolate each contributor separately,
                   # the interaction term grows slower.
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 195.9183673469],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
-                  [ pd.Period(2020), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 500.0],
-                  [ pd.Period(2021), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 2500.0],
-                  [ pd.Period(2022), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 5442.176870]],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'aai', 'USD', 195.9183673469],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_20', 'USD', 0.0],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_50', 'USD', 0.0],
+                  [ pd.Period("2020"), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 500.0],
+                  [ pd.Period("2021"), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 2500.0],
+                  [ pd.Period("2022"), 'All',NO_MEASURE_VALUE, 'rp_100', 'USD', 5442.176870]],
          'index_names': [None],
          'column_names': [None]
          },

@@ -29,9 +29,7 @@ import numpy as np  # For potential NaN/NA comparisons
 import pandas as pd
 
 from climada.entity.disc_rates.base import DiscRates
-from climada.trajectories.calc_risk_metrics import (  # ImpactComputationStrategy, # If needed to mock its base class directly
-    CalcRiskMetricsPeriod,
-)
+from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPeriod
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     AAI_PER_GROUP_METRIC_NAME,
@@ -39,7 +37,6 @@ from climada.trajectories.constants import (
     CONTRIBUTION_EXPOSURE_NAME,
     CONTRIBUTION_HAZARD_NAME,
     CONTRIBUTION_INTERACTION_TERM_NAME,
-    CONTRIBUTION_TOTAL_RISK_NAME,
     CONTRIBUTION_VULNERABILITY_NAME,
     CONTRIBUTIONS_METRIC_NAME,
     COORD_ID_COL_NAME,

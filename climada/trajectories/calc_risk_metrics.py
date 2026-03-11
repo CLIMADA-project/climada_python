@@ -209,7 +209,9 @@ class CalcRiskMetricsPoints:
     def impact_computation_strategy(self, value, /):
         if not isinstance(value, ImpactComputationStrategy):
             raise ValueError(
-                "The provided value is not an ImpactComputationStrategy object. See the trajectory module documentation for more information on how to define your own impact computation strategies."
+                "The provided value is not an ImpactComputationStrategy object. "
+                "See the trajectory module documentation for more information on "
+                "how to define your own impact computation strategies."
             )
 
         self._impact_computation_strategy = value
@@ -809,7 +811,11 @@ class CalcRiskMetricsPeriod:
     # Actual results
 
     def _calc_eai(self) -> np.ndarray:
-        """Compute the EAIs at each date of the risk period (including changes in exposure, hazard and vulnerability)."""
+        """Compute the EAIs at each date of the risk period
+        (including changes in exposure, hazard and vulnerability).
+
+        """
+
         per_date_eai_H0V0, per_date_eai_H1V0, per_date_eai_H0V1, per_date_eai_H1V1 = (
             self._per_date_eais_interp("H0V0"),
             self._per_date_eais_interp("H1V0"),
@@ -917,7 +923,8 @@ class CalcRiskMetricsPeriod:
         """
         if len(self._group_id_E0) < 1 or len(self._group_id_E1) < 1:
             LOGGER.warning(
-                "No group id defined in at least one of the Exposures object. Per group aai will be empty."
+                "No group id defined in at least one of the Exposures object. "
+                "Per group aai will be empty."
             )
             return None
 
@@ -973,7 +980,8 @@ class CalcRiskMetricsPeriod:
 
         """
 
-        # currently mathematicaly wrong, but approximatively correct, to be reworked when concatenating the impact matrices for the interpolation
+        # currently mathematicaly wrong, but approximatively correct,
+        # to be reworked when concatenating the impact matrices for the interpolation
         per_date_rp_H0V0, per_date_rp_H1V0, per_date_rp_H0V1, per_date_rp_H1V1 = (
             self._per_date_return_periods("H0V0", return_periods),
             self._per_date_return_periods("H1V0", return_periods),
