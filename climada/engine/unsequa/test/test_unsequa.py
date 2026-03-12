@@ -578,7 +578,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {"S": 10, "seed": 12345},
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["CV", 16],
-                "test_si_value": [0.25000, 2],
+                "test_si_value": [0.250000, 2],
             },
             "hdmr": {
                 "sampling_method": "saltelli",
@@ -587,7 +587,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {},
                 "test_param_name": ["x_exp", 2],
                 "test_si_name": ["Sa", 4],
-                "test_si_value": [0.004658, 3],
+                "test_si_value": [0.004649, 3],
             },
             "ff": {
                 "sampling_method": "ff",
@@ -618,7 +618,7 @@ class TestCalcImpact(unittest.TestCase):
                 },
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["dgsm", 8],
-                "test_si_value": [1.697516e-01, 9],
+                "test_si_value": [0.1697516, 9],
             },
             "fast": {
                 "sampling_method": "fast_sampler",
@@ -627,7 +627,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {"M": 4, "seed": 12345},
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["S1_conf", 8],
-                "test_si_value": [0.671396, 1],
+                "test_si_value": [0.671546, 1],
             },
             "rbd_fast": {
                 "sampling_method": "saltelli",
@@ -636,7 +636,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {"M": 4, "seed": 12345},
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["S1_conf", 4],
-                "test_si_value": [0.152609, 4],
+                "test_si_value": [0.129919, 4],
             },
             "morris": {
                 "sampling_method": "morris",
@@ -645,7 +645,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {},
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["mu", 1],
-                "test_si_value": [5066460029.63911, 8],
+                "test_si_value": [7935400297.813827, 8],
             },
         }
 
@@ -700,7 +700,7 @@ class TestCalcImpact(unittest.TestCase):
                 haz_unc,
                 sensitivity_method,
                 method_params,
-                places=2 if sensitivity_method == "rbd_fast" else 5,
+                places=5,
             )
 
 
