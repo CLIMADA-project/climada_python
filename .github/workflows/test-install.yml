@@ -35,13 +35,16 @@ jobs:
           cache-environment: false
           cache-downloads: true
           cache-downloads-key: downloads-${{ matrix.os }}-py${{ matrix.python-version }}
-
       -
-        name: Import CLIMADA (bash)
-        run: python -c "import climada"
+        name: Test CLIMADA (bash)
         shell: bash -el {0}
+        run: |
+          python -c "import climada"
+          python -m unittest climada.engine.test.test_impact
       -
-        name: Import CLIMADA (powershell)
-        run: python -c "import climada"
+        name: Test CLIMADA (powershell)
         shell: pwsh
         if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          python -c "import climada"
+          python -m unittest climada.engine.test.test_impact
