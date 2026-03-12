@@ -25,7 +25,13 @@ import pytest
 
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.disc_rates.base import DiscRates
-from climada.test.conftest import CATEGORIES, EXPOSURE_REF_YEAR
+from climada.entity.impact_funcs.base import ImpactFunc
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+from climada.test.conftest import (
+    CATEGORIES,
+    EXPOSURE_REF_YEAR,
+    hazard_intensity_factory,
+)
 from climada.trajectories import InterpolatedRiskTrajectory, StaticRiskTrajectory
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
@@ -70,6 +76,7 @@ def snapshot_factory(
         hazard_frequency_factor=1.0,
         paa_scale=1.0,
         group_id=None,
+        negative_intensities=False,
     ):
         exposures = exposures_factory(
             value_factor=exposure_value_factor, ref_year=date, group_id=group_id
@@ -82,6 +89,7 @@ def snapshot_factory(
 
         impfset = impfset_factory(
             paa_scale=paa_scale,
+            negative_intensities=negative_intensities,
         )
 
         return Snapshot(
@@ -475,6 +483,24 @@ def snapshot_future_interp_vulchange(snapshot_factory):
 
 
 @pytest.fixture(scope="session")
+def snapshot_base_neg(snapshot_factory):
+    return snapshot_factory(
+        hazard_intensity_factor=-1.0,
+        negative_intensities=True,
+    )
+
+
+@pytest.fixture(scope="session")
+def snapshot_future_interp_neg(snapshot_factory):
+    return snapshot_factory(
+        date=2022,
+        exposure_value_factor=6.0,
+        hazard_intensity_factor=-2.0,
+        negative_intensities=True,
+    )
+
+
+@pytest.fixture(scope="session")
 def expected_interp_metrics():
     # fmt: off
     return pd.DataFrame.from_dict(
@@ -737,6 +763,29 @@ def test_interpolated_trajectory(
 ):
     interp_traj = InterpolatedRiskTrajectory(
         [snapshot_base, snapshot_future_interp], return_periods=[50, 100, 250]
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_date_risk_metrics(),
+        expected_interp_metrics,
+        check_dtype=False,
+        check_categorical=False,
+    )
+    pd.testing.assert_frame_equal(
+        interp_traj.per_period_risk_metrics(),
+        expected_period_metrics,
+        check_dtype=False,
+        check_categorical=False,
+    )
+
+
+def test_interpolated_trajectory_negative_intensities(
+    snapshot_base_neg,
+    snapshot_future_interp_neg,
+    expected_interp_metrics,
+    expected_period_metrics,
+):
+    interp_traj = InterpolatedRiskTrajectory(
+        [snapshot_base_neg, snapshot_future_interp_neg], return_periods=[50, 100, 250]
     )
     pd.testing.assert_frame_equal(
         interp_traj.per_date_risk_metrics(),

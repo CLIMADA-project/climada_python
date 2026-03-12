@@ -272,13 +272,19 @@ def impf_factory():
         hazard_type=HAZARD_TYPE,
         hazard_unit=HAZARD_UNIT,
         impf_id=IMPF_ID,
+        negative_intensities=False,
     ):
+        intensity = np.array([0, max_intensity / 2, max_intensity])
+        mdd = np.array([0, 0.5, 1])
+        if negative_intensities:
+            intensity = np.flip(intensity) * -1
+            mdd = np.flip(mdd)
         return ImpactFunc(
             haz_type=hazard_type,
             intensity_unit=hazard_unit,
             name=IMPF_NAME,
-            intensity=np.array([0, max_intensity / 2, max_intensity]),
-            mdd=np.array([0, 0.5, 1]),
+            intensity=intensity,
+            mdd=mdd,
             paa=np.array([1, 1, 1]) * paa_scale,
             id=impf_id,
         )
@@ -299,9 +305,19 @@ def impfset_factory(impf_factory):
         hazard_type=HAZARD_TYPE,
         hazard_unit=HAZARD_UNIT,
         impf_id=IMPF_ID,
+        negative_intensities=False,
     ):
         return ImpactFuncSet(
-            [impf_factory(paa_scale, max_intensity, hazard_type, hazard_unit, impf_id)]
+            [
+                impf_factory(
+                    paa_scale,
+                    max_intensity,
+                    hazard_type,
+                    hazard_unit,
+                    impf_id,
+                    negative_intensities,
+                )
+            ]
         )
 
     return _make_impfset
