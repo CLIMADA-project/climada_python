@@ -1,0 +1,53 @@
+name: base
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.12
+  # Geospatial stack (C-level deps handled by conda)
+  - gdal
+  - fiona
+  - geopandas
+  - shapely
+  - rasterio
+  - pyproj
+  - cartopy
+
+  # Scientific stack
+  - numpy
+  - scipy
+  - pandas
+  - xarray
+  - numba
+  - scikit-learn
+  - statsmodels
+  - matplotlib
+  - seaborn
+  # Data formats
+  - netcdf4
+  - h5py
+  - tables
+  - cfgrib
+  - eccodes
+  - openpyxl
+  - xlrd
+  - xlsxwriter
+  - pyarrow
+  # Other CLIMADA deps
+  - dask
+  - bottleneck
+  - haversine
+  - deprecation
+  - pathos
+  - tqdm
+  - pycountry
+  - pint
+  - overpy
+  - pillow
+  - tabulate
+  - peewee
+  - contextily
+  - salib
+  - bayesian-optimization
+  - sparse
+  - pip

@@ -1,0 +1,37 @@
+name = "climada_python"
+description = "Computes probabilistic hurricane loss distributions using CLIMADA. Models a TC event ensemble over an exposure grid and outputs an event loss table and exceedance probability curve suitable for cat bond pricing."
+image = "model-home/climada_python:latest"
+run = "docker run --rm -v \"$PWD/run:/run\" ${IMAGE} ${ARGS} > run/hurricane_losses.output.json"
+args = ["{input:hurricane_scenario}"]
+
+[[inputs]]
+name = "hurricane_scenario"
+
+[inputs.schema]
+type = "object"
+properties.region.type = "string"
+properties.region.description = "Named region ('miami') or lat/lon bounds object"
+properties.storm_category.type = "integer"
+properties.storm_category.minimum = 1
+properties.storm_category.maximum = 5
+properties.n_tracks.type = "integer"
+properties.n_tracks.description = "Ensemble size (default 50)"
+properties.total_exposed_value_usd.type = "number"
+properties.total_exposed_value_usd.description = "Total insured value of exposed assets in USD"
+
+[[outputs]]
+name = "hurricane_losses"
+
+[outputs.schema]
+type = "object"
+required = ["aai_agg_usd", "event_loss_table", "loss_exceedance_curve"]
+properties.scenario.type = "string"
+properties.storm_category.type = "integer"
+properties.aai_agg_usd.type = "number"
+properties.aai_agg_usd.description = "Average Annual Impact in USD"
+properties.total_exposed_value_usd.type = "number"
+properties.loss_ratio.type = "number"
+properties.event_loss_table.type = "array"
+properties.event_loss_table.description = "Per-event losses with frequency — suitable for OasisLMF or cat bond pricing"
+properties.loss_exceedance_curve.type = "object"
+properties.loss_exceedance_curve.description = "EP curve: loss at each return period in years"
