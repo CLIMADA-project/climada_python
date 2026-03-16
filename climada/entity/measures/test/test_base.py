@@ -36,9 +36,11 @@ from climada.entity.measures.base import IMPF_ID_FACT, Measure
 from climada.entity.measures.measure_set import MeasureSet
 from climada.hazard.base import Hazard
 from climada.test import get_test_file
-from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
+from climada.util.constants import HAZ_DEMO_H5
 
 DATA_DIR = CONFIG.measures.test_data.dir()
+
+EXP_DEMO_H5 = get_test_file("exp_demo_today", file_format="hdf5")
 
 HAZ_TEST_TC: Path = get_test_file("test_tc_florida", file_format="hdf5")
 """
