@@ -41,22 +41,18 @@ from climada.engine.unsequa.calc_base import LOGGER
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.hazard import Hazard
-from climada.util.api_client import Client
+from climada.test import get_test_file
 from climada.util.constants import (
     ENT_DEMO_FUTURE,
     ENT_DEMO_TODAY,
-    EXP_DEMO_H5,
     HAZ_DEMO_H5,
     TEST_UNC_OUTPUT_COSTBEN,
     TEST_UNC_OUTPUT_IMPACT,
 )
 
-test_unc_output_impact = Client().get_dataset_file(
-    name=TEST_UNC_OUTPUT_IMPACT, status="test_dataset"
-)
-test_unc_output_costben = Client().get_dataset_file(
-    name=TEST_UNC_OUTPUT_COSTBEN, status="test_dataset"
-)
+EXP_DEMO_H5 = get_test_file("exp_demo_today", file_format="hdf5")
+test_unc_output_impact = get_test_file(TEST_UNC_OUTPUT_IMPACT)
+test_unc_output_costben = get_test_file(TEST_UNC_OUTPUT_COSTBEN)
 
 
 def impf_dem(x_paa=1, x_mdd=1):
