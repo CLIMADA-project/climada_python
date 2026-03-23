@@ -1161,9 +1161,9 @@ def degree_to_km(degree):
     The conversion is based on the formula:
 
     .. math::
-        distance = angle_{radians} \\times R
+       d = a \times R
 
-    where R is the Earth's radius in km.
+   where d is the distance in km, a is the angle in radians, and R is the Earth's radius in km.
 
     Examples
     --------
