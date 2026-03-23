@@ -19,6 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test tc_tracks module.
 """
 
+import tempfile
 import unittest
 from datetime import datetime as dt
 
@@ -703,6 +704,70 @@ class TestIO(unittest.TestCase):
         )
         self.assertEqual(tc_track.data[0].environmental_pressure.data[0], 1010)
         self.assertEqual(tc_track.data[0].basin[0], "NA")
+
+    def test_from_FAST_not_multiplied_by_year_dim(self):
+        """Regression test: FAST tracks must not be repeated across `year` dimension."""
+        with tempfile.TemporaryDirectory() as tmpdir:
+            ds = xr.Dataset(
+                {
+                    "lon_trks": (
+                        ("n_trk", "time"),
+                        np.array(
+                            [
+                                [290.0, 291.0, 292.0],
+                                [300.0, 301.0, 302.0],
+                            ],
+                            dtype=float,
+                        ),
+                    ),
+                    "lat_trks": (
+                        ("n_trk", "time"),
+                        np.array(
+                            [
+                                [10.0, 10.5, 11.0],
+                                [15.0, 15.5, 16.0],
+                            ],
+                            dtype=float,
+                        ),
+                    ),
+                    "vmax_trks": (
+                        ("n_trk", "time"),
+                        np.array(
+                            [
+                                [20.0, 21.0, 22.0],
+                                [25.0, 26.0, 27.0],
+                            ],
+                            dtype=float,
+                        ),
+                    ),
+                    "tc_month": ("n_trk", np.array([8, 9], dtype=np.int64)),
+                    "tc_basins": ("n_trk", np.array(["NA", "NA"], dtype="<U2")),
+                    "tc_years": ("n_trk", np.array([1998, 1999], dtype=np.int64)),
+                    "seeds_per_month": (
+                        ("year", "basin", "month"),
+                        np.zeros((4, 1, 12), dtype=float),
+                    ),
+                },
+                coords={
+                    "n_trk": ("n_trk", np.array([0, 1], dtype=np.int64)),
+                    "time": ("time", np.array([0, 10800, 21600], dtype=float)),
+                    "year": (
+                        "year",
+                        np.array([1998, 1999, 2000, 2001], dtype=np.int64),
+                    ),
+                    "basin": ("basin", np.array(["NA"], dtype="<U2")),
+                    "month": ("month", np.arange(1, 13, dtype=np.int64)),
+                },
+            )
+
+            path = DATA_DIR.joinpath(tmpdir, "fast_regression.nc")
+            ds.to_netcdf(path)
+
+            tc_track = tc.TCTracks.from_FAST(DATA_DIR.joinpath(tmpdir))
+
+            self.assertEqual(tc_track.size, 2)
+            self.assertEqual(tc_track.data[0].time.dt.year.values[0], 1998)
+            self.assertEqual(tc_track.data[1].time.dt.year.values[0], 1999)
 
     def test_to_geodataframe_points(self):
         """Conversion of TCTracks to GeoDataFrame using Points."""
