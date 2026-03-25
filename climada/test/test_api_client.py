@@ -177,14 +177,14 @@ class TestClient(unittest.TestCase):
                 "fin_mode": "pop",
                 "exponents": "(0,1)",
             },
-            version="v1",
+            version="v3",
             dump_dir=DATA_DIR,
         )
         self.assertEqual(len(exposures.gdf), 5782)
         self.assertEqual(np.unique(exposures.region_id), 40)
         self.assertEqual(
             exposures.description,
-            "LitPop Exposure for ['AUT'] at 150 as, year: 2018, financial mode: pop, exp: [0, 1], admin1_calc: False",
+            "LitPop Exposure for ['AUT'] at 150 as, year: 2018, financial mode: pop, exp: (0, 1), admin1_calc: False",
         )
 
     def test_get_exposures_fails(self):
@@ -264,12 +264,12 @@ class TestClient(unittest.TestCase):
 
     def test_get_litpop(self):
         client = Client()
-        litpop = client.get_litpop(country="LUX", version="v1", dump_dir=DATA_DIR)
+        litpop = client.get_litpop(country="LUX", version="v3", dump_dir=DATA_DIR)
         self.assertEqual(len(litpop.gdf), 188)
         self.assertEqual(np.unique(litpop.region_id), 442)
         self.assertEqual(
             litpop.description,
-            "LitPop Exposure for ['LUX'] at 150 as, year: 2018, financial mode: pc, exp: [1, 1], admin1_calc: False",
+            "LitPop Exposure for ['LUX'] at 150 as, year: 2018, financial mode: pc, exp: (1, 1), admin1_calc: False",
         )
 
     def test_get_litpop_fail(self):
