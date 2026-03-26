@@ -1163,7 +1163,7 @@ def degree_to_km(degree):
     .. math::
        d = a \times R
 
-   where d is the distance in km, a is the angle in radians, and R is the Earth's radius in km.
+    where d is the distance in km, a is the angle in radians, and R is the Earth's radius in km.
 
     Examples
     --------
@@ -1176,37 +1176,37 @@ def degree_to_km(degree):
 def km_to_degree(km):
     r"""Convert a distance from kilometers to degrees.
 
-    This function converts a given distance in kilometers on the Earth's surface
-    to its equivalent angle in degrees. It assumes a spherical Earth with a
-    constant radius.
+     This function converts a given distance in kilometers on the Earth's surface
+     to its equivalent angle in degrees. It assumes a spherical Earth with a
+     constant radius.
 
-    Parameters
-    ----------
-    km : float or array_like
-        The distance(s) in kilometers to convert.
+     Parameters
+     ----------
+     km : float or array_like
+         The distance(s) in kilometers to convert.
 
-    Returns
-    -------
-    float or ndarray
-        The equivalent angle(s) in degrees.
+     Returns
+     -------
+     float or ndarray
+         The equivalent angle(s) in degrees.
 
-    See Also
-    --------
-    degree_to_km : The inverse function to convert degrees to kilometers.
+     See Also
+     --------
+     degree_to_km : The inverse function to convert degrees to kilometers.
 
-    Notes
-    -----
-    The conversion is based on the formula:
+     Notes
+     -----
+     The conversion is based on the formula:
 
-   .. math::
-       a = d / R
+    .. math::
+        a = d / R
 
-   where a is the angle in radians, d is the distance in km, and R is the Earth's radius in km.
+     where a is the angle in radians, d is the distance in km, and R is the Earth's radius in km.
 
-    Examples
-    --------
-    >>> km_to_degree(111.195)
-    1.0000030589140416
+     Examples
+     --------
+     >>> km_to_degree(111.195)
+     1.0000030589140416
     """
     return np.rad2deg(km / EARTH_RADIUS_KM)
 
