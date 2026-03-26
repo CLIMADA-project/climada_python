@@ -25,6 +25,7 @@ import logging
 import numpy as np
 from scipy import interpolate
 from scipy.optimize import minimize
+from scipy.stats import genextreme
 
 LOGGER = logging.getLogger(__name__)
 
@@ -486,3 +487,79 @@ def _gpd_distribution(values, xi, beta, lambda_u, threshold):
 def _gpd_inverse_distribution(lambdas, xi, beta, lambda_u, threshold):
     lambdas = np.asarray(lambdas)
     return threshold + (beta / xi) * ((lambdas / lambda_u) ** (-xi) - 1)
+
+
+def extrapolate_with_GEV(
+    test_frequency,
+    test_values,
+    frequency,
+    values,
+    value_threshold=None,
+    threshold_percentile=90,
+    min_sample_size=30,
+):
+
+    frequency = frequency[values > value_threshold]
+    values = values[values > value_threshold]
+
+    # sort values and frequencies
+    sorted_idxs = np.argsort(values)
+    values = np.squeeze(values[sorted_idxs])
+    frequency = frequency[sorted_idxs]
+    ex_freq = np.cumsum(frequency[::-1])[::-1]
+
+    threshold = np.percentile(values, threshold_percentile)
+    mask = values > threshold
+    if sum(mask) < min_sample_size:
+        raise ValueError(
+            f"Not enough data points above the threshold for fitting the GEV. You can try to "
+            f"choose a smaller threshold_percentile={threshold_percentile} or a smaller "
+            f"value_threshold={value_threshold}."
+        )
+    x_tail = values[mask]
+    lambda_tail = ex_freq[mask]
+    lambda_u = lambda_tail[0]
+    init = [0.1, threshold, np.std(x_tail - threshold)]
+
+    def gev_exceedance_negerror(params):
+        xi, mu, sigma = params
+        if sigma <= 0:
+            return np.inf
+        model = _gev_distribution(x_tail, xi, mu, sigma, lambda_u)
+        return np.sum((np.log(lambda_tail) - np.log(model)) ** 2)
+
+    res_gev = minimize(
+        gev_exceedance_negerror, init, bounds=[(-1, None), (None, None), (1e-6, None)]
+    )
+    xi_hat, mu_hat, sigma_hat = res_gev.x
+    LOGGER.info(
+        "Fitted GEV parameters: xi=%s, mu=%s, sigma=%s.",
+        xi_hat,
+        mu_hat,
+        sigma_hat,
+    )
+
+    if test_values is not None:
+        mask_tail = test_values > threshold
+        lambda_gev = _gev_distribution(
+            test_values[mask_tail], xi_hat, mu_hat, sigma_hat, lambda_u
+        )
+        return lambda_gev, test_values[mask_tail]
+    else:
+        vals = _gev_inverse_distribution(
+            test_frequency, xi_hat, mu_hat, sigma_hat, lambda_u
+        )
+        mask_tail = vals > threshold
+        return test_frequency[mask_tail], vals[mask_tail]
+
+
+def _gev_distribution(values, xi, mu, sigma, lambda_u):
+    values = np.asarray(values)
+    cdf_vals = genextreme.cdf(values, c=-xi, loc=mu, scale=sigma)
+    return lambda_u * (1 - cdf_vals)
+
+
+def _gev_inverse_distribution(lambdas, xi, mu, sigma, lambda_u):
+    lambdas = np.asarray(lambdas)
+    ppf_vals = genextreme.ppf(1 - lambdas / lambda_u, c=-xi, loc=mu, scale=sigma)
+    return ppf_vals

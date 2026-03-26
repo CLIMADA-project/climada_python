@@ -2303,8 +2303,8 @@ class ImpactFreqCurve:
         min_impact=0,
         bin_decimals=None,
         y_asymptotic=0.0,
-        threshold_percentile_GPD=90,
-        min_sample_size_GPD=10,
+        threshold_percentile=None,
+        min_sample_size=None,
     ):
         """Extrapolate impact frequency curve with different interpolation and extrapolation options.
 
@@ -2359,15 +2359,34 @@ class ImpactFreqCurve:
         impacts = np.squeeze(np.array(self.impact)[sorted_idxs])
         rps = np.asarray(self.return_per)[sorted_idxs]
         frequency = np.diff(1 / np.array(rps)[::-1], prepend=0)[::-1]
+
+        if min_sample_size is None:
+            min_sample_size = 10
+
         if method == "fit_GPD":
+            if threshold_percentile is None:
+                threshold_percentile = 90
             ex_freq, imp = u_interp.extrapolate_with_GPD(
                 exceedance_frequency,
                 None,
                 frequency,
                 impacts,
                 value_threshold=min_impact,
-                min_sample_size=min_sample_size_GPD,
-                threshold_percentile=threshold_percentile_GPD,
+                min_sample_size=min_sample_size,
+                threshold_percentile=threshold_percentile,
+            )
+            return 1 / ex_freq, imp
+        elif method == "fit_GEV":
+            if threshold_percentile is None:
+                threshold_percentile = 80
+            ex_freq, imp = u_interp.extrapolate_with_GEV(
+                exceedance_frequency,
+                None,
+                frequency,
+                impacts,
+                value_threshold=min_impact,
+                min_sample_size=min_sample_size,
+                threshold_percentile=threshold_percentile,
             )
             return 1 / ex_freq, imp
         else:
@@ -2458,6 +2477,10 @@ class ImpactFreqCurve:
         """
         if kwargs_interp is None:
             kwargs_interp = {}
+        default_threshold_percentile = 90
+        if hasattr(kwargs_interp, "method") and kwargs_interp["method"] == "fit_GEV":
+            default_threshold_percentile = 80
+
         kwargs_interp = {
             "method": "interpolate",
             "log_frequency": True,
@@ -2465,8 +2488,8 @@ class ImpactFreqCurve:
             "min_impact": 0.0,
             "bin_decimals": None,
             "y_asymptotic": 0.0,
-            "min_sample_size_GPD": 10,
-            "threshold_percentile_GPD": 90,
+            "min_sample_size": 10,
+            "threshold_percentile": default_threshold_percentile,
         } | kwargs_interp
 
         if return_periods is None:
