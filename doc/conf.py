@@ -44,7 +44,6 @@ extensions = [
     "sphinx_mdinclude",
     "myst_nb",
     "sphinx_markdown_tables",
-    "readthedocs_ext.readthedocs",
 ]
 
 # read the docs version used for links
