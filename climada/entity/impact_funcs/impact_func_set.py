@@ -24,7 +24,7 @@ __all__ = ["ImpactFuncSet"]
 import copy
 import logging
 from itertools import repeat
-from typing import Iterable, Optional
+from typing import Iterable, Optional, Union, overload
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -119,7 +119,7 @@ class ImpactFuncSet:
         """Reinitialize attributes."""
         self._data = dict()  # {hazard_type : {id:ImpactFunc}}
 
-    def append(self, func):
+    def append(self, func: ImpactFunc):
         """Append a ImpactFunc. Overwrite existing if same id and haz_type.
 
         Parameters
@@ -141,7 +141,9 @@ class ImpactFuncSet:
             self._data[func.haz_type] = dict()
         self._data[func.haz_type][func.id] = func
 
-    def remove_func(self, haz_type=None, fun_id=None):
+    def remove_func(
+        self, haz_type: Optional[str] = None, fun_id: Optional[str | int] = None
+    ):
         """Remove impact function(s) with provided hazard type and/or id.
         If no input provided, all impact functions are removed.
 
@@ -173,7 +175,29 @@ class ImpactFuncSet:
         else:
             self._data = dict()
 
-    def get_func(self, haz_type=None, fun_id=None):
+    @overload
+    def get_func(
+        self, haz_type: None = None, fun_id: None = None
+    ) -> dict[str, dict[Union[int, str], ImpactFunc]]: ...
+
+    @overload
+    def get_func(
+        self, haz_type: None = ..., fun_id: int | str = ...
+    ) -> list[ImpactFunc]: ...
+
+    @overload
+    def get_func(
+        self, haz_type: str = ..., fun_id: None = None
+    ) -> list[ImpactFunc]: ...
+
+    @overload
+    def get_func(self, haz_type: str = ..., fun_id: int | str = ...) -> ImpactFunc: ...
+
+    def get_func(
+        self, haz_type: Optional[str] = None, fun_id: Optional[int | str] = None
+    ) -> Union[
+        ImpactFunc, list[ImpactFunc], dict[str, dict[Union[int, str], ImpactFunc]]
+    ]:
         """Get ImpactFunc(s) of input hazard type and/or id.
         If no input provided, all impact functions are returned.
 
@@ -209,7 +233,7 @@ class ImpactFuncSet:
         else:
             return self._data
 
-    def get_hazard_types(self, fun_id=None):
+    def get_hazard_types(self, fun_id: Optional[str | int] = None) -> list[str]:
         """Get impact functions hazard types contained for the id provided.
         Return all hazard types if no input id.
 
@@ -231,7 +255,15 @@ class ImpactFuncSet:
                 haz_types.append(vul_haz)
         return haz_types
 
-    def get_ids(self, haz_type=None):
+    @overload
+    def get_ids(self, haz_type: None = None) -> dict[str, list[str | int]]: ...
+
+    @overload
+    def get_ids(self, haz_type: str) -> list[int | str]: ...
+
+    def get_ids(
+        self, haz_type: Optional[str] = None
+    ) -> dict[str, list[str | int]] | list[int | str]:
         """Get impact functions ids contained for the hazard type provided.
         Return all ids for each hazard type if no input hazard type.
 
@@ -256,7 +288,9 @@ class ImpactFuncSet:
         except KeyError:
             return list()
 
-    def size(self, haz_type=None, fun_id=None):
+    def size(
+        self, haz_type: Optional[str] = None, fun_id: Optional[str | int] = None
+    ) -> int:
         """Get number of impact functions contained with input hazard type and
         /or id. If no input provided, get total number of impact functions.
 
@@ -279,6 +313,7 @@ class ImpactFuncSet:
             return 1
         if (haz_type is not None) or (fun_id is not None):
             return len(self.get_func(haz_type, fun_id))
+
         return sum(len(vul_list) for vul_list in self.get_ids().values())
 
     def check(self):
@@ -300,7 +335,7 @@ class ImpactFuncSet:
                     )
                 vul.check()
 
-    def extend(self, impact_funcs):
+    def extend(self, impact_funcs: "ImpactFuncSet"):
         """Append impact functions of input ImpactFuncSet to current
         ImpactFuncSet. Overwrite ImpactFunc if same id and haz_type.
 
@@ -323,7 +358,13 @@ class ImpactFuncSet:
             for _, vul in vul_dict.items():
                 self.append(vul)
 
-    def plot(self, haz_type=None, fun_id=None, axis=None, **kwargs):
+    def plot(
+        self,
+        haz_type: Optional[str] = None,
+        fun_id: Optional[str | int] = None,
+        axis=None,
+        **kwargs,
+    ):
         """Plot impact functions of selected hazard (all if not provided) and
         selected function id (all if not provided).
 

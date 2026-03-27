@@ -13,6 +13,7 @@ Code freeze date: YYYY-MM-DD
 ### Added
 
 - Support for ensemble forecast data as hazard via `HazardForecast` and `ImpactForecast`, see `doc.user_guide.climada_engine_ImpactForecast.ipynb` [#1115](https://github.com/CLIMADA-project/climada_python/pull/)
+- Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
 
 ### Changed
 
@@ -20,9 +21,13 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
+
 ### Deprecated
 
 ### Removed
+- `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
 
 ## 6.1.0
 
@@ -155,9 +160,9 @@ Removed:
 - `climada.entity.impact_funcs.trop_cyclone.ImpfSetTropCyclone.get_impf_id_regions_per_countries` function [#1034](https://github.com/CLIMADA-project/climada_python/pull/1034)
 - `climada.hazard.tc_tracks.BasinBoundsStorm` Enum class `climada.hazard.tc_tracks.subset_by_basin` function [#1031](https://github.com/CLIMADA-project/climada_python/pull/1031)
 - `climada.hazard.tc_tracks.TCTracks.subset_years` function [#1023](https://github.com/CLIMADA-project/climada_python/pull/1023)
--`climada.hazard.tc_tracks.compute_track_density` function, `climada.hazard.tc_tracks.compute_genesis_density` function, `climada.hazard.plot.plot_track_density` function
+- `climada.hazard.tc_tracks.compute_track_density` function, `climada.hazard.tc_tracks.compute_genesis_density` function, `climada.hazard.plot.plot_track_density` function
  [#1003](https://github.com/CLIMADA-project/climada_python/pull/1003)
--`climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
+- `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
 - `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex` with CLIMADA
 - `climada.util.coordinates.bounding_box_global` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)

@@ -1049,7 +1049,7 @@ def _apply_decay_coeffs(track, v_rel, p_rel, land_geom, s_rel):
                 # if there is no further landfall, correct until the end of
                 # the track
                 end_cor = track["time"].size
-            rndn = 0.1 * float(np.abs(np.random.normal(size=1) * 5) + 6)
+            rndn = 0.1 * float(np.abs(np.random.default_rng().normal() * 5) + 6)
             r_diff = (
                 track["central_pressure"][land_sea].values
                 - track["central_pressure"][land_sea - 1].values
