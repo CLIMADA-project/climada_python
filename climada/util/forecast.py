@@ -156,26 +156,33 @@ class ForecastMixin:
 
 def reduce_unique_selection(
     forecast,
-    values: np.ndarray,
-    select: str,
-    reduce_attr: str,
+    attr: str,
+    reduce_method: str,
+    *,
+    select_kwarg: str | None = None,
     concat_kws: Mapping[str, Any] | None = None,
     **kwargs,
 ):
     """
-    Reduce an attribute of a forecast object by selecting unique values
-    and performing an attribute reduction method.
+    Select unique values of an attribute and perform a reduction over each selection.
 
     Parameters
     ----------
     forecast : HazardForecast | ImpactForecast
         Forecast object to reduce.
-    values : np.ndarray
-        Array of values for which to select and reduce the attribute.
-    select : str
-        Name of the attribute to select on (e.g. 'lead_time', 'member').
-    reduce_attr : str
+    attr : str
+        Attribute to draw values for which to select and reduce the attribute.
+    reduce_method : str
         Name of the attribute reduction method to call (e.g. 'min', 'mean').
+    select_kwarg : str | None
+        Keyword argument to the select method (e.g. 'lead_time', 'member') of the
+        forecast object. If ``None`` (default), the value of ``attr`` is used. This
+        parameter exists because some parameters to select methods are called
+        differently than the corresponding attributes.
+    concat_kws
+        Mapping of keyword arguments to the concat method of the forecast.
+    kwargs
+        Keyword arguments to the reduction method.
 
     Returns
     -------
@@ -184,10 +191,13 @@ def reduce_unique_selection(
         and selected by the unique values.
     """
     concat_kws = {} if concat_kws is None else concat_kws
+    select_kwarg = attr if select_kwarg is None else select_kwarg
     return forecast.concat(
         [
-            getattr(forecast.select(**{select: [val]}), reduce_attr)(dim=None, **kwargs)
-            for val in np.unique(values)
+            getattr(forecast.select(**{select_kwarg: [val]}), reduce_method)(
+                dim=None, **kwargs
+            )
+            for val in np.unique(getattr(forecast, attr))
         ],
         **concat_kws,
     )

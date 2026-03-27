@@ -142,9 +142,7 @@ class HazardForecast(ForecastMixin, Hazard):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            return reduce_unique_selection(
-                self, values=getattr(self, rdim), select=rdim, reduce_attr="min"
-            )
+            return reduce_unique_selection(self, attr=rdim, reduce_method="min")
 
         red_intensity = self.intensity.min(axis=0).tocsr()
         red_fraction = self.fraction.min(axis=0).tocsr()
@@ -176,9 +174,7 @@ class HazardForecast(ForecastMixin, Hazard):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            return reduce_unique_selection(
-                self, values=getattr(self, rdim), select=rdim, reduce_attr="max"
-            )
+            return reduce_unique_selection(self, attr=rdim, reduce_method="max")
 
         red_intensity = self.intensity.max(axis=0).tocsr()
         red_fraction = self.fraction.max(axis=0).tocsr()
@@ -209,9 +205,7 @@ class HazardForecast(ForecastMixin, Hazard):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            return reduce_unique_selection(
-                self, values=getattr(self, rdim), select=rdim, reduce_attr="mean"
-            )
+            return reduce_unique_selection(self, attr=rdim, reduce_method="mean")
 
         red_intensity = sparse.csr_matrix(self.intensity.mean(axis=0))
         red_fraction = sparse.csr_matrix(self.fraction.mean(axis=0))
@@ -240,9 +234,8 @@ class HazardForecast(ForecastMixin, Hazard):
             rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
                 self,
-                values=getattr(self, rdim),
-                select=rdim,
-                reduce_attr="quantile",
+                attr=rdim,
+                reduce_method="quantile",
                 q=q,
             )
 

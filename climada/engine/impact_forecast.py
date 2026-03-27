@@ -315,9 +315,8 @@ class ImpactForecast(ForecastMixin, Impact):
             rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
                 self,
-                values=getattr(self, rdim),
-                select=rdim,
-                reduce_attr="min",
+                attr=rdim,
+                reduce_method="min",
                 concat_kws={"reset_event_ids": True},
             )
 
@@ -356,9 +355,8 @@ class ImpactForecast(ForecastMixin, Impact):
             rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
                 self,
-                values=getattr(self, rdim),
-                select=rdim,
-                reduce_attr="max",
+                attr=rdim,
+                reduce_method="max",
                 concat_kws={"reset_event_ids": True},
             )
 
@@ -396,9 +394,8 @@ class ImpactForecast(ForecastMixin, Impact):
             rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
                 self,
-                values=getattr(self, rdim),
-                select=rdim,
-                reduce_attr="mean",
+                attr=rdim,
+                reduce_method="mean",
                 concat_kws={"reset_event_ids": True},
             )
 
@@ -431,9 +428,8 @@ class ImpactForecast(ForecastMixin, Impact):
             rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
                 self,
-                values=getattr(self, rdim),
-                select=rdim,
-                reduce_attr="quantile",
+                attr=rdim,
+                reduce_method="quantile",
                 q=q,
                 concat_kws={"reset_event_ids": True},
             )
