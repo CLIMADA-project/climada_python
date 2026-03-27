@@ -31,7 +31,7 @@ from scipy import sparse
 from climada.hazard.xarray import HazardXarrayReader
 
 from ..util.checker import size
-from ..util.forecast import Forecast, reduce_unique_selection
+from ..util.forecast import ForecastMixin, reduce_unique_selection
 from .base import Hazard
 
 LOGGER = logging.getLogger(__name__)
@@ -50,7 +50,7 @@ def xarray_has_timedelta_bug() -> bool:
     )
 
 
-class HazardForecast(Forecast, Hazard):
+class HazardForecast(ForecastMixin, Hazard):
     """A hazard object with forecast information"""
 
     def __init__(

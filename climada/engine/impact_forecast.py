@@ -28,13 +28,13 @@ from scipy import sparse
 
 from ..util import log_level
 from ..util.checker import size
-from ..util.forecast import Forecast, reduce_unique_selection
+from ..util.forecast import ForecastMixin, reduce_unique_selection
 from .impact import Impact
 
 LOGGER = logging.getLogger(__name__)
 
 
-class ImpactForecast(Forecast, Impact):
+class ImpactForecast(ForecastMixin, Impact):
     """An impact object with forecast information"""
 
     def __init__(

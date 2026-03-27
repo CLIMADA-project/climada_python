@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define Forecast base class.
+Define ForecastMixin class.
 """
 
 from typing import Any, Literal, Mapping
@@ -24,7 +24,7 @@ from typing import Any, Literal, Mapping
 import numpy as np
 
 
-class Forecast:
+class ForecastMixin:
     """Mixin class for forecast data.
 
     Attributes
