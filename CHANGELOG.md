@@ -23,6 +23,7 @@ Code freeze date: YYYY-MM-DD
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
 
 ### Deprecated
+- `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().extrapolate()` instead.
 
 ### Removed
 - `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)

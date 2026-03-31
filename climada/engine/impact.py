@@ -786,6 +786,12 @@ class Impact:
         ifc_impact = self.at_event[sort_idxs][::-1]
 
         if return_per is not None:
+            warnings.warn(
+                "Calculating the frequency curve on user-specified return periods is deprecated. "
+                "Use ImpactFreqCurve.extrapolate() instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             interp_imp = np.interp(return_per, ifc_return_per, ifc_impact)
             ifc_return_per = return_per
             ifc_impact = interp_imp
@@ -2457,19 +2463,38 @@ class ImpactFreqCurve:
 
         impacts = self.extrapolate(return_periods, **kwargs_interp)
 
-        axis = self._plot(
-            return_periods,
-            impacts,
-            axis,
-            log_frequency,
-            self.frequency_unit,
-            self.unit,
-            self.label,
-            **kwargs,
+        # check frequency unit
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
+            self.frequency_unit
         )
 
-        for rp in [min(self.return_per), max(self.return_per)]:
-            axis.axvline(x=1 / rp if log_frequency else rp, linestyle="--", c="gray")
+        if not axis:
+            _, axis = plt.subplots(1, 1)
+        axis.set_title(self.label)
+        axis.set_ylabel("Impact (" + self.unit + ")")
+        if log_frequency:
+            axis.set_xlabel(f"Exceedance frequency ({self.frequency_unit})")
+            axis.set_xscale("log")
+            x_vals = return_periods**-1
+        else:
+            axis.set_xlabel(f"Return period ({return_period_unit})")
+            x_vals = return_periods
+
+        # plot extrapolated data as dashed line
+        if kwargs_interp["method"] == "interpolate":
+            axis.plot(x_vals, impacts, linestyle="-", **kwargs)
+        else:
+            kwargs_copy = kwargs.copy()
+            color = kwargs_copy.pop("color", None)
+            min_rp = min(self.return_per)
+            max_rp = max(self.return_per)
+            mask = (return_periods >= min_rp) & (return_periods <= max_rp)
+
+            line_data = axis.plot(
+                x_vals[mask], impacts[mask], linestyle="-", color=color, **kwargs_copy
+            )[0]
+            color = line_data.get_color()
+            axis.plot(x_vals, impacts, linestyle="--", color=color, **kwargs_copy)
 
         return axis
 
