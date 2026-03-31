@@ -25,6 +25,7 @@ If you are interested in contributing to CLIMADA, we recommand you to start with
    CLIMADA Configuration convention <Guide_Configuration>
    Documenting your code <write-documentation>
    Writing tests for your code <Guide_Testing>
+   Using fixtures for writing tests <Guide_test_fixtures>
    Guide_Review
    Guide_Euler
    Authors <../misc/AUTHORS>
