@@ -16,15 +16,15 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-Define functions to handle with coordinates
+Define functions to handle dataframes
 """
 
 import pandas as pd
 
 
 def reorder_dataframe_columns(
-    df: pd.DataFrame, priority_order: list[str], keep_remaining: bool = True
-) -> pd.DataFrame | pd.Series:
+    dataframe: pd.DataFrame, priority_order: list[str], keep_remaining: bool = True
+) -> pd.DataFrame:
     """
     Applies a column priority list to a DataFrame to reorder its columns.
 
@@ -34,7 +34,7 @@ def reorder_dataframe_columns(
 
     Parameters
     ----------
-    df: pd.DataFrame
+    dataframe: pd.DataFrame
         The input DataFrame.
     priority_order: list[str]
         A list of strings defining the desired column
@@ -49,15 +49,17 @@ def reorder_dataframe_columns(
         pd.DataFrame: The DataFrame with columns reordered according to the priority list.
     """
 
-    present_priority_columns = [col for col in priority_order if col in df.columns]
+    present_priority_columns = [
+        col for col in priority_order if col in dataframe.columns
+    ]
 
     new_column_order = present_priority_columns
 
     if keep_remaining:
         remaining_columns = [
-            col for col in df.columns if col not in present_priority_columns
+            col for col in dataframe.columns if col not in present_priority_columns
         ]
 
         new_column_order.extend(remaining_columns)
 
-    return df[new_column_order]
+    return dataframe[new_column_order]

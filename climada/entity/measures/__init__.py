@@ -16,20 +16,10 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This module implements risk trajectory objects which enable computation and
-possibly interpolation of risk metrics over multiple dates.
-
+init measures
 """
 
-from .interpolated_trajectory import InterpolatedRiskTrajectory
-from .interpolation import AllLinearStrategy, ExponentialExposureStrategy
-from .snapshot import Snapshot
-from .static_trajectory import StaticRiskTrajectory
+from .base import Measure
+from .measure_set import MeasureSet
 
-__all__ = [
-    "AllLinearStrategy",
-    "ExponentialExposureStrategy",
-    "Snapshot",
-    "StaticRiskTrajectory",
-    "InterpolatedRiskTrajectory",
-]
+__all__ = ["Measure", "MeasureSet"]
