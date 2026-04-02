@@ -26,10 +26,10 @@ import numpy as np
 import pandas as pd
 import pytest
 
+from climada.entity._legacy_measures.base import Measure
 from climada.entity.exposures import Exposures
 from climada.entity.impact_funcs import ImpactFuncSet
 from climada.entity.impact_funcs.trop_cyclone import ImpfTropCyclone
-from climada.entity.measures.base import Measure
 from climada.hazard import Hazard
 from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPoints
 from climada.trajectories.constants import (
