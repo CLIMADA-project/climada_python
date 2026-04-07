@@ -329,7 +329,6 @@ class ExposuresModifierConfig(_ModifierConfig):
     reassign_impf_id: Optional[Dict[str, Dict[int | str, int | str]]] = None
     set_to_zero: Optional[list[int]] = None
     new_exposures_path: Optional[str] = None
-    """HDF5 filepath for new exposure"""
 
     def __post_init__(self):
         config = self.to_dict()
