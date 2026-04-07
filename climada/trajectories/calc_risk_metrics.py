@@ -32,7 +32,7 @@ import numpy as np
 import pandas as pd
 
 from climada.engine.impact import Impact
-from climada.entity.measures.base import Measure
+from climada.entity._legacy_measures.base import Measure
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     COORD_ID_COL_NAME,

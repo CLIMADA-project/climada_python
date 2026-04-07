@@ -33,10 +33,10 @@ from climada.engine.cost_benefit import (
     risk_rp_100,
     risk_rp_250,
 )
+from climada.entity._legacy_measures import Measure
+from climada.entity._legacy_measures.base import LOGGER as ILOG
 from climada.entity.disc_rates import DiscRates
 from climada.entity.entity_def import Entity
-from climada.entity.measures import Measure
-from climada.entity.measures.base import LOGGER as ILOG
 from climada.hazard.base import Hazard
 from climada.test import get_test_file
 from climada.util.api_client import Client
