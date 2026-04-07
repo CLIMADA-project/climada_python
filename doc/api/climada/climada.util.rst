@@ -65,14 +65,6 @@ climada\.util\.dwd\_icon\_loader module
     :undoc-members:
     :show-inheritance:
 
-climada\.util\.earth\_engine module
------------------------------------
-
-.. automodule:: climada.util.earth_engine
-    :members:
-    :undoc-members:
-    :show-inheritance:
-
 climada\.util\.files\_handler module
 ------------------------------------
 
