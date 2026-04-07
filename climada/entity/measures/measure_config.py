@@ -22,11 +22,13 @@ Define configuration dataclasses for Measure reading and writing.
 from __future__ import annotations
 
 import logging
+import warnings
 from abc import ABC
 from dataclasses import asdict, dataclass, field, fields
 from datetime import datetime
 from typing import Dict, Optional, Tuple, Union
 
+import numpy as np
 import pandas as pd
 
 LOGGER = logging.getLogger(__name__)
@@ -42,6 +44,38 @@ class _ModifierConfig(ABC):
     be instantiated directly.
     """
 
+    def _filter_out_default_fields(self):
+        """
+        Partition the instance's fields into non-default and default groups.
+
+        The ``haz_type`` field is always excluded from the output, as it
+        is managed at the ``MeasureConfig`` level.
+
+        Returns
+        -------
+        non_defaults : dict
+            Fields whose current value differs from the dataclass default.
+        defaults : dict
+            Fields whose current value equals the dataclass default.
+        """
+
+        non_defaults = {}
+        defaults = {}
+        for defined_field in fields(self):
+            val = getattr(self, defined_field.name)
+            default = defined_field.default
+            if defined_field.default_factory is not field().default_factory:
+                default = defined_field.default_factory()
+
+            if val != default:
+                non_defaults[defined_field.name] = val
+            else:
+                defaults[defined_field.name] = val
+
+        if "haz_type" in non_defaults:
+            non_defaults.pop("haz_type")
+        return non_defaults, defaults
+
     def to_dict(self):
         """
         Serialize the config to a flat dictionary, omitting default values.
@@ -55,27 +89,8 @@ class _ModifierConfig(ABC):
             Dictionary containing only fields whose values differ from
             their dataclass defaults.
         """
-
-        # 1. Get the current values as a dict
-        current_data = asdict(self)
-
-        # 2. Identify fields where the current value differs from the default
-        non_default_data = {}
-        for defined_field in fields(self):
-            current_value = getattr(self, defined_field.name)
-
-            # Logic to get the default value (handling both default and default_factory)
-            default_value = defined_field.default
-            if (
-                defined_field.default_factory is not defined_field().default_factory
-            ):  # Check if factory exists
-                default_value = defined_field.default_factory()
-
-            if current_value != default_value:
-                non_default_data[defined_field.name] = current_data[defined_field.name]
-
-        non_default_data.pop("haz_type", None)
-        return non_default_data
+        non_default, _ = self._filter_out_default_fields()
+        return non_default
 
     @classmethod
     def from_dict(cls, kwargs_dict: dict):
@@ -118,32 +133,6 @@ class _ModifierConfig(ABC):
             filter(lambda k: k[0] in [f.name for f in fields(cls)], to_filter.items())
         )
         return filtered
-
-    def _filter_out_default_fields(self):
-        """
-        Partition the instance's fields into non-default and default groups.
-
-        Returns
-        -------
-        non_defaults : dict
-            Fields whose current value differs from the dataclass default.
-        defaults : dict
-            Fields whose current value equals the dataclass default.
-        """
-
-        non_defaults = {}
-        defaults = {}
-        for defined_field in fields(self):
-            val = getattr(self, defined_field.name)
-            default = defined_field.default
-            if defined_field.default_factory is not field().default_factory:
-                default = defined_field.default_factory()
-
-            if val != default:
-                non_defaults[defined_field.name] = val
-            else:
-                defaults[defined_field.name] = val
-        return non_defaults, defaults
 
     def __repr__(self) -> str:
         """
@@ -236,17 +225,19 @@ class ImpfsetModifierConfig(_ModifierConfig):
     new_impfset_path: Optional[str] = None
 
     def __post_init__(self):
-        if self.new_impfset_path is not None and any(
-            [
-                self.impf_mdd_add,
-                self.impf_mdd_mult,
-                self.impf_paa_add,
-                self.impf_paa_mult,
-                self.impf_int_add,
-                self.impf_int_mult,
+        config = self.to_dict()
+        if "new_impfset_path" in config and any(
+            key in config
+            for key in [
+                "impf_mdd_add",
+                "impf_mdd_mult",
+                "impf_paa_add",
+                "impf_paa_mult",
+                "impf_int_add",
+                "impf_int_mult",
             ]
         ):
-            LOGGER.warning(
+            warnings.warn(
                 "Both new impfset object and impfset modifiers are provided, "
                 "modifiers will be applied after changing the impfset."
             )
@@ -294,10 +285,11 @@ class HazardModifierConfig(_ModifierConfig):
     impact_rp_cutoff: Optional[float] = None
 
     def __post_init__(self):
-        if self.new_hazard_path is not None and any(
-            [self.haz_int_mult, self.haz_int_add, self.impact_rp_cutoff]
+        config = self.to_dict()
+        if "new_hazard_path" in config and any(
+            key in config for key in ["haz_int_mult", "haz_int_add", "impact_rp_cutoff"]
         ):
-            LOGGER.warning(
+            warnings.warn(
                 "Both new hazard object and hazard modifiers are provided, "
                 "modifiers will be applied after changing the hazard."
             )
@@ -340,10 +332,11 @@ class ExposuresModifierConfig(_ModifierConfig):
     """HDF5 filepath for new exposure"""
 
     def __post_init__(self):
-        if self.new_exposures_path is not None and any(
-            [self.reassign_impf_id, self.set_to_zero]
+        config = self.to_dict()
+        if "new_exposures_path" in config and any(
+            key in config for key in ["reassign_impf_id", "set_to_zero"]
         ):
-            LOGGER.warning(
+            warnings.warn(
                 "Both new exposures object and exposures modifiers are provided, "
                 "modifiers will be applied after changing the exposures."
             )
@@ -535,7 +528,6 @@ class MeasureConfig(_ModifierConfig):
             A fully populated configuration instance.
         """
 
-        color = kwargs_dict.get("color_rgb")
         return cls(
             name=kwargs_dict["name"],
             haz_type=kwargs_dict["haz_type"],
@@ -544,10 +536,29 @@ class MeasureConfig(_ModifierConfig):
             exposures_modifier=ExposuresModifierConfig.from_dict(kwargs_dict),
             cost_income=CostIncomeConfig.from_dict(kwargs_dict),
             implementation_duration=kwargs_dict.get("implementation_duration"),
-            color_rgb=(
-                tuple(color) if color is not None and not pd.isna(color) else None
-            ),
+            color_rgb=cls._normalize_color(kwargs_dict.get("color_rgb")),
         )
+
+    @staticmethod
+    def _normalize_color(color_rgb):
+        # 1. Handle None and NaN (np.nan, pd.NA, float('nan'))
+        if color_rgb is None or pd.isna(color_rgb) is True:
+            return None
+
+        # 2. Convert sequence types (list, np.array, tuple) to a standard tuple
+        try:
+            # Flatten in case it's a nested numpy array, then convert to tuple
+            result = tuple(np.array(color_rgb).flatten().tolist())
+
+            # 3. Enforce the length of three
+            if len(result) != 3:
+                raise ValueError(f"Expected 3 digits, got {len(result)}")
+
+            return result
+
+        except (TypeError, ValueError) as err:
+            # Handle cases where input isn't iterable or wrong length
+            raise ValueError(f"Invalid color format: {color_rgb}.") from err
 
     def to_yaml(self, path: str) -> None:
         """
