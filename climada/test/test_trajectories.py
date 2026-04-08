@@ -25,13 +25,7 @@ import pytest
 
 from climada.engine.impact_calc import ImpactCalc
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.impact_funcs.base import ImpactFunc
-from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.test.conftest import (
-    CATEGORIES,
-    EXPOSURE_REF_YEAR,
-    hazard_intensity_factory,
-)
+from climada.test.conftest import CATEGORIES, EXPOSURE_REF_YEAR
 from climada.trajectories import InterpolatedRiskTrajectory, StaticRiskTrajectory
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
@@ -55,7 +49,7 @@ from climada.trajectories.trajectory import DEFAULT_RP
 EXPOSURE_FUTURE_YEAR = 2040
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def snapshot_factory(
     exposures_factory,
     hazard_factory,
@@ -102,12 +96,12 @@ def snapshot_factory(
     return _make_snapshot
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def snapshot_base(snapshot_factory):
     return snapshot_factory()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def snapshot_future(snapshot_factory):
     return snapshot_factory(
         date=2040,
@@ -463,7 +457,7 @@ def test_static_trajectory_risk_disc_rate(snapshot_base, snapshot_future):
 # ----------- INTERPOLATED TRAJ ----------------
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def snapshot_future_interp(snapshot_factory):
     return snapshot_factory(
         date=2022,  # Closer date for less rows
@@ -472,7 +466,7 @@ def snapshot_future_interp(snapshot_factory):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def snapshot_future_interp_vulchange(snapshot_factory):
     return snapshot_factory(
         date=2022,  # Closer date for less rows
@@ -482,7 +476,7 @@ def snapshot_future_interp_vulchange(snapshot_factory):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def snapshot_base_neg(snapshot_factory):
     return snapshot_factory(
         hazard_intensity_factor=-1.0,
@@ -490,7 +484,7 @@ def snapshot_base_neg(snapshot_factory):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def snapshot_future_interp_neg(snapshot_factory):
     return snapshot_factory(
         date=2022,
@@ -500,7 +494,7 @@ def snapshot_future_interp_neg(snapshot_factory):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_interp_metrics():
     # fmt: off
     return pd.DataFrame.from_dict(
@@ -529,7 +523,7 @@ def expected_interp_metrics():
     # fmt: on
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_interp_metrics_wgroup(expected_interp_metrics):
     return pd.concat(
         [
@@ -561,7 +555,7 @@ def expected_interp_metrics_wgroup(expected_interp_metrics):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_period_metrics():
     # fmt: off
     return pd.DataFrame.from_dict(
@@ -579,7 +573,7 @@ def expected_period_metrics():
     # fmt: on
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_interp_period_wgroup(expected_period_metrics):
     return pd.concat(
         [
@@ -603,7 +597,7 @@ def expected_interp_period_wgroup(expected_period_metrics):
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_interp_metrics_rpchange():
     # fmt: off
     return pd.DataFrame.from_dict(
@@ -632,7 +626,7 @@ def expected_interp_metrics_rpchange():
     # fmt: on
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_period_metrics_rpchange():
     # fmt: off
     return pd.DataFrame.from_dict(
@@ -650,7 +644,7 @@ def expected_period_metrics_rpchange():
     # fmt: on
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_interp_metrics_ratechange():
     # fmt: off
     return pd.DataFrame.from_dict(
@@ -679,7 +673,7 @@ def expected_interp_metrics_ratechange():
     # fmt: on
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_period_metrics_ratechange():
     # fmt: off
     return pd.DataFrame.from_dict(
@@ -697,7 +691,7 @@ def expected_period_metrics_ratechange():
     # fmt: on
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_interp_metrics_contributions():
     return pd.DataFrame.from_dict(
         # fmt: off
@@ -726,7 +720,7 @@ def expected_interp_metrics_contributions():
     )
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def expected_interp_metrics_contributions_vulchange():
     return pd.DataFrame.from_dict(
         # fmt: off
