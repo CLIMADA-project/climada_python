@@ -20,6 +20,7 @@ Code freeze date: YYYY-MM-DD
 - `climada.util.finance`: `world_bank_wealth_account` now fetches data via the
   World Bank Indicators API instead of downloading a ZIP/CSV file.
   Updated available year range from 1995–2014 to 1995–2020. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
+- Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
 
 ### Fixed
 
