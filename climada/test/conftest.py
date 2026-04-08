@@ -69,7 +69,7 @@ CATEGORIES = np.array([1, 1, 2, 1, 1, 3])
 
 # Exposure coordinates
 EXP_LONS = np.array([4, 4.25, 4.5, 4, 4.25, 4.5])
-EXP_LATS = np.array([45, 45, 45, 45.25, 45.25, 45.25])
+EXP_LATS = np.array([33, 33, 33, 33.25, 33.25, 33.25])
 
 # ---------------------------------------------------------------------------
 # Hazard definition
@@ -104,87 +104,62 @@ HAZARD_MAX_INTENSITY = 100
 IMPF_ID = 1
 IMPF_NAME = "IMPF_1"
 
-# Sanity checks
-for const in [VALUES, CATEGORIES, EXP_LONS, EXP_LATS]:
-    assert len(const) == len(
-        VALUES
-    ), "VALUES, REGIONS, CATEGORIES, EXP_LONS, EXP_LATS should all have the same lengths."
 
-for const in [EVENT_IDS, EVENT_NAMES, DATES, FREQUENCY]:
-    assert len(const) == len(
-        EVENT_IDS
-    ), "EVENT_IDS, EVENT_NAMES, DATES, FREQUENCY should all have the same lengths."
-
-
-@pytest.fixture(scope="session")
-def exposure_values():
-    return VALUES.copy()
-
-
-@pytest.fixture(scope="session")
-def categories():
-    return CATEGORIES.copy()
-
-
-@pytest.fixture(scope="session")
-def exposure_geometry():
-    return [Point(lon, lat) for lon, lat in zip(EXP_LONS, EXP_LATS)]
-
-
-@pytest.fixture(scope="session")
-def exposures_factory(
-    exposure_values,
-    exposure_geometry,
-):
+@pytest.fixture
+def exposures_factory():
     def _make_exposures(
+        values=VALUES,
+        exp_lons=EXP_LONS,
+        exp_lats=EXP_LATS,
         value_factor=1.0,
         ref_year=EXPOSURE_REF_YEAR,
         hazard_type=HAZARD_TYPE,
         group_id=None,
+        crs=CRS_WGS84,
+        impf_id=IMPF_ID,
+        description=EXP_DESC,
+        value_unit=EXPOSURE_VALUE_UNIT,
+        categories=None,
     ):
         gdf = gpd.GeoDataFrame(
             {
-                "value": exposure_values * value_factor,
-                f"impf_{hazard_type}": IMPF_ID,
-                "geometry": exposure_geometry,
+                "value": values * value_factor,
+                f"impf_{hazard_type}": impf_id,
+                "category": categories,
+                "geometry": gpd.points_from_xy(exp_lons, exp_lats, crs=crs),
             },
-            crs=CRS_WGS84,
+            crs=crs,
         )
         if group_id is not None:
             gdf["group_id"] = group_id
 
         return Exposures(
             data=gdf,
-            description=EXP_DESC,
+            description=description,
             ref_year=ref_year,
-            value_unit=EXPOSURE_VALUE_UNIT,
+            value_unit=value_unit,
         )
 
     return _make_exposures
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def exposures(exposures_factory):
     return exposures_factory()
 
 
-@pytest.fixture(scope="session")
-def hazard_frequency_factory():
-    base = FREQUENCY
-
+def hazard_frequency_factory(base=FREQUENCY):
     def _make_frequency(scale=1.0):
         return base * scale
 
     return _make_frequency
 
 
-@pytest.fixture(scope="session")
 def hazard_frequency():
     return hazard_frequency_factory()
 
 
-@pytest.fixture(scope="session")
-def hazard_intensity_factory():
+def hazard_intensity(max_intensity=HAZARD_MAX_INTENSITY, scale=1.0):
     """
     Intensity matrix designed for analytical expectations:
     - Event 1: zero
@@ -195,76 +170,83 @@ def hazard_intensity_factory():
     base = csr_matrix(
         [
             [0, 0, 0, 0, 0, 0],
-            [HAZARD_MAX_INTENSITY, 0, 0, 0, 0, 0],
-            [0, HAZARD_MAX_INTENSITY / 2, 0, 0, 0, 0],
+            [max_intensity, 0, 0, 0, 0, 0],
+            [0, max_intensity / 2, 0, 0, 0, 0],
             [
-                HAZARD_MAX_INTENSITY / 4,
-                HAZARD_MAX_INTENSITY / 4,
-                HAZARD_MAX_INTENSITY / 4,
-                HAZARD_MAX_INTENSITY / 4,
-                HAZARD_MAX_INTENSITY / 4,
-                HAZARD_MAX_INTENSITY / 4,
+                max_intensity / 4,
+                max_intensity / 4,
+                max_intensity / 4,
+                max_intensity / 4,
+                max_intensity / 4,
+                max_intensity / 4,
             ],
             [
-                HAZARD_MAX_INTENSITY,
-                HAZARD_MAX_INTENSITY,
-                HAZARD_MAX_INTENSITY,
-                HAZARD_MAX_INTENSITY,
-                HAZARD_MAX_INTENSITY,
-                HAZARD_MAX_INTENSITY,
+                max_intensity,
+                max_intensity,
+                max_intensity,
+                max_intensity,
+                max_intensity,
+                max_intensity,
             ],
         ]
     )
 
-    def _make_intensity(scale=1.0):
-        return base * scale
-
-    return _make_intensity
+    return base * scale
 
 
-@pytest.fixture(scope="session")
-def hazard_intensity_matrix(hazard_intensity_factory):
-    return hazard_intensity_factory()
-
-
-@pytest.fixture(scope="session")
+@pytest.fixture
 def centroids():
     return Centroids(lat=HAZ_LATS, lon=HAZ_LONS, crs=CRS_WGS84)
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def hazard_factory(
-    hazard_intensity_factory,
-    hazard_frequency_factory,
     centroids,
 ):
     def _make_hazard(
+        intensity_matrix=None,
+        frequency_array=FREQUENCY,
+        max_intensity=HAZARD_MAX_INTENSITY,
+        centroids=None,
         intensity_scale=1.0,
         frequency_scale=1.0,
         hazard_type=HAZARD_TYPE,
         hazard_unit=HAZARD_UNIT,
+        lat=HAZ_LATS,
+        lon=HAZ_LONS,
+        crs=CRS_WGS84,
+        event_id=EVENT_IDS,
+        event_name=EVENT_NAMES,
+        date=DATES,
+        frequency_unit=FREQUENCY_UNIT,
     ):
+        if intensity_matrix is None:
+            intensity_matrix = hazard_intensity(max_intensity, intensity_scale)
+
+        if centroids is None:
+            centroids = Centroids(lat=lat, lon=lon, crs=crs)
+
         return Hazard(
             haz_type=hazard_type,
             units=hazard_unit,
             centroids=centroids,
-            event_id=EVENT_IDS,
-            event_name=EVENT_NAMES,
-            date=DATES,
-            frequency=hazard_frequency_factory(scale=frequency_scale),
-            frequency_unit=FREQUENCY_UNIT,
-            intensity=hazard_intensity_factory(scale=intensity_scale),
+            event_id=event_id,
+            event_name=event_name,
+            date=date,
+            frequency=frequency_array * frequency_scale,
+            frequency_unit=frequency_unit,
+            intensity=intensity_matrix,
         )
 
     return _make_hazard
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def hazard(hazard_factory):
     return hazard_factory()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def impf_factory():
     def _make_impf(
         paa_scale=1.0,
@@ -292,12 +274,12 @@ def impf_factory():
     return _make_impf
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def linear_impact_function(impf_factory):
     return impf_factory()
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def impfset_factory(impf_factory):
     def _make_impfset(
         paa_scale=1.0,
@@ -323,6 +305,6 @@ def impfset_factory(impf_factory):
     return _make_impfset
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture
 def impfset(impfset_factory):
     return impfset_factory()
