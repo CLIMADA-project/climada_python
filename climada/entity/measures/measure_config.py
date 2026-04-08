@@ -160,7 +160,7 @@ class _ModifierConfig(ABC):
             else None
         )
         ndf_fields = (
-            "(" "\n\t\tNon default fields:" f"\n\t\t\t{ndf_fields_str}"
+            "(" "\n\t\tNon default fields:" f"\n\t\t\t{ndf_fields_str}" "\n)"
             if ndf_fields_str
             else "()"
         )
