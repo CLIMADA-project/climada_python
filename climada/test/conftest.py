@@ -200,9 +200,7 @@ def centroids():
 
 
 @pytest.fixture
-def hazard_factory(
-    centroids,
-):
+def hazard_factory():
     def _make_hazard(
         intensity_matrix=None,
         frequency_array=FREQUENCY,
