@@ -185,6 +185,14 @@ class TestGetWidthDays:
         ci = CostIncome(freq="Y")
         assert ci._get_width_days() == 365.0
 
+    def test_3yearly(self):
+        ci = CostIncome(freq="3Y")
+        assert ci._get_width_days() == 3 * 365.0
+
+    def test_monthly(self):
+        ci = CostIncome(freq="M")
+        assert ci._get_width_days() == 30.0
+
     def test_daily(self):
         ci = CostIncome(freq="D")
         assert ci._get_width_days() == 1.0
