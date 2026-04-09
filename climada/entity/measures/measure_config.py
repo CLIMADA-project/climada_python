@@ -160,7 +160,7 @@ class _ModifierConfig(ABC):
             else None
         )
         ndf_fields = (
-            "(" "\n\t\tNon default fields:" f"\n\t\t\t{ndf_fields_str}"
+            "(" "\n\t\tNon default fields:" f"\n\t\t\t{ndf_fields_str}" "\n)"
             if ndf_fields_str
             else "()"
         )
@@ -281,13 +281,22 @@ class HazardModifierConfig(_ModifierConfig):
     haz_type: str
     haz_int_mult: Optional[float] = 1.0
     haz_int_add: Optional[float] = 0.0
+    haz_freq_mult: Optional[float] = 1.0
+    haz_freq_add: Optional[float] = 0.0
     new_hazard_path: Optional[str] = None
     impact_rp_cutoff: Optional[float] = None
 
     def __post_init__(self):
         config = self.to_dict()
         if "new_hazard_path" in config and any(
-            key in config for key in ["haz_int_mult", "haz_int_add", "impact_rp_cutoff"]
+            key in config
+            for key in [
+                "haz_int_mult",
+                "haz_int_add",
+                "haz_freq_mult",
+                "haz_freq_add",
+                "impact_rp_cutoff",
+            ]
         ):
             warnings.warn(
                 "Both new hazard object and hazard modifiers are provided, "
