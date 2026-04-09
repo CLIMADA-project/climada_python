@@ -338,14 +338,12 @@ class CostIncome:
         return (total_inc + total_cost), total_cost, total_inc
 
     def calc_cash_flows(
-        self, impl_date, start_date, end_date, disc_rates: Optional[DiscRates] = None
+        self, impl_date, start_date, end_date
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculate net cash flows, costs, and incomes over a period.
 
         Computes cash flow metrics across a specified date range by iterating
-        through each period. Optionally
-        applies discounting to calculate Net Present Value (NPV) when discount
-        rates are provided.
+        through each period.
 
         The method creates a period range based on the configured frequency
         (`self.freq`) and evaluates cash flows at the start time of each period.
@@ -360,8 +358,6 @@ class CostIncome:
             The beginning of the calculation period.
         end_date :
             The end of the calculation period.
-        disc_rates : DiscRates, optional
-            An object containing discount rate information for NPV calculations.
 
         Returns
         -------
@@ -369,14 +365,11 @@ class CostIncome:
             A tuple containing three NumPy arrays of equal length:
 
             * net : np.ndarray
-                Net cash flow for each period (income + cost). May be discounted
-                if `disc_rates` is provided.
+                Net cash flow for each period (income + cost).
             * costs : np.ndarray
-                Total costs for each period. May be discounted if `disc_rates`
-                is provided.
+                Total costs for each period.
             * incomes : np.ndarray
-                Total incomes for each period. May be discounted if `disc_rates`
-                is provided.
+                Total incomes for each period.
         """
 
         impl_ts = pd.Timestamp(impl_date)
@@ -384,35 +377,11 @@ class CostIncome:
 
         results = [self._calc_at_date(impl_ts, p.start_time) for p in periods]
         net, costs, incs = map(np.array, zip(*results))
-
-        if disc_rates is not None:
-            # Vectorized discounting
-            years = np.array([p.year for p in periods])
-            # Note: Assumes disc.rates is indexed/aligned with disc.years
-            rate_map = dict(zip(disc_rates.years, disc_rates.rates))
-            factors = np.array(
-                [
-                    1
-                    / (1 + rate_map.get(yr, 0.0))
-                    ** (yr - pd.Timestamp(start_date).year)
-                    for yr in years
-                ]
-            )
-            # Handle potential length mismatch if years aren't in disc
-            valid = np.array([yr in rate_map for yr in years])
-            return (
-                net[valid] * factors[valid],
-                costs[valid] * factors[valid],
-                incs[valid] * factors[valid],
-            )
-
         return net, costs, incs
 
-    def calc_total(
-        self, impl_date, start_date, end_date, disc: Optional[DiscRates] = None
-    ) -> Tuple[float, float, float]:
+    def calc_total(self, impl_date, start_date, end_date) -> Tuple[float, float, float]:
         """
-        Calculate the total or net present value of the cash flows over a given period.
+        Calculate the total value of the cash flows over a given period.
 
         Parameters:
         -----------
@@ -422,17 +391,15 @@ class CostIncome:
             The start date of the period.
         end_year: int
             The end year of the period.
-        disc: DiscRates, optional
-            The discount rates to apply.
 
         Returns:
         --------
         Tuple[float, float, float]
-            the total net, cost, and income present values over the given period
+            the total net, cost, and income values over the given period.
         """
 
         net_cash_flows, costs, incomes = self.calc_cash_flows(
-            impl_date, start_date, end_date, disc_rates=disc
+            impl_date, start_date, end_date
         )
         return np.sum(net_cash_flows), np.sum(costs), np.sum(incomes)
 
@@ -441,7 +408,6 @@ class CostIncome:
         impl_date: Any,
         start_date: Any,
         end_date: Any,
-        disc: Optional[Any] = None,
         to_plot: List[str] = ["net", "cost", "income"],
     ):
         """
@@ -455,15 +421,13 @@ class CostIncome:
             The start date of the period.
         end_date: datetime
             The end date of the period.
-        disc: DiscRates object
-            The discount rates (optional).
         to_plot: list
             List of strings indicating which cash flows to plot. Options are 'net', 'cost', 'income'.
         """
 
         # Calculate the cash flows over the given period
         net_cash_flows, costs, incomes = self.calc_cash_flows(
-            impl_date, start_date, end_date, disc_rates=disc
+            impl_date, start_date, end_date
         )
 
         # Plot the cash flows with colors
@@ -500,18 +464,14 @@ class CostIncome:
         fig.autofmt_xdate()
         plt.xlabel("Date")
         plt.ylabel("Cash Flow")
-        plt.title("Discounted Cash Flows" if disc else "Cash Flows")
+        plt.title("Cash Flows")
         plt.legend()
         plt.show()
         return ax
 
-    def to_dataframe(
-        self, impl_date, start_date, end_date, disc_rates: Optional[DiscRates] = None
-    ) -> pd.DataFrame:
+    def to_dataframe(self, impl_date, start_date, end_date) -> pd.DataFrame:
         """Return cash flows as a formatted DataFrame."""
-        net, costs, incs = self.calc_cash_flows(
-            impl_date, start_date, end_date, disc_rates=disc_rates
-        )
+        net, costs, incs = self.calc_cash_flows(impl_date, start_date, end_date)
         periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
 
         return pd.DataFrame(
