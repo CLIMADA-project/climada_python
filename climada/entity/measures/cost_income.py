@@ -144,17 +144,22 @@ class CostIncome:
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
             df = df.set_index("date")
-        match self.freq:
-            case "Y":
-                resampling_freq = "YS"
-            case "M":
-                resampling_freq = "MS"
-            case "Q":
-                resampling_freq = "QS"
-            case _:
-                resampling_freq = self.freq
 
-        return df.resample(resampling_freq).sum()
+        freq = self._make_offset_compat(self.freq)
+        return df.resample(freq).sum()
+
+    @staticmethod
+    def _make_offset_compat(freq: str, start=True) -> str:
+        suffix = "S" if start else "E"
+        match freq:
+            case "Y":
+                return "Y" + suffix
+            case "M":
+                return "M" + suffix
+            case "Q":
+                return "Q" + suffix
+            case _:
+                return freq
 
     @classmethod
     def from_config(cls, config: CostIncomeConfig) -> "CostIncome":
@@ -231,8 +236,8 @@ class CostIncome:
         with open(path) as f:
             return cls.from_dict(yaml.safe_load(f)["cost_income"])
 
-    @staticmethod
-    def _freq_to_days(freq: str) -> str:
+    @classmethod
+    def _freq_to_days(cls, freq: str) -> str:
         """
         Convert a frequency string to the equivalent number of days.
 
@@ -249,6 +254,7 @@ class CostIncome:
 
         try:
             # Convert the frequency string to a DateOffset object
+            freq = cls._make_offset_compat(freq, start=False)
             offset = pd.tseries.frequencies.to_offset(freq)
 
             # Calculate the number of days by applying the offset to a base date
@@ -264,7 +270,8 @@ class CostIncome:
         """Return the number of days in the current frequency."""
 
         ref = pd.Timestamp("2000-01-01")
-        offset = pd.tseries.frequencies.to_offset(self.freq)
+        freq = self._make_offset_compat(self.freq, start=False)
+        offset = pd.tseries.frequencies.to_offset(freq)
         return float(((ref + offset) - ref).days)
 
     def _calc_at_date(
@@ -342,7 +349,10 @@ class CostIncome:
             cost = self.periodic_cost * cost_factor
             income = self.periodic_income * inc_factor
 
-        if self.custom_cash_flows is not None:
+        if (
+            self.custom_cash_flows is not None
+            and curr_date in self.custom_cash_flows.index
+        ):
             c_cost = cast(float, self.custom_cash_flows.loc[curr_date, "cost"])
             c_inc = cast(float, self.custom_cash_flows.loc[curr_date, "income"])
         else:
@@ -423,66 +433,87 @@ class CostIncome:
         impl_date: Any,
         start_date: Any,
         end_date: Any,
-        to_plot: List[str] = ["net", "cost", "income"],
+        figsize: Tuple[int, int] = (12, 7),
+        title: Optional[str] = None,
     ):
-        """
-        Plot the cash flows over a given period.
+        """Plot periodic and cumulative cash flows over a given period.
 
-        Parameters:
-        -----------
-        impl_date: datetime
+        Displays a two-panel figure:
+        - Top panel: stacked bar chart of costs and incomes per period,
+          with a net cash flow line overlay.
+        - Bottom panel: cumulative net cash flow over time.
+
+        Parameters
+        ----------
+        impl_date :
             The date the measure is implemented.
-        start_date: datetime
-            The start date of the period.
-        end_date: datetime
-            The end date of the period.
-        to_plot: list
-            List of strings indicating which cash flows to plot. Options are 'net', 'cost', 'income'.
+        start_date :
+            Start of the evaluation period.
+        end_date :
+            End of the evaluation period.
+        figsize : tuple, optional
+            Figure size as (width, height). Default is (12, 7).
+        title : str, optional
+            Overall figure title. Defaults to 'Cash Flow Analysis'.
+
+        Returns
+        -------
+        plt.Figure
         """
+        net, costs, incomes = self.calc_cash_flows(impl_date, start_date, end_date)
+        periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
+        dates = [p.start_time for p in periods]
+        cumulative_net = np.cumsum(net)
 
-        # Calculate the cash flows over the given period
-        net_cash_flows, costs, incomes = self.calc_cash_flows(
-            impl_date, start_date, end_date
+        width = pd.Timedelta(days=self._get_width_days() * 0.6)
+
+        fig, (ax_bar, ax_cum) = plt.subplots(
+            2,
+            1,
+            figsize=figsize,
+            sharex=True,
+            gridspec_kw={"height_ratios": [3, 1], "hspace": 0.08},
         )
 
-        # Plot the cash flows with colors
-        date_range = pd.date_range(
-            start=start_date, end=end_date, freq=self._freq_to_days(self.freq)
+        # --- top panel: stacked bars + net line ---
+        ax_bar.bar(
+            dates, incomes, width=width, color="#4C9BE8", label="Income", zorder=2
         )
-        width = self._get_width_days() * 0.8  # 80% width for visibility
-        fig, ax = plt.subplots()
+        ax_bar.bar(dates, costs, width=width, color="#E8604C", label="Cost", zorder=2)
+        ax_bar.plot(
+            dates,
+            net,
+            color="black",
+            linewidth=1.5,
+            marker="o",
+            markersize=4,
+            label="Net",
+            zorder=3,
+        )
+        ax_bar.axhline(0, color="black", linewidth=0.6, linestyle="--", zorder=1)
 
-        if "cost" in to_plot:
-            ax.bar(date_range, costs, color="red", label="Cost", width=width)
-        if "income" in to_plot:
-            ax.bar(
-                date_range,
-                incomes,
-                color="blue",
-                label="Income",
-                alpha=0.7,
-                width=width,
-            )
-        if "net" in to_plot:
-            ax.bar(
-                date_range,
-                net_cash_flows,
-                color="blue",
-                edgecolor="red",
-                hatch="//",
-                label="Net",
-                alpha=0.5,
-                width=width,
-            )
+        ax_bar.set_ylabel("Cash flow")
+        ax_bar.legend(frameon=False, fontsize=9)
+        ax_bar.spines[["top", "right"]].set_visible(False)
+        ax_bar.tick_params(axis="x", which="both", bottom=False)
+        ax_bar.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:,.0f}"))
 
-        ax.xaxis_date()  # <---- treat x-ticks as datetime
-        fig.autofmt_xdate()
-        plt.xlabel("Date")
-        plt.ylabel("Cash Flow")
-        plt.title("Cash Flows")
-        plt.legend()
-        plt.show()
-        return ax
+        # --- bottom panel: cumulative net ---
+        # dates = dates.append()
+        positive = np.maximum(cumulative_net, 0)
+        negative = np.minimum(cumulative_net, 0)
+        ax_cum.fill_between(dates, positive, alpha=0.25, color="#4C9BE8", step="mid")
+        ax_cum.fill_between(dates, negative, alpha=0.25, color="#E8604C", step="mid")
+        # ax_cum.plot(dates, cumulative_net, color="black", linewidth=1.5, zorder=3)
+        ax_cum.axhline(0, color="black", linewidth=0.6, linestyle="--", zorder=1)
+
+        ax_cum.set_ylabel("Cumulative net")
+        ax_cum.spines[["top", "right"]].set_visible(False)
+        ax_cum.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x:,.0f}"))
+
+        fig.autofmt_xdate(rotation=30, ha="right")
+        fig.suptitle(title or "Cash Flow Analysis", fontsize=13, y=1.01)
+        return (ax_bar, ax_cum)
 
     def to_dataframe(self, impl_date, start_date, end_date) -> pd.DataFrame:
         """Return cash flows as a formatted DataFrame."""
