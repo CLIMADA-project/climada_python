@@ -322,7 +322,7 @@ class CostIncome:
             cost, income = 0.0, 0.0
         elif curr_date == impl_date:
             cost = self.init_cost * cost_factor
-            income = self.periodic_income * inc_factor
+            income = 0.0
         else:
             cost = self.periodic_cost * cost_factor
             income = self.periodic_income * inc_factor
