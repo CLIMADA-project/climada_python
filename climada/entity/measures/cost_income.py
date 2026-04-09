@@ -55,6 +55,7 @@ class CostIncome:
         User-defined cash flows indexed by date.
     freq : str
         Frequency of the cash flows (e.g., 'Y', '3M', '7D').
+
     """
 
     def __init__(
@@ -128,7 +129,17 @@ class CostIncome:
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
             df = df.set_index("date")
-        return df.resample(self.freq).sum()
+        match self.freq:
+            case "Y":
+                resampling_freq = "YS"
+            case "M":
+                resampling_freq = "MS"
+            case "Q":
+                resampling_freq = "QS"
+            case _:
+                resampling_freq = self.freq
+
+        return df.resample(resampling_freq).sum()
 
     @classmethod
     def from_config(cls, config: CostIncomeConfig) -> "CostIncome":
@@ -248,19 +259,19 @@ class CostIncome:
 
         Computes the total cash flow, total cost, and total income for a given
         evaluation date, accounting for growth rates applied to base costs and
-        incomes, as well as any custom cash flow overrides.
+        incomes, as well as the custom cash flow if provided.
 
         The calculation applies compound growth to both costs and incomes based
         on the number of years elapsed since the market price reference date
-        (`self.mkt_price_year`). Different base amounts are used depending on
-        whether the current date is before, at, or after the implementation date.
+        (`self.mkt_price_year`).
 
         Parameters
         ----------
         impl_date : pd.Timestamp
             The implementation date that determines which cost/income regime
-            applies. Dates before this use zero base amounts; at or after this
-            date use the initialized or periodic amounts respectively.
+            applies. Dates before this use have no cost or income; "at the date" uses
+            the implementation cost, and dates after use the initialized or
+            periodic amounts respectively.
         curr_date : pd.Timestamp
             The evaluation date for which cash flows are being calculated. This
             is compared against `impl_date` to determine the applicable base
@@ -294,7 +305,7 @@ class CostIncome:
         Cost and income regimes:
 
         - **Before impl_date**: Both base cost and income are zero
-        - **At impl_date**: Uses `init_cost` for cost and `periodic_income` for income
+        - **At impl_date**: Uses `init_cost` for cost
         - **After impl_date**: Uses `periodic_cost` for cost and `periodic_income` for income
 
         Custom cash flows (if `self.custom_cash_flows` is not None) are added
