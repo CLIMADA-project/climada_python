@@ -107,6 +107,21 @@ class CostIncome:
         else:
             self.custom_cash_flows = None
 
+    def __repr__(self) -> str:
+        lines = [
+            "CostIncome(",
+            f"  mkt_price_year          = {self.mkt_price_year.year}",
+            f"  freq                    = {self.freq!r}",
+            f"  init_cost               = {self.init_cost:,.2f}",
+            f"  periodic_cost           = {self.periodic_cost:,.2f}",
+            f"  periodic_income         = {self.periodic_income:,.2f}",
+            f"  cost_yearly_growth_rate = {self.cost_growth_rate:.2%}",
+            f"  income_yearly_growth_rate = {self.income_growth_rate:.2%}",
+            f"  custom_cash_flows       = {None if self.custom_cash_flows is None else f'DataFrame({len(self.custom_cash_flows)} rows)'}",
+            ")",
+        ]
+        return "\n".join(lines)
+
     def _prepare_custom_flows(self, df: pd.DataFrame) -> pd.DataFrame:
         """Process and resample custom cash flow dataframe
 
