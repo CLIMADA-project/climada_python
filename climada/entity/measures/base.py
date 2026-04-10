@@ -54,13 +54,56 @@ LOGGER = logging.getLogger(__name__)
 T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
 
+# Note for review:
 # This function will moved in helper.py in a future PR which will
-# add IO based on MeasureConfig dataclasses
+# add I/O based on MeasureConfig dataclasses
 def identity_function(x: T, **_kwargs: Any) -> T:
+    """Identity function
+
+    Returns the provided parameter. Usefull to design measures without effect
+    on some of the risk components (Hazard, Exposures, Impact Function)
+    """
     return x
 
 
 def allow_kwargs(func):
+    """
+    Decorator that allows a function to accept (and silently ignore) keyword arguments.
+
+    If the wrapped function already accepts ``**kwargs``, it is called unchanged.
+    Otherwise, any keyword arguments not present in the function's signature are
+    filtered out before the call, preventing ``TypeError`` from unexpected keywords.
+
+    The functions used by `Measure` objects to apply changes on ``Exposures``, ``Hazard``,
+    and ``ImpactFuncSet`` always receive ``base_exposure, base_hazard, base_impfset`` as
+    keyword arguments. This decorator is applied to users-defined functions and prevent
+    them from not accepting these kwargs and raising a ``TypeError``.
+
+    Parameters
+    ----------
+    func : callable
+        The function to wrap.
+
+    Returns
+    -------
+    callable
+        A wrapped version of `func` that accepts keyword arguments.
+
+    Examples
+    --------
+    >>> @allow_kwargs
+    ... def greet(name, greeting="Hello"):
+    ...     return f"{greeting}, {name}!"
+    >>> greet("Alice", greeting="Hi", unused_param="ignored")
+    'Hi, Alice!'
+
+    >>> @allow_kwargs
+    ... def add(a, b):
+    ...     return a + b
+    >>> add(1, 2, extra=99)
+    3
+    """
+
     @wraps(func)
     def wrapper(*args, **kwargs):
         # Get the names of arguments the original function accepts
@@ -79,17 +122,46 @@ def allow_kwargs(func):
 
 class Measure:
     """
-    Contains a measure to be applied to a set of exposures, impact functions, and hazard.
+    Contains a measure to be applied to a set of exposures, impact functions,
+    and hazard.
+
+    A ``Measure`` represents a single adaptation or risk-reduction action. It
+    holds three (optional) transformation functions, one each for
+    :class:`Exposures`, :class:`ImpactFuncSet`, and :class:`Hazard`, that are
+    can be applied to a triplet of ``(Exposures, ImpactFuncSet, Hazard)``, to
+    reflect the effect of the measure.
+
+    It also holds a `CostIncome` object to define the financial aspects of the
+    measure (see :class:`CostIncome` and :ref:`cost-income-tutorial`).
+
+    Finally it holds an `implementation_duration` attribute, in the form of a
+    pandas ``DateOffset``, which is used when the time dimension is considered.
+
+    Notes
+    -----
+
+    The only requirement for each function is to return an object of the same
+    class (e.g. :class:`Hazard` for ``hazard_change``). Functions can accept
+    keyword arguments to enable advanced effect (depending on a year of
+    application for instance). These arguments can be passed when the
+    :class:`Measure` is applied (see :py:meth:`~Measure.apply`). Note that for
+    convenience, each functions receive the by default "base" ``(Exposures,
+    ImpactFuncSet, Hazard)`` triplet as keyword arguments (`base_exposure`,
+    `base_impfset`, `base_hazard`).
+
+    If the ``Measure`` was defined from a ``MeasureConfig`` object, the
+    configuration is stored and the measure can be serialized to a file.
+    (see :ref:`measure-config-tutorial` and :ref:`measure-tutorial`).
 
     Attributes
     ----------
     name : str
         Name of the measure.
-    exposures_change : callable
+    exposures_change : ExposuresChange
         Function to change exposures.
-    impfset_change : callable
+    impfset_change : ImpfsetChange
         Function to change impact function set.
-    hazard_change : callable
+    hazard_change : HazardChange
         Function to change hazard.
     sub_measures : list of str, optional
         List of measure names that this measure is a combination of.
@@ -149,17 +221,23 @@ class Measure:
 
     @property
     def is_serializable(self) -> bool:
+        """Returns True if the ``Measure`` was created from
+        a ``MeasureConfig`` object and can be serialized.
+        """
+
         return self._config is not None
 
     def apply_exposures_changes(
         self, exposures: Exposures, enforce_copy: bool = True, **kwargs
     ) -> Exposures:
-        """Apply the changes from the measure to the given exposures object.
+        """Apply the changes from the measure to the given :class:`Exposures` object.
 
         This method applies the `exposures_changes` function of the measure to
-        the provided `exposures` object. If `enforce_copy` is True (default), a
+        the provided :class:`Exposures` object. If ``enforce_copy`` is True (default), a
         deep copy of the exposures is created before modification to ensure
         immutability of the original object.
+
+        Additional keyword arguments to the function can be passed directly.
 
         Parameters
         ----------
@@ -177,7 +255,7 @@ class Measure:
         Returns
         -------
         Exposures
-            The resulting exposures object after the transformation has been applied.
+            The resulting :class:`Exposures` object after the transformation has been applied.
             If `enforce_copy` was True, this is a new object.
 
         Notes
@@ -210,12 +288,13 @@ class Measure:
     def apply_impfset_changes(
         self, impfset: ImpactFuncSet, enforce_copy: bool = True, **kwargs
     ) -> ImpactFuncSet:
-        """Apply the changes from the measure to the given impfset object.
+        """
+        Apply the changes from the measure to the given :class:`ImpactFuncSet` object.
 
         This method applies the `impfset_changes` function of the measure to
-        the provided `impfset` object. If `enforce_copy` is True (default), a
-        deep copy of the impfset is created before modification to ensure
-        immutability of the original object.
+        the provided :class:`ImpactFuncSet` object. If `enforce_copy` is True
+        (default), a deep copy of the impfset is created before modification to
+        ensure immutability of the original object.
 
         Parameters
         ----------
@@ -223,9 +302,9 @@ class Measure:
             The input impfset object to be transformed.
         enforce_copy : bool, optional
             If True (default), creates a deep copy of `impfset` before applying
-            changes, provided the transformation function is not the identity function.
-            If False, the original object may be modified in-place depending on the
-            behavior of `impfset_changes`.
+            changes, provided the transformation function is not the identity
+            function. If False, the original object may be modified in-place
+            depending on the behavior of `impfset_changes`.
         **kwargs : dict, optional
             Additional keyword arguments passed directly to the `impfset_changes`
             function.
@@ -233,14 +312,15 @@ class Measure:
         Returns
         -------
         ImpactFuncSet
-            The resulting impfset object after the transformation has been applied.
-            If `enforce_copy` was True, this is a new object.
+            The resulting :class:`ImpactFuncSet` after the transformation has
+            been applied. If `enforce_copy` was True, this is a new object.
 
         Notes
         -----
         The deep copy operation is skipped if `enforce_copy` is False or if
         `self.impfset_changes` is the identity function, optimizing performance
-        when no actual changes are expected or when in-place modification is desired.
+        when no actual changes are expected or when in-place modification is
+        desired.
         """
 
         changed_impfset = (
@@ -265,10 +345,11 @@ class Measure:
     def apply_hazard_changes(
         self, hazard: Hazard, enforce_copy: bool = True, **kwargs
     ) -> Hazard:
-        """Apply the changes from the measure to the given hazard object.
+        """
+        Apply the changes from the measure to the given :class:`Hazard` object.
 
-        This method applies the `hazard_changes` function of the measure to
-        the provided `hazard` object. If `enforce_copy` is True (default), a
+        This method applies the `hazard_changes` function of the measure to the
+        provided :class:`Hazard` object. If `enforce_copy` is True (default), a
         deep copy of the hazard is created before modification to ensure
         immutability of the original object.
 
@@ -278,9 +359,9 @@ class Measure:
             The input hazard object to be transformed.
         enforce_copy : bool, optional
             If True (default), creates a deep copy of `hazard` before applying
-            changes, provided the transformation function is not the identity function.
-            If False, the original object may be modified in-place depending on the
-            behavior of `hazard_changes`.
+            changes, provided the transformation function is not the identity
+            function. If False, the original object may be modified in-place
+            depending on the behavior of `hazard_changes`.
         **kwargs : dict, optional
             Additional keyword arguments passed directly to the `hazard_changes`
             function.
@@ -288,15 +369,17 @@ class Measure:
         Returns
         -------
         Hazard
-            The resulting hazard object after the transformation has been applied.
-            If `enforce_copy` was True, this is a new object.
+            The resulting hazard object after the transformation has been
+            applied. If `enforce_copy` was True, this is a new object.
 
         Notes
         -----
         The deep copy operation is skipped if `enforce_copy` is False or if
         `self.hazard_changes` is the identity function, optimizing performance
-        when no actual changes are expected or when in-place modification is desired.
+        when no actual changes are expected or when in-place modification is
+        desired.
         """
+
         changed_hazard = (
             copy.deepcopy(hazard)
             if enforce_copy and self.hazard_changes is not identity_function
@@ -324,17 +407,21 @@ class Measure:
         enforce_copy: bool = True,
         **kwargs,
     ) -> Tuple[Exposures, ImpactFuncSet, Hazard]:
-        """Apply all measure transformations to the provided entity triplet.
+        """Apply all measure transformations to the provided triplet of
+        :class:`Exposures`, :class:`ImpactFuncSet`, :class:`Hazard`.
 
         This method applies the measure changes across all three
         risk parts: exposures, impact function set, and hazard data.
 
         The method implements a flexible keyword arguments merging strategy
-        where the original (exposures, impact function set, hazard) triplet is
-        provided as default context to each transformation, which can then be
-        overridden by entity-specific kwargs dictionaries. This enables
-        transformation requiring the information from other parts (for
-        instance, removing events based on impact threshold)
+        where the original triplet is provided as default context to each
+        transformation, which can then be overridden by entity-specific kwargs
+        dictionaries. This enables transformation requiring the information
+        from other risk components (for instance, removing events based on impact
+        threshold) or additional information (for instance, effect depending on
+        year of implementation).
+
+        Refer to :ref:`measure-tutorial` for more details.
 
         Parameters
         ----------
