@@ -12,3 +12,11 @@ climada\.entity\.measures\.measure_config module
     :members:
     :undoc-members:
     :show-inheritance:
+
+climada\.entity\.measures\.cost_income module
+---------------------------------------------
+
+.. automodule:: climada.entity.measures.cost_income
+    :members:
+    :undoc-members:
+    :show-inheritance:
