@@ -325,12 +325,13 @@ class ImpactForecast(ForecastMixin, Impact):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            return reduce_unique_selection(
-                self,
-                attr=rdim,
-                reduce_method="min",
-                concat_kws={"reset_event_ids": True},
-            )
+            with log_level("WARNING", "climada.engine.impact"):
+                return reduce_unique_selection(
+                    self,
+                    attr=rdim,
+                    reduce_method="min",
+                    concat_kws={"reset_event_ids": True},
+                )
 
         red_imp_mat = self.imp_mat.min(axis=0).tocsr()
         red_at_event = np.array([red_imp_mat.sum()])
@@ -363,12 +364,13 @@ class ImpactForecast(ForecastMixin, Impact):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            return reduce_unique_selection(
-                self,
-                attr=rdim,
-                reduce_method="max",
-                concat_kws={"reset_event_ids": True},
-            )
+            with log_level("WARNING", "climada.engine.impact"):
+                return reduce_unique_selection(
+                    self,
+                    attr=rdim,
+                    reduce_method="max",
+                    concat_kws={"reset_event_ids": True},
+                )
 
         red_imp_mat = self.imp_mat.max(axis=0).tocsr()
         red_at_event = np.array([red_imp_mat.sum()])
@@ -401,12 +403,13 @@ class ImpactForecast(ForecastMixin, Impact):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            return reduce_unique_selection(
-                self,
-                attr=rdim,
-                reduce_method="mean",
-                concat_kws={"reset_event_ids": True},
-            )
+            with log_level("WARNING", "climada.engine.impact"):
+                return reduce_unique_selection(
+                    self,
+                    attr=rdim,
+                    reduce_method="mean",
+                    concat_kws={"reset_event_ids": True},
+                )
 
         red_imp_mat = sparse.csr_matrix(self.imp_mat.mean(axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
@@ -433,13 +436,14 @@ class ImpactForecast(ForecastMixin, Impact):
         """Reduce the impact matrix and at_event to the quantile value."""
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            return reduce_unique_selection(
-                self,
-                attr=rdim,
-                reduce_method="quantile",
-                q=q,
-                concat_kws={"reset_event_ids": True},
-            )
+            with log_level("WARNING", "climada.engine.impact"):
+                return reduce_unique_selection(
+                    self,
+                    attr=rdim,
+                    reduce_method="quantile",
+                    q=q,
+                    concat_kws={"reset_event_ids": True},
+                )
 
         red_imp_mat = sparse.csr_matrix(np.quantile(self.imp_mat.toarray(), q, axis=0))
         red_at_event = np.array([red_imp_mat.sum()])
