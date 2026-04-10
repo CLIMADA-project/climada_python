@@ -53,7 +53,7 @@ class ImpactForecast(ForecastMixin, Impact):
         member : np.ndarray, optional
             The ensemble member associated with each event entry, given as integers
         impact_kwargs
-            Keyword-arguments passed to ~:py:class`climada.engine.impact.Impact`.
+            Keyword-arguments passed to :py:class:`~climada.engine.impact.Impact`.
         """
         super().__init__(lead_time=lead_time, member=member, **impact_kwargs)
         self._check_sizes()
@@ -66,7 +66,7 @@ class ImpactForecast(ForecastMixin, Impact):
 
         Parameters
         ----------
-        impact : climada.engine.impact.Impact
+        impact : Impact
             The impact object whose data to use in the forecast object
         lead_time : np.ndarray, optional
             The lead time associated with each event entry, given as timedelta64 type
@@ -120,7 +120,7 @@ class ImpactForecast(ForecastMixin, Impact):
 
         See Also
         --------
-        See :py:meth:`~climada.engine.impact.Impact.local_exceedance_impact`
+        climada.engine.impact.Impact.local_exceedance_impact
 
         Raises
         ------
@@ -145,7 +145,7 @@ class ImpactForecast(ForecastMixin, Impact):
 
         See Also
         --------
-        See :py:meth:`~climada.engine.impact.Impact.local_return_period`
+        climada.engine.impact.Impact.local_return_period
 
         Raises
         -------
@@ -163,7 +163,7 @@ class ImpactForecast(ForecastMixin, Impact):
 
         See Also
         --------
-        See :py:meth:`~climada.engine.impact.Impact.calc_freq_curve`
+        climada.engine.impact.Impact.calc_freq_curve
 
         Raises
         ------
@@ -227,15 +227,15 @@ class ImpactForecast(ForecastMixin, Impact):
         ----------
         file_path : str or Path
             The file path of the file to read.
+        add_scalar_attrs : Iterable of str, optional
+            Additional scalar attributes to read from file. Defaults to None.
+        add_array_attrs : Iterable of str, optional
+            Additional array attributes to read from file. Defaults to None.
 
         Returns
         -------
         imp : ImpactForecast
             ImpactForecast with data from the given file
-        add_scalar_attrs : Iterable of str, optional
-            Additional scalar attributes to read from file. Defaults to None.
-        add_array_attrs : Iterable of str, optional
-            Additional array attributes to read from file. Defaults to None.
         """
         array_attrs = {"member", "lead_time"}
         if add_array_attrs is not None:
@@ -280,7 +280,7 @@ class ImpactForecast(ForecastMixin, Impact):
 
         See Also
         --------
-        :py:meth:`~climada.engine.impact.Impact.select`
+        climada.engine.impact.Impact.select
         """
         if member is not None or lead_time is not None:
             mask_member = (

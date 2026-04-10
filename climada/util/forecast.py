@@ -163,8 +163,7 @@ def reduce_unique_selection(
     concat_kws: Mapping[str, Any] | None = None,
     **kwargs,
 ):
-    """
-    Select unique values of an attribute and perform a reduction over each selection.
+    """Select unique values of an attribute and perform a reduction over each selection.
 
     Parameters
     ----------
@@ -186,7 +185,7 @@ def reduce_unique_selection(
 
     Returns
     -------
-    Forecast
+    ForecastMixin
         Forecast object with the attribute reduced by the reduction method
         and selected by the unique values.
     """

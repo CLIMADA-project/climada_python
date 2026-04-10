@@ -70,7 +70,7 @@ class HazardForecast(ForecastMixin, Hazard):
             Ensemble member identifiers as integers. Default is empty array.
         **hazard_kwargs
             keyword arguments to pass to :py:class:`~climada.hazard.base.Hazard` See
-            py:meth`~climada.hazard.base.Hazard.__init__` for details.
+            py:meth:`~climada.hazard.base.Hazard.__init__` for details.
         """
         super().__init__(lead_time=lead_time, member=member, **hazard_kwargs)
         self._check_sizes()
@@ -82,7 +82,7 @@ class HazardForecast(ForecastMixin, Hazard):
 
         Parameters
         ----------
-        hazard : climada.hazard.base.Hazard
+        hazard : Hazard
             Hazard object to convert into a HazardForecast.
         lead_time : np.ndarray of np.timedelta64 or None, optional
             Forecast lead times. Default is empty array.
@@ -173,7 +173,7 @@ class HazardForecast(ForecastMixin, Hazard):
         Returns
         -------
         HazardForecast
-            A HazardForecast object with the min intensity and fraction.
+            A HazardForecast object with the max intensity and fraction.
 
         Warning
         -------
@@ -210,7 +210,7 @@ class HazardForecast(ForecastMixin, Hazard):
         Returns
         -------
         HazardForecast
-            A HazardForecast object with the min intensity and fraction.
+            A HazardForecast object with the mean intensity and fraction.
 
         Warning
         -------
@@ -243,7 +243,7 @@ class HazardForecast(ForecastMixin, Hazard):
         dim: Literal["member", "lead_time"] | None = None,
         event_name: str | None = None,
     ):
-        """Reduce the impact matrix and at_event to the quantile value."""
+        """Reduce intensity and fraction to the quantile value."""
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
@@ -273,7 +273,7 @@ class HazardForecast(ForecastMixin, Hazard):
         )
 
     def quantile(self, q: float, dim: Literal["member", "lead_time"] | None = None):
-        """Reduce the impact matrix and at_event to the quantile value.
+        """Reduce intensity and fraction to the quantile value.
 
         The quantile value is computed by taking the quantile of the impact matrix
         along the event dimension axis (axis=0) and then taking the quantile of the
@@ -302,7 +302,7 @@ class HazardForecast(ForecastMixin, Hazard):
         return self._quantile(q=q, dim=dim)
 
     def median(self, dim: Literal["member", "lead_time"] | None = None):
-        """Reduce the impact matrix and at_event to the median value.
+        """Reduce the intensity and fraction to the median value.
 
         The median value is computed by taking the median of the impact matrix along the
         event dimension axis (axis=0) and then taking the median of the resulting array.
@@ -414,10 +414,11 @@ class HazardForecast(ForecastMixin, Hazard):
     ):
         """Read forecast hazard data from an xarray Dataset
 
-        This extends the parent :py:meth:`~climada.hazard.base.Hazard.from_xarray_raster`
-        to handle forecast dimensions (lead_time and member). For forecast data, the
-        "event" dimension is constructed from the Cartesian product of lead_time and
-        member dimensions, so you don't need to specify an "event" coordinate.
+        This extends the parent
+        :py:meth:`~climada.hazard.io.HazardIO.from_xarray_raster` to handle forecast
+        dimensions (lead_time and member). For forecast data, the "event" dimension is
+        constructed from the Cartesian product of lead_time and member dimensions, so
+        you don't need to specify an "event" coordinate.
 
         Parameters
         ----------
@@ -441,13 +442,13 @@ class HazardForecast(ForecastMixin, Hazard):
             and member, so it should not be specified.
         data_vars : dict(str, str), optional
             Mapping from default variable names to variable names used in the data
-            to read. See :py:meth:`~climada.hazard.base.Hazard.from_xarray_raster` for
+            to read. See :py:meth:`~climada.hazard.io.HazardIO.from_xarray_raster` for
             details.
         crs : str, optional
             Coordinate reference system identifier. Defaults to "EPSG:4326".
         rechunk : bool, optional
             Rechunk the dataset before flattening. Defaults to ``False``. See
-            :py:meth:`~climada.hazard.base.Hazard.from_xarray_raster` for details.
+            :py:meth:`~climada.hazard.io.HazardIO.from_xarray_raster` for details.
         open_dataset_kws : dict, optional
             Keyword arguments passed to xarray.open_dataset if data is a file path
 
@@ -458,7 +459,7 @@ class HazardForecast(ForecastMixin, Hazard):
 
         See Also
         --------
-        :py:meth:`climada.hazard.base.Hazard.from_xarray_raster`
+        :py:meth:`climada.hazard.io.HazardIO.from_xarray_raster`
             Parent method documentation for standard hazard loading
         """
         if xarray_has_timedelta_bug():

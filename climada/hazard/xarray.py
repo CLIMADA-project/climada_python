@@ -239,7 +239,8 @@ class HazardXarrayReader:
     data : xr.Dataset
         The data to be read as hazard.
     data_stacked : xr.Dataset
-        The internally stacked (vectorized) version of ``data``.
+        The internally stacked (vectorized) version of ``data``. Only available after
+        calling :py:meth:`get_hazard_kwargs`.
     intensity : str
         The name of the variable containing the hazard intensity information.
         Default: ``"intensity"``
