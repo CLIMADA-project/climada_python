@@ -31,8 +31,6 @@ import logging
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Optional, Tuple, TypeVar
 
-import pandas as pd
-
 from climada.entity.measures.measure_config import MeasureConfig
 
 from .cost_income import CostIncome
