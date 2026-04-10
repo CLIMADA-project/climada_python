@@ -235,7 +235,7 @@ def test_impact_forecast_blocked_methods(impact_forecast):
 @pytest.mark.parametrize("dense", [True, False])
 def test_write_read_hdf5(impact_forecast, tmp_path, dense):
 
-    file_name = tmp_path / "test_hazard_forecast.h5"
+    file_name = tmp_path / "test_impact_forecast.h5"
     # replace dummy_impact event_names with strings
     impact_forecast.event_name = [str(name) for name in impact_forecast.event_name]
     impact_forecast.write_hdf5(file_name, dense_imp_mat=dense)
