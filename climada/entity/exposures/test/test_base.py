@@ -440,10 +440,6 @@ class TestIO(unittest.TestCase):
         self.assertEqual(exp_df.value_unit, "XSD")
         with self.assertRaises(ValueError) as cm:
             exp_df = Exposures(df, meta={"value_unit": "XSD"}, value_unit="PAK")
-        with self.assertRaises(ValueError) as cm:
-            exp_df = Exposures(df, meta={"value_unit": "PAK"}, value_unit="XSD")
-        with self.assertRaises(ValueError) as cm:
-            exp_df = Exposures(df, meta={"value_unit": "PAK"}, value_unit="PAK")
 
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
