@@ -22,12 +22,12 @@ jobs:
       # Do not abort other tests if only a single one fails
       fail-fast: false
       matrix:
-        python-version: ["3.10", "3.11", "3.12"]
+        python-version: ["3.11", "3.12", "3.13"]
 
     steps:
       -
         name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6
       -
         # Store the current date to use it as cache key for the environment
         name: Get current date
@@ -35,7 +35,7 @@ jobs:
         run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
       -
         name: Create Environment with Mamba
-        uses: mamba-org/setup-micromamba@v1
+        uses: mamba-org/setup-micromamba@v3
         with:
           environment-name: climada_env_${{ matrix.python-version }}
           environment-file: requirements/env_climada.yml
@@ -63,7 +63,7 @@ jobs:
       -
         name: Upload Coverage Reports
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-core-unittests-py${{ matrix.python-version }}
           path: coverage/
