@@ -28,11 +28,11 @@ import xarray as xr
 from packaging.version import Version
 from scipy import sparse
 
+import climada.util.constants as u_const
+from climada.hazard.base import Hazard
 from climada.hazard.xarray import HazardXarrayReader
-
-from ..util.checker import size
-from ..util.forecast import ForecastMixin, reduce_unique_selection
-from .base import Hazard
+from climada.util.checker import size
+from climada.util.forecast import ForecastMixin, reduce_unique_selection
 
 LOGGER = logging.getLogger(__name__)
 
@@ -339,8 +339,6 @@ class HazardForecast(ForecastMixin, Hazard):
 
     def select(
         self,
-        member=None,
-        lead_time=None,
         event_names=None,
         event_id=None,
         date=None,
@@ -348,6 +346,8 @@ class HazardForecast(ForecastMixin, Hazard):
         reg_id=None,
         extent=None,
         reset_frequency=False,
+        member=None,
+        lead_time=None,
     ):
         """Select entries based on the parameters and return a new instance.
 
@@ -407,7 +407,9 @@ class HazardForecast(ForecastMixin, Hazard):
         *,
         intensity: Optional[str] = None,
         coordinate_vars: Optional[Dict[str, str]] = None,
-        crs: str = "EPSG:4326",
+        data_vars: Optional[Dict[str, str]] = None,
+        crs: str = u_const.DEF_CRS,
+        rechunk: bool = False,
         open_dataset_kws: dict[str, Any] | None = None,
     ):
         """Read forecast hazard data from an xarray Dataset
@@ -437,12 +439,21 @@ class HazardForecast(ForecastMixin, Hazard):
 
             Note: The "event" coordinate is automatically constructed from lead_time
             and member, so it should not be specified.
+        data_vars : dict(str, str), optional
+            Mapping from default variable names to variable names used in the data
+            to read. See :py:meth:`~climada.hazard.base.Hazard.from_xarray_raster` for
+            details.
         crs : str, optional
-            Coordinate reference system identifier. Defaults to "EPSG:4326"
+            Coordinate reference system identifier. Defaults to "EPSG:4326".
+        rechunk : bool, optional
+            Rechunk the dataset before flattening. Defaults to ``False``. See
+            :py:meth:`~climada.hazard.base.Hazard.from_xarray_raster` for details.
         open_dataset_kws : dict, optional
             Keyword arguments passed to xarray.open_dataset if data is a file path
 
-
+        Returns
+        -------
+        HazardForecast
             A forecast hazard object with lead_time and member attributes populated
 
         See Also
@@ -472,7 +483,7 @@ class HazardForecast(ForecastMixin, Hazard):
             data_var_names = list(dset.data_vars.keys())
             if len(data_var_names) == 0:
                 raise ValueError("Dataset has no data variables")
-            intensity = data_var_names[0]
+            intensity = str(data_var_names[0])
             LOGGER.info(
                 "No intensity variable specified. Assuming intensity variable is '%s'",
                 intensity,
@@ -509,6 +520,8 @@ class HazardForecast(ForecastMixin, Hazard):
             coordinate_vars=parent_coord_vars,
             intensity=intensity,
             crs=crs,
+            data_vars=data_vars,
+            rechunk=rechunk,
         )
 
         kwargs = reader.get_hazard_kwargs() | {
