@@ -73,7 +73,7 @@ class ImpactForecast(ForecastMixin, Impact):
         member : np.ndarray, optional
             The ensemble member associated with each event entry, given as integers
         """
-        with log_level("WARNING", "climada.engine.impact"):
+        with log_level("WARNING", "climada.engine"):
             return cls(
                 lead_time=lead_time,
                 member=member,
@@ -96,7 +96,7 @@ class ImpactForecast(ForecastMixin, Impact):
     @property
     def at_event(self):
         """Get the total impact for each member/lead_time combination."""
-        LOGGER.warning(
+        LOGGER.info(
             "at_event gives the total impact for one specific combination of member and "
             "lead_time."
         )
