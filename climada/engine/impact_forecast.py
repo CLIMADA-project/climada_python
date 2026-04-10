@@ -21,7 +21,7 @@ Define Forecast variant of Impact.
 
 import logging
 from pathlib import Path
-from typing import Literal, Union
+from typing import Iterable, Literal, Union
 
 import numpy as np
 from scipy import sparse
@@ -176,7 +176,13 @@ class ImpactForecast(ForecastMixin, Impact):
         raise NotImplementedError("calc_freq_curve is not defined for ImpactForecast")
 
     @classmethod
-    def from_hdf5(cls, file_path: Union[str, Path]):
+    def from_hdf5(
+        cls,
+        file_path: Union[str, Path],
+        *,
+        add_scalar_attrs: Iterable[str] | None = None,
+        add_array_attrs: Iterable[str] | None = None,
+    ):
         """Create an ImpactForecast object from an H5 file.
 
         This assumes a specific layout of the file. If values are not found in the
@@ -228,8 +234,17 @@ class ImpactForecast(ForecastMixin, Impact):
         -------
         imp : ImpactForecast
             ImpactForecast with data from the given file
+        add_scalar_attrs : Iterable of str, optional
+            Additional scalar attributes to read from file. Defaults to None.
+        add_array_attrs : Iterable of str, optional
+            Additional array attributes to read from file. Defaults to None.
         """
-        return super().from_hdf5(file_path, add_array_attrs={"member", "lead_time"})
+        array_attrs = {"member", "lead_time"}
+        if add_array_attrs is not None:
+            array_attrs = array_attrs.union(add_array_attrs)
+        return super().from_hdf5(
+            file_path, add_array_attrs=array_attrs, add_scalar_attrs=add_scalar_attrs
+        )
 
     def _check_sizes(self):
         """Check sizes of forecast data vs. impact data.

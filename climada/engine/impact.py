@@ -188,8 +188,7 @@ class Impact:
             )
         if len(self.coord_exp) != len(self.eai_exp):
             raise AttributeError(
-                "Number of exposures points is different from"
-                "number of eai_exp values"
+                "Number of exposures points is different fromnumber of eai_exp values"
             )
         if imp_mat is not None:
             self.imp_mat = imp_mat
@@ -1238,8 +1237,9 @@ class Impact:
 
         impacts_stats_vals = impacts_stats.values[:, 1:].T.astype(float)
         if not log10_scale:
-            min_impact, max_impact = np.nanmin(impacts_stats_vals), np.nanmax(
-                impacts_stats_vals
+            min_impact, max_impact = (
+                np.nanmin(impacts_stats_vals),
+                np.nanmax(impacts_stats_vals),
             )
             kwargs.update(
                 {
@@ -1473,7 +1473,6 @@ class Impact:
 
         # Open file in write mode
         with h5py.File(file_path, "w") as file:
-
             # Now write all attributes
             # NOTE: Remove leading underscore to write '_tot_value' as regular attribute
             for name, value in self.__dict__.items():
@@ -1614,14 +1613,17 @@ class Impact:
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Impact.from_excel instead."""
         LOGGER.warning(
-            "The use of Impact.read_excel is deprecated."
-            "Use Impact.from_excel instead."
+            "The use of Impact.read_excel is deprecated.Use Impact.from_excel instead."
         )
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
     @classmethod
     def from_hdf5(
-        cls, file_path: Union[str, Path], *, add_scalar_attrs=None, add_array_attrs=None
+        cls,
+        file_path: Union[str, Path],
+        *,
+        add_scalar_attrs: Iterable[str] | None = None,
+        add_array_attrs: Iterable[str] | None = None,
     ):
         """Create an impact object from an H5 file.
 
@@ -1668,9 +1670,9 @@ class Impact:
         file_path : str or Path
             The file path of the file to read.
         add_scalar_attrs : Iterable of str, optional
-            Scalar attributes to read from file. Defaults to None.
+            Additional scalar attributes to read from file. Defaults to None.
         add_array_attrs : Iterable of str, optional
-            Array attributes to read from file. Defaults to None.
+            Additional array attributes to read from file. Defaults to None.
 
         Returns
         -------
@@ -1679,7 +1681,6 @@ class Impact:
         """
         kwargs = dict()
         with h5py.File(file_path, "r") as file:
-
             # Impact matrix
             if "imp_mat" in file:
                 impact_matrix = file["imp_mat"]
