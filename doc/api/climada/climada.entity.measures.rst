@@ -1,7 +1,14 @@
-climada\.trajectories\.impact_calc_strat module
-----------------------------------------
+climada\.entity\.measures package
+=================================
 
-.. automodule:: climada.trajectories.impact_calc_strat
+.. note::
+   This package implements the new way of defining measures.
+   For the previous way, see :ref:`climada.entity._legacy_measures`
+
+climada\.entity\.measures\.measure_config module
+------------------------------------------------
+
+.. automodule:: climada.entity.measures.measure_config
     :members:
     :undoc-members:
     :show-inheritance:
