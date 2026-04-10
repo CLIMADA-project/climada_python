@@ -104,7 +104,6 @@ def test_from_hazard(lead_time, member, hazard, haz_kwargs):
 
 
 class TestHazardForecastConcat:
-
     def test_concat(self, haz_fc, lead_time, member, haz_kwargs):
         haz_fc1 = haz_fc.select(event_id=[3])
         haz_fc2 = HazardForecast(
@@ -136,7 +135,6 @@ class TestHazardForecastConcat:
 
 
 class TestXarrayReader:
-
     @pytest.fixture()
     def forecast_netcdf_file(self, tmp_path_factory):
         """Create a NetCDF file with forecast data structure"""
@@ -231,8 +229,11 @@ class TestXarrayReader:
         assert haz_fc.intensity.shape == (expected_n_events, expected_n_centroids)
 
         # Check centroids
-        assert len(haz_fc.centroids.lat) == expected_n_centroids
-        assert len(haz_fc.centroids.lon) == expected_n_centroids
+        lat, lon = np.meshgrid(
+            forecast_netcdf_file["lat"], forecast_netcdf_file["lon"], indexing="ij"
+        )
+        np.testing.assert_array_equal(haz_fc.centroids.lat, lat.flatten())
+        np.testing.assert_array_equal(haz_fc.centroids.lon, lon.flatten())
 
     @xarray_leadtime
     def test_from_xarray_raster_event_names(self, forecast_netcdf_file):
@@ -286,7 +287,6 @@ class TestXarrayReader:
 
 
 class TestSelect:
-
     @pytest.mark.parametrize(
         "var, var_select",
         [("event_id", "event_id"), ("event_name", "event_names"), ("date", "date")],
@@ -296,12 +296,12 @@ class TestSelect:
     ):
         """Check if Hazard.select works on the derived class"""
 
-        select_mask = np.array([3, 2])
-        ordered_select_mask = np.array([3, 2])
+        select_mask = np.array([3, 1])
+        result_select_mask = select_mask
         if var == "date":
-            # Date needs to be a valid delta
-            select_mask = np.array([2, 3])
-            ordered_select_mask = np.array([2, 3])
+            # Input to 'date' is begin and end date in order
+            select_mask = np.array([1, 3])
+            result_select_mask = np.array([1, 2, 3])
 
         var_value = np.array(haz_kwargs[var])[select_mask]
         # event_name is a list, convert to numpy array for indexing
@@ -309,25 +309,25 @@ class TestSelect:
         # Note: order is preserved
         npt.assert_array_equal(
             haz_fc_sel.event_id,
-            haz_fc.event_id[ordered_select_mask],
+            haz_fc.event_id[result_select_mask],
         )
         npt.assert_array_equal(
             haz_fc_sel.event_name,
-            np.array(haz_fc.event_name)[ordered_select_mask],
+            np.array(haz_fc.event_name)[result_select_mask],
         )
-        npt.assert_array_equal(haz_fc_sel.date, haz_fc.date[ordered_select_mask])
+        npt.assert_array_equal(haz_fc_sel.date, haz_fc.date[result_select_mask])
         npt.assert_array_equal(
-            haz_fc_sel.frequency, haz_fc.frequency[ordered_select_mask]
+            haz_fc_sel.frequency, haz_fc.frequency[result_select_mask]
         )
-        npt.assert_array_equal(haz_fc_sel.member, member[ordered_select_mask])
-        npt.assert_array_equal(haz_fc_sel.lead_time, lead_time[ordered_select_mask])
+        npt.assert_array_equal(haz_fc_sel.member, member[result_select_mask])
+        npt.assert_array_equal(haz_fc_sel.lead_time, lead_time[result_select_mask])
         npt.assert_array_equal(
             haz_fc_sel.intensity.todense(),
-            haz_fc.intensity.todense()[ordered_select_mask],
+            haz_fc.intensity.todense()[result_select_mask],
         )
         npt.assert_array_equal(
             haz_fc_sel.fraction.todense(),
-            haz_fc.fraction.todense()[ordered_select_mask],
+            haz_fc.fraction.todense()[result_select_mask],
         )
 
         assert haz_fc_sel.centroids == haz_fc.centroids

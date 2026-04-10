@@ -123,8 +123,8 @@ def impact_func_set(exposure, hazard):
 @pytest.fixture
 def impact_calc(exposure, hazard):
     imp_mat = np.ones((len(hazard.event_id), exposure.gdf.shape[0]))
-    aai_agg = np.sum(exposure.gdf["value"]) * hazard.frequency[0]
-    eai_exp = np.ones(exposure.gdf.shape[0]) * hazard.frequency[0]
+    aai_agg = np.sum(exposure.gdf["value"]) * np.mean(hazard.frequency)
+    eai_exp = np.ones(exposure.gdf.shape[0]) * np.mean(hazard.frequency)
     at_event = np.ones(hazard.size) * np.sum(exposure.gdf["value"])
     return {
         "imp_mat": imp_mat,

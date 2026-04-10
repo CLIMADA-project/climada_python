@@ -104,11 +104,11 @@ class TestSelect:
     ):
         """Check if Impact.select works on the derived class"""
         select_mask = np.array([2, 1])
-        ordered_select_mask = np.array([1, 2])
+        result_select_mask = np.array([1, 2])
         if var == "date":
-            # Date needs to be a valid delta
-            select_mask = np.array([1, 2])
-            ordered_select_mask = np.array([1, 2])
+            # Input to 'date' is begin and end date in order
+            select_mask = np.array([1, 3])
+            result_select_mask = np.array([1, 2, 3])
 
         var_value = np.array(impact_kwargs[var])[select_mask]
         # event_name is a list, convert to numpy array for indexing
@@ -116,23 +116,21 @@ class TestSelect:
         # NOTE: Events keep their original order
         npt.assert_array_equal(
             impact_fc.event_id,
-            impact_forecast.event_id[ordered_select_mask],
+            impact_forecast.event_id[result_select_mask],
         )
         npt.assert_array_equal(
             impact_fc.event_name,
-            np.array(impact_forecast.event_name)[ordered_select_mask],
+            np.array(impact_forecast.event_name)[result_select_mask],
         )
+        npt.assert_array_equal(impact_fc.date, impact_forecast.date[result_select_mask])
         npt.assert_array_equal(
-            impact_fc.date, impact_forecast.date[ordered_select_mask]
+            impact_fc.frequency, impact_forecast.frequency[result_select_mask]
         )
-        npt.assert_array_equal(
-            impact_fc.frequency, impact_forecast.frequency[ordered_select_mask]
-        )
-        npt.assert_array_equal(impact_fc.member, member[ordered_select_mask])
-        npt.assert_array_equal(impact_fc.lead_time, lead_time[ordered_select_mask])
+        npt.assert_array_equal(impact_fc.member, member[result_select_mask])
+        npt.assert_array_equal(impact_fc.lead_time, lead_time[result_select_mask])
         npt.assert_array_equal(
             impact_fc.imp_mat.todense(),
-            impact_forecast.imp_mat.todense()[ordered_select_mask],
+            impact_forecast.imp_mat.todense()[result_select_mask],
         )
 
     def test_impact_forecast_select_exposure(
