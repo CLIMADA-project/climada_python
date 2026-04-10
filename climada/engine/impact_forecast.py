@@ -116,8 +116,7 @@ class ImpactForecast(ForecastMixin, Impact):
         log_impact=True,
         bin_decimals=None,
     ):
-        """Compution of local exceedance impact for given return periods is not
-        implemented for ImpactForecast.
+        """Not implemented for ImpactForecast.
 
         See Also
         --------
@@ -142,8 +141,7 @@ class ImpactForecast(ForecastMixin, Impact):
         log_impact=True,
         bin_decimals=None,
     ):
-        """Compution of local return period for given impact thresholds is not
-        implemented for ImpactForecast.
+        """Not implemented for ImpactForecast.
 
         See Also
         --------
@@ -270,6 +268,7 @@ class ImpactForecast(ForecastMixin, Impact):
         lead_time=None,
     ):
         """Select entries based on the parameters and return a new instance.
+
         The selection will contain the intersection of all given parameters.
 
         Parameters
@@ -312,9 +311,7 @@ class ImpactForecast(ForecastMixin, Impact):
         )
 
     def min(self, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the impact matrix and at_event of an ImpactForecast to the minimum
-        value.
+        """Reduce the impact matrix and at_event to the minimum value.
 
         Parameters
         ----------
@@ -352,9 +349,7 @@ class ImpactForecast(ForecastMixin, Impact):
         )
 
     def max(self, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the impact matrix and at_event of an ImpactForecast to the maximum
-        value.
+        """Reduce the impact matrix and at_event to the maximum value.
 
         Parameters
         ----------
@@ -392,8 +387,7 @@ class ImpactForecast(ForecastMixin, Impact):
         )
 
     def mean(self, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the impact matrix and at_event of an ImpactForecast to the mean value.
+        """Reduce the impact matrix and at_event to the mean value.
 
         Parameters
         ----------
@@ -436,9 +430,7 @@ class ImpactForecast(ForecastMixin, Impact):
         dim: Literal["member", "lead_time"] | None = None,
         event_name: str | None = None,
     ):
-        """
-        Reduce the impact matrix and at_event of an ImpactForecast to the quantile value.
-        """
+        """Reduce the impact matrix and at_event to the quantile value."""
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
@@ -468,8 +460,7 @@ class ImpactForecast(ForecastMixin, Impact):
         )
 
     def quantile(self, q: float, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the impact matrix and at_event of an ImpactForecast to the quantile value.
+        """Reduce the impact matrix and at_event to the quantile value.
 
         Parameters
         ----------
@@ -487,8 +478,7 @@ class ImpactForecast(ForecastMixin, Impact):
         return self._quantile(q=q, dim=dim)
 
     def median(self, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the impact matrix and at_event of an ImpactForecast to the median value.
+        """Reduce the impact matrix and at_event to the median value.
 
         Parameters
         ----------
@@ -500,5 +490,10 @@ class ImpactForecast(ForecastMixin, Impact):
         -------
         ImpactForecast
             An ImpactForecast object with the median impact matrix and at_event.
+
+        See Also
+        --------
+        ImpactForecast.quantile
+            Function used to compute the median with ``q=0.5``.
         """
         return self._quantile(q=0.5, dim=dim, event_name="median")

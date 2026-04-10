@@ -126,9 +126,7 @@ class HazardForecast(ForecastMixin, Hazard):
         size(exp_len=num_entries, var=self.lead_time, var_name="Forecast.lead_time")
 
     def min(self, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the intensity and fraction of a HazardForecast to the minimum
-        value.
+        """Reduce the intensity and fraction to the minimum value.
 
         Parameters
         ----------
@@ -139,6 +137,13 @@ class HazardForecast(ForecastMixin, Hazard):
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
+
+        Warning
+        -------
+        This reduces :py:attr:`~climada.hazard.base.Hazard.intensity`
+        and :py:attr:`~climada.hazard.base.Hazard.fraction` independently, possibly
+        leading to an inconsistent result: Reduced intensity and fraction values of a
+        single centroid might then originate from different events!
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
@@ -158,9 +163,7 @@ class HazardForecast(ForecastMixin, Hazard):
         )
 
     def max(self, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the intensity and fraction of a HazardForecast to the maximum
-        value.
+        """Reduce the intensity and fraction to the maximum value.
 
         Parameters
         ----------
@@ -171,6 +174,13 @@ class HazardForecast(ForecastMixin, Hazard):
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
+
+        Warning
+        -------
+        This reduces :py:attr:`~climada.hazard.base.Hazard.intensity`
+        and :py:attr:`~climada.hazard.base.Hazard.fraction` independently, possibly
+        leading to an inconsistent result: Reduced intensity and fraction values of a
+        single centroid might then originate from different events!
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
@@ -190,8 +200,7 @@ class HazardForecast(ForecastMixin, Hazard):
         )
 
     def mean(self, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the intensity and fraction of a HazardForecast to the mean value.
+        """Reduce the intensity and fraction to the mean value.
 
         Parameters
         ----------
@@ -202,6 +211,13 @@ class HazardForecast(ForecastMixin, Hazard):
         -------
         HazardForecast
             A HazardForecast object with the min intensity and fraction.
+
+        Warning
+        -------
+        This reduces :py:attr:`~climada.hazard.base.Hazard.intensity`
+        and :py:attr:`~climada.hazard.base.Hazard.fraction` independently, possibly
+        leading to an inconsistent result: Reduced intensity and fraction values of a
+        single centroid might then originate from different events!
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
@@ -227,9 +243,7 @@ class HazardForecast(ForecastMixin, Hazard):
         dim: Literal["member", "lead_time"] | None = None,
         event_name: str | None = None,
     ):
-        """
-        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
-        """
+        """Reduce the impact matrix and at_event to the quantile value."""
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
             return reduce_unique_selection(
@@ -259,8 +273,7 @@ class HazardForecast(ForecastMixin, Hazard):
         )
 
     def quantile(self, q: float, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the impact matrix and at_event of a HazardForecast to the quantile value.
+        """Reduce the impact matrix and at_event to the quantile value.
 
         The quantile value is computed by taking the quantile of the impact matrix
         along the event dimension axis (axis=0) and then taking the quantile of the
@@ -278,12 +291,18 @@ class HazardForecast(ForecastMixin, Hazard):
         -------
         HazardForecast
             A HazardForecast object with the quantile intensity and fraction.
+
+        Warning
+        -------
+        This reduces :py:attr:`~climada.hazard.base.Hazard.intensity`
+        and :py:attr:`~climada.hazard.base.Hazard.fraction` independently, possibly
+        leading to an inconsistent result: Reduced intensity and fraction values of a
+        single centroid might then originate from different events!
         """
         return self._quantile(q=q, dim=dim)
 
     def median(self, dim: Literal["member", "lead_time"] | None = None):
-        """
-        Reduce the impact matrix and at_event of a HazardForecast to the median value.
+        """Reduce the impact matrix and at_event to the median value.
 
         The median value is computed by taking the median of the impact matrix along the
         event dimension axis (axis=0) and then taking the median of the resulting array.
@@ -298,6 +317,13 @@ class HazardForecast(ForecastMixin, Hazard):
         -------
         HazardForecast
             A HazardForecast object with the median intensity and fraction.
+
+        Warning
+        -------
+        This reduces :py:attr:`~climada.hazard.base.Hazard.intensity`
+        and :py:attr:`~climada.hazard.base.Hazard.fraction` independently, possibly
+        leading to an inconsistent result: Reduced intensity and fraction values of a
+        single centroid might then originate from different events!
         """
         return self._quantile(q=0.5, event_name="median", dim=dim)
 
@@ -448,8 +474,7 @@ class HazardForecast(ForecastMixin, Hazard):
                 raise ValueError("Dataset has no data variables")
             intensity = data_var_names[0]
             LOGGER.info(
-                "No intensity variable specified. "
-                "Assuming intensity variable is '%s'",
+                "No intensity variable specified. Assuming intensity variable is '%s'",
                 intensity,
             )
 
