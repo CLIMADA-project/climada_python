@@ -12,10 +12,13 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
-- Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
+- Better type hints and overloads signatures for `ImpactFuncSet` [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
+- Adds `CostIncome` class and related tutorial for future new `Measure` class. [#1277](https://github.com/CLIMADA-project/climada_python/pull/1277)
+- Adds `MeasureConfig` and related dataclasses for new `Measure` object retrocompatibility and (de)serialization capabilities [#1276](https://github.com/CLIMADA-project/climada_python/pull/1276)
 
 ### Changed
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
+- Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
 
 ### Fixed
 
