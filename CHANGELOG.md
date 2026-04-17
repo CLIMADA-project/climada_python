@@ -20,6 +20,7 @@ Code freeze date: YYYY-MM-DD
 ### Fixed
 
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
+- `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
 
 ### Deprecated
 
