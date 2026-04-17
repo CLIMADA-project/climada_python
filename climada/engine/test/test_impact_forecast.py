@@ -285,9 +285,9 @@ class TestReduce:
         imp_fc_stats.lead_time = np.array(
             [
                 np.timedelta64(1, "h"),
+                np.timedelta64(2, "h"),
+                np.timedelta64(2, "h"),
                 np.timedelta64(1, "h"),
-                np.timedelta64(2, "h"),
-                np.timedelta64(2, "h"),
             ]
         )
         return imp_fc_stats
@@ -318,13 +318,13 @@ class TestReduce:
                 "quantile": {"imp_mat": [[1.5, 0.5], [0.5, 2]], "at_event": [2, 2.5]},
             },
             "member": {
-                "min": {"imp_mat": [[0, 0], [2, 2]], "at_event": [0, 4]},
-                "mean": {"imp_mat": [[0.5, 0.5], [2.5, 3.5]], "at_event": [1, 6]},
-                "median": {"imp_mat": [[0.5, 0.5], [2.5, 3.5]], "at_event": [1, 6]},
-                "max": {"imp_mat": [[1, 1], [3, 5]], "at_event": [2, 8]},
+                "min": {"imp_mat": [[1, 0], [0, 1]], "at_event": [1, 1]},
+                "mean": {"imp_mat": [[1.5, 2.5], [1.5, 1.5]], "at_event": [4, 3]},
+                "median": {"imp_mat": [[1.5, 2.5], [1.5, 1.5]], "at_event": [4, 3]},
+                "max": {"imp_mat": [[2, 5], [3, 2]], "at_event": [7, 5]},
                 "quantile": {
-                    "imp_mat": [[0.25, 0.25], [2.25, 2.75]],
-                    "at_event": [0.5, 5],
+                    "imp_mat": [[1.25, 1.25], [0.75, 1.25]],
+                    "at_event": [2.5, 2],
                 },
             },
         }
