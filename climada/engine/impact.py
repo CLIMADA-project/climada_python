@@ -2366,12 +2366,12 @@ class ImpactFreqCurve:
         if method == "fit_GPD":
             if threshold_percentile is None:
                 threshold_percentile = 90
-            ex_freq, imp = u_interp.extrapolate_with_GPD(
+            ex_freq, imp = u_interp.fit_tail_distribution(
                 exceedance_frequency,
                 None,
                 frequency,
                 impacts,
-                value_threshold=min_impact,
+                dist="GPD",
                 min_sample_size=min_sample_size,
                 threshold_percentile=threshold_percentile,
             )
@@ -2379,12 +2379,12 @@ class ImpactFreqCurve:
         elif method == "fit_GEV":
             if threshold_percentile is None:
                 threshold_percentile = 80
-            ex_freq, imp = u_interp.extrapolate_with_GEV(
+            ex_freq, imp = u_interp.fit_tail_distribution(
                 exceedance_frequency,
                 None,
                 frequency,
                 impacts,
-                value_threshold=min_impact,
+                dist="GEV",
                 min_sample_size=min_sample_size,
                 threshold_percentile=threshold_percentile,
             )
