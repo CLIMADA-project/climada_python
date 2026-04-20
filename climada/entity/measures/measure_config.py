@@ -23,19 +23,27 @@ from __future__ import annotations
 
 import logging
 import warnings
-from abc import ABC
-from dataclasses import asdict, dataclass, field, fields
+from dataclasses import MISSING, dataclass, field, fields
 from datetime import datetime
-from typing import Dict, Optional, Tuple, Union
+from typing import Any, Dict, Optional, Tuple
 
 import numpy as np
 import pandas as pd
+import yaml
 
 LOGGER = logging.getLogger(__name__)
 
+__all__ = [
+    "HazardModifierConfig",
+    "ExposuresModifierConfig",
+    "ImpfsetModifierConfig",
+    "CostIncomeConfig",
+    "MeasureConfig",
+]
+
 
 @dataclass
-class _ModifierConfig:
+class ModifierConfig:
     """
     Abstract base class for all modifier configuration dataclasses.
 
@@ -44,7 +52,7 @@ class _ModifierConfig:
     be instantiated directly.
     """
 
-    def _filter_out_default_fields(self) -> dict[str, Any]:
+    def _filter_out_default_fields(self) -> tuple[dict[str, Any], dict[str, Any]]:
         """
         Partition the instance's fields into non-default and default groups.
 
@@ -64,7 +72,7 @@ class _ModifierConfig:
         for defined_field in fields(self):
             val = getattr(self, defined_field.name)
             default = defined_field.default
-            if default is MISSING:
+            if defined_field.default_factory is not MISSING:
                 default = defined_field.default_factory()
 
             if val != default:
@@ -76,7 +84,7 @@ class _ModifierConfig:
             non_defaults.pop("haz_type")
         return non_defaults, defaults
 
-    def to_dict(self, omit_default : bool = True) -> dict[str, Any]:
+    def to_dict(self, omit_default: bool = True) -> dict[str, Any]:
         """
         Serialize the config to a flat dictionary, omitting default values.
 
@@ -89,8 +97,11 @@ class _ModifierConfig:
             Dictionary containing only fields whose values differ from
             their dataclass defaults.
         """
-        non_default, _ = self._filter_out_default_fields()
-        return non_default
+        non_defaults, defaults = self._filter_out_default_fields()
+        if omit_default:
+            return non_defaults
+
+        return defaults | non_defaults
 
     @classmethod
     def from_dict(cls, kwargs_dict: dict):
@@ -129,8 +140,8 @@ class _ModifierConfig:
             dataclass fields on this class.
         """
 
-        fields = [f.name for f in fields(cls)]
-        return {key: val for key, val in to_filter.items() if key in fields}
+        field_names = [f.name for f in fields(cls)]
+        return {key: val for key, val in to_filter.items() if key in field_names}
 
     def __repr__(self) -> str:
         """
@@ -166,7 +177,7 @@ class _ModifierConfig:
 
 
 @dataclass(repr=False)
-class ImpfsetModifierConfig(_ModifierConfig):
+class ImpfsetModifierConfig(ModifierConfig):
     """
     Configuration for modifications to an impact function set.
 
@@ -242,7 +253,7 @@ class ImpfsetModifierConfig(_ModifierConfig):
 
 
 @dataclass(repr=False)
-class HazardModifierConfig(_ModifierConfig):
+class HazardModifierConfig(ModifierConfig):
     """
     Configuration for modifications to a hazard.
 
@@ -303,7 +314,7 @@ class HazardModifierConfig(_ModifierConfig):
 
 
 @dataclass(repr=False)
-class ExposuresModifierConfig(_ModifierConfig):
+class ExposuresModifierConfig(ModifierConfig):
     """
     Configuration for modifications to an exposures object.
 
@@ -349,7 +360,7 @@ class ExposuresModifierConfig(_ModifierConfig):
 
 
 @dataclass(repr=False)
-class CostIncomeConfig(_ModifierConfig):
+class CostIncomeConfig(ModifierConfig):
     """
     Serializable configuration for a ``CostIncome`` object.
 
@@ -371,13 +382,14 @@ class CostIncomeConfig(_ModifierConfig):
     income_yearly_growth_rate : float, optional
         Annual growth rate applied to periodic income. Default is ``0.0``.
     freq : str, optional
-        Pandas offset alias defining the period length (e.g. ``"Y"`` for
+        Pandas period alias defining the period length (e.g. ``"Y"`` for
         yearly, ``"M"`` for monthly). Default is ``"Y"``.
+        See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#period-aliases).
     custom_cash_flows : list of dict, optional
         Explicit cash flow schedule as a list of records with at minimum
         a ``"date"`` key (ISO 8601 string) and a value key. If provided,
         overrides the periodic cost/income logic.
-    """
+    """  # noqa
 
     mkt_price_year: Optional[int] = field(default_factory=lambda: datetime.today().year)
     init_cost: float = 0.0
@@ -426,7 +438,7 @@ class CostIncomeConfig(_ModifierConfig):
 
 
 @dataclass(repr=False)
-class MeasureConfig(_ModifierConfig):
+class MeasureConfig(ModifierConfig):
     """
     Top-level serializable configuration for a single adaptation measure.
 
@@ -453,7 +465,7 @@ class MeasureConfig(_ModifierConfig):
     cost_income : CostIncomeConfig
         Financial parameters associated with implementing this measure.
     implementation_duration : str, optional
-        Pandas offset alias (e.g. ``"2Y"``) representing the time before
+        Pandas period alias (e.g. ``"2Y"``) representing the time before
         the measure is fully operational. If ``None``, the measure takes
         effect immediately.
     color_rgb : tuple of float, optional
@@ -486,7 +498,7 @@ class MeasureConfig(_ModifierConfig):
         fields_str = "\n\t".join(f"{k}={v!r}" for k, v in self.__dict__.items())
         return f"{self.__class__.__name__}(\n\t{fields_str})"
 
-    def to_dict(self) -> dict:
+    def to_dict(self, omit_default: bool = True) -> dict:
         """
         Serialize the measure configuration to a flat dictionary.
 
@@ -504,10 +516,10 @@ class MeasureConfig(_ModifierConfig):
         return {
             "name": self.name,
             "haz_type": self.haz_type,
-            **self.impfset_modifier.to_dict(),
-            **self.hazard_modifier.to_dict(),
-            **self.exposures_modifier.to_dict(),
-            **self.cost_income.to_dict(),
+            **self.impfset_modifier.to_dict(omit_default),
+            **self.hazard_modifier.to_dict(omit_default),
+            **self.exposures_modifier.to_dict(omit_default),
+            **self.cost_income.to_dict(omit_default),
             "implementation_duration": self.implementation_duration,
             "color_rgb": list(self.color_rgb) if self.color_rgb is not None else None,
         }
@@ -579,8 +591,6 @@ class MeasureConfig(_ModifierConfig):
             Destination file path. Will be created or overwritten.
         """
 
-        import yaml
-
         with open(path, "w") as opened_file:
             yaml.dump(
                 {"measures": [self.to_dict()]},
@@ -608,8 +618,6 @@ class MeasureConfig(_ModifierConfig):
             The configuration parsed from the first entry in
             ``measures``.
         """
-
-        import yaml
 
         with open(path) as opened_file:
             return cls.from_dict(yaml.safe_load(opened_file)["measures"][0])
