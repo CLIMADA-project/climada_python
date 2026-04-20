@@ -35,7 +35,7 @@ LOGGER = logging.getLogger(__name__)
 
 
 @dataclass
-class _ModifierConfig(ABC):
+class _ModifierConfig:
     """
     Abstract base class for all modifier configuration dataclasses.
 
@@ -44,7 +44,7 @@ class _ModifierConfig(ABC):
     be instantiated directly.
     """
 
-    def _filter_out_default_fields(self):
+    def _filter_out_default_fields(self) -> dict[str, Any]:
         """
         Partition the instance's fields into non-default and default groups.
 
@@ -64,7 +64,7 @@ class _ModifierConfig(ABC):
         for defined_field in fields(self):
             val = getattr(self, defined_field.name)
             default = defined_field.default
-            if defined_field.default_factory is not field().default_factory:
+            if default is MISSING:
                 default = defined_field.default_factory()
 
             if val != default:
@@ -76,7 +76,7 @@ class _ModifierConfig(ABC):
             non_defaults.pop("haz_type")
         return non_defaults, defaults
 
-    def to_dict(self):
+    def to_dict(self, omit_default : bool = True) -> dict[str, Any]:
         """
         Serialize the config to a flat dictionary, omitting default values.
 
@@ -129,10 +129,8 @@ class _ModifierConfig(ABC):
             dataclass fields on this class.
         """
 
-        filtered = dict(
-            filter(lambda k: k[0] in [f.name for f in fields(cls)], to_filter.items())
-        )
-        return filtered
+        fields = [f.name for f in fields(cls)]
+        return {key: val for key, val in to_filter.items() if key in fields}
 
     def __repr__(self) -> str:
         """
@@ -215,14 +213,14 @@ class ImpfsetModifierConfig(_ModifierConfig):
     """
 
     haz_type: str
-    impf_ids: Optional[Union[int, str, list[Union[int, str]]]] = None
+    impf_ids: int | str | list[int | str] | None = None
     impf_mdd_mult: float = 1.0
     impf_mdd_add: float = 0.0
     impf_paa_mult: float = 1.0
     impf_paa_add: float = 0.0
     impf_int_mult: float = 1.0
     impf_int_add: float = 0.0
-    new_impfset_path: Optional[str] = None
+    new_impfset_path: str | None = None
 
     def __post_init__(self):
         config = self.to_dict()
