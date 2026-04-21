@@ -19,188 +19,483 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define Measure class.
 """
 
+from __future__ import annotations
+
+from pandas.tseries.offsets import BaseOffset
+
 __all__ = ["Measure"]
 
 import copy
+import inspect
 import logging
-from pathlib import Path
-from typing import Optional, Tuple
+from functools import wraps
+from typing import TYPE_CHECKING, Any, Optional, Tuple, TypeVar
 
-import numpy as np
-import pandas as pd
-from geopandas import GeoDataFrame
+from climada.entity.measures.measure_config import MeasureConfig
 
-import climada.util.checker as u_check
-from climada.entity.exposures.base import INDICATOR_CENTR, INDICATOR_IMPF, Exposures
-from climada.hazard.base import Hazard
+from .cost_income import CostIncome
+
+if TYPE_CHECKING:
+    from climada.entity.exposures.base import Exposures
+    from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+    from climada.entity.measures.types import (
+        ExposuresChange,
+        HazardChange,
+        ImpfsetChange,
+    )
+    from climada.hazard.base import Hazard
+
+    T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
 LOGGER = logging.getLogger(__name__)
 
-IMPF_ID_FACT = 1000
-"""Factor internally used as id for impact functions when region selected."""
+# TODO: risk transfer?
 
-NULL_STR = "nil"
-"""String considered as no path in measures exposures_set and hazard_set or
-no string in imp_fun_map"""
+
+# Note for review:
+# This function will moved in helper.py in a future PR which will
+# add I/O based on MeasureConfig dataclasses
+def identity_function(x: T, **_kwargs: Any) -> T:
+    """Identity function
+
+    Returns the provided parameter. Usefull to design measures without effect
+    on some of the risk components (Hazard, Exposures, Impact Function)
+    """
+    return x
+
+
+def allow_kwargs(func):
+    """
+    Decorator that allows a function to accept (and silently ignore) keyword arguments.
+
+    If the wrapped function already accepts ``**kwargs``, it is called unchanged.
+    Otherwise, any keyword arguments not present in the function's signature are
+    filtered out before the call, preventing ``TypeError`` from unexpected keywords.
+
+    The functions used by `Measure` objects to apply changes on ``Exposures``, ``Hazard``,
+    and ``ImpactFuncSet`` always receive ``base_exposure, base_hazard, base_impfset`` as
+    keyword arguments. This decorator is applied to users-defined functions and prevent
+    them from not accepting these kwargs and raising a ``TypeError``.
+
+    Parameters
+    ----------
+    func : callable
+        The function to wrap.
+
+    Returns
+    -------
+    callable
+        A wrapped version of `func` that accepts keyword arguments.
+
+    Examples
+    --------
+    >>> @allow_kwargs
+    ... def greet(name, greeting="Hello"):
+    ...     return f"{greeting}, {name}!"
+    >>> greet("Alice", greeting="Hi", unused_param="ignored")
+    'Hi, Alice!'
+
+    >>> @allow_kwargs
+    ... def add(a, b):
+    ...     return a + b
+    >>> add(1, 2, extra=99)
+    3
+    """
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        # Get the names of arguments the original function accepts
+        params = inspect.signature(func).parameters
+
+        # Filter kwargs to only include what the function can handle
+        # (Unless the function already has **kwargs in its signature)
+        if any(p.kind == p.VAR_KEYWORD for p in params.values()):
+            return func(*args, **kwargs)
+
+        filtered_kwargs = {k: v for k, v in kwargs.items() if k in params}
+        return func(*args, **filtered_kwargs)
+
+    return wrapper
 
 
 class Measure:
     """
-    Contains the definition of one measure.
+    Contains a measure to be applied to a set of exposures, impact functions,
+    and hazard.
+
+    A ``Measure`` represents a single adaptation or risk-reduction action. It
+    holds three (optional) transformation functions, one each for
+    :class:`Exposures`, :class:`ImpactFuncSet`, and :class:`Hazard`, that are
+    can be applied to a triplet of ``(Exposures, ImpactFuncSet, Hazard)``, to
+    reflect the effect of the measure.
+
+    It also holds a `CostIncome` object to define the financial aspects of the
+    measure (see :class:`CostIncome` and :ref:`cost-income-tutorial`).
+
+    Finally it holds an `implementation_duration` attribute, in the form of a
+    pandas ``DateOffset``, which is used when the time dimension is considered.
+
+    Notes
+    -----
+
+    The only requirement for each function is to return an object of the same
+    class (e.g. :class:`Hazard` for ``hazard_change``). Functions can accept
+    keyword arguments to enable advanced effect (depending on a year of
+    application for instance). These arguments can be passed when the
+    :class:`Measure` is applied (see :py:meth:`~Measure.apply`). Note that for
+    convenience, each functions receive the by default "base" ``(Exposures,
+    ImpactFuncSet, Hazard)`` triplet as keyword arguments (`base_exposure`,
+    `base_impfset`, `base_hazard`).
+
+    If the ``Measure`` was defined from a ``MeasureConfig`` object, the
+    configuration is stored and the measure can be serialized to a file.
+    (see :ref:`measure-config-tutorial` and :ref:`measure-tutorial`).
 
     Attributes
     ----------
     name : str
-        name of the measure
-    haz_type : str
-        related hazard type (peril), e.g. TC
-    color_rgb : np.array
-        integer array of size 3. Color code of this measure in RGB
-    cost : float
-        discounted cost (in same units as assets)
-    hazard_set : str
-        file name of hazard to use (in h5 format)
-    hazard_freq_cutoff : float
-        hazard frequency cutoff
-    exposures_set : str  or climada.entity.Exposure
-        file name of exposure to use (in h5 format) or Exposure instance
-    imp_fun_map : str
-        change of impact function id of exposures, e.g. '1to3'
-    hazard_inten_imp : tuple(float, float)
-        parameter a and b of hazard intensity change
-    mdd_impact : tuple(float, float)
-        parameter a and b of the impact over the mean damage degree
-    paa_impact : tuple(float, float)
-        parameter a and b of the impact over the percentage of affected assets
-    exp_region_id : int
-        region id of the selected exposures to consider ALL the previous
-        parameters
-    risk_transf_attach : float
-        risk transfer attachment
-    risk_transf_cover : float
-        risk transfer cover
-    risk_transf_cost_factor : float
-        factor to multiply to resulting insurance layer to get the total
-        cost of risk transfer
+        Name of the measure.
+    exposures_change : ExposuresChange
+        Function to change exposures.
+    impfset_change : ImpfsetChange
+        Function to change impact function set.
+    hazard_change : HazardChange
+        Function to change hazard.
+    sub_measures : list of str, optional
+        List of measure names that this measure is a combination of.
+    cost_income : climada.entity.measures.cost_income.CostIncome
+        Cost and income object associated with the measure.
+    implementation_duration : pd.DateOffset, optional
+        Duration of implementation before the measure is fully functional.
     """
 
     def __init__(
         self,
-        name: str = "",
-        haz_type: str = "",
-        cost: float = 0,
-        hazard_set: str = NULL_STR,
-        hazard_freq_cutoff: float = 0,
-        exposures_set: str = NULL_STR,
-        imp_fun_map: str = NULL_STR,
-        hazard_inten_imp: Tuple[float, float] = (1, 0),
-        mdd_impact: Tuple[float, float] = (1, 0),
-        paa_impact: Tuple[float, float] = (1, 0),
-        exp_region_id: Optional[list] = None,
-        risk_transf_attach: float = 0,
-        risk_transf_cover: float = 0,
-        risk_transf_cost_factor: float = 1,
-        color_rgb: Optional[np.ndarray] = None,
+        name: str,
+        *,
+        exposures_changes: ExposuresChange = identity_function,
+        impfset_changes: ImpfsetChange = identity_function,
+        hazard_changes: HazardChange = identity_function,
+        sub_measures: Optional[list[str]] = None,
+        cost_income: Optional[CostIncome] = None,
+        implementation_duration: Optional[BaseOffset] = None,
+        color_rgb: Optional[Tuple[float, float, float]] = None,
+        _config: Optional[MeasureConfig] = None,
     ):
-        """Initialize a Measure object with given values.
+        """
+        Initialize a new Measure object.
 
         Parameters
         ----------
-        name : str, optional
-            name of the measure
-        haz_type : str, optional
-            related hazard type (peril), e.g. TC
-        cost : float, optional
-            discounted cost (in same units as assets)
-        hazard_set : str, optional
-            file name of hazard to use (in h5 format)
-        hazard_freq_cutoff : float, optional
-            hazard frequency cutoff
-        exposures_set : str  or climada.entity.Exposure, optional
-            file name of exposure to use (in h5 format) or Exposure instance
-        imp_fun_map : str, optional
-            change of impact function id of exposures, e.g. '1to3'
-        hazard_inten_imp : tuple(float, float), optional
-            parameter a and b of hazard intensity change
-        mdd_impact : tuple(float, float), optional
-            parameter a and b of the impact over the mean damage degree
-        paa_impact : tuple(float, float), optional
-            parameter a and b of the impact over the percentage of affected assets
-        exp_region_id : int, optional
-            region id of the selected exposures to consider ALL the previous
-            parameters
-        risk_transf_attach : float, optional
-            risk transfer attachment
-        risk_transf_cover : float, optional
-            risk transfer cover
-        risk_transf_cost_factor : float, optional
-            factor to multiply to resulting insurance layer to get the total
-            cost of risk transfer
-        color_rgb : np.array, optional
-            integer array of size 3. Color code of this measure in RGB.
-            Default is None (corresponds to black).
+        name : str
+            Name of the measure.
+        exposures_change : callable, optional
+            Transformation function for Exposures. Defaults to identity.
+        impfset_change : callable, optional
+            Transformation function for ImpactFuncSet. Defaults to identity.
+        hazard_change : callable, optional
+            Transformation function for Hazard. Defaults to identity.
+        sub_measures : list of str, optional
+            Names of component measures.
+        cost_income : CostIncome, optional
+            Financial data. If None, an empty CostIncome is initialized.
+        implementation_duration : pd.DateOffset, optional
+            Time offset for full implementation.
         """
+
         self.name = name
-        self.haz_type = haz_type
-        self.color_rgb = np.array([0, 0, 0]) if color_rgb is None else color_rgb
-        self.cost = cost
+        self.exposures_changes = allow_kwargs(exposures_changes)
+        self.hazard_changes = allow_kwargs(hazard_changes)
+        self.impfset_changes = allow_kwargs(impfset_changes)
+        self.sub_measures = sub_measures
+        self.cost_income = cost_income if cost_income is not None else CostIncome()
+        self.implementation_duration = implementation_duration
+        self.color_rgb = (0, 0, 0) if color_rgb is None else color_rgb
+        self._config = _config
 
-        # related to change in hazard
-        self.hazard_set = hazard_set
-        self.hazard_freq_cutoff = hazard_freq_cutoff
+    # DONE always provide exp, impfset and hazard as kwargs by default
+    # Have a precedence system (if users provide their own it takes over)
+    # TODO Check that it works
 
-        # related to change in exposures
-        self.exposures_set = exposures_set
-        self.imp_fun_map = imp_fun_map
-
-        # related to change in impact functions
-        self.hazard_inten_imp = hazard_inten_imp
-        self.mdd_impact = mdd_impact
-        self.paa_impact = paa_impact
-
-        # related to change in region
-        self.exp_region_id = [] if exp_region_id is None else exp_region_id
-
-        # risk transfer
-        self.risk_transf_attach = risk_transf_attach
-        self.risk_transf_cover = risk_transf_cover
-        self.risk_transf_cost_factor = risk_transf_cost_factor
-
-    def check(self):
+    @property
+    def is_serializable(self) -> bool:
+        """Returns True if the ``Measure`` was created from
+        a ``MeasureConfig`` object and can be serialized.
         """
-        Check consistent instance data.
 
-        Raises
-        ------
-        ValueError
-        """
-        u_check.size([3, 4], self.color_rgb, "Measure.color_rgb")
-        u_check.size(2, self.hazard_inten_imp, "Measure.hazard_inten_imp")
-        u_check.size(2, self.mdd_impact, "Measure.mdd_impact")
-        u_check.size(2, self.paa_impact, "Measure.paa_impact")
+        return self._config is not None
 
-    def calc_impact(self, exposures, imp_fun_set, hazard):
-        """
-        Apply measure and compute impact and risk transfer of measure
-        implemented over inputs.
+    def apply_exposures_changes(
+        self, exposures: Exposures, enforce_copy: bool = True, **kwargs
+    ) -> Exposures:
+        """Apply the changes from the measure to the given :class:`Exposures` object.
+
+        This method applies the `exposures_changes` function of the measure to
+        the provided :class:`Exposures` object. If ``enforce_copy`` is True (default), a
+        deep copy of the exposures is created before modification to ensure
+        immutability of the original object.
+
+        Additional keyword arguments to the function can be passed directly.
 
         Parameters
         ----------
-        exposures : climada.entity.Exposures
-            exposures instance
-        imp_fun_set : climada.entity.ImpactFuncSet
-            impact function set instance
-        hazard : climada.hazard.Hazard
-            hazard instance
+        exposures : Exposures
+            The input exposures object to be transformed.
+        enforce_copy : bool, optional
+            If True (default), creates a deep copy of `exposures` before applying
+            changes, provided the transformation function is not the identity function.
+            If False, the original object may be modified in-place depending on the
+            behavior of `exposures_changes`.
+        **kwargs : dict, optional
+            Additional keyword arguments passed directly to the `exposures_changes`
+            function.
 
         Returns
         -------
-        climada.engine.Impact
-            resulting impact and risk transfer of measure
+        Exposures
+            The resulting :class:`Exposures` object after the transformation has been applied.
+            If `enforce_copy` was True, this is a new object.
+
+        Notes
+        -----
+        The deep copy operation is skipped if `enforce_copy` is False or if
+        `self.exposures_changes` is the identity function, optimizing performance
+        when no actual changes are expected or when in-place modification is desired.
         """
 
-        new_exp, new_impfs, new_haz = self.apply(exposures, imp_fun_set, hazard)
-        # assign centroids if missing
+        changed_exp = (
+            copy.deepcopy(exposures)
+            if enforce_copy and self.exposures_changes.__name__ != "identity_function"
+            else exposures
+        )
+        try:
+            return self.exposures_changes(changed_exp, **kwargs)
+        except TypeError as exc:
+            # Check if it's a missing argument error
+            if "missing" in str(exc) and "required positional argument" in str(exc):
+                raise TypeError(
+                    f"The function to apply to the exposures requires additional arguments\
+                    that were not provided.\n"
+                    f"Please check the function signature or the helper used and provide the\
+                    required arguments "
+                    "via kwargs_exposures.\n"
+                    f"Original error: {exc}"
+                ) from exc
+            raise
+
+    def apply_impfset_changes(
+        self, impfset: ImpactFuncSet, enforce_copy: bool = True, **kwargs
+    ) -> ImpactFuncSet:
+        """
+        Apply the changes from the measure to the given :class:`ImpactFuncSet` object.
+
+        This method applies the `impfset_changes` function of the measure to
+        the provided :class:`ImpactFuncSet` object. If `enforce_copy` is True
+        (default), a deep copy of the impfset is created before modification to
+        ensure immutability of the original object.
+
+        Parameters
+        ----------
+        impfset : ImpactFuncSet
+            The input impfset object to be transformed.
+        enforce_copy : bool, optional
+            If True (default), creates a deep copy of `impfset` before applying
+            changes, provided the transformation function is not the identity
+            function. If False, the original object may be modified in-place
+            depending on the behavior of `impfset_changes`.
+        **kwargs : dict, optional
+            Additional keyword arguments passed directly to the `impfset_changes`
+            function.
+
+        Returns
+        -------
+        ImpactFuncSet
+            The resulting :class:`ImpactFuncSet` after the transformation has
+            been applied. If `enforce_copy` was True, this is a new object.
+
+        Notes
+        -----
+        The deep copy operation is skipped if `enforce_copy` is False or if
+        `self.impfset_changes` is the identity function, optimizing performance
+        when no actual changes are expected or when in-place modification is
+        desired.
+        """
+
+        changed_impfset = (
+            copy.deepcopy(impfset)
+            if enforce_copy and self.impfset_changes.__name__ != "identity_function"
+            else impfset
+        )
+        try:
+            return self.impfset_changes(changed_impfset, **kwargs)
+        except TypeError as exc:
+            # Check if it's a missing argument error
+            if "missing" in str(exc) and "required positional argument" in str(exc):
+                raise TypeError(
+                    f"The function to apply to the impact function set requires\
+                    additional arguments that were not provided.\n"
+                    f"Please check the function signature or the helper used\
+                    and provide the required arguments via kwargs_impfset.\n"
+                    f"Original error: {exc}"
+                ) from exc
+            raise
+
+    def apply_hazard_changes(
+        self, hazard: Hazard, enforce_copy: bool = True, **kwargs
+    ) -> Hazard:
+        """
+        Apply the changes from the measure to the given :class:`Hazard` object.
+
+        This method applies the `hazard_changes` function of the measure to the
+        provided :class:`Hazard` object. If `enforce_copy` is True (default), a
+        deep copy of the hazard is created before modification to ensure
+        immutability of the original object.
+
+        Parameters
+        ----------
+        hazard : Hazard
+            The input hazard object to be transformed.
+        enforce_copy : bool, optional
+            If True (default), creates a deep copy of `hazard` before applying
+            changes, provided the transformation function is not the identity
+            function. If False, the original object may be modified in-place
+            depending on the behavior of `hazard_changes`.
+        **kwargs : dict, optional
+            Additional keyword arguments passed directly to the `hazard_changes`
+            function.
+
+        Returns
+        -------
+        Hazard
+            The resulting hazard object after the transformation has been
+            applied. If `enforce_copy` was True, this is a new object.
+
+        Notes
+        -----
+        The deep copy operation is skipped if `enforce_copy` is False or if
+        `self.hazard_changes` is the identity function, optimizing performance
+        when no actual changes are expected or when in-place modification is
+        desired.
+        """
+
+        changed_hazard = (
+            copy.deepcopy(hazard)
+            if enforce_copy and self.hazard_changes.__name__ != "identity_function"
+            else hazard
+        )
+        try:
+            return self.hazard_changes(changed_hazard, **kwargs)
+        except TypeError as exc:
+            # Check if it's a missing argument error
+            if "missing" in str(exc) and "required positional argument" in str(exc):
+                raise TypeError(
+                    f"The function to apply to the hazard requires\
+                    additional arguments that were not provided.\n"
+                    f"Please check the function signature or the helper used\
+                    and provide the required arguments via kwargs_hazard.\n"
+                    f"Original error: {exc}"
+                ) from exc
+            raise
+
+    def apply(
+        self,
+        exposures: Exposures,
+        impfset: ImpactFuncSet,
+        hazard: Hazard,
+        enforce_copy: bool = True,
+        **kwargs,
+    ) -> Tuple[Exposures, ImpactFuncSet, Hazard]:
+        """Apply all measure transformations to the provided triplet of
+        :class:`Exposures`, :class:`ImpactFuncSet`, :class:`Hazard`.
+
+        This method applies the measure changes across all three
+        risk parts: exposures, impact function set, and hazard data.
+
+        The method implements a flexible keyword arguments merging strategy
+        where the original triplet is provided as default context to each
+        transformation, which can then be overridden by entity-specific kwargs
+        dictionaries. This enables transformation requiring the information
+        from other risk components (for instance, removing events based on impact
+        threshold) or additional information (for instance, effect depending on
+        year of implementation).
+
+        Refer to :ref:`measure-tutorial` for more details.
+
+        Parameters
+        ----------
+        exposures : Exposures
+            The input exposures object to be transformed.
+        impfset : ImpactFuncSet
+            The impact function set to be transformed.
+        hazard : Hazard
+            The hazard data to be transformed.
+        enforce_copy : bool, optional
+            If True (default), creates deep copies of entities before applying
+            changes, provided the transformation functions are not identity functions.
+            If False, entities may be modified in-place depending on the behavior
+            of the underlying transformation methods.
+        **kwargs : dict, optional
+            Additional keyword arguments for configuring transformations. Supports
+            nested dictionaries for entity-specific customization:
+
+            * ``kwargs_exposures``: Dict of kwargs passed to `apply_exposures_changes`
+            * ``kwargs_impfset``: Dict of kwargs passed to `apply_impfset_changes`
+            * ``kwargs_hazard``: Dict of kwargs passed to `apply_hazard_changes`
+
+            Each nested dict is merged with the default triplet context (exposures,
+            impfset, hazard), allowing transformations to access related entities
+            while permitting entity-specific overrides.
+
+        Returns
+        -------
+        Tuple[Exposures, ImpactFuncSet, Hazard]
+            A tuple containing the transformed entities in the order:
+            (changed_exposures, changed_impfset, changed_hazard). If `enforce_copy`
+            was True, these are new objects; otherwise, they may reference the
+            original inputs or modified versions thereof.
+
+        Notes
+        -----
+        The kwargs merging follows this priority order:
+
+        1. Default context: The original triplet (exposures, impfset, hazard)
+        2. Entity-specific overrides: Values from ``kwargs_exposures``,
+           ``kwargs_impfset``, or ``kwargs_hazard`` respectively
+
+        This ensures that each transformation receives full context about all entities
+        while allowing fine-grained control over individual transformations.
+
+        The transformation order is: exposures → hazard → impact function set.
+        Each transformation is independent, so changes to one entity do not affect
+        the others during processing.
+        """
+
+        default_kwargs = {
+            "base_exposures": exposures,
+            "base_impfset": impfset,
+            "base_hazard": hazard,
+        }
+        # Always provide the triplet by default, and overwrite by custom kwargs.
+        kwargs_exp = default_kwargs | kwargs.get("kwargs_exposures", {})
+        kwargs_impfset = default_kwargs | kwargs.get("kwargs_impfset", {})
+        kwargs_hazard = default_kwargs | kwargs.get("kwargs_hazard", {})
+        changed_exposures = self.apply_exposures_changes(
+            exposures, enforce_copy, **kwargs_exp
+        )
+        changed_hazard = self.apply_hazard_changes(
+            hazard, enforce_copy, **kwargs_hazard
+        )
+        changed_impfset = self.apply_impfset_changes(
+            impfset, enforce_copy, **kwargs_impfset
+        )
+        return changed_exposures, changed_impfset, changed_hazard
+
+    def calc_impact(self, exposures, impfset, hazard):
+        from climada.engine.impact_calc import (
+            ImpactCalc,  # pylint: disable=import-outside-toplevel
+        )
+
+        new_exp, new_impfs, new_haz = self.apply(exposures, impfset, hazard)
         if new_haz.centr_exp_col not in new_exp.gdf.columns:
             LOGGER.warning(
                 "No assigned hazard centroids in exposure object after the "
@@ -209,362 +504,7 @@ class Measure:
                 "that centroids are assigned to all exposures."
             )
             new_exp.assign_centroids(new_haz)
-
-        return self._calc_impact(new_exp, new_impfs, new_haz)
-
-    def apply(self, exposures, imp_fun_set, hazard):
-        """
-        Implement measure with all its defined parameters.
-
-        Parameters
-        ----------
-        exposures : climada.entity.Exposures
-            exposures instance
-        imp_fun_set : climada.entity.ImpactFuncSet
-            impact function set instance
-        hazard : climada.hazard.Hazard
-            hazard instance
-
-        Returns
-        -------
-        new_exp : climada.entity.Exposure
-            Exposure with implemented measure with all defined parameters
-        new_ifs : climada.entity.ImpactFuncSet
-            Impact function set with implemented measure with all defined parameters
-        new_haz : climada.hazard.Hazard
-            Hazard with implemented measure with all defined parameters
-        """
-        # change hazard
-        new_haz = self._change_all_hazard(hazard)
-        # change exposures
-        new_exp = self._change_all_exposures(exposures)
-        new_exp = self._change_exposures_impf(new_exp)
-        # change impact functions
-        new_impfs = self._change_imp_func(imp_fun_set)
-        # cutoff events whose damage happen with high frequency (in region impf specified)
-        new_haz = self._cutoff_hazard_damage(new_exp, new_impfs, new_haz)
-        # apply all previous changes only to the selected exposures
-        new_exp, new_impfs, new_haz = self._filter_exposures(
-            exposures, imp_fun_set, hazard, new_exp, new_impfs, new_haz
-        )
-
-        return new_exp, new_impfs, new_haz
-
-    def _calc_impact(self, new_exp, new_impfs, new_haz):
-        """Compute impact and risk transfer of measure implemented over inputs.
-
-        Parameters
-        ----------
-        new_exp : climada.entity.Exposures
-            exposures once measure applied
-        new_ifs : climada.entity.ImpactFuncSet
-            impact function set once measure applied
-        new_haz  : climada.hazard.Hazard
-            hazard once measure applied
-
-        Returns
-        -------
-        climada.engine.Impact
-        """
-        from climada.engine.impact_calc import (
-            ImpactCalc,  # pylint: disable=import-outside-toplevel
-        )
-
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
             save_mat=False, assign_centroids=False
         )
-        return imp.calc_risk_transfer(self.risk_transf_attach, self.risk_transf_cover)
-
-    def _change_all_hazard(self, hazard):
-        """
-        Change hazard to provided hazard_set.
-
-        Parameters
-        ----------
-        hazard : climada.hazard.Hazard
-            hazard instance
-
-        Returns
-        -------
-        new_haz : climada.hazard.Hazard
-            Hazard
-        """
-        if self.hazard_set == NULL_STR:
-            return hazard
-
-        LOGGER.debug("Setting new hazard %s", self.hazard_set)
-        new_haz = Hazard.from_hdf5(self.hazard_set)
-        new_haz.check()
-        return new_haz
-
-    def _change_all_exposures(self, exposures):
-        """
-        Change exposures to provided exposures_set.
-
-        Parameters
-        ----------
-        exposures : climada.entity.Exposures
-            exposures instance
-
-        Returns
-        -------
-        new_exp : climada.entity.Exposures()
-            Exposures
-        """
-        if isinstance(self.exposures_set, str) and self.exposures_set == NULL_STR:
-            return exposures
-
-        if isinstance(self.exposures_set, (str, Path)):
-            LOGGER.debug("Setting new exposures %s", self.exposures_set)
-            new_exp = Exposures.from_hdf5(self.exposures_set)
-            new_exp.check()
-        elif isinstance(self.exposures_set, Exposures):
-            LOGGER.debug("Setting new exposures. ")
-            new_exp = self.exposures_set.copy(deep=True)
-            new_exp.check()
-        else:
-            raise ValueError(
-                f"{self.exposures_set} is neither a string nor an Exposures object"
-            )
-
-        if not np.array_equal(
-            np.unique(exposures.latitude), np.unique(new_exp.latitude)
-        ) or not np.array_equal(
-            np.unique(exposures.longitude), np.unique(new_exp.longitude)
-        ):
-            LOGGER.warning("Exposures locations have changed.")
-
-        return new_exp
-
-    def _change_exposures_impf(self, exposures):
-        """Change exposures impact functions ids according to imp_fun_map.
-
-        Parameters
-        ----------
-        exposures : climada.entity.Exposures
-            exposures instance
-
-        Returns
-        -------
-        new_exp : climada.entity.Exposure
-            Exposure with updated impact functions ids accordgin to
-            impf_fun_map
-        """
-        if self.imp_fun_map == NULL_STR:
-            return exposures
-
-        LOGGER.debug("Setting new exposures impact functions%s", self.imp_fun_map)
-        new_exp = exposures.copy(deep=True)
-        from_id = int(self.imp_fun_map[0 : self.imp_fun_map.find("to")])
-        to_id = int(self.imp_fun_map[self.imp_fun_map.find("to") + 2 :])
-        try:
-            exp_change = np.argwhere(
-                new_exp.gdf[INDICATOR_IMPF + self.haz_type].values == from_id
-            ).reshape(-1)
-            new_exp.gdf[INDICATOR_IMPF + self.haz_type].values[exp_change] = to_id
-        except KeyError:
-            exp_change = np.argwhere(
-                new_exp.gdf[INDICATOR_IMPF].values == from_id
-            ).reshape(-1)
-            new_exp.gdf[INDICATOR_IMPF].values[exp_change] = to_id
-        return new_exp
-
-    def _change_imp_func(self, imp_set):
-        """
-        Apply measure to impact functions of the same hazard type.
-
-        Parameters
-        ----------
-        imp_set : climada.entity.ImpactFuncSet
-            impact function set instance to be modified
-
-        Returns
-        -------
-        new_imp_set : climada.entity.ImpactFuncSet
-            ImpactFuncSet with measure applied to each impact function
-            according to the defined hazard type
-        """
-        if (
-            self.hazard_inten_imp == (1, 0)
-            and self.mdd_impact == (1, 0)
-            and self.paa_impact == (1, 0)
-        ):
-            return imp_set
-
-        new_imp_set = copy.deepcopy(imp_set)
-        for imp_fun in new_imp_set.get_func(self.haz_type):
-            LOGGER.debug("Transforming impact functions.")
-            imp_fun.intensity = np.maximum(
-                imp_fun.intensity * self.hazard_inten_imp[0] - self.hazard_inten_imp[1],
-                0.0,
-            )
-            imp_fun.mdd = np.maximum(
-                imp_fun.mdd * self.mdd_impact[0] + self.mdd_impact[1], 0.0
-            )
-            imp_fun.paa = np.maximum(
-                imp_fun.paa * self.paa_impact[0] + self.paa_impact[1], 0.0
-            )
-
-        if not new_imp_set.size():
-            LOGGER.info("No impact function of hazard %s found.", self.haz_type)
-
-        return new_imp_set
-
-    def _cutoff_hazard_damage(self, exposures, impf_set, hazard):
-        """Cutoff of hazard events which generate damage with a frequency higher
-        than hazard_freq_cutoff.
-
-        Parameters
-        ----------
-        exposures : climada.entity.Exposures
-            exposures instance
-        imp_set : climada.entity.ImpactFuncSet
-            impact function set instance
-        hazard : climada.hazard.Hazard
-            hazard instance
-
-        Returns
-        -------
-        new_haz : climada.hazard.Hazard
-            Hazard without events which generate damage with a frequency
-            higher than hazard_freq_cutoff
-        """
-        if self.hazard_freq_cutoff == 0:
-            return hazard
-
-        if self.exp_region_id:
-            # compute impact only in selected region
-            in_reg = np.logical_or.reduce(
-                [exposures.region_id == reg for reg in self.exp_region_id]
-            )
-            exp_imp = Exposures(exposures.gdf[in_reg], crs=exposures.crs)
-        else:
-            exp_imp = exposures
-
-        from climada.engine.impact_calc import (
-            ImpactCalc,  # pylint: disable=import-outside-toplevel
-        )
-
-        imp = ImpactCalc(exp_imp, impf_set, hazard).impact(
-            assign_centroids=hazard.centr_exp_col not in exp_imp.gdf
-        )
-
-        LOGGER.debug(
-            "Cutting events whose damage have a frequency > %s.",
-            self.hazard_freq_cutoff,
-        )
-        new_haz = copy.deepcopy(hazard)
-        sort_idxs = np.argsort(imp.at_event)[::-1]
-        exceed_freq = np.cumsum(imp.frequency[sort_idxs])
-        cutoff = exceed_freq > self.hazard_freq_cutoff
-        sel_haz = sort_idxs[cutoff]
-        for row in sel_haz:
-            new_haz.intensity.data[
-                new_haz.intensity.indptr[row] : new_haz.intensity.indptr[row + 1]
-            ] = 0
-        new_haz.intensity.eliminate_zeros()
-        return new_haz
-
-    def _filter_exposures(
-        self, exposures, imp_set, hazard, new_exp, new_impfs, new_haz
-    ):
-        """
-        Incorporate changes of new elements to previous ones only for the
-        selected exp_region_id. If exp_region_id is [], all new changes
-        will be accepted.
-
-        Parameters
-        ----------
-        exposures : climada.entity.Exposures
-            old exposures instance
-        imp_set :climada.entity.ImpactFuncSet
-            old impact function set instance
-        hazard : climada.hazard.Hazard
-            old hazard instance
-        new_exp : climada.entity.Exposures
-            new exposures instance
-        new_ifs : climada.entity.ImpactFuncSet
-            new impact functions instance
-        new_haz : climada.hazard.Hazard
-            new hazard instance
-
-        Returns
-        -------
-        new_exp,new_ifs, new_haz : climada.entity.Exposures,
-                                   climada.entity.ImpactFuncSet,
-                                   climada.hazard.Hazard
-            Exposures, ImpactFuncSet, Hazard with incoporated elements
-            for the selected exp_region_id.
-        """
-        if not self.exp_region_id:
-            return new_exp, new_impfs, new_haz
-
-        if exposures is new_exp:
-            new_exp = exposures.copy(deep=True)
-
-        if imp_set is not new_impfs:
-            # provide new impact functions ids to changed impact functions
-            fun_ids = list(new_impfs.get_func()[self.haz_type].keys())
-            for key in fun_ids:
-                new_impfs.get_func()[self.haz_type][key].id = key + IMPF_ID_FACT
-                new_impfs.get_func()[self.haz_type][
-                    key + IMPF_ID_FACT
-                ] = new_impfs.get_func()[self.haz_type][key]
-            try:
-                new_exp.gdf[INDICATOR_IMPF + self.haz_type] += IMPF_ID_FACT
-            except KeyError:
-                new_exp.gdf[INDICATOR_IMPF] += IMPF_ID_FACT
-            # collect old impact functions as well (used by exposures)
-            new_impfs.get_func()[self.haz_type].update(
-                imp_set.get_func()[self.haz_type]
-            )
-
-        # get the indices for changing and inert regions
-        chg_reg = exposures.gdf["region_id"].isin(self.exp_region_id)
-        no_chg_reg = ~chg_reg
-
-        LOGGER.debug("Number of changed exposures: %s", chg_reg.sum())
-
-        # concatenate previous and new exposures
-        new_exp.set_gdf(
-            GeoDataFrame(
-                pd.concat(
-                    [
-                        exposures.gdf[no_chg_reg],  # old values for inert regions
-                        new_exp.gdf[chg_reg],  # new values for changing regions
-                    ]
-                ).loc[
-                    exposures.gdf.index, :
-                ],  # re-establish old order
-            ),
-            crs=exposures.crs,
-        )
-
-        # set missing values of centr_
-        if (
-            INDICATOR_CENTR + self.haz_type in new_exp.gdf.columns
-            and np.isnan(new_exp.gdf[INDICATOR_CENTR + self.haz_type].values).any()
-        ):
-            new_exp.gdf.drop(columns=INDICATOR_CENTR + self.haz_type, inplace=True)
-        elif (
-            INDICATOR_CENTR in new_exp.gdf.columns
-            and np.isnan(new_exp.gdf[INDICATOR_CENTR].values).any()
-        ):
-            new_exp.gdf.drop(columns=INDICATOR_CENTR, inplace=True)
-
-        # put hazard intensities outside region to previous intensities
-        if hazard is not new_haz:
-            if INDICATOR_CENTR + self.haz_type in exposures.gdf.columns:
-                centr = exposures.gdf[INDICATOR_CENTR + self.haz_type].values[chg_reg]
-            elif INDICATOR_CENTR in exposures.gdf.columns:
-                centr = exposures.gdf[INDICATOR_CENTR].values[chg_reg]
-            else:
-                exposures.assign_centroids(hazard)
-                centr = exposures.gdf[INDICATOR_CENTR + self.haz_type].values[chg_reg]
-
-            centr = np.delete(np.arange(hazard.intensity.shape[1]), np.unique(centr))
-            new_haz_inten = new_haz.intensity.tolil()
-            new_haz_inten[:, centr] = hazard.intensity[:, centr]
-            new_haz.intensity = new_haz_inten.tocsr()
-
-        return new_exp, new_impfs, new_haz
+        return imp.calc_risk_transfer(0, 0)
