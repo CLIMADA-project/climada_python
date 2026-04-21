@@ -20,13 +20,13 @@ Define the CostIncome class to handle the cash flow of measures.
 """
 
 from datetime import datetime
-from typing import Any, List, Optional, Tuple, cast
+from typing import Any, Optional, Tuple, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import yaml
 
-from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.measure_config import CostIncomeConfig
 
 
@@ -101,11 +101,7 @@ class CostIncome:
         self.periodic_income = abs(periodic_income)
 
         self.income_growth_rate = income_yearly_growth_rate
-
-        if custom_cash_flows is not None:
-            self.custom_cash_flows = self._prepare_custom_flows(custom_cash_flows)
-        else:
-            self.custom_cash_flows = None
+        self.custom_cash_flows = custom_cash_flows
 
     def __repr__(self) -> str:
         lines = [
@@ -117,10 +113,33 @@ class CostIncome:
             f"  periodic_income         = {self.periodic_income:,.2f}",
             f"  cost_yearly_growth_rate = {self.cost_growth_rate:.2%}",
             f"  income_yearly_growth_rate = {self.income_growth_rate:.2%}",
-            f"  custom_cash_flows       = {None if self.custom_cash_flows is None else f'DataFrame({len(self.custom_cash_flows)} rows)'}",
+            "  custom_cash_flows       = "
+            f"{None if self.custom_cash_flows is None else f'DataFrame({len(self.custom_cash_flows)} rows)'}",
             ")",
         ]
         return "\n".join(lines)
+
+    @property
+    def custom_cash_flows(self) -> pd.DataFrame | None:
+        """:obj:`pd.DataFrame` : Get or set the optional user-defined cash
+        flows.
+
+        Input cash flow have to contain a "date" column as well as at least one
+        of "cost" and "income". The custom cash flow is coerced to the internal
+        period frequency.
+        """
+        return self._custom_cash_flows
+
+    @custom_cash_flows.setter
+    def custom_cash_flows(self, value, /):
+        if value is None:
+            self._custom_cash_flows = None
+
+        else:
+            if not isinstance(value, pd.DataFrame):
+                raise ValueError("Custom cash flows only accept pandas DataFrame.")
+
+            self._custom_cash_flows = self._prepare_custom_flows(value)
 
     def _prepare_custom_flows(self, df: pd.DataFrame) -> pd.DataFrame:
         """Process and resample custom cash flow dataframe
@@ -138,9 +157,18 @@ class CostIncome:
             Processed custom cashflow
         """
 
+        if "date" not in df.columns:
+            raise ValueError("No 'date' column found in custom cash flow DataFrame.")
+
+        if "cost" not in df.columns and "income" not in df.columns:
+            raise ValueError(
+                "No 'cost' or 'income' column found in custom cash flow DataFrame."
+            )
+
         df = df.copy()
         if "cost" in df.columns:
             df["cost"] = -df["cost"].abs()
+
         if "date" in df.columns:
             df["date"] = pd.to_datetime(df["date"])
             df = df.set_index("date")
@@ -231,8 +259,6 @@ class CostIncome:
         CostIncome
         """
 
-        import yaml
-
         with open(path) as f:
             return cls.from_dict(yaml.safe_load(f)["cost_income"])
 
@@ -263,8 +289,8 @@ class CostIncome:
 
             # Return the difference in days
             return f"{(end_date - base_date).days}d"
-        except ValueError:
-            raise ValueError(f"Invalid frequency string: {freq}")
+        except ValueError as exc:
+            raise ValueError(f"Invalid frequency string: {freq}") from exc
 
     def _get_width_days(self) -> float:
         """Return the number of days in the current frequency."""
@@ -274,7 +300,7 @@ class CostIncome:
         offset = pd.tseries.frequencies.to_offset(freq)
         return float(((ref + offset) - ref).days)
 
-    def _calc_at_date(
+    def calc_at_date(
         self, impl_date: pd.Timestamp, curr_date: pd.Timestamp
     ) -> Tuple[float, float, float]:
         r"""Calculate cash flows for a single timestamp.
@@ -397,10 +423,12 @@ class CostIncome:
                 Total incomes for each period.
         """
 
-        impl_ts = pd.Timestamp(impl_date)
+        # 'Trick' to make sure that e.g., impl_date "2020-01-05" falls in
+        # period "2020-01" if freq is "M"
+        impl_ts = pd.Timestamp(str(impl_date)).to_period(self.freq).start_time
         periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
 
-        results = [self._calc_at_date(impl_ts, p.start_time) for p in periods]
+        results = [self.calc_at_date(impl_ts, p.start_time) for p in periods]
         net, costs, incs = map(np.array, zip(*results))
         return net, costs, incs
 
@@ -535,34 +563,59 @@ class CostIncome:
         first_ci = cost_incomes[0]
 
         if not all(
-            [
+            (
                 first_ci.mkt_price_year.year == c.mkt_price_year.year
                 for c in cost_incomes
-            ]
+            )
         ):
             raise ValueError(
-                "Measure cost incomes have different market price years, combination is not possible."
+                "Measure cost incomes have different market price years,"
+                " combination is not possible."
             )
 
         if not all(
-            [first_ci.cost_growth_rate == c.cost_growth_rate for c in cost_incomes]
+            first_ci.cost_growth_rate == c.cost_growth_rate for c in cost_incomes
         ):
             raise ValueError(
-                "Measure cost incomes have different cost_growth_rate, combination is not possible."
+                "Measure cost incomes have different cost_growth_rate,"
+                " combination is not possible."
             )
 
         if not all(
-            [first_ci.income_growth_rate == c.income_growth_rate for c in cost_incomes]
+            first_ci.income_growth_rate == c.income_growth_rate for c in cost_incomes
         ):
             raise ValueError(
-                "Measure cost incomes have different income_growth_rate, combination is not possible."
+                "Measure cost incomes have different income_growth_rate,"
+                " combination is not possible."
             )
+
+        if not all(first_ci.freq == c.freq for c in cost_incomes):
+            raise ValueError(
+                "Measure cost incomes have different period frequencies,"
+                " combination is not possible."
+            )
+
+        try:
+            custom_cash_flows = cast(
+                pd.DataFrame,
+                pd.concat([c.custom_cash_flows for c in cost_incomes])  # type: ignore
+                .groupby(level=0)
+                .sum()
+                .reset_index(),
+            )
+        except ValueError as err:
+            if str(err) == "All objects passed were None":
+                custom_cash_flows = None
+            else:
+                raise err
 
         return CostIncome(
             mkt_price_year=first_ci.mkt_price_year.year,
-            cost_yearly_growth_rate=first_ci.cost_growth_rate,
             init_cost=sum(c.init_cost for c in cost_incomes),
             periodic_cost=sum(c.periodic_cost for c in cost_incomes),
             periodic_income=sum(c.periodic_income for c in cost_incomes),
+            cost_yearly_growth_rate=first_ci.cost_growth_rate,
             income_yearly_growth_rate=first_ci.income_growth_rate,
+            freq=first_ci.freq,
+            custom_cash_flows=custom_cash_flows,
         )
