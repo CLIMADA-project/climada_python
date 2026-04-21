@@ -236,7 +236,6 @@ class TestCalcAtDate:
             }
         )
         ci = CostIncome(mkt_price_year=2021, custom_cash_flows=df, freq="Y")
-        print(ci.custom_cash_flows)
         impl = pd.Timestamp("2021-01-01")
         curr = pd.Timestamp("2021-01-01")
         net, cost, inc = ci.calc_at_date(impl, curr)
@@ -422,6 +421,4 @@ class TestCombCostIncome:
         )
 
         combined = CostIncome.comb_cost_income([ci1, ci2])
-        print(combined.custom_cash_flows)
-        print(expected)
         pd.testing.assert_frame_equal(combined.custom_cash_flows, expected)
