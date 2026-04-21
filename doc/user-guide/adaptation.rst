@@ -1,8 +1,10 @@
+.. _adaptation-guides:
+
 ==========================
 Adapation appraisal guides
 ==========================
 
-These guides show everything you need to know in order to evaluate adapation options with CLIMADA.
+These guides show everything you need to know in order to evaluate adaptation options with CLIMADA.
 
 .. toctree::
     :maxdepth: 1
