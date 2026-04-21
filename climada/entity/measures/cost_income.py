@@ -25,6 +25,7 @@ from typing import Any, Optional, Tuple, cast
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
+import yaml
 
 from climada.entity.measures.measure_config import CostIncomeConfig
 
@@ -112,13 +113,21 @@ class CostIncome:
             f"  periodic_income         = {self.periodic_income:,.2f}",
             f"  cost_yearly_growth_rate = {self.cost_growth_rate:.2%}",
             f"  income_yearly_growth_rate = {self.income_growth_rate:.2%}",
-            f"  custom_cash_flows       = {None if self.custom_cash_flows is None else f'DataFrame({len(self.custom_cash_flows)} rows)'}",
+            "  custom_cash_flows       = "
+            f"{None if self.custom_cash_flows is None else f'DataFrame({len(self.custom_cash_flows)} rows)'}",
             ")",
         ]
         return "\n".join(lines)
 
     @property
     def custom_cash_flows(self) -> pd.DataFrame | None:
+        """:obj:`pd.DataFrame` : Get or set the optional user-defined cash
+        flows.
+
+        Input cash flow have to contain a "date" column as well as at least one
+        of "cost" and "income". The custom cash flow is coerced to the internal
+        period frequency.
+        """
         return self._custom_cash_flows
 
     @custom_cash_flows.setter
@@ -250,8 +259,6 @@ class CostIncome:
         CostIncome
         """
 
-        import yaml
-
         with open(path) as f:
             return cls.from_dict(yaml.safe_load(f)["cost_income"])
 
@@ -282,8 +289,8 @@ class CostIncome:
 
             # Return the difference in days
             return f"{(end_date - base_date).days}d"
-        except ValueError:
-            raise ValueError(f"Invalid frequency string: {freq}")
+        except ValueError as exc:
+            raise ValueError(f"Invalid frequency string: {freq}") from exc
 
     def _get_width_days(self) -> float:
         """Return the number of days in the current frequency."""
@@ -556,32 +563,36 @@ class CostIncome:
         first_ci = cost_incomes[0]
 
         if not all(
-            [
+            (
                 first_ci.mkt_price_year.year == c.mkt_price_year.year
                 for c in cost_incomes
-            ]
+            )
         ):
             raise ValueError(
-                "Measure cost incomes have different market price years, combination is not possible."
+                "Measure cost incomes have different market price years,"
+                " combination is not possible."
             )
 
         if not all(
-            [first_ci.cost_growth_rate == c.cost_growth_rate for c in cost_incomes]
+            first_ci.cost_growth_rate == c.cost_growth_rate for c in cost_incomes
         ):
             raise ValueError(
-                "Measure cost incomes have different cost_growth_rate, combination is not possible."
+                "Measure cost incomes have different cost_growth_rate,"
+                " combination is not possible."
             )
 
         if not all(
-            [first_ci.income_growth_rate == c.income_growth_rate for c in cost_incomes]
+            first_ci.income_growth_rate == c.income_growth_rate for c in cost_incomes
         ):
             raise ValueError(
-                "Measure cost incomes have different income_growth_rate, combination is not possible."
+                "Measure cost incomes have different income_growth_rate,"
+                " combination is not possible."
             )
 
-        if not all([first_ci.freq == c.freq for c in cost_incomes]):
+        if not all(first_ci.freq == c.freq for c in cost_incomes):
             raise ValueError(
-                "Measure cost incomes have different period frequencies, combination is not possible."
+                "Measure cost incomes have different period frequencies,"
+                " combination is not possible."
             )
 
         try:
