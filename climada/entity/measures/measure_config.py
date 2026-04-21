@@ -75,7 +75,7 @@ class ModifierConfig:
             if defined_field.default_factory is not MISSING:
                 default = defined_field.default_factory()
 
-            if val != default:
+            if (default is None and val is not None) or val != default:
                 non_defaults[defined_field.name] = val
             else:
                 defaults[defined_field.name] = val
