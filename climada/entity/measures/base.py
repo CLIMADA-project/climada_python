@@ -323,7 +323,7 @@ class Measure:
 
         changed_impfset = (
             copy.deepcopy(impfset)
-            if enforce_copy and self.impfset_changes is not identity_function
+            if enforce_copy and self.impfset_changes.__name__ != "identity_function"
             else impfset
         )
         try:
@@ -380,7 +380,7 @@ class Measure:
 
         changed_hazard = (
             copy.deepcopy(hazard)
-            if enforce_copy and self.hazard_changes is not identity_function
+            if enforce_copy and self.hazard_changes.__name__ != "identity_function"
             else hazard
         )
         try:
