@@ -51,8 +51,6 @@ LOGGER = logging.getLogger(__name__)
 
 # TODO: risk transfer?
 
-T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
-
 
 # Note for review:
 # This function will moved in helper.py in a future PR which will
