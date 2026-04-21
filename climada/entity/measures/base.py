@@ -265,7 +265,7 @@ class Measure:
 
         changed_exp = (
             copy.deepcopy(exposures)
-            if enforce_copy and self.exposures_changes is not identity_function
+            if enforce_copy and self.exposures_changes.__name__ != "identity_function"
             else exposures
         )
         try:
