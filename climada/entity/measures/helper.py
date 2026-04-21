@@ -206,8 +206,7 @@ def impact_intensity_rp_cutoff_helper(
         # Calculate exceedance frequencies
         sort_idxs = np.argsort(imp.at_event)[::-1]
         exceed_freq = np.cumsum(imp.frequency[sort_idxs])
-        events_below_cutoff = sort_idxs[exceed_freq <= 1 / cut_off_rp]
-
+        events_below_cutoff = sort_idxs[exceed_freq >= (1 / cut_off_rp)]
         # Modify sparse data structure
         intensity_modified = hazard.intensity.copy()
         for event in events_below_cutoff:
@@ -218,6 +217,7 @@ def impact_intensity_rp_cutoff_helper(
             intensity_modified.data[start:end] = 0
 
         hazard.intensity = intensity_modified
+        hazard.intensity.eliminate_zeros()
         return hazard
 
     return hazard_change
