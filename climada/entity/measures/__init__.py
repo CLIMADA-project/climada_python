@@ -20,6 +20,7 @@ init measures
 """
 
 from .base import Measure
+from .measure_config import MeasureConfig
 from .measure_set import MeasureSet
 
-__all__ = ["Measure", "MeasureSet"]
+__all__ = ["Measure", "MeasureSet", "MeasureConfig"]

@@ -22,9 +22,8 @@ Define Measure class.
 from __future__ import annotations
 
 import logging
-from dataclasses import dataclass, field, fields
 from functools import reduce
-from typing import TYPE_CHECKING, Any, Callable, Dict, Optional, TypeVar, Union, cast
+from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, cast
 
 import numpy as np
 import pandas as pd
@@ -36,7 +35,6 @@ from climada.entity.measures.measure_config import (
     ExposuresModifierConfig,
     HazardModifierConfig,
     ImpfsetModifierConfig,
-    MeasureConfig,
 )
 from climada.hazard.base import Hazard
 
@@ -49,19 +47,54 @@ if TYPE_CHECKING:
     )
     from climada.hazard.base import Hazard
 
-LOGGER = logging.getLogger(__name__)
+    T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
-T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
+LOGGER = logging.getLogger(__name__)
 
 
 def identity_function(x: T, **_kwargs: Any) -> T:
+    """Return the input object unchanged.
+
+    Parameters
+    ----------
+    x : T
+        Object to return.
+    **_kwargs : Any
+        Accepted but ignored.
+
+    Returns
+    -------
+    T
+        The unchanged input object.
+    """
+
     return x
 
 
 def composite_fun(*funcs: Callable[..., T]) -> Callable[..., T]:
-    """
-    Composes multiple functions from right to left.
-    f(g(h(x)))
+    """Compose multiple functions right-to-left into a single callable.
+
+    Given functions ``f, g, h``, returns a function equivalent to
+    ``lambda x, **kw: f(g(h(x, **kw), **kw), **kw)``.
+    If no functions are provided, returns :func:`identity_function`.
+
+    Parameters
+    ----------
+    *funcs : Callable[..., T]
+        Functions to compose, applied from right to left.
+        Each must accept an object of type ``T`` as its first positional
+        argument and forward ``**kwargs``.
+
+    Returns
+    -------
+    Callable[..., T]
+        A single callable equivalent to the right-to-left composition of
+        all provided functions.
+
+    Examples
+    --------
+    >>> composed = composite_fun(f, g, h)
+    >>> result = composed(x, year=2030)  # equivalent to f(g(h(x, year=2030), year=2030), year=2030)
     """
 
     def compose(f: Callable[..., T], g: Callable[..., T]) -> Callable[..., T]:
@@ -74,7 +107,23 @@ def composite_fun(*funcs: Callable[..., T]) -> Callable[..., T]:
 
 
 def replace_hazard(new_hazard: Hazard) -> HazardChange:
-    """Returns a function that replaces the hazard with given new one."""
+    """Return a change function that unconditionally replaces the hazard.
+
+    The returned function ignores its input and always returns ``new_hazard``.
+    Note that ``new_hazard`` is a shared reference; callers should ensure the
+    object is not mutated after being passed here.
+
+    Parameters
+    ----------
+    new_hazard : Hazard
+        The hazard object to substitute in place of the original.
+
+    Returns
+    -------
+    HazardChange
+        A callable with signature ``(hazard: Hazard) -> Hazard``
+        that discards its input and returns ``new_hazard``.
+    """
 
     def hazard_change(_: Hazard) -> Hazard:
         return new_hazard
@@ -85,25 +134,57 @@ def replace_hazard(new_hazard: Hazard) -> HazardChange:
 def impact_intensity_rp_cutoff_helper(
     cut_off_rp: float,
 ) -> HazardChange:
-    """Helper to generate a function removing events from a hazard for which
-    impacts do not exceed the impacts of a given return period.
+    """Return a change function that zeros out low-impact events based on a
+    return period threshold.
 
-    This helper returns a function to be applied on a hazard.
-    The function returned has to run an impact computation to find out which
-    event to remove from the hazard.
-    As such it has the following signature:
+    The returned function computes impacts on the *base* triplet
+    (``base_exposures``, ``base_impfset``, ``base_hazard``) and identifies
+    events whose cumulative exceedance frequency does not exceed ``1 /
+    cut_off_rp``. The intensity rows of those events are set to zero in the
+    hazard being transformed.
 
-    ```f(hazard: Hazard,           # The hazard to apply on
-         exposures: Exposures,     # The exposure for the impact computation
-         impfset: ImpactFuncSet,   # The impfset for the impact computation
-         base_hazard: Hazard,      # The hazard for the impact computation
-         exposures_region_id: Optional[list[int]] = None, # Region id to filter to
-         ) -> Hazard
-    ```
+    Parameters
+    ----------
+    cut_off_rp : float
+        Return period threshold in years. Events whose cumulative exceedance
+        frequency is at or below ``1 / cut_off_rp`` are zeroed out.
 
-    Identifies events exceeding a return period and returns the hazard intensity
-    matrix with those event intensities zeroed out.
+    Returns
+    -------
+    HazardChange
+        A callable with the following signature:
+
+        .. code-block:: python
+
+            def hazard_change(
+                hazard: Hazard,
+                base_exposures: Exposures,
+                base_impfset: ImpactFuncSet,
+                base_hazard: Hazard,
+                exposures_region_id: Optional[list[int]] = None,
+            ) -> Hazard
+
+        Parameters of the returned callable:
+
+        hazard : Hazard
+            The hazard object to modify in-place (intensity rows zeroed).
+        base_exposures : Exposures
+            Exposures used for the reference impact computation.
+        base_impfset : ImpactFuncSet
+            Impact function set used for the reference impact computation.
+        base_hazard : Hazard
+            Original hazard used for the reference impact computation.
+        exposures_region_id : list of int, optional
+            If provided, the impact computation is restricted to exposure
+            points whose ``region_id`` is in this list.
+
+    Notes
+    -----
+    The exceedance frequency is computed on the *base* hazard, not on the
+    already-modified hazard. This ensures the cutoff decision is always
+    relative to the unmodified risk landscape.
     """
+
     from climada.engine.impact_calc import ImpactCalc
 
     def hazard_change(
@@ -112,6 +193,7 @@ def impact_intensity_rp_cutoff_helper(
         base_impfset: ImpactFuncSet,
         base_hazard: Hazard,
         exposures_region_id: Optional[list[int]] = None,
+        **_kwargs,
     ) -> Hazard:
         exp_imp = base_exposures
         if exposures_region_id:
@@ -124,10 +206,9 @@ def impact_intensity_rp_cutoff_helper(
         # Calculate exceedance frequencies
         sort_idxs = np.argsort(imp.at_event)[::-1]
         exceed_freq = np.cumsum(imp.frequency[sort_idxs])
-        events_below_cutoff = sort_idxs[exceed_freq <= cut_off_rp]
-
+        events_below_cutoff = sort_idxs[exceed_freq >= (1 / cut_off_rp)]
         # Modify sparse data structure
-        intensity_modified = base_hazard.intensity.copy()
+        intensity_modified = hazard.intensity.copy()
         for event in events_below_cutoff:
             start, end = (
                 intensity_modified.indptr[event],
@@ -136,13 +217,48 @@ def impact_intensity_rp_cutoff_helper(
             intensity_modified.data[start:end] = 0
 
         hazard.intensity = intensity_modified
+        hazard.intensity.eliminate_zeros()
         return hazard
 
     return hazard_change
 
 
 def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
-    """Returns a function that scales and shifts hazard intensity."""
+    """Return a change function that scales, shifts, and optionally
+    replaces hazard intensities.
+
+    Constructs a :class:`HazardChange` from a :class:`HazardModifierConfig`.
+    The returned function optionally loads a new hazard from disk, then applies
+    a linear transformation to all stored (non-zero) intensity values.
+
+    If :attr:`~HazardModifierConfig.impact_rp_cutoff` is set, the returned
+    function is further composed (via :func:`composite_fun`) with
+    :func:`impact_intensity_rp_cutoff_helper` so that low-return-period events
+    are zeroed out after the linear transformation.
+
+    Parameters
+    ----------
+    hazard_modifier : HazardModifierConfig
+        Configuration object specifying:
+
+        - ``new_hazard_path`` : path to an HDF5 hazard file to load, or
+          ``None`` to transform the input hazard in-place.
+        - ``haz_int_mult`` : multiplicative factor applied to intensity data.
+        - ``haz_int_add`` : additive shift applied to intensity data.
+        - ``impact_rp_cutoff`` : return period threshold passed to
+          :func:`impact_intensity_rp_cutoff_helper`, or ``None`` to skip.
+
+    Returns
+    -------
+    HazardChange
+        A callable with signature ``(hazard: Hazard, **kwargs) -> Hazard``.
+
+    Notes
+    -----
+    The transformation is applied directly to the sparse matrix's ``.data``
+    array, so only explicitly stored (non-zero) entries are affected.
+    Structural zeros remain zero.
+    """
 
     def hazard_change(hazard: Hazard, **_kwargs) -> Hazard:
         changed_hazard = (
@@ -167,7 +283,41 @@ def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
 
 
 def helper_impfset(impfset_modifier: ImpfsetModifierConfig) -> ImpfsetChange:
-    """Returns a function that modifies impact functions (mdd, paa, intensity) by ID."""
+    """Return a change function that applies linear modifications to selected
+    impact functions.
+
+    Constructs an :class:`ImpfsetChange` from an :class:`ImpfsetModifierConfig`.
+    The returned function optionally loads a new :class:`ImpactFuncSet` from
+    disk, then applies independent linear transformations to the ``intensity``,
+    ``mdd``, and ``paa`` arrays of each targeted impact function.
+
+    Parameters
+    ----------
+    impfset_modifier : ImpfsetModifierConfig
+        Configuration object specifying:
+
+        - ``new_impfset_path`` : path to an Excel file to load as the new
+          :class:`ImpactFuncSet`, or ``None`` to modify the input in-place.
+        - ``haz_type`` : hazard type string used to look up functions.
+        - ``impf_ids`` : IDs of functions to modify. Accepts ``None`` or
+          ``"all"`` to target every function of ``haz_type``, a single
+          ``int`` or ``str``, or a ``list`` of IDs. Raises :class:`ValueError`
+          for any other type.
+        - ``impf_int_mult``, ``impf_int_add`` : scale and shift for intensity.
+        - ``impf_mdd_mult``, ``impf_mdd_add`` : scale and shift for MDD.
+        - ``impf_paa_mult``, ``impf_paa_add`` : scale and shift for PAA.
+
+    Returns
+    -------
+    ImpfsetChange
+        A callable with signature ``(impfset: ImpactFuncSet, **kwargs) -> ImpactFuncSet``.
+
+    Raises
+    ------
+    ValueError
+        If ``impfset_modifier.impf_ids`` is not ``None``, ``"all"``, an
+        ``int``, a ``str``, or a ``list``.
+    """
 
     def impfset_change(impfset: ImpactFuncSet, **_kwargs) -> ImpactFuncSet:
         changed_impfset = (
@@ -216,7 +366,23 @@ def helper_impfset(impfset_modifier: ImpfsetModifierConfig) -> ImpfsetChange:
 
 
 def change_impfset(new_impfsets: ImpactFuncSet) -> ImpfsetChange:
-    """Returns a function that swaps the impact function set with the given one."""
+    """Return a change function that unconditionally replaces the impact function set.
+
+    The returned function ignores its input and always returns ``new_impfsets``.
+    Note that ``new_impfsets`` is a shared reference; callers should ensure the
+    object is not mutated after being passed here.
+
+    Parameters
+    ----------
+    new_impfsets : ImpactFuncSet
+        The :class:`ImpactFuncSet` to substitute in place of the original.
+
+    Returns
+    -------
+    ImpfsetChange
+        A callable with signature ``(impfset: ImpactFuncSet, **kwargs) -> ImpactFuncSet``
+        that discards its input and returns ``new_impfsets``.
+    """
 
     def impfset_change(_: ImpactFuncSet) -> ImpactFuncSet:
         return new_impfsets
@@ -225,7 +391,38 @@ def change_impfset(new_impfsets: ImpactFuncSet) -> ImpfsetChange:
 
 
 def helper_exposure(exposures_modifier: ExposuresModifierConfig) -> ExposuresChange:
-    """Returns a function that reassigns impact function IDs and zeros out specific values."""
+    """Return a change function that reassigns impact function IDs and zeros
+    selected exposure values.
+
+    Constructs an :class:`ExposuresChange` from an
+    :class:`ExposuresModifierConfig`. The returned function optionally loads a
+    new :class:`Exposures` from disk, then applies two optional modifications
+    to its underlying GeoDataFrame:
+
+    1. **Impact function ID remapping**: replaces values in
+       ``impf_<haz_type>`` columns according to a provided mapping dict.
+    2. **Value zeroing**: sets ``value`` to ``0`` for rows matching a boolean
+       mask or index.
+
+    Parameters
+    ----------
+    exposures_modifier : ExposuresModifierConfig
+        Configuration object specifying:
+
+        - ``new_exposures_path`` : path to an HDF5 file to load as the new
+          :class:`Exposures`, or ``None`` to modify the input in-place.
+        - ``reassign_impf_id`` : a ``dict[haz_type, {old_id: new_id}]``
+          mapping used to replace impact function IDs in the GeoDataFrame,
+          or ``None`` to skip.
+        - ``set_to_zero`` : a boolean array, index, or label accepted by
+          ``DataFrame.loc`` identifying rows whose ``value`` should be set
+          to ``0``, or ``None`` to skip.
+
+    Returns
+    -------
+    ExposuresChange
+        A callable with signature ``(exposures: Exposures, **kwargs) -> Exposures``.
+    """
 
     def exposures_change(exposures: Exposures, **_kwargs) -> Exposures:
         changed_exposures = (

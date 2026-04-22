@@ -20,31 +20,12 @@ Unit tests for the CostIncome class.
 """
 
 from datetime import datetime
-from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pandas as pd
 import pytest
 
-from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures.cost_income import CostIncome
-
-# ---------------------------------------------------------------------------
-# Helpers
-# ---------------------------------------------------------------------------
-
-
-def make_disc_rates(years=None, rates=None):
-    """Build a minimal DiscRates stub."""
-    dr = MagicMock(spec=DiscRates)
-    dr.years = np.array(years or list(range(2020, 2031)))
-    dr.rates = np.array(rates or [0.05] * len(dr.years))
-    return dr
-
-
-# ---------------------------------------------------------------------------
-# __init__ / construction
-# ---------------------------------------------------------------------------
 
 
 class TestInit:
@@ -208,7 +189,7 @@ class TestCalcAtDate:
         ci = CostIncome(mkt_price_year=2020, init_cost=1000, periodic_income=500)
         impl = pd.Timestamp("2021-01-01")
         curr = pd.Timestamp("2020-01-01")
-        net, cost, inc = ci._calc_at_date(impl, curr)
+        net, cost, inc = ci.calc_at_date(impl, curr)
         assert net == 0.0
         assert cost == 0.0
         assert inc == 0.0
@@ -216,7 +197,7 @@ class TestCalcAtDate:
     def test_at_impl_date_uses_init_cost(self):
         ci = CostIncome(mkt_price_year=2021, init_cost=1000, periodic_income=0)
         impl = pd.Timestamp("2021-01-01")
-        net, cost, inc = ci._calc_at_date(impl, impl)
+        net, cost, inc = ci.calc_at_date(impl, impl)
         assert cost == pytest.approx(-1000.0, rel=1e-3)
         assert inc == pytest.approx(0.0)
 
@@ -224,7 +205,7 @@ class TestCalcAtDate:
         ci = CostIncome(mkt_price_year=2020, periodic_cost=200, periodic_income=0)
         impl = pd.Timestamp("2021-01-01")
         curr = pd.Timestamp("2022-01-01")
-        net, cost, inc = ci._calc_at_date(impl, curr)
+        net, cost, inc = ci.calc_at_date(impl, curr)
         assert cost < 0
         assert abs(cost) == 200
 
@@ -234,7 +215,7 @@ class TestCalcAtDate:
         )
         impl = pd.Timestamp("2020-01-01")
         curr = pd.Timestamp("2021-01-01")
-        _, _, inc = ci._calc_at_date(impl, curr)
+        _, _, inc = ci.calc_at_date(impl, curr)
         expected = 100 * (1.10**1.0)
         assert inc == pytest.approx(expected, rel=1e-2)
 
@@ -242,7 +223,7 @@ class TestCalcAtDate:
         ci = CostIncome(mkt_price_year=2020, periodic_cost=100, periodic_income=150)
         impl = pd.Timestamp("2020-01-01")
         curr = pd.Timestamp("2021-01-01")
-        net, cost, inc = ci._calc_at_date(impl, curr)
+        net, cost, inc = ci.calc_at_date(impl, curr)
         assert net == pytest.approx(cost + inc)
 
     def test_custom_cash_flows_added(self):
@@ -254,10 +235,9 @@ class TestCalcAtDate:
             }
         )
         ci = CostIncome(mkt_price_year=2021, custom_cash_flows=df, freq="Y")
-        print(ci.custom_cash_flows)
         impl = pd.Timestamp("2021-01-01")
         curr = pd.Timestamp("2021-01-01")
-        net, cost, inc = ci._calc_at_date(impl, curr)
+        net, cost, inc = ci.calc_at_date(impl, curr)
         assert inc == pytest.approx(200.0, rel=1e-3)
         assert cost == pytest.approx(-500.0, rel=1e-3)
 
@@ -403,3 +383,41 @@ class TestCombCostIncome:
         combined = CostIncome.comb_cost_income([ci1, ci2])
         assert combined.cost_growth_rate == 0.02
         assert combined.income_growth_rate == 0.03
+
+    def test_merges_custom_cash_flows(self):
+        df1 = pd.DataFrame(
+            {
+                "date": ["2020-01-01", "2020-03-01"],
+                "cost": [100, 200],
+                "income": [50, 60],
+            }
+        )
+        df2 = pd.DataFrame(
+            {
+                "date": ["2020-01-01", "2020-03-01", "2020-04-01"],
+                "cost": [100, 200, 300],
+                "income": [50, 60, 70],
+            }
+        )
+
+        expected = pd.DataFrame(
+            {
+                "date": ["2020-01", "2020-02", "2020-03", "2020-04"],
+                "cost": [-200, 0, -400, -300],
+                "income": [100, 0, 120, 70],
+            }
+        )
+
+        expected["date"] = pd.to_datetime(expected["date"])
+        expected = expected.set_index("date")
+        expected = expected.resample("MS").sum()
+
+        ci1 = CostIncome(
+            mkt_price_year=2020, periodic_income=100, freq="M", custom_cash_flows=df1
+        )
+        ci2 = CostIncome(
+            mkt_price_year=2020, periodic_cost=50, freq="M", custom_cash_flows=df2
+        )
+
+        combined = CostIncome.comb_cost_income([ci1, ci2])
+        pd.testing.assert_frame_equal(combined.custom_cash_flows, expected)
