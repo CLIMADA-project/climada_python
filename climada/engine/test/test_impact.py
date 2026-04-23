@@ -321,8 +321,8 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual("USD", ifc.unit)
         self.assertEqual("1/week", ifc.frequency_unit)
 
-    def test_extrapolate_freq_curve(self):
-        """Test extrapolate method of freq curve"""
+    def test_interpolate_freq_curve(self):
+        """Test inter- and extrapolate method of freq curve"""
         imp = Impact()
         imp.frequency = np.array([0.2, 0.1, 0.1, 0.1])
         imp.at_event = np.array([0.0, 100.0, 50.0, 110.0])
@@ -337,23 +337,27 @@ class TestFreqCurve(unittest.TestCase):
 
         # stepfunction assigns zero return periods below data and max(impact) for those above
         npt.assert_array_almost_equal(
-            ifc.extrapolate([1, 5, 20], method="stepfunction"), [0.0, 100.0, 110.0]
+            ifc.interpolate([1, 5, 20], method="stepfunction").impact,
+            [0.0, 100.0, 110.0],
         )
 
         # interpolate assigns nan to return periods outside of data
         npt.assert_array_almost_equal(
-            ifc.extrapolate([1, 5, 20], method="interpolate"), [np.nan, 100.0, np.nan]
+            ifc.interpolate([1, 5, 20], method="interpolate").impact,
+            [np.nan, 100.0, np.nan],
         )
 
         # extrapolate_constant assigns zero return periods below data and max(impact) for those above
         npt.assert_array_almost_equal(
-            ifc.extrapolate([1, 5, 20], method="extrapolate_constant"),
+            ifc.interpolate([1, 5, 20], method="extrapolate_constant").impact,
             [0.0, 100.0, 110.0],
         )
 
         # by binning the last two digits, 100 and 110 are rounded to 100
         npt.assert_array_almost_equal(
-            ifc.extrapolate([1, 5, 20], method="extrapolate_constant", bin_decimals=-2),
+            ifc.interpolate(
+                [1, 5, 20], method="extrapolate_constant", bin_decimals=-2
+            ).impact,
             [0.0, 100.0, 100.0],
         )
 
@@ -363,12 +367,12 @@ class TestFreqCurve(unittest.TestCase):
         # rp=4: extrapolate impacts [50, 100] and ex_freqs [.3, .2] to ex_freq=0.25 --> 75
         # rp=1: extrapolate impacts [100, 110] and ex_freqs [.2, .1] to ex_freq=0.05 --> 115
         npt.assert_array_almost_equal(
-            ifc.extrapolate(
+            ifc.interpolate(
                 [1.0, 2.5, 4, 20],
                 method="extrapolate",
                 log_frequency=False,
                 log_impact=False,
-            ),
+            ).impact,
             [-300.0, 0.0, 75.0, 115.0],
         )
 
