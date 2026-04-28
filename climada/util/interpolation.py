@@ -409,168 +409,10 @@ def _group_frequency(frequency, value, bin_decimals):
     return frequency, value
 
 
-# def fit_with_GPD(
-#     test_frequency,
-#     test_values,
-#     frequency,
-#     values,
-#     value_threshold=0,
-#     threshold_percentile=90,
-#     min_sample_size=30,
-# ):
-
-#     frequency = frequency[values > value_threshold]
-#     values = values[values > value_threshold]
-
-#     # sort values and frequencies
-#     sorted_idxs = np.argsort(values)
-#     values = np.squeeze(values[sorted_idxs])
-#     frequency = frequency[sorted_idxs]
-#     ex_freq = np.cumsum(frequency[::-1])[::-1]
-
-#     threshold = np.percentile(values, threshold_percentile)
-#     mask = values > threshold
-#     if sum(mask) < min_sample_size:
-#         raise ValueError(
-#             f"Not enough data points above the threshold for fitting the GPD. You can try to "
-#             f"choose a smaller threshold_percentile={threshold_percentile} or a smaller "
-#             f"value_threshold={value_threshold}."
-#         )
-#     x_tail = values[mask]
-#     lambda_tail = ex_freq[mask]
-#     lambda_u = lambda_tail[0]
-#     init = [0.1, np.std(x_tail - threshold)]
-
-#     def gpd_exceedance_negerror(params):
-#         xi, beta = params
-#         if beta <= 0:
-#             return np.inf
-#         model = _gpd_distribution(x_tail, xi, beta, lambda_u, threshold)
-#         return np.sum((np.log(lambda_tail) - np.log(model)) ** 2)
-
-#     res_gpd = minimize(gpd_exceedance_negerror, init, bounds=[(-1, None), (1e-6, None)])
-#     xi_hat, beta_hat = res_gpd.x
-#     LOGGER.info(
-#         "Fitted GPD parameters: xi=%s, beta=%s.",
-#         xi_hat,
-#         beta_hat,
-#     )
-#     # LOGGER.info(
-#     #     "Goodness of fit: %s", (res_gpd.fun, res_gpd.message, res_gpd.success, res_gpd.nit)
-#     # )
-
-#     if test_values is not None:
-#         mask_tail = test_values > threshold
-#         lambda_gpd = _gpd_distribution(
-#             test_values[mask_tail], xi_hat, beta_hat, lambda_u, threshold
-#         )
-#         return lambda_gpd, test_values[mask_tail]
-#     else:
-#         vals = _gpd_inverse_distribution(
-#             test_frequency, xi_hat, beta_hat, lambda_u, threshold
-#         )
-#         print(threshold)
-#         mask_tail = vals > threshold
-#         return test_frequency[mask_tail], vals[mask_tail]
-
-
-# def _gpd_distribution(values, xi, beta, lambda_u, threshold):
-#     values = np.asarray(values)
-#     return lambda_u * (1 + xi * (values - threshold) / beta) ** (-1 / xi)
-
-
-# def _gpd_inverse_distribution(lambdas, xi, beta, lambda_u, threshold):
-#     lambdas = np.asarray(lambdas)
-#     return threshold + (beta / xi) * ((lambdas / lambda_u) ** (-xi) - 1)
-
-
-# def extrapolate_with_GEV(
-#     test_frequency,
-#     test_values,
-#     frequency,
-#     values,
-#     value_threshold=0,
-#     threshold_percentile=90,
-#     min_sample_size=30,
-# ):
-
-#     frequency = frequency[values > value_threshold]
-#     values = values[values > value_threshold]
-
-#     # sort values and frequencies
-#     sorted_idxs = np.argsort(values)
-#     values = np.squeeze(values[sorted_idxs])
-#     frequency = frequency[sorted_idxs]
-#     ex_freq = np.cumsum(frequency[::-1])[::-1]
-
-#     threshold = np.percentile(values, threshold_percentile)
-#     mask = values > threshold
-#     if sum(mask) < min_sample_size:
-#         raise ValueError(
-#             f"Not enough data points above the threshold for fitting the GEV. You can try to "
-#             f"choose a smaller threshold_percentile={threshold_percentile} or a smaller "
-#             f"value_threshold={value_threshold}."
-#         )
-#     x_tail = values[mask]
-#     lambda_tail = ex_freq[mask]
-#     lambda_u = lambda_tail[0]
-#     init = [0.1, threshold, np.std(x_tail - threshold)]
-
-#     def gev_exceedance_negerror(params):
-#         xi, mu, sigma = params
-#         if sigma <= 0:
-#             return np.inf
-#         model = _gev_distribution(x_tail, xi, mu, sigma, lambda_u)
-#         return np.sum((np.log(lambda_tail) - np.log(model)) ** 2)
-
-#     res_gev = minimize(
-#         gev_exceedance_negerror, init, bounds=[(-1, None), (None, None), (1e-6, None)]
-#     )
-#     xi_hat, mu_hat, sigma_hat = res_gev.x
-#     LOGGER.info(
-#         "Fitted GEV parameters: xi=%s, mu=%s, sigma=%s.",
-#         xi_hat,
-#         mu_hat,
-#         sigma_hat,
-#     )
-
-#     if test_values is not None:
-#         mask_tail = test_values > threshold
-#         lambda_gev = _gev_distribution(
-#             test_values[mask_tail], xi_hat, mu_hat, sigma_hat, lambda_u
-#         )
-#         return lambda_gev, test_values[mask_tail]
-#     else:
-#         vals = _gev_inverse_distribution(
-#             test_frequency, xi_hat, mu_hat, sigma_hat, lambda_u
-#         )
-#         mask_tail = vals > threshold
-#         return test_frequency[mask_tail], vals[mask_tail]
-
-
-# def _gev_distribution(values, xi, mu, sigma, lambda_u):
-#     """
-#     CDF of generalized extreme value distribution with probability offset.
-#     See https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.genextreme.html
-#     """
-#     values = np.asarray(values)
-#     cdf_vals = genextreme.cdf(values, c=-xi, loc=mu, scale=sigma)
-#     return lambda_u * (1 - cdf_vals)
-
-
-# def _gev_inverse_distribution(lambdas, xi, mu, sigma, lambda_u):
-#     """
-#     Inverse CDF of generalized extreme value distribution with probability offset.
-#     See https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.genextreme.html
-#     """
-#     lambdas = np.asarray(lambdas)
-#     ppf_vals = genextreme.ppf(1 - lambdas / lambda_u, c=-xi, loc=mu, scale=sigma)
-#     return ppf_vals
-
-
 def _gpd_distribution(values, xi, beta, lambda_u, threshold):
     """
-    CDF of generalized Pareto distribution with probability offset.
+    Survival function (1-CDF) of generalized Pareto distribution including probability
+    of threhsold exceedance (lambda_u).
     See https://en.wikipedia.org/wiki/Generalized_Pareto_distribution
     """
     values = np.asarray(values)
@@ -579,7 +421,8 @@ def _gpd_distribution(values, xi, beta, lambda_u, threshold):
 
 def _gpd_inverse_distribution(lambdas, xi, beta, lambda_u, threshold):
     """
-    Inverse CDF of generalized Pareto distribution with probability offset.
+    Inverse survival function of generalized Pareto distribution including probability
+    of threhsold exceedance (lambda_u).
     See https://en.wikipedia.org/wiki/Generalized_Pareto_distribution
     """
     lambdas = np.asarray(lambdas)
@@ -588,7 +431,8 @@ def _gpd_inverse_distribution(lambdas, xi, beta, lambda_u, threshold):
 
 def _gev_distribution(values, xi, mu, sigma, lambda_u, threshold):
     """
-    CDF of generalized extreme value distribution with probability offset.
+    Survival function (1-CDF) of generalized extreme value distribution including probability
+    of threhsold exceedance (lambda_u).
     See https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.genextreme.html
     """
     values = np.asarray(values)
@@ -598,7 +442,8 @@ def _gev_distribution(values, xi, mu, sigma, lambda_u, threshold):
 
 def _gev_inverse_distribution(lambdas, xi, mu, sigma, lambda_u, threshold):
     """
-    Inverse CDF of generalized extreme value distribution with probability offset.
+    Inverse survival function of generalized extreme value distribution including probability
+    of threhsold exceedance (lambda_u).
     See https://docs.scipy.org/doc/scipy/reference/generated/scipy.stats.genextreme.html
     """
     lambdas = np.asarray(lambdas)
@@ -614,7 +459,7 @@ TAIL_MODELS = {
         "inverse": _gpd_inverse_distribution,
     },
     "GEV": {
-        "init": lambda x_tail, threshold: [0.1, threshold, np.std(x_tail - threshold)],
+        "init": lambda x_tail, threshold: [0.1, np.mean(x_tail), np.std(x_tail)],
         "bounds": [(-1, None), (None, None), (1e-6, None)],
         "distribution": _gev_distribution,
         "inverse": _gev_inverse_distribution,
@@ -634,6 +479,12 @@ def fit_tail_distribution(
 ):
     """
     Fit a tail distribution (GPD or GEV) to exceedance data and extrapolate to test points.
+
+    Extreme value theory provides two principal approaches for modeling extremes: the block
+    maxima method leading to the GEV distribution and the peaks-over-threshold method
+    leading to the GPD. These approaches are complementary and involve different practical
+    trade-offs, such as efficiency of data usage and the need for threshold selection,
+    see e.g. (Coles, 2001, Chapters 4–5, https://doi.org/10.1007/978-1-4471-3675-0).
 
     Parameters
     ----------
@@ -657,7 +508,7 @@ def fit_tail_distribution(
     Returns
     -------
     tuple
-        (exceedance_frequencies, values) if test_frequency is given, else (exceedance_frequencies, test_values)
+        (test_frequency, values) if test_frequency is given, else (exceedance_frequencies, test_values)
     """
 
     # Validate inputs
@@ -671,7 +522,7 @@ def fit_tail_distribution(
             f"Unknown distribution: {dist}. Implemented distributions are {TAIL_MODELS.keys()}"
         )
 
-    # Filter by value_threshold
+    # Filter by value_threshold before computing threshold with percentile
     mask = values > value_threshold
     frequency = frequency[mask]
     values = values[mask]
@@ -712,32 +563,73 @@ def fit_tail_distribution(
     res = minimize(exceedance_negerror, init, bounds=model_config["bounds"])
     params_hat = res.x
 
+    # Compute some goodness-of-fit metrics
+    # Recompute model on tail with fitted params
+    model_tail = model_config["distribution"](x_tail, *params_hat, lambda_u, threshold)
+    # Avoid log(0) issues
+    eps = 1e-12
+    lambda_tail_safe = np.maximum(lambda_tail, eps)
+    model_tail_safe = np.maximum(model_tail, eps)
+
+    # Residuals in log-survival space
+    residuals = np.log(lambda_tail_safe) - np.log(model_tail_safe)
+    # Root mean-squared error (log-survival space)
+    rmse_log = np.sqrt(np.mean(residuals**2))
+
+    # Kolmogorov–Smirnov distance on normalized survival function
+    empirical_prob = lambda_tail_safe / lambda_u
+    model_prob = model_tail_safe / lambda_u
+    ks_distance = np.max(np.abs(empirical_prob - model_prob))
+
     if dist == "GPD":
         xi_hat, beta_hat = params_hat
+        fit_result = {"xi": xi_hat, "beta": beta_hat}
         LOGGER.info(
-            "Fitted GPD parameters using %s points: xi=%s, beta=%s.",
+            "Fitted GPD parameters using %.3g points: xi=%.3g, beta=%.3g.",
             sum(mask),
             xi_hat,
             beta_hat,
         )
     elif dist == "GEV":
         xi_hat, mu_hat, sigma_hat = params_hat
+        fit_result = {"xi": xi_hat, "mu": mu_hat, "sigma": sigma_hat}
         LOGGER.info(
-            "Fitted GEV parameters using %s points:: xi=%s, mu=%s, sigma=%s.",
+            "Fitted GEV parameters using %.3g points:: xi=%.3g, mu=%.3g, sigma=%.3g.",
             sum(mask),
             xi_hat,
             mu_hat,
             sigma_hat,
         )
+    fit_result.update({"rmse_log": rmse_log, "ks_distance": ks_distance})
+    LOGGER.info(
+        "GOF metrics: RMSE_log=%.3g, KS=%.3g",
+        rmse_log,
+        ks_distance,
+    )
 
     if test_values is not None:
         mask_tail = test_values > threshold
         lambda_dist = model_config["distribution"](
             test_values[mask_tail], *params_hat, lambda_u, threshold
         )
-        return lambda_dist, test_values[mask_tail]
+        return (
+            (
+                np.where(mask_tail, lambda_dist, np.nan)
+                if lambda_dist.size > 0
+                else np.full(mask_tail.shape, np.nan)
+            ),
+            test_values,
+            fit_result,
+        )
     else:
         vals = model_config["inverse"](test_frequency, *params_hat, lambda_u, threshold)
-        print(threshold)
         mask_tail = vals > threshold
-        return test_frequency[mask_tail], vals[mask_tail]
+        return (
+            test_frequency,
+            (
+                np.where(mask_tail, vals, np.nan)
+                if vals.size > 0
+                else np.full(mask_tail.shape, np.nan)
+            ),
+            fit_result,
+        )

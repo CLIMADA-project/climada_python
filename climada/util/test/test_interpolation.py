@@ -22,6 +22,7 @@ Test of interpolation module
 import unittest
 
 import numpy as np
+from scipy.stats import genextreme, genpareto
 
 import climada.util.interpolation as u_interp
 
@@ -281,6 +282,105 @@ class TestFitMethods(unittest.TestCase):
             )
         with self.assertRaises(ValueError):
             u_interp.preprocess_and_interpolate_ev(None, None, frequency, values)
+
+    def test_fit_tail_distribution_gpd(self):
+        """Test GPD fitting with synthetic data"""
+        rng = np.random.default_rng(42)
+        xi_true = 0.15
+        beta_true = 5
+        n = 10000
+        values = genpareto.rvs(c=xi_true, scale=beta_true, size=n, random_state=rng)
+        frequency = np.ones(n) / n
+        test_freq = np.array([0.01, 0.001])
+        freq_out, val_out, fit_result = u_interp.fit_tail_distribution(
+            test_frequency=test_freq,
+            frequency=frequency,
+            values=values,
+            dist="GPD",
+            threshold_percentile=0,
+        )
+        np.testing.assert_equal(len(freq_out), len(test_freq))
+        np.testing.assert_equal(len(val_out), len(test_freq))
+        np.testing.assert_allclose(
+            [fit_result["xi"], fit_result["beta"]], [xi_true, beta_true], rtol=0.1
+        )
+
+    def test_fit_tail_distribution_gev(self):
+        """Test GEV fitting"""
+        rng = np.random.default_rng(42)
+        xi_true = 0.2
+        mu_true = 20
+        sigma_true = 5
+        n = 100000
+        values = genextreme.rvs(
+            c=-xi_true, loc=mu_true, scale=sigma_true, size=n, random_state=rng
+        )
+        frequency = np.ones(n) / n
+        test_freq = np.array([0.01, 0.001])
+        freq_out, val_out, fit_result = u_interp.fit_tail_distribution(
+            test_frequency=test_freq,
+            frequency=frequency,
+            values=values,
+            dist="GEV",
+            threshold_percentile=0,
+            min_sample_size=10,
+        )
+        self.assertEqual(len(freq_out), len(test_freq))
+        self.assertEqual(len(val_out), len(test_freq))
+        np.testing.assert_allclose(
+            [fit_result["xi"], fit_result["mu"], fit_result["sigma"]],
+            [xi_true, mu_true, sigma_true],
+            rtol=0.1,
+        )
+
+    def test_fit_tail_distribution_test_values(self):
+        """Test with test_values"""
+        rng = np.random.default_rng(42)
+        xi_true = 0.1
+        beta_true = 5
+        n = 1000
+        values = genpareto.rvs(c=xi_true, scale=beta_true, size=n, random_state=rng)
+        frequency = np.ones(n) / n
+        test_vals = np.array([10, 11])
+        freq_out, val_out, fit_result = u_interp.fit_tail_distribution(
+            test_values=test_vals,
+            frequency=frequency,
+            values=values,
+            dist="GPD",
+            threshold_percentile=90,
+            min_sample_size=10,
+        )
+        np.testing.assert_equal(len(freq_out), len(test_vals))
+        np.testing.assert_array_equal(val_out, test_vals)
+
+    def test_fit_tail_distribution_errors(self):
+        """Test error cases"""
+        values = np.array([1, 2, 3])
+        frequency = np.array([0.3, 0.3, 0.4])
+        # Invalid dist
+        with self.assertRaises(ValueError):
+            u_interp.fit_tail_distribution(
+                test_frequency=np.array([0.01]),
+                frequency=frequency,
+                values=values,
+                dist="INVALID",
+            )
+        # Both test_freq and test_values
+        with self.assertRaises(ValueError):
+            u_interp.fit_tail_distribution(
+                test_frequency=np.array([0.01]),
+                test_values=np.array([5]),
+                frequency=frequency,
+                values=values,
+            )
+        # Not enough data
+        with self.assertRaises(ValueError):
+            u_interp.fit_tail_distribution(
+                test_frequency=np.array([0.01]),
+                frequency=frequency,
+                values=values,
+                min_sample_size=50,
+            )
 
 
 # Execute Tests
