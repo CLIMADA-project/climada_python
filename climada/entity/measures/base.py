@@ -61,7 +61,7 @@ if TYPE_CHECKING:
     )
     from climada.hazard.base import Hazard
 
-T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
+    T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -255,19 +255,6 @@ class Measure:
 
         with open(path) as f:
             return cls.from_dict(yaml.safe_load(f)["measures"][0])
-
-    def apply_exposures_changes(
-        self, exposures: Exposures, enforce_copy: bool = True, **kwargs
-    ) -> Exposures:
-        """Apply the changes from the measure to the given exposures object.
-
-        This method applies the `exposures_changes` function of the measure to
-        the provided `exposures` object. If `enforce_copy` is True (default), a
-        deep copy of the exposures is created before modification to ensure
-        immutability of the original object.
-        """
-
-        return self._config is not None
 
     def apply_exposures_changes(
         self, exposures: Exposures, enforce_copy: bool = True, **kwargs
