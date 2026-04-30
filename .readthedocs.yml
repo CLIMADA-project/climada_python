@@ -13,10 +13,7 @@ conda:
 
 python:
   install:
-    - method: uv
-      command: sync
-      groups:
-        - doc
+    - requirements: docs/requirements.txt
 
 formats:
   - pdf
