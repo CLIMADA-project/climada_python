@@ -6,4 +6,4 @@ dependencies:
   - libgdal=3.12.*
   - pip
   - pip:
-    - -r requirements.txt
+    - -r doc/requirements.txt
