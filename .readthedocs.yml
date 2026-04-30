@@ -9,11 +9,7 @@ build:
     python: "miniforge3-25.11"
 
 conda:
-  environment: requirements/base.yml
-
-python:
-  install:
-    - requirements: docs/requirements.txt
+  environment: doc/environment.yml
 
 formats:
   - pdf

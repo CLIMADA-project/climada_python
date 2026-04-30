@@ -1,0 +1,9 @@
+name: climada_docs
+channels:
+  - conda-forge
+  - nodefaults
+dependencies:
+  - libgdal=3.12.*
+  - pip
+  - pip:
+    - -r requirements.txt
