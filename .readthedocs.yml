@@ -9,7 +9,7 @@ build:
     python: "miniforge3-25.11"
 
 conda:
-  environment: doc/environment.yml
+  environment: env-docs.yml
 
 formats:
   - pdf
