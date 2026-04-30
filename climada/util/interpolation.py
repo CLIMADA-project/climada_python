@@ -459,7 +459,8 @@ TAIL_MODELS = {
         "inverse": _gpd_inverse_distribution,
     },
     "GEV": {
-        "init": lambda x_tail, threshold: [0.1, np.mean(x_tail), np.std(x_tail)],
+        "init": lambda x_tail, threshold: [0.1, threshold, np.std(x_tail - threshold)],
+        # "init": lambda x_tail, threshold: [0.1, np.mean(x_tail), np.std(x_tail)],
         "bounds": [(-1, None), (None, None), (1e-6, None)],
         "distribution": _gev_distribution,
         "inverse": _gev_inverse_distribution,
@@ -543,7 +544,7 @@ def fit_tail_distribution(
         )
     x_tail = values[mask]
     lambda_tail = ex_freq[mask]
-    lambda_u = lambda_tail[0]
+    lambda_u = lambda_tail[0]  # estimated frequency for exceeding the threshold
 
     model_config = TAIL_MODELS[dist]
     init = model_config["init"](x_tail, threshold)

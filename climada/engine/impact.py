@@ -2378,7 +2378,7 @@ class ImpactFreqCurve:
         if method in ["fit_GPD", "fit_GEV"]:
             if threshold_percentile is None:
                 threshold_percentile = 90 if method == "fit_GPD" else 80
-            _, impact_interpolated = u_interp.fit_tail_distribution(
+            _, impact_interpolated, _ = u_interp.fit_tail_distribution(
                 exceedance_frequency,
                 None,
                 frequency,
