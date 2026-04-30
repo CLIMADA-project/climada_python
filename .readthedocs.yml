@@ -6,10 +6,9 @@ sphinx:
 build:
   os: "ubuntu-lts-latest"
   tools:
-    python: "miniforge3-latest"
-
-conda:
-  environment: requirements/base.yml
+    python: "3.12"
+  apt_packages:
+    - libgdal-dev
 
 python:
   install:
