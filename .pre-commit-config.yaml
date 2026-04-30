@@ -26,3 +26,8 @@ repos:
     rev: 0.11.7
     hooks:
       - id: uv-lock
+      - id: uv-export
+        args: [
+          --frozen, --no-hashes, --quiet, --group=doc,
+          --output-file=doc/requirements.txt
+        ]
