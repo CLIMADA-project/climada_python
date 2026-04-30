@@ -4,23 +4,18 @@ sphinx:
   configuration: doc/conf.py
 
 build:
-  os: "ubuntu-22.04"
+  os: "ubuntu-lts-latest"
   tools:
-    python: "mambaforge-4.10"
-
-  # Append fixed Python version to requirements
-  jobs:
-    pre_create_environment:
-      - echo "  - python=3.11" >> requirements/env_climada.yml
+    python: "miniforge3-latest"
 
 conda:
-  environment: requirements/env_climada.yml
+  environment: requirements/base.yml
 
 python:
   install:
-    - method: pip
-      path: .
-      extra_requirements:
+    - method: uv
+      command: sync
+      groups:
         - doc
 
 formats:
