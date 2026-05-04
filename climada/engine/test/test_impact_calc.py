@@ -441,7 +441,7 @@ class TestImpactCalc(unittest.TestCase):
         self.assertEqual(
             logs.output,
             [
-                "INFO:climada.engine.impact_calc:Calculating impact for 150 assets (>0) and 14450 events."
+                "INFO:climada.engine.impact_calc:Calculating impact for 50 assets (>0) and 14450 events."
             ],
         )
         self.assertEqual(icalc.n_events, len(impact.at_event))

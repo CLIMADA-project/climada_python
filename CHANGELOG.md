@@ -6,6 +6,29 @@ Release date: 2025-09-30
 
 ### Dependency Changes
 
+### Added
+
+- Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
+
+### Changed
+- Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
+
+### Fixed
+
+- Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
+
+### Deprecated
+
+### Removed
+- `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets).[#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+
+## 6.1.0
+
+Release date: 2025-09-30
+
+### Dependency Changes
+
 Added:
 
 - `bayesian-optimization` >=1.5,<2.0
