@@ -45,11 +45,11 @@ from .xarray import HazardXarrayReader
 LOGGER = logging.getLogger(__name__)
 
 ATTRS_TO_CHECK = {
-    "event_name": (list, (str, np.str_, int, np.integer)),  # int for backward compatibility
+    "event_name": (list, (str, np.str_)),  # int for backward compatibility
     "event_id": (np.ndarray, None),
     "frequency": (np.ndarray, float),
     "frequency_unit": (str, None),
-    "date": (np.ndarray, (int, np.integer)),
+    "date": (np.ndarray, (int, np.int64)),
     "orig": (np.ndarray, (bool, np.bool_)),
     "unit": (str, None),  # For backward compatibility. Replaced by units.
     "units": (str, None),
@@ -706,11 +706,13 @@ class HazardIO:
             # Perform type checking and casting of elements
             if isinstance(attr_value, (list, np.ndarray)):
                 if not all(isinstance(val, expected_dtype) for val in attr_value):
+                    provided_types = set(type(val) for val in attr_value)
                     warnings.warn(
-                        f"Not all values are of type {expected_dtype}. Casting values.",
+                        f"Not all values are type {expected_dtype}. Provided type(s): {provided_types}. Casting values.",
                         UserWarning,
                     )
-                    casted_values = [expected_dtype(val) for val in attr_value]
+                    cast_dtype = expected_dtype if not isinstance(expected_dtype, tuple) else expected_dtype[0]
+                    casted_values = [cast_dtype(val) for val in attr_value]
                     # Return the casted values in the same container type
                     if container_type is list:
                         return casted_values
