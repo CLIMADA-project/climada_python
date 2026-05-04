@@ -33,7 +33,7 @@ import pandas as pd
 import rasterio
 import xarray as xr
 from deprecation import deprecated
-from scipy import sparse
+from scipy import sparsehit_country_per_hazard
 
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
@@ -45,12 +45,12 @@ from .xarray import HazardXarrayReader
 LOGGER = logging.getLogger(__name__)
 
 ATTRS_TO_CHECK = {
-    "event_name": (list, str),
+    "event_name": (list, (str, np.str_, int, np.integer)),  # int for backward compatibility
     "event_id": (np.ndarray, None),
     "frequency": (np.ndarray, float),
     "frequency_unit": (str, None),
-    "date": (np.ndarray, int),
-    "orig": (np.ndarray, bool),
+    "date": (np.ndarray, (int, np.integer)),
+    "orig": (np.ndarray, (bool, np.bool_)),
     "unit": (str, None),  # For backward compatibility. Replaced by units.
     "units": (str, None),
 }
