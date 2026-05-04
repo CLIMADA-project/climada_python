@@ -44,6 +44,18 @@ from .xarray import HazardXarrayReader
 
 LOGGER = logging.getLogger(__name__)
 
+ATTRS_TO_CHECK = {
+    "event_name": (list, str),
+    "event_id": (np.ndarray, None),
+    "frequency": (np.ndarray, float),
+    "frequency_unit": (str, None),
+    "date": (np.ndarray, int),
+    "orig": (np.ndarray, bool),
+    "unit": (str, None),  # For backward compatibility. Replaced by units.
+    "units": (str, None),
+}
+"""Additional attributes that can be specified when reading a raster file"""
+
 DEF_VAR_EXCEL = {
     "sheet_name": {"inten": "hazard_intensity", "freq": "hazard_frequency"},
     "col_name": {
@@ -135,7 +147,8 @@ class HazardIO:
         files_fraction : list(str)
             file names containing fraction
         attrs : dict, optional
-            name of Hazard attributes and their values
+            name of Hazard attributes and their values. See the ATTRS_TO_CHECK constant for supported attributes.
+            Missing attributes will be filled with sensible defaults.
         band : list(int), optional
             bands to read (starting at 1), default [1]
         haz_type : str, optional
@@ -712,10 +725,7 @@ class HazardIO:
 
             return attr_value
 
-        ## This should probably be defined as a CONSTANT?
-        attrs_to_check = {"event_name": (list, str), "event_id": (np.ndarray, None)}
-
-        for attr_name, (expected_container, expected_dtype) in attrs_to_check.items():
+        for attr_name, (expected_container, expected_dtype) in ATTRS_TO_CHECK.items():
             attr_value = attrs.get(attr_name)
 
             if attr_value is not None:
@@ -777,6 +787,8 @@ class HazardIO:
             kwargs["orig"] = np.ones(kwargs["event_id"].size, bool)
         if "unit" in attrs:
             kwargs["units"] = attrs["unit"]
+        if "units" in attrs:
+            kwargs["units"] = attrs["units"]
 
         return kwargs
 
