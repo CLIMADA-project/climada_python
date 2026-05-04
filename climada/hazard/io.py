@@ -33,7 +33,7 @@ import pandas as pd
 import rasterio
 import xarray as xr
 from deprecation import deprecated
-from scipy import sparsehit_country_per_hazard
+from scipy import sparse
 
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
