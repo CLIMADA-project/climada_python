@@ -552,28 +552,14 @@ def fit_tail_GPD(
     if test_values is not None:
         mask_tail = test_values > threshold
         lambda_dist = _gpd_distribution(
-            test_values[mask_tail], xi_hat, beta_hat, lambda_u, threshold
+            test_values, xi_hat, beta_hat, lambda_u, threshold
         )
-        return (
-            (
-                np.where(mask_tail, lambda_dist, np.nan)
-                if lambda_dist.size > 0
-                else np.full(mask_tail.shape, np.nan)
-            ),
-            test_values,
-            fit_result,
-        )
+        lambda_dist[~mask_tail] = np.nan
+        return (lambda_dist, test_values, fit_result)
     else:
         vals = _gpd_inverse_distribution(
             test_frequency, xi_hat, beta_hat, lambda_u, threshold
         )
         mask_tail = vals > threshold
-        return (
-            test_frequency,
-            (
-                np.where(mask_tail, vals, np.nan)
-                if vals.size > 0
-                else np.full(mask_tail.shape, np.nan)
-            ),
-            fit_result,
-        )
+        vals[~mask_tail] = np.nan
+        return (test_frequency, vals, fit_result)

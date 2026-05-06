@@ -288,11 +288,16 @@ class TestFitMethods(unittest.TestCase):
         rng = np.random.default_rng(42)
         xi_true = 0.35
         beta_true = 7
-        n = 10000
+        n = 5000
         threshold_percentile = 90
         values = genpareto.rvs(c=xi_true, scale=beta_true, size=n, random_state=rng)
         frequency = np.ones(n) / n
-        test_freq = np.array([0.01, 0.001])
+
+        threshold = np.percentile(values, threshold_percentile)
+        lambda_u = np.sum(
+            frequency[values >= threshold]
+        )  # frequency of exceeding threhold
+        test_freq = lambda_u * np.array([1.2, 0.8, 0.5])
         freq_out, val_out, fit_result = u_interp.fit_tail_GPD(
             test_frequency=test_freq,
             frequency=frequency,
@@ -306,19 +311,31 @@ class TestFitMethods(unittest.TestCase):
         # test fitted parameters
         # changing the threshold does not change xi but changes beta, see Ch. 4 Eq. 4.16 in
         # (Coles, 2001, https://doi.org/10.1007/978-1-4471-3675-0)
-        threshold = np.percentile(values, threshold_percentile)
         expected_beta = beta_true + xi_true * threshold
         np.testing.assert_allclose(fit_result["xi"], xi_true, rtol=0.15)
         np.testing.assert_allclose(fit_result["beta"], expected_beta, rtol=0.15)
 
         # Test predicted tail
         # Ch. 4 Eq. 4.13 in (Coles, 2001, https://doi.org/10.1007/978-1-4471-3675-0)
-        # frequency of exceeding threhold
-        lambda_u = np.sum(frequency[values >= threshold])
         expected_vals = threshold + (expected_beta / xi_true) * (
             (test_freq / lambda_u) ** (-xi_true) - 1.0
         )
+        expected_vals = np.where(expected_vals >= threshold, expected_vals, np.nan)
         np.testing.assert_allclose(val_out, expected_vals, rtol=0.15)
+
+        # testing the inverse of the distribution
+        test_values = np.array([0.9 * threshold, 1.1 * threshold, 1.5 * threshold])
+        freq_out, val_out, fit_result = u_interp.fit_tail_GPD(
+            test_values=test_values,
+            frequency=frequency,
+            values=values,
+            threshold_percentile=threshold_percentile,
+        )
+        expected_freqs = lambda_u * (
+            1 + xi_true / expected_beta * (test_values - threshold)
+        ) ** (-1 / xi_true)
+        expected_freqs = np.where(test_values >= threshold, expected_freqs, np.nan)
+        np.testing.assert_allclose(freq_out, expected_freqs, rtol=0.15)
 
 
 # Execute Tests
