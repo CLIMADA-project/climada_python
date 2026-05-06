@@ -492,7 +492,7 @@ def fit_tail_GPD(
     frequency_tail = frequency[mask]
     if sum(mask) < min_sample_size:
         raise ValueError(
-            f"Not enough data points above the threshold for fitting the {dist}. You can try to "
+            f"Not enough data points above the threshold for fitting the GPD. You can try to "
             f"choose a smaller threshold_percentile={threshold_percentile} or a smaller "
             f"min_sample_size={min_sample_size}."
         )
