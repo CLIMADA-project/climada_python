@@ -2318,8 +2318,8 @@ class ImpactFreqCurve:
         min_impact=0,
         bin_decimals=None,
         y_asymptotic=0.0,
-        threshold_percentile=None,
-        min_sample_size=10,
+        threshold_percentile=90,
+        min_sample_size=20,
     ):
         """Interpolate and extrapolate impact frequency curve using different methods.
 
@@ -2330,9 +2330,12 @@ class ImpactFreqCurve:
 
         method : str, optional
             Method to interpolate to new return periods. Currently available are "interpolate",
-            "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
-            return periods outside the range of the Impact object's observed return periods
-            will be assigned NaN. If set to "extrapolate_constant" or "stepfunction",
+            "fit_GPD", "extrapolate", "extrapolate_constant", and "stepfunction". If set to
+            "interpolate", return periods outside the range of the Impact object's observed return
+            periods will be assigned NaN. If set to "fit_GPD", a generalized Pareto distribution
+            is fitted to the tail of the data. The tail is defined by the percentile value
+            corresponding to threshold_percentile after first filtering out all impacts below
+            min_impact. If set to "extrapolate_constant" or "stepfunction",
             return periods larger than the Impact object's observed return periods will be
             assigned the largest impact, and return periods smaller than the Impact object's
             observed return periods will be assigned 0. If set to "extrapolate",
@@ -2356,6 +2359,13 @@ class ImpactFreqCurve:
             Has no effect if method is "interpolate". Else, if data size < 2 or if method
             is set to "extrapolate_constant" or "stepfunction", it provides return value for
             exceeded impact for return periods smaller than the data range. Defaults to 0.
+        threshold_percentile : float, optional
+            Has only effect if method is "fit_GPD". Defined percentile to set threshold in
+            GPD peak-over-threshold, after first filtering out all impacts below min_impact.
+            Defaults to 90.
+        min_sample_size : int, optinal
+            Has only effect if method is "fit_GPD". Minimal sample size to require for fitting
+            GPD to the tail. Defaults to 20.
 
         Returns
         -------
@@ -2366,6 +2376,8 @@ class ImpactFreqCurve:
         --------
         util.interpolation.preprocess_and_interpolate_ev :
             inter- and extrapolation method
+        util.interpolation.fit_tail_GPD :
+            method to fit a GPD distribution to the tail
         """
         exceedance_frequency = 1 / np.array(return_periods)
 
@@ -2375,15 +2387,13 @@ class ImpactFreqCurve:
         rps = np.asarray(self.return_per)[sorted_idxs]
         frequency = np.diff(1 / np.array(rps)[::-1], prepend=0)[::-1]
 
-        if method in ["fit_GPD", "fit_GEV"]:
-            if threshold_percentile is None:
-                threshold_percentile = 90 if method == "fit_GPD" else 80
-            _, impact_interpolated, _ = u_interp.fit_tail_distribution(
+        if method == "fit_GPD":
+            _, impact_interpolated, _ = u_interp.fit_tail_GPD(
                 exceedance_frequency,
                 None,
                 frequency,
                 impacts,
-                dist="GPD" if method == "fit_GPD" else "GEV",
+                value_threshold=min_impact,
                 min_sample_size=min_sample_size,
                 threshold_percentile=threshold_percentile,
             )
