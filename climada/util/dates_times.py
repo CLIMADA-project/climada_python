@@ -138,8 +138,7 @@ def convert_frequency_unit_to_time_unit(frequency_unit):
         time_unit = "weeks"
     else:
         LOGGER.warning(
-            f"Frequency unit {frequency_unit} is not known, "
-            "years will be used as time unit."
+            f"Frequency unit {frequency_unit} is not known, years will be used as time unit."
         )
         time_unit = "years"
     return time_unit

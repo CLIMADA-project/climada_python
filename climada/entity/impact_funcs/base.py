@@ -175,7 +175,7 @@ class ImpactFunc:
 
         if num_exp == 0:
             LOGGER.warning(
-                "%s impact function with name '%s' (id=%s) has empty" " intensity.",
+                "%s impact function with name '%s' (id=%s) has empty intensity.",
                 self.haz_type,
                 self.name,
                 self.id,

@@ -165,10 +165,7 @@ class TestExtension(unittest.TestCase):
 
     def test_get_extension_two_pass(self):
         """Test compressed"""
-        file_name = (
-            "/Users/aznarsig/Documents/Python/climada_python"
-            "/data/demo/SC22000_VE__M1.grd.gz"
-        )
+        file_name = "/Users/aznarsig/Documents/Python/climada_python/data/demo/SC22000_VE__M1.grd.gz"
         self.assertEqual(".grd.gz", get_extension(file_name)[1])
         self.assertEqual(
             str(

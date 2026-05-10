@@ -30,7 +30,7 @@ __all__ = [
 import logging
 
 import numpy as np
-import scipy.sparse as sparse
+from scipy import sparse
 
 LOGGER = logging.getLogger(__name__)
 

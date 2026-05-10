@@ -483,7 +483,7 @@ class Exposures:
         for var in sorted(
             set(self.vars_def).difference([INDICATOR_IMPF, INDICATOR_IMPF_OLD])
         ):
-            if not var in self.gdf.columns:
+            if var not in self.gdf.columns:
                 LOGGER.info("%s not set.", var)
 
         # special treatment for impf_*
@@ -502,7 +502,7 @@ class Exposures:
 
         # optional columns except centr_*
         for var in sorted(set(self.vars_opt).difference([INDICATOR_CENTR])):
-            if not var in self.gdf.columns:
+            if var not in self.gdf.columns:
                 LOGGER.info("%s not set.", var)
 
         # special treatment for centr_*
@@ -1180,8 +1180,7 @@ class Exposures:
     def read_hdf5(self, *args, **kwargs):
         """This function is deprecated, use Exposures.from_hdf5 instead."""
         LOGGER.warning(
-            "The use of Exposures.read_hdf5 is deprecated."
-            "Use Exposures.from_hdf5 instead."
+            "The use of Exposures.read_hdf5 is deprecated.Use Exposures.from_hdf5 instead."
         )
         self.__dict__ = Exposures.from_hdf5(*args, **kwargs).__dict__
 
@@ -1233,8 +1232,7 @@ class Exposures:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Exposures.from_mat instead."""
         LOGGER.warning(
-            "The use of Exposures.read_mat is deprecated."
-            "Use Exposures.from_mat instead."
+            "The use of Exposures.read_mat is deprecated.Use Exposures.from_mat instead."
         )
         self.__dict__ = Exposures.from_mat(*args, **kwargs).__dict__
 

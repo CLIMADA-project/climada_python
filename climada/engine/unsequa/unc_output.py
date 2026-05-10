@@ -877,7 +877,7 @@ class UncOutput:
 
         if not self.sensitivity_metrics:
             raise ValueError(
-                "No sensitivity present. " "Please run a sensitivity analysis first."
+                "No sensitivity present. Please run a sensitivity analysis first."
             )
 
         if metric_list is None:
@@ -989,8 +989,7 @@ class UncOutput:
 
         if not self.sensitivity_metrics:
             raise ValueError(
-                "No sensitivity present for this metrics. "
-                "Please run a sensitivity analysis first."
+                "No sensitivity present for this metrics. Please run a sensitivity analysis first."
             )
 
         if metric_list is None:
@@ -1054,7 +1053,7 @@ class UncOutput:
                             j,
                             i,
                             str(round(s2_matrix[i, j], 2))
-                            + "\n\u00B1"  # \u00B1 = +-
+                            + "\n\u00b1"  # \u00B1 = +-
                             + str(round(s2_conf_matrix[i, j], 2)),
                             ha="center",
                             va="center",

@@ -476,7 +476,7 @@ class Forecast:
                 coord[:, 0],
                 c=array_im,
                 transform=ccrs.PlateCarree(),
-                **kwargs
+                **kwargs,
             )
             if shapes:
                 # add warning regions
@@ -882,7 +882,7 @@ class Forecast:
                 coord[:, 0],
                 c=array_im,
                 transform=ccrs.PlateCarree(),
-                **kwargs
+                **kwargs,
             )
             if shapes:
                 # add warning regions

@@ -705,8 +705,7 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize
             grid.yformatter = LATITUDE_FORMATTER
             if adapt_fontsize:
                 fontsize = axis.bbox.width / 35
-                if fontsize < 10:
-                    fontsize = 10
+                fontsize = max(fontsize, 10)
                 grid.xlabel_style = {"size": fontsize}
                 grid.ylabel_style = {"size": fontsize}
             else:
@@ -889,13 +888,12 @@ def _get_row_col_size(num_sub):
     if num_sub <= 3:
         num_col = num_sub
         num_row = 1
+    elif num_sub % 3 == 0:
+        num_col = 3
+        num_row = int(num_sub / 3)
     else:
-        if num_sub % 3 == 0:
-            num_col = 3
-            num_row = int(num_sub / 3)
-        else:
-            num_col = 2
-            num_row = int(num_sub / 2) + num_sub % 2
+        num_col = 2
+        num_row = int(num_sub / 2) + num_sub % 2
     return num_row, num_col
 
 

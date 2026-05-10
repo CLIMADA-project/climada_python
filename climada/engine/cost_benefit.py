@@ -25,9 +25,9 @@ import copy
 import logging
 from typing import Dict, Optional, Tuple, Union
 
-import matplotlib.colors as colors
 import matplotlib.pyplot as plt
 import numpy as np
+from matplotlib import colors
 from matplotlib.patches import FancyArrowPatch, Rectangle
 from tabulate import tabulate
 
@@ -661,7 +661,7 @@ class CostBenefit:
         ent_future,
         risk_func=risk_aai_agg,
         axis=None,
-        **kwargs
+        **kwargs,
     ):
         """Plot waterfall graph at future with given risk metric. Can be called
         before and after calc().
@@ -740,7 +740,7 @@ class CostBenefit:
             2,
             height=(risk_dev - curr_risk) / norm_fact,
             bottom=curr_risk / norm_fact,
-            **kwargs
+            **kwargs,
         )
         axis.text(
             2,
@@ -755,7 +755,7 @@ class CostBenefit:
             3,
             height=(fut_risk - risk_dev) / norm_fact,
             bottom=risk_dev / norm_fact,
-            **kwargs
+            **kwargs,
         )
         axis.text(
             3,
@@ -799,7 +799,7 @@ class CostBenefit:
         risk_func=risk_aai_agg,
         disc_rates=None,
         imp_time_depen=1,
-        **kwargs
+        **kwargs,
     ):
         """Plot waterfall graph with accumulated values from present to future
         year. Call after calc() with save_imp=True.
@@ -877,7 +877,7 @@ class CostBenefit:
             tot_benefit,
             bars[3].get_height() * norm_fact,
             norm_fact,
-            **kwargs
+            **kwargs,
         )
 
     def plot_waterfall_accumulated(
@@ -888,7 +888,7 @@ class CostBenefit:
         risk_func=risk_aai_agg,
         imp_time_depen=1,
         axis=None,
-        **kwargs
+        **kwargs,
     ):
         """Plot waterfall graph with accumulated values from present to future
         year. Call after calc() with save_imp=True. Provide same inputs as in calc.
@@ -976,7 +976,7 @@ class CostBenefit:
             2,
             height=(risk_dev - risk_curr) / norm_fact,
             bottom=risk_curr / norm_fact,
-            **kwargs
+            **kwargs,
         )
         axis.text(
             2,
@@ -991,7 +991,7 @@ class CostBenefit:
             3,
             height=(risk_tot - risk_dev) / norm_fact,
             bottom=risk_dev / norm_fact,
-            **kwargs
+            **kwargs,
         )
         axis.text(
             3,
@@ -1395,7 +1395,7 @@ class CostBenefit:
                         cb_res.benefit[meas_n] / norm_fact,
                         1 / cb_res.cost_ben_ratio[meas_n],
                         color=cb_res.color_rgb[meas_n],
-                        **kwargs
+                        **kwargs,
                     )
                 )
 
@@ -1489,7 +1489,7 @@ class CostBenefit:
                     bar_top[0] - (bar_top[0] - bar_bottom[0]) / 2,
                     risk_tot / norm_fact - arrow_len,
                 ),
-                **kwargs
+                **kwargs,
             )
         )
 

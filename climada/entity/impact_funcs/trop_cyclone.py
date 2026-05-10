@@ -481,7 +481,6 @@ class ImpfSetTropCyclone(ImpactFuncSet):
         # Find region
         regions_ids = []
         for country in countries:
-
             if isinstance(country, int):
                 country = coordinates.country_to_iso(
                     country, representation="alpha3", fillvalue=None

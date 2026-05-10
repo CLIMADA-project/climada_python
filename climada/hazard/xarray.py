@@ -102,8 +102,7 @@ def _date_to_ordinal_accessor(array: xr.DataArray, strict: bool = True) -> np.nd
             raise err
 
         LOGGER.warning(
-            "Failed to read values of '%s' as dates or ordinals. Hazard.date "
-            "will be ones only",
+            "Failed to read values of '%s' as dates or ordinals. Hazard.date will be ones only",
             array.name,
         )
         return np.ones(array.shape)
@@ -120,8 +119,7 @@ def _year_month_day_accessor(array: xr.DataArray, strict: bool = True) -> np.nda
             raise err
 
         LOGGER.warning(
-            "Failed to read values of '%s' as dates. Hazard.event_name will be "
-            "empty strings",
+            "Failed to read values of '%s' as dates. Hazard.event_name will be empty strings",
             array.name,
         )
         return np.full(array.shape, "")

@@ -535,8 +535,7 @@ class ImpactFuncSet:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use ImpactFuncSet.from_mat instead."""
         LOGGER.warning(
-            "The use of ImpactFuncSet.read_mat  is deprecated."
-            "Use ImpactFuncSet.from_mat  instead."
+            "The use of ImpactFuncSet.read_mat  is deprecated.Use ImpactFuncSet.from_mat  instead."
         )
         self.__dict__ = ImpactFuncSet.from_mat(*args, **kwargs).__dict__
 
@@ -591,7 +590,6 @@ class ImpactFuncSet:
         imp_wb.close()
 
     def _fill_dfr(self, dfr, var_names):
-
         def _get_xls_funcs(dfr, var_names):
             """Parse individual impact functions."""
             dist_func = []
@@ -627,7 +625,7 @@ class ImpactFuncSet:
                 try:
                     if len(df_func[var_names["col_name"]["unit"]].unique()) != 1:
                         raise ValueError(
-                            "Impact function with two different" " intensity units."
+                            "Impact function with two different intensity units."
                         )
                     impf_kwargs["intensity_unit"] = df_func[
                         var_names["col_name"]["unit"]

@@ -222,16 +222,14 @@ class EnsembleOptimizerOutput:
     def from_csv(cls, filepath: Path | str):
         """Load data from CSV"""
         LOGGER.warning(
-            "Do not use CSV for storage, because it does not preserve data types. "
-            "Use HDF instead."
+            "Do not use CSV for storage, because it does not preserve data types. Use HDF instead."
         )
         return cls(data=pd.read_csv(filepath, header=[0, 1]))
 
     def to_csv(self, filepath: Path | str):
         """Store data as CSV"""
         LOGGER.warning(
-            "Do not use CSV for storage, because it does not preserve data types. "
-            "Use HDF instead."
+            "Do not use CSV for storage, because it does not preserve data types. Use HDF instead."
         )
         self.data.to_csv(filepath, index=None)
 

@@ -1262,7 +1262,6 @@ class TestConvertExp(unittest.TestCase):
 
 
 class TestMatchCentroids(unittest.TestCase):
-
     def test_match_centroids(self):
         "Test that hazard centroids get assigned correctly"
         exp = ENT.exposures

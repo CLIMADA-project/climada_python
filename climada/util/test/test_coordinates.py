@@ -676,7 +676,7 @@ class TestFunc(unittest.TestCase):
                 lat, resolution, unit="unknown"
             )
             self.assertIn(
-                f"'unknown' unit not recognized. Please use any of 'm2', 'km2' or 'ha'.",
+                "'unknown' unit not recognized. Please use any of 'm2', 'km2' or 'ha'.",
                 str(cm.exception),
             )
 
@@ -1968,7 +1968,6 @@ class TestRasterMeta(unittest.TestCase):
     def test_points_to_raster_pass(self):
         """Test points_to_raster"""
         for scheduler in [None, "threads", "synchronous", "processes"]:
-
             df_val = gpd.GeoDataFrame()
             x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
             df_val["latitude"] = y.flatten()
@@ -2453,7 +2452,7 @@ class TestRasterIO(unittest.TestCase):
         # test conserve sum:
         for j, data in enumerate(data_in):  # src
             data_out, _ = u_coord.align_raster_data(
-                data_in[j],
+                data,
                 meta_list[j]["crs"],
                 meta_list[j]["transform"],
                 dst_crs=meta_list[i]["crs"],
@@ -2462,12 +2461,12 @@ class TestRasterIO(unittest.TestCase):
                 resampling="bilinear",
                 conserve="sum",
             )
-            self.assertAlmostEqual(data_in[j].sum(), data_out.sum(), places=4)
+            self.assertAlmostEqual(data.sum(), data_out.sum(), places=4)
 
         # test conserve mean:
         for j, data in enumerate(data_in):
             data_out, _ = u_coord.align_raster_data(
-                data_in[j],
+                data,
                 meta_list[j]["crs"],
                 meta_list[j]["transform"],
                 dst_crs=meta_list[i]["crs"],
@@ -2476,7 +2475,7 @@ class TestRasterIO(unittest.TestCase):
                 resampling="bilinear",
                 conserve="mean",
             )
-            self.assertAlmostEqual(data_in[j].mean(), data_out.mean(), places=4)
+            self.assertAlmostEqual(data.mean(), data_out.mean(), places=4)
 
     def test_align_raster_data_upsample(self):
         """test function align_raster_data with upsampling"""

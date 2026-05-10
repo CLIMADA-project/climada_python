@@ -35,7 +35,6 @@ from climada.entity import Exposures, ImpactFunc, ImpactFuncSet, ImpfTropCyclone
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Centroids, Hazard
 from climada.test import get_test_file
-from climada.util.api_client import Client
 from climada.util.config import Config
 from climada.util.constants import DEMO_DIR, ENT_DEMO_TODAY
 

@@ -45,13 +45,13 @@ import netCDF4 as nc
 import numpy as np
 import pandas as pd
 import pathos
-import scipy.io.matlab as matlab
 import shapely.ops
 import statsmodels.api as sm
 import xarray as xr
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
+from scipy.io import matlab
 from shapely.geometry import LineString, MultiLineString, Point, Polygon
 from shapely.ops import unary_union
 from sklearn.metrics import DistanceMetric
@@ -585,7 +585,6 @@ class TCTracks:
         # Find indices corresponding to the date range
         index: list = []
         for i, track in enumerate(self.data):
-
             date_array = track.time[0].to_numpy()
             year = date_array.astype("datetime64[Y]").item().year
             month = date_array.astype("datetime64[M]").item().month
@@ -1864,8 +1863,7 @@ class TCTracks:
     def read_netcdf(self, *args, **kwargs):
         """This function is deprecated, use TCTracks.from_netcdf instead."""
         LOGGER.warning(
-            "The use of TCTracks.read_netcdf is deprecated. "
-            "Use TCTracks.from_netcdf instead."
+            "The use of TCTracks.read_netcdf is deprecated. Use TCTracks.from_netcdf instead."
         )
         self.__dict__ = TCTracks.from_netcdf(*args, **kwargs).__dict__
 
@@ -1946,7 +1944,6 @@ class TCTracks:
             with xr.open_dataset(file) as dataset:
                 for year in dataset.year:
                     for i in dataset.n_trk:
-
                         # Select track
                         track = dataset.sel(n_trk=i, year=year)
                         # chunk dataset at first NaN value
@@ -2339,7 +2336,7 @@ class TCTracks:
         if time_value > (res / limit_ratio):
             warnings.warn(
                 "The time step is too big for the current resolution. For the desired resolution, \n"
-                f"apply a time step equal or lower than {res/limit_ratio}h."
+                f"apply a time step equal or lower than {res / limit_ratio}h."
             )
         elif res < 0.1:
             warnings.warn(
@@ -2369,7 +2366,6 @@ class TCTracks:
         else:
             hist_count = np.zeros((len(lat_bins) - 1, len(lon_bins) - 1))
             for track in tqdm(self.data, desc="Processing Tracks"):
-
                 # select according to wind speed
                 wind_speed = track.max_sustained_wind.values
                 if wind_min and wind_max:
@@ -2775,8 +2771,7 @@ def _read_file_emanuel(path, hemisphere=None, rmw_corr=False, subset=None):
     ntracks, nnodes = lat.shape
     years_uniq = np.unique(data_mat["yearstore"])
     LOGGER.info(
-        "File contains %s tracks (at most %s nodes each), "
-        "representing %s years (%s-%s).",
+        "File contains %s tracks (at most %s nodes each), representing %s years (%s-%s).",
         ntracks,
         nnodes,
         years_uniq.size,

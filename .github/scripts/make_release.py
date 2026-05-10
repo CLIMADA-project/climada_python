@@ -5,6 +5,7 @@ It reads the version number from climada*/_version.py and then uses the `gh` cli
 to create the new release.
 
 """
+
 import glob
 import re
 import subprocess

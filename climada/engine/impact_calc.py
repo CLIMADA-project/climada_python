@@ -196,8 +196,7 @@ class ImpactCalc:
         )
         if insured:
             LOGGER.info(
-                "cover and/or deductible columns detected,"
-                " going to calculate insured impact"
+                "cover and/or deductible columns detected, going to calculate insured impact"
             )
             # TODO: make a better impact matrix generator for insured impacts when
             # the impact matrix is already present

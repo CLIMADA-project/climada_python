@@ -719,9 +719,7 @@ def _apply_land_decay(
     """
     sy_tracks = [track for track in tracks if not track.orig_event_flag]
     if not sy_tracks:
-        raise ValueError(
-            "No synthetic tracks contained. Synthetic tracks" " are needed."
-        )
+        raise ValueError("No synthetic tracks contained. Synthetic tracks are needed.")
 
     if not v_rel or not p_rel:
         LOGGER.info("No decay coefficients.")

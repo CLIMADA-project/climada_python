@@ -25,8 +25,8 @@ import unittest
 import numpy as np
 
 import climada.util.dates_times as u_dt
-import climada.util.yearsets as yearsets
 from climada.engine import Impact
+from climada.util import yearsets
 
 IMP = Impact()
 IMP.at_event = np.arange(10, 110, 10)

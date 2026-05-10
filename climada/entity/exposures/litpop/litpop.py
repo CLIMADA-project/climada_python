@@ -94,8 +94,7 @@ class LitPop(Exposures):
     def set_countries(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
         LOGGER.warning(
-            "The use of LitPop.set_countries is deprecated."
-            "Use LitPop.from_countries instead."
+            "The use of LitPop.set_countries is deprecated.Use LitPop.from_countries instead."
         )
         self.__dict__ = LitPop.from_countries(*args, **kwargs).__dict__
 
@@ -297,8 +296,7 @@ class LitPop(Exposures):
             }
         except ValueError:
             LOGGER.warning(
-                "Could not write attribute meta, because exposure"
-                " has only 1 data point"
+                "Could not write attribute meta, because exposure has only 1 data point"
             )
             exp.meta = {"crs": exp.crs}
         exp.check()
@@ -409,8 +407,7 @@ class LitPop(Exposures):
     def set_population(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_population instead."""
         LOGGER.warning(
-            "The use of LitPop.set_population is deprecated."
-            "Use LitPop.from_population instead."
+            "The use of LitPop.set_population is deprecated.Use LitPop.from_population instead."
         )
         self.__dict__ = LitPop.from_population(*args, **kwargs).__dict__
 
@@ -680,8 +677,7 @@ class LitPop(Exposures):
     def set_custom_shape(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_shape instead."""
         LOGGER.warning(
-            "The use of LitPop.set_custom_shape is deprecated."
-            "Use LitPop.from_shape instead."
+            "The use of LitPop.set_custom_shape is deprecated.Use LitPop.from_shape instead."
         )
         self.__dict__ = LitPop.from_shape(*args, **kwargs).__dict__
 
@@ -1219,8 +1215,7 @@ def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year):
         return None
     if fin_mode == "pop":
         raise NotImplementedError(
-            "`_get_total_value_per_country` is not "
-            "implemented for `fin_mode` == 'pop'."
+            "`_get_total_value_per_country` is not implemented for `fin_mode` == 'pop'."
         )
     if fin_mode == "pc":
         return u_fin.world_bank_wealth_account(
@@ -1589,8 +1584,7 @@ def _calc_admin1_one_country(
     grp_values = _grp_read(iso3a, admin1_info=admin1_info, data_dir=data_dir)
     if grp_values is None:
         LOGGER.error(
-            "No subnational GRP data found for calc_admin1"
-            " for country %s. Skipping.",
+            "No subnational GRP data found for calc_admin1 for country %s. Skipping.",
             country,
         )
         return None

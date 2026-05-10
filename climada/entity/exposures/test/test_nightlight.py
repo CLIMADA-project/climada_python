@@ -20,12 +20,10 @@ Test Nightlight module.
 """
 
 import unittest
-from pathlib import Path
 
 import numpy as np
 
 from climada.entity.exposures.litpop import nightlight
-from climada.util.constants import SYSTEM_DIR
 
 BM_FILENAMES = nightlight.BM_FILENAMES
 
@@ -102,7 +100,6 @@ class TestNightLight(unittest.TestCase):
 
         for bounds in BOUNDS:
             with self.assertRaises(ValueError) as cm:
-
                 nightlight.get_required_nl_files(bounds=bounds)
 
                 self.assertEqual(

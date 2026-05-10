@@ -28,10 +28,10 @@ import logging
 import time
 from typing import List, Optional, Tuple
 
-import matplotlib.animation as animation
 import numpy as np
 import pathos.pools
 import xarray as xr
+from matplotlib import animation
 from scipy import sparse
 from tqdm import tqdm
 
@@ -747,7 +747,6 @@ class TropCyclone(Hazard):
 
         # Criterion per basin
         for basin in np.unique(tc_cc.basin):
-
             bas_sel = np.array(tc_cc.basin) == basin
 
             # Apply intensity change

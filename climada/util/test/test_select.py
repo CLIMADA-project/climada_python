@@ -27,7 +27,6 @@ from climada.util.select import get_attributes_with_matching_dimension
 
 
 class Dummy:
-
     def __init__(self):
         self.oneD3 = [1, 2, 3]
         self.oneD4 = [1, 2, 3, 4]

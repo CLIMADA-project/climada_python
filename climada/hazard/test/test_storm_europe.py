@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test StormEurope class
 """
 
-import copy
 import datetime as dt
 import unittest
 

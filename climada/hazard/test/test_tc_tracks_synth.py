@@ -42,7 +42,6 @@ TEST_TRACK_DECAY_PENV_GT_PCEN_HIST = DATA_DIR.joinpath("1988021S12080.nc")
 
 
 class TestDecay(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         download_ibtracs()
@@ -592,7 +591,6 @@ class TestDecay(unittest.TestCase):
 
 
 class TestSynth(unittest.TestCase):
-
     @classmethod
     def setUpClass(cls):
         download_ibtracs()
@@ -699,14 +697,14 @@ class TestSynth(unittest.TestCase):
                 use_global_decay_params=False,
             )
         self.assertIn(
-            "No historical track of category Tropical Depression " "with landfall.",
+            "No historical track of category Tropical Depression with landfall.",
             cm.output[2],
         )
         self.assertIn(
             "Decay parameters from category Hurricane Cat. 4 taken.", cm.output[3]
         )
         self.assertIn(
-            "No historical track of category Hurricane Cat. 1 with " "landfall.",
+            "No historical track of category Hurricane Cat. 1 with landfall.",
             cm.output[4],
         )
         self.assertIn(
@@ -719,7 +717,7 @@ class TestSynth(unittest.TestCase):
             cm.output[6],
         )
         self.assertIn(
-            "No historical track of category Hurricane Cat. 5 with " "landfall.",
+            "No historical track of category Hurricane Cat. 5 with landfall.",
             cm.output[7],
         )
 

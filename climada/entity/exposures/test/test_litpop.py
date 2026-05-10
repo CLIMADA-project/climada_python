@@ -129,7 +129,6 @@ class TestLitPop(unittest.TestCase):
         """test function reproject_input_data downsampling lit to pop grid
         (default resampling for LitPop)"""
         data_in, meta_list = data_arrays_resampling_demo()
-        #
         data_out, meta_out = lp.reproject_input_data(
             data_in, meta_list, target_grid=meta_list[0]
         )

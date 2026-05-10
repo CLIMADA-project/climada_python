@@ -9,6 +9,7 @@ The following preparation steps are executed:
 The changes are not commited to the repository. This is dealt with in the bash script
 `setup_devbranch.sh` (which is also the caller of this script).
 """
+
 import glob
 import json
 import re

@@ -619,7 +619,6 @@ class TestCentroidsReaderWriter(unittest.TestCase):
         self.assertTrue(u_coord.equal_crs(centroids.crs, crs))
 
     def test_from_geodataframe_invalid(self):
-
         # Creating an invalid GeoDataFrame with geometries that are not points
         invalid_geometry_gdf = gpd.GeoDataFrame(
             {

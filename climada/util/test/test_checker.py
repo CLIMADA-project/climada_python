@@ -22,13 +22,12 @@ Test variable check util functions.
 import unittest
 
 import numpy as np
-import scipy.sparse as sparse
+from scipy import sparse
 
 import climada.util.checker as u_check
 
 
 class DummyClass(object):
-
     vars_oblig = {"id", "array", "sparse_arr"}
     vars_opt = {"list", "array_opt"}
 

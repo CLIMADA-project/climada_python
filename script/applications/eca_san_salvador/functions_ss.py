@@ -22,8 +22,8 @@ WORK IN PROGRESS
 
 import contextily as ctx
 import geopandas as gpd
-import matplotlib.patches as patches
 from matplotlib import colormaps as cm
+from matplotlib import patches
 from shapely import wkt
 
 
@@ -56,8 +56,7 @@ def plot_salvador_ma():
     return fig
 
 
-from climada.entity import Entity, Exposures
-from climada.hazard import Hazard
+from climada.entity import Entity
 
 
 def load_entity():

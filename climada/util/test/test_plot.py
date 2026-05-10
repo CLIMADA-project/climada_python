@@ -33,7 +33,6 @@ import climada.util.plot as u_plot
 
 
 class TestFuncs(unittest.TestCase):
-
     def test_get_transform_4326_pass(self):
         """Check _get_transformation for 4326 epsg."""
         res, unit = u_plot.get_transformation("epsg:4326")
@@ -55,7 +54,6 @@ class TestFuncs(unittest.TestCase):
 
 
 class TestPlots(unittest.TestCase):
-
     def test_geo_scatter_categorical(self):
         """Plots ones with geo_scatteR_categorical"""
         # test default with one plot

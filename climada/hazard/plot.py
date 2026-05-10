@@ -364,7 +364,7 @@ class HazardPlot:
             array_val = mat_var[:, centr_pos].toarray()
             title = (
                 f"Centroid {centr_idx}:"
-                f" ({np.around(coord[centr_pos, 0], 3)}, {np.around(coord[centr_pos, 1],3)})"
+                f" ({np.around(coord[centr_pos, 0], 3)}, {np.around(coord[centr_pos, 1], 3)})"
             )
         elif centr_idx < 0:
             max_inten = np.asarray(np.sum(mat_var, axis=0)).reshape(-1)
