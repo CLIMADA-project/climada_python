@@ -186,7 +186,7 @@ class ImpactCalc:
             return self._return_empty(save_mat)
         LOGGER.info(
             "Calculating impact for %s assets (>0) and %s events.",
-            exp_gdf.size,
+            len(exp_gdf),
             self.n_events,
         )
         imp_mat_gen = self.imp_mat_gen(exp_gdf, impf_col)

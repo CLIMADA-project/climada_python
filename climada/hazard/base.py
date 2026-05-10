@@ -552,15 +552,6 @@ class Hazard(HazardIO, HazardPlot):
             self.frequency_unit
         )
 
-        # check method
-        if method not in [
-            "interpolate",
-            "extrapolate",
-            "extrapolate_constant",
-            "stepfunction",
-        ]:
-            raise ValueError(f"Unknown method: {method}")
-
         # calculate local exceedance intensity
         test_frequency = 1 / np.array(return_periods)
 
@@ -704,15 +695,6 @@ class Hazard(HazardIO, HazardPlot):
         return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
             self.frequency_unit
         )
-
-        # check method
-        if method not in [
-            "interpolate",
-            "extrapolate",
-            "extrapolate_constant",
-            "stepfunction",
-        ]:
-            raise ValueError(f"Unknown method: {method}")
 
         return_periods = np.full(
             (self.intensity.shape[1], len(threshold_intensities)), np.nan

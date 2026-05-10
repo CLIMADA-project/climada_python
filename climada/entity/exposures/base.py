@@ -403,6 +403,9 @@ class Exposures:
 
         self.description = self._consolidate(meta, "description", description)
         self.ref_year = self._consolidate(meta, "ref_year", ref_year, DEF_REF_YEAR)
+
+        if geodata.shape[0] > 0:
+            value_unit = self._consolidate(geodata.iloc[0], "value_unit", value_unit)
         self.value_unit = self._consolidate(
             meta, "value_unit", value_unit, DEF_VALUE_UNIT
         )
@@ -644,15 +647,17 @@ class Exposures:
 
         Caution: nearest neighbourg matching can introduce serious artefacts
         such as:
-            - exposure and hazard centroids with shifted grids can lead
-            to systematically wrong assignements.
-            - hazard centroids covering larger areas than exposures may lead
-            to sub-optimal matching if the threshold is too large
-            - projected crs often diverge at the anti-meridian and close points
-            on either side will be at a large distance. For proper handling
-            of the anti-meridian please use degree coordinates in EPSG:4326.
-            This might be relevant for countries like the Fidji or the US that
-            cross the anti-meridian.
+
+        - exposure and hazard centroids with shifted grids can lead
+          to systematically wrong assignements.
+        - hazard centroids covering larger areas than exposures may lead
+          to sub-optimal matching if the threshold is too large
+        - projected crs often diverge at the anti-meridian and close points
+          on either side will be at a large distance. For proper handling
+          of the anti-meridian please use degree coordinates in EPSG:4326.
+          This might be relevant for countries like the Fidji or the US that
+          cross the anti-meridian.
+
 
         Users are free to implement their own matching alrogithm and save the
         matching centroid index in the appropriate column ``centr_[hazard.HAZ_TYPE]``.

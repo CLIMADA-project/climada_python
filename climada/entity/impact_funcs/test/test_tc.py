@@ -23,7 +23,11 @@ import unittest
 
 import numpy as np
 
-from climada.entity.impact_funcs.trop_cyclone import ImpfSetTropCyclone, ImpfTropCyclone
+from climada.entity.impact_funcs.trop_cyclone import (
+    CountryCode,
+    ImpfSetTropCyclone,
+    ImpfTropCyclone,
+)
 
 
 class TestEmanuelFormula(unittest.TestCase):
@@ -166,6 +170,16 @@ class TestCalibratedImpfSet(unittest.TestCase):
         self.assertEqual(out[1], 2)
         self.assertListEqual(out[2], [124, 840])
         self.assertListEqual(out[3], ["CAN", "USA"])
+
+    def test_get_countries_per_region_all_or_none(self):
+        ifs = ImpfSetTropCyclone()
+        out = ifs.get_countries_per_region()
+        out2 = ifs.get_countries_per_region("all")
+        self.assertEqual(out, out2)
+        for reg in CountryCode.REGION_NAME.value:
+            out_reg = ifs.get_countries_per_region(reg)
+            for i in range(4):
+                self.assertEqual(out[i][reg], out_reg[i])
 
     def test_get_imf_id_regions_per_countries(self):
         """Test get_impf_id_regions_per_countries()"""

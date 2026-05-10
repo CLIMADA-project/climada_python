@@ -1136,8 +1136,7 @@ def estimate_matching_threshold(coords_to_assign):
 
 
 def degree_to_km(degree):
-    r"""
-    Convert an angle from degrees to kilometers.
+    r"""Convert an angle from degrees to kilometers.
 
     This function converts a given angle in degrees to its equivalent distance in
     kilometers on the Earth's surface. It assumes a spherical Earth with a constant
@@ -1160,9 +1159,11 @@ def degree_to_km(degree):
     Notes
     -----
     The conversion is based on the formula:
+
     .. math::
-        distance = angle_{radians} \\times R
-    where R is the Earth's radius in km.
+       d = a \times R
+
+    where d is the distance in km, a is the angle in radians, and R is the Earth's radius in km.
 
     Examples
     --------
@@ -1173,38 +1174,39 @@ def degree_to_km(degree):
 
 
 def km_to_degree(km):
-    r"""
-    Convert a distance from kilometers to degrees.
+    r"""Convert a distance from kilometers to degrees.
 
-    This function converts a given distance in kilometers on the Earth's surface
-    to its equivalent angle in degrees. It assumes a spherical Earth with a
-    constant radius.
+     This function converts a given distance in kilometers on the Earth's surface
+     to its equivalent angle in degrees. It assumes a spherical Earth with a
+     constant radius.
 
-    Parameters
-    ----------
-    km : float or array_like
-        The distance(s) in kilometers to convert.
+     Parameters
+     ----------
+     km : float or array_like
+         The distance(s) in kilometers to convert.
 
-    Returns
-    -------
-    float or ndarray
-        The equivalent angle(s) in degrees.
+     Returns
+     -------
+     float or ndarray
+         The equivalent angle(s) in degrees.
 
-    See Also
-    --------
-    degree_to_km : The inverse function to convert degrees to kilometers.
+     See Also
+     --------
+     degree_to_km : The inverse function to convert degrees to kilometers.
 
-    Notes
-    -----
-    The conversion is based on the formula:
+     Notes
+     -----
+     The conversion is based on the formula:
+
     .. math::
-        angle_{radians} = distance / R
-    where R is the Earth's radius in km.
+        a = d / R
 
-    Examples
-    --------
-    >>> km_to_degree(111.195)
-    1.0000030589140416
+     where a is the angle in radians, d is the distance in km, and R is the Earth's radius in km.
+
+     Examples
+     --------
+     >>> km_to_degree(111.195)
+     1.0000030589140416
     """
     return np.rad2deg(km / EARTH_RADIUS_KM)
 
@@ -1412,15 +1414,17 @@ def match_centroids(
 
     Caution: nearest neighbourg matching can introduce serious artefacts
     such as:
-        - coordinates centroids with shifted grids can lead
-        to systematically wrong assignements.
-        - centroids covering larger areas than coordinates may lead
-        to sub-optimal matching if the threshold is too large
-        - projected crs often diverge at the anti-meridian and close points
-        on either side will be at a large distance. For proper handling
-        of the anti-meridian please use degree coordinates in EPSG:4326.
-        This might be relevant for countries like the Fidji or the US that
-        cross the anti-meridian.
+
+    - coordinates centroids with shifted grids can lead
+      to systematically wrong assignements.
+    - centroids covering larger areas than coordinates may lead
+      to sub-optimal matching if the threshold is too large
+    - projected crs often diverge at the anti-meridian and close points
+      on either side will be at a large distance. For proper handling
+      of the anti-meridian please use degree coordinates in EPSG:4326.
+      This might be relevant for countries like the Fidji or the US that
+      cross the anti-meridian.
+
     """
 
     try:

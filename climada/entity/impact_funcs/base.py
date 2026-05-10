@@ -189,7 +189,7 @@ class ImpactFunc:
         haz_type: str,
         mdd: tuple[float, float] = (0, 1),
         paa: tuple[float, float] = (1, 1),
-        impf_id: int = 1,
+        impf_id: int | str = 1,
         **kwargs,
     ):
         """Step function type impact function.
@@ -207,7 +207,7 @@ class ImpactFunc:
             (min, max) mdd values. The default is (0, 1)
         paa: tuple(float, float)
             (min, max) paa values. The default is (1, 1)
-        impf_id : int, optional, default=1
+        impf_id : int|str, optional, default=1
             impact function id
         kwargs :
             keyword arguments passed to ImpactFunc()
@@ -250,7 +250,7 @@ class ImpactFunc:
         k: float,
         x0: float,
         haz_type: str,
-        impf_id: int = 1,
+        impf_id: int | str = 1,
         **kwargs,
     ):
         r"""Sigmoid type impact function hinging on three parameter.
@@ -320,7 +320,7 @@ class ImpactFunc:
         scale: float,
         exponent: float,
         haz_type: str,
-        impf_id: int = 1,
+        impf_id: int | str = 1,
         **kwargs,
     ):
         r"""S-shape polynomial impact function hinging on four parameter.
