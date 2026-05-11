@@ -448,7 +448,7 @@ class MeasureConfig(ModifierConfig):
 
     This class is the primary entry point for defining measures in a
     declarative, file-based workflow and serves as the serialization
-    counterpart to :class:`~climada.entity.measures.base.Measure`.
+    counterpart to :class:`~climada.entity.measures.measure.Measure`.
 
     Parameters
     ----------

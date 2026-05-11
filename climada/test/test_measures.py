@@ -17,8 +17,8 @@ import numpy as np
 import pytest
 from scipy.sparse import csr_matrix
 
-from climada.entity.measures.base import Measure
 from climada.entity.measures.cost_income import CostIncome
+from climada.entity.measures.measure import Measure
 from climada.test.conftest import HAZARD_TYPE
 
 # ===========================================================================

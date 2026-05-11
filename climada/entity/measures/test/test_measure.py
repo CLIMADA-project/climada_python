@@ -24,8 +24,8 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
-from climada.entity.measures.base import Measure, allow_kwargs
 from climada.entity.measures.cost_income import CostIncome
+from climada.entity.measures.measure import Measure, allow_kwargs
 
 
 def _make_mock():
@@ -149,7 +149,7 @@ class TestApplyExposuresChanges:
             return obj
 
         with patch(
-            "climada.entity.measures.base.copy.deepcopy", return_value=copied
+            "climada.entity.measures.measure.copy.deepcopy", return_value=copied
         ) as mock_dc:
             m = Measure("test", exposures_changes=fn)
             result = m.apply_exposures_changes(original, enforce_copy=True)
@@ -162,7 +162,7 @@ class TestApplyExposuresChanges:
         def fn(obj, **kw):
             return obj
 
-        with patch("climada.entity.measures.base.copy.deepcopy") as mock_dc:
+        with patch("climada.entity.measures.measure.copy.deepcopy") as mock_dc:
             m = Measure("test", exposures_changes=fn)
             m.apply_exposures_changes(original, enforce_copy=False)
             mock_dc.assert_not_called()
@@ -201,7 +201,9 @@ class TestApplyImpfsetChanges:
         def fn(obj, **kw):
             return obj
 
-        with patch("climada.entity.measures.base.copy.deepcopy", return_value=copied):
+        with patch(
+            "climada.entity.measures.measure.copy.deepcopy", return_value=copied
+        ):
             m = Measure("test", impfset_changes=fn)
             result = m.apply_impfset_changes(_make_mock(), enforce_copy=True)
             assert result is copied
@@ -239,7 +241,9 @@ class TestApplyHazardChanges:
         def fn(obj, **kw):
             return obj
 
-        with patch("climada.entity.measures.base.copy.deepcopy", return_value=copied):
+        with patch(
+            "climada.entity.measures.measure.copy.deepcopy", return_value=copied
+        ):
             m = Measure("test", hazard_changes=fn)
             result = m.apply_hazard_changes(_make_mock(), enforce_copy=True)
             assert result is copied
@@ -248,7 +252,7 @@ class TestApplyHazardChanges:
         def fn(obj, **kw):
             return obj
 
-        with patch("climada.entity.measures.base.copy.deepcopy") as mock_dc:
+        with patch("climada.entity.measures.measure.copy.deepcopy") as mock_dc:
             m = Measure("test", hazard_changes=fn)
             m.apply_hazard_changes(_make_mock(), enforce_copy=False)
             mock_dc.assert_not_called()
