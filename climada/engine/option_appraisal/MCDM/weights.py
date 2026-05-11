@@ -18,32 +18,43 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 """
 
-from climada.engine.option_appraisal.MCDM.constants import IMPORTANCE_MATCH
+from climada.engine.option_appraisal.MCDM.constants import (
+    DEFAULT_ITEM_WEIGHT,
+    IMPORTANCE_MATCH,
+)
 
 
 class WeightedItem:
-    def __init__(self, weight) -> None:
-        self.item_weight = weight
+    """Mixin providing a validated weight attribute.
+
+    Parameters
+    ----------
+    weight : float or str or None
+        Initial weight. Strings are resolved via ``IMPORTANCE_MATCH``.
+        ``None`` defaults to ``DEFAULT_WEIGHT``.
+    """
+
+    def __init__(self, weight=None) -> None:
+        self.weight = weight  # use the public setter from the start
 
     @property
-    def item_weight(self):
-        return self._item_weight
+    def weight(self) -> float:
+        """Direct weight of this item, in [0, 1]."""
+        return self._weight
 
-    @item_weight.setter
-    def item_weight(self, value, /):
+    @weight.setter
+    def weight(self, value):
         if value is None:
-            value = 0.0
-
+            value = DEFAULT_ITEM_WEIGHT
         if isinstance(value, str):
             try:
                 value = IMPORTANCE_MATCH[value]
             except KeyError as err:
                 err.add_note(
-                    f"Importance '{value}' is not defined. It must be defined within {list( IMPORTANCE_MATCH.keys() )}"
+                    f"Importance '{value}' is not defined. "
+                    f"Must be one of {list(IMPORTANCE_MATCH.keys())}"
                 )
                 raise
-
         if not 0.0 <= value <= 1.0:
-            raise ValueError(f"Weight needs to be between 0 and 1 (received {value}.")
-
-        self._item_weight = value
+            raise ValueError(f"Weight must be in [0, 1], got {value}.")
+        self._weight = value

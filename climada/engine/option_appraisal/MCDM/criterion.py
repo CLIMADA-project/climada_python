@@ -24,6 +24,7 @@ from typing import List, Optional, Set, Union
 
 import numpy as np
 import pandas as pd
+from sklearn.preprocessing import MinMaxScaler
 
 from climada.engine.option_appraisal.MCDM.category import (
     CategorizedObject,
@@ -42,6 +43,7 @@ from climada.engine.option_appraisal.MCDM.constants import (
     OPTIONS_DEFAULT_COLNAME,
     PRESENT_DATE_DEFAULT_COLNAME,
 )
+from climada.engine.option_appraisal.MCDM.mcda_methods import APPROACH_FN, MCDAApproach
 from climada.engine.option_appraisal.MCDM.weights import WeightedItem
 
 LOGGER = logging.getLogger(__name__)
@@ -52,7 +54,7 @@ class Criterion(CategorizedObject, WeightedItem):
         self,
         name: str,
         categories: Optional[
-            Union[CategoryLike, List[CategoryLike], Set[CriteriaCategory]]
+            Union[CategoryLike, Sequence[CategoryLike], Set[CriteriaCategory]]
         ] = None,
         space: Optional[CategorySpace] = None,
         data: pd.Series = None,
@@ -85,18 +87,18 @@ class Criterion(CategorizedObject, WeightedItem):
             f"{indent_space}name='{self.name}',\n"
             f"{indent_space}categories={{\n{formatted_categories}\n{indent_space}}},\n"
             f"{indent_space}obj_maximise={self.obj_maximize}\n"
-            f"{indent_space}base_weight={self.item_weight}\n"
+            f"{indent_space}base_weight={self.weight}\n"
             f"{indent_space}average_weight_from_categories={self.weight_from_category}\n"
             f")"
         )
 
     @property
     def category_weights(self):
-        return {cat.name: cat.item_weight for cat in self.categories}
+        return {cat.name: cat.weight for cat in self.categories}
 
     @property
     def weight_from_category(self):
-        return np.array([cat.weight for cat in self.categories]).prod() ** (
+        return np.array([cat.effective_weight for cat in self.categories]).prod() ** (
             1 / len(self.categories)
         )
 
@@ -110,8 +112,56 @@ class CriteriaSet:
     ) -> None:
         self.criteria = criteria
         self._category_space = criteria[0].category_space
-        self.criteria_base_weights = criteria_weights
+        # self.criteria_base_weights = criteria_weights
         self.category_weights = category_weights
+
+    def display(self) -> str:
+        lines = []
+
+        total_weights = self.criteria_total_weights(active_only=False)
+
+        active = [c for c in self.criteria if total_weights[c.name] > 0]
+        inactive = [c for c in self.criteria if total_weights[c.name] == 0]
+
+        # Header
+        lines.append(
+            f"CriteriaSet  {len(active)} active criteria  |  {len(self.category_space.all_categories)} categories"
+        )
+        if inactive:
+            lines.append(f"             {len(inactive)} inactive criteria (weight = 0)")
+        lines.append("=" * 60)
+
+        # Category weights section
+        lines.append("\nCategories")
+        lines.append("-" * 60)
+        cat_types = self.category_space.category_types
+        for cat_type in sorted(t for t in cat_types if t is not None):
+            cats = self.category_space.select_categories_by_type(cat_type)
+            lines.append(f"  [{cat_type}]")
+            for cat in sorted(cats, key=lambda c: c.name):
+                bar = _weight_bar(cat.weight)
+                lines.append(f"    {cat.name:<30}  {bar}  {cat.weight:.3f}")
+
+        # Criteria weights section
+        if len(active) > 0:
+            bar_width = len(active) if len(active) < 50 else 50
+            max_len = max(len(crit.name) for crit in active)
+            total_sum = sum(total_weights[c.name] for c in active)
+            lines.append(f"\nCriteria{' ' * (max_len)}Weights")
+            lines.append("-" * 8 + " " * (max_len) + "-" * 9)
+            total_weights = self.criteria_total_weights()
+            for crit in sorted(active, key=lambda c: -total_weights[c.name]):
+                total = total_weights[crit.name]
+                effective = total / total_sum if total_sum > 0 else 0.0
+                bar = _weight_bar(effective, width=len(active))
+                lines.append(
+                    f"  {crit.name:<{max_len+4}}  {bar}  "
+                    f"base={crit.weight:.5f}  total={total_weights[crit.name]:.5f}  "
+                    f"effective={effective:.5f}"
+                )
+
+            lines.append("")
+        print("\n".join(lines))
 
     @classmethod
     def from_risk_metrics(
@@ -121,7 +171,9 @@ class CriteriaSet:
         criteria_cols: list[str],
         options_colname: str = OPTIONS_DEFAULT_COLNAME,
         excluded_value_cols=None,
+        criteria_min: Optional[list[str]] = None,
     ) -> "CriteriaSet":
+        criteria_min = [] if criteria_min is None else criteria_min
         if excluded_value_cols:
             risk_metrics = risk_metrics[
                 [col for col in risk_metrics.columns if col not in excluded_value_cols]
@@ -196,12 +248,14 @@ class CriteriaSet:
             ]
             for cat in cats:
                 cat_space.add_category(name=cat[1], category_type=cat[0])
+            crit_fullname = f"{'-'.join(['_'.join(c) for c in cats])}"
             crits.append(
                 Criterion(
-                    f"{'-'.join(['_'.join(c) for c in cats])}",
+                    crit_fullname,
                     categories=[cat[1] for cat in cats],
                     data=group,
                     space=cat_space,
+                    obj_maximize=(all(c not in crit_fullname for c in criteria_min)),
                 )
             )
 
@@ -234,9 +288,7 @@ class CriteriaSet:
 
     @property
     def criteria_with_weight(self):
-        return list(
-            {k: v for k, v in self.criteria_total_weights.items() if v > 0}.keys()
-        )
+        return list(self.criteria_total_weights().keys())
 
     def add_criteria(self, criteria: Criterion | list[Criterion]):
         if not isinstance(criteria, list):
@@ -277,57 +329,92 @@ class CriteriaSet:
         if mismatched_indices_info:
             infos = "\n".join(mismatched_indices_info)
             raise ValueError(
-                "🚨 All criteria must have the same index (options) to be combined."
+                "All criteria must have the same index (options) to be combined."
                 f"\n\nDetails of Mismatches:\n\n{infos}"
             )
 
         if not all([criteria[0].space is criterion.space for criterion in criteria]):
             raise ValueError("Criteria must share the same space of categories.")
 
-    @property
     def criteria_total_weights(
-        self, categories_influence=0.5, base_weight_influence=0.5
-    ):
-        if not categories_influence + base_weight_influence == 1.0:
+        self,
+        categories_influence: float = 0.5,
+        base_weight_influence: float = 0.5,
+        active_only: bool = True,
+    ) -> dict[str, float]:
+        """Compute weighted combination of base weight and category-derived weight.
+
+        Parameters
+        ----------
+        categories_influence : float
+            Weight given to category-derived score. Must sum to 1 with
+            ``base_weight_influence``.
+        base_weight_influence : float
+            Weight given to the criterion's base weight.
+        active_only : bool
+            If True (default), only criteria with non-zero total weight are returned.
+
+        Returns
+        -------
+        dict[str, float]
+            Mapping of criterion name to total weight.
+        """
+        if categories_influence + base_weight_influence != 1.0:
             raise ValueError(
-                "Category influence and base weight influence need to sum up to 1."
+                "categories_influence and base_weight_influence must sum to 1."
             )
 
-        return {
-            v.name: v.item_weight * base_weight_influence
-            + v.weight_from_category * categories_influence
-            for v in self.criteria
+    def criteria_total_weights(
+        self,
+        categories_influence: float = 0.5,
+        base_weight_influence: float = 0.5,
+        active_only: bool = True,
+    ) -> dict[str, float]:
+        """Compute weighted combination of base weight and category-derived weight.
+
+        Parameters
+        ----------
+        categories_influence : float
+            Weight given to category-derived score. Must sum to 1 with
+            ``base_weight_influence``.
+        base_weight_influence : float
+            Weight given to the criterion's base weight.
+        active_only : bool
+            If True (default), only criteria with non-zero total weight are returned.
+
+        Returns
+        -------
+        dict[str, float]
+            Mapping of criterion name to total weight.
+        """
+        if categories_influence + base_weight_influence != 1.0:
+            raise ValueError(
+                "categories_influence and base_weight_influence must sum to 1."
+            )
+
+        weights = {
+            crit.name: crit.weight * base_weight_influence
+            + crit.weight_from_category * categories_influence
+            for crit in self.criteria
         }
+
+        if active_only:
+            return {k: v for k, v in weights.items() if v > 0}
+        return weights
+
+        weights = {
+            crit.name: crit.weight * base_weight_influence
+            + crit.weight_from_category * categories_influence
+            for crit in self.criteria
+        }
+
+        if active_only:
+            return {k: v for k, v in weights.items() if v > 0}
+        return weights
 
     @property
     def criteria_base_weights(self):
         return {v.name: v.weight for v in self.criteria}
-
-    @criteria_base_weights.setter
-    def criteria_base_weights(self, value, /):
-        if value is None:
-            LOGGER.info(
-                f"Resetting criteria base weight to default value ({DEFAULT_CRITERION_BASE_WEIGHT})"
-            )
-            for crit in self.criteria:
-                crit.weight = DEFAULT_CRITERION_BASE_WEIGHT
-        else:
-            no_match = [k for k in value.keys() if k not in self.criteria_names]
-            no_weight = [k for k in self.criteria_names if k not in value.keys()]
-            if len(no_match) > 0:
-                LOGGER.warning(
-                    f"Some weights do not correspond to any criteria: {no_match}"
-                )
-
-            if len(no_weight) > 0:
-                LOGGER.warning(
-                    f"No weight given for one or more criteria (will use existing (by default {DEFAULT_CRITERION_BASE_WEIGHT})) {no_weight}"
-                )
-
-            for k, v in value.items():
-                crit = self.get_criteria(k)
-                if crit:
-                    crit.weight = v
 
     def get_criteria(self, name):
         for crit in self.criteria:
@@ -335,36 +422,42 @@ class CriteriaSet:
                 return crit
 
     @property
-    def category_weights(self):
-        return self.category_space.category_weights
+    def category_effective_weights(self):
+        return self.category_space.effective_weights
 
-    @category_weights.setter
-    def category_weights(self, value, /):
-        self.category_space.category_weights = value
+    def set_criterion_weight(self, name: str, weight) -> None:
+        """Set the base weight of a single criterion.
 
-    #    def set_weight_
+        Parameters
+        ----------
+        name : str
+            Criterion name.
+        weight : float or str
+            New weight value.
+        """
+        crit = self.get_criteria(name)
+        if crit is None:
+            raise KeyError(f"Criterion '{name}' not found.")
+        crit.weight = weight
 
-    def set_weight_by_category_type(self, value: dict[str, float]):
-        no_match = [
-            k for k in value.keys() if k not in self.category_space.category_types
-        ]
-        if len(no_match) > 0:
-            LOGGER.warning(
-                f"Some weights do not correspond to any category type: {no_match}"
-            )
+    def reset_category_weights(self) -> None:
+        self.category_space.reset_weights()
 
-        categories = {
-            cat_type: self.category_space.select_categories_by_type(cat_type)
-            for cat_type in value.keys()
-            if cat_type not in no_match
-        }
-        category_weights = {
-            cat.name: value[cat_type]
-            for cat_type in value.keys()
-            if cat_type not in no_match
-            for cat in categories[cat_type]
-        }
-        self.category_weights = self.category_weights | category_weights
+    def all_equal_category_weights(self) -> None:
+        self.category_space.reset_weights(weight=1.0)
+
+    def update_category_weights(self, weights: dict[str, float]) -> None:
+        """Set the weight of a single category.
+
+        Parameters
+        ----------
+        name : str
+            Category name.
+        weight : float or str
+            New weight value.
+        """
+        for name, weight in weights.items():
+            self.category_space.set_weight(name, weight)
 
     def get_criteria_by_category(
         self,
@@ -399,9 +492,112 @@ class CriteriaSet:
 
         return matching_criteria
 
+    @property
+    def active_criteria_matrix(self) -> pd.DataFrame:
+        """Criteria matrix sub-selected for criteria with non-zero total weight.
+
+        Returns
+        -------
+        pd.DataFrame
+            Columns are active criterion names, index is options.
+        """
+        active_names = self.criteria_with_weight
+        return self.criteria_matrix[active_names]
+
+    def normalized_criteria_matrix(
+        self,
+        scaler=None,
+    ) -> pd.DataFrame:
+        """Criteria matrix normalized using a scikit-learn-compatible scaler.
+
+        Only active criteria (non-zero total weight) are included.
+
+        Parameters
+        ----------
+        scaler : sklearn-compatible transformer, optional
+            Must implement ``fit_transform(X)``. Defaults to
+            ``sklearn.preprocessing.MinMaxScaler()``.
+
+        Returns
+        -------
+        pd.DataFrame
+            Normalized criteria matrix with same index and columns as
+            ``active_criteria_matrix``.
+        """
+        if scaler is None:
+            scaler = MinMaxScaler()
+
+        matrix = self.active_criteria_matrix
+        return pd.DataFrame(
+            scaler.fit_transform(matrix),
+            index=matrix.index,
+            columns=matrix.columns,
+        )
+
+    def score_matrix(
+        self,
+        approach: MCDAApproach | str = MCDAApproach.SAW,
+        scaler=None,
+    ) -> pd.Series:
+        """Score options using a MCDA approach.
+
+        Parameters
+        ----------
+        approach : MCDAApproach or str
+            Scoring method. One of ``MCDAApproach.SAW`` or ``MCDAApproach.TOPSIS``.
+            Strings ``"saw"`` and ``"topsis"`` are also accepted.
+        scaler : sklearn-compatible transformer, optional
+            Scaler passed to ``normalized_criteria_matrix``.
+            Defaults to ``MinMaxScaler()``.
+
+        Returns
+        -------
+        pd.Series
+            Scores indexed by option, sorted descending.
+        """
+        if isinstance(approach, str):
+            approach = MCDAApproach(approach.lower())
+
+        fn = APPROACH_FN[approach]
+
+        matrix = self.normalized_criteria_matrix(scaler=scaler)
+        active_criteria = [c for c in self.criteria if c.name in matrix.columns]
+
+        total_weights = self.criteria_total_weights()
+        raw_weights = np.array([total_weights[c.name] for c in active_criteria])
+        weights = raw_weights / raw_weights.sum()  # normalise to sum=1
+
+        criteria_types = np.array(
+            [1 if c.obj_maximize else -1 for c in active_criteria]
+        )
+
+        scores = fn(matrix.values, weights, criteria_types)
+        return pd.Series(scores, index=matrix.index, name=approach.value).sort_values(
+            ascending=False
+        )
+
     def display_space(self) -> None:
         """
         Prints the entire category hierarchy registered in the system using ASCII art.
         It handles multiple roots and is robust against multiple inheritance.
         """
         self.category_space.display()
+
+
+def _weight_bar(weight: float, width: int = 8) -> str:
+    """ASCII progress bar for a weight in [0, 1].
+
+    Parameters
+    ----------
+    weight : float
+        Value in [0, 1].
+    width : int
+        Total bar characters.
+
+    Returns
+    -------
+    str
+        e.g. ``[██░░░░░░]``
+    """
+    filled = round(weight * width)
+    return "[" + "█" * filled + "░" * (width - filled) + "]"

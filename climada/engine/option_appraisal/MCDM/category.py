@@ -20,7 +20,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 import logging
 from collections.abc import Iterable
-from typing import Any, Dict, List, Optional, Set, Union
+from typing import Any, Dict, List, Optional, Sequence, Set, Union, cast
 
 from climada.engine.option_appraisal.MCDM.constants import (
     DEFAULT_CATEGORY_WEIGHT,
@@ -28,7 +28,6 @@ from climada.engine.option_appraisal.MCDM.constants import (
 )
 from climada.engine.option_appraisal.MCDM.weights import WeightedItem
 
-# Define type aliases for cleaner type hints
 CategoryName = str
 CategoryLike = Union[CategoryName, "CriteriaCategory"]
 
@@ -38,14 +37,11 @@ LOGGER = logging.getLogger(__name__)
 class CategorySpace:
     """Manages a dedicated, isolated registry of CriteriaCategory objects."""
 
-    # Class attribute to hold the singleton default space
     _default_space: Optional["CategorySpace"] = None
 
     def __init__(self):
         self._registry: Dict[str, "CriteriaCategory"] = {}
-        self.category_weights = None
 
-    # --- New Class Method for Default Access ---
     @classmethod
     def get_default_space(cls) -> "CategorySpace":
         """Returns the default CategorySpace instance, creating it if necessary."""
@@ -107,22 +103,32 @@ class CategorySpace:
 
     def register(self, category: "CriteriaCategory") -> None:
         if category.name in self._registry:
-            raise ValueError(
-                f"Category '{category.name}' already exists in space '{self.name}'."
-            )
+            raise ValueError(f"Category '{category.name}' already exists in space.")
         self._registry[category.name] = category
 
     def add_category(
         self,
         name: CategoryName,
-        parent_cats: Optional[Union[CategoryLike, List[CategoryLike]]] = None,
+        parent_cats: Optional[Union[CategoryLike, Sequence[CategoryLike]]] = None,
         category_type: Optional[str] = None,
+        weight: Optional[float] = None,
         overwrite: bool = False,
     ) -> "CriteriaCategory":
+        """Create and register a new category in this space.
+
+        Parameters
+        ----------
+        name : str
+        parent_cats : str or CriteriaCategory or list, optional
+        category_type : str, optional
+        weight : float or str, optional
+        overwrite : bool, optional
+        """
         return CriteriaCategory(
             name,
             parents=parent_cats,
             category_type=category_type,
+            weight=weight,
             overwrite=overwrite,
             space=self,
         )
@@ -153,7 +159,7 @@ class CategorySpace:
         return subspace
 
     def create_subspace(
-        self, selection: Union[CategoryLike, List[CategoryLike]]
+        self, selection: Union[CategoryLike, Sequence[CategoryLike]]
     ) -> "CategorySpace":
         if not isinstance(selection, Iterable):
             selection = [selection]
@@ -161,38 +167,66 @@ class CategorySpace:
         subspace = CategorySpace()
         for category in selection:
             if isinstance(category, str):
-                category = self.get(category)
+                category = cast(CriteriaCategory, self.get(category))
 
             subspace.register(category)
 
         return subspace
 
     @property
-    def category_weights(self):
-        return {k: self._registry[k].item_weight for k in self._registry.keys()}
+    def effective_weights(self):
+        return {name: cat.effective_weight for name, cat in self._registry.items()}
 
-    @category_weights.setter
-    def category_weights(self, value, /):
-        if value is None:
-            for k, v in {
-                cat_name: DEFAULT_CATEGORY_WEIGHT for cat_name in self._registry.keys()
-            }.items():
-                self._registry[k].item_weight = v
-        else:
-            no_match = [k for k in value.keys() if k not in self._registry.keys()]
-            no_weight = [k for k in self._registry.keys() if k not in value.keys()]
-            if len(no_match) > 0:
-                LOGGER.warning(
-                    f"Some weights do not correspond to any category: {no_match}"
-                )
+    @property
+    def weights(self):
+        return {name: cat.weight for name, cat in self._registry.items()}
 
-            if len(no_weight) > 0:
-                LOGGER.warning(
-                    f"No weight given for one or more categories: {no_weight}\n(will use existing, {DEFAULT_CATEGORY_WEIGHT} by default)"
-                )
+    @weights.setter
+    def weights(self, value: Dict[str, float]):
+        """Set weights from a dict. Missing keys keep their current value.
 
-            for k, v in value.items():
-                self._registry[k].item_weight = v
+        Parameters
+        ----------
+        value : dict[str, float]
+            Mapping of category name to weight. Values can be float or
+            importance strings (e.g. ``"high"``).
+        """
+        if not isinstance(value, dict):
+            raise TypeError(f"weights must be a dict, got {type(value).__name__}.")
+
+        unrecognized = [k for k in value if k not in self._registry]
+        unset = [k for k in self._registry if k not in value]
+
+        if unrecognized:
+            LOGGER.warning(
+                "Weights given for unknown categories (ignored): %s", unrecognized
+            )
+        if unset:
+            LOGGER.warning("No weight given for categories (unchanged): %s", unset)
+
+        for name, w in value.items():
+            if name in self._registry:
+                self._registry[name].weight = w  # WeightedItem setter validates
+
+    def reset_weights(self, weight=None) -> None:
+        """Reset all category weights to ``DEFAULT_WEIGHT``."""
+        for cat in self._registry.values():
+            cat.weight = weight if weight else DEFAULT_CATEGORY_WEIGHT
+
+    def set_weight(self, category: CategoryLike, weight) -> None:
+        """Set the weight of a single category.
+
+        Parameters
+        ----------
+        category : str or CriteriaCategory
+            Target category name or object.
+        weight : float or str
+            New weight value.
+        """
+        name = category if isinstance(category, str) else category.name
+        if name not in self._registry:
+            raise KeyError(f"Category '{name}' not in this space.")
+        self._registry[name].weight = weight
 
     @property
     def all_categories(self) -> List["CriteriaCategory"]:
@@ -241,11 +275,11 @@ class CategorySpace:
             print(
                 prefix
                 + connector
-                + node.category_type
+                + str(node.category_type)
                 + ": "
                 + node.name
                 + " category weight: "
-                + str(self.category_weights[node.name])
+                + str(self.weights[node.name])
             )
 
             # Determine the prefix for the children
@@ -297,9 +331,9 @@ class CriteriaCategory(WeightedItem):
     def __init__(
         self,
         name: CategoryName,
-        parents: Optional[Union[CategoryLike, List[CategoryLike]]] = None,
+        parents: Optional[Union[CategoryLike, Sequence[CategoryLike]]] = None,
         category_type: Optional[str] = None,
-        category_weight: Optional[float] = None,
+        weight: Optional[float] = None,
         space: Optional[CategorySpace] = None,
         overwrite: Optional[bool] = False,
     ) -> None:
@@ -310,7 +344,7 @@ class CriteriaCategory(WeightedItem):
         ----------
         name : CategoryName
             The unique name of the category.
-        parents : Optional[Union[CategoryLike, List[CategoryLike]]], optional
+        parents : Optional[Union[CategoryLike, Sequence[CategoryLike]]], optional
             The parent criteria(s) this category inherits from. Can be a single
             name/object or a list of names/objects. By default, None.
 
@@ -319,7 +353,7 @@ class CriteriaCategory(WeightedItem):
         ValueError
             If a category with the given name already exists in the registry.
         """
-        WeightedItem.__init__(self, category_weight)
+        WeightedItem.__init__(self, weight)
         self._space = space if space is not None else CategorySpace.get_default_space()
         self.name: CategoryName = name
         self.category_type: str | None = category_type
@@ -327,23 +361,30 @@ class CriteriaCategory(WeightedItem):
         self._children: Set[CriteriaCategory] = set()
 
         if self in self.space:
+            existing = cast(CriteriaCategory, self.space.get(name))
             if not overwrite:
-                if not self.space.get(name).has_parents_exactly(parents):
+                if not existing.has_parents_exactly(parents):
                     raise ValueError(
-                        f"CriteriaCategory '{name}' with different parents ({self.space.get(name)._parents_name} != {parents}) already exists in current category space ({self.space}). You can overwrite with `overwrite=True`."
+                        f"CriteriaCategory '{name}' with different parents ({existing.parents} != {parents})"
+                        f" already exists in current category space ({self.space})."
+                        " You can overwrite with `overwrite=True`."
                     )
                 return
 
         self.space.register(self)
         if parents:
-            self._add_parents(parents)
+            self.add_parents(parents)
 
     @property
-    def weight(self):
+    def effective_weight(self):
+        """Hierarchical weight: max of own weight and all ancestors' weights.
+
+        Distinct from ``weight``, which is this category's direct assignment.
+        """
         if len(self.parents) > 0:
-            return max(self.item_weight, max([p.weight for p in self.parents]))
+            return max(self.weight, max([p.effective_weight for p in self.parents]))
         else:
-            return self.item_weight
+            return self.weight
 
     @property
     def space(self):
@@ -380,7 +421,7 @@ class CriteriaCategory(WeightedItem):
         return [p.name for p in self.parents]
 
     def has_parents_exactly(
-        self, check_parents: Union[CategoryLike, List[CategoryLike], None]
+        self, check_parents: Union[CategoryLike, Sequence[CategoryLike], None]
     ) -> bool:
         """
         Checks if the criteria's set of parents is exactly equal to the provided set of parents.
@@ -389,7 +430,7 @@ class CriteriaCategory(WeightedItem):
 
         Parameters
         ----------
-        check_parents : Union[CategoryLike, List[CategoryLike]]
+        check_parents : Union[CategoryLike, Sequence[CategoryLike]]
             A single parent or a list of parent names or CriteriaCategory objects
             to compare against the criteria's actual parents.
 
@@ -408,19 +449,19 @@ class CriteriaCategory(WeightedItem):
             return True
 
         if not isinstance(check_parents, list):
-            check_parents = [check_parents]
+            check_parents = [cast(CategoryLike, check_parents)]
 
         return check_parents == self._parents_names
 
-    def _add_parents(
-        self, parent_names: Union[CategoryLike, List[CategoryLike]]
+    def add_parents(
+        self, parent_names: Union[CategoryLike, Sequence[CategoryLike]]
     ) -> None:
         """
         Internal helper to resolve and establish parent links.
 
         Parameters
         ----------
-        parent_names : Union[CategoryLike, List[CategoryLike]]
+        parent_names : Union[CategoryLike, Sequence[CategoryLike]]
             The parent criteria(s) to link.
 
         Raises
@@ -430,7 +471,7 @@ class CriteriaCategory(WeightedItem):
         TypeError
             If an item in the parent list is not a string or CriteriaCategory object.
         """
-        if not isinstance(parent_names, list):
+        if not isinstance(parent_names, Sequence):
             parent_names = [parent_names]
 
         for p_name in parent_names:
@@ -502,12 +543,12 @@ class CriteriaCategory(WeightedItem):
         parent_names = sorted([p.name for p in self.parents])
         parent_str = f" Parents: {', '.join(parent_names)}" if parent_names else "none"
         indent_space = " " * indent
-        return f"""{indent_space}name: {self.name} weight: {self.item_weight} type: {self.category_type}\n{indent_space}parents: {parent_str}"""
+        return f"""{indent_space}name: {self.name} weight: {self.weight} type: {self.category_type}\n{indent_space}parents: {parent_str}"""
 
 
 def create_criteria_category(
     name: CategoryName,
-    parent_cats: Optional[Union[CategoryLike, List[CategoryLike]]] = None,
+    parent_cats: Optional[Union[CategoryLike, Sequence[CategoryLike]]] = None,
     category_type: Optional[str] = None,
     space: Optional[CategorySpace] = None,
     overwrite: bool = False,
@@ -569,7 +610,7 @@ def update_categories_from_dict(
 def __categories_hierarchy_recursion(
     hierarchy_dict: Dict[str, Any],
     space: CategorySpace,
-    current_parents: Optional[Union[CategoryLike, List[CategoryLike]]] = None,
+    current_parents: Optional[Union[CategoryLike, Sequence[CategoryLike]]] = None,
 ) -> None:
     """
     Recursively creates a hierarchy of CriteriaCategory objects from a nested dictionary.
@@ -613,7 +654,7 @@ def __categories_hierarchy_recursion(
             )
         except ValueError as e:
             if "different parents" in str(e):
-                space.get(category_name)._add_parents(parent_list)
+                space.get(category_name).add_parents(parent_list)  # type: ignore
             else:
                 print(
                     f"Warning: Category '{category_name}' skipped (likely duplicate). Error: {e}"
@@ -646,7 +687,7 @@ class CategorizedObject:
     ----------
     name : str
         The name or identifier of the object.
-    categories : set[CriteriaCategory]
+    categories : Sequence[CriteriaCategory]
         The set of CriteriaCategory objects this instance is directly assigned to.
     """
 
@@ -654,7 +695,7 @@ class CategorizedObject:
         self,
         name: str,
         categories: Optional[
-            Union[CategoryLike, List[CategoryLike], Set[CriteriaCategory]]
+            Union[CategoryLike, Sequence[CategoryLike], Sequence[CriteriaCategory]]
         ] = None,
         space: Optional[CategorySpace] = None,
     ) -> None:
@@ -687,7 +728,10 @@ class CategorizedObject:
         return self._space
 
     def add_categories(
-        self, categories: Union[CategoryLike, List[CategoryLike], Set[CriteriaCategory]]
+        self,
+        categories: Union[
+            CategoryLike, Sequence[CategoryLike], Sequence[CriteriaCategory]
+        ],
     ) -> None:
         """
         Adds one or more criteria categories to the object by name.
@@ -702,7 +746,7 @@ class CategorizedObject:
         ValueError
             If a category name does not exist in the CriteriaCategory registry.
         """
-        if not isinstance(categories, (list, set)):
+        if not isinstance(categories, Sequence):
             categories = [categories]
 
         for cat_to_add in categories:
