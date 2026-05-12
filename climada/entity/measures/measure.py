@@ -23,6 +23,8 @@ from __future__ import annotations
 
 from pandas.tseries.offsets import BaseOffset
 
+from climada.engine.impact import Impact
+
 __all__ = ["Measure"]
 
 import copy
@@ -490,7 +492,30 @@ class Measure:
         )
         return changed_exposures, changed_impfset, changed_hazard
 
-    def calc_impact(self, exposures, impfset, hazard):
+    def calc_impact(
+        self, exposures: Exposures, impfset: ImpactFuncSet, hazard: Hazard
+    ) -> Impact:
+        """Compute impact with the active measure.
+
+        This convenience method allow to compute an ``Impact`` object from an
+        (Exposure, ImpactFuncSet, Hazard) triplet by first applying the measure
+        to that triplet.
+
+        Parameters
+        ----------
+        exposures : Exposures
+            The initial (no adaptation) exposures
+        impfset : ImpactFuncSet
+            The initial (no adaptation) impact function set
+        hazard : Hazard
+            The initial (no adaptation) hazard set
+
+        Returns
+        -------
+        Impact
+            The computed impact when the measure is in effect.
+
+        """
         from climada.engine.impact_calc import (
             ImpactCalc,  # pylint: disable=import-outside-toplevel
         )
@@ -507,4 +532,4 @@ class Measure:
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
             save_mat=False, assign_centroids=False
         )
-        return imp.calc_risk_transfer(0, 0)
+        return imp  # .calc_risk_transfer(0, 0)
