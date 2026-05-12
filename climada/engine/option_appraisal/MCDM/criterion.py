@@ -20,7 +20,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 import logging
 from dataclasses import dataclass, field
-from typing import List, Optional, Set, Union
+from typing import List, Optional, Sequence, Set, Union
 
 import numpy as np
 import pandas as pd
@@ -153,11 +153,12 @@ class CriteriaSet:
             for crit in sorted(active, key=lambda c: -total_weights[c.name]):
                 total = total_weights[crit.name]
                 effective = total / total_sum if total_sum > 0 else 0.0
-                bar = _weight_bar(effective, width=len(active))
+                bar = _weight_bar(effective, width=len(active) * 2)
                 lines.append(
-                    f"  {crit.name:<{max_len+4}}  {bar}  "
+                    f"  {crit.name:<{max_len+4}}  "
                     f"base={crit.weight:.5f}  total={total_weights[crit.name]:.5f}  "
-                    f"effective={effective:.5f}"
+                    f"effective={effective:.5f}   "
+                    f"{bar}"
                 )
 
             lines.append("")
@@ -335,34 +336,6 @@ class CriteriaSet:
 
         if not all([criteria[0].space is criterion.space for criterion in criteria]):
             raise ValueError("Criteria must share the same space of categories.")
-
-    def criteria_total_weights(
-        self,
-        categories_influence: float = 0.5,
-        base_weight_influence: float = 0.5,
-        active_only: bool = True,
-    ) -> dict[str, float]:
-        """Compute weighted combination of base weight and category-derived weight.
-
-        Parameters
-        ----------
-        categories_influence : float
-            Weight given to category-derived score. Must sum to 1 with
-            ``base_weight_influence``.
-        base_weight_influence : float
-            Weight given to the criterion's base weight.
-        active_only : bool
-            If True (default), only criteria with non-zero total weight are returned.
-
-        Returns
-        -------
-        dict[str, float]
-            Mapping of criterion name to total weight.
-        """
-        if categories_influence + base_weight_influence != 1.0:
-            raise ValueError(
-                "categories_influence and base_weight_influence must sum to 1."
-            )
 
     def criteria_total_weights(
         self,
