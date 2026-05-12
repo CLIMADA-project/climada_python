@@ -17,7 +17,7 @@ CLIMADA is divided into two parts (two repositories):
 
 For new users, we recommend to begin with Core (1) and the [tutorials](https://github.com/CLIMADA-project/climada_python/tree/main/doc/user-guide) therein.
 
-A [publication repository](https://github.com/CLIMADA-project/climada_papers) contains scientific, peer-reviewed articles that explain software components implemented in CLIMADA.
+A [publication repository](https://github.com/CLIMADA-project/climada_papers) contains case-study examples from scientific, peer-reviewed articles that further illustrate the use of CLIMADA.
 
 CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution (4x4km) via a [data API](https://climada.ethz.ch/data-api/v1/docs) for select hazards, historic and probabilistic events sets, for past, present and future climate exist at distinct time horizons.
 
