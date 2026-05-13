@@ -147,6 +147,22 @@ class TestImpactCalc(unittest.TestCase):
                 "functions found for hazard type TC in impf_set.",
             )
 
+    def test_error_handling_empty_hazard(self):
+        """An empty Hazard must raise a clear ValueError (see GH #814)."""
+        haz_empty = Hazard("TC")
+        exp = Exposures()
+        exp.gdf["impf_TC"] = 1
+        impf = ImpactFunc(
+            haz_type="TC",
+            id=1,
+            intensity=np.array([0, 20]),
+            paa=np.array([0, 1]),
+            mdd=np.array([0, 0.5]),
+        )
+        impfset = ImpactFuncSet([impf])
+        with self.assertRaisesRegex(ValueError, "no events"):
+            ImpactCalc(exp, impfset, haz_empty).impact()
+
     def test_error_handling_mismatch_impf_ids(self):
         """Test error handling in case impf ids in exposures
         does not appear in impf_set"""
