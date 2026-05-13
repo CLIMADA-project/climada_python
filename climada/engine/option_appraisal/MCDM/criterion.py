@@ -115,7 +115,7 @@ class CriteriaSet:
         # self.criteria_base_weights = criteria_weights
         self.category_weights = category_weights
 
-    def display(self) -> str:
+    def display(self):
         lines = []
 
         total_weights = self.criteria_total_weights(active_only=False)
