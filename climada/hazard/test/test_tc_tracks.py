@@ -660,8 +660,13 @@ class TestIO(unittest.TestCase):
         self.assertEqual(len(tc_track.data), 0)
 
     def test_from_FAST(self):
-        """test the correct import of netcdf files from FAST model and the conversion to a
-        different xr.array structure compatible with CLIMADA."""
+        """Test the correct import of netcdf files from FAST model and the conversion to a
+        different xr.array structure compatible with CLIMADA.
+
+        The test fixture contains 5 tracks across 2 years. The regression check
+        ``len(tc_track.data) == 5`` ensures that tracks are not multiplied by the
+        ``year`` dimension (the bug would produce 5 × 2 = 10 tracks instead).
+        """
 
         tc_track = tc.TCTracks.from_FAST(TEST_TRACK_FAST)
 
