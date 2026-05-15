@@ -28,6 +28,8 @@ Code freeze date: YYYY-MM-DD
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
 - `climada.util.finance`: Fixed broken `WORLD_BANK_INC_GRP` download URL
   (`databank.worldbank.org`) whose SSL certificate had expired. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
+=======
+- Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
 
 ### Deprecated
 - `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().interpolate()` instead.
