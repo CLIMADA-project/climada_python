@@ -456,15 +456,15 @@ def world_bank_wealth_account(
             indicator=variable_name,
         ).dropna()
     except ValueError:
-        data_wealth = pd.Series(dtype=float)
-
-    if data_wealth.empty and "NW.PCA.TO" in variable_name:
-        LOGGER.warning(
-            "No data available for country. Using non-financial wealth instead"
-        )
-        gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        fac = wealth2gdp(cntry_iso)[1]
-        return gdp_year, np.around((fac * gdp_val), 1), 0
+        if "NW.PCA.TO" in variable_name:
+            LOGGER.warning(
+                "No data available for country. Using non-financial wealth instead"
+            )
+            gdp_year, gdp_val = gdp(cntry_iso, ref_year)
+            fac = wealth2gdp(cntry_iso)[1]
+            return gdp_year, np.around((fac * gdp_val), 1), 0
+        else:
+            raise
 
     years = data_wealth.index.values
     if ref_year in years:
