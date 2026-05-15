@@ -6,7 +6,7 @@ climada\.entity package
     climada.entity.disc_rates
     climada.entity.exposures
     climada.entity.impact_funcs
-    climada.entity.measures
+    climada.entity._legacy_measures
 
 climada\.entity\.entity\_def module
 -----------------------------------
