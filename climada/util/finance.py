@@ -24,8 +24,6 @@ __all__ = ["net_present_value", "income_group", "gdp"]
 import json
 import logging
 import shutil
-import zipfile
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -36,15 +34,6 @@ from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
 
 LOGGER = logging.getLogger(__name__)
-
-WORLD_BANK_WEALTH_ACC = (
-    "https://databank.worldbank.org/data/download/Wealth-Accounts_CSV.zip"
-)
-"""Wealth historical data (1995, 2000, 2005, 2010, 2014) from World Bank (ZIP).
-    https://datacatalog.worldbank.org/dataset/wealth-accounting
-    Includes variable Produced Capital (NW.PCA.TO)"""
-
-FILE_WORLD_BANK_WEALTH_ACC = "Wealth-AccountsData.csv"
 
 WORLD_BANK_INC_GRP = "https://ddh-openapi.worldbank.org/resources/DR0095334/download"
 """Income group historical data from World bank."""
@@ -204,11 +193,11 @@ def download_world_bank_indicator(
     pages = np.inf
     page = 1
     while page <= pages:
-        response = requests.get(
+        url = (
             f"https://api.worldbank.org/v2/countries/{country_code}/indicators/"
-            f"{indicator}?format=json&page={page}",
-            timeout=30,
+            f"{indicator}?format=json&page={page}"
         )
+        response = requests.get(url, timeout=30)
         json_data = json.loads(response.text)
 
         # Check if we received an error message
@@ -216,7 +205,8 @@ def download_world_bank_indicator(
             if json_data[0]["message"][0]["id"] == "120":
                 raise ValueError(
                     "Error requesting data from the World Bank API. Did you use the "
-                    "correct country code and indicator ID?"
+                    "correct country code and indicator ID?\n"
+                    f"{url}"
                 )
         # If no, we should be fine
         except KeyError:
@@ -413,9 +403,9 @@ def world_bank_wealth_account(
     cntry_iso, ref_year, variable_name="NW.PCA.TO", no_land=True
 ):
     """
-    Download and unzip wealth accounting historical data (1995, 2000, 2005, 2010, 2014)
-    from World Bank (https://datacatalog.worldbank.org/dataset/wealth-accounting).
-    Return requested variable for a country (cntry_iso) and a year (ref_year).
+    Download wealth accounting data from the World Bank API and return the requested
+    variable for a country (cntry_iso) and a year (ref_year).
+    https://datacatalog.worldbank.org/search/dataset/0042066
 
     Parameters
     ----------
@@ -424,10 +414,9 @@ def world_bank_wealth_account(
     ref_year : int
         reference year
 
-        * available in data: 1995, 2000, 2005, 2010, 2014
-        * other years between 1995 and 2014 are interpolated
-        * for years outside range, indicator is scaled
-          proportionally to GDP
+        * available in data: 1995-2020
+        * years within the data range are interpolated
+        * for years outside range, indicator is scaled proportionally to GDP
 
     variable_name : str
         select one variable, i.e.:
@@ -454,57 +443,46 @@ def world_bank_wealth_account(
         (applies to 'NW.PCA.*' only). Default: True.
     """
     try:
-        data_file = SYSTEM_DIR.joinpath(FILE_WORLD_BANK_WEALTH_ACC)
-        if not data_file.is_file():
-            data_file = SYSTEM_DIR.joinpath(
-                "Wealth-Accounts_CSV", FILE_WORLD_BANK_WEALTH_ACC
-            )
-        if not data_file.is_file():
-            if not SYSTEM_DIR.joinpath("Wealth-Accounts_CSV").is_dir():
-                SYSTEM_DIR.joinpath("Wealth-Accounts_CSV").mkdir()
-            file_down = download_file(WORLD_BANK_WEALTH_ACC)
-            zip_ref = zipfile.ZipFile(file_down, "r")
-            zip_ref.extractall(SYSTEM_DIR.joinpath("Wealth-Accounts_CSV"))
-            zip_ref.close()
-            Path(file_down).unlink()
-            LOGGER.debug("Download and unzip complete. Unzipping %s", str(data_file))
+        data_wealth = download_world_bank_indicator(
+            country_code=cntry_iso,
+            indicator=variable_name,
+        ).dropna()
+    except ValueError:
+        data_wealth = pd.Series(dtype=float)
 
-        data_wealth = pd.read_csv(data_file, sep=",", index_col=None, header=0)
-    except Exception as err:
-        raise type(err)(
-            "Downloading World Bank Wealth Accounting Data failed: " + str(err)
-        ) from err
-
-    data_wealth = data_wealth[
-        data_wealth["Country Code"].str.contains(cntry_iso)
-        & data_wealth["Indicator Code"].str.contains(variable_name)
-    ].loc[:, "1995":"2014"]
-    years = list(map(int, list(data_wealth)))
-    if (
-        data_wealth.size == 0 and "NW.PCA.TO" in variable_name
-    ):  # if country is not found in data
+    if data_wealth.empty and "NW.PCA.TO" in variable_name:
         LOGGER.warning(
             "No data available for country. Using non-financial wealth instead"
         )
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
         fac = wealth2gdp(cntry_iso)[1]
         return gdp_year, np.around((fac * gdp_val), 1), 0
-    if ref_year in years:  # indicator for reference year is available directly
-        result = data_wealth.loc[:, str(ref_year)].values[0]
-    elif np.min(years) < ref_year < np.max(years):  # interpolate
-        result = np.interp(ref_year, years, data_wealth.values[0, :])
-    elif ref_year < np.min(years):  # scale proportionally to GDP
+
+    years = data_wealth.index.values
+    if ref_year in years:
+        result = data_wealth.loc[ref_year]
+    elif np.min(years) < ref_year < np.max(years):
+        result = np.interp(ref_year, years, data_wealth.values)
+    elif ref_year < np.min(years):
         gdp_year, gdp0_val = gdp(cntry_iso, np.min(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        result = data_wealth.values[0, 0] * gdp_val / gdp0_val
+        result = (
+            data_wealth.iloc[data_wealth.index.get_loc(np.min(years))]
+            * gdp_val
+            / gdp0_val
+        )
         ref_year = gdp_year
     else:
         gdp_year, gdp0_val = gdp(cntry_iso, np.max(years))
         gdp_year, gdp_val = gdp(cntry_iso, ref_year)
-        result = data_wealth.values[0, -1] * gdp_val / gdp0_val
+        result = (
+            data_wealth.iloc[data_wealth.index.get_loc(np.max(years))]
+            * gdp_val
+            / gdp0_val
+        )
         ref_year = gdp_year
+
     if "NW.PCA." in variable_name and no_land:
-        # remove value of built-up land from produced capital
         result = result / 1.24
     return ref_year, np.around(result, 1), 1
 
