@@ -60,6 +60,8 @@ FILE_GWP_WEALTH2GDP_FACTORS = "WEALTH2GDP_factors_CRI_2016.csv"
 """File with wealth-to-GDP factors from the
 Credit Suisse's Global Wealth Report 2017 (household wealth)"""
 
+WB_URBAN_LAND_MARKUP = 1.24
+
 
 def _nat_earth_shp(resolution="10m", category="cultural", name="admin_0_countries"):
     shp_file = shapereader.natural_earth(
@@ -436,12 +438,18 @@ def world_bank_wealth_account(
             forests (timber and some nontimber forest products), and
             protected areas.
         'NW.TOW.TO': Total wealth of country.
-        Note: Values are measured at market exchange rates in constant 2014 US dollars,
-            using a country-specific GDP deflator.
+        Note: Values are measured at market exchange rates in
+              real chained 2019 US dollars.
+              See https://datacatalogfiles.worldbank.org/ddh-published-v2/0042066/9/DR0094582/CWON%202024%20Methodology_10122024.pdf
+
     no_land : boolean
         If True, return produced capital without built-up land value
-        (applies to 'NW.PCA.*' only). Default: True.
+        (applies to 'NW.PCA.*' only). The world bank applies a 24% markup
+        to include the built-up (or urban) land value, thus this divides
+        by a factor 1.24.
+        Default: True.
     """
+
     try:
         data_wealth = download_world_bank_indicator(
             country_code=cntry_iso,
@@ -483,7 +491,7 @@ def world_bank_wealth_account(
         ref_year = gdp_year
 
     if "NW.PCA." in variable_name and no_land:
-        result = result / 1.24
+        result = result / WB_URBAN_LAND_MARKUP
     return ref_year, np.around(result, 1), 1
 
 
