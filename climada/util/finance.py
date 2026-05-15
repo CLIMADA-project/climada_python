@@ -46,9 +46,7 @@ WORLD_BANK_WEALTH_ACC = (
 
 FILE_WORLD_BANK_WEALTH_ACC = "Wealth-AccountsData.csv"
 
-WORLD_BANK_INC_GRP = (
-    "http://databank.worldbank.org/data/download/site-content/OGHIST.xls"
-)
+WORLD_BANK_INC_GRP = "https://ddh-openapi.worldbank.org/resources/DR0095334/download"
 """Income group historical data from World bank."""
 
 INCOME_GRP_WB_TABLE = {
