@@ -619,76 +619,94 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             )
         ]
 
-    @staticmethod
-    def _identify_continuous_periods(group, time_unit):
-        """Calculate the difference between consecutive dates."""
+    def _make_period_bins(
+        self, freq: str | None = None
+    ) -> tuple[pd.DatetimeIndex, list[str]]:
+        """Build bin edges and labels from snapshot dates or a given frequency.
 
-        if time_unit == "year":
-            group["date_diff"] = group[DATE_COL_NAME].dt.year.diff()
-        if time_unit == "month":
-            group["date_diff"] = group[DATE_COL_NAME].dt.month.diff()
-        if time_unit == "day":
-            group["date_diff"] = group[DATE_COL_NAME].dt.day.diff()
-        if time_unit == "hour":
-            group["date_diff"] = group[DATE_COL_NAME].dt.hour.diff()
-        # Identify breaks in continuity
-        group["period_id"] = (group["date_diff"] != 1).cumsum()
-        return group
+        Parameters
+        ----------
+        freq : str, optional
+            Pandas frequency string (e.g. ``"2Y"``, ``"3M"``). If None, bins
+            correspond to the intervals between consecutive snapshots.
+
+        Returns
+        -------
+        bin_edges : pd.DatetimeIndex
+        labels : list of str
+        """
+        snapshot_dates = sorted(snap.date for snap in self._snapshots)
+        start, end = snapshot_dates[0], snapshot_dates[-1]
+
+        if freq is None:
+            edges = pd.DatetimeIndex(snapshot_dates)
+        else:
+            edges = pd.date_range(start=start, end=end, freq=freq)
+            if edges[-1] < end:
+                edges = pd.date_range(start=start, periods=len(edges) + 1, freq=freq)
+
+            if edges[0] != start:
+                LOGGER.warning(
+                    "The first bin edge %s does not match the start date %s. "
+                    "This is likely because '%s' is interpreted as an end-anchored frequency. "
+                    "Consider using an explicit start-anchored frequency instead "
+                    "(e.g. 'YS' instead of 'Y', 'MS' instead of 'M').",
+                    edges[0].date(),
+                    start.date(),
+                    freq,
+                )
+
+        labels = [
+            f"{edges[i].date()} to {edges[i + 1].date()}" for i in range(len(edges) - 1)
+        ]
+        return edges, labels
 
     @classmethod
     def _date_to_period_agg(
         cls,
         metric_df: pd.DataFrame,
         grouper: list[str],
-        time_unit: str = "year",
+        bin_edges: pd.DatetimeIndex,
+        labels: list[str],
         colname: str | list[str] = RISK_COL_NAME,
+        aggfunc: str | Callable = "mean",
     ) -> pd.DataFrame:
-        """Group per date risk metric to periods."""
+        """Aggregate per-date risk metrics into periods.
 
-        df_sorted = metric_df.sort_values(by=grouper + [DATE_COL_NAME])
-
-        if GROUP_COL_NAME in metric_df.columns and GROUP_COL_NAME not in grouper:
-            grouper = [GROUP_COL_NAME] + grouper
-
-        # Apply the function to identify continuous periods
-        df_periods = df_sorted.groupby(
-            grouper, dropna=False, group_keys=False, observed=True
-        )[df_sorted.columns].apply(cls._identify_continuous_periods, time_unit)
-
+        Parameters
+        ----------
+        metric_df : pd.DataFrame
+        grouper : list of str
+        bin_edges : pd.DatetimeIndex
+            Edges of the period bins, as returned by ``_make_period_bins``.
+        labels : list of str
+            Labels for each bin interval.
+        colname : str or list of str, optional
+        aggfunc : str or callable, optional
+            Aggregation function passed to ``groupby.agg``. Default is ``"mean"``.
+        """
         if isinstance(colname, str):
             colname = [colname]
-        agg_dict = {
-            "start_date": pd.NamedAgg(column=DATE_COL_NAME, aggfunc="min"),
-            "end_date": pd.NamedAgg(column=DATE_COL_NAME, aggfunc="max"),
-        }
-        df_periods_dates = (
-            df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)
-            .agg(func=None, **agg_dict)  # type: ignore
-            .reset_index()
+
+        df = metric_df.copy()
+        df[PERIOD_COL_NAME] = pd.cut(
+            df[DATE_COL_NAME].dt.to_timestamp(how="start"),
+            bins=bin_edges,
+            labels=labels,
+            include_lowest=True,
+            right=True,
         )
 
-        df_periods_dates[PERIOD_COL_NAME] = (
-            df_periods_dates["start_date"].astype(str)
-            + " to "
-            + df_periods_dates["end_date"].astype(str)
-        )
-        df_periods = (
-            df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)[
+        if GROUP_COL_NAME in df.columns and GROUP_COL_NAME not in grouper:
+            grouper = [GROUP_COL_NAME] + grouper
+
+        return (
+            df.groupby([PERIOD_COL_NAME] + grouper, dropna=False, observed=True)[
                 colname
             ]
-            .mean()
+            .agg(aggfunc)
             .reset_index()
         )
-        df_periods = pd.merge(
-            df_periods_dates[grouper + [PERIOD_COL_NAME, "period_id"]],
-            df_periods,
-            on=grouper + ["period_id"],
-        )
-        df_periods = df_periods.drop(["period_id"], axis=1)
-        return df_periods[
-            [PERIOD_COL_NAME]
-            + [col for col in df_periods.columns if col != PERIOD_COL_NAME]
-        ]
 
     def per_period_risk_metrics(
         self,
@@ -697,16 +715,31 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             RETURN_PERIOD_METRIC_NAME,
             AAI_PER_GROUP_METRIC_NAME,
         ),
-        **kwargs,
+        freq: str | None = None,
+        colname: str | list[str] = RISK_COL_NAME,
+        aggfunc: str | Callable = "mean",
     ) -> pd.DataFrame:
-        """Return a tidy dataframe of the risk metrics with the total
-        for each different period (pair of snapshots).
+        """Return a tidy dataframe of risk metrics aggregated over periods.
 
+        Parameters
+        ----------
+        metrics : iterable of str, optional
+        freq : str, optional
+            Pandas frequency string for aggregation bins (e.g. ``"2Y"``).
+            If None, bins correspond to intervals between consecutive snapshots.
+        colname : str or list of str, optional
+        aggfunc : str or callable, optional
+            Aggregation function. Default is ``"mean"``.
         """
-
-        metric_df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
+        metric_df = self.per_date_risk_metrics(metrics=metrics)
+        bin_edges, labels = self._make_period_bins(freq=freq)
         return self._date_to_period_agg(
-            metric_df, grouper=self._grouper + [UNIT_COL_NAME], **kwargs
+            metric_df,
+            grouper=self._grouper + [UNIT_COL_NAME],
+            bin_edges=bin_edges,
+            labels=labels,
+            colname=colname,
+            aggfunc=aggfunc,
         )
 
     def _calc_waterfall_plot_data(
