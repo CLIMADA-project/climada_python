@@ -641,9 +641,11 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         if freq is None:
             edges = pd.DatetimeIndex(snapshot_dates)
         else:
-            edges = pd.date_range(start=start, end=end, freq=freq)
+            edges = pd.date_range(start=start, end=end, freq=freq, inclusive="left")
             if edges[-1] < end:
-                edges = pd.date_range(start=start, periods=len(edges) + 1, freq=freq)
+                edges = pd.date_range(
+                    start=start, periods=len(edges) + 1, freq=freq, inclusive="left"
+                )
 
             if edges[0] != start:
                 LOGGER.warning(
@@ -694,7 +696,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             bins=bin_edges,
             labels=labels,
             include_lowest=True,
-            right=True,
+            right=False,
         )
 
         if GROUP_COL_NAME in df.columns and GROUP_COL_NAME not in grouper:
@@ -721,6 +723,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     ) -> pd.DataFrame:
         """Return a tidy dataframe of risk metrics aggregated over periods.
 
+        By default, aggregate by computing the "mean" of the metric over the
+        period.
+
         Parameters
         ----------
         metrics : iterable of str, optional
@@ -730,6 +735,20 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         colname : str or list of str, optional
         aggfunc : str or callable, optional
             Aggregation function. Default is ``"mean"``.
+
+        Notes
+        -----
+
+        Periods are left inclusing, right excluding, meaning for instance,
+        "2018-01-01 to 2024-01-01" is the average risk from 2018-01-01 included
+        to 2023-12-31 included.
+
+        If the last date is at odd with the frequency given, the aggfunc is
+        still applied over the "whole" bin inclunding the date, for instance if
+        the last date is 2025-01-01, and bins are 3Y starting at 2022-01-01,
+        2025-01-01 falls in the 2025-01-01 to 2028-01-01, meaning it will be
+        averaged over 3 years but with two years without data.
+
         """
         metric_df = self.per_date_risk_metrics(metrics=metrics)
         bin_edges, labels = self._make_period_bins(freq=freq)
@@ -766,7 +785,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         self,
         ax=None,
         figsize=(12, 6),
-    ):
+    ):  # pragma: no cover
         """Plot a waterfall chart of risk contributions over a specified date range.
 
         This method generates a stacked bar chart to visualize the
@@ -854,7 +873,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def plot_waterfall(
         self,
         ax=None,
-    ):
+    ):  # pragma: no cover
         """Plot a waterfall chart of risk contributions between two dates.
 
         This method generates a waterfall plot to visualize the changes in risk contributions.
@@ -939,7 +958,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             )
 
         # Construct y-axis label and title based on parameters
-        value_label = "USD"
+        value_label = self._snapshots[0].exposure.value_unit
         title_label = f"Evolution of the contributions of risk between {start_date_p} and {end_date_p} (Average impact)"
         ax.yaxis.set_major_formatter(mticker.EngFormatter())
         ax.set_title(title_label)
