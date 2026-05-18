@@ -165,7 +165,6 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
             self.mock_snapshot2,
             self.mock_snapshot3,
         ]
-        # self.snapshots_list = cast(list[Snapshot], self.snapshots_list)
 
         # Mock interpolation strategy and impact computation strategy
         self.mock_interpolation_strategy = MagicMock(spec=AllLinearStrategy)
@@ -429,7 +428,7 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
 
         # Check internal storage
         stored_df = getattr(rt, "_aai_metrics")
-        # Assert that the stored DF is the one *before* NPV transformation
+        # Assert that the stored DF is the one *after* NPV transformation
         pd.testing.assert_frame_equal(
             stored_df.reset_index(drop=True),
             self.expected_npv_aai.reset_index(drop=True),
@@ -471,7 +470,6 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
     @patch.object(
         InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", new_callable=Mock
     )
-    # @patch.object(InterpolatedRiskTrajectory, "npv_transform", new_callable=Mock)
     def test_generic_metrics_None_concat_returns_empty(
         self, mock_reset_risk_metrics_calculators
     ):

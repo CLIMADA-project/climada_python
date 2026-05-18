@@ -37,6 +37,7 @@ from scipy.sparse import csr_matrix
 
 from climada.engine.impact import Impact, ImpactFreqCurve
 from climada.engine.impact_calc import ImpactCalc
+from climada.entity._legacy_measures.base import Measure
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     CONTRIBUTION_BASE_RISK_NAME,
@@ -435,9 +436,9 @@ class CalcRiskMetricsPeriod:
 
         Parameters
         ----------
-        snapshot0 : Snapshot
+        snapshot_start : Snapshot
             The `Snapshot` at the start of the risk period.
-        snapshot1 : Snapshot
+        snapshot_end : Snapshot
             The `Snapshot` at the end of the risk period.
         time_resolution : str, optional
             One of pandas date offset strings or corresponding objects.
@@ -752,7 +753,9 @@ class CalcRiskMetricsPeriod:
             return self._interp_mats(f"E0{invariant}", f"E1{invariant}")
 
         if re.match(r"E[01]H[01]V[01]", invariant):
-            return [getattr(self, invariant).imp_mat] * self.time_points
+            return [
+                getattr(self, invariant).imp_mat.copy() for _ in range(self.time_points)
+            ]
 
         raise ValueError(
             f"Unrecognised invariant format ({invariant}), should be H[01]V[01] | E[01]H[01]V[01]"
@@ -800,7 +803,7 @@ class CalcRiskMetricsPeriod:
                 if "H0" in invariant
                 else self.snapshot_end.hazard.frequency
             ),
-            self.date_idx.freqstr[0],
+            str(self.date_idx.freq.n),
             return_periods,
         )
 
@@ -977,10 +980,18 @@ class CalcRiskMetricsPeriod:
         return_periods : list of int
             The return periods to estimate impacts for.
 
+
+        Notes
+        -----
+
+        Computing return period impacts normally requires ordering events by
+        their impact magnitude. This method instead interpolates impacts at the
+        specified return period directly, which is an approximation.
+
+        This may be improved in the future by building concatenated hazard and
+        impacts matrix corresponding to all possible cases.
         """
 
-        # currently mathematicaly wrong, but approximatively correct,
-        # to be reworked when concatenating the impact matrices for the interpolation
         per_date_rp_H0V0, per_date_rp_H1V0, per_date_rp_H0V1, per_date_rp_H1V1 = (
             self._per_date_return_periods("H0V0", return_periods),
             self._per_date_return_periods("H1V0", return_periods),

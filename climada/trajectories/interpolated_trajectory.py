@@ -24,7 +24,7 @@ of risk in between points in time (snapshots).
 import datetime
 import itertools
 import logging
-from typing import Iterable, cast
+from typing import Callable, Iterable, cast
 
 import matplotlib as mpl
 import matplotlib.dates as mdates
@@ -163,8 +163,8 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             return_periods=return_periods,
             risk_disc_rates=risk_disc_rates,
         )
-        self.start_date = min((snapshot.date for snapshot in snapshots_list))
-        self.end_date = max((snapshot.date for snapshot in snapshots_list))
+        self.start_date = min(snapshot.date for snapshot in self._snapshots)
+        self.end_date = max(snapshot.date for snapshot in self._snapshots)
         self._risk_metrics_calculators = self._reset_risk_metrics_calculators(
             self._snapshots,
             time_resolution,
