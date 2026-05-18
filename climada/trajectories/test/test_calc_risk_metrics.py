@@ -26,7 +26,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from climada.entity.measures.base import Measure
+from climada.entity._legacy_measures.base import Measure
 from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPoints
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,

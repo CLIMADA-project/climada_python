@@ -37,7 +37,6 @@ from scipy.sparse import csr_matrix
 
 from climada.engine.impact import Impact, ImpactFreqCurve
 from climada.engine.impact_calc import ImpactCalc
-from climada.entity.measures.base import Measure
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     CONTRIBUTION_BASE_RISK_NAME,
