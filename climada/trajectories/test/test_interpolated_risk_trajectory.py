@@ -21,12 +21,12 @@ unit tests for interpolated_risk_trajectory
 """
 
 import datetime
-import unittest
 from itertools import product
 from unittest.mock import MagicMock, Mock, call, patch
 
-import numpy as np  # For potential NaN/NA comparisons
+import numpy as np
 import pandas as pd
+import pytest
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPeriod
@@ -65,564 +65,474 @@ from climada.trajectories.interpolation import (
 )
 from climada.trajectories.snapshot import Snapshot
 
+# --- Fixtures ---
 
-class TestInterpolatedRiskTrajectory(unittest.TestCase):
-    def setUp(self):
-        # Common setup for all tests
-        self.dates1 = [
+
+@pytest.fixture
+def mock_snapshots():
+    snaps = []
+    for year in [2023, 2024, 2025]:
+        m = MagicMock(spec=Snapshot)
+        m.date = pd.Timestamp(year=year, month=1, day=1)
+        snaps.append(m)
+    return snaps
+
+
+@pytest.fixture
+def mock_disc_rates():
+    dr = MagicMock(spec=DiscRates)
+    dr.years = [2023, 2024, 2025]
+    dr.rates = [0.01, 0.02, 0.03]
+    return dr
+
+
+@pytest.fixture
+def mock_interpolation_strategy():
+    return MagicMock(spec=AllLinearStrategy)
+
+
+@pytest.fixture
+def mock_impact_computation_strategy():
+    return MagicMock(spec=ImpactCalcComputation)
+
+
+@pytest.fixture
+def dates():
+    return {
+        "dates1": [
             pd.Period("2023-01-01", freq="Y"),
             pd.Period("2024-01-01", freq="Y"),
-        ]
-        self.dates2 = [
+        ],
+        "dates2": [
             pd.Period("2025-01-01", freq="Y"),
             pd.Period("2026-01-01", freq="Y"),
-        ]
-        self.groups = ["GroupA", "GroupB", pd.NA]
-        self.measures = ["MEAS1", "MEAS2"]
-        self.metrics = [AAI_METRIC_NAME]
-        self.aai_dates1 = pd.DataFrame(
-            product(self.dates1, self.groups, self.measures, self.metrics),
-            columns=INDEXING_COLUMNS,
-        )
-        self.aai_dates1[RISK_COL_NAME] = np.arange(12) * 100
-        self.aai_dates1[GROUP_COL_NAME] = self.aai_dates1[GROUP_COL_NAME].astype(
-            "category"
-        )
+        ],
+    }
 
-        self.aai_dates2 = pd.DataFrame(
-            product(self.dates2, self.groups, self.measures, self.metrics),
-            columns=INDEXING_COLUMNS,
-        )
-        self.aai_dates2[RISK_COL_NAME] = np.arange(12) * 100 + 1200
-        self.aai_dates2[GROUP_COL_NAME] = self.aai_dates2[GROUP_COL_NAME].astype(
-            "category"
-        )
 
-        self.aai_alldates = pd.DataFrame(
-            product(
-                self.dates1 + self.dates2, self.groups, self.measures, self.metrics
+@pytest.fixture
+def aai_data(dates):
+    groups = ["GroupA", "GroupB", pd.NA]
+    measures = ["MEAS1", "MEAS2"]
+    metrics = [AAI_METRIC_NAME]
+
+    df1 = pd.DataFrame(
+        product(dates["dates1"], groups, measures, metrics),
+        columns=INDEXING_COLUMNS,
+    )
+    df1[RISK_COL_NAME] = np.arange(12) * 100
+    df1[GROUP_COL_NAME] = df1[GROUP_COL_NAME].astype("category")
+
+    df2 = pd.DataFrame(
+        product(dates["dates2"], groups, measures, metrics),
+        columns=INDEXING_COLUMNS,
+    )
+    df2[RISK_COL_NAME] = np.arange(12) * 100 + 1200
+    df2[GROUP_COL_NAME] = df2[GROUP_COL_NAME].astype("category")
+
+    df_all = pd.DataFrame(
+        product(dates["dates1"] + dates["dates2"], groups, measures, metrics),
+        columns=INDEXING_COLUMNS,
+    )
+    df_all[RISK_COL_NAME] = np.arange(24) * 100
+    df_all[GROUP_COL_NAME] = df_all[GROUP_COL_NAME].astype("category")
+    df_all[GROUP_COL_NAME] = df_all[GROUP_COL_NAME].cat.add_categories(["All"])
+    df_all[GROUP_COL_NAME] = df_all[GROUP_COL_NAME].fillna("All")
+
+    return {"df1": df1, "df2": df2, "df_all": df_all}
+
+
+@pytest.fixture
+def mock_calculators(aai_data):
+    calc1 = MagicMock(spec=CalcRiskMetricsPeriod)
+    calc2 = MagicMock(spec=CalcRiskMetricsPeriod)
+    calc1.calc_aai_metric.return_value = aai_data["df1"]
+    calc2.calc_aai_metric.return_value = aai_data["df2"]
+    return [calc1, calc2]
+
+
+@pytest.fixture
+def rt_basic(mock_snapshots):
+    return InterpolatedRiskTrajectory(mock_snapshots)
+
+
+@pytest.fixture
+def period_agg_df():
+    return pd.DataFrame(
+        {
+            DATE_COL_NAME: pd.PeriodIndex(
+                ["2023", "2024", "2025", "2026", "2027"], freq="Y"
             ),
-            columns=INDEXING_COLUMNS,
-        )
-        self.aai_alldates[RISK_COL_NAME] = np.arange(24) * 100
-        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[GROUP_COL_NAME].astype(
-            "category"
-        )
-        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[
-            GROUP_COL_NAME
-        ].cat.add_categories(["All"])
-        self.aai_alldates[GROUP_COL_NAME] = self.aai_alldates[GROUP_COL_NAME].fillna(
-            "All"
-        )
-        self.expected_pre_npv_aai = self.aai_alldates
-        self.expected_pre_npv_aai = self.expected_pre_npv_aai[
-            [
-                DATE_COL_NAME,
-                GROUP_COL_NAME,
-                MEASURE_COL_NAME,
-                METRIC_COL_NAME,
-                RISK_COL_NAME,
-            ]
+            GROUP_COL_NAME: ["All"] * 5,
+            MEASURE_COL_NAME: ["m1"] * 5,
+            METRIC_COL_NAME: [AAI_METRIC_NAME] * 5,
+            RISK_COL_NAME: [100.0, 200.0, 300.0, 400.0, 500.0],
+        }
+    )
+
+
+@pytest.fixture
+def period_agg_bins():
+    edges = pd.DatetimeIndex(
+        [
+            pd.Timestamp("2023-01-01"),
+            pd.Timestamp("2025-01-01"),
+            pd.Timestamp("2027-01-01"),
+            pd.Timestamp("2029-01-01"),
         ]
+    )
+    labels = [
+        "2023-01-01 to 2025-01-01",
+        "2025-01-01 to 2027-01-01",
+        "2027-01-01 to 2029-01-01",
+    ]
+    return edges, labels
 
-        self.expected_npv_aai = pd.DataFrame(
-            product(
-                self.dates1 + self.dates2, self.groups, self.measures, self.metrics
-            ),
-            columns=INDEXING_COLUMNS,
-        )
-        self.expected_npv_aai[RISK_COL_NAME] = np.arange(24) * 90
-        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
-            GROUP_COL_NAME
-        ].astype("category")
-        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
-            GROUP_COL_NAME
-        ].cat.add_categories(["All"])
-        self.expected_npv_aai[GROUP_COL_NAME] = self.expected_npv_aai[
-            GROUP_COL_NAME
-        ].fillna("All")
-        expected_npv_df = self.expected_npv_aai
-        expected_npv_df = expected_npv_df[
-            [
-                GROUP_COL_NAME,
-                DATE_COL_NAME,
-                MEASURE_COL_NAME,
-                METRIC_COL_NAME,
-                RISK_COL_NAME,
-            ]
-        ]
-        self.mock_snapshot1 = MagicMock(spec=Snapshot)
-        self.mock_snapshot1.date = datetime.date(2023, 1, 1)
 
-        self.mock_snapshot2 = MagicMock(spec=Snapshot)
-        self.mock_snapshot2.date = datetime.date(2024, 1, 1)
+@pytest.fixture
+def waterfall_contributions():
+    dates = pd.to_datetime(["2023-01-01", "2024-01-01", "2025-01-01"])
+    metrics = [
+        CONTRIBUTION_BASE_RISK_NAME,
+        CONTRIBUTION_EXPOSURE_NAME,
+        CONTRIBUTION_HAZARD_NAME,
+        CONTRIBUTION_VULNERABILITY_NAME,
+        CONTRIBUTION_INTERACTION_TERM_NAME,
+    ]
+    rows = list(product(dates, metrics))
+    df = pd.DataFrame(rows, columns=[DATE_COL_NAME, METRIC_COL_NAME])
+    df[RISK_COL_NAME] = np.arange(len(df), dtype=float)
+    return df
 
-        self.mock_snapshot3 = MagicMock(spec=Snapshot)
-        self.mock_snapshot3.date = datetime.date(2025, 1, 1)
 
-        self.snapshots_list: list[Snapshot] = [
-            self.mock_snapshot1,
-            self.mock_snapshot2,
-            self.mock_snapshot3,
-        ]
+# --- Init & Properties ---
 
-        # Mock interpolation strategy and impact computation strategy
-        self.mock_interpolation_strategy = MagicMock(spec=AllLinearStrategy)
-        self.mock_impact_computation_strategy = MagicMock(spec=ImpactCalcComputation)
 
-        # Mock DiscRates if needed for NPV tests
-        self.mock_disc_rates = MagicMock(spec=DiscRates)
-        self.mock_disc_rates.years = [2023, 2024, 2025]
-        self.mock_disc_rates.rates = [0.01, 0.02, 0.03]  # Example rates
-
-        self.mock_risk_period_calc1 = MagicMock(spec=CalcRiskMetricsPeriod)
-        self.mock_risk_period_calc2 = MagicMock(spec=CalcRiskMetricsPeriod)
-        # Mock npv_transform return value
-        self.mock_risk_period_calc1.calc_aai_metric.return_value = self.aai_dates1
-        self.mock_risk_period_calc2.calc_aai_metric.return_value = self.aai_dates2
-        self.mock_risk_metric_calculators = [
-            self.mock_risk_period_calc1,
-            self.mock_risk_period_calc2,
-        ]
-
-        self.mock_interpolated_risk_traj = MagicMock(spec=InterpolatedRiskTrajectory)
-        self.mock_interpolated_risk_traj._risk_metrics_calcultators = (
-            self.mock_risk_metric_calculators
-        )
-        self.mock_interpolated_risk_traj._risk_disc_rates = (
-            self.mock_disc_rates
-        )  # For NPV transform check
-
-    # --- Test Initialization and Properties ---
-    # These tests focus on the __init__ method and property getters/setters.
-
-    ## Test `__init__` method
-    @patch.object(
+def test_init_basic(
+    mock_snapshots, mock_interpolation_strategy, mock_impact_computation_strategy
+):
+    with patch.object(
         InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", return_value=1
-    )
-    def test_init_basic(self, mock_reset_metrics_calculators):
-        # Test basic initialization with defaults
+    ) as mock_reset:
         rt = InterpolatedRiskTrajectory(
-            self.snapshots_list,
-            interpolation_strategy=self.mock_interpolation_strategy,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
+            mock_snapshots,
+            interpolation_strategy=mock_interpolation_strategy,
+            impact_computation_strategy=mock_impact_computation_strategy,
         )
-        self.assertEqual(rt.start_date, self.mock_snapshot1.date)
-        self.assertEqual(rt.end_date, self.mock_snapshot3.date)
-        self.assertIsNone(rt._risk_disc_rates)
-        mock_reset_metrics_calculators.assert_called_once_with(
-            self.snapshots_list,
+        assert rt.start_date == mock_snapshots[0].date
+        assert rt.end_date == mock_snapshots[-1].date
+        assert rt._risk_disc_rates is None
+        mock_reset.assert_called_once_with(
+            mock_snapshots,
             "Y",
-            self.mock_interpolation_strategy,
-            self.mock_impact_computation_strategy,
+            mock_interpolation_strategy,
+            mock_impact_computation_strategy,
         )
-        self.assertEqual(rt._risk_metrics_calculators, 1)
-        # Check that metrics are reset (initially None)
+        assert rt._risk_metrics_calculators == 1
         for metric in InterpolatedRiskTrajectory.POSSIBLE_METRICS:
-            self.assertIsNone(getattr(rt, "_" + metric + "_metrics"))
+            assert getattr(rt, f"_{metric}_metrics") is None
 
-    @patch.object(InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators")
-    def test_init_with_custom_params(self, mock_reset_calculators):
-        # Test initialization with custom parameters
-        mock_disc = Mock(spec=DiscRates)
-        mock_interp = Mock(spec=ImpactInterpolationStrategy)
-        mock_impact_compute = Mock(spec=ImpactComputationStrategy)
+
+def test_init_with_custom_params(mock_snapshots, mock_disc_rates):
+    mock_interp = Mock(spec=ImpactInterpolationStrategy)
+    mock_impact = Mock(spec=ImpactComputationStrategy)
+    with patch.object(
+        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators"
+    ) as mock_reset:
         rt = InterpolatedRiskTrajectory(
-            self.snapshots_list,
+            mock_snapshots,
             time_resolution="MS",
-            risk_disc_rates=mock_disc,
+            risk_disc_rates=mock_disc_rates,
             interpolation_strategy=mock_interp,
-            impact_computation_strategy=mock_impact_compute,
+            impact_computation_strategy=mock_impact,
         )
-
-        mock_reset_calculators.assert_has_calls(
-            [call(self.snapshots_list, "MS", mock_interp, mock_impact_compute)]
+        mock_reset.assert_called_once_with(
+            mock_snapshots, "MS", mock_interp, mock_impact
         )
-        self.assertEqual(rt._risk_disc_rates, mock_disc)
+        assert rt._risk_disc_rates == mock_disc_rates
 
-    @patch.object(InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators")
-    @patch.object(InterpolatedRiskTrajectory, "_reset_metrics", new_callable=Mock)
-    @patch(
-        "climada.trajectories.interpolated_trajectory.CalcRiskMetricsPeriod",
-        autospec=True,
+
+def test_set_time_resolution(mock_snapshots, mock_impact_computation_strategy):
+    rt = InterpolatedRiskTrajectory(
+        mock_snapshots, impact_computation_strategy=mock_impact_computation_strategy
     )
-    def test_set_impact_computation_strategy(
-        self,
-        mock_calc_risk_metrics,
-        mock_reset_metrics,
-        mock_reset_risk_metrics_calculators,
-    ):
-        mock_reset_risk_metrics_calculators.return_value = (
-            self.mock_risk_metric_calculators
-        )
-        rt = InterpolatedRiskTrajectory(
-            self.snapshots_list,
-            interpolation_strategy=self.mock_interpolation_strategy,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
-        )
-        mock_reset_metrics.assert_called_once()  # Called during init
-        with self.assertRaises(ValueError):
-            rt.impact_computation_strategy = "A"
-
-        # There is only one possibility at the moment so we just check against a new object
-        new_impact_calc = ImpactCalcComputation()
-        rt.impact_computation_strategy = new_impact_calc
-        self.assertEqual(rt.impact_computation_strategy, new_impact_calc)
-        mock_reset_metrics.assert_has_calls([call(), call()])
-        for rp in self.mock_risk_metric_calculators:
-            self.assertEqual(rp.impact_computation_strategy, new_impact_calc)
-
-    @patch.object(InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators")
-    @patch.object(InterpolatedRiskTrajectory, "_reset_metrics", new_callable=Mock)
-    @patch(
-        "climada.trajectories.interpolated_trajectory.CalcRiskMetricsPeriod",
-        autospec=True,
-    )
-    def test_set_interpolation_strategy(
-        self,
-        mock_calc_risk_metrics,
-        mock_reset_metrics,
-        mock_reset_risk_metrics_calculators,
-    ):
-        mock_reset_risk_metrics_calculators.return_value = (
-            self.mock_risk_metric_calculators
-        )
-        rt = InterpolatedRiskTrajectory(
-            self.snapshots_list,
-            interpolation_strategy=self.mock_interpolation_strategy,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
-        )
-        mock_reset_metrics.assert_called_once()  # Called during init
-        with self.assertRaises(ValueError):
-            rt.interpolation_strategy = "A"
-
-        # There is only one possibility at the moment so we just check against a new object
-        new_interp = ExponentialExposureStrategy()
-        rt.interpolation_strategy = new_interp
-        self.assertEqual(rt.interpolation_strategy, new_interp)
-        mock_reset_metrics.assert_has_calls([call(), call()])
-        for rp in self.mock_risk_metric_calculators:
-            self.assertEqual(rp.interpolation_strategy, new_interp)
-
-    @patch(
-        "climada.trajectories.interpolated_trajectory.CalcRiskMetricsPeriod",
-        autospec=True,
-    )
-    def test_risk_periods_lazy_computation(self, MockCalcRiskPeriod):
-        # Test that _calc_risk_periods is called only once, lazily
-        rt = InterpolatedRiskTrajectory(
-            self.snapshots_list,
-            interpolation_strategy=self.mock_interpolation_strategy,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
-        )
-
-        # First access should trigger calculation
-        risk_periods = rt._risk_metrics_calculators
-        MockCalcRiskPeriod.assert_has_calls(
-            [
-                call(
-                    self.mock_snapshot1,
-                    self.mock_snapshot2,
-                    time_resolution="Y",
-                    interpolation_strategy=self.mock_interpolation_strategy,
-                    impact_computation_strategy=self.mock_impact_computation_strategy,
-                ),
-                call(
-                    self.mock_snapshot2,
-                    self.mock_snapshot3,
-                    time_resolution="Y",
-                    interpolation_strategy=self.mock_interpolation_strategy,
-                    impact_computation_strategy=self.mock_impact_computation_strategy,
-                ),
-            ]
-        )
-        self.assertEqual(MockCalcRiskPeriod.call_count, 2)
-        self.assertIsInstance(risk_periods, list)
-        self.assertEqual(len(risk_periods), 2)  # N-1 periods for N snapshots
-
-    @patch(
-        "climada.trajectories.interpolated_trajectory.CalcRiskMetricsPeriod",
-        autospec=True,
-    )
-    def test_calc_risk_periods_sorting(self, MockCalcRiskPeriod):
-        # Test that snapshots are sorted by date before pairing
-        unsorted_snapshots: list[Snapshot] = [
-            self.mock_snapshot3,
-            self.mock_snapshot1,
-            self.mock_snapshot2,
-        ]
-        _ = InterpolatedRiskTrajectory(unsorted_snapshots)
-        # Access the property to trigger calculation
-        MockCalcRiskPeriod.assert_has_calls(
-            [
-                call(
-                    self.mock_snapshot1,
-                    self.mock_snapshot2,
-                    **MockCalcRiskPeriod.call_args[1],
-                ),
-                call(
-                    self.mock_snapshot2,
-                    self.mock_snapshot3,
-                    **MockCalcRiskPeriod.call_args[1],
-                ),
-            ]
-        )
-        self.assertEqual(MockCalcRiskPeriod.call_count, 2)
-
-    @patch.object(InterpolatedRiskTrajectory, "_reset_metrics", new_callable=Mock)
-    @patch(
-        "climada.trajectories.interpolated_trajectory.CalcRiskMetricsPeriod",
-        autospec=True,
-    )
-    def test_set_time_resolution(
-        self, mock_calc_risk_metrics_points, mock_reset_metrics
-    ):
-        rt = InterpolatedRiskTrajectory(
-            self.snapshots_list,
-            impact_computation_strategy=self.mock_impact_computation_strategy,
-        )
-        mock_reset_metrics.assert_called_once()  # Called during init
-        with self.assertRaises(ValueError):
+    with patch.object(rt, "_reset_metrics", wraps=rt._reset_metrics) as spy:
+        with pytest.raises(ValueError):
             rt.time_resolution = 75
-
-        # There is only one possibility at the moment so we just check against a new object
         rt.time_resolution = "5M"
-        self.assertEqual(rt.time_resolution, "5M")
-        mock_reset_metrics.assert_has_calls([call(), call()])
+        assert rt.time_resolution == "5M"
+        assert spy.call_count == 1
 
-    # --- Test Generic Metric Computation (`_generic_metrics`) ---
-    # This is a core internal method and deserves thorough testing.
 
-    @patch.object(
-        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", new_callable=Mock
-    )
-    @patch.object(InterpolatedRiskTrajectory, "npv_transform", new_callable=Mock)
-    def test_generic_metrics_basic_flow(
-        self, mock_npv_transform, mock_risk_metrics_calculators
-    ):
-        mock_risk_metrics_calculators.return_value = self.mock_risk_metric_calculators
-        mock_npv_transform.return_value = self.expected_npv_aai
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        rt._risk_disc_rates = self.mock_disc_rates
-        result = rt._generic_metrics(
-            metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric"
-        )
-        # Assertions
-        self.mock_risk_period_calc1.calc_aai_metric.assert_called_once()
-        self.mock_risk_period_calc2.calc_aai_metric.assert_called_once()
-
-        # Check concatenated DataFrame before NPV
-        # We need to manually recreate the expected intermediate DataFrame before NPV for assertion
-        # npv_transform should be called with the correctly formatted (concatenated and ordered) DataFrame
-        # and the risk_disc_rates attribute
-        mock_npv_transform.assert_called_once()
-        pd.testing.assert_frame_equal(
-            mock_npv_transform.call_args[0][0].reset_index(drop=True),
-            self.expected_pre_npv_aai.reset_index(drop=True),
-        )
-        self.assertEqual(mock_npv_transform.call_args[0][1], self.mock_disc_rates)
-
-        pd.testing.assert_frame_equal(
-            result, self.expected_npv_aai
-        )  # Final result is from NPV transform
-
-        # Check internal storage
-        stored_df = getattr(rt, "_aai_metrics")
-        # Assert that the stored DF is the one *after* NPV transformation
-        pd.testing.assert_frame_equal(
-            stored_df.reset_index(drop=True),
-            self.expected_npv_aai.reset_index(drop=True),
-        )
-
-        result2 = rt._generic_metrics(
-            metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric"
-        )
-        # Check no new calls
-        self.mock_risk_period_calc1.calc_aai_metric.assert_called_once()
-        self.mock_risk_period_calc2.calc_aai_metric.assert_called_once()
-        pd.testing.assert_frame_equal(
-            result2,
-            self.expected_npv_aai.reset_index(drop=True),
-        )
-
-    @patch.object(
-        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", new_callable=Mock
-    )
-    def test_generic_metrics_not_implemented_error(
-        self, mock_reset_risk_metrics_calculators
-    ):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        with self.assertRaises(NotImplementedError):
-            rt._generic_metrics(metric_name="non_existent", metric_meth="some_method")
-
-    @patch.object(
-        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", new_callable=Mock
-    )
-    def test_generic_metrics_value_error_no_name_or_method(
-        self, mock_reset_risk_metrics_calculators
-    ):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        with self.assertRaises(ValueError):
-            rt._generic_metrics(metric_name=None, metric_meth="some_method")
-        with self.assertRaises(ValueError):
-            rt._generic_metrics(metric_name=AAI_METRIC_NAME, metric_meth=None)
-
-    @patch.object(
-        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", new_callable=Mock
-    )
-    def test_generic_metrics_None_concat_returns_empty(
-        self, mock_reset_risk_metrics_calculators
-    ):
-        self.mock_risk_period_calc1.calc_aai_per_group_metric.return_value = None
-        self.mock_risk_period_calc2.calc_aai_per_group_metric.return_value = None
-        mock_reset_risk_metrics_calculators.return_value = (
-            self.mock_risk_metric_calculators
-        )
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        # rt = self.mock_interpolated_risk_traj
-        # Mock CalcRiskPeriod instances return None, mimicking `calc_aai_per_group_metric` possibly
-
-        result = rt._generic_metrics(
-            metric_name=AAI_PER_GROUP_METRIC_NAME,
-            metric_meth="calc_aai_per_group_metric",
-        )
-        pd.testing.assert_frame_equal(result, pd.DataFrame())
-
-    @patch.object(
-        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", new_callable=Mock
-    )
-    # @patch.object(InterpolatedRiskTrajectory, "npv_transform", new_callable=Mock)
-    def test_generic_metrics_empty_df_concat_returns_empty(
-        self, mock_reset_risk_metrics_calculators
-    ):
-        self.mock_risk_period_calc1.calc_aai_per_group_metric.return_value = (
-            pd.DataFrame()
-        )
-        self.mock_risk_period_calc2.calc_aai_per_group_metric.return_value = (
-            pd.DataFrame()
-        )
-        mock_reset_risk_metrics_calculators.return_value = (
-            self.mock_risk_metric_calculators
-        )
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        # rt = self.mock_interpolated_risk_traj
-        # Mock CalcRiskPeriod instances return None, mimicking `calc_aai_per_group_metric` possibly
-
-        result = rt._generic_metrics(
-            metric_name=AAI_PER_GROUP_METRIC_NAME,
-            metric_meth="calc_aai_per_group_metric",
-        )
-        pd.testing.assert_frame_equal(result, pd.DataFrame())
-
-    @patch.object(
-        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", new_callable=Mock
-    )
-    @patch.object(
+@pytest.mark.parametrize(
+    "strategy_attr,strategy_cls,new_strategy_cls",
+    [
+        ("impact_computation_strategy", ImpactCalcComputation, ImpactCalcComputation),
+        ("interpolation_strategy", AllLinearStrategy, ExponentialExposureStrategy),
+    ],
+)
+def test_set_strategies(
+    mock_snapshots, mock_calculators, strategy_attr, strategy_cls, new_strategy_cls
+):
+    with patch.object(
         InterpolatedRiskTrajectory,
-        "_risk_contributions_post_treatment",
-        new_callable=Mock,
-    )
-    def test_generic_metrics_risk_contribution_treatment(
-        self,
-        mock_risk_contributions_post_treatment,
-        mock_reset_risk_metrics_calculators,
+        "_reset_risk_metrics_calculators",
+        return_value=mock_calculators,
     ):
-        mock_risk_contributions_post_treatment.return_value = pd.DataFrame([42])
-        self.mock_risk_period_calc1.calc_risk_contributions_metric.return_value = (
-            self.aai_dates1
-        )
-        self.mock_risk_period_calc2.calc_risk_contributions_metric.return_value = (
-            self.aai_dates2
-        )
-        mock_reset_risk_metrics_calculators.return_value = (
-            self.mock_risk_metric_calculators
-        )
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        # rt = self.mock_interpolated_risk_traj
-        # Mock CalcRiskPeriod instances return None, mimicking `calc_aai_per_group_metric` possibly
-        result = rt._generic_metrics(
-            metric_name=CONTRIBUTIONS_METRIC_NAME,
-            metric_meth="calc_risk_contributions_metric",
-        )
-        mock_risk_contributions_post_treatment.assert_called_once()
-        pd.testing.assert_frame_equal(result, pd.DataFrame([42]))
+        rt = InterpolatedRiskTrajectory(mock_snapshots)
+        with patch.object(rt, "_reset_metrics", wraps=rt._reset_metrics) as spy:
+            with pytest.raises(ValueError):
+                setattr(rt, strategy_attr, "invalid")
+            new_strategy = new_strategy_cls()
+            setattr(rt, strategy_attr, new_strategy)
+            assert getattr(rt, strategy_attr) == new_strategy
+            assert spy.call_count == 1
+            for calc in mock_calculators:
+                assert getattr(calc, strategy_attr) == new_strategy
 
-    @patch.object(
-        InterpolatedRiskTrajectory, "_reset_risk_metrics_calculators", new_callable=Mock
-    )
-    @patch.object(InterpolatedRiskTrajectory, "npv_transform", new_callable=Mock)
-    def test_generic_metrics_coord_id_handling(
-        self, mock_npv_transform, mock_risk_metric_calc
-    ):
-        mock_risk_metric_calc.return_value = self.mock_risk_metric_calculators
-        self.mock_risk_period_calc1.calc_eai_gdf.return_value = pd.DataFrame(
-            {
-                DATE_COL_NAME: [pd.Timestamp("2023-01-01"), pd.Timestamp("2023-01-01")],
-                GROUP_COL_NAME: pd.Categorical([pd.NA, pd.NA]),
-                MEASURE_COL_NAME: ["MEAS1", "MEAS1"],
-                METRIC_COL_NAME: [EAI_METRIC_NAME, EAI_METRIC_NAME],
-                COORD_ID_COL_NAME: [1, 2],
-                RISK_COL_NAME: [10.0, 20.0],
-            }
-        )
-        self.mock_risk_period_calc2.calc_eai_gdf.return_value = pd.DataFrame()
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        result = rt._generic_metrics(
-            metric_name=EAI_METRIC_NAME, metric_meth="calc_eai_gdf"
-        )
 
-        expected_df = pd.DataFrame(
-            {
-                GROUP_COL_NAME: pd.Categorical(["All", "All"]),
-                DATE_COL_NAME: [pd.Timestamp("2023-01-01"), pd.Timestamp("2023-01-01")],
-                MEASURE_COL_NAME: ["MEAS1", "MEAS1"],
-                METRIC_COL_NAME: [EAI_METRIC_NAME, EAI_METRIC_NAME],
-                RISK_COL_NAME: [10.0, 20.0],
-                COORD_ID_COL_NAME: [
-                    1,
-                    2,
-                ],  # This column should remain and be placed at the end before risk if not in front_columns
-            }
+def test_risk_periods_lazy_computation(
+    mock_snapshots, mock_interpolation_strategy, mock_impact_computation_strategy
+):
+    with patch(
+        "climada.trajectories.interpolated_trajectory.CalcRiskMetricsPeriod",
+        autospec=True,
+    ) as MockCalc:
+        rt = InterpolatedRiskTrajectory(
+            mock_snapshots,
+            interpolation_strategy=mock_interpolation_strategy,
+            impact_computation_strategy=mock_impact_computation_strategy,
         )
-        # The internal logic reorders columns, ensure it matches
-        cols_order = [
+        risk_periods = rt._risk_metrics_calculators
+        MockCalc.assert_has_calls(
+            [
+                call(
+                    mock_snapshots[0],
+                    mock_snapshots[1],
+                    time_resolution="Y",
+                    interpolation_strategy=mock_interpolation_strategy,
+                    impact_computation_strategy=mock_impact_computation_strategy,
+                ),
+                call(
+                    mock_snapshots[1],
+                    mock_snapshots[2],
+                    time_resolution="Y",
+                    interpolation_strategy=mock_interpolation_strategy,
+                    impact_computation_strategy=mock_impact_computation_strategy,
+                ),
+            ]
+        )
+        assert MockCalc.call_count == 2
+        assert isinstance(risk_periods, list)
+        assert len(risk_periods) == 2
+
+
+def test_calc_risk_periods_sorting(mock_snapshots):
+    with patch(
+        "climada.trajectories.interpolated_trajectory.CalcRiskMetricsPeriod",
+        autospec=True,
+    ) as MockCalc:
+        unsorted = [mock_snapshots[2], mock_snapshots[0], mock_snapshots[1]]
+        _ = InterpolatedRiskTrajectory(unsorted)
+        MockCalc.assert_has_calls(
+            [
+                call(mock_snapshots[0], mock_snapshots[1], **MockCalc.call_args[1]),
+                call(mock_snapshots[1], mock_snapshots[2], **MockCalc.call_args[1]),
+            ]
+        )
+        assert MockCalc.call_count == 2
+
+
+# --- Generic Metrics ---
+
+
+def test_generic_metrics_basic_flow(
+    mock_snapshots, mock_calculators, aai_data, mock_disc_rates
+):
+    expected_pre_npv = aai_data["df_all"][
+        [
             DATE_COL_NAME,
             GROUP_COL_NAME,
             MEASURE_COL_NAME,
             METRIC_COL_NAME,
-            COORD_ID_COL_NAME,
             RISK_COL_NAME,
         ]
-        pd.testing.assert_frame_equal(result[cols_order], expected_df[cols_order])
+    ]
+    expected_npv = expected_pre_npv.copy()
+    expected_npv[RISK_COL_NAME] *= 0.9
 
-    # --- Test Specific Metric Methods (e.g., `eai_metrics`, `aai_metrics`) ---
-    # These are mostly thin wrappers around _compute_metrics/_generic_metrics.
-    # Focus on ensuring they call _compute_metrics with the correct arguments.
+    with patch.object(
+        InterpolatedRiskTrajectory,
+        "_reset_risk_metrics_calculators",
+        return_value=mock_calculators,
+    ):
+        rt = InterpolatedRiskTrajectory(mock_snapshots)
+        rt._risk_disc_rates = mock_disc_rates
 
-    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
-    def test_eai_metrics(self, mock_compute_metrics):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        rt.eai_metrics(npv=True, some_arg="test")
-        mock_compute_metrics.assert_called_once_with(
-            npv=True,
-            metric_name=EAI_METRIC_NAME,
-            metric_meth="calc_eai_gdf",
-            some_arg="test",
+        with patch.object(rt, "npv_transform", return_value=expected_npv) as mock_npv:
+            result = rt._generic_metrics(
+                metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric"
+            )
+
+            mock_calculators[0].calc_aai_metric.assert_called_once()
+            mock_calculators[1].calc_aai_metric.assert_called_once()
+            mock_npv.assert_called_once()
+            pd.testing.assert_frame_equal(
+                mock_npv.call_args[0][0].reset_index(drop=True),
+                expected_pre_npv.reset_index(drop=True),
+            )
+            pd.testing.assert_frame_equal(result, expected_npv)
+            pd.testing.assert_frame_equal(
+                rt._aai_metrics.reset_index(drop=True),
+                expected_npv.reset_index(drop=True),
+            )
+
+            # Second call should use cache
+            result2 = rt._generic_metrics(
+                metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric"
+            )
+            assert mock_calculators[0].calc_aai_metric.call_count == 1
+            pd.testing.assert_frame_equal(
+                result2.reset_index(drop=True), expected_npv.reset_index(drop=True)
+            )
+
+
+def test_generic_metrics_not_implemented_error(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with pytest.raises(NotImplementedError):
+        rt._generic_metrics(metric_name="non_existent", metric_meth="some_method")
+
+
+def test_generic_metrics_missing_args(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with pytest.raises(ValueError):
+        rt._generic_metrics(metric_name=None, metric_meth="some_method")
+    with pytest.raises(ValueError):
+        rt._generic_metrics(metric_name=AAI_METRIC_NAME, metric_meth=None)
+
+
+@pytest.mark.parametrize("return_value", [None, pd.DataFrame()])
+def test_generic_metrics_empty_returns_empty_df(
+    mock_snapshots, mock_calculators, return_value
+):
+    mock_calculators[0].calc_aai_per_group_metric.return_value = return_value
+    mock_calculators[1].calc_aai_per_group_metric.return_value = return_value
+    with patch.object(
+        InterpolatedRiskTrajectory,
+        "_reset_risk_metrics_calculators",
+        return_value=mock_calculators,
+    ):
+        rt = InterpolatedRiskTrajectory(mock_snapshots)
+        result = rt._generic_metrics(
+            metric_name=AAI_PER_GROUP_METRIC_NAME,
+            metric_meth="calc_aai_per_group_metric",
+        )
+        pd.testing.assert_frame_equal(result, pd.DataFrame())
+
+
+def test_generic_metrics_risk_contribution_treatment(
+    mock_snapshots, mock_calculators, aai_data
+):
+    mock_calculators[0].calc_risk_contributions_metric.return_value = aai_data["df1"]
+    mock_calculators[1].calc_risk_contributions_metric.return_value = aai_data["df2"]
+    with patch.object(
+        InterpolatedRiskTrajectory,
+        "_reset_risk_metrics_calculators",
+        return_value=mock_calculators,
+    ):
+        rt = InterpolatedRiskTrajectory(mock_snapshots)
+        with patch.object(
+            rt, "_risk_contributions_post_treatment", return_value=pd.DataFrame([42])
+        ) as mock_post:
+            result = rt._generic_metrics(
+                metric_name=CONTRIBUTIONS_METRIC_NAME,
+                metric_meth="calc_risk_contributions_metric",
+            )
+            mock_post.assert_called_once()
+            pd.testing.assert_frame_equal(result, pd.DataFrame([42]))
+
+
+def test_generic_metrics_coord_id_handling(mock_snapshots, mock_calculators):
+    mock_calculators[0].calc_eai_gdf.return_value = pd.DataFrame(
+        {
+            DATE_COL_NAME: [pd.Timestamp("2023-01-01")] * 2,
+            GROUP_COL_NAME: pd.Categorical([pd.NA, pd.NA]),
+            MEASURE_COL_NAME: ["MEAS1", "MEAS1"],
+            METRIC_COL_NAME: [EAI_METRIC_NAME, EAI_METRIC_NAME],
+            COORD_ID_COL_NAME: [1, 2],
+            RISK_COL_NAME: [10.0, 20.0],
+        }
+    )
+    mock_calculators[1].calc_eai_gdf.return_value = pd.DataFrame()
+
+    with patch.object(
+        InterpolatedRiskTrajectory,
+        "_reset_risk_metrics_calculators",
+        return_value=mock_calculators,
+    ):
+        rt = InterpolatedRiskTrajectory(mock_snapshots)
+        result = rt._generic_metrics(
+            metric_name=EAI_METRIC_NAME, metric_meth="calc_eai_gdf"
         )
 
-    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
-    def test_aai_metrics(self, mock_compute_metrics):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        rt.aai_metrics(other_arg=123)
-        mock_compute_metrics.assert_called_once_with(
-            metric_name=AAI_METRIC_NAME, metric_meth="calc_aai_metric", other_arg=123
+    cols = [
+        DATE_COL_NAME,
+        GROUP_COL_NAME,
+        MEASURE_COL_NAME,
+        METRIC_COL_NAME,
+        COORD_ID_COL_NAME,
+        RISK_COL_NAME,
+    ]
+    expected = pd.DataFrame(
+        {
+            GROUP_COL_NAME: pd.Categorical(["All", "All"]),
+            DATE_COL_NAME: [pd.Timestamp("2023-01-01")] * 2,
+            MEASURE_COL_NAME: ["MEAS1", "MEAS1"],
+            METRIC_COL_NAME: [EAI_METRIC_NAME, EAI_METRIC_NAME],
+            RISK_COL_NAME: [10.0, 20.0],
+            COORD_ID_COL_NAME: [1, 2],
+        }
+    )
+    pd.testing.assert_frame_equal(result[cols], expected[cols])
+
+
+# --- Metric Wrapper Methods ---
+
+
+@pytest.mark.parametrize(
+    "method,metric_name,metric_meth,extra_kwargs",
+    [
+        ("aai_metrics", AAI_METRIC_NAME, "calc_aai_metric", {}),
+        (
+            "aai_per_group_metrics",
+            AAI_PER_GROUP_METRIC_NAME,
+            "calc_aai_per_group_metric",
+            {},
+        ),
+        (
+            "risk_contributions_metrics",
+            CONTRIBUTIONS_METRIC_NAME,
+            "calc_risk_contributions_metric",
+            {},
+        ),
+    ],
+)
+def test_metric_wrappers(
+    mock_snapshots, method, metric_name, metric_meth, extra_kwargs
+):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with patch.object(rt, "_compute_metrics") as mock_compute:
+        getattr(rt, method)(**extra_kwargs)
+        mock_compute.assert_called_once_with(
+            metric_name=metric_name, metric_meth=metric_meth, **extra_kwargs
         )
 
-    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
-    def test_return_periods_metrics(self, mock_compute_metrics):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
+
+def test_return_periods_metrics_wrapper(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with patch.object(rt, "_compute_metrics") as mock_compute:
         rt.return_periods_metrics(npv=True, rp_arg="xyz")
-        mock_compute_metrics.assert_called_once_with(
+        mock_compute.assert_called_once_with(
             npv=True,
             metric_name=RETURN_PERIOD_METRIC_NAME,
             metric_meth="calc_return_periods_metric",
@@ -630,788 +540,493 @@ class TestInterpolatedRiskTrajectory(unittest.TestCase):
             rp_arg="xyz",
         )
 
-    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
-    def test_aai_per_group_metrics(self, mock_compute_metrics):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        rt.aai_per_group_metrics()
-        mock_compute_metrics.assert_called_once_with(
-            metric_name=AAI_PER_GROUP_METRIC_NAME,
-            metric_meth="calc_aai_per_group_metric",
+
+def test_eai_metrics_wrapper(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with patch.object(rt, "_compute_metrics") as mock_compute:
+        rt.eai_metrics(npv=True, some_arg="test")
+        mock_compute.assert_called_once_with(
+            npv=True,
+            metric_name=EAI_METRIC_NAME,
+            metric_meth="calc_eai_gdf",
+            some_arg="test",
         )
 
-    @patch.object(InterpolatedRiskTrajectory, "_compute_metrics")
-    def test_risk_components_metrics(self, mock_compute_metrics):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        rt.risk_contributions_metrics()
-        mock_compute_metrics.assert_called_once_with(
-            metric_name=CONTRIBUTIONS_METRIC_NAME,
-            metric_meth="calc_risk_contributions_metric",
+
+# --- NPV Transform ---
+
+
+def test_npv_transform_no_group_col(mock_disc_rates):
+    df_input = pd.DataFrame(
+        {
+            DATE_COL_NAME: pd.to_datetime(["2023-01-01", "2024-01-01"] * 2),
+            MEASURE_COL_NAME: ["m1", "m1", "m2", "m2"],
+            METRIC_COL_NAME: [AAI_METRIC_NAME] * 4,
+            RISK_COL_NAME: [100.0, 200.0, 80.0, 180.0],
+        }
+    )
+    with patch(
+        "climada.trajectories.trajectory.RiskTrajectory._calc_npv_cash_flows"
+    ) as mock_calc:
+        mock_calc.side_effect = [
+            pd.Series(
+                [100.0, 196.0], index=pd.to_datetime(["2023-01-01", "2024-01-01"])
+            ),
+            pd.Series(
+                [79.2, 176.4], index=pd.to_datetime(["2023-01-01", "2024-01-01"])
+            ),
+        ]
+        InterpolatedRiskTrajectory.npv_transform(df_input.copy(), mock_disc_rates)
+        assert mock_calc.call_count == 2
+        assert mock_calc.call_args_list[0].args[1] == pd.Timestamp("2023-01-01")
+        assert mock_calc.call_args_list[0].args[2] == mock_disc_rates
+
+
+def test_npv_transform_with_group_col(mock_disc_rates):
+    df_input = pd.DataFrame(
+        {
+            DATE_COL_NAME: pd.to_datetime(["2023-01-01", "2024-01-01", "2023-01-01"]),
+            GROUP_COL_NAME: ["G1", "G1", "G2"],
+            MEASURE_COL_NAME: ["m1", "m1", "m1"],
+            METRIC_COL_NAME: [AAI_METRIC_NAME] * 3,
+            RISK_COL_NAME: [100.0, 200.0, 150.0],
+        }
+    )
+    with patch(
+        "climada.trajectories.trajectory.RiskTrajectory._calc_npv_cash_flows"
+    ) as mock_calc:
+        mock_calc.side_effect = [
+            pd.Series(
+                [99.0, 196.0], index=pd.to_datetime(["2023-01-01", "2024-01-01"])
+            ),
+            pd.Series([148.5], index=pd.to_datetime(["2023-01-01"])),
+        ]
+        result = InterpolatedRiskTrajectory.npv_transform(
+            df_input.copy(), mock_disc_rates
         )
+        assert mock_calc.call_count == 2
+        assert result[RISK_COL_NAME].notna().all()
 
-    ## Test `npv_transform` (class method)
-    def test_npv_transform_no_group_col(self):
-        df_input = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime(["2023-01-01", "2024-01-01"] * 2),
-                MEASURE_COL_NAME: ["m1", "m1", "m2", "m2"],
-                METRIC_COL_NAME: [
-                    AAI_METRIC_NAME,
-                    AAI_METRIC_NAME,
-                    AAI_METRIC_NAME,
-                    AAI_METRIC_NAME,
-                ],
-                RISK_COL_NAME: [100.0, 200.0, 80.0, 180.0],
-            }
-        )
-        # Mock the internal calc_npv_cash_flows
-        with patch(
-            "climada.trajectories.trajectory.RiskTrajectory._calc_npv_cash_flows"
-        ) as mock_calc_npv:
-            # For each group, it will be called
-            mock_calc_npv.side_effect = [
-                pd.Series(
-                    [100.0 * (1 / (1 + 0.01)) ** 0, 200.0 * (1 / (1 + 0.02)) ** 1],
-                    index=[pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")],
-                ),
-                pd.Series(
-                    [80.0 * (1 / (1 + 0.01)) ** 0, 180.0 * (1 / (1 + 0.02)) ** 1],
-                    index=[pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")],
-                ),
-            ]
-            result_df = InterpolatedRiskTrajectory.npv_transform(
-                df_input.copy(), self.mock_disc_rates
-            )
-            # Assertions for mock calls
-            # Grouping by 'measure', 'metric' (default _grouper)
-            pd.testing.assert_series_equal(
-                mock_calc_npv.mock_calls[0].args[0],
-                pd.Series(
-                    [100.0, 200.0],
-                    index=pd.Index(
-                        [
-                            pd.Timestamp("2023-01-01"),
-                            pd.Timestamp("2024-01-01"),
-                        ],
-                        name=DATE_COL_NAME,
-                    ),
-                    name=("m1", AAI_METRIC_NAME),
-                ),
-            )
-            assert mock_calc_npv.mock_calls[0].args[1] == pd.Timestamp("2023-01-01")
-            assert mock_calc_npv.mock_calls[0].args[2] == self.mock_disc_rates
-            pd.testing.assert_series_equal(
-                mock_calc_npv.mock_calls[1].args[0],
-                pd.Series(
-                    [80.0, 180.0],
-                    index=pd.Index(
-                        [
-                            pd.Timestamp("2023-01-01"),
-                            pd.Timestamp("2024-01-01"),
-                        ],
-                        name=DATE_COL_NAME,
-                    ),
-                    name=("m2", AAI_METRIC_NAME),
-                ),
-            )
-            assert mock_calc_npv.mock_calls[1].args[1] == pd.Timestamp("2023-01-01")
-            assert mock_calc_npv.mock_calls[1].args[2] == self.mock_disc_rates
 
-            expected_df = pd.DataFrame(
-                {
-                    DATE_COL_NAME: pd.to_datetime(["2023-01-01", "2024-01-01"] * 2),
-                    MEASURE_COL_NAME: ["m1", "m1", "m2", "m2"],
-                    METRIC_COL_NAME: [
-                        AAI_METRIC_NAME,
-                        AAI_METRIC_NAME,
-                        AAI_METRIC_NAME,
-                        AAI_METRIC_NAME,
-                    ],
-                    RISK_COL_NAME: [
-                        100.0 * (1 / (1 + 0.01)) ** 0,
-                        200.0 * (1 / (1 + 0.02)) ** 1,
-                        80.0 * (1 / (1 + 0.01)) ** 0,
-                        180.0 * (1 / (1 + 0.02)) ** 1,
-                    ],
-                }
-            )
-            pd.testing.assert_frame_equal(
-                result_df.sort_values(DATE_COL_NAME).reset_index(drop=True),
-                expected_df.sort_values(DATE_COL_NAME).reset_index(drop=True),
-                rtol=1e-6,
-            )
+# --- Period Aggregation ---
 
-    def test_npv_transform_with_group_col(self):
-        df_input = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime(
-                    ["2023-01-01", "2024-01-01", "2023-01-01"]
-                ),
-                GROUP_COL_NAME: ["G1", "G1", "G2"],
-                MEASURE_COL_NAME: ["m1", "m1", "m1"],
-                METRIC_COL_NAME: [AAI_METRIC_NAME, AAI_METRIC_NAME, AAI_METRIC_NAME],
-                RISK_COL_NAME: [100.0, 200.0, 150.0],
-            }
-        )
-        with patch(
-            "climada.trajectories.trajectory.RiskTrajectory._calc_npv_cash_flows"
-        ) as mock_calc_npv:
-            mock_calc_npv.side_effect = [
-                # First group G1, m1, aai
-                pd.Series(
-                    [100.0 * (1 / (1 + 0.01)) ** 0, 200.0 * (1 / (1 + 0.02)) ** 1],
-                    index=[pd.Timestamp("2023-01-01"), pd.Timestamp("2024-01-01")],
-                ),
-                # Second group G2, m1, aai
-                pd.Series(
-                    [150.0 * (1 / (1 + 0.01)) ** 0], index=[pd.Timestamp("2023-01-01")]
-                ),
-            ]
-            result_df = InterpolatedRiskTrajectory.npv_transform(
-                df_input.copy(), self.mock_disc_rates
-            )
 
-            expected_df = pd.DataFrame(
-                {
-                    DATE_COL_NAME: pd.to_datetime(
-                        ["2023-01-01", "2024-01-01", "2023-01-01"]
-                    ),
-                    GROUP_COL_NAME: ["G1", "G1", "G2"],
-                    MEASURE_COL_NAME: ["m1", "m1", "m1"],
-                    METRIC_COL_NAME: [
-                        AAI_METRIC_NAME,
-                        AAI_METRIC_NAME,
-                        AAI_METRIC_NAME,
-                    ],
-                    RISK_COL_NAME: [
-                        100.0 * (1 / (1 + 0.01)) ** 0,
-                        200.0 * (1 / (1 + 0.02)) ** 1,
-                        150.0 * (1 / (1 + 0.01)) ** 0,
-                    ],
-                }
-            )
-            pd.testing.assert_frame_equal(
-                result_df.sort_values([GROUP_COL_NAME, DATE_COL_NAME]).reset_index(
-                    drop=True
-                ),
-                expected_df.sort_values([GROUP_COL_NAME, DATE_COL_NAME]).reset_index(
-                    drop=True
-                ),
-                rtol=1e-6,
-            )
-
-    @patch.object(InterpolatedRiskTrajectory, "_generic_metrics")
-    @patch.object(InterpolatedRiskTrajectory, "_date_to_period_agg")
-    def test_compute_period_metrics(self, mock_date_to_period, mock_generic_metrics):
-        mock_date_to_period.return_value = 42
-        mock_generic_metrics.return_value = 46
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
+def test_compute_period_metrics(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with (
+        patch.object(rt, "_generic_metrics", return_value=46) as mock_generic,
+        patch.object(rt, "_date_to_period_agg", return_value=42) as mock_agg,
+    ):
         result = rt._compute_period_metrics("name", "method", other_args=5)
-        mock_generic_metrics.assert_called_once_with(
+        mock_generic.assert_called_once_with(
             metric_name="name", metric_meth="method", other_args=5
         )
-        mock_date_to_period.assert_called_once_with(46, grouper=rt._grouper)
-        self.assertEqual(result, 42)
+        mock_agg.assert_called_once_with(46, grouper=rt._grouper)
+        assert result == 42
 
-    def test_risk_contributions_post_treatment(self):
-        # Create a sample DataFrame
-        data = {
-            GROUP_COL_NAME: ["All"] * 15,
-            DATE_COL_NAME: [
-                pd.Period("2023-01-01", freq="Y"),
-                pd.Period("2024-01-02", freq="Y"),
-                pd.Period("2025-01-02", freq="Y"),
-            ]
-            * 5,
-            MEASURE_COL_NAME: ["measure1"] * 15,
-            METRIC_COL_NAME: [
-                CONTRIBUTION_BASE_RISK_NAME,
-                CONTRIBUTION_BASE_RISK_NAME,
-                CONTRIBUTION_BASE_RISK_NAME,
-                CONTRIBUTION_EXPOSURE_NAME,
-                CONTRIBUTION_EXPOSURE_NAME,
-                CONTRIBUTION_EXPOSURE_NAME,
-                CONTRIBUTION_HAZARD_NAME,
-                CONTRIBUTION_HAZARD_NAME,
-                CONTRIBUTION_HAZARD_NAME,
-                CONTRIBUTION_VULNERABILITY_NAME,
-                CONTRIBUTION_VULNERABILITY_NAME,
-                CONTRIBUTION_VULNERABILITY_NAME,
-                CONTRIBUTION_INTERACTION_TERM_NAME,
-                CONTRIBUTION_INTERACTION_TERM_NAME,
-                CONTRIBUTION_INTERACTION_TERM_NAME,
-            ],
-            RISK_COL_NAME: [100, 100, 195, 0, 50, 100, 0, 10, 20, 0, 5, 10, 0, 30, 60],
+
+def test_make_period_bins_no_freq(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    edges, labels = rt._make_period_bins()
+
+    expected_edges = pd.DatetimeIndex([snap.date for snap in mock_snapshots])
+    pd.testing.assert_index_equal(edges, expected_edges)
+    assert labels == [
+        "2023-01-01 to 2024-01-01",
+        "2024-01-01 to 2025-01-01",
+    ]
+
+
+def test_make_period_bins_start_anchored_freq(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    edges, labels = rt._make_period_bins(freq="YS")
+
+    assert edges[0] == pd.Timestamp("2023-01-01")
+    assert edges[-1] == pd.Timestamp("2025-01-01")
+    assert len(edges) == len(labels) + 1
+    assert labels == [
+        "2023-01-01 to 2024-01-01",
+        "2024-01-01 to 2025-01-01",
+    ]
+
+
+def test_make_period_bins_end_anchored_freq_warns(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with patch("climada.trajectories.interpolated_trajectory.LOGGER") as mock_logger:
+        rt._make_period_bins(freq="YE")
+        mock_logger.warning.assert_called_once()
+        warning_msg = mock_logger.warning.call_args[0][0]
+        assert "end-anchored" in warning_msg
+
+
+def test_make_period_bins_labels_match_edges(mock_snapshots):
+    """Labels must always be consistent with edges regardless of freq."""
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    for freq in [None, "YS", "6MS"]:
+        edges, labels = rt._make_period_bins(freq=freq)
+        assert len(labels) == len(edges) - 1
+        for i, label in enumerate(labels):
+            assert label == f"{edges[i].date()} to {edges[i + 1].date()}"
+
+
+def test_make_period_bins_freq_extends_to_cover_end():
+    """When end date is not on a frequency boundary, the range is extended by one period."""
+    snaps = [MagicMock(spec=Snapshot) for _ in range(2)]
+    snaps[0].date = pd.Timestamp(2023, 1, 1)
+    snaps[1].date = pd.Timestamp(2025, 6, 1)  # Not on a 2YS boundary
+    rt = InterpolatedRiskTrajectory(snaps)
+
+    edges, labels = rt._make_period_bins(freq="2YS")
+
+    assert edges[0] == pd.Timestamp("2023-01-01")
+    assert edges[-1] >= pd.Timestamp("2025-06-01")
+    assert len(edges) == len(labels) + 1
+
+
+def test_date_to_period_agg_basic(period_agg_df, period_agg_bins):
+    edges, labels = period_agg_bins
+    result = InterpolatedRiskTrajectory._date_to_period_agg(
+        period_agg_df,
+        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
+        bin_edges=edges,
+        labels=labels,
+    )
+    assert PERIOD_COL_NAME in result.columns
+    assert set(result[PERIOD_COL_NAME].dropna()) == set(labels)
+    assert result[RISK_COL_NAME].notna().any()
+
+
+def test_date_to_period_agg_mean(period_agg_df, period_agg_bins):
+    edges, labels = period_agg_bins
+    result = InterpolatedRiskTrajectory._date_to_period_agg(
+        period_agg_df,
+        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
+        bin_edges=edges,
+        labels=labels,
+        aggfunc="mean",
+    )
+    risk_by_period = result.set_index(PERIOD_COL_NAME)[RISK_COL_NAME]
+    assert risk_by_period[labels[0]] == pytest.approx(150.0)
+    assert risk_by_period[labels[1]] == pytest.approx(350.0)
+    assert risk_by_period[labels[2]] == pytest.approx(500.0)
+
+
+def test_date_to_period_agg_custom_aggfunc(period_agg_df, period_agg_bins):
+    edges, labels = period_agg_bins
+    result = InterpolatedRiskTrajectory._date_to_period_agg(
+        period_agg_df,
+        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
+        bin_edges=edges,
+        labels=labels,
+        aggfunc="sum",
+    )
+    risk_by_period = result.set_index(PERIOD_COL_NAME)[RISK_COL_NAME]
+    assert risk_by_period[labels[0]] == pytest.approx(300.0)
+    assert risk_by_period[labels[1]] == pytest.approx(700.0)
+    assert risk_by_period[labels[2]] == pytest.approx(500.0)
+
+
+def test_date_to_period_agg_group_col_added_if_missing(period_agg_bins):
+    """GROUP_COL_NAME should be prepended to grouper if present in df but not in grouper."""
+    edges, labels = period_agg_bins
+    df = pd.DataFrame(
+        {
+            DATE_COL_NAME: pd.PeriodIndex(["2023", "2023", "2024"], freq="Y"),
+            GROUP_COL_NAME: ["G1", "G2", "G1"],
+            MEASURE_COL_NAME: ["m1", "m1", "m1"],
+            METRIC_COL_NAME: [AAI_METRIC_NAME] * 3,
+            RISK_COL_NAME: [100.0, 200.0, 300.0],
         }
-        df = pd.DataFrame(data)
+    )
+    result = InterpolatedRiskTrajectory._date_to_period_agg(
+        df,
+        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
+        bin_edges=edges,
+        labels=labels,
+    )
+    assert GROUP_COL_NAME in result.columns
+    assert set(result[GROUP_COL_NAME]) == {"G1", "G2"}
 
-        # Call the method
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        result_df = rt._risk_contributions_post_treatment(df)
 
-        # Expected output
-        expected_data = {
-            DATE_COL_NAME: [
-                pd.Period("2023-01-01", freq="Y"),
-                pd.Period("2024-01-02", freq="Y"),
-                pd.Period("2025-01-02", freq="Y"),
-            ]
-            * 5,
-            GROUP_COL_NAME: ["All"] * 15,
-            MEASURE_COL_NAME: ["measure1"] * 15,
-            METRIC_COL_NAME: [
-                CONTRIBUTION_BASE_RISK_NAME,
-                CONTRIBUTION_BASE_RISK_NAME,
-                CONTRIBUTION_BASE_RISK_NAME,
-                CONTRIBUTION_EXPOSURE_NAME,
-                CONTRIBUTION_EXPOSURE_NAME,
-                CONTRIBUTION_EXPOSURE_NAME,
-                CONTRIBUTION_HAZARD_NAME,
-                CONTRIBUTION_HAZARD_NAME,
-                CONTRIBUTION_HAZARD_NAME,
-                CONTRIBUTION_VULNERABILITY_NAME,
-                CONTRIBUTION_VULNERABILITY_NAME,
-                CONTRIBUTION_VULNERABILITY_NAME,
-                CONTRIBUTION_INTERACTION_TERM_NAME,
-                CONTRIBUTION_INTERACTION_TERM_NAME,
-                CONTRIBUTION_INTERACTION_TERM_NAME,
-            ],
-            RISK_COL_NAME: [100, 100, 100, 0, 50, 150, 0, 10, 30, 0, 5, 15, 0, 30, 90],
+def test_date_to_period_agg_multiple_colnames(period_agg_bins):
+    edges, labels = period_agg_bins
+    df = pd.DataFrame(
+        {
+            DATE_COL_NAME: pd.PeriodIndex(["2023", "2024"], freq="Y"),
+            GROUP_COL_NAME: ["All", "All"],
+            MEASURE_COL_NAME: ["m1", "m1"],
+            METRIC_COL_NAME: ["components"] * 2,
+            CONTRIBUTION_BASE_RISK_NAME: [10.0, 20.0],
+            CONTRIBUTION_EXPOSURE_NAME: [5.0, 8.0],
         }
-        expected_df = pd.DataFrame(expected_data)
+    )
+    result = InterpolatedRiskTrajectory._date_to_period_agg(
+        df,
+        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
+        bin_edges=edges,
+        labels=labels,
+        colname=[CONTRIBUTION_BASE_RISK_NAME, CONTRIBUTION_EXPOSURE_NAME],
+    )
+    assert CONTRIBUTION_BASE_RISK_NAME in result.columns
+    assert CONTRIBUTION_EXPOSURE_NAME in result.columns
 
-        # Assert the result
-        pd.testing.assert_frame_equal(
-            result_df.reset_index(drop=True), expected_df.reset_index(drop=True)
-        )
 
-    # --- Test Per Period Risk Aggregation (`_per_period_risk`) ---
-    def test_per_period_risk_basic(self):
-        df_input = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime(
-                    ["2023-01-01", "2024-01-01", "2025-01-01", "2023-01-01"]
-                ),
-                GROUP_COL_NAME: ["All", "All", "All", "GroupB"],
-                MEASURE_COL_NAME: ["m1", "m1", "m1", "m1"],
-                METRIC_COL_NAME: [
-                    AAI_METRIC_NAME,
-                    AAI_METRIC_NAME,
-                    AAI_METRIC_NAME,
-                    AAI_METRIC_NAME,
-                ],
-                RISK_COL_NAME: [100.0, 200.0, 300.0, 50.0],
-            }
-        )
-        result_df = InterpolatedRiskTrajectory._date_to_period_agg(
-            df_input, grouper=InterpolatedRiskTrajectory._grouper
-        )
+def test_per_period_risk_metrics(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    mock_date_df = pd.DataFrame(
+        {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
+    )
+    mock_period_df = pd.DataFrame({PERIOD_COL_NAME: ["P1"], RISK_COL_NAME: [200]})
 
-        expected_df = pd.DataFrame(
-            {
-                PERIOD_COL_NAME: [
-                    "2023-01-01 to 2025-01-01",
-                    "2023-01-01 to 2023-01-01",
-                ],
-                GROUP_COL_NAME: ["All", "GroupB"],
-                MEASURE_COL_NAME: ["m1", "m1"],
-                METRIC_COL_NAME: [AAI_METRIC_NAME, AAI_METRIC_NAME],
-                RISK_COL_NAME: [200.0, 50.0],  # 100+200+300 for 'All', 50 for 'GroupB'
-            }
-        )
-        # Sorting for comparison consistency
-        pd.testing.assert_frame_equal(
-            result_df.sort_values([GROUP_COL_NAME, PERIOD_COL_NAME]).reset_index(
-                drop=True
-            ),
-            expected_df.sort_values([GROUP_COL_NAME, PERIOD_COL_NAME]).reset_index(
-                drop=True
-            ),
-        )
-
-    def test_per_period_risk_multiple_risk_cols(self):
-        df_input = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime(["2023-01-01", "2024-01-01"]),
-                GROUP_COL_NAME: ["All", "All"],
-                MEASURE_COL_NAME: ["m1", "m1"],
-                METRIC_COL_NAME: ["risk_components", "risk_components"],
-                CONTRIBUTION_BASE_RISK_NAME: [10.0, 20.0],
-                CONTRIBUTION_EXPOSURE_NAME: [5.0, 8.0],
-            }
-        )
-        result_df = InterpolatedRiskTrajectory._date_to_period_agg(
-            df_input,
-            grouper=InterpolatedRiskTrajectory._grouper,
-            colname=[CONTRIBUTION_BASE_RISK_NAME, CONTRIBUTION_EXPOSURE_NAME],
-        )
-
-        expected_df = pd.DataFrame(
-            {
-                PERIOD_COL_NAME: ["2023-01-01 to 2024-01-01"],
-                GROUP_COL_NAME: ["All"],
-                MEASURE_COL_NAME: ["m1"],
-                METRIC_COL_NAME: ["risk_components"],
-                CONTRIBUTION_BASE_RISK_NAME: [15.0],
-                CONTRIBUTION_EXPOSURE_NAME: [6.5],
-            }
-        )
-        pd.testing.assert_frame_equal(result_df, expected_df)
-
-    def test_per_period_risk_non_yearly_intervals(self):
-        df_input = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime(
-                    ["2023-01-01", "2023-02-01", "2023-03-01"]
-                ),
-                GROUP_COL_NAME: ["All", "All", "All"],
-                MEASURE_COL_NAME: ["m1", "m1", "m1"],
-                METRIC_COL_NAME: [AAI_METRIC_NAME, AAI_METRIC_NAME, AAI_METRIC_NAME],
-                RISK_COL_NAME: [10.0, 20.0, 30.0],
-            }
-        )
-        # Test with 'month' time_unit
-        result_df_month = InterpolatedRiskTrajectory._date_to_period_agg(
-            df_input, grouper=InterpolatedRiskTrajectory._grouper, time_unit="month"
-        )
-        expected_df_month = pd.DataFrame(
-            {
-                PERIOD_COL_NAME: ["2023-01-01 to 2023-03-01"],
-                GROUP_COL_NAME: ["All"],
-                MEASURE_COL_NAME: ["m1"],
-                METRIC_COL_NAME: [AAI_METRIC_NAME],
-                RISK_COL_NAME: [20.0],
-            }
-        )
-        pd.testing.assert_frame_equal(result_df_month, expected_df_month)
-
-        # Introduce a gap for 'month' time_unit
-        df_gap = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime(
-                    ["2023-01-01", "2023-02-01", "2023-04-01"]
-                ),  # Gap in March
-                GROUP_COL_NAME: ["All", "All", "All"],
-                MEASURE_COL_NAME: ["m1", "m1", "m1"],
-                METRIC_COL_NAME: [AAI_METRIC_NAME, AAI_METRIC_NAME, AAI_METRIC_NAME],
-                RISK_COL_NAME: [10.0, 20.0, 40.0],
-            }
-        )
-        result_df_gap = InterpolatedRiskTrajectory._date_to_period_agg(
-            df_gap, grouper=InterpolatedRiskTrajectory._grouper, time_unit="month"
-        )
-        expected_df_gap = pd.DataFrame(
-            {
-                PERIOD_COL_NAME: [
-                    "2023-01-01 to 2023-02-01",
-                    "2023-04-01 to 2023-04-01",
-                ],
-                GROUP_COL_NAME: ["All", "All"],
-                MEASURE_COL_NAME: ["m1", "m1"],
-                METRIC_COL_NAME: [AAI_METRIC_NAME, AAI_METRIC_NAME],
-                RISK_COL_NAME: [15.0, 40.0],
-            }
-        )
-        pd.testing.assert_frame_equal(
-            result_df_gap.sort_values(PERIOD_COL_NAME).reset_index(drop=True),
-            expected_df_gap.sort_values(PERIOD_COL_NAME).reset_index(drop=True),
-        )
-
-    # --- Test Combined Metrics (`per_date_risk_metrics`, `per_period_risk_metrics`) ---
-
-    @patch.object(InterpolatedRiskTrajectory, "aai_metrics")
-    @patch.object(InterpolatedRiskTrajectory, "return_periods_metrics")
-    @patch.object(InterpolatedRiskTrajectory, "aai_per_group_metrics")
-    def test_per_date_risk_metrics_defaults(
-        self, mock_aai_per_group, mock_return_periods, mock_aai
+    with (
+        patch.object(
+            rt, "per_date_risk_metrics", return_value=mock_date_df
+        ) as mock_date,
+        patch.object(
+            rt, "_date_to_period_agg", return_value=mock_period_df
+        ) as mock_agg,
     ):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        # Set up mock return values for each method
-        mock_aai.return_value = pd.DataFrame(
-            {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
-        )
-        mock_return_periods.return_value = pd.DataFrame(
-            {METRIC_COL_NAME: ["rp"], RISK_COL_NAME: [50]}
-        )
-        mock_aai_per_group.return_value = pd.DataFrame(
-            {METRIC_COL_NAME: ["aai_grp"], RISK_COL_NAME: [10]}
-        )
+        # Default: snapshot-based bins
+        result = rt.per_period_risk_metrics(metrics=[AAI_METRIC_NAME])
+        mock_date.assert_called_once_with(metrics=[AAI_METRIC_NAME])
 
+        _, kwargs = mock_agg.call_args
+        expected_edges = pd.DatetimeIndex(
+            [snap.date for snap in sorted(mock_snapshots, key=lambda s: s.date)]
+        )
+        pd.testing.assert_index_equal(kwargs["bin_edges"], expected_edges)
+        assert kwargs["labels"] == [
+            f"{expected_edges[i].date()} to {expected_edges[i+1].date()}"
+            for i in range(len(expected_edges) - 1)
+        ]
+        assert kwargs["grouper"] == rt._grouper + [UNIT_COL_NAME]
+        pd.testing.assert_frame_equal(result, mock_period_df)
+
+
+def test_per_period_risk_metrics_custom_freq(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    mock_date_df = pd.DataFrame(
+        {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
+    )
+    mock_period_df = pd.DataFrame({PERIOD_COL_NAME: ["P1"], RISK_COL_NAME: [200]})
+
+    with (
+        patch.object(rt, "per_date_risk_metrics", return_value=mock_date_df),
+        patch.object(
+            rt, "_date_to_period_agg", return_value=mock_period_df
+        ) as mock_agg,
+    ):
+        rt.per_period_risk_metrics(metrics=[AAI_METRIC_NAME], freq="YS")
+
+        _, kwargs = mock_agg.call_args
+        # With freq="YS", edges should be annual from start to end
+        expected_edges = pd.date_range(
+            start=mock_snapshots[0].date, end=mock_snapshots[-1].date, freq="YS"
+        )
+        pd.testing.assert_index_equal(kwargs["bin_edges"], expected_edges)
+
+
+def test_per_period_risk_metrics_custom_aggfunc(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    mock_date_df = pd.DataFrame(
+        {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
+    )
+    mock_period_df = pd.DataFrame({PERIOD_COL_NAME: ["P1"], RISK_COL_NAME: [200]})
+
+    with (
+        patch.object(rt, "per_date_risk_metrics", return_value=mock_date_df),
+        patch.object(
+            rt, "_date_to_period_agg", return_value=mock_period_df
+        ) as mock_agg,
+    ):
+        rt.per_period_risk_metrics(metrics=[AAI_METRIC_NAME], aggfunc="sum")
+        _, kwargs = mock_agg.call_args
+        assert kwargs["aggfunc"] == "sum"
+
+
+# --- Per Date Risk Metrics ---
+
+
+def test_per_date_risk_metrics_defaults(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    df_aai = pd.DataFrame({METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]})
+    df_rp = pd.DataFrame({METRIC_COL_NAME: ["rp"], RISK_COL_NAME: [50]})
+    df_grp = pd.DataFrame({METRIC_COL_NAME: ["aai_grp"], RISK_COL_NAME: [10]})
+
+    with (
+        patch.object(rt, "aai_metrics", return_value=df_aai) as m1,
+        patch.object(rt, "return_periods_metrics", return_value=df_rp) as m2,
+        patch.object(rt, "aai_per_group_metrics", return_value=df_grp) as m3,
+    ):
         result = rt.per_date_risk_metrics()
-
-        # Assert calls with default arguments
-        mock_aai.assert_called_once_with()
-        mock_return_periods.assert_called_once_with()
-        mock_aai_per_group.assert_called_once_with()
-
-        # Assert concatenation
-        expected_df = pd.concat(
-            [
-                mock_aai.return_value,
-                mock_return_periods.return_value,
-                mock_aai_per_group.return_value,
-            ]
-        )
+        m1.assert_called_once_with()
+        m2.assert_called_once_with()
+        m3.assert_called_once_with()
+        expected = pd.concat([df_aai, df_rp, df_grp])
         pd.testing.assert_frame_equal(
-            result.reset_index(drop=True), expected_df.reset_index(drop=True)
+            result.reset_index(drop=True), expected.reset_index(drop=True)
         )
 
-    @patch.object(InterpolatedRiskTrajectory, "aai_metrics")
-    @patch.object(InterpolatedRiskTrajectory, "return_periods_metrics")
-    @patch.object(InterpolatedRiskTrajectory, "aai_per_group_metrics")
-    def test_per_date_risk_metrics_custom_metrics_and_rps(
-        self, mock_aai_per_group, mock_return_periods, mock_aai
+
+def test_per_date_risk_metrics_custom(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    df_aai = pd.DataFrame({METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]})
+    df_rp = pd.DataFrame({METRIC_COL_NAME: ["rp"], RISK_COL_NAME: [50]})
+
+    with (
+        patch.object(rt, "aai_metrics", return_value=df_aai) as m1,
+        patch.object(rt, "return_periods_metrics", return_value=df_rp) as m2,
+        patch.object(rt, "aai_per_group_metrics") as m3,
     ):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        mock_aai.return_value = pd.DataFrame(
-            {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
+        result = rt.per_date_risk_metrics(
+            metrics=[AAI_METRIC_NAME, RETURN_PERIOD_METRIC_NAME]
         )
-        mock_return_periods.return_value = pd.DataFrame(
-            {METRIC_COL_NAME: ["rp"], RISK_COL_NAME: [50]}
-        )
-
-        custom_metrics = [AAI_METRIC_NAME, RETURN_PERIOD_METRIC_NAME]
-        result = rt.per_date_risk_metrics(metrics=custom_metrics)
-
-        mock_aai.assert_called_once_with()
-        mock_return_periods.assert_called_once_with()
-        mock_aai_per_group.assert_not_called()  # Not in custom_metrics
-
-        expected_df = pd.concat(
-            [mock_aai.return_value, mock_return_periods.return_value]
-        )
+        m1.assert_called_once_with()
+        m2.assert_called_once_with()
+        m3.assert_not_called()
+        expected = pd.concat([df_aai, df_rp])
         pd.testing.assert_frame_equal(
-            result.reset_index(drop=True), expected_df.reset_index(drop=True)
+            result.reset_index(drop=True), expected.reset_index(drop=True)
         )
 
-    @patch.object(InterpolatedRiskTrajectory, "per_date_risk_metrics")
-    @patch.object(InterpolatedRiskTrajectory, "_date_to_period_agg")
-    def test_per_period_risk_metrics(
-        self, mock_per_period_risk, mock_per_date_risk_metrics
+
+# --- Risk Contributions Post Treatment ---
+
+
+def test_risk_contributions_post_treatment(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    data = {
+        GROUP_COL_NAME: ["All"] * 15,
+        DATE_COL_NAME: [
+            pd.Period("2023-01-01", freq="Y"),
+            pd.Period("2024-01-02", freq="Y"),
+            pd.Period("2025-01-02", freq="Y"),
+        ]
+        * 5,
+        MEASURE_COL_NAME: ["measure1"] * 15,
+        METRIC_COL_NAME: [
+            CONTRIBUTION_BASE_RISK_NAME,
+            CONTRIBUTION_BASE_RISK_NAME,
+            CONTRIBUTION_BASE_RISK_NAME,
+            CONTRIBUTION_EXPOSURE_NAME,
+            CONTRIBUTION_EXPOSURE_NAME,
+            CONTRIBUTION_EXPOSURE_NAME,
+            CONTRIBUTION_HAZARD_NAME,
+            CONTRIBUTION_HAZARD_NAME,
+            CONTRIBUTION_HAZARD_NAME,
+            CONTRIBUTION_VULNERABILITY_NAME,
+            CONTRIBUTION_VULNERABILITY_NAME,
+            CONTRIBUTION_VULNERABILITY_NAME,
+            CONTRIBUTION_INTERACTION_TERM_NAME,
+            CONTRIBUTION_INTERACTION_TERM_NAME,
+            CONTRIBUTION_INTERACTION_TERM_NAME,
+        ],
+        RISK_COL_NAME: [100, 100, 195, 0, 50, 100, 0, 10, 20, 0, 5, 10, 0, 30, 60],
+    }
+    result = rt._risk_contributions_post_treatment(pd.DataFrame(data))
+    expected_risk = [100, 100, 100, 0, 50, 150, 0, 10, 30, 0, 5, 15, 0, 30, 90]
+    assert result[RISK_COL_NAME].tolist() == expected_risk
+
+
+# --- Reset Metrics ---
+
+
+def test_reset_metrics(mock_snapshots):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    rt._eai_metrics = "dummy"  # type: ignore
+    rt._aai_metrics = "dummy"  # type: ignore
+    rt._reset_metrics()
+    for metric in rt.POSSIBLE_METRICS:
+        assert getattr(rt, f"_{metric}_metrics") is None
+
+
+# --- Get Risk Periods ---
+
+
+@pytest.fixture
+def mock_risk_periods():
+    periods = []
+    dates = [(2020, 2021), (2021, 2022), (2022, 2023)]
+    for start_year, end_year in dates:
+        rp = Mock()
+        rp.snapshot_start.date = datetime.date(start_year, 1, 1)
+        rp.snapshot_end.date = datetime.date(end_year, 1, 1)
+        periods.append(rp)
+    return periods
+
+
+@pytest.mark.parametrize(
+    "start,end,strict,expected_indices",
+    [
+        (datetime.date(2020, 1, 1), datetime.date(2023, 1, 1), True, [0, 1, 2]),
+        (datetime.date(2018, 1, 1), datetime.date(2024, 1, 1), True, [0, 1, 2]),
+        (datetime.date(2021, 1, 1), datetime.date(2023, 1, 1), True, [1, 2]),
+        (datetime.date(2021, 6, 1), datetime.date(2022, 6, 1), True, []),
+        (datetime.date(2020, 1, 1), datetime.date(2023, 1, 1), False, [0, 1, 2]),
+        (datetime.date(2018, 1, 1), datetime.date(2024, 1, 1), False, [0, 1, 2]),
+        (datetime.date(2021, 1, 1), datetime.date(2023, 1, 1), False, [1, 2]),
+        (datetime.date(2021, 6, 1), datetime.date(2022, 6, 1), False, [1, 2]),
+        (datetime.date(2024, 6, 1), datetime.date(2026, 6, 1), False, []),
+    ],
+)
+def test_get_risk_periods(mock_risk_periods, start, end, strict, expected_indices):
+    result = InterpolatedRiskTrajectory._get_risk_periods(
+        mock_risk_periods, start, end, strict=strict
+    )
+    assert result == [mock_risk_periods[i] for i in expected_indices]
+
+
+def test_calc_waterfall_plot_data_default_dates(
+    mock_snapshots, waterfall_contributions
+):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with patch.object(
+        rt, "risk_contributions_metrics", return_value=waterfall_contributions
     ):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        mock_date_df = pd.DataFrame(
-            {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
-        )
-        mock_per_date_risk_metrics.return_value = mock_date_df
-        mock_per_period_risk.return_value = pd.DataFrame(
-            {PERIOD_COL_NAME: ["P1"], RISK_COL_NAME: [200]}
-        )
+        result = rt._calc_waterfall_plot_data()
 
-        test_metrics = [AAI_METRIC_NAME]
-        result = rt.per_period_risk_metrics(metrics=test_metrics, time_unit="month")
+    assert result.index.name == DATE_COL_NAME
+    assert result.columns.name == METRIC_COL_NAME
+    assert set(result.columns) == set(waterfall_contributions[METRIC_COL_NAME].unique())
+    # All three dates should be present
+    assert len(result) == 3
 
-        mock_per_date_risk_metrics.assert_called_once_with(
-            metrics=test_metrics, time_unit="month"
-        )
-        mock_per_period_risk.assert_called_once_with(
-            mock_date_df, grouper=rt._grouper + [UNIT_COL_NAME], time_unit="month"
-        )
-        pd.testing.assert_frame_equal(result, mock_per_period_risk.return_value)
 
-    # --- Test Plotting Related Methods ---
-    # These methods primarily generate data for plotting or call plotting functions.
-    # The actual plotting logic (matplotlib.pyplot calls) should be mocked.
-
-    @patch.object(InterpolatedRiskTrajectory, "risk_contributions_metrics")
-    def test_calc_waterfall_plot_data(self, mock_risk_contributions_metrics):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        rt.start_date = datetime.date(2023, 1, 1)
-        rt.end_date = datetime.date(2025, 1, 1)
-
-        # Mock the return of risk_components_metrics
-        mock_risk_contributions_metrics.return_value = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime(
-                    ["2023-01-01"] * 5
-                    + ["2024-01-01"] * 5
-                    + ["2025-01-01"] * 5
-                    + ["2026-01-01"] * 5
-                ),
-                METRIC_COL_NAME: [
-                    CONTRIBUTION_BASE_RISK_NAME,
-                    CONTRIBUTION_EXPOSURE_NAME,
-                    CONTRIBUTION_HAZARD_NAME,
-                    CONTRIBUTION_VULNERABILITY_NAME,
-                    CONTRIBUTION_INTERACTION_TERM_NAME,
-                ]
-                * 4,
-                RISK_COL_NAME: np.arange(20)
-                * 1.0,  # Dummy data for different components and dates
-            }
-        )  # .pivot_table(index=DATE_COL_NAME, columns=METRIC_COL_NAME, values=RISK_COL_NAME)
-        # Flattened for simplicity, in reality it's more structured
-
+def test_calc_waterfall_plot_data_custom_dates(mock_snapshots, waterfall_contributions):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with patch.object(
+        rt, "risk_contributions_metrics", return_value=waterfall_contributions
+    ):
         result = rt._calc_waterfall_plot_data(
             start_date=datetime.date(2024, 1, 1),
             end_date=datetime.date(2025, 1, 1),
         )
 
-        mock_risk_contributions_metrics.assert_called_once_with()
+    assert len(result) == 2
+    assert pd.Timestamp("2023-01-01") not in result.index
 
-        # Expected output should be filtered by date and unstacked
-        expected_df = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime(["2024-01-01"] * 5 + ["2025-01-01"] * 5),
-                METRIC_COL_NAME: [
-                    CONTRIBUTION_BASE_RISK_NAME,
-                    CONTRIBUTION_EXPOSURE_NAME,
-                    CONTRIBUTION_HAZARD_NAME,
-                    CONTRIBUTION_VULNERABILITY_NAME,
-                    CONTRIBUTION_INTERACTION_TERM_NAME,
-                ]
-                * 2,
-                RISK_COL_NAME: np.array([5.0, 6, 7, 8, 9, 10, 11, 12, 13, 14]),
-            }
-        ).pivot_table(
-            index=DATE_COL_NAME, columns=METRIC_COL_NAME, values=RISK_COL_NAME
-        )
-        pd.testing.assert_frame_equal(
-            result.sort_index(axis=1), expected_df.sort_index(axis=1)
-        )  # Sort columns for stable comparison
 
-    @patch("matplotlib.pyplot.subplots")
-    @patch("matplotlib.dates.AutoDateLocator")
-    @patch("matplotlib.dates.ConciseDateFormatter")
-    @patch.object(InterpolatedRiskTrajectory, "_calc_waterfall_plot_data")
-    def test_plot_per_date_waterfall(
-        self, mock_calc_data, mock_formatter, mock_locator, mock_subplots
+def test_calc_waterfall_plot_data_returns_unstacked(
+    mock_snapshots, waterfall_contributions
+):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with patch.object(
+        rt, "risk_contributions_metrics", return_value=waterfall_contributions
     ):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        rt.start_date = datetime.date(2023, 1, 1)
-        rt.end_date = datetime.date(2023, 1, 2)
+        result = rt._calc_waterfall_plot_data()
 
-        # Mock matplotlib objects
-        mock_ax = Mock()
-        mock_fig = Mock()
-        mock_subplots.return_value = (mock_fig, mock_ax)
-        mock_ax.get_ylim.return_value = (0, 100)  # For ylim scaling
-
-        # Mock data returned by _calc_waterfall_plot_data
-        mock_df_data = pd.DataFrame(
-            {
-                CONTRIBUTION_BASE_RISK_NAME: [10, 10],
-                CONTRIBUTION_EXPOSURE_NAME: [2, 3],
-                CONTRIBUTION_HAZARD_NAME: [5, 6],
-                CONTRIBUTION_VULNERABILITY_NAME: [1, 2],
-                CONTRIBUTION_INTERACTION_TERM_NAME: [0.5, 0.7],
-            },
-            index=pd.period_range(start="2023-01-01", end="2023-01-02", freq="D"),
-        )
-        mock_calc_data.return_value = mock_df_data
-
-        # Call the method
-        fig, ax = rt.plot_time_waterfall()
-
-        # Assertions
-        mock_calc_data.assert_called_once_with(
-            start_date=datetime.date(2023, 1, 1),
-            end_date=datetime.date(2023, 1, 2),
-        )
-        mock_ax.stackplot.assert_called_once()
-        self.assertEqual(
-            mock_ax.stackplot.call_args[0][0].tolist(),
-            mock_df_data.index.to_timestamp().tolist(),  # type: ignore
-        )  # Check x-axis data
-        self.assertEqual(
-            mock_ax.stackplot.call_args[0][1][0].tolist(),
-            mock_df_data[CONTRIBUTION_EXPOSURE_NAME].tolist(),
-        )  # Check first stacked data
-        mock_ax.set_title.assert_called_once_with(
-            "Contributions to change in risk between 2023-01-01 and 2023-01-02 (Average)"
-        )
-        mock_ax.set_ylabel.assert_called_once_with("Deviation from base risk")
-        mock_ax.set_ylim.assert_called_once()  # Check ylim was set
-        mock_ax.xaxis.set_major_locator.assert_called_once()
-        mock_ax.xaxis.set_major_formatter.assert_called_once()
-        self.assertEqual(fig, mock_fig)
-        self.assertEqual(ax, mock_ax)
-
-    @patch("matplotlib.pyplot.subplots")
-    @patch.object(InterpolatedRiskTrajectory, "_calc_waterfall_plot_data")
-    def test_plot_waterfall(self, mock_calc_data, mock_subplots):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        rt.start_date = datetime.date(2023, 1, 1)
-        rt.end_date = datetime.date(2024, 1, 1)
-
-        mock_ax = Mock()
-        mock_fig = Mock()
-        mock_subplots.return_value = (mock_fig, mock_ax)
-        mock_ax.get_ylim.return_value = (0, 100)
-
-        # Mock _calc_waterfall_plot_data to return a DataFrame for two dates,
-        # where the second date (end_date) is relevant for plot_waterfall
-        start_date = "2023-01-01"
-        end_date = "2024-01-01"
-        mock_data = pd.DataFrame(
-            {
-                DATE_COL_NAME: pd.to_datetime([start_date] * 5 + [end_date] * 5),
-                METRIC_COL_NAME: [
-                    CONTRIBUTION_BASE_RISK_NAME,
-                    CONTRIBUTION_EXPOSURE_NAME,
-                    CONTRIBUTION_HAZARD_NAME,
-                    CONTRIBUTION_VULNERABILITY_NAME,
-                    CONTRIBUTION_INTERACTION_TERM_NAME,
-                ]
-                * 2,
-                RISK_COL_NAME: [
-                    10,
-                    2,
-                    5,
-                    1,
-                    0.5,
-                    15,
-                    3,
-                    7,
-                    2,
-                    1,
-                ],  # values for 2023-01-01 and 2024-01-01
-            }
-        ).pivot_table(
-            index=DATE_COL_NAME, columns=METRIC_COL_NAME, values=RISK_COL_NAME
-        )
-        mock_calc_data.return_value = mock_data
-        # Call the method
-        ax = rt.plot_waterfall()
-
-        # Assertions
-        mock_calc_data.assert_called_once_with(
-            start_date=datetime.date.fromisoformat(start_date),
-            end_date=datetime.date.fromisoformat(end_date),
-        )
-        mock_ax.bar.assert_called_once()
-        # Verify the bar arguments are correct for the end_date data
-        end_date_data = mock_data.loc[pd.Timestamp(end_date)]
-        expected_values = [
-            end_date_data[CONTRIBUTION_BASE_RISK_NAME],
-            end_date_data[CONTRIBUTION_EXPOSURE_NAME],
-            end_date_data[CONTRIBUTION_HAZARD_NAME],
-            end_date_data[CONTRIBUTION_VULNERABILITY_NAME],
-            end_date_data[CONTRIBUTION_INTERACTION_TERM_NAME],
-            end_date_data.sum(),
-        ]
-        # Compare values passed to bar
-        np.testing.assert_allclose(mock_ax.bar.call_args[0][1], expected_values)
-        start_date_p = pd.to_datetime(start_date).to_period(rt.time_resolution)
-        end_date_p = pd.to_datetime(end_date).to_period(rt.time_resolution)
-        mock_ax.set_title.assert_called_once_with(
-            f"Evolution of the contributions of risk between {start_date_p} and {end_date_p} (Average impact)"
-        )
-        mock_ax.set_ylabel.assert_called_once_with("USD")
-        mock_ax.set_ylim.assert_called_once()
-        mock_ax.tick_params.assert_called_once_with(axis="x", labelrotation=90)
-        self.assertEqual(ax, mock_ax)
-
-    # --- Test Private Helper Methods (`_reset_metrics`, `_get_risk_periods`) ---
-
-    def test_reset_metrics(self):
-        rt = InterpolatedRiskTrajectory(self.snapshots_list)
-        # Set some metrics to non-None values
-        rt._eai_metrics = "dummy_eai"  # type:ignore
-        rt._aai_metrics = "dummy_aai"  # type:ignore
-        rt._reset_metrics()
-
-        for metric in rt.POSSIBLE_METRICS:
-            self.assertIsNone(getattr(rt, "_" + metric + "_metrics"))
-
-    def test_get_risk_periods(self):
-        # Create dummy CalcRiskPeriod mocks with specific dates
-        mock_rp1 = Mock()
-        mock_rp1.snapshot_start.date = datetime.date(2020, 1, 1)
-        mock_rp1.snapshot_end.date = datetime.date(2021, 1, 1)
-
-        mock_rp2 = Mock()
-        mock_rp2.snapshot_start.date = datetime.date(2021, 1, 1)
-        mock_rp2.snapshot_end.date = datetime.date(2022, 1, 1)
-
-        mock_rp3 = Mock()
-        mock_rp3.snapshot_start.date = datetime.date(2022, 1, 1)
-        mock_rp3.snapshot_end.date = datetime.date(2023, 1, 1)
-
-        all_risk_periods: list[CalcRiskMetricsPeriod] = [mock_rp1, mock_rp2, mock_rp3]
-
-        # Strict case
-
-        # Test case 1: Full range, all periods included
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods, datetime.date(2020, 1, 1), datetime.date(2023, 1, 1)
-        )
-        self.assertEqual(len(result), 3)
-        self.assertListEqual(result, all_risk_periods)
-
-        # Test case 1b: More than full range, all periods included
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods, datetime.date(2018, 1, 1), datetime.date(2024, 1, 1)
-        )
-        self.assertEqual(len(result), 3)
-        self.assertListEqual(result, all_risk_periods)
-
-        # Test case 2: Range including some period
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods, datetime.date(2021, 1, 1), datetime.date(2023, 1, 1)
-        )
-        self.assertEqual(len(result), 2)
-        self.assertListEqual(result, all_risk_periods[1:])
-
-        # Test case 2: Range including no period
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods, datetime.date(2021, 6, 1), datetime.date(2022, 6, 1)
-        )
-        self.assertEqual(len(result), 0)
-        self.assertListEqual(result, [])
-
-        # Overlap case
-
-        # Test case 1: Full range, all periods included (should still work)
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods,
-            datetime.date(2020, 1, 1),
-            datetime.date(2023, 1, 1),
-            strict=False,
-        )
-        self.assertEqual(len(result), 3)
-        self.assertListEqual(result, all_risk_periods)
-
-        # Test case 1b: More than full range, all periods included
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods,
-            datetime.date(2018, 1, 1),
-            datetime.date(2024, 1, 1),
-            strict=False,
-        )
-        self.assertEqual(len(result), 3)
-        self.assertListEqual(result, all_risk_periods)
-
-        # Test case 2: Range including some period
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods,
-            datetime.date(2021, 1, 1),
-            datetime.date(2023, 1, 1),
-            strict=False,
-        )
-        self.assertEqual(len(result), 2)
-        self.assertListEqual(result, all_risk_periods[1:])
-
-        # Test case 2: Range including no period but overlap
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods,
-            datetime.date(2021, 6, 1),
-            datetime.date(2022, 6, 1),
-            strict=False,
-        )
-        self.assertEqual(len(result), 2)
-        self.assertListEqual(result, all_risk_periods[1:])
-
-        # Test case 2: Range including no period at all
-        result = InterpolatedRiskTrajectory._get_risk_periods(
-            all_risk_periods,
-            datetime.date(2024, 6, 1),
-            datetime.date(2026, 6, 1),
-            strict=False,
-        )
-        self.assertEqual(len(result), 0)
-        self.assertListEqual(result, [])
+    # Result should be a wide DataFrame (unstacked on METRIC_COL_NAME)
+    assert isinstance(result, pd.DataFrame)
+    assert result.index.name == DATE_COL_NAME
+    assert METRIC_COL_NAME not in result.columns
 
 
-if __name__ == "__main__":
-    TESTS = unittest.TestLoader().loadTestsFromTestCase(TestInterpolatedRiskTrajectory)
-    unittest.TextTestRunner(verbosity=2).run(TESTS)
+def test_calc_waterfall_plot_data_calls_risk_contributions(
+    mock_snapshots, waterfall_contributions
+):
+    rt = InterpolatedRiskTrajectory(mock_snapshots)
+    with patch.object(
+        rt, "risk_contributions_metrics", return_value=waterfall_contributions
+    ) as mock_rc:
+        rt._calc_waterfall_plot_data()
+        mock_rc.assert_called_once_with()
