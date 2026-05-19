@@ -27,6 +27,7 @@ from unittest.mock import MagicMock, Mock, call, patch
 import numpy as np
 import pandas as pd
 import pytest
+from numpy.testing import assert_array_equal
 
 from climada.entity.disc_rates.base import DiscRates
 from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPeriod
@@ -71,7 +72,7 @@ from climada.trajectories.snapshot import Snapshot
 @pytest.fixture
 def mock_snapshots():
     snaps = []
-    for year in [2023, 2024, 2025]:
+    for year in [2020, 2025, 2030]:
         m = MagicMock(spec=Snapshot)
         m.date = pd.Timestamp(year=year, month=1, day=1)
         snaps.append(m)
@@ -81,8 +82,8 @@ def mock_snapshots():
 @pytest.fixture
 def mock_disc_rates():
     dr = MagicMock(spec=DiscRates)
-    dr.years = [2023, 2024, 2025]
-    dr.rates = [0.01, 0.02, 0.03]
+    dr.years = np.arange(2020, 2030)
+    dr.rates = np.arange(0.1, 0.2, 0.01)
     return dr
 
 
@@ -160,13 +161,23 @@ def rt_basic(mock_snapshots):
 def period_agg_df():
     return pd.DataFrame(
         {
-            DATE_COL_NAME: pd.PeriodIndex(
-                ["2023", "2024", "2025", "2026", "2027"], freq="Y"
-            ),
-            GROUP_COL_NAME: ["All"] * 5,
-            MEASURE_COL_NAME: ["m1"] * 5,
-            METRIC_COL_NAME: [AAI_METRIC_NAME] * 5,
-            RISK_COL_NAME: [100.0, 200.0, 300.0, 400.0, 500.0],
+            DATE_COL_NAME: pd.period_range(start="2020", end="2030", freq="Y"),
+            GROUP_COL_NAME: ["All"] * 11,
+            MEASURE_COL_NAME: ["m1"] * 11,
+            METRIC_COL_NAME: [AAI_METRIC_NAME] * 11,
+            RISK_COL_NAME: [
+                100.0,
+                200.0,
+                300.0,
+                400.0,
+                500.0,
+                600.0,
+                700.0,
+                800.0,
+                900.0,
+                1000.0,
+                1100.0,
+            ],
         }
     )
 
@@ -625,150 +636,44 @@ def test_compute_period_metrics(mock_snapshots):
         assert result == 42
 
 
-def test_make_period_bins_no_freq(mock_snapshots):
-    rt = InterpolatedRiskTrajectory(mock_snapshots)
-    edges, labels = rt._make_period_bins()
-
-    expected_edges = pd.DatetimeIndex([snap.date for snap in mock_snapshots])
-    pd.testing.assert_index_equal(edges, expected_edges)
-    assert labels == [
-        "2023-01-01 to 2024-01-01",
-        "2024-01-01 to 2025-01-01",
-    ]
+def test_assign_snapshot_period_ids(rt_basic):
+    periods = pd.DataFrame({"date": pd.period_range("2020", "2030", freq="Y")})
+    mapper = rt_basic._assign_snapshot_period_ids(periods["date"])
+    expected = np.array([0, 0, 0, 0, 0, 0, 1, 1, 1, 1, 1])
+    np.testing.assert_array_equal(mapper, expected)
 
 
-def test_make_period_bins_start_anchored_freq(mock_snapshots):
-    rt = InterpolatedRiskTrajectory(mock_snapshots)
-    edges, labels = rt._make_period_bins(freq="YS")
-
-    assert edges[0] == pd.Timestamp("2023-01-01")
-    assert edges[-1] == pd.Timestamp("2025-01-01")
-    assert len(edges) == len(labels) + 1
-    assert labels == [
-        "2023-01-01 to 2024-01-01",
-        "2024-01-01 to 2025-01-01",
-    ]
-
-
-def test_make_period_bins_end_anchored_freq_warns(mock_snapshots):
-    rt = InterpolatedRiskTrajectory(mock_snapshots)
-    with patch("climada.trajectories.interpolated_trajectory.LOGGER") as mock_logger:
-        rt._make_period_bins(freq="YE")
-        mock_logger.warning.assert_called_once()
-        warning_msg = mock_logger.warning.call_args[0][0]
-        assert "end-anchored" in warning_msg
-
-
-def test_make_period_bins_labels_match_edges(mock_snapshots):
-    """Labels must always be consistent with edges regardless of freq."""
-    rt = InterpolatedRiskTrajectory(mock_snapshots)
-    for freq in [None, "YS", "6MS"]:
-        edges, labels = rt._make_period_bins(freq=freq)
-        assert len(labels) == len(edges) - 1
-        for i, label in enumerate(labels):
-            assert label == f"{edges[i].date()} to {edges[i + 1].date()}"
-
-
-def test_make_period_bins_freq_extends_to_cover_end():
-    """When end date is not on a frequency boundary, the range is extended by one period."""
-    snaps = [MagicMock(spec=Snapshot) for _ in range(2)]
-    snaps[0].date = pd.Timestamp(2023, 1, 1)
-    snaps[1].date = pd.Timestamp(2025, 6, 1)  # Not on a 2YS boundary
-    rt = InterpolatedRiskTrajectory(snaps)
-
-    edges, labels = rt._make_period_bins(freq="2YS")
-
-    assert edges[0] == pd.Timestamp("2023-01-01")
-    assert edges[-1] >= pd.Timestamp("2025-06-01")
-    assert len(edges) == len(labels) + 1
-
-
-def test_date_to_period_agg_basic(period_agg_df, period_agg_bins):
-    edges, labels = period_agg_bins
-    result = InterpolatedRiskTrajectory._date_to_period_agg(
+def test_date_to_period_agg_basic(rt_basic, period_agg_df):
+    result = rt_basic._date_to_period_agg(
         period_agg_df,
         grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
-        bin_edges=edges,
-        labels=labels,
     )
-    assert PERIOD_COL_NAME in result.columns
-    assert set(result[PERIOD_COL_NAME].dropna()) == set(labels)
-    assert result[RISK_COL_NAME].notna().any()
-
-
-def test_date_to_period_agg_mean(period_agg_df, period_agg_bins):
-    edges, labels = period_agg_bins
-    result = InterpolatedRiskTrajectory._date_to_period_agg(
-        period_agg_df,
-        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
-        bin_edges=edges,
-        labels=labels,
-        aggfunc="mean",
-    )
-    risk_by_period = result.set_index(PERIOD_COL_NAME)[RISK_COL_NAME]
-    assert risk_by_period[labels[0]] == pytest.approx(150.0)
-    assert risk_by_period[labels[1]] == pytest.approx(350.0)
-    assert risk_by_period[labels[2]] == pytest.approx(500.0)
-
-
-def test_date_to_period_agg_custom_aggfunc(period_agg_df, period_agg_bins):
-    edges, labels = period_agg_bins
-    result = InterpolatedRiskTrajectory._date_to_period_agg(
-        period_agg_df,
-        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
-        bin_edges=edges,
-        labels=labels,
-        aggfunc="sum",
-    )
-    risk_by_period = result.set_index(PERIOD_COL_NAME)[RISK_COL_NAME]
-    assert risk_by_period[labels[0]] == pytest.approx(300.0)
-    assert risk_by_period[labels[1]] == pytest.approx(700.0)
-    assert risk_by_period[labels[2]] == pytest.approx(500.0)
-
-
-def test_date_to_period_agg_group_col_added_if_missing(period_agg_bins):
-    """GROUP_COL_NAME should be prepended to grouper if present in df but not in grouper."""
-    edges, labels = period_agg_bins
-    df = pd.DataFrame(
+    expected = pd.DataFrame(
         {
-            DATE_COL_NAME: pd.PeriodIndex(["2023", "2023", "2024"], freq="Y"),
-            GROUP_COL_NAME: ["G1", "G2", "G1"],
-            MEASURE_COL_NAME: ["m1", "m1", "m1"],
-            METRIC_COL_NAME: [AAI_METRIC_NAME] * 3,
-            RISK_COL_NAME: [100.0, 200.0, 300.0],
+            "period": ["2020 to 2025", "2026 to 2030"],
+            "group": ["All", "All"],
+            "measure": ["m1", "m1"],
+            "metric": ["aai", "aai"],
+            "risk": [350.0, 900.0],
         }
     )
-    result = InterpolatedRiskTrajectory._date_to_period_agg(
-        df,
-        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
-        bin_edges=edges,
-        labels=labels,
+    pd.testing.assert_frame_equal(expected, result)
+
+
+def test_date_to_period_agg_sum(rt_basic, period_agg_df):
+    result = rt_basic._date_to_period_agg(
+        period_agg_df, grouper=[MEASURE_COL_NAME, METRIC_COL_NAME], aggfunc="sum"
     )
-    assert GROUP_COL_NAME in result.columns
-    assert set(result[GROUP_COL_NAME]) == {"G1", "G2"}
-
-
-def test_date_to_period_agg_multiple_colnames(period_agg_bins):
-    edges, labels = period_agg_bins
-    df = pd.DataFrame(
+    expected = pd.DataFrame(
         {
-            DATE_COL_NAME: pd.PeriodIndex(["2023", "2024"], freq="Y"),
-            GROUP_COL_NAME: ["All", "All"],
-            MEASURE_COL_NAME: ["m1", "m1"],
-            METRIC_COL_NAME: ["components"] * 2,
-            CONTRIBUTION_BASE_RISK_NAME: [10.0, 20.0],
-            CONTRIBUTION_EXPOSURE_NAME: [5.0, 8.0],
+            "period": ["2020 to 2025", "2026 to 2030"],
+            "group": ["All", "All"],
+            "measure": ["m1", "m1"],
+            "metric": ["aai", "aai"],
+            "risk": [2100.0, 4500.0],
         }
     )
-    result = InterpolatedRiskTrajectory._date_to_period_agg(
-        df,
-        grouper=[MEASURE_COL_NAME, METRIC_COL_NAME],
-        bin_edges=edges,
-        labels=labels,
-        colname=[CONTRIBUTION_BASE_RISK_NAME, CONTRIBUTION_EXPOSURE_NAME],
-    )
-    assert CONTRIBUTION_BASE_RISK_NAME in result.columns
-    assert CONTRIBUTION_EXPOSURE_NAME in result.columns
+    pd.testing.assert_frame_equal(expected, result)
 
 
 def test_per_period_risk_metrics(mock_snapshots):
@@ -786,7 +691,6 @@ def test_per_period_risk_metrics(mock_snapshots):
             rt, "_date_to_period_agg", return_value=mock_period_df
         ) as mock_agg,
     ):
-        # Default: snapshot-based bins
         result = rt.per_period_risk_metrics(metrics=[AAI_METRIC_NAME])
         mock_date.assert_called_once_with(metrics=[AAI_METRIC_NAME])
 
@@ -794,36 +698,8 @@ def test_per_period_risk_metrics(mock_snapshots):
         expected_edges = pd.DatetimeIndex(
             [snap.date for snap in sorted(mock_snapshots, key=lambda s: s.date)]
         )
-        pd.testing.assert_index_equal(kwargs["bin_edges"], expected_edges)
-        assert kwargs["labels"] == [
-            f"{expected_edges[i].date()} to {expected_edges[i+1].date()}"
-            for i in range(len(expected_edges) - 1)
-        ]
         assert kwargs["grouper"] == rt._grouper + [UNIT_COL_NAME]
         pd.testing.assert_frame_equal(result, mock_period_df)
-
-
-def test_per_period_risk_metrics_custom_freq(mock_snapshots):
-    rt = InterpolatedRiskTrajectory(mock_snapshots)
-    mock_date_df = pd.DataFrame(
-        {METRIC_COL_NAME: [AAI_METRIC_NAME], RISK_COL_NAME: [100]}
-    )
-    mock_period_df = pd.DataFrame({PERIOD_COL_NAME: ["P1"], RISK_COL_NAME: [200]})
-
-    with (
-        patch.object(rt, "per_date_risk_metrics", return_value=mock_date_df),
-        patch.object(
-            rt, "_date_to_period_agg", return_value=mock_period_df
-        ) as mock_agg,
-    ):
-        rt.per_period_risk_metrics(metrics=[AAI_METRIC_NAME], freq="YS")
-
-        _, kwargs = mock_agg.call_args
-        # With freq="YS", edges should be annual from start to end
-        expected_edges = pd.date_range(
-            start=mock_snapshots[0].date, end=mock_snapshots[-1].date, freq="YS"
-        )
-        pd.testing.assert_index_equal(kwargs["bin_edges"], expected_edges)
 
 
 def test_per_period_risk_metrics_custom_aggfunc(mock_snapshots):
@@ -893,16 +769,16 @@ def test_per_date_risk_metrics_custom(mock_snapshots):
 # --- Risk Contributions Post Treatment ---
 
 
-def test_risk_contributions_post_treatment(mock_snapshots):
-    rt = InterpolatedRiskTrajectory(mock_snapshots)
+def test_risk_contributions_post_treatment():
+    snapshots = []
+    for year in [2020, 2022, 2024]:
+        m = MagicMock(spec=Snapshot)
+        m.date = pd.Timestamp(year=year, month=1, day=1)
+        snapshots.append(m)
+    rt = InterpolatedRiskTrajectory(snapshots)
     data = {
         GROUP_COL_NAME: ["All"] * 15,
-        DATE_COL_NAME: [
-            pd.Period("2023-01-01", freq="Y"),
-            pd.Period("2024-01-02", freq="Y"),
-            pd.Period("2025-01-02", freq="Y"),
-        ]
-        * 5,
+        DATE_COL_NAME: [pd.Period("2020"), pd.Period("2022"), pd.Period("2024")] * 5,
         MEASURE_COL_NAME: ["measure1"] * 15,
         METRIC_COL_NAME: [
             CONTRIBUTION_BASE_RISK_NAME,
@@ -921,11 +797,45 @@ def test_risk_contributions_post_treatment(mock_snapshots):
             CONTRIBUTION_INTERACTION_TERM_NAME,
             CONTRIBUTION_INTERACTION_TERM_NAME,
         ],
-        RISK_COL_NAME: [100, 100, 195, 0, 50, 100, 0, 10, 20, 0, 5, 10, 0, 30, 60],
+        RISK_COL_NAME: [
+            100,
+            100,
+            140,
+            0,
+            10,
+            10,
+            0,
+            10,
+            0,
+            0,
+            10,
+            0,
+            0,
+            10,
+            5,
+        ],
     }
     result = rt._risk_contributions_post_treatment(pd.DataFrame(data))
-    expected_risk = [100, 100, 100, 0, 50, 150, 0, 10, 30, 0, 5, 15, 0, 30, 90]
-    assert result[RISK_COL_NAME].tolist() == expected_risk
+    expected_risk = np.array(
+        [
+            100,
+            100,
+            100,
+            0,
+            10,
+            20,
+            0,
+            10,
+            10,
+            0,
+            10,
+            10,
+            0,
+            10,
+            15,
+        ]
+    )
+    np.testing.assert_array_equal(result[RISK_COL_NAME].values, expected_risk)
 
 
 # --- Reset Metrics ---

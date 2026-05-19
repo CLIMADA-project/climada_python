@@ -619,57 +619,38 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             )
         ]
 
-    def _make_period_bins(
-        self, freq: str | None = None
-    ) -> tuple[pd.DatetimeIndex, list[str]]:
-        """Build bin edges and labels from snapshot dates or a given frequency.
+    def _assign_snapshot_period_ids(self, dates: pd.Series) -> pd.Series:
+        """Assign each date to the index of the snapshot pair that contains it.
 
         Parameters
         ----------
-        freq : str, optional
-            Pandas frequency string (e.g. ``"2Y"``, ``"3M"``). If None, bins
-            correspond to the intervals between consecutive snapshots.
+        dates : pd.Series
+            Series of Period dtype with frequency ``self.time_resolution``.
 
         Returns
         -------
-        bin_edges : pd.DatetimeIndex
-        labels : list of str
+        pd.Series
+            Integer series of same index as ``dates``, with values in
+            ``range(len(self._snapshots) - 1)``. Dates outside all snapshot
+            intervals are assigned ``NaN``.
         """
-        snapshot_dates = sorted(snap.date for snap in self._snapshots)
-        start, end = snapshot_dates[0], snapshot_dates[-1]
-
-        if freq is None:
-            edges = pd.DatetimeIndex(snapshot_dates)
-        else:
-            edges = pd.date_range(start=start, end=end, freq=freq, inclusive="left")
-            if edges[-1] < end:
-                edges = pd.date_range(
-                    start=start, periods=len(edges) + 1, freq=freq, inclusive="left"
-                )
-
-            if edges[0] != start:
-                LOGGER.warning(
-                    "The first bin edge %s does not match the start date %s. "
-                    "This is likely because '%s' is interpreted as an end-anchored frequency. "
-                    "Consider using an explicit start-anchored frequency instead "
-                    "(e.g. 'YS' instead of 'Y', 'MS' instead of 'M').",
-                    edges[0].date(),
-                    start.date(),
-                    freq,
-                )
-
-        labels = [
-            f"{edges[i].date()} to {edges[i + 1].date()}" for i in range(len(edges) - 1)
+        snapshot_dates = sorted(snap.date for snap in self._snapshots) + [
+            self._snapshots[-1].date + pd.DateOffset()
         ]
-        return edges, labels
+        bins = pd.DatetimeIndex(snapshot_dates)
+        ts = dates.dt.to_timestamp(how="start")
+        return pd.cut(
+            ts,
+            bins=bins,
+            labels=False,
+            include_lowest=True,
+            right=True,
+        )
 
-    @classmethod
     def _date_to_period_agg(
-        cls,
+        self,
         metric_df: pd.DataFrame,
         grouper: list[str],
-        bin_edges: pd.DatetimeIndex,
-        labels: list[str],
         colname: str | list[str] = RISK_COL_NAME,
         aggfunc: str | Callable = "mean",
     ) -> pd.DataFrame:
@@ -679,29 +660,32 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         ----------
         metric_df : pd.DataFrame
         grouper : list of str
-        bin_edges : pd.DatetimeIndex
-            Edges of the period bins, as returned by ``_make_period_bins``.
-        labels : list of str
-            Labels for each bin interval.
         colname : str or list of str, optional
         aggfunc : str or callable, optional
             Aggregation function passed to ``groupby.agg``. Default is ``"mean"``.
+        freq : str, optional
+            If provided, resample the date column at this frequency.
+        time_resolution : str, optional
+            The time resolution of the date column, used to format labels when
+            ``freq`` is provided.
+        snapshot_mapper : dict, optional
+            Maps each ``pd.Period`` to a snapshot interval label. Used when
+            ``freq`` is None.
         """
         if isinstance(colname, str):
             colname = [colname]
 
         df = metric_df.copy()
-        df[PERIOD_COL_NAME] = pd.cut(
-            df[DATE_COL_NAME].dt.to_timestamp(how="start"),
-            bins=bin_edges,
-            labels=labels,
-            include_lowest=True,
-            right=False,
-        )
 
         if GROUP_COL_NAME in df.columns and GROUP_COL_NAME not in grouper:
             grouper = [GROUP_COL_NAME] + grouper
 
+        df[PERIOD_COL_NAME] = self._assign_snapshot_period_ids(df[DATE_COL_NAME])
+        df[PERIOD_COL_NAME] = (
+            df.groupby(PERIOD_COL_NAME)[DATE_COL_NAME].transform("first").astype(str)
+            + " to "
+            + df.groupby(PERIOD_COL_NAME)[DATE_COL_NAME].transform("last").astype(str)
+        )
         return (
             df.groupby([PERIOD_COL_NAME] + grouper, dropna=False, observed=True)[
                 colname
@@ -717,7 +701,6 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             RETURN_PERIOD_METRIC_NAME,
             AAI_PER_GROUP_METRIC_NAME,
         ),
-        freq: str | None = None,
         colname: str | list[str] = RISK_COL_NAME,
         aggfunc: str | Callable = "mean",
     ) -> pd.DataFrame:
@@ -739,9 +722,9 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         Notes
         -----
 
-        Periods are left inclusing, right excluding, meaning for instance,
-        "2018-01-01 to 2024-01-01" is the average risk from 2018-01-01 included
-        to 2023-12-31 included.
+        If freq is given, periods are left inclusing, right excluding,
+        meaning for instance, "2018-01-01 to 2024-01-01" is the
+        average risk from 2018-01-01 included to 2023-12-31 included.
 
         If the last date is at odd with the frequency given, the aggfunc is
         still applied over the "whole" bin inclunding the date, for instance if
@@ -751,12 +734,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
         """
         metric_df = self.per_date_risk_metrics(metrics=metrics)
-        bin_edges, labels = self._make_period_bins(freq=freq)
+
         return self._date_to_period_agg(
             metric_df,
             grouper=self._grouper + [UNIT_COL_NAME],
-            bin_edges=bin_edges,
-            labels=labels,
             colname=colname,
             aggfunc=aggfunc,
         )
