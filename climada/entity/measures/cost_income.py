@@ -39,7 +39,7 @@ class CostIncome:
 
     Attributes
     ----------
-    mkt_price_year : datetime, default to today's year.
+    mkt_price_year : int, default to today's year.
         The reference year for market prices.
     init_cost : float
         Initial implementation cost (stored as negative).
@@ -54,7 +54,8 @@ class CostIncome:
     custom_cash_flows : pd.DataFrame, optional
         User-defined cash flows indexed by date.
     freq : str
-        Frequency of the cash flows (e.g., 'Y', '3M', '7D').
+        Periodicity (frequency) of the cash flows (e.g., 'Y', '3M', '7D').
+        All pandas aliases are possible. See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#period-aliases).
 
     """
 
@@ -74,7 +75,7 @@ class CostIncome:
 
         Parameters
         ----------
-        mkt_price_year : datetime, default to today's year.
+        mkt_price_year : int, default to today's year.
             The reference year for market prices.
         init_cost : float
             Initial implementation cost (stored as negative).
@@ -247,7 +248,8 @@ class CostIncome:
 
     @classmethod
     def from_yaml(cls, path: str) -> "CostIncome":
-        """Create a `CostIncome` from a yaml file.
+        """Create a `CostIncome` from a yaml file of a `MeasureConfig`
+        object.
 
         Parameters
         ----------
@@ -317,9 +319,11 @@ class CostIncome:
         ----------
         impl_date : pd.Timestamp
             The implementation date that determines which cost/income regime
-            applies. Dates before this use have no cost or income; "at the date" uses
+            applies. Dates before this have no cost or income; "at the date" uses
             the implementation cost, and dates after use the initialized or
             periodic amounts respectively.
+            Note that if a custom cash flow is defined for `curr_date`,
+            before `impl_date`, it will be accounted for.
         curr_date : pd.Timestamp
             The evaluation date for which cash flows are being calculated. This
             is compared against `impl_date` to determine the applicable base
@@ -389,7 +393,7 @@ class CostIncome:
         return (total_inc + total_cost), total_cost, total_inc
 
     def calc_cash_flows(
-        self, impl_date, start_date, end_date
+        self, impl_date: pd.Timestamp, start_date: pd.Timestamp, end_date: pd.Timestamp
     ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculate net cash flows, costs, and incomes over a period.
 
@@ -402,12 +406,12 @@ class CostIncome:
 
         Parameters
         ----------
-        impl_date :
+        impl_date : pd.Timestamp
             The implementation date that determines which cost/income regime
             applies.
-        start_date :
+        start_date : pd.Timestamp
             The beginning of the calculation period.
-        end_date :
+        end_date : pd.Timestamp
             The end of the calculation period.
 
         Returns
@@ -486,7 +490,7 @@ class CostIncome:
 
         Returns
         -------
-        plt.Figure
+        tuple(plt.Axis, plt.Axis)
         """
         net, costs, incomes = self.calc_cash_flows(impl_date, start_date, end_date)
         periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
