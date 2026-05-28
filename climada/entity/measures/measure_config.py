@@ -382,9 +382,10 @@ class CostIncomeConfig(ModifierConfig):
     income_yearly_growth_rate : float, optional
         Annual growth rate applied to periodic income. Default is ``0.0``.
     freq : str, optional
-        Pandas period alias defining the period length (e.g. ``"Y"`` for
-        yearly, ``"M"`` for monthly). Default is ``"Y"``.
+        Pandas period alias defining the periodicity of the costs and incomes
+        (e.g. ``"Y"`` for yearly, ``"M"`` for monthly). Default is ``"Y"``.
         See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#period-aliases).
+        Note that growth rates remain yearly, independently from the freq.
     custom_cash_flows : list of dict, optional
         Explicit cash flow schedule as a list of records with at minimum
         a ``"date"`` key (ISO 8601 string) and a value key. If provided,
