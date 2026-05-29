@@ -104,7 +104,7 @@ class TestFromDict:
         assert ci.init_cost == 0.0
         assert ci.freq == "Y"
 
-    def test_with_custom_cash_flows(self):
+    def test_with_custom_cash_flows_only(self):
         d = {
             "freq": "Y",
             "custom_cash_flows": [
@@ -284,6 +284,38 @@ class TestCalcCashFlows:
             income, [0.0, 0.0, 1000.0, 1000.0, 1000.0, 1000.0, 1000.0]
         )
 
+    def test_with_custom_cash_flows(self):
+        d = {
+            "freq": "Y",
+            "init_cost": 500,
+            "periodic_cost": 100,
+            "periodic_income": 200,
+            "custom_cash_flows": [
+                {"date": "2021-01-01", "cost": 170, "income": 50},
+                {"date": "2022-01-01", "cost": 180, "income": 50},
+                {"date": "2025-01-01", "cost": 190, "income": 50},
+            ],
+        }
+        ci = CostIncome.from_dict(d)
+        expected_net = np.array([0.0, -120.0, -630.0, 100, 100, -40])
+        expected_costs = np.array([0.0, -170.0, -680.0, -100, -100, -290])
+        expected_incomes = np.array(
+            [
+                0.0,
+                50.0,
+                50.0,
+                200,
+                200,
+                250,
+            ]
+        )
+        net, costs, incomes = ci.calc_cash_flows(
+            impl_date="2022", start_date="2020", end_date="2025"
+        )
+        np.testing.assert_array_equal(net, expected_net)
+        np.testing.assert_array_equal(costs, expected_costs)
+        np.testing.assert_array_equal(incomes, expected_incomes)
+
 
 # ---------------------------------------------------------------------------
 # calc_total
@@ -388,9 +420,9 @@ class TestCombCostIncome:
     def test_merges_custom_cash_flows(self):
         df1 = pd.DataFrame(
             {
-                "date": ["2020-01-01", "2020-03-01"],
-                "cost": [100, 200],
-                "income": [50, 60],
+                "date": ["2019-11-01", "2020-01-01", "2020-03-01", "2020-05-01"],
+                "cost": [100, 200, 100, 50],
+                "income": [50, 60, 0, 0],
             }
         )
         df2 = pd.DataFrame(
@@ -403,9 +435,17 @@ class TestCombCostIncome:
 
         expected = pd.DataFrame(
             {
-                "date": ["2020-01", "2020-02", "2020-03", "2020-04"],
-                "cost": [-200, 0, -400, -300],
-                "income": [100, 0, 120, 70],
+                "date": [
+                    "2019-11",
+                    "2019-12",
+                    "2020-01",
+                    "2020-02",
+                    "2020-03",
+                    "2020-04",
+                    "2020-05",
+                ],
+                "cost": [-100, 0, -300, 0, -300, -300, -50],
+                "income": [50, 0, 110, 0, 60, 70, 0],
             }
         )
 
