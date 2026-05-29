@@ -167,12 +167,9 @@ class CostIncome:
             )
 
         df = df.copy()
-        if "cost" in df.columns:
-            df["cost"] = -df["cost"].abs()
-
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-            df = df.set_index("date")
+        df["cost"] = -df["cost"].abs()
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date")
 
         freq = self._make_offset_compat(self.freq)
         return df.resample(freq).sum()
