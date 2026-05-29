@@ -261,36 +261,6 @@ class CostIncome:
         with open(path) as f:
             return cls.from_dict(yaml.safe_load(f)["cost_income"])
 
-    @classmethod
-    def _freq_to_days(cls, freq: str) -> str:
-        """
-        Convert a frequency string to the equivalent number of days.
-
-        Parameters:
-        -----------
-        freq : str
-            A frequency string (e.g., 'D' for daily, 'M' for monthly, 'Y' for yearly).
-
-        Returns:
-        --------
-        float
-            The equivalent number of days for the given frequency string.
-        """
-
-        try:
-            # Convert the frequency string to a DateOffset object
-            freq = cls._make_offset_compat(freq, start=False)
-            offset = pd.tseries.frequencies.to_offset(freq)
-
-            # Calculate the number of days by applying the offset to a base date
-            base_date = pd.Timestamp("2000-01-01")
-            end_date = base_date + offset
-
-            # Return the difference in days
-            return f"{(end_date - base_date).days}d"
-        except ValueError as exc:
-            raise ValueError(f"Invalid frequency string: {freq}") from exc
-
     def _get_width_days(self) -> float:
         """Return the number of days in the current frequency."""
 
