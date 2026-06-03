@@ -4,3 +4,4 @@ channels:
   - nodefaults
 dependencies:
   - libgdal=3.12.*
+  - openssl=3.*
