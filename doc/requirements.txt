@@ -139,7 +139,7 @@ fonttools==4.62.1
     # via matplotlib
 fsspec==2026.4.0
     # via dask
-gdal==3.12.3
+gdal==3.13.0
     # via climada
 geographiclib==2.1
     # via geopy

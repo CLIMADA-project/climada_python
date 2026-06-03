@@ -3,5 +3,4 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - libgdal=3.12.*
-  - openssl=3.*
+  - libgdal=3.13.*

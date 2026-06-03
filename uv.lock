@@ -537,7 +537,7 @@ requires-dist = [
     { name = "dask", specifier = ">=2026.3.0" },
     { name = "deprecation", specifier = ">=2.1.0" },
     { name = "fiona", specifier = ">=1.10.1" },
-    { name = "gdal", extras = ["numpy"], specifier = "~=3.12" },
+    { name = "gdal", extras = ["numpy"], specifier = ">=3.13.0" },
     { name = "geopandas", specifier = ">=1.1.3" },
     { name = "h5py", specifier = ">=3.16.0" },
     { name = "haversine", specifier = ">=2.9.0" },
@@ -1076,9 +1076,9 @@ wheels = [
 
 [[package]]
 name = "gdal"
-version = "3.12.3"
+version = "3.13.0"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/65/cb/64ab7a1dd03e53870fd4c993d72baf6881a663953d2d2e8dd92098c12e94/gdal-3.12.3.tar.gz", hash = "sha256:a5aebb8f50b8f4d5b0c238cc9a6c988be3041bc276535daeddc399fa6ec13972", size = 899374, upload-time = "2026-03-20T13:48:41.273Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/28/58/c1d628c5b5a38d31e93e825199fd4dfd39b658104a52dfce3228d1067042/gdal-3.13.0.tar.gz", hash = "sha256:b440bcecbcdb96690a74da223142f2d51c6a540ee78674e10f9dca933d0e9006", size = 940507, upload-time = "2026-05-08T10:33:19.112Z" }
 
 [package.optional-dependencies]
 numpy = [
