@@ -290,6 +290,7 @@ numpy==2.2.6 ; python_full_version < '3.11'
     #   cftime
     #   contourpy
     #   eccodes
+    #   gdal
     #   geopandas
     #   h5py
     #   matplotlib
@@ -319,6 +320,7 @@ numpy==2.4.4 ; python_full_version >= '3.11'
     #   cftime
     #   contourpy
     #   eccodes
+    #   gdal
     #   geopandas
     #   h5py
     #   matplotlib
