@@ -51,7 +51,7 @@ jobs:
       -
         name: Install dependencies
         run: |
-          uv sync --locked --dev
+          uv sync --locked --dev --no-managed-python
       -
         name: Run Unit Tests
         run: |

@@ -1,6 +1,6 @@
-name: climada_env
+name: climada_base
 channels:
   - conda-forge
   - nodefaults
 dependencies:
-  - libgdal=3.13.*
+  - libgdal=3.12
