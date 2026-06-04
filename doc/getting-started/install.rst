@@ -139,6 +139,46 @@ These instructions will install the most recent stable version of CLIMADA withou
 
       mamba install -n climada_env -c conda-forge climada-petals
 
+.. _install-pixi:
+
+-------------------
+Simple Instructions with Pixi (Alternative)
+-------------------
+
+As an alternative to mamba `Pixi <https://pixi.sh/>` can be used to install climada from conda-forge.
+
+
+#. Open the command line and create a new folder for your Pixi project:
+
+   .. code-block:: shell
+
+      mkdir climada_pixi
+      cd climada_pixi
+      pixi init
+.. _install-simple:
+
+#. Add CLIMADA from ``conda-forge``:
+
+   .. code-block:: shell
+
+      pixi add -c conda-forge "python=3.11.*" climada
+
+#. Verify that everything is installed correctly by executing a single test:
+
+   .. code-block:: shell
+
+      pixi run python -m unittest climada.engine.test.test_impact
+
+   Executing CLIMADA for the first time will take some time because it will generate a directory tree in your home/user directory.
+   If this test passes, great!
+   You are good to go.
+
+#. *Optional:* Install CLIMADA Petals into the same Pixi environment:
+
+   .. code-block:: shell
+
+      pixi add -c conda-forge climada-petals
+
 .. _install-advanced:
 
 ---------------------------------------------
