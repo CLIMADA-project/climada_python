@@ -40,6 +40,7 @@ jobs:
           environment-name: climada_env
           environment-file: requirements/base.yml
           create-args: >-
+            python=${{ matrix.python-version }}
             make
           # Persist environment for branch, Python version, single day
           cache-environment-key: env-${{ github.ref }}-${{ steps.date.outputs.date }}
