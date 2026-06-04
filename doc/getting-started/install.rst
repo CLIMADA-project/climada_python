@@ -147,6 +147,11 @@ Simple Instructions with Pixi (Alternative)
 
 As an alternative to mamba `Pixi <https://pixi.sh/>` can be used to install climada from conda-forge.
 
+.. important::
+
+   On Windows, installing ``climada-petals`` from ``conda-forge`` may fail with ``mamba`` or ``conda`` in some setups due to dependency resolution issues.
+   In these cases, Pixi is often the most reliable fallback and can sometimes be the only working installation path.
+
 #. Open the command line and create a new folder for your Pixi project:
 
    .. code-block:: shell
