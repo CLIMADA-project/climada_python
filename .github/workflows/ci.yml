@@ -35,7 +35,7 @@ jobs:
         run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
       -
         name: Install make
-        uses: awalsh128/cache-apt-pkgs-action@v1.6
+        uses: awalsh128/cache-apt-pkgs-action@v1
         with:
           packages: make
       -
