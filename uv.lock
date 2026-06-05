@@ -437,7 +437,6 @@ dependencies = [
     { name = "dask" },
     { name = "deprecation" },
     { name = "fiona" },
-    { name = "gdal", extra = ["numpy"] },
     { name = "geopandas" },
     { name = "h5py" },
     { name = "haversine" },
@@ -537,7 +536,6 @@ requires-dist = [
     { name = "dask", specifier = ">=2026.3.0" },
     { name = "deprecation", specifier = ">=2.1.0" },
     { name = "fiona", specifier = ">=1.10.1" },
-    { name = "gdal", extras = ["numpy"], specifier = "~=3.12" },
     { name = "geopandas", specifier = ">=1.1.3" },
     { name = "h5py", specifier = ">=3.16.0" },
     { name = "haversine", specifier = ">=2.9.0" },
@@ -1072,18 +1070,6 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/d5/8d/1c51c094345df128ca4a990d633fe1a0ff28726c9e6b3c41ba65087bba1d/fsspec-2026.4.0.tar.gz", hash = "sha256:301d8ac70ae90ef3ad05dcf94d6c3754a097f9b5fe4667d2787aa359ec7df7e4", size = 312760, upload-time = "2026-04-29T20:42:38.635Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/d5/0c/043d5e551459da400957a1395e0febbf771446ff34291afcbe3d8be2a279/fsspec-2026.4.0-py3-none-any.whl", hash = "sha256:11ef7bb35dab8a394fde6e608221d5cf3e8499401c249bebaeaad760a1a8dec2", size = 203402, upload-time = "2026-04-29T20:42:36.842Z" },
-]
-
-[[package]]
-name = "gdal"
-version = "3.12.3"
-source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/65/cb/64ab7a1dd03e53870fd4c993d72baf6881a663953d2d2e8dd92098c12e94/gdal-3.12.3.tar.gz", hash = "sha256:a5aebb8f50b8f4d5b0c238cc9a6c988be3041bc276535daeddc399fa6ec13972", size = 899374, upload-time = "2026-03-20T13:48:41.273Z" }
-
-[package.optional-dependencies]
-numpy = [
-    { name = "numpy", version = "2.2.6", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version < '3.11'" },
-    { name = "numpy", version = "2.4.4", source = { registry = "https://pypi.org/simple" }, marker = "python_full_version >= '3.11'" },
 ]
 
 [[package]]
