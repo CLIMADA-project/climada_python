@@ -29,7 +29,6 @@ from tempfile import TemporaryDirectory
 import affine
 import numpy as np
 import scipy.sparse as sparse
-from osgeo import gdal
 from PIL import Image
 from shapely.geometry import Polygon
 
@@ -124,18 +123,11 @@ class TestNightlight(unittest.TestCase):
         with self.assertLogs(
             "climada.entity.exposures.litpop.nightlight", level="DEBUG"
         ) as cm:
-            arr1, curr_file = nightlight.read_bm_file(
-                bm_path=temp_dir.name, filename=filename
-            )
+            arr1 = nightlight.read_bm_file(bm_path=temp_dir.name, filename=filename)
         self.assertIn("Importing" + temp_dir.name, cm.output[0])
 
         # Check outputs are a np.array and a gdal DataSet and band 1 is selected
         self.assertIsInstance(arr1, np.ndarray)
-        self.assertIsInstance(curr_file, gdal.Dataset)
-        self.assertEqual(curr_file.GetRasterBand(1).DataType, 1)
-
-        # Release dataset, so the GC can close the file
-        curr_file = None
 
         # Check that the right exception is raised
         with self.assertRaises(FileNotFoundError) as cm:
