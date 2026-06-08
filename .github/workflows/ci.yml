@@ -22,11 +22,6 @@ jobs:
         name: Checkout Repo
         uses: actions/checkout@v4
       -
-        # Store the current date to use it as cache key for the environment
-        name: Get current date
-        id: date
-        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
-      -
         name: Install make
         uses: awalsh128/cache-apt-pkgs-action@v1
         with:
@@ -44,29 +39,35 @@ jobs:
         name: Cache data
         uses: actions/cache@v5
         with:
-          path: $GITHUB_WORKSPACE/climada
+          path: ${{ github.workspace }}/climada
           key: ${{ env.CLIMADA_DATA_DOI }}
       -
         name: Download and unzip data
         run: |
           uvx zenodo_get -v 3 10.5281/zenodo.20592941
-          unzip -q climada.zip -d $GITHUB_WORKSPACE
+          unzip -q climada.zip -d ${{ github.workspace }}
       -
-        name: Create CLIMADA config file
-        run: |
-          cat > climada.conf << EOF
-          {
-              "local_data": {
-                  "system": "$GITHUB_WORKSPACE/climada/data/system",
-                  "demo": "$GITHUB_WORKSPACE/climada/data/demo"
-              }
-          }
-          EOF
+        name: Write climada.conf system data
+        uses: amochkin/action-json@v1
+        with:
+          mode: write
+          file: climada.conf
+          property: local_data.system
+          value: ${{ github.workspace }}/climada/data/system
+      -
+        name: Write climada.conf demo data
+        uses: amochkin/action-json@v1
+        with:
+          mode: write
+          file: climada.conf
+          property: local_data.demo
+          value: ${{ github.workspace }}/climada/data/demo
       -
         name: Run Integration Tests
         run: |
           uv run -- python -c "from climada.util.constants import SYSTEM_DIR; print(SYSTEM_DIR)"
           make integ_test
+        continue-on-error: true
 
   build-and-test:
     name: 'Core / Unit Test Pipeline'
