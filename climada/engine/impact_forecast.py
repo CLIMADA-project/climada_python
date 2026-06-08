@@ -73,7 +73,7 @@ class ImpactForecast(ForecastMixin, Impact):
         member : np.ndarray, optional
             The ensemble member associated with each event entry, given as integers
         """
-        with log_level("WARNING", "climada.engine"):
+        with log_level("ERROR", "climada.engine"):
             return cls(
                 lead_time=lead_time,
                 member=member,
@@ -325,7 +325,7 @@ class ImpactForecast(ForecastMixin, Impact):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            with log_level("WARNING", "climada.engine.impact"):
+            with log_level("ERROR", "climada.engine.impact"):
                 return reduce_unique_selection(
                     self,
                     attr=rdim,
@@ -341,7 +341,7 @@ class ImpactForecast(ForecastMixin, Impact):
             crs=self.crs,
             eai_exp=self.eai_exp,
             at_event=red_at_event,
-            tot_value=self.tot_value,
+            tot_value=self._tot_value,
             aai_agg=self.aai_agg,
             unit=self.unit,
             imp_mat=red_imp_mat,
@@ -364,7 +364,7 @@ class ImpactForecast(ForecastMixin, Impact):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            with log_level("WARNING", "climada.engine.impact"):
+            with log_level("ERROR", "climada.engine.impact"):
                 return reduce_unique_selection(
                     self,
                     attr=rdim,
@@ -380,7 +380,7 @@ class ImpactForecast(ForecastMixin, Impact):
             crs=self.crs,
             eai_exp=self.eai_exp,
             at_event=red_at_event,
-            tot_value=self.tot_value,
+            tot_value=self._tot_value,
             aai_agg=self.aai_agg,
             unit=self.unit,
             imp_mat=red_imp_mat,
@@ -403,7 +403,7 @@ class ImpactForecast(ForecastMixin, Impact):
         """
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            with log_level("WARNING", "climada.engine.impact"):
+            with log_level("ERROR", "climada.engine.impact"):
                 return reduce_unique_selection(
                     self,
                     attr=rdim,
@@ -419,7 +419,7 @@ class ImpactForecast(ForecastMixin, Impact):
             crs=self.crs,
             eai_exp=self.eai_exp,
             at_event=red_at_event,
-            tot_value=self.tot_value,
+            tot_value=self._tot_value,
             aai_agg=self.aai_agg,
             unit=self.unit,
             imp_mat=red_imp_mat,
@@ -436,7 +436,7 @@ class ImpactForecast(ForecastMixin, Impact):
         """Reduce the impact matrix and at_event to the quantile value."""
         if dim is not None:
             rdim = self._reduce_iter_dim(dim)
-            with log_level("WARNING", "climada.engine.impact"):
+            with log_level("ERROR", "climada.engine.impact"):
                 return reduce_unique_selection(
                     self,
                     attr=rdim,
@@ -455,7 +455,7 @@ class ImpactForecast(ForecastMixin, Impact):
             crs=self.crs,
             eai_exp=self.eai_exp,
             at_event=red_at_event,
-            tot_value=self.tot_value,
+            tot_value=self._tot_value,
             aai_agg=self.aai_agg,
             unit=self.unit,
             imp_mat=red_imp_mat,
