@@ -16,7 +16,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-This modules implements different sparce matrices interpolation approaches.
+Unit tests for `calc_risk_metrics.py` .
 
 """
 
@@ -26,11 +26,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from climada.entity.exposures import Exposures
-from climada.entity.impact_funcs import ImpactFuncSet
-from climada.entity.impact_funcs.trop_cyclone import ImpfTropCyclone
-from climada.entity.measures.base import Measure
-from climada.hazard import Hazard
+from climada.entity._legacy_measures.base import Measure
 from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPoints
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
@@ -38,7 +34,6 @@ from climada.trajectories.constants import (
     DATE_COL_NAME,
     EAI_METRIC_NAME,
     GROUP_COL_NAME,
-    GROUP_ID_COL_NAME,
     MEASURE_COL_NAME,
     METRIC_COL_NAME,
     NO_MEASURE_VALUE,
