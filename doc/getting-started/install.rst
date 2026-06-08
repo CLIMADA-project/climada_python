@@ -145,12 +145,12 @@ These instructions will install the most recent stable version of CLIMADA withou
 Simple Instructions with Pixi (Alternative)
 -------------------
 
-As an alternative to mamba `Pixi <https://pixi.sh/>` can be used to install climada from conda-forge.
-`Pixi`_ is a modern package manager that is based on `Conda`_ and offers much faster dependency resolution.
+As an alternative to mamba `Pixi`_ can be used to install climada from conda-forge.
+Pixi is a modern package manager, based on Conda, that offers much faster dependency resolution.
 
-.. important::
+.. attention::
 
-   On Windows, installing ``climada-petals`` with `Conda`_ / `Mamba`_ may be prohibited as it takes forever to resolve the dependency tree.
+   On Windows, installing ``climada-petals`` with Conda/Mamba may be prohibited as it takes forever to resolve the dependency tree.
    In these cases, `Pixi`_ is often the only reliable fallback.
 
 #. Open the command line and create a new folder for your Pixi project:
@@ -758,6 +758,9 @@ Terminal, Command Line
 `Mamba`_
     The faster reimplementation of the ``conda`` package manager.
 
+`Pixi`_
+    The much faster modern package manager based on ``conda``.
+
 Environment (Programming)
     A setup where only a specific set of modules and programs can interact.
     This is especially useful if you want to install programs with mutually incompatible requirements.
@@ -785,4 +788,5 @@ IDE
 .. _Conda: https://docs.conda.io/en/latest/
 .. _Mamba: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html
 .. _Miniforge: https://github.com/conda-forge/miniforge
+.. _Pixi: https://pixi.sh/
 .. _CLIMADA Petals: https://climada-petals.readthedocs.io/en/latest/
