@@ -6,10 +6,14 @@ sphinx:
 build:
   os: "ubuntu-26.04"
   tools:
-    python: "miniforge3-25.11"
+    python: "3.12"
 
-conda:
-  environment: env-docs.yml
+python:
+  install:
+    - method: uv
+      command: sync
+      groups:
+        - doc
 
 formats:
   - pdf
