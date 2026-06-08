@@ -236,38 +236,36 @@ class TestNightlight(unittest.TestCase):
             with gzip.GzipFile(SYSTEM_DIR.joinpath(gzfile), "wb") as f:
                 f.write(mem.getvalue())
 
-        try:
-            # with arguments
+        # with arguments
+        night, coord_nl, fn_light = nightlight.load_nightlight_noaa(
+            ref_year=year, sat_name=sat_name
+        )
+        self.assertIsInstance(night, sparse._csr.csr_matrix)
+        self.assertIn(tiffile, str(fn_light))
+
+        # using already existing file and without providing arguments
+        night, coord_nl, fn_light = nightlight.load_nightlight_noaa()
+        self.assertIsInstance(night, sparse._csr.csr_matrix)
+        self.assertIn(pfile, str(fn_light))
+        self.assertTrue(
+            np.array_equal(
+                np.array([[-65, NOAA_RESOLUTION_DEG], [-180, NOAA_RESOLUTION_DEG]]),
+                coord_nl,
+            )
+        )
+
+        # test raises from wrong input agruments
+        with self.assertRaises(ValueError) as cm:
             night, coord_nl, fn_light = nightlight.load_nightlight_noaa(
-                ref_year=year, sat_name=sat_name
+                ref_year=2050, sat_name="F150"
             )
-            self.assertIsInstance(night, sparse._csr.csr_matrix)
-            self.assertIn(tiffile, str(fn_light))
-
-            # using already existing file and without providing arguments
-            night, coord_nl, fn_light = nightlight.load_nightlight_noaa()
-            self.assertIsInstance(night, sparse._csr.csr_matrix)
-            self.assertIn(pfile, str(fn_light))
-            self.assertTrue(
-                np.array_equal(
-                    np.array([[-65, NOAA_RESOLUTION_DEG], [-180, NOAA_RESOLUTION_DEG]]),
-                    coord_nl,
-                )
-            )
-
-            # test raises from wrong input agruments
-            with self.assertRaises(ValueError) as cm:
-                night, coord_nl, fn_light = nightlight.load_nightlight_noaa(
-                    ref_year=2050, sat_name="F150"
-                )
-            self.assertEqual(
-                "Nightlight intensities for year 2050 and satellite F150 do not exist.",
-                str(cm.exception),
-            )
-        finally:
-            # clean up
-            SYSTEM_DIR.joinpath(pfile).unlink(missing_ok=True)
-            SYSTEM_DIR.joinpath(gzfile).unlink(missing_ok=True)
+        self.assertEqual(
+            "Nightlight intensities for year 2050 and satellite F150 do not exist.",
+            str(cm.exception),
+        )
+        # clean up
+        SYSTEM_DIR.joinpath(pfile).unlink(missing_ok=True)
+        SYSTEM_DIR.joinpath(gzfile).unlink(missing_ok=True)
 
     def test_untar_noaa_stable_nighlight(self):
         """Testing that input .tar file is moved into SYSTEM_DIR,
@@ -275,6 +273,7 @@ class TestNightlight(unittest.TestCase):
         exception are raised when no .tif.gz file is present in the tar file,
         and the logger message is recorded if more then one .tif.gz is present in
         .tar file."""
+        nightlight.load_nightlight_noaa()
 
         # Create path to .tif.gz and .csv files already existing in SYSTEM_DIR
         path_tif_gz_1 = Path(SYSTEM_DIR, "F182013.v4c_web.stable_lights.avg_vis.tif.gz")
