@@ -28,7 +28,7 @@ jobs:
           mode: write
           file: climada.conf
           property: local_data.system
-          value: ${{ github.workspace }}/climada/data/system
+          value: ${{ github.workspace }}/climada/data
       -
         name: Write climada.conf demo data
         uses: amochkin/action-json@v1
@@ -36,7 +36,7 @@ jobs:
           mode: write
           file: climada.conf
           property: local_data.demo
-          value: ${{ github.workspace }}/climada/data/demo
+          value: ${{ github.workspace }}/climada/demo
       -
         run: |
           cat climada.conf
