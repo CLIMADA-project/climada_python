@@ -139,6 +139,54 @@ These instructions will install the most recent stable version of CLIMADA withou
 
       mamba install -n climada_env -c conda-forge climada-petals
 
+   .. attention::
+
+      On Windows, installing ``climada-petals`` with Conda/Mamba may be prohibited as it takes forever to resolve the dependency tree.
+      In these cases, `Pixi`_ is often the only reliable fallback (s.b.).
+
+.. _install-pixi:
+
+-------------------
+Simple Instructions with Pixi (Alternative)
+-------------------
+
+As an alternative to mamba `Pixi`_ can be used to install climada from conda-forge.
+Pixi is a modern package manager, based on Conda, that offers much faster dependency resolution.
+
+#. Open the command line and create a new folder for your Pixi project:
+
+   .. code-block:: shell
+
+      pixi init climada_pixi
+
+.. _install-simple:
+
+#. Add CLIMADA from ``conda-forge``:
+
+   .. code-block:: shell
+
+      pixi add --manifest-path climada_pixi/pixi.toml climada
+
+#. Verify that everything is installed correctly by executing a single test:
+
+   .. code-block:: shell
+
+      # the pixi way to activate an environment
+      pixi shell --manifest-path climada_pixi/pixi.toml
+      # execute the test
+      python -m unittest climada.engine.test.test_impact
+      # the pixi way to deactivate an environment
+      exit
+
+   Executing CLIMADA for the first time in a pixi environment will take quite some time because it will generate
+   a directory tree in your home/user directory. If this test passes, great! You are good to go.
+
+#. *Optional:* Install CLIMADA Petals into the same Pixi environment:
+
+   .. code-block:: shell
+
+      pixi add --manifest-path climada_pixi/pixi.toml climada-petals
+
 .. _install-advanced:
 
 ---------------------------------------------
@@ -264,7 +312,7 @@ However, if you want to develop CLIMADA, we strongly recommend you install them.
 
 With the ``climada_env`` activated, enter the workspace directory and then the CLIMADA repository as above.
 Then, add the ``test`` extra specification to the ``pip install`` command (**mind the quotation marks**,
- and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
+and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
 
 .. code-block:: shell
 
@@ -710,6 +758,9 @@ Terminal, Command Line
 `Mamba`_
     The faster reimplementation of the ``conda`` package manager.
 
+`Pixi`_
+    The much faster modern package manager based on ``conda``.
+
 Environment (Programming)
     A setup where only a specific set of modules and programs can interact.
     This is especially useful if you want to install programs with mutually incompatible requirements.
@@ -737,4 +788,5 @@ IDE
 .. _Conda: https://docs.conda.io/en/latest/
 .. _Mamba: https://mamba.readthedocs.io/en/latest/installation/mamba-installation.html
 .. _Miniforge: https://github.com/conda-forge/miniforge
+.. _Pixi: https://pixi.sh/
 .. _CLIMADA Petals: https://climada-petals.readthedocs.io/en/latest/
