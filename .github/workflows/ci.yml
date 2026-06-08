@@ -50,7 +50,7 @@ jobs:
         name: Download and unzip data
         run: |
           uvx zenodo_get -v 3 10.5281/zenodo.20592941
-          unzip climada.zip -q -d $GITHUB_WORKSPACE
+          unzip -q climada.zip -d $GITHUB_WORKSPACE
       -
         name: Create CLIMADA config file
         run: |
