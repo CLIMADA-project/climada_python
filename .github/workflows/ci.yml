@@ -9,7 +9,7 @@ defaults:
     shell: bash -el {0}
 
 env:
-  CLIMADA_DATA_DOI: 10.5281/zenodo.20595090
+  CLIMADA_DATA_DOI: doi.org/10.5281/zenodo.20595842
 
 jobs:
   integration-test:
