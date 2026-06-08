@@ -146,17 +146,17 @@ Simple Instructions with Pixi (Alternative)
 -------------------
 
 As an alternative to mamba `Pixi <https://pixi.sh/>` can be used to install climada from conda-forge.
+`Pixi`_ is a modern package manager that is based on `Conda`_ and offers much faster dependency resolution.
 
 .. important::
 
-   On Windows, installing ``climada-petals`` from ``conda-forge`` may fail with ``mamba`` or ``conda`` in some setups due to dependency resolution issues.
-   In these cases, Pixi is often the most reliable fallback and can sometimes be the only working installation path.
+   On Windows, installing ``climada-petals`` with `Conda`_ / `Mamba`_ may be prohibited as it takes forever to resolve the dependency tree.
+   In these cases, `Pixi`_ is often the only reliable fallback.
 
 #. Open the command line and create a new folder for your Pixi project:
 
    .. code-block:: shell
 
-      mkdir climada_pixi
       pixi init climada_pixi
 
 .. _install-simple:
@@ -165,24 +165,27 @@ As an alternative to mamba `Pixi <https://pixi.sh/>` can be used to install clim
 
    .. code-block:: shell
 
-      pixi shell --manifest-path climada_pixi/pixi.toml
-      pixi add climada
+      pixi add --manifest-path climada_pixi/pixi.toml climada
 
 #. Verify that everything is installed correctly by executing a single test:
 
    .. code-block:: shell
 
+      # the pixi way to activate an environment
+      pixi shell --manifest-path climada_pixi/pixi.toml
+      # execute the test
       python -m unittest climada.engine.test.test_impact
+      # the pixi way to deactivate an environment
+      exit
 
-   Executing CLIMADA for the first time will take some time because it will generate a directory tree in your home/user directory.
-   If this test passes, great!
-   You are good to go.
+   Executing CLIMADA for the first time in a pixi environment will take quite some time because it will generate
+   a directory tree in your home/user directory. If this test passes, great! You are good to go.
 
 #. *Optional:* Install CLIMADA Petals into the same Pixi environment:
 
    .. code-block:: shell
 
-      pixi add climada-petals
+      pixi add --manifest-path climada_pixi/pixi.toml climada-petals
 
 .. _install-advanced:
 
