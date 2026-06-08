@@ -8,6 +8,9 @@ defaults:
   run:
     shell: bash -el {0}
 
+env:
+  CLIMADA_DATA_DOI: 10.5281/zenodo.20592941
+
 jobs:
   integration-test:
     name: 'Core / Integration Test Pipeline'
@@ -38,10 +41,27 @@ jobs:
         run: |
           uv sync --locked --dev
       -
-        name: Load data
+        name: Cache data
+        uses: actions/cache@v5
+        with:
+          path: $GITHUB_WORKSPACE/climada
+          key: ${{ env.CLIMADA_DATA_DOI }}
+      -
+        name: Download and unzip data
         run: |
           uvx zenodo_get -v 3 10.5281/zenodo.20592941
-          unzip climada.zip
+          unzip climada.zip -q -d $GITHUB_WORKSPACE
+      -
+        name: Create CLIMADA config file
+        run: |
+          cat > climada.conf << EOF
+          {
+              "local_data": {
+                  "system": "$GITHUB_WORKSPACE/climada/data/system",
+                  "demo": "$GITHUB_WORKSPACE/climada/data/demo"
+              }
+          }
+          EOF
       -
         name: Run Integration Tests
         run: |
