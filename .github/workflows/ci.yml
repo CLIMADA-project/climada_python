@@ -9,7 +9,7 @@ defaults:
     shell: bash -el {0}
 
 env:
-  CLIMADA_DATA_DOI: 10.5281/zenodo.20592941
+  CLIMADA_DATA_DOI: 10.5281/zenodo.20595090
 
 jobs:
   integration-test:
@@ -21,31 +21,6 @@ jobs:
       -
         name: Checkout Repo
         uses: actions/checkout@v4
-      -
-        name: Install make
-        uses: awalsh128/cache-apt-pkgs-action@v1
-        with:
-          packages: make
-      -
-        name: Install uv
-        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
-        with:
-          python-version: "3.12"
-      -
-        name: Install dependencies
-        run: |
-          uv sync --locked --dev
-      -
-        name: Cache data
-        uses: actions/cache@v5
-        with:
-          path: ${{ github.workspace }}/climada
-          key: ${{ env.CLIMADA_DATA_DOI }}
-      -
-        name: Download and unzip data
-        run: |
-          uvx zenodo_get -v 3 10.5281/zenodo.20592941
-          unzip -q climada.zip -d ${{ github.workspace }}
       -
         name: Write climada.conf system data
         uses: amochkin/action-json@v1
@@ -62,6 +37,35 @@ jobs:
           file: climada.conf
           property: local_data.demo
           value: ${{ github.workspace }}/climada/data/demo
+      -
+        run: |
+          cat climada.conf
+      -
+        name: Install make
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: make
+      -
+        name: Install uv
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
+        with:
+          python-version: "3.12"
+          cache-suffix: integrationtest
+      -
+        name: Install dependencies
+        run: |
+          uv sync --locked --dev
+      -
+        name: Cache data
+        uses: actions/cache@v5
+        with:
+          path: ${{ github.workspace }}/climada
+          key: ${{ env.CLIMADA_DATA_DOI }}
+      -
+        name: Download and unzip data
+        run: |
+          uvx zenodo_get ${{ env.CLIMADA_DATA_DOI }}
+          unzip climada.zip -d ${{ github.workspace }}
       -
         name: Run Integration Tests
         run: |
@@ -103,6 +107,7 @@ jobs:
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
           python-version: ${{ matrix.python-version }}
+          cache-suffix: unittest
       -
         name: Install dependencies
         run: |
