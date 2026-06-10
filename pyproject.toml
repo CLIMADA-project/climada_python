@@ -60,27 +60,6 @@ dependencies = [
     "xlsxwriter>=3.2.9",
 ]
 
-[project.optional-dependencies]
-doc = [
-    "ipython",
-    "myst-nb",
-    "readthedocs-sphinx-ext>=2.2",
-    "sphinx<9.0",
-    "sphinx-book-theme",
-    "sphinx-markdown-tables",
-    "sphinx-design",
-    "sphinx-mdinclude"
-]
-dev = [
-    "ipython",
-    "mccabe>=0.6",
-    "pylint>=3.0",
-    "pytest",
-    "pytest-cov",
-    "pytest-subtests",
-    "pre-commit"
-]
-
 [dependency-groups]
 dev = [
     {include-group = "test"},
