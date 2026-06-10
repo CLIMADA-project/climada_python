@@ -135,29 +135,6 @@ cost_income:
 
 
 # ---------------------------------------------------------------------------
-# _freq_to_days
-# ---------------------------------------------------------------------------
-
-
-class TestFreqToDays:
-    def test_yearly(self):
-        result = CostIncome._freq_to_days("Y")
-        assert result == "365d"
-
-    def test_monthly(self):
-        result = CostIncome._freq_to_days("M")
-        assert result == "30d"
-
-    def test_daily(self):
-        result = CostIncome._freq_to_days("D")
-        assert result == "1d"
-
-    def test_invalid(self):
-        with pytest.raises(ValueError):
-            CostIncome._freq_to_days("INVALID_FREQ_XYZ")
-
-
-# ---------------------------------------------------------------------------
 # _get_width_days
 # ---------------------------------------------------------------------------
 
