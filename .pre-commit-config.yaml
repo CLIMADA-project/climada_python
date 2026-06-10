@@ -26,3 +26,12 @@ repos:
     rev: 0.11.7
     hooks:
       - id: uv-lock
+
+  - repo: local
+    hooks:
+      - id: conda-env
+        name: Compile Conda Environment
+        entry: uv run -- script/make_conda_env.py
+        language: unsupported
+        files: pyproject.toml
+        pass_filenames: false
