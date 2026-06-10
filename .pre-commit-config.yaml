@@ -31,7 +31,9 @@ repos:
     hooks:
       - id: conda-env
         name: Compile Conda Environment
-        entry: uv run -- script/make_conda_env.py
-        language: unsupported
+        entry: python script/make_conda_env.py
+        language: python
         files: pyproject.toml
         pass_filenames: false
+        additional_dependencies:
+          - PyYAML
