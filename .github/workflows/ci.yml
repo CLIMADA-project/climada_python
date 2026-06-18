@@ -77,7 +77,7 @@ jobs:
       -
         name: Upload Test Results
         if: (!cancelled())
-        uses: actions/upload-artifact@7
+        uses: actions/upload-artifact@v7
         with:
           name: Test Results (Python ${{ matrix.python-version }})
           path: tests_xml/tests.xml
@@ -134,7 +134,7 @@ jobs:
       -
         name: Upload Test Results
         if: (!cancelled())
-        uses: actions/upload-artifact@7
+        uses: actions/upload-artifact@v7
         with:
           name: test-results-core-unittests-py${{ matrix.python-version }}
           path: tests_xml/tests.xml
