@@ -21,6 +21,7 @@ Tests on Black marble.
 
 import gzip
 import io
+import shutil
 import tarfile
 import unittest
 from pathlib import Path
@@ -225,6 +226,10 @@ class TestNightlight(unittest.TestCase):
         pfile = f"{pattern}.p"
         tiffile = f"{pattern}.tif"
 
+        # Clean up potentially existing files
+        SYSTEM_DIR.joinpath(pfile).unlink(missing_ok=True)
+        SYSTEM_DIR.joinpath(gzfile).unlink(missing_ok=True)
+
         # create an empty image
         image = np.zeros((100, 100), dtype=np.uint8)
         pilim = Image.fromarray(image)
@@ -343,12 +348,18 @@ class TestNightlight(unittest.TestCase):
         )
 
         # check logger message: not all files are available
-        with self.assertLogs(
-            "climada.entity.exposures.litpop.nightlight", level="DEBUG"
-        ) as cm:
-            nightlight.check_nl_local_file_exists()
-        self.assertIn("Not all satellite files available. Found ", cm.output[0])
-        self.assertIn(f" out of 8 required files in {Path(SYSTEM_DIR)}", cm.output[0])
+        bm_filenames = [name % 2016 for name in BM_FILENAMES]
+        with TemporaryDirectory() as tmpdir:
+            # Copy two files
+            shutil.copy(SYSTEM_DIR / bm_filenames[0], Path(tmpdir) / bm_filenames[0])
+            shutil.copy(SYSTEM_DIR / bm_filenames[2], Path(tmpdir) / bm_filenames[2])
+
+            with self.assertLogs(
+                "climada.entity.exposures.litpop.nightlight", level="DEBUG"
+            ) as cm:
+                nightlight.check_nl_local_file_exists(check_path=tmpdir)
+            self.assertIn("Not all satellite files available. Found 2", cm.output[0])
+            self.assertIn(f" out of 8 required files in {tmpdir}", cm.output[0])
 
         # check logger message: no files found in checkpath
         check_path = Path("climada/entity/exposures")
