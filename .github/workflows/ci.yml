@@ -65,7 +65,7 @@ jobs:
         name: Download and unzip data
         run: |
           uvx zenodo_get ${{ env.CLIMADA_DATA_DOI }}
-          unzip climada.zip -d ${{ github.workspace }}
+          unzip -o climada.zip -d ${{ github.workspace }}
       -
         name: Run Integration Tests
         run: |
