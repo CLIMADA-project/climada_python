@@ -21,6 +21,8 @@ jobs:
       -
         name: Checkout Repo
         uses: actions/checkout@v4
+
+      #  --- Modify paths in climada.conf ---
       -
         name: Write climada.conf system data
         uses: amochkin/action-json@v1
@@ -40,6 +42,8 @@ jobs:
       -
         run: |
           cat climada.conf
+      # ---
+
       -
         name: Install make
         uses: awalsh128/cache-apt-pkgs-action@v1
@@ -69,9 +73,7 @@ jobs:
       -
         name: Run Integration Tests
         run: |
-          uv run -- python -c "from climada.util.constants import SYSTEM_DIR; print(SYSTEM_DIR)"
           make integ_test
-        continue-on-error: true
 
   build-and-test:
     name: 'Core / Unit Test Pipeline'
@@ -111,7 +113,8 @@ jobs:
       -
         name: Install dependencies
         run: |
-          uv sync --locked --dev
+          pip install -e ./
+          pip install --group dev
       -
         name: Run Unit Tests
         run: |
