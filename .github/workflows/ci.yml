@@ -74,14 +74,25 @@ jobs:
         name: Run Integration Tests
         run: |
           uv run -- make integ_test
+      -
+        name: Upload Test Results
+        if: (!cancelled())
+        uses: actions/upload-artifact@7
+        with:
+          name: Test Results (Python ${{ matrix.python-version }})
+          path: tests_xml/tests.xml
+      -
+        name: Upload Coverage Reports
+        if: (!cancelled())
+        uses: actions/upload-artifact@v7
+        with:
+          name: Coverage Report Integration Tests (Python ${{ matrix.python-version }})
+          path: coverage/
 
   build-and-test:
     name: 'Core / Unit Test Pipeline'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      # For publishing results
-      checks: write
 
     # Run this test for different Python versions
     strategy:
@@ -121,20 +132,40 @@ jobs:
         run: |
           make unit_test
       -
-        name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
+        name: Upload Test Results
+        if: (!cancelled())
+        uses: actions/upload-artifact@7
         with:
-          junit_files: tests_xml/tests.xml
-          check_name: "Core / Unit Test Results (${{ matrix.python-version }})"
-          comment_mode: "off"
+          name: test-results-core-unittests-py${{ matrix.python-version }}
+          path: tests_xml/tests.xml
       -
         name: Upload Coverage Reports
-        if: always()
-        uses: actions/upload-artifact@v4
+        if: (!cancelled())
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-report-core-unittests-py${{ matrix.python-version }}
           path: coverage/
+
+  publish-test-results:
+    name: "Core / Publish Test Results"
+    needs: [build-and-test, integration-test]
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      -
+        name: Download Test Results
+        uses: actions/download-artifact@v8
+        with:
+          pattern: test-results-core-unittests-py*
+          path: results
+      -
+        name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "results/**/*.xml"
+          check_name: "Core / Test Results"
+          comment_mode: "off"
 
   test-petals:
     name: Petals Compatibility
