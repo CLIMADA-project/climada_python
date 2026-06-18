@@ -73,7 +73,7 @@ jobs:
       -
         name: Run Integration Tests
         run: |
-          make integ_test
+          uv run -- make integ_test
 
   build-and-test:
     name: 'Core / Unit Test Pipeline'
