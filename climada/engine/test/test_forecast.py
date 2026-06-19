@@ -25,9 +25,11 @@ from pathlib import Path
 
 import fiona
 import geopandas as gpd
+import matplotlib
 import matplotlib.pyplot as plt
 import numpy as np
 from cartopy.io import shapereader
+from packaging.version import Version
 
 from climada import CONFIG
 from climada.engine.forecast import FORECAST_PLOT_DIR, Forecast
@@ -106,6 +108,10 @@ class TestCalc(unittest.TestCase):
 class TestPlot(unittest.TestCase):
     """Test plotting functions from the Forecast class"""
 
+    @unittest.skipIf(
+        Version(matplotlib.__version__) > Version("3.10"),
+        "Matplotlib shapely issue for this plot function",
+    )
     def test_Forecast_plot(self):
         """Test cplotting functions from the Forecast class"""
         ## given a forecast based on hazard exposure and vulnerability
