@@ -663,7 +663,13 @@ def geo_scatter_categorical(
     return axes
 
 
-def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize=True):
+def make_map(
+    num_sub=1,
+    figsize=(9, 13),
+    proj=ccrs.PlateCarree(),
+    adapt_fontsize=True,
+    draw_gridlines=True,
+):
     """
     Create map figure with cartopy.
 
@@ -680,6 +686,9 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize
     adapt_fontsize : bool, optional
         If set to true, the size of the fonts will be adapted to the size of the figure. Otherwise
         the default matplotlib font size is used. Default is True.
+    draw_gridlines : bool, optional
+        If set to true, latitude/longitude gridlines are added to each map axis.
+        Default is True.
 
     Returns
     -------
@@ -697,22 +706,23 @@ def make_map(num_sub=1, figsize=(9, 13), proj=ccrs.PlateCarree(), adapt_fontsize
     if not isinstance(axis_sub, np.ndarray):
         axes_iter = np.array([[axis_sub]])
 
+    fontsize = None
     for axis in axes_iter.flatten():
-        try:
+        # TODO: reactivate dynamic font size and labels once the bug in cartopy's `gridlines` is fixed
+        # see https://github.com/matplotlib/matplotlib/issues/31926
+        if draw_gridlines:
             grid = axis.gridlines(draw_labels=True, alpha=0.2, transform=proj)
-            grid.top_labels = grid.right_labels = False
+            if adapt_fontsize:   
+                fontsize = max(10, int(axis.bbox.width / 35))
+                # dynamic font size for grid xlabel fails for a bug in cartopy's `gridlines`
+                #grid.xlabel_style = {"size": fontsize}
+                grid.xlabel_style = {"size": 10}
+                grid.ylabel_style = {"size": fontsize}
+            # dismissing the top labels does not work for a bug in catopry's `gridlines`
+            #grid.top_labels = False
+            grid.right_labels = False
             grid.xformatter = LONGITUDE_FORMATTER
             grid.yformatter = LATITUDE_FORMATTER
-            if adapt_fontsize:
-                fontsize = axis.bbox.width / 35
-                if fontsize < 10:
-                    fontsize = 10
-                grid.xlabel_style = {"size": fontsize}
-                grid.ylabel_style = {"size": fontsize}
-            else:
-                fontsize = None
-        except TypeError:
-            pass
 
     if num_col > 1:
         fig.subplots_adjust(wspace=0.3)

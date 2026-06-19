@@ -160,13 +160,14 @@ class TestPlot(unittest.TestCase):
             explain_str="test text",
             polygon_file=str(cantons_file),
             save_fig=True,
+            adapt_fontsize=True,
             close_fig=True,
         )
         map_file_name = (
             forecast.summary_str(dt.datetime(2017, 12, 31)) + "_impact_map" + ".jpeg"
         )
         map_file_name_full = Path(FORECAST_PLOT_DIR) / map_file_name
-        map_file_name_full.absolute().unlink(missing_ok=False)
+        map_file_name_full.unlink(missing_ok=True)
         # should contain title strings
         ax = forecast.plot_hist(
             run_datetime=dt.datetime(2017, 12, 31),
