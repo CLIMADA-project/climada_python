@@ -1,6 +1,0 @@
-name: climada_base
-channels:
-  - conda-forge
-  - nodefaults
-dependencies:
-  - libgdal=3.12
