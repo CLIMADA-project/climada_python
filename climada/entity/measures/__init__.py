@@ -16,10 +16,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-init engine
+This module implements measure and measure set objects, as well as cost income
+objects which enable the definition of adapation measures and their associated
+effects on each part of risk/impacts (exposure, vulnerability and hazard).
+
 """
 
-from .cost_benefit import *
-from .impact import *
-from .impact_calc import *
-from .impact_forecast import ImpactForecast
+from .measure_config import MeasureConfig
+
+__all__ = ["MeasureConfig"]

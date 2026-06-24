@@ -188,8 +188,7 @@ class Impact:
             )
         if len(self.coord_exp) != len(self.eai_exp):
             raise AttributeError(
-                "Number of exposures points is different from"
-                "number of eai_exp values"
+                "Number of exposures points is different fromnumber of eai_exp values"
             )
         if imp_mat is not None:
             self.imp_mat = imp_mat
@@ -1226,8 +1225,9 @@ class Impact:
 
         impacts_stats_vals = impacts_stats.values[:, 1:].T.astype(float)
         if not log10_scale:
-            min_impact, max_impact = np.nanmin(impacts_stats_vals), np.nanmax(
-                impacts_stats_vals
+            min_impact, max_impact = (
+                np.nanmin(impacts_stats_vals),
+                np.nanmax(impacts_stats_vals),
             )
             kwargs.update(
                 {
@@ -1419,6 +1419,8 @@ class Impact:
 
         def write_dataset(group, name, value):
             """Write a dataset"""
+            if name == "lead_time":
+                value = value.astype("timedelta64[ns]").astype("int64")
             group.create_dataset(name, data=value, dtype=_str_type_helper(value))
 
         def write_dict(group, name, value):
@@ -1459,7 +1461,6 @@ class Impact:
 
         # Open file in write mode
         with h5py.File(file_path, "w") as file:
-
             # Now write all attributes
             # NOTE: Remove leading underscore to write '_tot_value' as regular attribute
             for name, value in self.__dict__.items():
@@ -1600,13 +1601,18 @@ class Impact:
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Impact.from_excel instead."""
         LOGGER.warning(
-            "The use of Impact.read_excel is deprecated."
-            "Use Impact.from_excel instead."
+            "The use of Impact.read_excel is deprecated.Use Impact.from_excel instead."
         )
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_hdf5(cls, file_path: Union[str, Path]):
+    def from_hdf5(
+        cls,
+        file_path: Union[str, Path],
+        *,
+        add_scalar_attrs: Iterable[str] | None = None,
+        add_array_attrs: Iterable[str] | None = None,
+    ):
         """Create an impact object from an H5 file.
 
         This assumes a specific layout of the file. If values are not found in the
@@ -1651,6 +1657,10 @@ class Impact:
         ----------
         file_path : str or Path
             The file path of the file to read.
+        add_scalar_attrs : Iterable of str, optional
+            Additional scalar attributes to read from file. Defaults to None.
+        add_array_attrs : Iterable of str, optional
+            Additional array attributes to read from file. Defaults to None.
 
         Returns
         -------
@@ -1659,7 +1669,6 @@ class Impact:
         """
         kwargs = dict()
         with h5py.File(file_path, "r") as file:
-
             # Impact matrix
             if "imp_mat" in file:
                 impact_matrix = file["imp_mat"]
@@ -1679,7 +1688,10 @@ class Impact:
             # Scalar attributes
             scalar_attrs = set(
                 ("crs", "tot_value", "unit", "aai_agg", "frequency_unit", "haz_type")
-            ).intersection(file.attrs.keys())
+            )
+            if add_scalar_attrs is not None:
+                scalar_attrs = scalar_attrs.union(add_scalar_attrs)
+            scalar_attrs = scalar_attrs.intersection(file.attrs.keys())
             kwargs.update({attr: file.attrs[attr] for attr in scalar_attrs})
 
             # Array attributes
@@ -1687,9 +1699,16 @@ class Impact:
             #       invalidated once we close the file.
             array_attrs = set(
                 ("event_id", "date", "coord_exp", "eai_exp", "at_event", "frequency")
-            ).intersection(file.keys())
+            )
+            if add_array_attrs is not None:
+                array_attrs = array_attrs.union(add_array_attrs)
+            array_attrs = array_attrs.intersection(file.keys())
             kwargs.update({attr: file[attr][:] for attr in array_attrs})
-
+            # correct lead_time attribut to timedelta
+            if "lead_time" in kwargs:
+                kwargs["lead_time"] = np.array(file["lead_time"][:]).astype(
+                    "timedelta64[ns]"
+                )
             # Special handling for 'event_name' because it should be a list of strings
             if "event_name" in file:
                 # pylint: disable=no-member
@@ -2196,9 +2215,12 @@ class Impact:
         imp_mat = sparse.vstack(imp_mats)
 
         # Concatenate other attributes
-        kwargs = {
-            attr: stack_attribute(attr) for attr in ("date", "frequency", "at_event")
-        }
+        concat_attrs = {
+            name.lstrip("_")  # Private attributes with getter/setter
+            for name, value in first_imp.__dict__.items()
+            if isinstance(value, np.ndarray)
+        }.difference(("event_id", "coord_exp", "eai_exp", "aai_agg"))
+        kwargs = {attr: stack_attribute(attr) for attr in concat_attrs}
 
         # Get remaining attributes from first impact object in list
         return cls(
