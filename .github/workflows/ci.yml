@@ -20,7 +20,7 @@ jobs:
     steps:
       -
         name: Checkout Repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
 
       #  --- Modify paths in climada.conf ---
       -
@@ -80,14 +80,14 @@ jobs:
         if: (!cancelled())
         uses: actions/upload-artifact@v7
         with:
-          name: Test Results (Python ${{ matrix.python-version }})
+          name: test-results-core-integrationtests
           path: tests_xml/tests.xml
       -
         name: Upload Coverage Reports
         if: (!cancelled())
         uses: actions/upload-artifact@v7
         with:
-          name: Coverage Report Integration Tests (Python ${{ matrix.python-version }})
+          name: coverage-report-core-integrationtests
           path: coverage/
 
   build-and-test:
@@ -105,12 +105,7 @@ jobs:
     steps:
       -
         name: Checkout Repo
-        uses: actions/checkout@v4
-      -
-        # Store the current date to use it as cache key for the environment
-        name: Get current date
-        id: date
-        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
+        uses: actions/checkout@v7
       -
         name: Install make
         uses: awalsh128/cache-apt-pkgs-action@v1
@@ -158,7 +153,7 @@ jobs:
         name: Download Test Results
         uses: actions/download-artifact@v8
         with:
-          pattern: test-results-core-unittests-py*
+          pattern: test-results-core*
           path: results
       -
         name: Publish Test Results
