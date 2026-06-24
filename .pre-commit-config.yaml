@@ -33,7 +33,7 @@ repos:
         name: Compile Conda Environment
         entry: python script/make_conda_env.py
         language: python
-        files: pyproject.toml
+        files: ^(pyproject\.toml|script\/make_conda_env\.py)$
         pass_filenames: false
         additional_dependencies:
           - PyYAML
