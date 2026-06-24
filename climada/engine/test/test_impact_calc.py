@@ -150,7 +150,7 @@ class TestImpactCalc(unittest.TestCase):
     def test_error_handling_empty_hazard(self):
         """An empty Hazard must raise a clear ValueError (see GH #814)."""
         haz_empty = Hazard("TC")
-        exp = Exposures()
+        exp = Exposures(data={"value": [1.0]}, lat=[10.0], lon=[10.0])
         exp.gdf["impf_TC"] = 1
         impf = ImpactFunc(
             haz_type="TC",
