@@ -144,6 +144,7 @@ jobs:
 
   publish-test-results:
     name: "Core / Publish Test Results"
+    if: ${{ always() }} # For reporting, run this job even if the previous jobs fail
     needs: [build-and-test, integration-test]
     runs-on: ubuntu-latest
     permissions:
