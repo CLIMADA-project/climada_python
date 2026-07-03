@@ -1097,6 +1097,8 @@ class TestGdfGeomToPnt(unittest.TestCase):
             )
 
     def test_resolution_warning(self):
+        # Only the first line is shorter than 10 * resolution (10 * 1 = 10) and is
+        # therefore under-resolved; the two longer lines must not trigger the warning.
         lines = [
             LineString([[0, 0], [0, 2]]),
             LineString([[0, 0], [0, 12]]),
@@ -1109,10 +1111,11 @@ class TestGdfGeomToPnt(unittest.TestCase):
             u_lp._line_to_pnts(gdf_lines, 1, False)
         self.assertEqual(
             ctx.records[0].message,
-            f"{2} lines with a length < 10*resolution were found. "
-            "Each of these lines is disaggregate to one point. "
-            "Reaggregatint values will thus likely lead to overestimattion. "
-            "Consider chosing a smaller resolution or filter out the short lines. ",
+            f"{1} lines with a length < 10*resolution were found. "
+            "Each of these lines is disaggregated to very few points, possibly "
+            "a single one. Reaggregating values will thus likely lead to "
+            "overestimation. Consider choosing a smaller resolution or filtering "
+            "out the short lines. ",
         )
 
     def test_gdf_to_grid(self):
