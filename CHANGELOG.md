@@ -28,7 +28,7 @@ Code freeze date: YYYY-MM-DD
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
-- Fixed inverted resolution check in `climada.util.lines_polys_handler._line_to_pnts`: the "under-resolved lines" warning was triggered for lines *longer* than `10 * resolution` instead of *shorter*, so genuinely under-resolved line exposures were silently disaggregated to too few points (overestimating the re-aggregated impact) while well-resolved lines produced a spurious warning. The warning message wording and typos were also corrected [#1303](https://github.com/CLIMADA-project/climada_python/issues/1302)
+- Fixed inverted resolution check in `climada.util.lines_polys_handler._line_to_pnts`: the "under-resolved lines" warning was triggered for lines *longer* than `10 * resolution` instead of *shorter*, so genuinely under-resolved line exposures were silently disaggregated to too few points (overestimating the re-aggregated impact) while well-resolved lines produced a spurious warning. The warning message wording and typos were also corrected [#1303](https://github.com/CLIMADA-project/climada_python/pull/1303)
 
 ### Deprecated
 - `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().interpolate()` instead.
