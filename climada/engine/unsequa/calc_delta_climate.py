@@ -280,7 +280,7 @@ class CalcDeltaImpact(Calc):
         at_event_unc_df = pd.DataFrame(at_event_list)
 
         if calc_eai_exp:
-            exp = self.exp_input_var.evaluate()
+            exp = self.exp_final_input_var.evaluate()
             coord_df = exp.gdf[["latitude", "longitude"]]
         else:
             coord_df = pd.DataFrame([])
