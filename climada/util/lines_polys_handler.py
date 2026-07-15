@@ -957,13 +957,14 @@ def _line_to_pnts(gdf_lines, res, to_meters):
         line_lengths = gdf_lines.length
 
     # Add warning if lines are too short w.r.t. resolution
-    failing_res_check_count = len(line_lengths[line_lengths > 10 * res])
+    failing_res_check_count = len(line_lengths[line_lengths < 10 * res])
     if failing_res_check_count > 0:
         LOGGER.warning(
             "%d lines with a length < 10*resolution were found. "
-            "Each of these lines is disaggregate to one point. "
-            "Reaggregatint values will thus likely lead to overestimattion. "
-            "Consider chosing a smaller resolution or filter out the short lines. ",
+            "Each of these lines is disaggregated to very few points, possibly "
+            "a single one. Reaggregating values will thus likely lead to "
+            "overestimation. Consider choosing a smaller resolution or filtering "
+            "out the short lines. ",
             failing_res_check_count,
         )
 

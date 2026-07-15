@@ -16,6 +16,7 @@ dependencies:
   - geopandas>=1.1
   - h5py>=3.13
   - haversine>=2.9
+  - libjxl>=0.11,<0.12  # pin until gdal/fiona are rebuilt against libjxl 0.12
   - matplotlib-base>=3.10,<3.11  # see #1298, https://github.com/matplotlib/matplotlib/issues/31926
   - netcdf4>=1.7
   - numba>=0.62
