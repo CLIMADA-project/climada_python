@@ -202,21 +202,25 @@ class TestWBWealthAccount(unittest.TestCase):
         """Test Processed Capital value Germany 2010."""
         ref_year = 2010
         cntry_iso = "DEU"
-        wb_year, wb_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=0)
-        wb_year_noland, wb_val_noland, q = world_bank_wealth_account(
-            cntry_iso, ref_year, no_land=1
+        wb_year, wb_val, q = world_bank_wealth_account(
+            cntry_iso, ref_year, no_land=False
         )
-        ref_val = [
-            17675048450284.9,
-            19767982562092.2,
-        ]  # second value as updated by worldbank on
-        # October 27 2021
-        ref_val_noland = [14254071330874.9, 15941921421042.1]  # dito
+        wb_year_noland, wb_val_noland, q = world_bank_wealth_account(
+            cntry_iso, ref_year, no_land=True
+        )
+        ref_val = np.array(
+            [
+                17675048450284.9,
+                19767982562092.2,  # October 27 2021
+                14676399165833.0,  # 15/05/2026 from WB website
+            ]
+        )  # Values updated by worldbank at different dates
+        ref_val_noland = ref_val / 1.24  # dito
         self.assertEqual(wb_year, ref_year)
         self.assertEqual(q, 1)
         self.assertIn(wb_val, ref_val)
         self.assertEqual(wb_year_noland, ref_year)
-        self.assertIn(wb_val_noland, ref_val_noland)
+        assert any(np.isclose(wb_val_noland, ref_val) for ref_val in ref_val_noland)
 
     def test_pca_CHE_2008_pass(self):
         """Test Prcoessed Capital per capita Switzerland 2008 (interp.)."""
@@ -224,11 +228,12 @@ class TestWBWealthAccount(unittest.TestCase):
         cntry_iso = "CHE"
         var_name = "NW.PCA.PC"
         wb_year, wb_val, _ = world_bank_wealth_account(
-            cntry_iso, ref_year, variable_name=var_name, no_land=0
+            cntry_iso, ref_year, variable_name=var_name, no_land=False
         )
         ref_val = [
             328398.7,  # values sporadically updated by worldbank
             369081.0,
+            357588.0,  # Value checked on 15/05/2026 from WB website
         ]  # <- October 27 2021
         self.assertEqual(wb_year, ref_year)
         self.assertIn(wb_val, ref_val)
@@ -246,6 +251,7 @@ class TestWBWealthAccount(unittest.TestCase):
             5861193808779.6,  # <- October 27 2021
             5861186556152.8,  # <- June 29 2023
             5861186367245.2,  # <- December 20 2023
+            7925612508833.5,  # <- 15/05/2026 (changed from 2014 constant $ to 2019 real chained $)
         ]
         self.assertEqual(wb_year, ref_year)
         self.assertIn(wb_val, ref_val)
@@ -254,7 +260,9 @@ class TestWBWealthAccount(unittest.TestCase):
         """Test Processed Capital value Cuba 2015 (missing value)."""
         ref_year = 2015
         cntry_iso = "CUB"
-        wb_year, wb_val, q = world_bank_wealth_account(cntry_iso, ref_year, no_land=1)
+        wb_year, wb_val, q = world_bank_wealth_account(
+            cntry_iso, ref_year, no_land=True
+        )
         ref_val = [
             108675762920.0,  # values sporadically updated by worldbank
             108675513472.0,  # <- Dezember 20 2023

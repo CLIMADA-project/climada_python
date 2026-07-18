@@ -145,7 +145,7 @@ class LitPop(Exposures):
 
             * 'pc': produced capital (Source: World Bank), incl. manufactured or
               built assets such as machinery, equipment, and physical structures
-              `pc` is in constant 2014 USD.
+              `pc` is in real chained 2019 USD.
             * 'pop': population count (source: GPW, same as gridded population).
               The unit is 'people'.
             * 'gdp': gross-domestic product (Source: World Bank) [USD]
@@ -560,7 +560,7 @@ class LitPop(Exposures):
 
             * 'pc': produced capital (Source: World Bank), incl. manufactured or
               built assets such as machinery, equipment, and physical structures
-              (pc is in constant 2014 USD)
+              (pc is in real chained 2019 USD)
             * 'pop': population count (source: GPW, same as gridded population).
               The unit is 'people'.
             * 'gdp': gross-domestic product (Source: World Bank) [USD]
@@ -1195,11 +1195,11 @@ def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year):
         to the grid points within the country
             * 'pc': produced capital (Source: World Bank), incl. manufactured or
               built assets such as machinery, equipment, and physical structures
-              (pc is in constant 2014 USD)
+              (pc is in real chained 2019 USD)
             * 'pc_land': produced capital (Source: World Bank), incl. manufactured or
               built assets such as machinery, equipment, physical structures,
               and land value for built-up land.
-              (pc is in constant 2014 USD)
+              (pc is in real chained 2019 USD)
             * 'gdp': gross-domestic product (Source: World Bank) [USD]
             * 'income_group': gdp multiplied by country's income group+1 [USD]
               Income groups are 1 (low) to 4 (high income).

@@ -21,12 +21,17 @@ Code freeze date: YYYY-MM-DD
 ### Changed
 
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
+- `climada.util.finance`: `world_bank_wealth_account` now fetches data via the
+  World Bank Indicators API instead of downloading a ZIP/CSV file.
+  Updated available year range from 1995–2014 to 1995–2020. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 - Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
 
 ### Fixed
 
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
+- `climada.util.finance`: Fixed broken `WORLD_BANK_INC_GRP` download URL
+  (`databank.worldbank.org`) whose SSL certificate had expired. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
 
 ### Deprecated
@@ -35,6 +40,8 @@ Code freeze date: YYYY-MM-DD
 ### Removed
 - `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
 - `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `climada.util.finance`: Removed constants `WORLD_BANK_WEALTH_ACC` and
+  `FILE_WORLD_BANK_WEALTH_ACC`. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 
 ## 6.1.0
 
