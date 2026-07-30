@@ -5,16 +5,16 @@
 # CLIMADA
 
 [CLIMADA](https://climada.ethz.ch/climada/) (CLIMate ADAptation) is a free and open-source software framework for climate risk assessment and adaptation
-option appraisal. Designed by a large scientific community, it helps reasearchers, policymakers, and businesses analyse the impacts of natural hazards and
+option appraisal. Designed by a large scientific community, it helps researchers, policymakers, and businesses analyse the impacts of natural hazards and
 explore adaptation strategies.
 
-As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution (4x4km) via a [data API](https://climada.ethz.ch/data-api/v1/docs) For select hazards, historic and probabilistic events sets, for past, present and future climate exist at distinct time horizons.
+As of today, CLIMADA provides global coverage of major climate-related extreme-weather hazards at high resolution (4x4km) via a [data API](https://climada.ethz.ch/data-api/v1/docs). For select hazards, historical and probabilistic events sets, for past, present and future climate exist at distinct time horizons.
 You will find a repository containing scientific peer-reviewed articles that explain software components implemented in CLIMADA [here](https://github.com/CLIMADA-project/climada_papers).
 
 CLIMADA is divided into two parts (two repositories):
 
 1. the core [climada_python](https://github.com/CLIMADA-project/climada_python) contains all the modules necessary for the probabilistic impact, the averted damage, uncertainty and forecast calculations. Data for hazard, exposures and impact functions can be obtained from the [data API](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_util_api_client.ipynb). [Litpop](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_entity_LitPop.ipynb) is included as demo Exposures module, and [Tropical cyclones](https://github.com/CLIMADA-project/climada_python/blob/main/doc/tutorial/climada_hazard_TropCyclone.ipynb) is included as a demo Hazard module.
-2. the petals [climada_petals](https://github.com/CLIMADA-project/climada_petals) contains all the modules for generating data (e.g., TC_Surge, WildFire, OpenStreeMap, ...). Most development is done here. The petals builds-upon the core and does not work as a stand-alone.
+2. the petals [climada_petals](https://github.com/CLIMADA-project/climada_petals) contains all the modules for generating data (e.g., TC_Surge, WildFire, OpenStreetMap, ...). Most development is done here. The petals build upon the core and do not work as a stand-alone.
 
 For new users, we recommend to begin with the core (1) and the [tutorials](https://github.com/CLIMADA-project/climada_python/tree/main/doc/tutorial) therein.
 
