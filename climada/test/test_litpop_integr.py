@@ -120,7 +120,7 @@ class TestLitPopExposures(unittest.TestCase):
         self.assertIn("LitPop: Init Exposure for country: CHE", cm.output[0])
         self.assertEqual(ent.region_id.min(), 756)
         self.assertEqual(ent.region_id.max(), 756)
-        self.assertEqual(ent.value.sum(), 1.0)
+        self.assertAlmostEqual(ent.value.sum(), 1.0)
         self.assertEqual(ent.ref_year, 2015)
 
     def test_suriname30_nfw_pass(self):

@@ -21,6 +21,7 @@ Tests on Black marble.
 
 import gzip
 import io
+import shutil
 import tarfile
 import unittest
 from pathlib import Path
@@ -29,7 +30,6 @@ from tempfile import TemporaryDirectory
 import affine
 import numpy as np
 import scipy.sparse as sparse
-from osgeo import gdal
 from PIL import Image
 from shapely.geometry import Polygon
 
@@ -124,18 +124,11 @@ class TestNightlight(unittest.TestCase):
         with self.assertLogs(
             "climada.entity.exposures.litpop.nightlight", level="DEBUG"
         ) as cm:
-            arr1, curr_file = nightlight.read_bm_file(
-                bm_path=temp_dir.name, filename=filename
-            )
+            arr1 = nightlight.read_bm_file(bm_path=temp_dir.name, filename=filename)
         self.assertIn("Importing" + temp_dir.name, cm.output[0])
 
         # Check outputs are a np.array and a gdal DataSet and band 1 is selected
         self.assertIsInstance(arr1, np.ndarray)
-        self.assertIsInstance(curr_file, gdal.Dataset)
-        self.assertEqual(curr_file.GetRasterBand(1).DataType, 1)
-
-        # Release dataset, so the GC can close the file
-        curr_file = None
 
         # Check that the right exception is raised
         with self.assertRaises(FileNotFoundError) as cm:
@@ -233,6 +226,10 @@ class TestNightlight(unittest.TestCase):
         pfile = f"{pattern}.p"
         tiffile = f"{pattern}.tif"
 
+        # Clean up potentially existing files
+        SYSTEM_DIR.joinpath(pfile).unlink(missing_ok=True)
+        SYSTEM_DIR.joinpath(gzfile).unlink(missing_ok=True)
+
         # create an empty image
         image = np.zeros((100, 100), dtype=np.uint8)
         pilim = Image.fromarray(image)
@@ -244,38 +241,36 @@ class TestNightlight(unittest.TestCase):
             with gzip.GzipFile(SYSTEM_DIR.joinpath(gzfile), "wb") as f:
                 f.write(mem.getvalue())
 
-        try:
-            # with arguments
+        # with arguments
+        night, coord_nl, fn_light = nightlight.load_nightlight_noaa(
+            ref_year=year, sat_name=sat_name
+        )
+        self.assertIsInstance(night, sparse._csr.csr_matrix)
+        self.assertIn(tiffile, str(fn_light))
+
+        # using already existing file and without providing arguments
+        night, coord_nl, fn_light = nightlight.load_nightlight_noaa()
+        self.assertIsInstance(night, sparse._csr.csr_matrix)
+        self.assertIn(pfile, str(fn_light))
+        self.assertTrue(
+            np.array_equal(
+                np.array([[-65, NOAA_RESOLUTION_DEG], [-180, NOAA_RESOLUTION_DEG]]),
+                coord_nl,
+            )
+        )
+
+        # test raises from wrong input agruments
+        with self.assertRaises(ValueError) as cm:
             night, coord_nl, fn_light = nightlight.load_nightlight_noaa(
-                ref_year=year, sat_name=sat_name
+                ref_year=2050, sat_name="F150"
             )
-            self.assertIsInstance(night, sparse._csr.csr_matrix)
-            self.assertIn(tiffile, str(fn_light))
-
-            # using already existing file and without providing arguments
-            night, coord_nl, fn_light = nightlight.load_nightlight_noaa()
-            self.assertIsInstance(night, sparse._csr.csr_matrix)
-            self.assertIn(pfile, str(fn_light))
-            self.assertTrue(
-                np.array_equal(
-                    np.array([[-65, NOAA_RESOLUTION_DEG], [-180, NOAA_RESOLUTION_DEG]]),
-                    coord_nl,
-                )
-            )
-
-            # test raises from wrong input agruments
-            with self.assertRaises(ValueError) as cm:
-                night, coord_nl, fn_light = nightlight.load_nightlight_noaa(
-                    ref_year=2050, sat_name="F150"
-                )
-            self.assertEqual(
-                "Nightlight intensities for year 2050 and satellite F150 do not exist.",
-                str(cm.exception),
-            )
-        finally:
-            # clean up
-            SYSTEM_DIR.joinpath(pfile).unlink(missing_ok=True)
-            SYSTEM_DIR.joinpath(gzfile).unlink(missing_ok=True)
+        self.assertEqual(
+            "Nightlight intensities for year 2050 and satellite F150 do not exist.",
+            str(cm.exception),
+        )
+        # clean up
+        SYSTEM_DIR.joinpath(pfile).unlink(missing_ok=True)
+        SYSTEM_DIR.joinpath(gzfile).unlink(missing_ok=True)
 
     def test_untar_noaa_stable_nighlight(self):
         """Testing that input .tar file is moved into SYSTEM_DIR,
@@ -283,6 +278,7 @@ class TestNightlight(unittest.TestCase):
         exception are raised when no .tif.gz file is present in the tar file,
         and the logger message is recorded if more then one .tif.gz is present in
         .tar file."""
+        nightlight.load_nightlight_noaa()
 
         # Create path to .tif.gz and .csv files already existing in SYSTEM_DIR
         path_tif_gz_1 = Path(SYSTEM_DIR, "F182013.v4c_web.stable_lights.avg_vis.tif.gz")
@@ -352,12 +348,18 @@ class TestNightlight(unittest.TestCase):
         )
 
         # check logger message: not all files are available
-        with self.assertLogs(
-            "climada.entity.exposures.litpop.nightlight", level="DEBUG"
-        ) as cm:
-            nightlight.check_nl_local_file_exists()
-        self.assertIn("Not all satellite files available. Found ", cm.output[0])
-        self.assertIn(f" out of 8 required files in {Path(SYSTEM_DIR)}", cm.output[0])
+        bm_filenames = [name % 2016 for name in BM_FILENAMES]
+        with TemporaryDirectory() as tmpdir:
+            # Copy two files
+            shutil.copy(SYSTEM_DIR / bm_filenames[0], Path(tmpdir) / bm_filenames[0])
+            shutil.copy(SYSTEM_DIR / bm_filenames[2], Path(tmpdir) / bm_filenames[2])
+
+            with self.assertLogs(
+                "climada.entity.exposures.litpop.nightlight", level="DEBUG"
+            ) as cm:
+                nightlight.check_nl_local_file_exists(check_path=tmpdir)
+            self.assertIn("Not all satellite files available. Found 2", cm.output[0])
+            self.assertIn(f" out of 8 required files in {tmpdir}", cm.output[0])
 
         # check logger message: no files found in checkpath
         check_path = Path("climada/entity/exposures")
