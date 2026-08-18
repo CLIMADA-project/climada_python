@@ -187,6 +187,7 @@ class TestXarrayReader:
             "n_lat": n_lat,
             "n_lon": n_lon,
             "eps": eps,
+            "ref_time": ref_time[0],
             "lead_time": lead_time_vals,
             "lon": lon,
             "lat": lat,
@@ -263,9 +264,10 @@ class TestXarrayReader:
         ]
         npt.assert_array_equal(haz_fc.event_name, event_names_expected)
 
+    @pytest.mark.parametrize("data_vars", [None, {"date": ""}])
     @xarray_leadtime
-    def test_from_xarray_raster_dates(self, forecast_netcdf_file):
-        """Test that dates are set to 0 for forecast events"""
+    def test_from_xarray_raster_dates(self, forecast_netcdf_file, data_vars):
+        """Test that dates default to 0 when no date coordinate is mapped"""
         haz_fc = HazardForecast.from_xarray_raster(
             forecast_netcdf_file["path"],
             hazard_type="PR",
@@ -276,6 +278,7 @@ class TestXarrayReader:
                 "lead_time": "lead_time",
                 "member": "eps",
             },
+            data_vars=data_vars,
             crs=forecast_netcdf_file["crs"],
         )
 
@@ -284,6 +287,29 @@ class TestXarrayReader:
             forecast_netcdf_file["n_eps"] * forecast_netcdf_file["n_lead_time"]
         )
         npt.assert_array_equal(haz_fc.date, np.zeros(expected_n_events, dtype=int))
+
+    @xarray_leadtime
+    def test_from_xarray_raster_dates_from_data(self, forecast_netcdf_file):
+        """Test that an explicitly mapped date coordinate is preserved"""
+        haz_fc = HazardForecast.from_xarray_raster(
+            forecast_netcdf_file["path"],
+            hazard_type="PR",
+            intensity_unit="mm/h",
+            coordinate_vars={
+                "longitude": "lon",
+                "latitude": "lat",
+                "lead_time": "lead_time",
+                "member": "eps",
+            },
+            data_vars={"date": "valid_time"},
+            crs=forecast_netcdf_file["crs"],
+        )
+
+        expected_dates = [
+            pd.Timestamp(forecast_netcdf_file["ref_time"] + lead_time).toordinal()
+            for lead_time in haz_fc.lead_time
+        ]
+        npt.assert_array_equal(haz_fc.date, expected_dates)
 
 
 class TestSelect:

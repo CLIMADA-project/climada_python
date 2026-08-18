@@ -37,3 +37,4 @@
 * Samuel Juhel
 * Valentin Gebhart
 * Dahyann Araya
+* Giovanni Cozzolongo
