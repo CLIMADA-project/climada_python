@@ -3,6 +3,7 @@ channels:
   - conda-forge
   - nodefaults
 dependencies:
+  - affine>=2.4,<3.0
   - bayesian-optimization>=1.5,<2.0
   - bottleneck>=1.6
   - cartopy>=0.25
