@@ -11,10 +11,14 @@ from typing import Any
 
 import yaml
 
-CONVERSIION_TABLE = {"matplotlib": "matplotlib-base"}
-
+CONVERSIION_TABLE = {
+    "eccodeslib": "python-eccodes",
+    "matplotlib": "matplotlib-base",
+    "tables": "pytables",
+}
 ADDITIONS = ["pip"]
 DELETIONS = []
+# PIP_DEPENDENCIES: ["pycountry"]
 
 
 def this_file_name() -> str:
