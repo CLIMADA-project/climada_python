@@ -22,6 +22,7 @@ Code freeze date: YYYY-MM-DD
 
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
 - Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
+- `HazardForecast.quantile` and `ImpactForecast.quantile` compute quantiles block-wise instead of densifying the entire sparse matrix, greatly reducing peak memory. Results are unchanged. [#1203](https://github.com/CLIMADA-project/climada_python/issues/1203)
 
 ### Fixed
 

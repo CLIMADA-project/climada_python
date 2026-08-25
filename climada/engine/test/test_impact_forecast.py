@@ -467,3 +467,29 @@ class TestReduce:
             imp_fc_reduced.at_event,
             reduction_results_dim[dim][attr]["at_event"],
         )
+
+
+def test_quantile_does_not_densify(impact_forecast):
+    """quantile must not densify the whole impact matrix
+
+    The result must still equal the dense reference, so this pins both halves
+    of the fix: same answer, without the full-size temporary.
+    """
+    expected = np.quantile(impact_forecast.imp_mat.toarray(), 0.5, axis=0)
+
+    full_shape = impact_forecast.imp_mat.shape
+    densified = []
+    original = csr_matrix.toarray
+
+    def spy(self, *args, **kwargs):
+        densified.append(self.shape)
+        return original(self, *args, **kwargs)
+
+    csr_matrix.toarray = spy
+    try:
+        reduced = impact_forecast.quantile(0.5)
+    finally:
+        csr_matrix.toarray = original
+
+    assert full_shape not in densified, f"full matrix densified: {densified}"
+    npt.assert_allclose(reduced.imp_mat.toarray().squeeze(), expected)
