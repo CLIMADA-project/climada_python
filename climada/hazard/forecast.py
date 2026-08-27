@@ -256,7 +256,6 @@ class HazardForecast(ForecastMixin, Hazard):
                 q=q,
             )
 
-        # block-wise: densifying the whole matrix exhausts memory
         red_intensity = sparse.csr_matrix(sparse_quantile_axis0(self.intensity, q))
         red_fraction = sparse.csr_matrix(sparse_quantile_axis0(self.fraction, q))
         if event_name is None:

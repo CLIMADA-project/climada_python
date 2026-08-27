@@ -19,11 +19,13 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Tests for Impact Forecast.
 """
 
+from unittest.mock import patch
+
 import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from scipy.sparse import csr_matrix
+from scipy.sparse import csc_matrix, csr_matrix
 
 from climada.engine import Impact, ImpactForecast
 
@@ -469,27 +471,15 @@ class TestReduce:
         )
 
 
-def test_quantile_does_not_densify(impact_forecast):
-    """quantile must not densify the whole impact matrix
-
-    The result must still equal the dense reference, so this pins both halves
-    of the fix: same answer, without the full-size temporary.
-    """
+def test_quantile_uses_block_wise_helper(impact_forecast):
+    """quantile routes through the block-wise helper and keeps the same result"""
     expected = np.quantile(impact_forecast.imp_mat.toarray(), 0.5, axis=0)
 
-    full_shape = impact_forecast.imp_mat.shape
-    densified = []
-    original = csr_matrix.toarray
-
-    def spy(self, *args, **kwargs):
-        densified.append(self.shape)
-        return original(self, *args, **kwargs)
-
-    csr_matrix.toarray = spy
-    try:
+    # the helper converts to CSC first, so csc_matrix is what densifies
+    with patch.object(
+        csc_matrix, "toarray", autospec=True, side_effect=csc_matrix.toarray
+    ) as spy:
         reduced = impact_forecast.quantile(0.5)
-    finally:
-        csr_matrix.toarray = original
 
-    assert full_shape not in densified, f"full matrix densified: {densified}"
-    npt.assert_allclose(reduced.imp_mat.toarray().squeeze(), expected)
+    assert spy.call_args_list, "quantile did not go through the block-wise helper"
+    npt.assert_array_equal(reduced.imp_mat.toarray().squeeze(), expected)

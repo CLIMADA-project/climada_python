@@ -449,7 +449,6 @@ class ImpactForecast(ForecastMixin, Impact):
                     concat_kws={"reset_event_ids": True},
                 )
 
-        # block-wise to avoid densifying the whole impact matrix
         red_imp_mat = sparse.csr_matrix(sparse_quantile_axis0(self.imp_mat, q))
         red_at_event = np.array([red_imp_mat.sum()])
         if event_name is None:

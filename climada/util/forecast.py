@@ -204,40 +204,50 @@ def reduce_unique_selection(
 
 
 def sparse_quantile_axis0(
-    matrix: sparse.spmatrix, q: float, block_size: int = 1024
+    matrix: sparse.spmatrix,
+    q: np.typing.ArrayLike,
+    max_memory_mb: float = 8.0,
 ) -> np.ndarray:
     """Quantile along axis 0 of a sparse matrix, without densifying it whole.
 
     Equivalent to ``np.quantile(matrix.toarray(), q, axis=0)``, but densifies
-    at most ``block_size`` columns at a time, so peak memory scales with
-    ``block_size * n_rows`` instead of with the full matrix.
+    only as many columns at a time as fit into ``max_memory_mb``, so peak
+    memory no longer scales with the number of columns.
 
-    Implicit zeros take part in the quantile: a column with three implicit
-    zeros and two stored values is a five-element sample, not a two-element
-    one.
+    Implicit zeros count as values: a column of ``[0, 0, 0, -1, 9]`` has median
+    ``0.0``, not the ``4.0`` given by its two stored values alone.
 
     Parameters
     ----------
     matrix : scipy.sparse.spmatrix
         Matrix to reduce, of shape (n_rows, n_cols).
-    q : float
-        Quantile to compute, between 0 and 1.
-    block_size : int, optional
-        Number of columns densified per step. Larger values are marginally
-        faster and use proportionally more memory. Default: 1024, chosen
-        because raising it to 4096 measured 2.7 times the peak memory for
-        only 7 percent less runtime.
+    q : float or array_like of float
+        Quantile or sequence of quantiles, each between 0 and 1.
+    max_memory_mb : float, optional
+        Approximate memory budget for a single densified block, in megabytes.
+        At least one column is always densified, so a budget too small for a
+        single column still works. Default: 8.0.
 
     Returns
     -------
     np.ndarray
-        1-D array of length ``matrix.shape[1]``.
+        Quantiles along axis 0, shaped as ``np.quantile`` would return them.
     """
-    n_cols = matrix.shape[1]
-    csc = matrix.tocsc()  # columns are the slow slicing direction for CSR
-    quantiles = np.empty(n_cols, dtype=np.float64)
-    for start in range(0, n_cols, block_size):
-        stop = min(start + block_size, n_cols)
-        block = csc[:, start:stop].toarray()
-        quantiles[start:stop] = np.quantile(block, q, axis=0, overwrite_input=True)
-    return quantiles
+    csc = matrix.tocsc()
+    n_rows, n_cols = csc.shape
+    if n_cols == 0:
+        return np.quantile(csc.toarray(), q, axis=0)
+    column_bytes = max(n_rows * csc.dtype.itemsize, 1)
+    block = max(int(max_memory_mb * 1e6) // column_bytes, 1)
+
+    # np.quantile sorts its input, so it copies unless allowed not to. Each block
+    # is a throwaway nothing else references, so let it sort in place and save a copy.
+    return np.concatenate(
+        [
+            np.quantile(
+                csc[:, start : start + block].toarray(), q, axis=0, overwrite_input=True
+            )
+            for start in range(0, n_cols, block)
+        ],
+        axis=-1,
+    )
