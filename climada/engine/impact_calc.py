@@ -138,6 +138,15 @@ class ImpactCalc:
         climada.entity.exposures.assign_centroids : assign centroids to exposures explicitly
         """
         # TODO: consider refactoring, making use of Exposures.hazard_impf
+        # check that the hazard contains at least one event; an empty hazard
+        # otherwise produces an obscure error from ``np.array_split`` deeper in
+        # the calculation (see GH #814).
+        if self.hazard.size == 0:
+            raise ValueError(
+                "Impact calculation not possible. The hazard object contains "
+                "no events. Please provide a Hazard with at least one event."
+            )
+
         # check for compatibility of exposures and hazard type
         if all(
             name not in self.exposures.gdf.columns
