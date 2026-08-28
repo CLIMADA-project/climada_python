@@ -28,6 +28,7 @@ Code freeze date: YYYY-MM-DD
 - Preserve explicitly mapped dates in `HazardForecast.from_xarray_raster` [#1305](https://github.com/CLIMADA-project/climada_python/issues/1305).
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
+- `ImpactCalc.impact` now raises a clear `ValueError` when the supplied `Hazard` contains no events, instead of failing later inside `np.array_split` with an obscure message [#814](https://github.com/CLIMADA-project/climada_python/issues/814).
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
 
 ### Deprecated
