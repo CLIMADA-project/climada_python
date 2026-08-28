@@ -196,7 +196,7 @@ class TestImpactCalc(unittest.TestCase):
     def test_error_handling_mismatch_haz_type(self):
         """Test error handling in case hazard type of hazard
         does not appear in impf_set or exposures"""
-        haz_tc = Hazard("TC")
+        haz_tc = Hazard("TC", event_id=np.array([1]))
         exp_tc = Exposures()
         exp_tc.gdf["impf_TC"] = 1
         exp_ws = Exposures()
@@ -256,7 +256,7 @@ class TestImpactCalc(unittest.TestCase):
     def test_error_handling_mismatch_impf_ids(self):
         """Test error handling in case impf ids in exposures
         does not appear in impf_set"""
-        haz = Hazard("TC")
+        haz = Hazard("TC", event_id=np.array([1]))
         exp = Exposures()
         exp.gdf.loc[0, "impf_TC"] = 1
         exp.gdf.loc[1, "impf_TC"] = 2
