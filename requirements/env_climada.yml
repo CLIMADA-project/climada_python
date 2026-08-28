@@ -23,7 +23,9 @@ dependencies:
   - numexpr>=2.13
   - openpyxl>=3.1
   - osm-flex>=1.1  # this is only required for running the tutorials, not for the CLIMADA package itself
-  - pandas>=2.3,<3.0  # petals does not run with 3.0 (... and issue #1215)
+  # petals requires pandas < 3.0 for python >=3.11
+  # petals requires pandas < 2.3 for python >=3.12 (https://github.com/IndEcol/pymrio/issues/177)
+  - pandas>=2.2,<2.3
   - pathos>=0.3
   - peewee>=3.18
   - pint>=0.24
