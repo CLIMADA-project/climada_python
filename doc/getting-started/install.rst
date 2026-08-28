@@ -59,7 +59,7 @@ Windows
       * - **Supported Version**
         - ``3.11``
       * - Allowed Versions
-        - ``3.10``, ``3.11``, ``3.12``
+        - ``3.11``, ``3.12``, ``3.13``
 
 .. _install-choice:
 
