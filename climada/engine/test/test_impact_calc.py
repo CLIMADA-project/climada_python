@@ -26,14 +26,18 @@ from unittest.mock import MagicMock, call, create_autospec, patch
 
 import geopandas as gpd
 import numpy as np
+import pandas as pd
+import pytest
 from scipy import sparse
 
 from climada import CONFIG
 from climada.engine import Impact, ImpactCalc
 from climada.engine.impact_calc import LOGGER as ILOG
+from climada.engine.impact_forecast import ImpactForecast
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet, ImpfTropCyclone
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Centroids, Hazard
+from climada.hazard.forecast import HazardForecast
 from climada.test import get_test_file
 from climada.util.api_client import Client
 from climada.util.config import Config
@@ -46,17 +50,103 @@ DATA_FOLDER = DEMO_DIR / "test-results"
 DATA_FOLDER.mkdir(exist_ok=True)
 
 
-def check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=None):
-    """Test properties of imapcts"""
-    self.assertEqual(len(haz.event_id), len(imp.at_event))
-    self.assertIsInstance(imp, Impact)
+@pytest.fixture(params=[50, 1, 0])
+def exposure(request):
+    n_exp = request.param
+    lats = np.linspace(-10, 10, n_exp)
+    lons = np.linspace(-10, 10, n_exp)
+    data = gpd.GeoDataFrame(
+        {
+            "impf_TC": 1,
+            "value": 1,
+        },
+        index=range(n_exp),
+        geometry=gpd.points_from_xy(lons, lats),
+        crs="EPSG:4326",
+    )
+    exposures = Exposures(data=data)
+    return exposures
+
+
+@pytest.fixture
+def hazard(exposure):
+    n_events = 10
+    centroids = Centroids(
+        lat=exposure.gdf.geometry.x,
+        lon=exposure.gdf.geometry.y,
+    )
+    intensity = sparse.csr_matrix(
+        np.ones((n_events, exposure.gdf.shape[0])) * 50
+    )  # uniform intensity
+    haz = Hazard()
+    haz.event_id = np.arange(n_events)
+    haz.event_name = haz.event_id.tolist()
+    haz.haz_type = "TC"
+    haz.date = haz.event_id
+    haz.frequency_unit = "m/s"
+    haz.centroids = centroids
+    haz.intensity = intensity
+    haz.frequency = 1 / 10 * np.ones(n_events)  # uniform frequency (10 n_events)
+    return haz
+
+
+@pytest.fixture
+def hazard_forecast(hazard):
+    n_events = hazard.size
+    lead_time = pd.timedelta_range("1h", periods=n_events).to_numpy()
+    member = np.arange(n_events)
+    haz_fc = HazardForecast.from_hazard(
+        hazard=hazard,
+        lead_time=lead_time,
+        member=member,
+    )
+    return haz_fc
+
+
+@pytest.fixture
+def impact_func_set(exposure, hazard):
+    step_impf = ImpactFunc()
+    step_impf.id = 1
+    try:
+        step_impf.id = exposure.data[f"impf_{hazard.haz_type}"].unique()[0]
+    except IndexError:
+        pass
+    step_impf.haz_type = hazard.haz_type
+    step_impf.name = "fixture step function"
+    step_impf.intensity_unit = ""
+    step_impf.intensity = np.array([0, 0.495, 0.4955, 0.5, 1, 10])
+    step_impf.mdd = np.array([0, 0, 0, 1, 1, 1])
+    step_impf.paa = np.sort(np.linspace(1, 1, num=6))
+    return ImpactFuncSet([step_impf])
+
+
+# NOTE: Must be adapted to changes in exposure, hazard
+@pytest.fixture
+def impact_calc(exposure, hazard):
+    imp_mat = np.ones((len(hazard.event_id), exposure.gdf.shape[0]))
+    aai_agg = np.sum(exposure.gdf["value"]) * np.sum(hazard.frequency)
+    eai_exp = np.ones(exposure.gdf.shape[0]) * np.sum(hazard.frequency)
+    at_event = np.ones(hazard.size) * np.sum(exposure.gdf["value"])
+    return {
+        "imp_mat": imp_mat,
+        "aai_agg": aai_agg,
+        "eai_exp": eai_exp,
+        "at_event": at_event,
+    }
+
+
+def check_impact(imp, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array=None):
+    """Test properties of impacts"""
+    # NOTE: Correctly compares NaNs!
+    assert len(haz.event_id) == len(imp.at_event)
+    assert isinstance(imp, Impact)
     np.testing.assert_allclose(imp.coord_exp[:, 0], exp.latitude)
     np.testing.assert_allclose(imp.coord_exp[:, 1], exp.longitude)
-    self.assertAlmostEqual(imp.aai_agg, aai_agg, 3)
+    np.testing.assert_allclose(imp.aai_agg, aai_agg, rtol=1e-3)
     np.testing.assert_allclose(imp.eai_exp, eai_exp, rtol=1e-5)
     np.testing.assert_allclose(imp.at_event, at_event, rtol=1e-5)
     if imp_mat_array is not None:
-        np.testing.assert_allclose(imp.imp_mat.toarray().ravel(), imp_mat_array.ravel())
+        np.testing.assert_allclose(imp.imp_mat.todense(), imp_mat_array)
 
 
 class TestImpactCalc(unittest.TestCase):
@@ -146,6 +236,22 @@ class TestImpactCalc(unittest.TestCase):
                 "Impact calculation not possible. No impact "
                 "functions found for hazard type TC in impf_set.",
             )
+
+    def test_error_handling_empty_hazard(self):
+        """An empty Hazard must raise a clear ValueError (see GH #814)."""
+        haz_empty = Hazard("TC")
+        exp = Exposures(data={"value": [1.0]}, lat=[10.0], lon=[10.0])
+        exp.gdf["impf_TC"] = 1
+        impf = ImpactFunc(
+            haz_type="TC",
+            id=1,
+            intensity=np.array([0, 20]),
+            paa=np.array([0, 1]),
+            mdd=np.array([0, 0.5]),
+        )
+        impfset = ImpactFuncSet([impf])
+        with self.assertRaisesRegex(ValueError, "no events"):
+            ImpactCalc(exp, impfset, haz_empty).impact()
 
     def test_error_handling_mismatch_impf_ids(self):
         """Test error handling in case impf ids in exposures
@@ -300,7 +406,7 @@ class TestImpactCalc(unittest.TestCase):
             ]
         )
         # fmt: on
-        check_impact(self, impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
+        check_impact(impact, haz, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
     def test_empty_impact(self):
         """Check that empty impact is returned if no centroids match the exposures"""
@@ -311,11 +417,11 @@ class TestImpactCalc(unittest.TestCase):
         aai_agg = 0.0
         eai_exp = np.zeros(len(exp.gdf))
         at_event = np.zeros(HAZ.size)
-        check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, None)
+        check_impact(impact, HAZ, exp, aai_agg, eai_exp, at_event, None)
 
         impact = icalc.impact(save_mat=True, assign_centroids=False)
         imp_mat_array = sparse.csr_matrix((HAZ.size, len(exp.gdf))).toarray()
-        check_impact(self, impact, HAZ, exp, aai_agg, eai_exp, at_event, imp_mat_array)
+        check_impact(impact, HAZ, exp, aai_agg, eai_exp, at_event, imp_mat_array)
 
     def test_single_event_impact(self):
         """Check impact for single event"""
@@ -325,11 +431,11 @@ class TestImpactCalc(unittest.TestCase):
         aai_agg = 0.0
         eai_exp = np.zeros(len(ENT.exposures.gdf))
         at_event = np.array([0])
-        check_impact(self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, None)
+        check_impact(impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, None)
         impact = icalc.impact(save_mat=True, assign_centroids=False)
         imp_mat_array = sparse.csr_matrix((haz.size, len(ENT.exposures.gdf))).toarray()
         check_impact(
-            self, impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, imp_mat_array
+            impact, haz, ENT.exposures, aai_agg, eai_exp, at_event, imp_mat_array
         )
 
     def test_calc_impact_save_mat_pass(self):
@@ -603,7 +709,47 @@ class TestImpactCalc(unittest.TestCase):
         imp = ImpactCalc(exp, impf_set, haz).impact(
             assign_centroids=False, save_mat=True
         )
-        check_impact(self, imp, haz, exp, aai_agg, eai_exp, at_event, at_event)
+        check_impact(imp, haz, exp, aai_agg, eai_exp, at_event, np.array([at_event]).T)
+
+
+class TestImpactCalcForecast:
+    """Test impact calc for forecast hazard"""
+
+    @pytest.fixture
+    def impact_calc_forecast(self, impact_calc):
+        """Write NaNs to attributes that are not used"""
+        impact_calc["aai_agg"] = np.nan
+        impact_calc["eai_exp"] = np.full_like(impact_calc["eai_exp"], np.nan)
+
+    def test_impact_forecast(
+        self,
+        exposure,
+        hazard_forecast,
+        impact_func_set,
+        impact_calc,
+        impact_calc_forecast,
+    ):
+        """Test that ImpactForecast is returned correctly"""
+        impact = ImpactCalc(exposure, impact_func_set, hazard_forecast).impact(
+            assign_centroids=True, save_mat=True
+        )
+        # check that impact is indeed ImpactForecast
+        impact_calc["imp_mat_array"] = impact_calc.pop("imp_mat")
+        check_impact(imp=impact, haz=hazard_forecast, exp=exposure, **impact_calc)
+        assert isinstance(impact, ImpactForecast)
+        np.testing.assert_array_equal(impact.lead_time, hazard_forecast.lead_time)
+        assert impact.lead_time.dtype == hazard_forecast.lead_time.dtype
+        np.testing.assert_array_equal(impact.member, hazard_forecast.member)
+
+    def test_impact_forecast_empty_impmat_error(
+        self, hazard_forecast, exposure, impact_func_set
+    ):
+        """Test that error is raised when trying to compute impact forecast
+        without saving impact matrix
+        """
+        icalc = ImpactCalc(exposure, impact_func_set, hazard_forecast)
+        with pytest.raises(ValueError, match="Saving impact matrix is required"):
+            icalc.impact(assign_centroids=True, save_mat=False)
 
 
 class TestImpactMatrixCalc(unittest.TestCase):
@@ -901,6 +1047,7 @@ class TestReturnImpact(unittest.TestCase):
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestImpactCalc)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactCalcForecast))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestReturnImpact))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrix))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestImpactMatrixCalc))

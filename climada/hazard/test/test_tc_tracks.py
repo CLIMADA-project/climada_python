@@ -60,7 +60,7 @@ TRACK_DENSITY_FUNCS = xr.Dataset(
         "basin": ("time", ["NA", "NA", "NA", "NA"]),
     },
     coords={
-        "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12H")),
+        "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12h")),
         "lat": ("time", [-90, -89, -88, -87]),
         "lon": ("time", [-179, -169, -159, -149]),
     },
@@ -660,8 +660,13 @@ class TestIO(unittest.TestCase):
         self.assertEqual(len(tc_track.data), 0)
 
     def test_from_FAST(self):
-        """test the correct import of netcdf files from FAST model and the conversion to a
-        different xr.array structure compatible with CLIMADA."""
+        """Test the correct import of netcdf files from FAST model and the conversion to a
+        different xr.array structure compatible with CLIMADA.
+
+        The test fixture contains 5 tracks across 2 years. The regression check
+        ``len(tc_track.data) == 5`` ensures that tracks are not multiplied by the
+        ``year`` dimension (the bug would produce 5 × 2 = 10 tracks instead).
+        """
 
         tc_track = tc.TCTracks.from_FAST(TEST_TRACK_FAST)
 
