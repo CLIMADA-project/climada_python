@@ -1,0 +1,49 @@
+# Check if installation with conda/mamba works
+
+name: Install Test
+
+on:
+  schedule:
+     - cron: "0 6 * * *"
+  workflow_dispatch:
+
+jobs:
+  install-conda:
+    name: Install from Conda
+    timeout-minutes: 10
+
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.10", "3.11", "3.12"]
+        os: [ubuntu-latest, windows-latest, macos-latest]
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      -
+        name: Install with Mamba
+        uses: mamba-org/setup-micromamba@v2
+        with:
+          environment-name: climada_env_${{ matrix.python-version }}
+          create-args: >-
+            python=${{ matrix.python-version }}
+            climada
+          init-shell: bash powershell
+          # Recompute environment for each run, but possibly use cached downloads
+          cache-environment: false
+          cache-downloads: true
+          cache-downloads-key: downloads-${{ matrix.os }}-py${{ matrix.python-version }}
+      -
+        name: Test CLIMADA (bash)
+        shell: bash -el {0}
+        run: |
+          python -c "import climada"
+          python -m unittest climada.engine.test.test_impact
+      -
+        name: Test CLIMADA (powershell)
+        shell: pwsh
+        if: ${{ matrix.os == 'windows-latest' }}
+        run: |
+          python -c "import climada"
+          python -m unittest climada.engine.test.test_impact
