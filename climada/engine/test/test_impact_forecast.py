@@ -25,9 +25,10 @@ import numpy as np
 import numpy.testing as npt
 import pandas as pd
 import pytest
-from scipy.sparse import csc_matrix, csr_matrix
+from scipy.sparse import csr_matrix
 
 from climada.engine import Impact, ImpactForecast
+from climada.util.forecast import sparse_quantile_axis0
 
 from .test_impact import impact_kwargs as imp_kwargs
 
@@ -472,14 +473,18 @@ class TestReduce:
 
 
 def test_quantile_uses_block_wise_helper(impact_forecast):
-    """quantile routes through the block-wise helper and keeps the same result"""
+    """quantile passes the impact matrix itself to the block-wise helper"""
     expected = np.quantile(impact_forecast.imp_mat.toarray(), 0.5, axis=0)
 
-    # the helper converts to CSC first, so csc_matrix is what densifies
-    with patch.object(
-        csc_matrix, "toarray", autospec=True, side_effect=csc_matrix.toarray
-    ) as spy:
+    # wraps, so the real helper still runs and the result stays checkable
+    with patch(
+        "climada.engine.impact_forecast.sparse_quantile_axis0",
+        wraps=sparse_quantile_axis0,
+    ) as helper:
         reduced = impact_forecast.quantile(0.5)
 
-    assert spy.call_args_list, "quantile did not go through the block-wise helper"
+    helper.assert_called_once()
+    matrix, q = helper.call_args.args
+    assert matrix is impact_forecast.imp_mat
+    assert q == 0.5
     npt.assert_array_equal(reduced.imp_mat.toarray().squeeze(), expected)
