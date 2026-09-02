@@ -206,7 +206,7 @@ def reduce_unique_selection(
 def sparse_quantile_axis0(
     matrix: sparse.spmatrix,
     q: np.typing.ArrayLike,
-    max_memory_mb: float = 8.0,
+    max_memory_mb: float = 64.0,
 ) -> np.ndarray:
     """Quantile along axis 0 of a sparse matrix, without densifying it whole.
 
@@ -226,7 +226,7 @@ def sparse_quantile_axis0(
     max_memory_mb : float, optional
         Approximate memory budget for a single densified block, in megabytes.
         At least one column is always densified, so a budget too small for a
-        single column still works. Default: 8.0.
+        single column still works. Default: 64.0.
 
     Returns
     -------
