@@ -20,6 +20,7 @@ Tests for Hazard Forecast.
 """
 
 import datetime as dt
+from unittest.mock import patch
 
 import numpy as np
 import numpy.testing as npt
@@ -31,6 +32,7 @@ from scipy.sparse import csr_matrix
 from climada.hazard.base import Hazard
 from climada.hazard.forecast import HazardForecast, xarray_has_timedelta_bug
 from climada.hazard.test.test_base import hazard_kwargs
+from climada.util.forecast import sparse_quantile_axis0
 
 # See https://docs.xarray.dev/en/stable/whats-new.html#id80
 xarray_leadtime = pytest.mark.skipif(
@@ -531,6 +533,25 @@ class TestReduce:
         npt.assert_array_equal(
             haz_fcst_median.intensity.todense(),
             np.median(haz_fc.intensity.todense(), axis=0),
+        )
+
+    def test_quantile_uses_block_wise_helper(self, haz_fc):
+        """quantile passes intensity and fraction themselves to the block-wise helper"""
+        # wraps, so the real helper still runs and the result stays checkable
+        with patch(
+            "climada.hazard.forecast.sparse_quantile_axis0",
+            wraps=sparse_quantile_axis0,
+        ) as helper:
+            reduced = haz_fc.quantile(0.5)
+
+        assert helper.call_count == 2
+        intensity_call, fraction_call = helper.call_args_list
+        assert intensity_call.args[0] is haz_fc.intensity
+        assert fraction_call.args[0] is haz_fc.fraction
+        assert intensity_call.args[1] == fraction_call.args[1] == 0.5
+        npt.assert_array_equal(
+            reduced.intensity.toarray().squeeze(),
+            np.quantile(haz_fc.intensity.toarray(), 0.5, axis=0),
         )
 
     @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])

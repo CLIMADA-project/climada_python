@@ -32,7 +32,11 @@ import climada.util.constants as u_const
 from climada.hazard.base import Hazard
 from climada.hazard.xarray import HazardXarrayReader
 from climada.util.checker import size
-from climada.util.forecast import ForecastMixin, reduce_unique_selection
+from climada.util.forecast import (
+    ForecastMixin,
+    reduce_unique_selection,
+    sparse_quantile_axis0,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -236,7 +240,6 @@ class HazardForecast(ForecastMixin, Hazard):
             **self._reduce_attrs("mean"),
         )
 
-    # TODO: Do not densify the entire matrix but compute quantiles column-wise!
     def _quantile(
         self,
         q: float,
@@ -253,12 +256,8 @@ class HazardForecast(ForecastMixin, Hazard):
                 q=q,
             )
 
-        red_intensity = sparse.csr_matrix(
-            np.quantile(self.intensity.toarray(), q, axis=0)
-        )
-        red_fraction = sparse.csr_matrix(
-            np.quantile(self.fraction.toarray(), q, axis=0)
-        )
+        red_intensity = sparse.csr_matrix(sparse_quantile_axis0(self.intensity, q))
+        red_fraction = sparse.csr_matrix(sparse_quantile_axis0(self.fraction, q))
         if event_name is None:
             event_name = f"quantile_{q}"
         return HazardForecast(
