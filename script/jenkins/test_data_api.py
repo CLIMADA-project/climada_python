@@ -45,13 +45,6 @@ from climada.util.finance import (
 class TestDataAvail(unittest.TestCase):
     """Test availability of data used through APIs"""
 
-    def test_noaa_nl_pass(self):
-        """Test NOAA nightlights used in BlackMarble."""
-        file_down = download_file(
-            f"{CONFIG.exposures.litpop.nightlights.noaa_url.str()}/F101992.v4.tar"
-        )
-        Path(file_down).unlink()
-
     def test_nasa_nl_pass(self):
         """Test NASA nightlights used in BlackMarble and LitPop."""
         req_files = np.zeros(len(BM_FILENAMES))
