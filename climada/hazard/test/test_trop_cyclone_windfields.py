@@ -279,37 +279,10 @@ class TestWindfieldHelpers(unittest.TestCase):
         v_ang_norm = _stat_holland_1980(si_track, d_centr, mask)
         np.testing.assert_array_equal(v_ang_norm, np.array([[], []]))
 
-    def test_er_2011_pass(self):
-        """Test Emanuel and Rotunno 2011 wind field model."""
-        # test at centroids within and outside of radius of max wind
-        d_centr = KM_TO_M * np.array(
-            [[35, 70, 75, 220], [30, 150, 1000, 300]], dtype=float
-        )
-        si_track = xr.Dataset(
-            {
-                "rad": ("time", KM_TO_M * np.array([75.0, 40.0])),
-                "vmax": ("time", [35.0, 40.0]),
-                "lat": ("time", [20.0, 27.0]),
-                "cp": ("time", [4.98665369e-05, 6.61918149e-05]),
-            }
-        )
-        mask = np.array(
-            [[True, True, True, True], [True, False, True, True]], dtype=bool
-        )
-        v_ang_norm = _stat_er_2011(si_track, d_centr, mask)
-        np.testing.assert_array_almost_equal(
-            v_ang_norm,
-            [
-                [28.258025, 36.782418, 36.869995, 22.521237],
-                [39.670883, 0, 3.300626, 10.827206],
-            ],
-        )
+    def _er_2011_inputs(self):
+        """Track/centroid inputs for the Emanuel and Rotunno 2011 tests.
 
-    def _er_2011_setup(self):
-        """Track/centroid setup shared by the ``compute_angular_windspeeds`` tests.
-
-        Only the second track node is asserted on, since ``compute_angular_windspeeds``
-        zeroes out the first one.
+        Centroids sit both within and outside the radius of maximum wind.
         """
         d_centr = KM_TO_M * np.array(
             [[35, 70, 75, 220], [30, 150, 1000, 300]], dtype=float
@@ -327,18 +300,27 @@ class TestWindfieldHelpers(unittest.TestCase):
         )
         return si_track, d_centr, mask
 
-    # Reference values for the second track node (r_max = 40 km, v_max = 40 m/s,
-    # f = 6.61918149e-05 1/s) from equation (36) of Emanuel and Rotunno 2011,
-    # M = M_max * 2 * (r/r_max)^2 / (1 + (r/r_max)^2) and v = M / r.
-    # Cyclostrophic: M_max = r_max * v_max = 1.6e6 m^2/s, so at r = 30 km,
+    # Reference wind speeds for the inputs above, with the Coriolis term (the default).
+    ER11_EXPECTED = [
+        [28.258025, 36.782418, 36.869995, 22.521237],
+        [39.670883, 0.0, 3.300626, 10.827206],
+    ]
+    # Same inputs under the cyclostrophic approximation, which drops the Coriolis term.
+    # From equation (36) of Emanuel and Rotunno 2011,
+    # M = M_max * 2 * (r/r_max)^2 / (1 + (r/r_max)^2) and v = M / r, with
+    # M_max = r_max * v_max = 1.6e6 m^2/s: at r = 30 km,
     # v = 1.6e6 * 2 * 0.5625 / 1.5625 / 30e3 = 38.4 m/s.
     ER11_NODE1_CYCLOSTROPHIC = [38.4, 0.0, 3.194888178913738, 10.480349344978167]
-    # Non-cyclostrophic: M_max additionally contains 0.5 * f * r_max^2 = 52953.45 m^2/s.
-    ER11_NODE1_WITH_CORIOLIS = [39.670883, 0.0, 3.300626, 10.827206]
+
+    def test_er_2011_pass(self):
+        """Test Emanuel and Rotunno 2011 wind field model."""
+        si_track, d_centr, mask = self._er_2011_inputs()
+        v_ang_norm = _stat_er_2011(si_track, d_centr, mask)
+        np.testing.assert_array_almost_equal(v_ang_norm, self.ER11_EXPECTED)
 
     def test_compute_angular_windspeeds_cyclostrophic_model_kwarg(self):
         """``cyclostrophic`` passed via ``model_kwargs`` must reach the wind model."""
-        si_track, d_centr, mask = self._er_2011_setup()
+        si_track, d_centr, mask = self._er_2011_inputs()
         v_ang_norm = compute_angular_windspeeds(
             si_track,
             d_centr,
@@ -349,15 +331,10 @@ class TestWindfieldHelpers(unittest.TestCase):
         np.testing.assert_allclose(
             v_ang_norm[1], self.ER11_NODE1_CYCLOSTROPHIC, atol=1e-6
         )
-        # guard against the setting being silently dropped, which yields the
-        # Coriolis-corrected profile instead
-        self.assertFalse(
-            np.allclose(v_ang_norm[1], self.ER11_NODE1_WITH_CORIOLIS, atol=1e-4)
-        )
 
     def test_compute_angular_windspeeds_no_spurious_deprecation(self):
         """No DeprecationWarning unless the deprecated argument is actually passed."""
-        si_track, d_centr, mask = self._er_2011_setup()
+        si_track, d_centr, mask = self._er_2011_inputs()
         with warnings.catch_warnings(record=True) as caught:
             warnings.simplefilter("always")
             compute_angular_windspeeds(
@@ -367,9 +344,17 @@ class TestWindfieldHelpers(unittest.TestCase):
             [w for w in caught if issubclass(w.category, DeprecationWarning)], []
         )
 
+    def test_compute_angular_windspeeds_cyclostrophic_deprecation(self):
+        """Passing the deprecated ``cyclostrophic`` argument warns."""
+        si_track, d_centr, mask = self._er_2011_inputs()
+        with self.assertWarns(DeprecationWarning):
+            compute_angular_windspeeds(
+                si_track, d_centr, mask, MODEL_VANG["ER11"], cyclostrophic=True
+            )
+
     def test_compute_angular_windspeeds_does_not_mutate_model_kwargs(self):
         """The caller's ``model_kwargs`` dict must not be modified in place."""
-        si_track, d_centr, mask = self._er_2011_setup()
+        si_track, d_centr, mask = self._er_2011_inputs()
         model_kwargs = {}
         with warnings.catch_warnings():
             warnings.simplefilter("ignore", DeprecationWarning)
