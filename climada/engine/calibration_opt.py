@@ -91,7 +91,7 @@ def calib_instance(
             years_in_common = df_out.loc[
                 df_out["year"].isin(np.sort(list((iys.keys())))), "year"
             ]
-            for cnt_, year in years_in_common.iteritems():
+            for cnt_, year in years_in_common.items():
                 df_out.loc[df_out["year"] == year, "impact_CLIMADA"] = iys[year]
 
     else:  # impact per event
@@ -369,8 +369,6 @@ def calib_all(
     df_result : pd.DataFrame
         df with modelled impact written to rows for each year or event.
     """
-    df_result = None  # init return variable
-
     # prepare hazard and exposure
     region_ids = list(np.unique(exposure.region_id))
     hazard_type = hazard.haz_type
@@ -393,6 +391,7 @@ def calib_all(
         dict(zip(param_full_dict, x))
         for x in itertools.product(*param_full_dict.values())
     )
+    df_out_list = []
     for param_dict in params_generator:
         print(param_dict)
         df_out = copy.deepcopy(df_impact_data)
@@ -400,12 +399,14 @@ def calib_all(
         df_out = calib_instance(
             hazard, exposure, impact_func_final, df_out, yearly_impact
         )
-        if df_result is None:
-            df_result = copy.deepcopy(df_out)
-        else:
-            df_result = df_result.append(df_out, input)
+        df_out_list.append(df_out)
 
-    return df_result
+    if not df_out_list:
+        return None
+    if len(df_out_list) == 1:
+        # single parameter combination: keep the frame's own index, as before
+        return df_out_list[0]
+    return pd.concat(df_out_list, ignore_index=True)
 
 
 def calib_optimize(

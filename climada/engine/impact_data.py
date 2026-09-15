@@ -409,26 +409,20 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
         # append hit countries to list
         all_hits.append(hits)
 
-    # create data frame for output
-    hit_countries = pd.DataFrame(columns=["hit_country", "Date_start", "ibtracsID"])
+    # collect one record per (track, hit country) pair
+    records = []
     for track, _ in enumerate(names):
-        # Check if track has hit any country else go to the next track
-        if len(all_hits[track]) > 0:
-            # loop over hit_country
-            for hit in range(0, len(all_hits[track])):
-                # Hit country ISO
-                ctry_iso = u_coord.country_to_iso(all_hits[track][hit], "alpha3")
-                # create entry for each country a hazard has hit
-                hit_countries = hit_countries.append(
-                    {
-                        "hit_country": ctry_iso,
-                        "Date_start": date[track],
-                        "ibtracsID": names[track],
-                    },
-                    ignore_index=True,
-                )
+        for hit_ctry in all_hits[track]:
+            records.append(
+                {
+                    # Hit country ISO
+                    "hit_country": u_coord.country_to_iso(hit_ctry, "alpha3"),
+                    "Date_start": date[track],
+                    "ibtracsID": names[track],
+                }
+            )
     # retrun data frame with all hit countries per hazard
-    return hit_countries
+    return pd.DataFrame(records, columns=["hit_country", "Date_start", "ibtracsID"])
 
 
 def create_lookup(emdat_data, start, end, disaster_subtype="Tropical cyclone"):
