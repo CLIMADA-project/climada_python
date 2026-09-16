@@ -1,4 +1,5 @@
 import unittest
+import warnings
 
 import numpy as np
 import xarray as xr
@@ -9,6 +10,7 @@ from climada.hazard.trop_cyclone.trop_cyclone_windfields import (
     H_TO_S,
     KM_TO_M,
     MBAR_TO_PA,
+    MODEL_VANG,
     _B_holland_1980,
     _bs_holland_2008,
     _stat_er_2011,
@@ -17,6 +19,7 @@ from climada.hazard.trop_cyclone.trop_cyclone_windfields import (
     _v_max_s_holland_2008,
     _vtrans,
     _x_holland_2010,
+    compute_angular_windspeeds,
     get_close_centroids,
     tctrack_to_si,
 )
@@ -25,6 +28,50 @@ from climada.util import ureg
 
 class TestWindfieldHelpers(unittest.TestCase):
     """Test helper functions of TC wind field model"""
+
+    def setUp(self):
+        # Emanuel and Rotunno 2011 model test inputs
+        self.er_2011_inputs = self._er_2011_inputs()
+
+        # Reference wind speeds for the er_2011 inputs above, with the Coriolis term
+        # (the default).
+        self.ER11_EXPECTED = [
+            [28.258025, 36.782418, 36.869995, 22.521237],
+            [39.670883, 0.0, 3.300626, 10.827206],
+        ]
+
+        # Same inputs under the cyclostrophic approximation, which drops the Coriolis term.
+        # From equation (36) of Emanuel and Rotunno 2011,
+        # M = M_max * 2 * (r/r_max)^2 / (1 + (r/r_max)^2) and v = M / r, with
+        # M_max = r_max * v_max = 1.6e6 m^2/s: at r = 30 km,
+        # v = 1.6e6 * 2 * 0.5625 / 1.5625 / 30e3 = 38.4 m/s.
+        self.ER11_NODE1_CYCLOSTROPHIC = [
+            38.4,
+            0.0,
+            3.194888178913738,
+            10.480349344978167,
+        ]
+
+    def _er_2011_inputs(self):
+        """Track/centroid inputs for the Emanuel and Rotunno 2011 tests.
+
+        Centroids sit both within and outside the radius of maximum wind.
+        """
+        d_centr = KM_TO_M * np.array(
+            [[35, 70, 75, 220], [30, 150, 1000, 300]], dtype=float
+        )
+        si_track = xr.Dataset(
+            {
+                "rad": ("time", KM_TO_M * np.array([75.0, 40.0])),
+                "vmax": ("time", [35.0, 40.0]),
+                "lat": ("time", [20.0, 27.0]),
+                "cp": ("time", [4.98665369e-05, 6.61918149e-05]),
+            }
+        )
+        mask = np.array(
+            [[True, True, True, True], [True, False, True, True]], dtype=bool
+        )
+        return si_track, d_centr, mask
 
     def test_get_close_centroids_pass(self):
         """Test get_close_centroids function."""
@@ -278,29 +325,65 @@ class TestWindfieldHelpers(unittest.TestCase):
 
     def test_er_2011_pass(self):
         """Test Emanuel and Rotunno 2011 wind field model."""
-        # test at centroids within and outside of radius of max wind
-        d_centr = KM_TO_M * np.array(
-            [[35, 70, 75, 220], [30, 150, 1000, 300]], dtype=float
-        )
-        si_track = xr.Dataset(
-            {
-                "rad": ("time", KM_TO_M * np.array([75.0, 40.0])),
-                "vmax": ("time", [35.0, 40.0]),
-                "lat": ("time", [20.0, 27.0]),
-                "cp": ("time", [4.98665369e-05, 6.61918149e-05]),
-            }
-        )
-        mask = np.array(
-            [[True, True, True, True], [True, False, True, True]], dtype=bool
-        )
+        si_track, d_centr, mask = self.er_2011_inputs
         v_ang_norm = _stat_er_2011(si_track, d_centr, mask)
-        np.testing.assert_array_almost_equal(
-            v_ang_norm,
-            [
-                [28.258025, 36.782418, 36.869995, 22.521237],
-                [39.670883, 0, 3.300626, 10.827206],
-            ],
+        np.testing.assert_allclose(v_ang_norm, self.ER11_EXPECTED)
+
+    def test_er_2011_pass_cyclostrophic(self):
+        """Test Emanuel and Rotunno 2011 wind field model with cyclostrophic approx."""
+        si_track, d_centr, mask = self.er_2011_inputs
+        v_ang_norm = _stat_er_2011(si_track, d_centr, mask, cyclostrophic=True)
+        np.testing.assert_allclose(v_ang_norm[1], self.ER11_NODE1_CYCLOSTROPHIC)
+
+    def test_compute_angular_windspeeds_cyclostrophic_model_kwarg(self):
+        """``cyclostrophic`` passed via ``model_kwargs`` must reach the wind model."""
+        si_track, d_centr, mask = self.er_2011_inputs
+        v_ang_norm = compute_angular_windspeeds(
+            si_track,
+            d_centr,
+            mask,
+            MODEL_VANG["ER11"],
+            model_kwargs={"cyclostrophic": True},
         )
+        np.testing.assert_allclose(
+            v_ang_norm[1], self.ER11_NODE1_CYCLOSTROPHIC, atol=1e-6
+        )
+
+    def test_compute_angular_windspeeds_no_spurious_deprecation(self):
+        """No DeprecationWarning unless the deprecated argument is actually passed."""
+        si_track, d_centr, mask = self.er_2011_inputs
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter("always")
+            compute_angular_windspeeds(
+                si_track, d_centr, mask, MODEL_VANG["ER11"], model_kwargs={}
+            )
+        self.assertEqual(
+            [w for w in caught if issubclass(w.category, DeprecationWarning)], []
+        )
+
+    def test_compute_angular_windspeeds_cyclostrophic_deprecation(self):
+        """Passing the deprecated ``cyclostrophic`` argument warns."""
+        si_track, d_centr, mask = self.er_2011_inputs
+        with self.assertWarns(DeprecationWarning):
+            compute_angular_windspeeds(
+                si_track, d_centr, mask, MODEL_VANG["ER11"], cyclostrophic=True
+            )
+
+    def test_compute_angular_windspeeds_does_not_mutate_model_kwargs(self):
+        """The caller's ``model_kwargs`` dict must not be modified in place."""
+        si_track, d_centr, mask = self.er_2011_inputs
+        model_kwargs = {}
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", DeprecationWarning)
+            compute_angular_windspeeds(
+                si_track,
+                d_centr,
+                mask,
+                MODEL_VANG["ER11"],
+                cyclostrophic=True,
+                model_kwargs=model_kwargs,
+            )
+        self.assertEqual(model_kwargs, {})
 
     def test_vtrans_pass(self):
         """Test _vtrans function. Compare to MATLAB reference."""

@@ -100,7 +100,7 @@ def compute_angular_windspeeds(
     d_centr: np.ndarray,
     mask_centr_close: np.ndarray,
     model: int,
-    cyclostrophic: Optional[bool] = False,
+    cyclostrophic: Optional[bool] = None,
     model_kwargs: Optional[dict] = None,
 ):
     """Compute (absolute) angular wind speeds according to a parametric wind profile
@@ -120,14 +120,16 @@ def compute_angular_windspeeds(
         If given, forward these kwargs to the selected model. Default: None
     cyclostrophic: bool, optional, deprecated
         This argument is deprecated and will be removed in a future release.
-        Include `cyclostrophic` as `model_kwargs` instead.
+        Include `cyclostrophic` as `model_kwargs` instead. If given, it takes precedence
+        over the value in `model_kwargs`. Default: None (not set).
 
     Returns
     -------
     ndarray of shape (npositions, ncentroids)
         containing the magnitude of the angular windspeed per track position per centroid location
     """
-    model_kwargs = {} if model_kwargs is None else model_kwargs
+    # copy, so that the deprecation shim below never mutates the caller's dict
+    model_kwargs = {} if model_kwargs is None else dict(model_kwargs)
 
     if cyclostrophic is not None:
         warnings.warn(
