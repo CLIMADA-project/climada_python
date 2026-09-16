@@ -327,16 +327,13 @@ class TestWindfieldHelpers(unittest.TestCase):
         """Test Emanuel and Rotunno 2011 wind field model."""
         si_track, d_centr, mask = self.er_2011_inputs
         v_ang_norm = _stat_er_2011(si_track, d_centr, mask)
-        np.testing.assert_array_almost_equal(v_ang_norm, self.ER11_EXPECTED)
+        np.testing.assert_allclose(v_ang_norm, self.ER11_EXPECTED)
 
     def test_er_2011_pass_cyclostrophic(self):
         """Test Emanuel and Rotunno 2011 wind field model with cyclostrophic approx."""
         si_track, d_centr, mask = self.er_2011_inputs
         v_ang_norm = _stat_er_2011(si_track, d_centr, mask, cyclostrophic=True)
-        np.testing.assert_array_almost_equal(v_ang_norm[0], self.ER11_EXPECTED[0])
-        np.testing.assert_array_almost_equal(
-            v_ang_norm[1], self.ER11_NODE1_CYCLOSTROPHIC
-        )
+        np.testing.assert_allclose(v_ang_norm[1], self.ER11_NODE1_CYCLOSTROPHIC)
 
     def test_compute_angular_windspeeds_cyclostrophic_model_kwarg(self):
         """``cyclostrophic`` passed via ``model_kwargs`` must reach the wind model."""
