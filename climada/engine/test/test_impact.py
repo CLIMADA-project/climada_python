@@ -23,6 +23,7 @@ import datetime as dt
 import unittest
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from unittest.mock import patch
 
 import h5py
 import numpy as np
@@ -32,6 +33,7 @@ from rasterio.crs import CRS as rCRS
 from scipy import sparse
 
 import climada.util.coordinates as u_coord
+import climada.util.interpolation as u_interp
 from climada.engine import Impact, ImpactCalc
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
@@ -815,6 +817,80 @@ class TestRPmatrix(unittest.TestCase):
                 ]
             ),
             rtol=0.8,
+        )
+
+
+class TestSparseFastPathDispatch(unittest.TestCase):
+    """The local statistics methods must take the sparse fast path when they can.
+
+    The helpers themselves are tested in climada.util.test.test_interpolation; these
+    tests only check that the call sites dispatch correctly and that results do not
+    depend on which path was taken.
+    """
+
+    def setUp(self):
+        self.impact = dummy_impact()
+        self.impact.coord_exp = np.array([np.arange(4), np.arange(4)]).T
+        self.impact.imp_mat = sparse.csr_matrix(
+            np.array([[0, 0, 1, 2], [0, 0, 4, 4], [0, 0, 1, 1], [0, 1, 1, 3]])
+        )
+        self.impact.frequency = np.ones(4)
+
+    def test_local_exceedance_impact_uses_fast_path(self):
+        """The default configuration must not call getcol on the CSR matrix."""
+        with patch.object(
+            u_interp,
+            "sparse_local_exceedance",
+            wraps=u_interp.sparse_local_exceedance,
+        ) as spy:
+            self.impact.local_exceedance_impact(return_periods=(2, 5))
+        spy.assert_called_once()
+
+    def test_local_return_period_uses_fast_path(self):
+        with patch.object(
+            u_interp,
+            "sparse_local_frequency",
+            wraps=u_interp.sparse_local_frequency,
+        ) as spy:
+            self.impact.local_return_period(threshold_impact=(1, 3))
+        spy.assert_called_once()
+
+    def test_non_default_configuration_falls_back(self):
+        """Anything the helpers do not implement must use the original code path."""
+        with patch.object(u_interp, "sparse_local_exceedance") as spy:
+            self.impact.local_exceedance_impact(
+                return_periods=(2, 5), method="extrapolate"
+            )
+            self.impact.local_exceedance_impact(
+                return_periods=(2, 5), log_frequency=False
+            )
+            self.impact.local_exceedance_impact(return_periods=(2, 5), min_impact=1)
+            self.impact.local_exceedance_impact(return_periods=(2, 5), bin_decimals=2)
+        spy.assert_not_called()
+
+    def test_both_paths_agree(self):
+        """The fast path and the per-column path must give the same numbers."""
+        return_periods = (2, 5)
+        fast, _, _ = self.impact.local_exceedance_impact(return_periods=return_periods)
+        with patch.object(u_interp, "supports_sparse_fast_path", return_value=False):
+            slow, _, _ = self.impact.local_exceedance_impact(
+                return_periods=return_periods
+            )
+        npt.assert_array_equal(
+            fast[[f"{rp}" for rp in return_periods]].to_numpy(float),
+            slow[[f"{rp}" for rp in return_periods]].to_numpy(float),
+        )
+
+    def test_both_paths_agree_return_period(self):
+        threshold_impact = (1, 3)
+        fast, _, _ = self.impact.local_return_period(threshold_impact=threshold_impact)
+        with patch.object(u_interp, "supports_sparse_fast_path", return_value=False):
+            slow, _, _ = self.impact.local_return_period(
+                threshold_impact=threshold_impact
+            )
+        npt.assert_array_equal(
+            fast[[f"{th}" for th in threshold_impact]].to_numpy(float),
+            slow[[f"{th}" for th in threshold_impact]].to_numpy(float),
         )
 
 
