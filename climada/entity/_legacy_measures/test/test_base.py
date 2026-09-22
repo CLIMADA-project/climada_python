@@ -28,12 +28,12 @@ import numpy as np
 import climada.entity.exposures.test as exposures_test
 import climada.util.coordinates as u_coord
 from climada import CONFIG
+from climada.entity._legacy_measures.base import IMPF_ID_FACT, Measure
+from climada.entity._legacy_measures.measure_set import MeasureSet
 from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.base import ImpactFunc
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.entity.measures.base import IMPF_ID_FACT, Measure
-from climada.entity.measures.measure_set import MeasureSet
 from climada.hazard.base import Hazard
 from climada.test import get_test_file
 from climada.util.constants import HAZ_DEMO_H5

@@ -76,12 +76,11 @@ class RiskTrajectory(ABC):
         snapshots_list: Iterable[Snapshot],
         *,
         return_periods: Iterable[int] = DEFAULT_RP,
-        all_groups_name: str = DEFAULT_ALLGROUP_NAME,
         risk_disc_rates: DiscRates | None = None,
     ):
         self._reset_metrics()
         self._snapshots = sorted(snapshots_list, key=lambda snap: snap.date)
-        self._all_groups_name = all_groups_name
+        self._all_groups_name = DEFAULT_ALLGROUP_NAME
         self._return_periods = return_periods
         self.start_date = min((snapshot.date for snapshot in snapshots_list))
         self.end_date = max((snapshot.date for snapshot in snapshots_list))
