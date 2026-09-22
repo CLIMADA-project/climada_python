@@ -42,8 +42,7 @@ import rasterio.mask
 import rasterio.warp
 import scipy.interpolate
 import scipy.spatial
-import shapely.ops
-import shapely.vectorized
+import shapely
 import shapely.wkt
 from cartopy.io import shapereader
 from pyproj.crs import CRS as PCRS
@@ -917,7 +916,7 @@ def get_country_geometries(
             lon_left, lon_right = lon_normalize(np.array(extent[:2]))
             extent_left = (lon_left, 180, extent[2], extent[3])
             extent_right = (-180, lon_right, extent[2], extent[3])
-            bbox = shapely.ops.union_all(
+            bbox = shapely.union_all(
                 [box(*toggle_extent_bounds(e)) for e in [extent_left, extent_right]]
             )
         bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
