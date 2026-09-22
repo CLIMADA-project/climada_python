@@ -32,7 +32,8 @@ import xlsxwriter
 from matplotlib import colormaps as cm
 
 import climada.util.hdf5_handler as u_hdf5
-from climada.entity.measures.base import Measure
+
+from .base import Measure
 
 LOGGER = logging.getLogger(__name__)
 

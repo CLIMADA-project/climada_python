@@ -16,10 +16,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 ---
 
-init engine
+init measures
 """
 
-from .cost_benefit import *
-from .impact import *
-from .impact_calc import *
-from .impact_forecast import ImpactForecast
+from .base import *
+from .measure_set import *

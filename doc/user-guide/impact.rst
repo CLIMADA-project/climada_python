@@ -17,6 +17,7 @@ Additionally you can find a guide on how to populate impact data from EM-DAT dat
     climada_entity_ImpactFuncSet
     climada_entity_MeasureSet
     Discount Rates <climada_entity_DiscRates>
+    Risk trajectories <climada_trajectories>
     Using EM-DAT data <climada_engine_impact_data>
     Cost Benefit Calculation <climada_engine_CostBenefit>
     Probabilistic Yearly Impacts <climada_util_yearsets>

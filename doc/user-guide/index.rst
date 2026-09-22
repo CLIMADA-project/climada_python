@@ -19,9 +19,11 @@ You can then go on to more specific tutorial about `Hazard <hazard.html>`_,
    Hazard <hazard>
    Exposures <exposures>
    Impact <impact>
+   Adaptation appraisal <adaptation>
    Local exceedance intensities <climada_util_local_exceedance_values>
    Uncertainty Quantification <unsequa>
-   climada_engine_Forecast
+   Forecasts <climada_engine_ImpactForecast>
    climada_util_calibrate
    climada_util_api_client
+   Forecast class (outdated) <climada_engine_Forecast>
    How to cite CLIMADA <../misc/citation>
