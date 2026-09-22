@@ -46,7 +46,7 @@ import numpy as np
 import pandas as pd
 import pathos
 import scipy.io.matlab as matlab
-import shapely.ops
+import shapely
 import statsmodels.api as sm
 import xarray as xr
 from matplotlib.collections import LineCollection
@@ -263,7 +263,7 @@ class BasinBoundsStorm(Enum):
         [(10.0, -60.0), (135.0, -60.0), (135.0, -5.0), (10.0, -5.0), (10.0, -60.0)]
     )
 
-    SP = shapely.ops.union_all(
+    SP = shapely.union_all(
         [
             Polygon(  # west side of antimeridian
                 [
