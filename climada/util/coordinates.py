@@ -804,7 +804,7 @@ def coord_on_land(lat, lon, land_geom=None):
             lon_mid = 0.5 * (land_bounds[0] + land_bounds[2])
             lon_normalize(lons, center=lon_mid)
 
-    return shapely.vectorized.contains_xy(land_geom, lons, lat)
+    return shapely.contains_xy(land_geom, lons, lat)
 
 
 def nat_earth_resolution(resolution):
@@ -1974,12 +1974,12 @@ def get_country_code(lat, lon, gridded=False):
         ocean_mask = (
             region_id.all()
             if total_land is None
-            else ~shapely.vectorized.contains_xy(total_land, lon, lat)
+            else ~shapely.contains_xy(total_land, lon, lat)
         )
         region_id[ocean_mask] = 0
         for country in countries.itertuples():
             unset = (region_id == -1).nonzero()[0]
-            select = shapely.vectorized.contains_xy(
+            select = shapely.contains_xy(
                 country.geometry, lon[unset], lat[unset]
             )
             region_id[unset[select]] = natearth_country_to_int(country)
