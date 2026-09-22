@@ -22,6 +22,7 @@ Define ForecastMixin class.
 from typing import Any, Literal, Mapping
 
 import numpy as np
+from scipy import sparse
 
 
 class ForecastMixin:
@@ -199,4 +200,55 @@ def reduce_unique_selection(
             for val in np.unique(getattr(forecast, attr))
         ],
         **concat_kws,
+    )
+
+
+def sparse_quantile_axis0(
+    matrix: sparse.spmatrix,
+    q: np.typing.ArrayLike,
+    max_memory_mb: float = 64.0,
+) -> np.ndarray:
+    """Quantile along axis 0 of a sparse matrix, without densifying it whole.
+
+    Equivalent to ``np.quantile(matrix.toarray(), q, axis=0)``, but densifies
+    only as many columns at a time as fit into ``max_memory_mb``, so peak
+    memory no longer scales with the number of columns.
+
+    Implicit zeros count as values: a column of ``[0, 0, 0, -1, 9]`` has median
+    ``0.0``, not the ``4.0`` given by its two stored values alone.
+
+    Parameters
+    ----------
+    matrix : scipy.sparse.spmatrix
+        Matrix to reduce, of shape (n_rows, n_cols).
+    q : float or array_like of float
+        Quantile or sequence of quantiles, each between 0 and 1.
+    max_memory_mb : float, optional
+        Approximate memory budget for a single densified block, in megabytes.
+        At least one column is always densified, so a budget too small for a
+        single column still works. Default: 64.0.
+
+    Returns
+    -------
+    np.ndarray
+        Quantiles along axis 0, shaped as ``np.quantile`` would return them.
+    """
+    csc = matrix.tocsc()
+    n_rows, n_cols = csc.shape
+    if n_cols == 0:
+        return np.quantile(csc.toarray(), q, axis=0)
+    column_bytes = max(n_rows * csc.dtype.itemsize, 1)
+    block = max(int(max_memory_mb * 1e6) // column_bytes, 1)
+
+    # np.quantile sorts its input, so it copies unless allowed not to. Each block is
+    # a throwaway nothing else references, so it can be sorted in place: skipping the
+    # per-block copy measured about twice as fast, at no cost in peak memory.
+    return np.concatenate(
+        [
+            np.quantile(
+                csc[:, start : start + block].toarray(), q, axis=0, overwrite_input=True
+            )
+            for start in range(0, n_cols, block)
+        ],
+        axis=-1,
     )
