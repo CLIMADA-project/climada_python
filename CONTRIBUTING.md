@@ -61,6 +61,11 @@ To contribute follow these steps:
     This also works if you pushed to a fork instead of the main repository.
     Add a description and explanation of your changes and work through the pull request author checklist provided.
     Feel free to request reviews from specific team members.
+
+    **NOTE:** If a pull request originates from a fork, a team member (usually the reviewer) will have to [approve workflow runs](https://docs.github.com/en/actions/how-tos/manage-workflow-runs/approve-runs-from-forks).
+    Before doing so, please carefully check the suggested changes for potentially harmful code.
+    If unsure, ask the core developers.
+
 9.  After approval of the pull request, the branch is merged into `develop` and your changes will become part of the next CLIMADA release.
 
 ## Resources

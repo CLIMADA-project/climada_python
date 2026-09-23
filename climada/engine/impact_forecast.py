@@ -28,7 +28,11 @@ from scipy import sparse
 
 from ..util import log_level
 from ..util.checker import size
-from ..util.forecast import ForecastMixin, reduce_unique_selection
+from ..util.forecast import (
+    ForecastMixin,
+    reduce_unique_selection,
+    sparse_quantile_axis0,
+)
 from .impact import Impact
 
 LOGGER = logging.getLogger(__name__)
@@ -445,7 +449,7 @@ class ImpactForecast(ForecastMixin, Impact):
                     concat_kws={"reset_event_ids": True},
                 )
 
-        red_imp_mat = sparse.csr_matrix(np.quantile(self.imp_mat.toarray(), q, axis=0))
+        red_imp_mat = sparse.csr_matrix(sparse_quantile_axis0(self.imp_mat, q))
         red_at_event = np.array([red_imp_mat.sum()])
         if event_name is None:
             event_name = f"quantile_{q}"

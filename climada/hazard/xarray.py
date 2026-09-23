@@ -94,7 +94,10 @@ def _date_to_ordinal_accessor(array: xr.DataArray, strict: bool = True) -> np.nd
             return _strict_positive_int_accessor(array)
 
         # Try transforming to ordinals
-        return np.array(u_dt.datetime64_to_ordinal(array.to_numpy()))
+        arr = array.to_numpy()
+        if arr.ndim == 0:
+            arr = np.array([arr])
+        return np.array(u_dt.datetime64_to_ordinal(arr))
 
     # Handle access errors
     except (ValueError, TypeError, AttributeError) as err:
