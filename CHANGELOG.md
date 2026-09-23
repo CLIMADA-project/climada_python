@@ -15,6 +15,8 @@ Code freeze date: YYYY-MM-DD
 - Support for ensemble forecast data as hazard via `HazardForecast` and `ImpactForecast`, see `doc.user_guide.climada_engine_ImpactForecast.ipynb` [#1115](https://github.com/CLIMADA-project/climada_python/pull/)
 - Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
 - Adds `MeasureConfig` and related dataclasses for new `Measure` object retrocompatibility and (de)serialization capabilities [#1276](https://github.com/CLIMADA-project/climada_python/pull/1276)
+- Adds `CostIncome` class and related tutorial for future new `Measure` class. [#1277](https://github.com/CLIMADA-project/climada_python/pull/1277)
+- Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
 - Add inter- and extrapolation options to `ImpactFreqCurve` with method `interpolate` [#1252](https://github.com/CLIMADA-project/climada_python/pull/1252)
 - Add `trajectory` module to ease the handling of multiple risk assessment at different point in time, and enable interpolation in between. [#1197](https://github.com/CLIMADA-project/climada_python/pull/1197), [#1198](https://github.com/CLIMADA-project/climada_python/pull/1198), [#1199](https://github.com/CLIMADA-project/climada_python/pull/1199), [#1200](https://github.com/CLIMADA-project/climada_python/pull/1197), [#1201](https://github.com/CLIMADA-project/climada_python/pull/1197)
 
