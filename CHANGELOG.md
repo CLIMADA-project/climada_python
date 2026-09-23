@@ -12,22 +12,29 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- Support for ensemble forecast data as hazard via `HazardForecast` and `ImpactForecast`, see `doc.user_guide.climada_engine_ImpactForecast.ipynb` [#1115](https://github.com/CLIMADA-project/climada_python/pull/)
 - Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
+- Adds `MeasureConfig` and related dataclasses for new `Measure` object retrocompatibility and (de)serialization capabilities [#1276](https://github.com/CLIMADA-project/climada_python/pull/1276)
 - Add inter- and extrapolation options to `ImpactFreqCurve` with method `interpolate` [#1252](https://github.com/CLIMADA-project/climada_python/pull/1252)
+- Add `trajectory` module to ease the handling of multiple risk assessment at different point in time, and enable interpolation in between. [#1197](https://github.com/CLIMADA-project/climada_python/pull/1197), [#1198](https://github.com/CLIMADA-project/climada_python/pull/1198), [#1199](https://github.com/CLIMADA-project/climada_python/pull/1199), [#1200](https://github.com/CLIMADA-project/climada_python/pull/1197), [#1201](https://github.com/CLIMADA-project/climada_python/pull/1197)
 
 ### Changed
+
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
 - `climada.util.finance`: `world_bank_wealth_account` now fetches data via the
   World Bank Indicators API instead of downloading a ZIP/CSV file.
   Updated available year range from 1995–2014 to 1995–2020. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 - Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
+- `HazardForecast.quantile` and `ImpactForecast.quantile` compute quantiles block-wise instead of densifying the entire sparse matrix, greatly reducing peak memory. Results are unchanged. [#1203](https://github.com/CLIMADA-project/climada_python/issues/1203)
 
 ### Fixed
 
+- Preserve explicitly mapped dates in `HazardForecast.from_xarray_raster` [#1305](https://github.com/CLIMADA-project/climada_python/issues/1305).
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
 - `climada.util.finance`: Fixed broken `WORLD_BANK_INC_GRP` download URL
   (`databank.worldbank.org`) whose SSL certificate had expired. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
+- `ImpactCalc.impact` now raises a clear `ValueError` when the supplied `Hazard` contains no events, instead of failing later inside `np.array_split` with an obscure message [#814](https://github.com/CLIMADA-project/climada_python/issues/814).
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
 
 ### Deprecated

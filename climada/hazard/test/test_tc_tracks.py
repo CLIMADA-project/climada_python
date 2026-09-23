@@ -60,7 +60,7 @@ TRACK_DENSITY_FUNCS = xr.Dataset(
         "basin": ("time", ["NA", "NA", "NA", "NA"]),
     },
     coords={
-        "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12H")),
+        "time": ("time", pd.date_range("2025-01-01", periods=4, freq="12h")),
         "lat": ("time", [-90, -89, -88, -87]),
         "lon": ("time", [-179, -169, -159, -149]),
     },

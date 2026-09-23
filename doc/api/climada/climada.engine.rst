@@ -52,3 +52,11 @@ climada\.engine\.impact\_data module
     :members:
     :undoc-members:
     :show-inheritance:
+
+climada\.engine\.impact\_forecast module
+----------------------------------------
+
+.. automodule:: climada.engine.impact_forecast
+    :members:
+    :undoc-members:
+    :show-inheritance:

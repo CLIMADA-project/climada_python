@@ -81,6 +81,14 @@ climada\.util\.finance module
     :undoc-members:
     :show-inheritance:
 
+climada\.util\.forecast module
+------------------------------
+
+.. automodule:: climada.util.forecast
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
 climada\.util\.hdf5\_handler module
 -----------------------------------
 
