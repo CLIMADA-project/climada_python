@@ -20,12 +20,16 @@ Unit Tests for LitPop class.
 """
 
 import unittest
+from unittest.mock import patch
 
+import geopandas
 import numpy as np
 import rasterio
+import shapely
 from rasterio import Affine
 from rasterio.crs import CRS
 
+from climada.entity.exposures.base import Exposures
 from climada.entity.exposures.litpop import litpop as lp
 
 
@@ -427,6 +431,37 @@ class TestLitPop(unittest.TestCase):
         self.assertEqual(lp.get_value_unit("none"), "")
 
 
+class TestFromShapeAndCountries(unittest.TestCase):
+    """`from_shape_and_countries` with a GeoSeries `shape` (#826).
+
+    `from_countries` is patched out because the real path needs the GPW
+    population raster, which requires a manual NASA Earthdata download.
+    """
+
+    def test_geoseries_shape(self):
+        """A GeoSeries of polygons selects the points inside them."""
+        exp_in = Exposures(
+            geopandas.GeoDataFrame(
+                {"value": [10.0, 20.0, 30.0]},
+                geometry=geopandas.points_from_xy([0.5, 1.5, 9.5], [0.5, 0.5, 0.5]),
+                crs="EPSG:4326",
+            )
+        )
+        shapes = geopandas.GeoSeries(
+            [shapely.geometry.box(0, 0, 1, 1), shapely.geometry.box(1, 0, 2, 1)],
+            crs="EPSG:4326",
+        )
+
+        with patch.object(lp.LitPop, "from_countries", return_value=exp_in):
+            exp = lp.LitPop.from_shape_and_countries(shapes, "CHE", res_arcsec=30)
+
+        # the point at x=9.5 lies outside both boxes
+        self.assertCountEqual(exp.gdf["value"].tolist(), [10.0, 20.0])
+
+
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestLitPop)
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestFromShapeAndCountries)
+    )
     unittest.TextTestRunner(verbosity=2).run(TESTS)

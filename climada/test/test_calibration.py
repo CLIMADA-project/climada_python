@@ -27,7 +27,8 @@ import pandas as pd
 import climada.hazard.test as hazard_test
 from climada import CONFIG
 from climada.engine import ImpactCalc
-from climada.engine.calibration_opt import calib_instance
+from climada.engine.calibration_opt import calib_all, calib_instance
+from climada.entity import ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.hazard.base import Hazard
 from climada.test import get_test_file
@@ -94,7 +95,72 @@ class TestCalib(unittest.TestCase):
         self.assertTrue(all(df_out_yearly["impact_CLIMADA"].values == [*IYS.values()]))
 
 
+class TestCalibPandas2(unittest.TestCase):
+    """Cover the two calibration_opt paths that used removed pandas APIs (#1319)."""
+
+    @classmethod
+    def setUpClass(cls):
+        cls.hazard = Hazard.from_hdf5(HAZ_TEST_TC)
+        entity = Entity.from_excel(ENT_DEMO_TODAY)
+        entity.check()
+        cls.exposures = entity.exposures
+        cls.exposures.assign_centroids(cls.hazard)
+        cls.impf = entity.impact_funcs.get_func(
+            cls.hazard.haz_type, entity.exposures.gdf["impf_TC"].median()
+        )
+
+    def test_calib_instance_yearly_multirow(self):
+        """A multi-row df_out takes the `years_in_common` branch.
+
+        test_calib_instance above passes a single-row frame, which takes the
+        other branch, so this one was never covered.
+        """
+        impact = ImpactCalc(
+            self.exposures, ImpactFuncSet([self.impf]), self.hazard
+        ).impact(assign_centroids=False)
+        iys = impact.impact_per_year(all_years=True)
+        sel_years = sorted(iys.keys())[:3]
+
+        df_out = calib_instance(
+            self.hazard,
+            self.exposures,
+            self.impf,
+            pd.DataFrame({"year": sel_years}),
+            yearly_impact=True,
+        )
+
+        self.assertEqual(df_out.shape[0], len(sel_years))
+        for year in sel_years:
+            self.assertAlmostEqual(
+                df_out.loc[df_out["year"] == year, "impact_CLIMADA"].iloc[0], iys[year]
+            )
+
+    def test_calib_all_multiple_params(self):
+        """Several parameter combinations are concatenated into one frame.
+
+        A single-row `impact_data_source` keeps `calib_instance` on its other
+        branch, so this covers only the accumulation in `calib_all`.
+        """
+        df_result = calib_all(
+            hazard=self.hazard,
+            exposure=self.exposures,
+            impf_name_or_instance="emanuel",
+            param_full_dict={
+                "v_thresh": [25.7, 20.0],
+                "v_half": [70.0],
+                "scale": [1.0],
+            },
+            impact_data_source=pd.DataFrame({"impact": [1.0e9], "region_id": [840]}),
+            year_range=[2004, 2005],
+            yearly_impact=True,
+        )
+
+        self.assertSetEqual(set(df_result["v_thresh"]), {25.7, 20.0})
+        self.assertIn("impact_CLIMADA", df_result.columns)
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestCalib)
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestCalibPandas2))
     unittest.TextTestRunner(verbosity=2).run(TESTS)
