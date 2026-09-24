@@ -100,7 +100,7 @@ def compute_angular_windspeeds(
     d_centr: np.ndarray,
     mask_centr_close: np.ndarray,
     model: int,
-    cyclostrophic: Optional[bool] = False,
+    cyclostrophic: Optional[bool] = None,
     model_kwargs: Optional[dict] = None,
 ):
     """Compute (absolute) angular wind speeds according to a parametric wind profile
@@ -135,7 +135,7 @@ def compute_angular_windspeeds(
             "release. Include it in 'model_kwargs' instead.",
             DeprecationWarning,
         )
-        model_kwargs["cyclostrophic"] = cyclostrophic
+        model_kwargs = model_kwargs | {"cyclostrophic": cyclostrophic}
 
     compute_funs = {
         MODEL_VANG["H1980"]: _compute_angular_windspeeds_h1980,
