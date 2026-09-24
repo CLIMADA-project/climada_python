@@ -195,7 +195,7 @@ class TestLitPopExposures(unittest.TestCase):
         with from_shape_and_countries()"""
 
         ent = lp.LitPop.from_shape_and_countries(
-            shape, "Switzerland", res_arcsec=30, reference_year=2016
+            [shape, shape], "Switzerland", res_arcsec=30, reference_year=2016
         )
         self.assertEqual(ent.value.min(), 0.0)
         self.assertEqual(ent.region_id.min(), 756)
@@ -217,6 +217,8 @@ class TestLitPopExposures(unittest.TestCase):
             ],
             8.529166666666658,
         )
+        # must be the same as for shape=`shape` or shape=`[shape]`
+        self.assertEqual(ent.gdf.shape, (1050, 5))
 
     def test_Liechtenstein_15_lit_pass(self):
         """Create Nightlights entity for Liechtenstein 2016:"""

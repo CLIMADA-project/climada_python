@@ -632,17 +632,18 @@ class LitPop(Exposures):
             # works if shape is Polygon or MultiPolygon
             gdf = exp.gdf.loc[exp.gdf.geometry.within(shape)]
         elif isinstance(shape, (geopandas.GeoSeries, list)):
-            gdf = geopandas.GeoDataFrame(columns=exp.gdf.columns)
+            idx = np.array([False] * exp.gdf.shape[0], dtype=bool)
             for shp in shape:
                 if isinstance(
                     shp, (shapely.geometry.MultiPolygon, shapely.geometry.Polygon)
                 ):
-                    gdf = gdf.append(exp.gdf.loc[exp.gdf.geometry.within(shp)])
+                    idx |= exp.gdf.geometry.within(shp)
                 else:
                     raise NotImplementedError(
                         "Not implemented for list or GeoSeries containing "
                         f"objects of type {type(shp)} as `shape`"
                     )
+            gdf = exp.gdf.loc[idx]
         else:
             raise NotImplementedError(
                 "Not implemented for `shape` of type {type(shape)}"
