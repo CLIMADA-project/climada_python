@@ -23,6 +23,7 @@ Code freeze date: YYYY-MM-DD
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
 - Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
 - `HazardForecast.quantile` and `ImpactForecast.quantile` compute quantiles block-wise instead of densifying the entire sparse matrix, greatly reducing peak memory. Results are unchanged. [#1203](https://github.com/CLIMADA-project/climada_python/issues/1203)
+- `Impact.local_exceedance_impact`, `Impact.local_return_period`, `Hazard.local_exceedance_intensity` and `Hazard.local_return_period` read each column from a CSC view of the sparse matrix and interpolate from its nonzero entries, instead of calling `getcol` on a CSR matrix once per centroid. Results are unchanged.
 
 ### Fixed
 
