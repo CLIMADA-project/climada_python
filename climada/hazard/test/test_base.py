@@ -387,7 +387,7 @@ class TestSelect(unittest.TestCase):
         self.assertIsInstance(sel_haz.intensity, sparse.csr_matrix)
         self.assertIsInstance(sel_haz.fraction, sparse.csr_matrix)
 
-    def test_select_event_id(self):
+    def test_select_event_id_array(self):
         """Test select historical events."""
         haz = dummy_hazard()
         sel_haz = haz.select(event_id=np.array([4, 1]))
