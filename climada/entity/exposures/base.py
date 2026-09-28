@@ -23,7 +23,10 @@ __all__ = ["Exposures", "add_sea", "INDICATOR_IMPF", "INDICATOR_CENTR"]
 
 
 import copy
+import copyreg
+import io
 import logging
+import pickle
 import warnings
 from pathlib import Path
 
@@ -34,6 +37,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import rasterio
+from affine import Affine
 from deprecation import deprecated
 from geopandas import GeoDataFrame, GeoSeries, points_from_xy
 from mpl_toolkits.axes_grid1 import make_axes_locatable
@@ -81,6 +85,42 @@ DEF_VAR_MAT = {
     },
 }
 """MATLAB variable names"""
+
+
+def _reconstruct_legacy(cls, base, state):
+    """Replacement for copyreg._reconstructor when reading legacy metadata.
+
+    Up to affine 2.4, Affine was a subclass of tuple, and a protocol 0 pickle
+    of it (as written by PyTables) is restored with
+    ``copyreg._reconstructor(Affine, tuple, state)``. From affine 3.0 on,
+    Affine is no longer a tuple, so this raises a TypeError.
+    """
+    if base is tuple and issubclass(cls, Affine):
+        return cls(*state[:6])
+    # pylint: disable-next=protected-access
+    return copyreg._reconstructor(cls, base, state)
+
+
+class _LegacyMetadataUnpickler(pickle.Unpickler):
+    """Unpickler for Exposures metadata that PyTables could not restore."""
+
+    def find_class(self, module, name):
+        found = super().find_class(module, name)
+        if found is copyreg._reconstructor:  # pylint: disable=protected-access
+            return _reconstruct_legacy
+        return found
+
+
+def _unpickle_legacy_metadata(metadata):
+    """Return the metadata dict of an Exposures hdf5 file.
+
+    PyTables returns the raw pickle bytes when unpickling an attribute fails.
+    This happens for files written by CLIMADA < 6.1, whose metadata contains
+    an affine.Affine transform, when they are read with affine >= 3.0.
+    """
+    if isinstance(metadata, bytes):
+        return _LegacyMetadataUnpickler(io.BytesIO(metadata)).load()
+    return metadata
 
 
 class Exposures:
@@ -1206,7 +1246,9 @@ class Exposures:
         if not Path(file_name).is_file():
             raise FileNotFoundError(str(file_name))
         with pd.HDFStore(file_name, mode="r") as store:
-            metadata = store.get_storer("exposures").attrs.metadata
+            metadata = _unpickle_legacy_metadata(
+                store.get_storer("exposures").attrs.metadata
+            )
             # in previous versions of CLIMADA and/or geopandas, the CRS was stored in '_crs'/'crs'
             crs = metadata.get("crs", metadata.get("_crs"))
             if crs is None and metadata.get("meta"):

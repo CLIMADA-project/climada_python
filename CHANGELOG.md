@@ -26,6 +26,7 @@ Code freeze date: YYYY-MM-DD
 
 ### Fixed
 
+- `Exposures.from_hdf5` reads files written by CLIMADA < 6.1 also with affine 3.x, whose `Affine` can no longer be restored from the pickled metadata by PyTables [#1311](https://github.com/CLIMADA-project/climada_python/issues/1311)
 - Preserve explicitly mapped dates in `HazardForecast.from_xarray_raster` [#1305](https://github.com/CLIMADA-project/climada_python/issues/1305).
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
