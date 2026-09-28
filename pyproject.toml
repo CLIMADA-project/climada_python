@@ -64,7 +64,6 @@ dependencies = [
 doc = [
     "ipython",
     "myst-nb",
-    "readthedocs-sphinx-ext>=2.2",
     "sphinx",
     "sphinx-book-theme",
     "sphinx-markdown-tables",
