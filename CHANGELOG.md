@@ -38,6 +38,7 @@ Code freeze date: YYYY-MM-DD
 ### Removed
 - `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
 - `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `doc.development.Guide_Euler.ipynb` tutorial is not part of the climada docs anymore. For using climada on the ETHZ HPC Cluster Euler, see https://gitlab.ethz.ch/climada/climada-on-euler/ instead. [#1111](https://github.com/CLIMADA-project/climada_python/pull/1111)
 
 ## 6.1.0
 
