@@ -282,6 +282,14 @@ class TestFitMethods(unittest.TestCase):
         with self.assertRaises(ValueError):
             u_interp.preprocess_and_interpolate_ev(None, None, frequency, values)
 
+        # test negative values
+        np.testing.assert_allclose(
+            [np.nan, -55.0, np.nan],
+            u_interp.preprocess_and_interpolate_ev(
+                test_frequency, None, frequency, -1 * values, reverse=True
+            ),
+        )
+
 
 # Execute Tests
 if __name__ == "__main__":
