@@ -26,6 +26,7 @@ import numpy as np
 import pandas as pd
 import rasterio
 import scipy as sp
+from affine import Affine
 from rasterio.windows import Window
 from shapely.geometry import MultiPolygon, Point, Polygon
 from sklearn.metrics import DistanceMetric
@@ -39,6 +40,7 @@ from climada.entity.exposures.base import (
     INDICATOR_CENTR,
     INDICATOR_IMPF,
     Exposures,
+    _unpickle_legacy_metadata,
     add_sea,
 )
 from climada.hazard.base import Centroids, Hazard
@@ -503,6 +505,54 @@ class TestIO(unittest.TestCase):
         np.testing.assert_array_equal(
             exp.data["geocol2"].geometry, exp_read.data["geocol2"].values
         )
+
+    # metadata as pickled by PyTables in files written by CLIMADA < 6.1, with
+    # affine 2.x (where Affine was a subclass of tuple)
+    LEGACY_METADATA = (
+        b"(dp0\nVdescription\np1\nVlegacy\np2\nsVref_year\np3\nI2018\n"
+        b"sVvalue_unit\np4\nVUSD\np5\nsVcrs\np6\nVEPSG:4326\np7\nsVmeta\np8\n"
+        b"(dp9\nVtransform\np10\nccopy_reg\n_reconstructor\np11\n"
+        b"(caffine\nAffine\np12\nc__builtin__\ntuple\np13\n"
+        b"(F0.5\nF0.0\nF19.75\nF0.0\nF-0.5\nF10.75\nF0.0\nF0.0\nF1.0\n"
+        b"tp14\ntp15\nRp16\nss."
+    )
+
+    def test_unpickle_legacy_metadata(self):
+        """metadata with an affine 2.x Affine can be read with any affine version"""
+        metadata = _unpickle_legacy_metadata(np.bytes_(self.LEGACY_METADATA))
+        self.assertEqual(metadata["description"], "legacy")
+        self.assertEqual(
+            metadata["meta"]["transform"], Affine(0.5, 0.0, 19.75, 0.0, -0.5, 10.75)
+        )
+        # metadata that PyTables could unpickle is passed through
+        self.assertIs(_unpickle_legacy_metadata(metadata), metadata)
+
+    def test_read_legacy_hdf5_pass(self):
+        """read an hdf5 file whose metadata holds an affine 2.x Affine"""
+        file_name = DATA_DIR.joinpath("test_hdf5_exp_legacy.h5")
+        with pd.HDFStore(file_name, mode="w") as store:
+            store.put(
+                "exposures",
+                pd.DataFrame(
+                    {
+                        "value": [1.0, 2.0],
+                        "latitude": [10.0, 10.5],
+                        "longitude": [20.0, 20.5],
+                    }
+                ),
+            )
+            store.get_storer("exposures").attrs.metadata = np.bytes_(
+                self.LEGACY_METADATA
+            )
+
+        exp_read = Exposures.from_hdf5(file_name)
+        file_name.unlink()
+
+        self.assertEqual(exp_read.description, "legacy")
+        self.assertEqual(exp_read.ref_year, 2018)
+        self.assertEqual(exp_read.value_unit, "USD")
+        self.assertTrue(u_coord.equal_crs(exp_read.crs, "EPSG:4326"))
+        np.testing.assert_array_equal(exp_read.value, [1.0, 2.0])
 
 
 class TestAddSea(unittest.TestCase):
