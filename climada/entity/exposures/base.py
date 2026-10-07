@@ -1096,7 +1096,7 @@ class Exposures:
         buffer=0.0,
         extend="neither",
         zoom=10,
-        url=ctx.providers.CartoDB.Positron,
+        url=ctx.providers.OpenStreetMap.Mapnik,
         axis=None,
         **kwargs,
     ):
@@ -1120,8 +1120,7 @@ class Exposures:
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : Any, optional
-            image source, e.g., ``ctx.providers.OpenStreetMap.Mapnik``.
-            Default: ``ctx.providers.CartoDB.Positron``
+            Default: ``ctx.providers.OpenStreetMap.Mapnik``
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         kwargs : optional
