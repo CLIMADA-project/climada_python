@@ -1096,7 +1096,7 @@ class Exposures:
         buffer=0.0,
         extend="neither",
         zoom=10,
-        url=ctx.providers.OpenStreetMap.Mapnik,
+        url=ctx.providers.Esri.WorldGrayCanvas,
         axis=None,
         **kwargs,
     ):
@@ -1120,7 +1120,7 @@ class Exposures:
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : Any, optional
-            Default: ``ctx.providers.OpenStreetMap.Mapnik``
+            Default: ``ctx.providers.Esri.WorldGrayCanvas``
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         kwargs : optional

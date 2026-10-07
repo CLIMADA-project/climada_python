@@ -987,7 +987,7 @@ class Impact:
         buffer=0.0,
         extend="neither",
         zoom=10,
-        url=ctx.providers.OpenStreetMap.Mapnik,
+        url=ctx.providers.Esri.WorldGrayCanvas,
         axis=None,
         **kwargs,
     ):
@@ -1010,7 +1010,7 @@ class Impact:
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : str, optional
-            image source, default: ctx.providers.OpenStreetMap.Mapnik
+            image source, default: ctx.providers.Esri.WorldGrayCanvas
         axis : matplotlib.axes.Axes, optional
             axis to use
         kwargs : dict, optional
@@ -1105,7 +1105,7 @@ class Impact:
         buffer=0.0,
         extend="neither",
         zoom=10,
-        url=ctx.providers.OpenStreetMap.Mapnik,
+        url=ctx.providers.Esri.WorldGrayCanvas,
         axis=None,
         **kwargs,
     ):
@@ -1132,7 +1132,7 @@ class Impact:
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : str, optional
-            image source, default: ctx.providers.OpenStreetMap.Mapnik
+            image source, default: ctx.providers.Esri.WorldGrayCanvas
         axis : matplotlib.axes.Axes, optional
             axis to use
         kwargs : dict, optional
