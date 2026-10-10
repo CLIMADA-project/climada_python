@@ -964,7 +964,7 @@ class Exposures:
         res=None,
         raster_res=None,
         save_tiff=None,
-        raster_f=lambda x: np.log10((np.fmax(x + 1, 1))),
+        raster_f=lambda x: np.log10((np.maximum(x + 1, 1))),
         label="value (log10)",
         scheduler=None,
         axis=None,
@@ -974,7 +974,7 @@ class Exposures:
         **kwargs,
     ):
         """Generate raster from points geometry and plot it using log10 scale
-        `np.log10((np.fmax(raster+1, 1)))`.
+        `np.log10((np.maximum(raster+1, 1)))`.
 
         Parameters
         ----------
@@ -1001,6 +1001,8 @@ class Exposures:
         fill : bool, optional
             If false, the areas with no data will be plotted
             in white. If True, the areas with missing values are filled as 0s.
+            Zero-valued raster cells are treated as missing and masked after
+            applying raster_f when fill is False.
             The default is True.
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
@@ -1065,13 +1067,13 @@ class Exposures:
         )
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
+        raster_plot = raster_f(raster)
         if not fill:
-            raster = np.where(raster == 0, np.nan, raster)
-            raster_f = lambda x: np.log10((np.maximum(x + 1, 1)))
+            raster_plot = np.where(raster == 0, np.nan, raster_plot)
         if "cmap" not in kwargs:
             kwargs["cmap"] = CMAP_RASTER
         imag = axis.imshow(
-            raster_f(raster),
+            raster_plot,
             **kwargs,
             origin="upper",
             extent=(xmin, xmax, ymin, ymax),
