@@ -999,9 +999,9 @@ class Exposures:
         figsize : tuple, optional
             figure size for plt.subplots
         fill : bool, optional
-            If false, the areas with no data will be plotted
-            in white. If True, the areas with missing values are filled as 0s.
-            The default is True.
+            If false, the areas with no data or zero value will be plotted
+            in white. If True, missing values are filled as 0s and plotted 
+            with the corresponding colour. The default is True.
         adapt_fontsize : bool, optional
             If set to true, the size of the fonts will be adapted to the size of the figure.
             Otherwise the default matplotlib font size is used. Default is True.
@@ -1065,13 +1065,13 @@ class Exposures:
         )
         axis.set_extent((xmin, xmax, ymin, ymax), crs=proj_data)
         u_plot.add_shapes(axis)
+        raster_plot = raster_f(raster)
         if not fill:
-            raster = np.where(raster == 0, np.nan, raster)
-            raster_f = lambda x: np.log10((np.maximum(x + 1, 1)))
+            raster_plot = np.where((raster == 0) | np.isnan(raster), np.nan, raster_plot)
         if "cmap" not in kwargs:
             kwargs["cmap"] = CMAP_RASTER
         imag = axis.imshow(
-            raster_f(raster),
+            raster_plot,
             **kwargs,
             origin="upper",
             extent=(xmin, xmax, ymin, ymax),
