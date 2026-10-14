@@ -32,7 +32,11 @@ import climada.util.constants as u_const
 from climada.hazard.base import Hazard
 from climada.hazard.xarray import HazardXarrayReader
 from climada.util.checker import size
-from climada.util.forecast import ForecastMixin, reduce_unique_selection
+from climada.util.forecast import (
+    ForecastMixin,
+    reduce_unique_selection,
+    sparse_quantile_axis0,
+)
 
 LOGGER = logging.getLogger(__name__)
 
@@ -236,7 +240,6 @@ class HazardForecast(ForecastMixin, Hazard):
             **self._reduce_attrs("mean"),
         )
 
-    # TODO: Do not densify the entire matrix but compute quantiles column-wise!
     def _quantile(
         self,
         q: float,
@@ -253,12 +256,8 @@ class HazardForecast(ForecastMixin, Hazard):
                 q=q,
             )
 
-        red_intensity = sparse.csr_matrix(
-            np.quantile(self.intensity.toarray(), q, axis=0)
-        )
-        red_fraction = sparse.csr_matrix(
-            np.quantile(self.fraction.toarray(), q, axis=0)
-        )
+        red_intensity = sparse.csr_matrix(sparse_quantile_axis0(self.intensity, q))
+        red_fraction = sparse.csr_matrix(sparse_quantile_axis0(self.fraction, q))
         if event_name is None:
             event_name = f"quantile_{q}"
         return HazardForecast(
@@ -443,7 +442,8 @@ class HazardForecast(ForecastMixin, Hazard):
         data_vars : dict(str, str), optional
             Mapping from default variable names to variable names used in the data
             to read. See :py:meth:`~climada.hazard.io.HazardIO.from_xarray_raster` for
-            details.
+            details. To load forecast dates, map ``date`` to the corresponding
+            variable. Dates default to 0 when no date mapping is provided.
         crs : str, optional
             Coordinate reference system identifier. Defaults to "EPSG:4326".
         rechunk : bool, optional
@@ -537,7 +537,8 @@ class HazardForecast(ForecastMixin, Hazard):
             f"lt_{lt / np.timedelta64(1, 'h'):.0f}h_m_{m}"
             for lt, m in zip(kwargs["lead_time"], kwargs["member"])
         ]
-        kwargs["date"] = np.zeros_like(kwargs["date"], dtype=int)
+        if not (data_vars or {}).get("date"):
+            kwargs["date"] = np.zeros_like(kwargs["date"], dtype=int)
 
         # Convert to HazardForecast with forecast attributes
         return cls(**Hazard._check_and_cast_attrs(kwargs))
