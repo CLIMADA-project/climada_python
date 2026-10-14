@@ -135,9 +135,6 @@ class Measure:
     It also holds a `CostIncome` object to define the financial aspects of the
     measure (see :class:`CostIncome` and :ref:`cost-income-tutorial`).
 
-    Finally it holds an `implementation_duration` attribute, in the form of a
-    pandas ``DateOffset``, which is used when the time dimension is considered.
-
     Notes
     -----
 
@@ -168,8 +165,6 @@ class Measure:
         List of measure names that this measure is a combination of.
     cost_income : climada.entity.measures.cost_income.CostIncome
         Cost and income object associated with the measure.
-    implementation_duration : pd.DateOffset, optional
-        Duration of implementation before the measure is fully functional.
     """
 
     def __init__(
@@ -181,7 +176,6 @@ class Measure:
         hazard_changes: HazardChange = identity_function,
         sub_measures: Optional[list[str]] = None,
         cost_income: Optional[CostIncome] = None,
-        implementation_duration: Optional[BaseOffset] = None,
         color_rgb: Optional[Tuple[float, float, float]] = None,
         _config: Optional[MeasureConfig] = None,
     ):
@@ -202,8 +196,6 @@ class Measure:
             Names of component measures.
         cost_income : CostIncome, optional
             Financial data. If None, an empty CostIncome is initialized.
-        implementation_duration : pd.DateOffset, optional
-            Time offset for full implementation.
         """
 
         self.name = name
@@ -212,7 +204,6 @@ class Measure:
         self.impfset_changes = allow_kwargs(impfset_changes)
         self.sub_measures = sub_measures
         self.cost_income = cost_income if cost_income is not None else CostIncome()
-        self.implementation_duration = implementation_duration
         self.color_rgb = (0, 0, 0) if color_rgb is None else color_rgb
         self._config = _config
 
@@ -460,8 +451,8 @@ class Measure:
         Notes
         -----
          Keyword arguments other than "kwargs_exposures", "kwargs_impfset",
-         "kwargs_hazard" are ignored. 
-         
+         "kwargs_hazard" are ignored.
+
          The base exposure, hazard, and impfset provided by default can
          be overriden by explicitely providing a different value within
          ``kwargs_exposures``, ``kwargs_impfset``, or ``kwargs_hazard``
@@ -496,7 +487,11 @@ class Measure:
         return changed_exposures, changed_impfset, changed_hazard
 
     def calc_impact(
-        self, exposures: Exposures, impfset: ImpactFuncSet, hazard: Hazard, **kwargs: dict,
+        self,
+        exposures: Exposures,
+        impfset: ImpactFuncSet,
+        hazard: Hazard,
+        **kwargs: dict,
     ) -> Impact:
         """Compute impact with the active measure.
 
@@ -536,6 +531,7 @@ class Measure:
             )
             new_exp.assign_centroids(new_haz)
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
-            save_mat=kwargs.get("save_mat",False), assign_centroids=kwargs.get("assign_centroids",False)
+            save_mat=kwargs.get("save_mat", False),
+            assign_centroids=kwargs.get("assign_centroids", False),
         )
         return imp  # .calc_risk_transfer(0, 0)
