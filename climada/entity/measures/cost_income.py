@@ -19,7 +19,6 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define the CostIncome class to handle the cash flow of measures.
 """
 
-from datetime import datetime
 from typing import Any, Optional, cast
 
 import matplotlib.pyplot as plt
@@ -62,7 +61,7 @@ class CostIncome:
     def __init__(
         self,
         *,
-        mkt_price_year: Optional[int] = None,
+        mkt_price_year: int | None = None,
         init_cost: float = 0.0,
         periodic_cost: float = 0.0,
         periodic_income: float = 0.0,
@@ -94,7 +93,7 @@ class CostIncome:
         """
 
         self.freq = freq
-        self.mkt_price_year = datetime(mkt_price_year or datetime.today().year, 1, 1)
+        self.mkt_price_year = mkt_price_year or pd.Timestamp.now().year
         self.cost_growth_rate = cost_yearly_growth_rate
 
         self.init_cost = -abs(init_cost)
@@ -107,7 +106,7 @@ class CostIncome:
     def __repr__(self) -> str:
         lines = [
             "CostIncome(",
-            f"  mkt_price_year          = {self.mkt_price_year.year}",
+            f"  mkt_price_year          = {self.mkt_price_year}",
             f"  freq                    = {self.freq!r}",
             f"  init_cost               = {self.init_cost:,.2f}",
             f"  periodic_cost           = {self.periodic_cost:,.2f}",
@@ -119,6 +118,13 @@ class CostIncome:
             ")",
         ]
         return "\n".join(lines)
+
+    @property
+    def _mkt_price_ts(self) -> pd.Timestamp:
+        """pd.Timestamp : First day of the market price reference year."""
+        return cast(
+            pd.Timestamp, pd.Timestamp(year=self.mkt_price_year, month=1, day=1)
+        )
 
     @property
     def custom_cash_flows(self) -> pd.DataFrame | None:
@@ -332,7 +338,7 @@ class CostIncome:
         cash flow DataFrame will raise a KeyError.
         """
         # Calculate growth factor based on years from market price reference
-        years_passed = (curr_date - self.mkt_price_year).days / 365.0
+        years_passed = (curr_date - self._mkt_price_ts).days / 365.0
 
         cost_factor = (1 + self.cost_growth_rate) ** years_passed
         inc_factor = (1 + self.income_growth_rate) ** years_passed
@@ -396,7 +402,8 @@ class CostIncome:
 
         # 'Trick' to make sure that e.g., impl_date "2020-01-05" falls in
         # period "2020-01" if freq is "M"
-        impl_ts = pd.Timestamp(str(impl_date)).to_period(self.freq).start_time
+        impl_ts = pd.Timestamp(str(impl_date))
+        impl_ts = impl_ts.to_period(self.freq).start_time
         periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
 
         results = [self.calc_at_date(impl_ts, p.start_time) for p in periods]
@@ -533,12 +540,7 @@ class CostIncome:
 
         first_ci = cost_incomes[0]
 
-        if not all(
-            (
-                first_ci.mkt_price_year.year == c.mkt_price_year.year
-                for c in cost_incomes
-            )
-        ):
+        if not all((first_ci.mkt_price_year == c.mkt_price_year for c in cost_incomes)):
             raise ValueError(
                 "Measure cost incomes have different market price years,"
                 " combination is not possible."
@@ -581,7 +583,7 @@ class CostIncome:
                 raise err
 
         return CostIncome(
-            mkt_price_year=first_ci.mkt_price_year.year,
+            mkt_price_year=first_ci.mkt_price_year,
             init_cost=sum(c.init_cost for c in cost_incomes),
             periodic_cost=sum(c.periodic_cost for c in cost_incomes),
             periodic_income=sum(c.periodic_income for c in cost_incomes),
