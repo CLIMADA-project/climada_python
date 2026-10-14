@@ -24,7 +24,6 @@ from datetime import datetime
 import numpy as np
 import pandas as pd
 import pytest
-from pandas.testing import assert_frame_equal
 
 from climada.entity.measures.cost_income import CostIncome
 
@@ -56,11 +55,11 @@ class TestInit:
 
     def test_mkt_price_year_default_is_current_year(self):
         ci = CostIncome()
-        assert ci.mkt_price_year.year == datetime.today().year
+        assert ci.mkt_price_year == datetime.today().year
 
     def test_mkt_price_year_custom(self):
         ci = CostIncome(mkt_price_year=2015)
-        assert ci.mkt_price_year.year == 2015
+        assert ci.mkt_price_year == 2015
 
     def test_custom_cash_flows_processed(self):
         df = pd.DataFrame(
