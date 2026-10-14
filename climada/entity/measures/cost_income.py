@@ -403,7 +403,7 @@ class CostIncome:
         # 'Trick' to make sure that e.g., impl_date "2020-01-05" falls in
         # period "2020-01" if freq is "M"
         impl_ts = pd.Timestamp(str(impl_date))
-        impl_ts = impl_ts.to_period(self.freq).start_time
+        impl_ts = cast(pd.Timestamp, impl_ts).to_period(self.freq).start_time
         periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
 
         results = [self.calc_at_date(impl_ts, p.start_time) for p in periods]
@@ -540,7 +540,7 @@ class CostIncome:
 
         first_ci = cost_incomes[0]
 
-        if not all((first_ci.mkt_price_year == c.mkt_price_year for c in cost_incomes)):
+        if not all(first_ci.mkt_price_year == c.mkt_price_year for c in cost_incomes):
             raise ValueError(
                 "Measure cost incomes have different market price years,"
                 " combination is not possible."
