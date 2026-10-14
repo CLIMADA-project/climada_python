@@ -20,7 +20,7 @@ Define the CostIncome class to handle the cash flow of measures.
 """
 
 from datetime import datetime
-from typing import Any, Optional, Tuple, cast
+from typing import Any, Optional, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -271,7 +271,7 @@ class CostIncome:
 
     def calc_at_date(
         self, impl_date: pd.Timestamp, curr_date: pd.Timestamp
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         r"""Calculate cash flows for a single timestamp.
 
         Computes the total cash flow, total cost, and total income for a given
@@ -298,7 +298,7 @@ class CostIncome:
 
         Returns
         -------
-        Tuple[float, float, float]
+        tuple[float, float, float]
             A tuple containing:
 
             * total_cash_flow : float
@@ -361,7 +361,7 @@ class CostIncome:
 
     def calc_cash_flows(
         self, impl_date: pd.Timestamp, start_date: pd.Timestamp, end_date: pd.Timestamp
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculate net cash flows, costs, and incomes over a period.
 
         Computes cash flow metrics across a specified date range by iterating
@@ -383,7 +383,7 @@ class CostIncome:
 
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray, np.ndarray]
+        tuple[np.ndarray, np.ndarray, np.ndarray]
             A tuple containing three NumPy arrays of equal length:
 
             * net : np.ndarray
@@ -403,7 +403,7 @@ class CostIncome:
         net, costs, incs = map(np.array, zip(*results))
         return net, costs, incs
 
-    def calc_total(self, impl_date, start_date, end_date) -> Tuple[float, float, float]:
+    def calc_total(self, impl_date, start_date, end_date) -> tuple[float, float, float]:
         """
         Calculate the total value of the cash flows over a given period.
 
@@ -418,7 +418,7 @@ class CostIncome:
 
         Returns:
         --------
-        Tuple[float, float, float]
+        tuple[float, float, float]
             the total net, cost, and income values over the given period.
         """
 
@@ -432,7 +432,7 @@ class CostIncome:
         impl_date: Any,
         start_date: Any,
         end_date: Any,
-        figsize: Tuple[int, int] = (12, 7),
+        figsize: tuple[int, int] = (12, 7),
         title: Optional[str] = None,
     ):
         """Plot periodic and cumulative cash flows over a given period.
