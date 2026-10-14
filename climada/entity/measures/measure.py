@@ -125,9 +125,10 @@ class Measure:
     Contains a measure to be applied to a set of exposures, impact functions,
     and hazard.
 
-    A ``Measure`` represents a single adaptation or risk-reduction action. It
-    holds three (optional) transformation functions, one each for
-    :class:`Exposures`, :class:`ImpactFuncSet`, and :class:`Hazard`, that are
+    A ``Measure`` represents an adaptation or risk-reduction action
+    (or a bundle of actions considered as one). It holds three (optional)
+    transformation functions, one each for :class:`Exposures`,
+    :class:`ImpactFuncSet`, and :class:`Hazard`, that are
     can be applied to a triplet of ``(Exposures, ImpactFuncSet, Hazard)``, to
     reflect the effect of the measure.
 
@@ -235,7 +236,7 @@ class Measure:
         This method applies the `exposures_changes` function of the measure to
         the provided :class:`Exposures` object. If ``enforce_copy`` is True (default), a
         deep copy of the exposures is created before modification to ensure
-        immutability of the original object.
+        preservation of the original object.
 
         Additional keyword arguments to the function can be passed directly.
 
@@ -458,11 +459,13 @@ class Measure:
 
         Notes
         -----
-        The kwargs merging follows this priority order:
-
-        1. Default context: The original triplet (exposures, impfset, hazard)
-        2. Entity-specific overrides: Values from ``kwargs_exposures``,
-           ``kwargs_impfset``, or ``kwargs_hazard`` respectively
+         Keyword arguments other than "kwargs_exposures", "kwargs_impfset",
+         "kwargs_hazard" are ignored. 
+         
+         The base exposure, hazard, and impfset provided by default can
+         be overriden by explicitely providing a different value within
+         ``kwargs_exposures``, ``kwargs_impfset``, or ``kwargs_hazard``
+         respectively.
 
         This ensures that each transformation receives full context about all entities
         while allowing fine-grained control over individual transformations.
@@ -493,12 +496,12 @@ class Measure:
         return changed_exposures, changed_impfset, changed_hazard
 
     def calc_impact(
-        self, exposures: Exposures, impfset: ImpactFuncSet, hazard: Hazard
+        self, exposures: Exposures, impfset: ImpactFuncSet, hazard: Hazard, **kwargs: dict,
     ) -> Impact:
         """Compute impact with the active measure.
 
         This convenience method allow to compute an ``Impact`` object from an
-        (Exposure, ImpactFuncSet, Hazard) triplet by first applying the measure
+        (Exposure, ImpactFuncSet, Hazard) triplet after having applied the measure
         to that triplet.
 
         Parameters
@@ -509,6 +512,9 @@ class Measure:
             The initial (no adaptation) impact function set
         hazard : Hazard
             The initial (no adaptation) hazard set
+        kwargs: dict
+            Keyword arguments passed to the `impact()` method of `ImpactCalc`
+            (Currently `save_mat` and `assign_centroids`)
 
         Returns
         -------
@@ -530,6 +536,6 @@ class Measure:
             )
             new_exp.assign_centroids(new_haz)
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
-            save_mat=False, assign_centroids=False
+            save_mat=kwargs.get("save_mat",False), assign_centroids=kwargs.get("assign_centroids",False)
         )
         return imp  # .calc_risk_transfer(0, 0)
