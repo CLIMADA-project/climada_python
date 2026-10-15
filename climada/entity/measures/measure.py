@@ -31,7 +31,12 @@ import logging
 from functools import wraps
 from typing import TYPE_CHECKING, Any, TypeVar
 
-from climada.entity.measures.helper import identity_function
+from climada.entity.measures.helper import (
+    helper_exposure,
+    helper_hazard,
+    helper_impfset,
+    identity_function,
+)
 from climada.entity.measures.measure_config import MeasureConfig
 
 from .cost_income import CostIncome
@@ -205,6 +210,60 @@ class Measure:
         """
 
         return self._config is not None
+
+    @classmethod
+    def from_config(cls, config: MeasureConfig) -> "Measure":
+        """Create a ``Measure`` from a ``MeasureConfig`` object.
+
+        The modifiers defined in the configuration are converted into change
+        functions for the exposures, impact function set and hazard. The
+        configuration is stored on the new measure, which therefore is
+        serializable (see :attr:`is_serializable`).
+
+        Parameters
+        ----------
+        config : MeasureConfig
+            Configuration defining the name, modifiers, cost and income, and
+            color of the measure.
+
+        Returns
+        -------
+        Measure
+            The measure built from ``config``.
+        """
+        impfset_change = helper_impfset(config.impfset_modifier)
+        exp_change = helper_exposure(config.exposures_modifier)
+        haz_change = helper_hazard(config.hazard_modifier)
+        return cls(
+            name=config.name,
+            exposures_changes=exp_change,
+            impfset_changes=impfset_change,
+            hazard_changes=haz_change,
+            cost_income=CostIncome.from_config(config.cost_income),
+            color_rgb=config.color_rgb,
+            _config=config,
+        )
+
+    @classmethod
+    def from_dict(cls, d: dict) -> "Measure":
+        """Create a ``Measure`` from a dictionary.
+
+        The dictionary is first converted to a ``MeasureConfig`` with
+        :py:meth:`MeasureConfig.from_dict`, then to a ``Measure`` with
+        :py:meth:`Measure.from_config`.
+
+        Parameters
+        ----------
+        d : dict
+            Dictionary describing a single measure, in the format expected by
+            :py:meth:`MeasureConfig.from_dict`.
+
+        Returns
+        -------
+        Measure
+            The measure built from ``d``.
+        """
+        return cls.from_config(MeasureConfig.from_dict(d))
 
     def apply_exposures_changes(
         self, exposures: Exposures, enforce_copy: bool = True, **kwargs
