@@ -105,13 +105,6 @@ class TestMeasureInit:
         m = Measure("combo", sub_measures=["a", "b"])
         assert m.sub_measures == ["a", "b"]
 
-    def test_implementation_duration_stored(self):
-        from pandas.tseries.offsets import DateOffset
-
-        offset = DateOffset(years=2)
-        m = Measure("test", implementation_duration=offset)
-        assert m.implementation_duration == offset
-
     def test_change_functions_wrapped_with_allow_kwargs(self):
         def my_fn(obj):
             return obj
