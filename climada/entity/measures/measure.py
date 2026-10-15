@@ -21,8 +21,6 @@ Define Measure class.
 
 from __future__ import annotations
 
-from pandas.tseries.offsets import BaseOffset
-
 from climada.engine.impact import Impact
 
 __all__ = ["Measure"]
@@ -31,7 +29,7 @@ import copy
 import inspect
 import logging
 from functools import wraps
-from typing import TYPE_CHECKING, Any, Optional, Tuple, TypeVar
+from typing import TYPE_CHECKING, Any, TypeVar
 
 from climada.entity.measures.helper import identity_function
 from climada.entity.measures.measure_config import MeasureConfig
@@ -163,10 +161,10 @@ class Measure:
         exposures_changes: ExposuresChange = identity_function,
         impfset_changes: ImpfsetChange = identity_function,
         hazard_changes: HazardChange = identity_function,
-        sub_measures: Optional[list[str]] = None,
-        cost_income: Optional[CostIncome] = None,
-        color_rgb: Optional[Tuple[float, float, float]] = None,
-        _config: Optional[MeasureConfig] = None,
+        sub_measures: list[str] | None = None,
+        cost_income: CostIncome | None = None,
+        color_rgb: tuple[float, float, float] | None = None,
+        _config: MeasureConfig | None = None,
     ):
         """
         Initialize a new Measure object.
@@ -387,7 +385,7 @@ class Measure:
         hazard: Hazard,
         enforce_copy: bool = True,
         **kwargs,
-    ) -> Tuple[Exposures, ImpactFuncSet, Hazard]:
+    ) -> tuple[Exposures, ImpactFuncSet, Hazard]:
         """Apply all measure transformations to the provided triplet of
         :class:`Exposures`, :class:`ImpactFuncSet`, :class:`Hazard`.
 
@@ -431,7 +429,7 @@ class Measure:
 
         Returns
         -------
-        Tuple[Exposures, ImpactFuncSet, Hazard]
+        tuple[Exposures, ImpactFuncSet, Hazard]
             A tuple containing the transformed entities in the order:
             (changed_exposures, changed_impfset, changed_hazard). If `enforce_copy`
             was True, these are new objects; otherwise, they may reference the
@@ -557,5 +555,7 @@ class Measure:
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
             save_mat=save_mat,
             assign_centroids=assign_centroids,
+            ignore_cover=ignore_cover,
+            ignore_deductible=ignore_deductible,
         )
         return imp  # .calc_risk_transfer(0, 0)
