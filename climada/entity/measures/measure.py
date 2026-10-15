@@ -512,9 +512,37 @@ class Measure:
             The initial (no adaptation) impact function set
         hazard : Hazard
             The initial (no adaptation) hazard set
+        save_mat : bool, optional
+            if true, save the total impact matrix (events x exposures)
+            Default: True
+        assign_centroids : bool, optional
+            indicates whether centroids are assigned to the self.exposures object.
+            The default centroids assignment uses Euclidean distance and a threshold equal to
+            twice the highest resolution (smallest distance between any two nearest neighbours)
+            of the centroids (assuming a regular grid).
+            Recommendation: assign the centroids directly with control
+            over the distance metric and the distance threshold using
+            `exposure.assign_centroids(hazard)`. In this case, set assign_centroids to ``False``.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
+            Default: True
+        ignore_cover : bool, optional
+            if set to True, the column 'cover' of the exposures GeoDataFrame, if present, is
+            ignored and the impact it not capped by the values in this column.
+            Default: False
+        ignore_deductible : bool, opotional
+            if set to True, the column 'deductible' of the exposures GeoDataFrame, if present, is
+            ignored and the impact it not reduced through values in this column.
+            Default: False
+        enforce_copy : bool, optional
+            If True (default), creates deep copies of entities before applying
+            changes, provided the transformation functions are not identity functions.
+            If False, entities may be modified in-place depending on the behavior
+            of the underlying transformation methods.
         kwargs: dict
-            Keyword arguments passed to the `impact()` method of `ImpactCalc`
-            (Currently `save_mat` and `assign_centroids`)
+            Keyword arguments passed to the `apply()` method when
+            applying the measure
 
         Returns
         -------
@@ -526,7 +554,9 @@ class Measure:
             ImpactCalc,  # pylint: disable=import-outside-toplevel
         )
 
-        new_exp, new_impfs, new_haz = self.apply(exposures, impfset, hazard)
+        new_exp, new_impfs, new_haz = self.apply(
+            exposures, impfset, hazard, enforce_copy=enforce_copy, **kwargs
+        )
         if new_haz.centr_exp_col not in new_exp.gdf.columns:
             LOGGER.warning(
                 "No assigned hazard centroids in exposures object after the "
@@ -536,7 +566,7 @@ class Measure:
             )
             new_exp.assign_centroids(new_haz)
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
-            save_mat=kwargs.get("save_mat", False),
-            assign_centroids=kwargs.get("assign_centroids", False),
+            save_mat=save_mat,
+            assign_centroids=assign_centroids,
         )
         return imp  # .calc_risk_transfer(0, 0)
