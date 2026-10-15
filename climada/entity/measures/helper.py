@@ -225,16 +225,18 @@ def impact_intensity_rp_cutoff_helper(
 
 def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
     """Return a change function that scales, shifts, and optionally
-    replaces hazard intensities.
+    replaces hazard intensities and frequencies.
 
     Constructs a :class:`HazardChange` from a :class:`HazardModifierConfig`.
     The returned function optionally loads a new hazard from disk, then applies
-    a linear transformation to all stored (non-zero) intensity values.
+    a linear transformation to all stored (non-zero) intensity values and to
+    the event frequencies.
 
     If :attr:`~HazardModifierConfig.impact_rp_cutoff` is set, the returned
     function is further composed (via :func:`composite_fun`) with
-    :func:`impact_intensity_rp_cutoff_helper` so that low-return-period events
-    are zeroed out after the linear transformation.
+    :func:`impact_intensity_rp_cutoff_helper` so that events more frequent
+    than the cutoff return period are zeroed out after the linear
+    transformations.
 
     Parameters
     ----------
@@ -245,6 +247,10 @@ def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
           ``None`` to transform the input hazard in-place.
         - ``haz_int_mult`` : multiplicative factor applied to intensity data.
         - ``haz_int_add`` : additive shift applied to intensity data.
+        - ``haz_freq_mult`` : multiplicative factor applied to event
+          frequencies.
+        - ``haz_freq_add`` : additive shift applied to event frequencies
+          (to every event).
         - ``impact_rp_cutoff`` : return period threshold passed to
           :func:`impact_intensity_rp_cutoff_helper`, or ``None`` to skip.
 
@@ -255,9 +261,16 @@ def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
 
     Notes
     -----
-    The transformation is applied directly to the sparse matrix's ``.data``
-    array, so only explicitly stored (non-zero) entries are affected.
-    Structural zeros remain zero.
+    The intensity transformation is applied directly to the sparse matrix's
+    ``.data`` array, so only explicitly stored (non-zero) entries are
+    affected. Structural zeros remain zero. Negative intensities and
+    frequencies are clipped to zero.
+
+    The frequency transformation applies to all events, including those
+    with no stored intensity.
+
+    ``impact_rp_cutoff`` ranks events using the frequencies of ``base_hazard``,
+    so the frequency modifiers do not influence which events are removed.
     """
 
     def hazard_change(hazard: Hazard, **_kwargs) -> Hazard:
@@ -266,11 +279,23 @@ def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
             if hazard_modifier.new_hazard_path is not None
             else hazard
         )
-        data = cast(np.ndarray, changed_hazard.intensity.data)
-        data *= hazard_modifier.haz_int_mult
-        data += hazard_modifier.haz_int_add
-        data[data < 0] = 0
+        data_int = cast(np.ndarray, changed_hazard.intensity.data)
+        data_int *= hazard_modifier.haz_int_mult
+        data_int += hazard_modifier.haz_int_add
+        data_int[data_int < 0] = 0
         changed_hazard.intensity.eliminate_zeros()
+
+        if hazard_modifier.haz_freq_mult is not None:
+            changed_hazard.frequency = (
+                changed_hazard.frequency * hazard_modifier.haz_freq_mult
+            )
+
+        if hazard_modifier.haz_freq_add is not None:
+            changed_hazard.frequency = (
+                changed_hazard.frequency + hazard_modifier.haz_freq_add
+            )
+
+        changed_hazard.frequency = changed_hazard.frequency.clip(0, None)
         return changed_hazard
 
     if hazard_modifier.impact_rp_cutoff is not None:
