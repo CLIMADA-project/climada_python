@@ -363,3 +363,114 @@ class TestApply:
         )
         m.apply(_make_mock(), _make_mock(), _make_mock(), enforce_copy=False)
         assert call_order == ["exposures", "hazard", "impfset"]
+
+
+class TestCalcImpact:
+    IMPACT_CALC = "climada.engine.impact_calc.ImpactCalc"
+    LOGGER = "climada.entity.measures.measure.LOGGER"
+    CENTR_COL = "centr_FL"
+
+    def _make_triplet(self, with_centroids=True):
+        """Return mock (exposures, impfset, hazard) with a ``gdf.columns`` list."""
+        exp, impfset, haz = _make_mock(), _make_mock(), _make_mock()
+        haz.centr_exp_col = self.CENTR_COL
+        exp.gdf.columns = ["value"] + ([self.CENTR_COL] if with_centroids else [])
+        return exp, impfset, haz
+
+    def test_returns_impact_computed_on_transformed_triplet(self):
+        new_triplet = self._make_triplet()
+        m = Measure("test")
+        with (
+            patch(self.IMPACT_CALC) as mock_calc,
+            patch.object(Measure, "apply", return_value=new_triplet),
+        ):
+            result = m.calc_impact(*self._make_triplet())
+
+        mock_calc.assert_called_once_with(*new_triplet)
+        assert result is mock_calc.return_value.impact.return_value
+
+    def test_default_arguments_passed_to_impact(self):
+        with patch(self.IMPACT_CALC) as mock_calc:
+            Measure("test").calc_impact(*self._make_triplet(), enforce_copy=False)
+
+        mock_calc.return_value.impact.assert_called_once_with(
+            save_mat=True,
+            assign_centroids=False,
+            ignore_cover=False,
+            ignore_deductible=False,
+        )
+
+    def test_custom_arguments_passed_to_impact(self):
+        with patch(self.IMPACT_CALC) as mock_calc:
+            Measure("test").calc_impact(
+                *self._make_triplet(),
+                ignore_cover=True,
+                ignore_deductible=True,
+                save_mat=False,
+                assign_centroids=True,
+                enforce_copy=False,
+            )
+
+        mock_calc.return_value.impact.assert_called_once_with(
+            save_mat=False,
+            assign_centroids=True,
+            ignore_cover=True,
+            ignore_deductible=True,
+        )
+
+    def test_enforce_copy_and_kwargs_forwarded_to_apply(self):
+        triplet = self._make_triplet()
+        kwargs_hazard = {"threshold": 3.5}
+        m = Measure("test")
+        with (
+            patch(self.IMPACT_CALC),
+            patch.object(Measure, "apply", return_value=triplet) as mock_apply,
+        ):
+            m.calc_impact(*triplet, enforce_copy=False, kwargs_hazard=kwargs_hazard)
+
+        mock_apply.assert_called_once_with(
+            *triplet, enforce_copy=False, kwargs_hazard=kwargs_hazard
+        )
+
+    def test_kwargs_reach_change_function_and_result_is_used(self):
+        exp, impfset, haz = self._make_triplet()
+        changed_haz = _make_mock()
+        changed_haz.centr_exp_col = self.CENTR_COL
+        received = {}
+
+        def hazard_change(hazard, threshold):
+            received.update(hazard=hazard, threshold=threshold)
+            return changed_haz
+
+        m = Measure("test", hazard_changes=hazard_change)
+        with patch(self.IMPACT_CALC) as mock_calc:
+            m.calc_impact(
+                exp,
+                impfset,
+                haz,
+                enforce_copy=False,
+                kwargs_hazard={"threshold": 3.5},
+            )
+
+        assert received == {"hazard": haz, "threshold": 3.5}
+        mock_calc.assert_called_once_with(exp, impfset, changed_haz)
+
+    def test_warns_and_assigns_centroids_when_missing(self):
+        exp, impfset, haz = self._make_triplet(with_centroids=False)
+        order = MagicMock()
+        order.attach_mock(exp.assign_centroids, "assign")
+        with patch(self.IMPACT_CALC) as mock_calc, patch(self.LOGGER) as mock_logger:
+            order.attach_mock(mock_calc.return_value.impact, "impact")
+            Measure("test").calc_impact(exp, impfset, haz, enforce_copy=False)
+
+        mock_logger.warning.assert_called_once()
+        exp.assign_centroids.assert_called_once_with(haz)
+        assert [c[0] for c in order.mock_calls] == ["assign", "impact"]
+
+    def test_no_warning_when_centroids_assigned(self):
+        exp, impfset, haz = self._make_triplet(with_centroids=True)
+        with patch(self.IMPACT_CALC), patch(self.LOGGER) as mock_logger:
+            Measure("test").calc_impact(exp, impfset, haz, enforce_copy=False)
+
+        mock_logger.warning.assert_not_called()
+        exp.assign_centroids.assert_not_called()
