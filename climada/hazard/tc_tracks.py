@@ -46,14 +46,13 @@ import numpy as np
 import pandas as pd
 import pathos
 import scipy.io.matlab as matlab
-import shapely.ops
+import shapely
 import statsmodels.api as sm
 import xarray as xr
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
 from shapely.geometry import LineString, MultiLineString, Point, Polygon
-from shapely.ops import unary_union
 from sklearn.metrics import DistanceMetric
 from tqdm import tqdm
 
@@ -264,7 +263,7 @@ class BasinBoundsStorm(Enum):
         [(10.0, -60.0), (135.0, -60.0), (135.0, -5.0), (10.0, -5.0), (10.0, -60.0)]
     )
 
-    SP = unary_union(
+    SP = shapely.union_all(
         [
             Polygon(  # west side of antimeridian
                 [
@@ -642,7 +641,7 @@ class TCTracks:
             raise Exception("this is not an Exposures object")
 
         exp_buffer = exposure.gdf.buffer(distance=buffer, resolution=0)
-        exp_buffer = exp_buffer.unary_union
+        exp_buffer = exp_buffer.union_all()
 
         tc_tracks_lines = self.to_geodataframe().buffer(distance=buffer)
         select_tracks = tc_tracks_lines.intersects(exp_buffer)
@@ -1944,86 +1943,81 @@ class TCTracks:
             if Path(file).suffix != ".nc":
                 continue
             with xr.open_dataset(file) as dataset:
-                for year in dataset.year:
-                    for i in dataset.n_trk:
+                for i in dataset.n_trk:
 
-                        # Select track
-                        track = dataset.sel(n_trk=i, year=year)
-                        # chunk dataset at first NaN value
-                        lon = track.lon_trks.data
-                        last_valid_index = np.where(np.isfinite(lon))[0][-1]
-                        track = track.isel(time=slice(0, last_valid_index + 1))
-                        # Select lat, lon
-                        lat = track.lat_trks.data
-                        lon = track.lon_trks.data
-                        # Convert lon from 0-360 to -180 - 180
-                        lon = ((lon + 180) % 360) - 180
-                        # Convert time to pandas Datetime "yyyy.mm.dd"
-                        reference_time = (
-                            f"{track.tc_years.item()}-{int(track.tc_month.item())}-01"
-                        )
-                        time = pd.to_datetime(
-                            track.time.data, unit="s", origin=reference_time
-                        ).astype("datetime64[s]")
-                        # Define variables
-                        ms_to_kn = 1.943844
-                        max_wind_kn = track.vmax_trks.data * ms_to_kn
-                        env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
-                        cen_pres = _estimate_pressure(
-                            np.full(lat.shape, np.nan),
-                            lat,
-                            lon,
-                            max_wind_kn,
-                        )
+                    # Select track
+                    track = dataset.sel(n_trk=i)
+                    # chunk dataset at first NaN value
+                    lon = track.lon_trks.data
+                    last_valid_index = np.where(np.isfinite(lon))[0][-1]
+                    track = track.isel(time=slice(0, last_valid_index + 1))
+                    # Select lat, lon
+                    lat = track.lat_trks.data
+                    lon = track.lon_trks.data
+                    # Convert lon from 0-360 to -180 - 180
+                    lon = ((lon + 180) % 360) - 180
+                    # Convert time to pandas Datetime "yyyy.mm.dd"
+                    reference_time = (
+                        f"{track.tc_years.item()}-{int(track.tc_month.item())}-01"
+                    )
+                    time = pd.to_datetime(
+                        track.time.data, unit="s", origin=reference_time
+                    ).astype("datetime64[s]")
+                    # Define variables
+                    ms_to_kn = 1.943844
+                    max_wind_kn = track.vmax_trks.data * ms_to_kn
+                    env_pressure = BASIN_ENV_PRESSURE[track.tc_basins.data.item()]
+                    cen_pres = _estimate_pressure(
+                        np.full(lat.shape, np.nan),
+                        lat,
+                        lon,
+                        max_wind_kn,
+                    )
 
-                        data.append(
-                            xr.Dataset(
-                                {
-                                    "time_step": (
-                                        "time",
-                                        np.full(time.shape[0], track.time.data[1]),
-                                    ),
-                                    "max_sustained_wind": (
-                                        "time",
-                                        track.vmax_trks.data,
-                                    ),
-                                    "central_pressure": ("time", cen_pres),
-                                    "radius_max_wind": (
-                                        "time",
-                                        estimate_rmw(
-                                            np.full(lat.shape, np.nan), cen_pres
-                                        ),
-                                    ),
-                                    "environmental_pressure": (
-                                        "time",
-                                        np.full(time.shape[0], env_pressure),
-                                    ),
-                                    "basin": (
-                                        "time",
-                                        np.full(
-                                            time.shape[0], track.tc_basins.data.item()
-                                        ),
-                                    ),
-                                },
-                                coords={
-                                    "time": ("time", time),
-                                    "lat": ("time", lat),
-                                    "lon": ("time", lon),
-                                },
-                                attrs={
-                                    "max_sustained_wind_unit": "m/s",
-                                    "central_pressure_unit": "hPa",
-                                    "name": f"storm_{track.n_trk.item()}",
-                                    "sid": track.n_trk.item(),
-                                    "orig_event_flag": True,
-                                    "data_provider": "FAST",
-                                    "id_no": track.n_trk.item(),
-                                    "category": set_category(
-                                        max_wind_kn, wind_unit="kn", saffir_scale=None
-                                    ),
-                                },
-                            )
+                    data.append(
+                        xr.Dataset(
+                            {
+                                "time_step": (
+                                    "time",
+                                    np.full(time.shape[0], track.time.data[1]),
+                                ),
+                                "max_sustained_wind": (
+                                    "time",
+                                    track.vmax_trks.data,
+                                ),
+                                "central_pressure": ("time", cen_pres),
+                                "radius_max_wind": (
+                                    "time",
+                                    estimate_rmw(np.full(lat.shape, np.nan), cen_pres),
+                                ),
+                                "environmental_pressure": (
+                                    "time",
+                                    np.full(time.shape[0], env_pressure),
+                                ),
+                                "basin": (
+                                    "time",
+                                    np.full(time.shape[0], track.tc_basins.data.item()),
+                                ),
+                            },
+                            coords={
+                                "time": ("time", time),
+                                "lat": ("time", lat),
+                                "lon": ("time", lon),
+                            },
+                            attrs={
+                                "max_sustained_wind_unit": "m/s",
+                                "central_pressure_unit": "hPa",
+                                "name": f"storm_{track.n_trk.item()}",
+                                "sid": track.n_trk.item(),
+                                "orig_event_flag": True,
+                                "data_provider": "FAST",
+                                "id_no": track.n_trk.item(),
+                                "category": set_category(
+                                    max_wind_kn, wind_unit="kn", saffir_scale=None
+                                ),
+                            },
                         )
+                    )
 
         return cls(data)
 

@@ -23,6 +23,8 @@ from __future__ import annotations
 
 from pandas.tseries.offsets import BaseOffset
 
+from climada.engine.impact import Impact
+
 __all__ = ["Measure"]
 
 import copy
@@ -73,7 +75,7 @@ def allow_kwargs(func):
     filtered out before the call, preventing ``TypeError`` from unexpected keywords.
 
     The functions used by `Measure` objects to apply changes on ``Exposures``, ``Hazard``,
-    and ``ImpactFuncSet`` always receive ``base_exposure, base_hazard, base_impfset`` as
+    and ``ImpactFuncSet`` always receive ``base_exposures, base_hazard, base_impfset`` as
     keyword arguments. This decorator is applied to users-defined functions and prevent
     them from not accepting these kwargs and raising a ``TypeError``.
 
@@ -123,28 +125,26 @@ class Measure:
     Contains a measure to be applied to a set of exposures, impact functions,
     and hazard.
 
-    A ``Measure`` represents a single adaptation or risk-reduction action. It
-    holds three (optional) transformation functions, one each for
-    :class:`Exposures`, :class:`ImpactFuncSet`, and :class:`Hazard`, that are
+    A ``Measure`` represents an adaptation or risk-reduction action
+    (or a bundle of actions considered as one). It holds three (optional)
+    transformation functions, one each for :class:`Exposures`,
+    :class:`ImpactFuncSet`, and :class:`Hazard`, that are
     can be applied to a triplet of ``(Exposures, ImpactFuncSet, Hazard)``, to
     reflect the effect of the measure.
 
     It also holds a `CostIncome` object to define the financial aspects of the
     measure (see :class:`CostIncome` and :ref:`cost-income-tutorial`).
 
-    Finally it holds an `implementation_duration` attribute, in the form of a
-    pandas ``DateOffset``, which is used when the time dimension is considered.
-
     Notes
     -----
 
     The only requirement for each function is to return an object of the same
-    class (e.g. :class:`Hazard` for ``hazard_change``). Functions can accept
+    class (e.g. :class:`Hazard` for ``hazard_changes``). Functions can accept
     keyword arguments to enable advanced effect (depending on a year of
     application for instance). These arguments can be passed when the
     :class:`Measure` is applied (see :py:meth:`~Measure.apply`). Note that for
     convenience, each functions receive the by default "base" ``(Exposures,
-    ImpactFuncSet, Hazard)`` triplet as keyword arguments (`base_exposure`,
+    ImpactFuncSet, Hazard)`` triplet as keyword arguments (`base_exposures`,
     `base_impfset`, `base_hazard`).
 
     If the ``Measure`` was defined from a ``MeasureConfig`` object, the
@@ -155,18 +155,16 @@ class Measure:
     ----------
     name : str
         Name of the measure.
-    exposures_change : ExposuresChange
+    exposures_changes : ExposuresChange
         Function to change exposures.
-    impfset_change : ImpfsetChange
+    impfset_changes : ImpfsetChange
         Function to change impact function set.
-    hazard_change : HazardChange
+    hazard_changes : HazardChange
         Function to change hazard.
     sub_measures : list of str, optional
         List of measure names that this measure is a combination of.
     cost_income : climada.entity.measures.cost_income.CostIncome
         Cost and income object associated with the measure.
-    implementation_duration : pd.DateOffset, optional
-        Duration of implementation before the measure is fully functional.
     """
 
     def __init__(
@@ -178,7 +176,6 @@ class Measure:
         hazard_changes: HazardChange = identity_function,
         sub_measures: Optional[list[str]] = None,
         cost_income: Optional[CostIncome] = None,
-        implementation_duration: Optional[BaseOffset] = None,
         color_rgb: Optional[Tuple[float, float, float]] = None,
         _config: Optional[MeasureConfig] = None,
     ):
@@ -189,18 +186,16 @@ class Measure:
         ----------
         name : str
             Name of the measure.
-        exposures_change : callable, optional
+        exposures_changes : callable, optional
             Transformation function for Exposures. Defaults to identity.
-        impfset_change : callable, optional
+        impfset_changes : callable, optional
             Transformation function for ImpactFuncSet. Defaults to identity.
-        hazard_change : callable, optional
+        hazard_changes : callable, optional
             Transformation function for Hazard. Defaults to identity.
         sub_measures : list of str, optional
             Names of component measures.
         cost_income : CostIncome, optional
             Financial data. If None, an empty CostIncome is initialized.
-        implementation_duration : pd.DateOffset, optional
-            Time offset for full implementation.
         """
 
         self.name = name
@@ -209,7 +204,6 @@ class Measure:
         self.impfset_changes = allow_kwargs(impfset_changes)
         self.sub_measures = sub_measures
         self.cost_income = cost_income if cost_income is not None else CostIncome()
-        self.implementation_duration = implementation_duration
         self.color_rgb = (0, 0, 0) if color_rgb is None else color_rgb
         self._config = _config
 
@@ -233,7 +227,7 @@ class Measure:
         This method applies the `exposures_changes` function of the measure to
         the provided :class:`Exposures` object. If ``enforce_copy`` is True (default), a
         deep copy of the exposures is created before modification to ensure
-        immutability of the original object.
+        preservation of the original object.
 
         Additional keyword arguments to the function can be passed directly.
 
@@ -456,11 +450,13 @@ class Measure:
 
         Notes
         -----
-        The kwargs merging follows this priority order:
+         Keyword arguments other than "kwargs_exposures", "kwargs_impfset",
+         "kwargs_hazard" are ignored.
 
-        1. Default context: The original triplet (exposures, impfset, hazard)
-        2. Entity-specific overrides: Values from ``kwargs_exposures``,
-           ``kwargs_impfset``, or ``kwargs_hazard`` respectively
+         The base exposures, hazard, and impfset provided by default can
+         be overriden by explicitely providing a different value within
+         ``kwargs_exposures``, ``kwargs_impfset``, or ``kwargs_hazard``
+         respectively.
 
         This ensures that each transformation receives full context about all entities
         while allowing fine-grained control over individual transformations.
@@ -490,21 +486,87 @@ class Measure:
         )
         return changed_exposures, changed_impfset, changed_hazard
 
-    def calc_impact(self, exposures, impfset, hazard):
+    def calc_impact(
+        self,
+        exposures: Exposures,
+        impfset: ImpactFuncSet,
+        hazard: Hazard,
+        ignore_cover: bool = False,
+        ignore_deductible: bool = False,
+        save_mat: bool = True,
+        assign_centroids: bool = False,
+        enforce_copy: bool = True,
+        **kwargs: dict,
+    ) -> Impact:
+        """Compute impact with the active measure.
+
+        This convenience method allow to compute an ``Impact`` object from an
+        (Exposures, ImpactFuncSet, Hazard) triplet after having applied the measure
+        to that triplet.
+
+        Parameters
+        ----------
+        exposures : Exposures
+            The initial (no adaptation) exposures
+        impfset : ImpactFuncSet
+            The initial (no adaptation) impact function set
+        hazard : Hazard
+            The initial (no adaptation) hazard set
+        save_mat : bool, optional
+            if true, save the total impact matrix (events x exposures)
+            Default: True
+        assign_centroids : bool, optional
+            indicates whether centroids are assigned to the self.exposures object.
+            The default centroids assignment uses Euclidean distance and a threshold equal to
+            twice the highest resolution (smallest distance between any two nearest neighbours)
+            of the centroids (assuming a regular grid).
+            Recommendation: assign the centroids directly with control
+            over the distance metric and the distance threshold using
+            `exposure.assign_centroids(hazard)`. In this case, set assign_centroids to ``False``.
+            Centroids assignment is an expensive operation; set this to ``False`` to save
+            computation time if the hazards' centroids are already assigned to the exposures
+            object.
+            Default: True
+        ignore_cover : bool, optional
+            if set to True, the column 'cover' of the exposures GeoDataFrame, if present, is
+            ignored and the impact it not capped by the values in this column.
+            Default: False
+        ignore_deductible : bool, opotional
+            if set to True, the column 'deductible' of the exposures GeoDataFrame, if present, is
+            ignored and the impact it not reduced through values in this column.
+            Default: False
+        enforce_copy : bool, optional
+            If True (default), creates deep copies of entities before applying
+            changes, provided the transformation functions are not identity functions.
+            If False, entities may be modified in-place depending on the behavior
+            of the underlying transformation methods.
+        kwargs: dict
+            Keyword arguments passed to the `apply()` method when
+            applying the measure
+
+        Returns
+        -------
+        Impact
+            The computed impact when the measure is in effect.
+
+        """
         from climada.engine.impact_calc import (
             ImpactCalc,  # pylint: disable=import-outside-toplevel
         )
 
-        new_exp, new_impfs, new_haz = self.apply(exposures, impfset, hazard)
+        new_exp, new_impfs, new_haz = self.apply(
+            exposures, impfset, hazard, enforce_copy=enforce_copy, **kwargs
+        )
         if new_haz.centr_exp_col not in new_exp.gdf.columns:
             LOGGER.warning(
-                "No assigned hazard centroids in exposure object after the "
+                "No assigned hazard centroids in exposures object after the "
                 "application of the measure. The centroids will be assigned during impact "
                 "calculation. This is potentiall costly. To silence this warning, make sure "
                 "that centroids are assigned to all exposures."
             )
             new_exp.assign_centroids(new_haz)
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
-            save_mat=False, assign_centroids=False
+            save_mat=save_mat,
+            assign_centroids=assign_centroids,
         )
-        return imp.calc_risk_transfer(0, 0)
+        return imp  # .calc_risk_transfer(0, 0)

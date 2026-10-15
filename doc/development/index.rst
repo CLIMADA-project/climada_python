@@ -27,5 +27,4 @@ If you are interested in contributing to CLIMADA, we recommand you to start with
    Writing tests for your code <Guide_Testing>
    Using fixtures for writing tests <Guide_test_fixtures>
    Guide_Review
-   Guide_Euler
    Authors <../misc/AUTHORS>

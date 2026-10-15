@@ -8,7 +8,7 @@ climada\.entity\.measures package
 climada\.entity\.measures\.base module
 --------------------------------------
 
-.. automodule:: climada.entity.measures.base
+.. automodule:: climada.entity.measures.measure
     :members:
     :undoc-members:
     :show-inheritance:

@@ -19,8 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define the CostIncome class to handle the cash flow of measures.
 """
 
-from datetime import datetime
-from typing import Any, Optional, Tuple, cast
+from typing import Any, Optional, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -39,7 +38,7 @@ class CostIncome:
 
     Attributes
     ----------
-    mkt_price_year : datetime, default to today's year.
+    mkt_price_year : int, default to today's year.
         The reference year for market prices.
     init_cost : float
         Initial implementation cost (stored as negative).
@@ -54,14 +53,15 @@ class CostIncome:
     custom_cash_flows : pd.DataFrame, optional
         User-defined cash flows indexed by date.
     freq : str
-        Frequency of the cash flows (e.g., 'Y', '3M', '7D').
+        Periodicity (frequency) of the cash flows (e.g., 'Y', '3M', '7D').
+        All pandas aliases are possible. See [pandas documentation](https://pandas.pydata.org/pandas-docs/stable/user_guide/timeseries.html#period-aliases).
 
     """
 
     def __init__(
         self,
         *,
-        mkt_price_year: Optional[int] = None,
+        mkt_price_year: int | None = None,
         init_cost: float = 0.0,
         periodic_cost: float = 0.0,
         periodic_income: float = 0.0,
@@ -74,7 +74,7 @@ class CostIncome:
 
         Parameters
         ----------
-        mkt_price_year : datetime, default to today's year.
+        mkt_price_year : int, default to today's year.
             The reference year for market prices.
         init_cost : float
             Initial implementation cost (stored as negative).
@@ -93,7 +93,7 @@ class CostIncome:
         """
 
         self.freq = freq
-        self.mkt_price_year = datetime(mkt_price_year or datetime.today().year, 1, 1)
+        self.mkt_price_year = mkt_price_year or pd.Timestamp.now().year
         self.cost_growth_rate = cost_yearly_growth_rate
 
         self.init_cost = -abs(init_cost)
@@ -106,7 +106,7 @@ class CostIncome:
     def __repr__(self) -> str:
         lines = [
             "CostIncome(",
-            f"  mkt_price_year          = {self.mkt_price_year.year}",
+            f"  mkt_price_year          = {self.mkt_price_year}",
             f"  freq                    = {self.freq!r}",
             f"  init_cost               = {self.init_cost:,.2f}",
             f"  periodic_cost           = {self.periodic_cost:,.2f}",
@@ -118,6 +118,13 @@ class CostIncome:
             ")",
         ]
         return "\n".join(lines)
+
+    @property
+    def _mkt_price_ts(self) -> pd.Timestamp:
+        """pd.Timestamp : First day of the market price reference year."""
+        return cast(
+            pd.Timestamp, pd.Timestamp(year=self.mkt_price_year, month=1, day=1)
+        )
 
     @property
     def custom_cash_flows(self) -> pd.DataFrame | None:
@@ -166,12 +173,9 @@ class CostIncome:
             )
 
         df = df.copy()
-        if "cost" in df.columns:
-            df["cost"] = -df["cost"].abs()
-
-        if "date" in df.columns:
-            df["date"] = pd.to_datetime(df["date"])
-            df = df.set_index("date")
+        df["cost"] = -df["cost"].abs()
+        df["date"] = pd.to_datetime(df["date"])
+        df = df.set_index("date")
 
         freq = self._make_offset_compat(self.freq)
         return df.resample(freq).sum()
@@ -247,7 +251,8 @@ class CostIncome:
 
     @classmethod
     def from_yaml(cls, path: str) -> "CostIncome":
-        """Create a `CostIncome` from a yaml file.
+        """Create a `CostIncome` from a yaml file of a `MeasureConfig`
+        object.
 
         Parameters
         ----------
@@ -262,36 +267,6 @@ class CostIncome:
         with open(path) as f:
             return cls.from_dict(yaml.safe_load(f)["cost_income"])
 
-    @classmethod
-    def _freq_to_days(cls, freq: str) -> str:
-        """
-        Convert a frequency string to the equivalent number of days.
-
-        Parameters:
-        -----------
-        freq : str
-            A frequency string (e.g., 'D' for daily, 'M' for monthly, 'Y' for yearly).
-
-        Returns:
-        --------
-        float
-            The equivalent number of days for the given frequency string.
-        """
-
-        try:
-            # Convert the frequency string to a DateOffset object
-            freq = cls._make_offset_compat(freq, start=False)
-            offset = pd.tseries.frequencies.to_offset(freq)
-
-            # Calculate the number of days by applying the offset to a base date
-            base_date = pd.Timestamp("2000-01-01")
-            end_date = base_date + offset
-
-            # Return the difference in days
-            return f"{(end_date - base_date).days}d"
-        except ValueError as exc:
-            raise ValueError(f"Invalid frequency string: {freq}") from exc
-
     def _get_width_days(self) -> float:
         """Return the number of days in the current frequency."""
 
@@ -302,7 +277,7 @@ class CostIncome:
 
     def calc_at_date(
         self, impl_date: pd.Timestamp, curr_date: pd.Timestamp
-    ) -> Tuple[float, float, float]:
+    ) -> tuple[float, float, float]:
         r"""Calculate cash flows for a single timestamp.
 
         Computes the total cash flow, total cost, and total income for a given
@@ -317,9 +292,11 @@ class CostIncome:
         ----------
         impl_date : pd.Timestamp
             The implementation date that determines which cost/income regime
-            applies. Dates before this use have no cost or income; "at the date" uses
+            applies. Dates before this have no cost or income; "at the date" uses
             the implementation cost, and dates after use the initialized or
             periodic amounts respectively.
+            Note that if a custom cash flow is defined for `curr_date`,
+            before `impl_date`, it will be accounted for.
         curr_date : pd.Timestamp
             The evaluation date for which cash flows are being calculated. This
             is compared against `impl_date` to determine the applicable base
@@ -327,7 +304,7 @@ class CostIncome:
 
         Returns
         -------
-        Tuple[float, float, float]
+        tuple[float, float, float]
             A tuple containing:
 
             * total_cash_flow : float
@@ -361,7 +338,7 @@ class CostIncome:
         cash flow DataFrame will raise a KeyError.
         """
         # Calculate growth factor based on years from market price reference
-        years_passed = (curr_date - self.mkt_price_year).days / 365.0
+        years_passed = (curr_date - self._mkt_price_ts).days / 365.0
 
         cost_factor = (1 + self.cost_growth_rate) ** years_passed
         inc_factor = (1 + self.income_growth_rate) ** years_passed
@@ -389,8 +366,8 @@ class CostIncome:
         return (total_inc + total_cost), total_cost, total_inc
 
     def calc_cash_flows(
-        self, impl_date, start_date, end_date
-    ) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+        self, impl_date: pd.Timestamp, start_date: pd.Timestamp, end_date: pd.Timestamp
+    ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Calculate net cash flows, costs, and incomes over a period.
 
         Computes cash flow metrics across a specified date range by iterating
@@ -402,17 +379,17 @@ class CostIncome:
 
         Parameters
         ----------
-        impl_date :
+        impl_date : pd.Timestamp
             The implementation date that determines which cost/income regime
             applies.
-        start_date :
+        start_date : pd.Timestamp
             The beginning of the calculation period.
-        end_date :
+        end_date : pd.Timestamp
             The end of the calculation period.
 
         Returns
         -------
-        Tuple[np.ndarray, np.ndarray, np.ndarray]
+        tuple[np.ndarray, np.ndarray, np.ndarray]
             A tuple containing three NumPy arrays of equal length:
 
             * net : np.ndarray
@@ -425,14 +402,15 @@ class CostIncome:
 
         # 'Trick' to make sure that e.g., impl_date "2020-01-05" falls in
         # period "2020-01" if freq is "M"
-        impl_ts = pd.Timestamp(str(impl_date)).to_period(self.freq).start_time
+        impl_ts = pd.Timestamp(str(impl_date))
+        impl_ts = cast(pd.Timestamp, impl_ts).to_period(self.freq).start_time
         periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
 
         results = [self.calc_at_date(impl_ts, p.start_time) for p in periods]
         net, costs, incs = map(np.array, zip(*results))
         return net, costs, incs
 
-    def calc_total(self, impl_date, start_date, end_date) -> Tuple[float, float, float]:
+    def calc_total(self, impl_date, start_date, end_date) -> tuple[float, float, float]:
         """
         Calculate the total value of the cash flows over a given period.
 
@@ -447,7 +425,7 @@ class CostIncome:
 
         Returns:
         --------
-        Tuple[float, float, float]
+        tuple[float, float, float]
             the total net, cost, and income values over the given period.
         """
 
@@ -461,7 +439,7 @@ class CostIncome:
         impl_date: Any,
         start_date: Any,
         end_date: Any,
-        figsize: Tuple[int, int] = (12, 7),
+        figsize: tuple[int, int] = (12, 7),
         title: Optional[str] = None,
     ):
         """Plot periodic and cumulative cash flows over a given period.
@@ -486,7 +464,7 @@ class CostIncome:
 
         Returns
         -------
-        plt.Figure
+        tuple(plt.Axis, plt.Axis)
         """
         net, costs, incomes = self.calc_cash_flows(impl_date, start_date, end_date)
         periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
@@ -562,12 +540,7 @@ class CostIncome:
 
         first_ci = cost_incomes[0]
 
-        if not all(
-            (
-                first_ci.mkt_price_year.year == c.mkt_price_year.year
-                for c in cost_incomes
-            )
-        ):
+        if not all(first_ci.mkt_price_year == c.mkt_price_year for c in cost_incomes):
             raise ValueError(
                 "Measure cost incomes have different market price years,"
                 " combination is not possible."
@@ -610,7 +583,7 @@ class CostIncome:
                 raise err
 
         return CostIncome(
-            mkt_price_year=first_ci.mkt_price_year.year,
+            mkt_price_year=first_ci.mkt_price_year,
             init_cost=sum(c.init_cost for c in cost_incomes),
             periodic_cost=sum(c.periodic_cost for c in cost_incomes),
             periodic_income=sum(c.periodic_income for c in cost_incomes),

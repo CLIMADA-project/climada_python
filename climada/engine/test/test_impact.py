@@ -47,26 +47,30 @@ DATA_FOLDER.mkdir(exist_ok=True)
 STR_DT = h5py.special_dtype(vlen=str)
 
 
-def dummy_impact():
-    """Return an impact object for testing"""
-    return Impact(
-        event_id=np.arange(6) + 10,
-        event_name=[0, 1, "two", "three", 30, 31],
-        date=np.arange(6),
-        coord_exp=np.array([[1, 2], [1.5, 2.5]]),
-        crs=DEF_CRS,
-        eai_exp=np.array([7.2, 7.2]),
-        at_event=np.array([0, 2, 4, 6, 60, 62]),
-        frequency=np.array([1 / 6, 1 / 6, 1, 1, 1 / 30, 1 / 30]),
-        tot_value=7,
-        aai_agg=14.4,
-        unit="USD",
-        frequency_unit="1/month",
-        imp_mat=sparse.csr_matrix(
+def impact_kwargs():
+    return {
+        "event_id": np.arange(6) + 10,
+        "event_name": [0, 1, "two", "three", 30, 31],
+        "date": np.arange(6),
+        "coord_exp": np.array([[1, 2], [1.5, 2.5]]),
+        "crs": DEF_CRS,
+        "eai_exp": np.array([7.2, 7.2]),
+        "at_event": np.array([0, 2, 4, 6, 60, 62]),
+        "frequency": np.array([1 / 6, 1 / 6, 1, 1, 1 / 30, 1 / 30]),
+        "tot_value": 7,
+        "aai_agg": 14.4,
+        "unit": "USD",
+        "frequency_unit": "1/month",
+        "imp_mat": sparse.csr_matrix(
             np.array([[0, 0], [1, 1], [2, 2], [3, 3], [30, 30], [31, 31]])
         ),
-        haz_type="TC",
-    )
+        "haz_type": "TC",
+    }
+
+
+def dummy_impact():
+    """Return an impact object for testing"""
+    return Impact(**impact_kwargs())
 
 
 def dummy_impact_yearly():
