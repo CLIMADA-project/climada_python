@@ -75,7 +75,7 @@ def allow_kwargs(func):
     filtered out before the call, preventing ``TypeError`` from unexpected keywords.
 
     The functions used by `Measure` objects to apply changes on ``Exposures``, ``Hazard``,
-    and ``ImpactFuncSet`` always receive ``base_exposure, base_hazard, base_impfset`` as
+    and ``ImpactFuncSet`` always receive ``base_exposures, base_hazard, base_impfset`` as
     keyword arguments. This decorator is applied to users-defined functions and prevent
     them from not accepting these kwargs and raising a ``TypeError``.
 
@@ -139,12 +139,12 @@ class Measure:
     -----
 
     The only requirement for each function is to return an object of the same
-    class (e.g. :class:`Hazard` for ``hazard_change``). Functions can accept
+    class (e.g. :class:`Hazard` for ``hazard_changes``). Functions can accept
     keyword arguments to enable advanced effect (depending on a year of
     application for instance). These arguments can be passed when the
     :class:`Measure` is applied (see :py:meth:`~Measure.apply`). Note that for
     convenience, each functions receive the by default "base" ``(Exposures,
-    ImpactFuncSet, Hazard)`` triplet as keyword arguments (`base_exposure`,
+    ImpactFuncSet, Hazard)`` triplet as keyword arguments (`base_exposures`,
     `base_impfset`, `base_hazard`).
 
     If the ``Measure`` was defined from a ``MeasureConfig`` object, the
@@ -155,11 +155,11 @@ class Measure:
     ----------
     name : str
         Name of the measure.
-    exposures_change : ExposuresChange
+    exposures_changes : ExposuresChange
         Function to change exposures.
-    impfset_change : ImpfsetChange
+    impfset_changes : ImpfsetChange
         Function to change impact function set.
-    hazard_change : HazardChange
+    hazard_changes : HazardChange
         Function to change hazard.
     sub_measures : list of str, optional
         List of measure names that this measure is a combination of.
@@ -186,11 +186,11 @@ class Measure:
         ----------
         name : str
             Name of the measure.
-        exposures_change : callable, optional
+        exposures_changes : callable, optional
             Transformation function for Exposures. Defaults to identity.
-        impfset_change : callable, optional
+        impfset_changes : callable, optional
             Transformation function for ImpactFuncSet. Defaults to identity.
-        hazard_change : callable, optional
+        hazard_changes : callable, optional
             Transformation function for Hazard. Defaults to identity.
         sub_measures : list of str, optional
             Names of component measures.
@@ -453,7 +453,7 @@ class Measure:
          Keyword arguments other than "kwargs_exposures", "kwargs_impfset",
          "kwargs_hazard" are ignored.
 
-         The base exposure, hazard, and impfset provided by default can
+         The base exposures, hazard, and impfset provided by default can
          be overriden by explicitely providing a different value within
          ``kwargs_exposures``, ``kwargs_impfset``, or ``kwargs_hazard``
          respectively.
@@ -491,12 +491,17 @@ class Measure:
         exposures: Exposures,
         impfset: ImpactFuncSet,
         hazard: Hazard,
+        ignore_cover: bool = False,
+        ignore_deductible: bool = False,
+        save_mat: bool = True,
+        assign_centroids: bool = False,
+        enforce_copy: bool = True,
         **kwargs: dict,
     ) -> Impact:
         """Compute impact with the active measure.
 
         This convenience method allow to compute an ``Impact`` object from an
-        (Exposure, ImpactFuncSet, Hazard) triplet after having applied the measure
+        (Exposures, ImpactFuncSet, Hazard) triplet after having applied the measure
         to that triplet.
 
         Parameters
@@ -524,7 +529,7 @@ class Measure:
         new_exp, new_impfs, new_haz = self.apply(exposures, impfset, hazard)
         if new_haz.centr_exp_col not in new_exp.gdf.columns:
             LOGGER.warning(
-                "No assigned hazard centroids in exposure object after the "
+                "No assigned hazard centroids in exposures object after the "
                 "application of the measure. The centroids will be assigned during impact "
                 "calculation. This is potentiall costly. To silence this warning, make sure "
                 "that centroids are assigned to all exposures."
