@@ -351,7 +351,7 @@ def helper_impfset(impfset_modifier: ImpfsetModifierConfig) -> ImpfsetChange:
             else impfset
         )
         if impfset_modifier.impf_ids is None or impfset_modifier.impf_ids == "all":
-            ids_to_change = impfset.get_ids(haz_type=impfset_modifier.haz_type)
+            ids_to_change = changed_impfset.get_ids(haz_type=impfset_modifier.haz_type)
         elif isinstance(impfset_modifier.impf_ids, list):
             ids_to_change = impfset_modifier.impf_ids
         elif isinstance(impfset_modifier.impf_ids, (str, int)):
