@@ -465,10 +465,6 @@ class MeasureConfig(ModifierConfig):
         Configuration describing modifications to the exposures.
     cost_income : CostIncomeConfig
         Financial parameters associated with implementing this measure.
-    implementation_duration : str, optional
-        Pandas period alias (e.g. ``"2Y"``) representing the time before
-        the measure is fully operational. If ``None``, the measure takes
-        effect immediately.
     color_rgb : tuple of float, optional
         RGB colour triple in the range ``[0, 1]`` used for visualisation.
         If ``None``, defaults to black ``(0, 0, 0)``.
@@ -480,7 +476,6 @@ class MeasureConfig(ModifierConfig):
     hazard_modifier: HazardModifierConfig
     exposures_modifier: ExposuresModifierConfig
     cost_income: CostIncomeConfig
-    implementation_duration: Optional[str] = None
     color_rgb: Optional[Tuple[float, float, float]] = None
 
     def __repr__(self) -> str:
@@ -521,7 +516,6 @@ class MeasureConfig(ModifierConfig):
             **self.hazard_modifier.to_dict(omit_default),
             **self.exposures_modifier.to_dict(omit_default),
             **self.cost_income.to_dict(omit_default),
-            "implementation_duration": self.implementation_duration,
             "color_rgb": list(self.color_rgb) if self.color_rgb is not None else None,
         }
 
@@ -554,7 +548,6 @@ class MeasureConfig(ModifierConfig):
             hazard_modifier=HazardModifierConfig.from_dict(kwargs_dict),
             exposures_modifier=ExposuresModifierConfig.from_dict(kwargs_dict),
             cost_income=CostIncomeConfig.from_dict(kwargs_dict),
-            implementation_duration=kwargs_dict.get("implementation_duration"),
             color_rgb=cls._normalize_color(kwargs_dict.get("color_rgb")),
         )
 
