@@ -566,5 +566,7 @@ class Measure:
         imp = ImpactCalc(new_exp, new_impfs, new_haz).impact(
             save_mat=save_mat,
             assign_centroids=assign_centroids,
+            ignore_cover=ignore_cover,
+            ignore_deductible=ignore_deductible,
         )
         return imp  # .calc_risk_transfer(0, 0)
