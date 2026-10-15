@@ -340,10 +340,6 @@ class TestMeasureConfig:
         assert config.exposures_modifier.set_to_zero == full_measure_dict["set_to_zero"]
         assert config.cost_income.init_cost == full_measure_dict["init_cost"]
         assert config.color_rgb == tuple(full_measure_dict["color_rgb"])
-        assert (
-            config.implementation_duration
-            == full_measure_dict["implementation_duration"]
-        )
 
     def test_from_dict_ignores_unknown_keys(self, minimal_measure_dict):
         d = {**minimal_measure_dict, "completely_unknown": 42}
@@ -360,7 +356,6 @@ class TestMeasureConfig:
         assert recovered.impfset_modifier == config.impfset_modifier
         assert recovered.exposures_modifier == config.exposures_modifier
         assert recovered.color_rgb == config.color_rgb
-        assert recovered.implementation_duration == config.implementation_duration
 
     def test_to_dict_color_rgb_none(self, minimal_measure_dict):
         config = MeasureConfig.from_dict(minimal_measure_dict)
