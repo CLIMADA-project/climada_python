@@ -917,6 +917,10 @@ class HazardIO:
                     # Centroids have their own write_hdf5 method,
                     # which is invoked at the end of this method (s.b.)
                     continue
+                elif var_name == "lead_time":
+                    hf_data.create_dataset(
+                        var_name, data=var_val.astype("timedelta64[ns]").astype("int64")
+                    )
                 elif isinstance(var_val, sparse.csr_matrix):
                     if todense:
                         hf_data.create_dataset(var_name, data=var_val.toarray())
@@ -987,7 +991,11 @@ class HazardIO:
                     continue
                 if var_name == "centroids":
                     continue
-                if isinstance(var_val, np.ndarray) and var_val.ndim == 1:
+                if var_name == "lead_time":
+                    hazard_kwargs[var_name] = np.array(hf_data.get(var_name)).astype(
+                        "timedelta64[ns]"
+                    )
+                elif isinstance(var_val, np.ndarray) and var_val.ndim == 1:
                     hazard_kwargs[var_name] = np.array(hf_data.get(var_name))
                 elif isinstance(var_val, sparse.csr_matrix):
                     hf_csr = hf_data.get(var_name)

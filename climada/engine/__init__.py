@@ -22,3 +22,4 @@ init engine
 from .cost_benefit import *
 from .impact import *
 from .impact_calc import *
+from .impact_forecast import ImpactForecast

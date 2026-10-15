@@ -24,7 +24,7 @@ of risk in between points in time (snapshots).
 import datetime
 import itertools
 import logging
-from typing import Iterable, cast
+from typing import Callable, Iterable, cast
 
 import matplotlib as mpl
 import matplotlib.dates as mdates
@@ -163,8 +163,8 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             return_periods=return_periods,
             risk_disc_rates=risk_disc_rates,
         )
-        self.start_date = min((snapshot.date for snapshot in snapshots_list))
-        self.end_date = max((snapshot.date for snapshot in snapshots_list))
+        self.start_date = min(snapshot.date for snapshot in self._snapshots)
+        self.end_date = max(snapshot.date for snapshot in self._snapshots)
         self._risk_metrics_calculators = self._reset_risk_metrics_calculators(
             self._snapshots,
             time_resolution,
@@ -619,76 +619,80 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             )
         ]
 
-    @staticmethod
-    def _identify_continuous_periods(group, time_unit):
-        """Calculate the difference between consecutive dates."""
+    def _assign_snapshot_period_ids(self, dates: pd.Series) -> pd.Series:
+        """Assign each date to the index of the snapshot pair that contains it.
 
-        if time_unit == "year":
-            group["date_diff"] = group[DATE_COL_NAME].dt.year.diff()
-        if time_unit == "month":
-            group["date_diff"] = group[DATE_COL_NAME].dt.month.diff()
-        if time_unit == "day":
-            group["date_diff"] = group[DATE_COL_NAME].dt.day.diff()
-        if time_unit == "hour":
-            group["date_diff"] = group[DATE_COL_NAME].dt.hour.diff()
-        # Identify breaks in continuity
-        group["period_id"] = (group["date_diff"] != 1).cumsum()
-        return group
+        Parameters
+        ----------
+        dates : pd.Series
+            Series of Period dtype with frequency ``self.time_resolution``.
 
-    @classmethod
+        Returns
+        -------
+        pd.Series
+            Integer series of same index as ``dates``, with values in
+            ``range(len(self._snapshots) - 1)``. Dates outside all snapshot
+            intervals are assigned ``NaN``.
+        """
+        snapshot_dates = sorted(snap.date for snap in self._snapshots) + [
+            self._snapshots[-1].date + pd.DateOffset()
+        ]
+        bins = pd.DatetimeIndex(snapshot_dates)
+        ts = dates.dt.to_timestamp(how="start")
+        return pd.cut(
+            ts,
+            bins=bins,
+            labels=False,
+            include_lowest=True,
+            right=True,
+        )
+
     def _date_to_period_agg(
-        cls,
+        self,
         metric_df: pd.DataFrame,
         grouper: list[str],
-        time_unit: str = "year",
         colname: str | list[str] = RISK_COL_NAME,
+        aggfunc: str | Callable = "mean",
     ) -> pd.DataFrame:
-        """Group per date risk metric to periods."""
+        """Aggregate per-date risk metrics into periods.
 
-        df_sorted = metric_df.sort_values(by=grouper + [DATE_COL_NAME])
-
-        if GROUP_COL_NAME in metric_df.columns and GROUP_COL_NAME not in grouper:
-            grouper = [GROUP_COL_NAME] + grouper
-
-        # Apply the function to identify continuous periods
-        df_periods = df_sorted.groupby(
-            grouper, dropna=False, group_keys=False, observed=True
-        )[df_sorted.columns].apply(cls._identify_continuous_periods, time_unit)
-
+        Parameters
+        ----------
+        metric_df : pd.DataFrame
+        grouper : list of str
+        colname : str or list of str, optional
+        aggfunc : str or callable, optional
+            Aggregation function passed to ``groupby.agg``. Default is ``"mean"``.
+        freq : str, optional
+            If provided, resample the date column at this frequency.
+        time_resolution : str, optional
+            The time resolution of the date column, used to format labels when
+            ``freq`` is provided.
+        snapshot_mapper : dict, optional
+            Maps each ``pd.Period`` to a snapshot interval label. Used when
+            ``freq`` is None.
+        """
         if isinstance(colname, str):
             colname = [colname]
-        agg_dict = {
-            "start_date": pd.NamedAgg(column=DATE_COL_NAME, aggfunc="min"),
-            "end_date": pd.NamedAgg(column=DATE_COL_NAME, aggfunc="max"),
-        }
-        df_periods_dates = (
-            df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)
-            .agg(func=None, **agg_dict)  # type: ignore
-            .reset_index()
-        )
 
-        df_periods_dates[PERIOD_COL_NAME] = (
-            df_periods_dates["start_date"].astype(str)
+        df = metric_df.copy()
+
+        if GROUP_COL_NAME in df.columns and GROUP_COL_NAME not in grouper:
+            grouper = [GROUP_COL_NAME] + grouper
+
+        df[PERIOD_COL_NAME] = self._assign_snapshot_period_ids(df[DATE_COL_NAME])
+        df[PERIOD_COL_NAME] = (
+            df.groupby(PERIOD_COL_NAME)[DATE_COL_NAME].transform("first").astype(str)
             + " to "
-            + df_periods_dates["end_date"].astype(str)
+            + df.groupby(PERIOD_COL_NAME)[DATE_COL_NAME].transform("last").astype(str)
         )
-        df_periods = (
-            df_periods.groupby(grouper + ["period_id"], dropna=False, observed=True)[
+        return (
+            df.groupby([PERIOD_COL_NAME] + grouper, dropna=False, observed=True)[
                 colname
             ]
-            .mean()
+            .agg(aggfunc)
             .reset_index()
         )
-        df_periods = pd.merge(
-            df_periods_dates[grouper + [PERIOD_COL_NAME, "period_id"]],
-            df_periods,
-            on=grouper + ["period_id"],
-        )
-        df_periods = df_periods.drop(["period_id"], axis=1)
-        return df_periods[
-            [PERIOD_COL_NAME]
-            + [col for col in df_periods.columns if col != PERIOD_COL_NAME]
-        ]
 
     def per_period_risk_metrics(
         self,
@@ -697,16 +701,45 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             RETURN_PERIOD_METRIC_NAME,
             AAI_PER_GROUP_METRIC_NAME,
         ),
-        **kwargs,
+        colname: str | list[str] = RISK_COL_NAME,
+        aggfunc: str | Callable = "mean",
     ) -> pd.DataFrame:
-        """Return a tidy dataframe of the risk metrics with the total
-        for each different period (pair of snapshots).
+        """Return a tidy dataframe of risk metrics aggregated over periods.
+
+        By default, aggregate by computing the "mean" of the metric over the
+        period.
+
+        Parameters
+        ----------
+        metrics : iterable of str, optional
+        freq : str, optional
+            Pandas frequency string for aggregation bins (e.g. ``"2Y"``).
+            If None, bins correspond to intervals between consecutive snapshots.
+        colname : str or list of str, optional
+        aggfunc : str or callable, optional
+            Aggregation function. Default is ``"mean"``.
+
+        Notes
+        -----
+
+        If freq is given, periods are left inclusing, right excluding,
+        meaning for instance, "2018-01-01 to 2024-01-01" is the
+        average risk from 2018-01-01 included to 2023-12-31 included.
+
+        If the last date is at odd with the frequency given, the aggfunc is
+        still applied over the "whole" bin inclunding the date, for instance if
+        the last date is 2025-01-01, and bins are 3Y starting at 2022-01-01,
+        2025-01-01 falls in the 2025-01-01 to 2028-01-01, meaning it will be
+        averaged over 3 years but with two years without data.
 
         """
+        metric_df = self.per_date_risk_metrics(metrics=metrics)
 
-        metric_df = self.per_date_risk_metrics(metrics=metrics, **kwargs)
         return self._date_to_period_agg(
-            metric_df, grouper=self._grouper + [UNIT_COL_NAME], **kwargs
+            metric_df,
+            grouper=self._grouper + [UNIT_COL_NAME],
+            colname=colname,
+            aggfunc=aggfunc,
         )
 
     def _calc_waterfall_plot_data(
@@ -733,7 +766,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         self,
         ax=None,
         figsize=(12, 6),
-    ):
+    ):  # pragma: no cover
         """Plot a waterfall chart of risk contributions over a specified date range.
 
         This method generates a stacked bar chart to visualize the
@@ -821,7 +854,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     def plot_waterfall(
         self,
         ax=None,
-    ):
+    ):  # pragma: no cover
         """Plot a waterfall chart of risk contributions between two dates.
 
         This method generates a waterfall plot to visualize the changes in risk contributions.
@@ -906,7 +939,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
             )
 
         # Construct y-axis label and title based on parameters
-        value_label = "USD"
+        value_label = self._snapshots[0].exposure.value_unit
         title_label = f"Evolution of the contributions of risk between {start_date_p} and {end_date_p} (Average impact)"
         ax.yaxis.set_major_formatter(mticker.EngFormatter())
         ax.set_title(title_label)

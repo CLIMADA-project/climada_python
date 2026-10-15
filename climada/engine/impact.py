@@ -188,8 +188,7 @@ class Impact:
             )
         if len(self.coord_exp) != len(self.eai_exp):
             raise AttributeError(
-                "Number of exposures points is different from"
-                "number of eai_exp values"
+                "Number of exposures points is different fromnumber of eai_exp values"
             )
         if imp_mat is not None:
             self.imp_mat = imp_mat
@@ -576,15 +575,6 @@ class Impact:
             self.frequency_unit
         )
 
-        # check method
-        if method not in [
-            "interpolate",
-            "extrapolate",
-            "extrapolate_constant",
-            "stepfunction",
-        ]:
-            raise ValueError(f"Unknown method: {method}")
-
         # calculate local exceedance impact
         test_frequency = 1 / np.array(return_periods)
 
@@ -732,15 +722,6 @@ class Impact:
             self.frequency_unit
         )
 
-        # check method
-        if method not in [
-            "interpolate",
-            "extrapolate",
-            "extrapolate_constant",
-            "stepfunction",
-        ]:
-            raise ValueError(f"Unknown method: {method}")
-
         return_periods = np.full((self.imp_mat.shape[1], len(threshold_impact)), np.nan)
 
         nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
@@ -804,6 +785,12 @@ class Impact:
         ifc_impact = self.at_event[sort_idxs][::-1]
 
         if return_per is not None:
+            warnings.warn(
+                "Calculating the frequency curve on user-specified return periods is deprecated. "
+                "Use ImpactFreqCurve.calc_freq_curve().interpolate() instead.",
+                DeprecationWarning,
+                stacklevel=2,
+            )
             interp_imp = np.interp(return_per, ifc_return_per, ifc_impact)
             ifc_return_per = return_per
             ifc_impact = interp_imp
@@ -1238,8 +1225,9 @@ class Impact:
 
         impacts_stats_vals = impacts_stats.values[:, 1:].T.astype(float)
         if not log10_scale:
-            min_impact, max_impact = np.nanmin(impacts_stats_vals), np.nanmax(
-                impacts_stats_vals
+            min_impact, max_impact = (
+                np.nanmin(impacts_stats_vals),
+                np.nanmax(impacts_stats_vals),
             )
             kwargs.update(
                 {
@@ -1431,6 +1419,8 @@ class Impact:
 
         def write_dataset(group, name, value):
             """Write a dataset"""
+            if name == "lead_time":
+                value = value.astype("timedelta64[ns]").astype("int64")
             group.create_dataset(name, data=value, dtype=_str_type_helper(value))
 
         def write_dict(group, name, value):
@@ -1471,7 +1461,6 @@ class Impact:
 
         # Open file in write mode
         with h5py.File(file_path, "w") as file:
-
             # Now write all attributes
             # NOTE: Remove leading underscore to write '_tot_value' as regular attribute
             for name, value in self.__dict__.items():
@@ -1612,13 +1601,18 @@ class Impact:
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use Impact.from_excel instead."""
         LOGGER.warning(
-            "The use of Impact.read_excel is deprecated."
-            "Use Impact.from_excel instead."
+            "The use of Impact.read_excel is deprecated.Use Impact.from_excel instead."
         )
         self.__dict__ = Impact.from_excel(*args, **kwargs).__dict__
 
     @classmethod
-    def from_hdf5(cls, file_path: Union[str, Path]):
+    def from_hdf5(
+        cls,
+        file_path: Union[str, Path],
+        *,
+        add_scalar_attrs: Iterable[str] | None = None,
+        add_array_attrs: Iterable[str] | None = None,
+    ):
         """Create an impact object from an H5 file.
 
         This assumes a specific layout of the file. If values are not found in the
@@ -1663,6 +1657,10 @@ class Impact:
         ----------
         file_path : str or Path
             The file path of the file to read.
+        add_scalar_attrs : Iterable of str, optional
+            Additional scalar attributes to read from file. Defaults to None.
+        add_array_attrs : Iterable of str, optional
+            Additional array attributes to read from file. Defaults to None.
 
         Returns
         -------
@@ -1671,7 +1669,6 @@ class Impact:
         """
         kwargs = dict()
         with h5py.File(file_path, "r") as file:
-
             # Impact matrix
             if "imp_mat" in file:
                 impact_matrix = file["imp_mat"]
@@ -1691,7 +1688,10 @@ class Impact:
             # Scalar attributes
             scalar_attrs = set(
                 ("crs", "tot_value", "unit", "aai_agg", "frequency_unit", "haz_type")
-            ).intersection(file.attrs.keys())
+            )
+            if add_scalar_attrs is not None:
+                scalar_attrs = scalar_attrs.union(add_scalar_attrs)
+            scalar_attrs = scalar_attrs.intersection(file.attrs.keys())
             kwargs.update({attr: file.attrs[attr] for attr in scalar_attrs})
 
             # Array attributes
@@ -1699,9 +1699,16 @@ class Impact:
             #       invalidated once we close the file.
             array_attrs = set(
                 ("event_id", "date", "coord_exp", "eai_exp", "at_event", "frequency")
-            ).intersection(file.keys())
+            )
+            if add_array_attrs is not None:
+                array_attrs = array_attrs.union(add_array_attrs)
+            array_attrs = array_attrs.intersection(file.keys())
             kwargs.update({attr: file[attr][:] for attr in array_attrs})
-
+            # correct lead_time attribut to timedelta
+            if "lead_time" in kwargs:
+                kwargs["lead_time"] = np.array(file["lead_time"][:]).astype(
+                    "timedelta64[ns]"
+                )
             # Special handling for 'event_name' because it should be a list of strings
             if "event_name" in file:
                 # pylint: disable=no-member
@@ -2208,9 +2215,12 @@ class Impact:
         imp_mat = sparse.vstack(imp_mats)
 
         # Concatenate other attributes
-        kwargs = {
-            attr: stack_attribute(attr) for attr in ("date", "frequency", "at_event")
-        }
+        concat_attrs = {
+            name.lstrip("_")  # Private attributes with getter/setter
+            for name, value in first_imp.__dict__.items()
+            if isinstance(value, np.ndarray)
+        }.difference(("event_id", "coord_exp", "eai_exp", "aai_agg"))
+        kwargs = {attr: stack_attribute(attr) for attr in concat_attrs}
 
         # Get remaining attributes from first impact object in list
         return cls(
@@ -2299,15 +2309,108 @@ class ImpactFreqCurve:
         -------
         matplotlib.axes.Axes
         """
+        # check frequency unit
+        return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
+            self.frequency_unit
+        )
+
         if not axis:
             _, axis = plt.subplots(1, 1)
         axis.set_title(self.label)
         axis.set_ylabel("Impact (" + self.unit + ")")
+
         if log_frequency:
             axis.set_xlabel(f"Exceedance frequency ({self.frequency_unit})")
             axis.set_xscale("log")
             axis.plot(self.return_per**-1, self.impact, **kwargs)
+
         else:
-            axis.set_xlabel("Return period (year)")
+            axis.set_xlabel(f"Return period ({return_period_unit})")
             axis.plot(self.return_per, self.impact, **kwargs)
+
         return axis
+
+    def interpolate(
+        self,
+        return_periods,
+        *,
+        method="interpolate",
+        log_frequency=True,
+        log_impact=True,
+        min_impact=0,
+        bin_decimals=None,
+        y_asymptotic=0.0,
+    ):
+        """Interpolate and extrapolate impact frequency curve using different methods.
+
+        Parameters
+        ----------
+        return_periods : Iterable[float]
+            return periods for which to evaluate the impact frequency curve
+
+        method : str, optional
+            Method to interpolate to new return periods. Currently available are "interpolate",
+            "extrapolate", "extrapolate_constant" and "stepfunction". If set to "interpolate",
+            return periods outside the range of the Impact object's observed return periods
+            will be assigned NaN. If set to "extrapolate_constant" or "stepfunction",
+            return periods larger than the Impact object's observed return periods will be
+            assigned the largest impact, and return periods smaller than the Impact object's
+            observed return periods will be assigned 0. If set to "extrapolate",
+            exceedance impacts will be extrapolated (and interpolated). The extrapolation to
+            large return periods uses the two highest impacts of the centroid and their return
+            periods and extends the interpolation between these points to the given return period
+            (similar for small return periods). Defauls to "interpolate".
+        min_impact : float, optional
+            Minimum threshold to filter the impact. Defaults to 0.
+        log_frequency : bool, optional
+            If set to True, (cummulative) frequency values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        log_impact : bool, optional
+            If set to True, impact values are converted to log scale before
+            inter- and extrapolation. Defaults to True.
+        bin_decimals : int, optional
+            Number of decimals to group and bin impact values. Binning results in smoother (and
+            coarser) interpolation and more stable extrapolation. For more details and sensible
+            values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
+        y_asymptotic : float, optional
+            Has no effect if method is "interpolate". Else, if data size < 2 or if method
+            is set to "extrapolate_constant" or "stepfunction", it provides return value for
+            exceeded impact for return periods smaller than the data range. Defaults to 0.
+
+        Returns
+        -------
+        ImpactFreqCurve
+            impact frequency curve with inter- and extrapolated values
+
+        See Also
+        --------
+        util.interpolation.preprocess_and_interpolate_ev :
+            inter- and extrapolation method
+        """
+        exceedance_frequency = 1 / np.array(return_periods)
+
+        # sort return periods of ImpactFreqCurve
+        sorted_idxs = np.argsort(self.return_per)
+        impacts = np.squeeze(np.array(self.impact)[sorted_idxs])
+        rps = np.asarray(self.return_per)[sorted_idxs]
+        frequency = np.diff(1 / np.array(rps)[::-1], prepend=0)[::-1]
+        impact_interpolated = u_interp.preprocess_and_interpolate_ev(
+            exceedance_frequency,
+            None,
+            frequency,
+            impacts,
+            log_frequency=log_frequency,
+            log_values=log_impact,
+            value_threshold=min_impact,
+            method=method,
+            y_asymptotic=y_asymptotic,
+            bin_decimals=bin_decimals,
+        )
+
+        return ImpactFreqCurve(
+            return_per=return_periods,
+            impact=impact_interpolated,
+            unit=self.unit,
+            frequency_unit=self.frequency_unit,
+            label=self.label,
+        )
