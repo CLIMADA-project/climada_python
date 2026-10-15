@@ -42,8 +42,7 @@ import rasterio.mask
 import rasterio.warp
 import scipy.interpolate
 import scipy.spatial
-import shapely.ops
-import shapely.vectorized
+import shapely
 import shapely.wkt
 from cartopy.io import shapereader
 from pyproj.crs import CRS as PCRS
@@ -753,7 +752,7 @@ def get_land_geometry(country_names=None, extent=None, resolution=10):
     """
     geom = get_country_geometries(country_names, extent, resolution)
     # combine all into a single multipolygon
-    geom = geom.geometry.unary_union
+    geom = geom.geometry.union_all()
     if not isinstance(geom, MultiPolygon):
         geom = MultiPolygon([geom])
     return geom
@@ -804,7 +803,7 @@ def coord_on_land(lat, lon, land_geom=None):
             lon_mid = 0.5 * (land_bounds[0] + land_bounds[2])
             lon_normalize(lons, center=lon_mid)
 
-    return shapely.vectorized.contains(land_geom, lons, lat)
+    return shapely.contains_xy(land_geom, lons, lat)
 
 
 def nat_earth_resolution(resolution):
@@ -917,7 +916,7 @@ def get_country_geometries(
             lon_left, lon_right = lon_normalize(np.array(extent[:2]))
             extent_left = (lon_left, 180, extent[2], extent[3])
             extent_right = (-180, lon_right, extent[2], extent[3])
-            bbox = shapely.ops.unary_union(
+            bbox = shapely.union_all(
                 [box(*toggle_extent_bounds(e)) for e in [extent_left, extent_right]]
             )
         bbox = gpd.GeoSeries(bbox, crs=DEF_CRS)
@@ -1529,7 +1528,7 @@ def _nearest_neighbor_approx(
 
     if num_warn:
         LOGGER.warning(
-            "Distance to closest centroid is greater than %s" "km for %s coordinates.",
+            "Distance to closest centroid is greater than %skm for %s coordinates.",
             threshold,
             num_warn,
         )
@@ -1723,8 +1722,7 @@ def _nearest_neighbor_antimeridian(centroids, coordinates, threshold, assigned, 
     lon_max = max(centroids[:, 1].max(), coordinates[:, 1].max())
     if lon_max - lon_min > 360:
         raise ValueError(
-            "Longitudinal coordinates need to be normalized"
-            "to a common 360 degree range"
+            "Longitudinal coordinates need to be normalizedto a common 360 degree range"
         )
     mid_lon = 0.5 * (lon_max + lon_min)
     antimeridian = mid_lon + 180
@@ -1970,18 +1968,16 @@ def get_country_code(lat, lon, gridded=False):
             countries["area"] = countries.geometry.area
         countries = countries.sort_values(by=["area"], ascending=False)
         region_id = np.full((lon.size,), -1, dtype=int)
-        total_land = countries.geometry.unary_union
+        total_land = countries.geometry.union_all()
         ocean_mask = (
             region_id.all()
             if total_land is None
-            else ~shapely.vectorized.contains(total_land, lon, lat)
+            else ~shapely.contains_xy(total_land, lon, lat)
         )
         region_id[ocean_mask] = 0
         for country in countries.itertuples():
             unset = (region_id == -1).nonzero()[0]
-            select = shapely.vectorized.contains(
-                country.geometry, lon[unset], lat[unset]
-            )
+            select = shapely.contains_xy(country.geometry, lon[unset], lat[unset])
             region_id[unset[select]] = natearth_country_to_int(country)
         region_id[region_id == -1] = 0
     return region_id
@@ -3209,8 +3205,9 @@ def subraster_from_bounds(transform, bounds):
 
     # align the window bounds to the raster by rounding
     col_min, col_max = np.round(window.col_off), np.round(window.col_off + window.width)
-    row_min, row_max = np.round(window.row_off), np.round(
-        window.row_off + window.height
+    row_min, row_max = (
+        np.round(window.row_off),
+        np.round(window.row_off + window.height),
     )
     window = rasterio.windows.Window(
         col_min, row_min, col_max - col_min, row_max - row_min
