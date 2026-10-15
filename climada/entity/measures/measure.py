@@ -33,6 +33,7 @@ import logging
 from functools import wraps
 from typing import TYPE_CHECKING, Any, Optional, Tuple, TypeVar
 
+from climada.entity.measures.helper import identity_function
 from climada.entity.measures.measure_config import MeasureConfig
 
 from .cost_income import CostIncome
@@ -52,18 +53,6 @@ if TYPE_CHECKING:
 LOGGER = logging.getLogger(__name__)
 
 # TODO: risk transfer?
-
-
-# Note for review:
-# This function will moved in helper.py in a future PR which will
-# add I/O based on MeasureConfig dataclasses
-def identity_function(x: T, **_kwargs: Any) -> T:
-    """Identity function
-
-    Returns the provided parameter. Usefull to design measures without effect
-    on some of the risk components (Hazard, Exposures, Impact Function)
-    """
-    return x
 
 
 def allow_kwargs(func):
