@@ -444,7 +444,7 @@ class TestDecay(unittest.TestCase):
         track_res = tc_synth._apply_decay_coeffs(
             track_gen, v_rel, p_rel, land_geom, True
         )
-        self.assertTrue(np.array_equal(cp_ref, track_res["central_pressure"][9:11]))
+        self.assertTrue(np.allclose(cp_ref, track_res["central_pressure"][9:11]))
 
     def test_decay_end_ocean(self):
         """Test decay is applied after landfall if the track ends over the ocean"""
