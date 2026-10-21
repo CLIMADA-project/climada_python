@@ -32,6 +32,7 @@ import pandas as pd
 import requests
 from cartopy.io import shapereader
 
+import climada.util.dataframe_handling as u_pd
 from climada.util.constants import SYSTEM_DIR
 from climada.util.files_handler import download_file
 
@@ -289,7 +290,7 @@ def world_bank(cntry_iso, ref_year, info_ind):
             if not fn_ig.is_file():
                 file_down = download_file(WORLD_BANK_INC_GRP)
                 shutil.move(file_down, fn_ig)
-            dfr_wb = pd.read_excel(fn_ig, "Country Analytical History", skiprows=5)
+            dfr_wb = u_pd.read_excel(fn_ig, "Country Analytical History", skiprows=5)
             dfr_wb = dfr_wb.drop(dfr_wb.index[0:5]).set_index("Unnamed: 0")
             dfr_wb = dfr_wb.replace(
                 INCOME_GRP_WB_TABLE.keys(), INCOME_GRP_WB_TABLE.values()

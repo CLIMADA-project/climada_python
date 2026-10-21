@@ -25,11 +25,10 @@ import logging
 import pathlib
 import warnings
 from collections.abc import Collection
-from typing import Any, Dict, Optional, Union
+from typing import Any, Union
 
 import h5py
 import numpy as np
-import pandas as pd
 import rasterio
 import xarray as xr
 from deprecation import deprecated
@@ -37,6 +36,7 @@ from scipy import sparse
 
 import climada.util.constants as u_const
 import climada.util.coordinates as u_coord
+import climada.util.dataframe_handling as u_pd
 import climada.util.hdf5_handler as u_hdf5
 from climada.hazard.centroids.centr import Centroids
 
@@ -317,8 +317,8 @@ class HazardIO:
         intensity_unit: str,
         *,
         intensity: str = "intensity",
-        coordinate_vars: Optional[Dict[str, str]] = None,
-        data_vars: Optional[Dict[str, str]] = None,
+        coordinate_vars: dict[str, str] | None = None,
+        data_vars: dict[str, str] | None = None,
         crs: str = u_const.DEF_CRS,
         rechunk: bool = False,
         open_dataset_kws: dict[str, Any] | None = None,
@@ -604,7 +604,7 @@ class HazardIO:
         return cls(**cls._check_and_cast_attrs(kwargs))
 
     @staticmethod
-    def _check_and_cast_attrs(attrs: Dict[str, Any]) -> Dict[str, Any]:
+    def _check_and_cast_attrs(attrs: dict[str, Any]) -> dict[str, Any]:
         """Check the validity of the hazard attributes given and cast to correct type if required
         and possible.
 
@@ -731,7 +731,7 @@ class HazardIO:
         return attrs
 
     @staticmethod
-    def _attrs_to_kwargs(attrs: Dict[str, Any], num_events: int) -> Dict[str, Any]:
+    def _attrs_to_kwargs(attrs: dict[str, Any], num_events: int) -> dict[str, Any]:
         """Transform attributes to init kwargs or use default values
 
         If attributes are missing from ``attrs``, this method will use a sensible default
@@ -1092,7 +1092,7 @@ class HazardIO:
     @staticmethod
     def _read_att_excel(file_name, var_names, centroids):
         """Read Excel hazard's attributes."""
-        dfr = pd.read_excel(file_name, var_names["sheet_name"]["freq"])
+        dfr = u_pd.read_excel(file_name, var_names["sheet_name"]["freq"])
 
         num_events = dfr.shape[0]
         attrs = dict()
@@ -1106,7 +1106,7 @@ class HazardIO:
         )
         attrs["event_name"] = dfr[var_names["col_name"]["even_name"]].values.tolist()
 
-        dfr = pd.read_excel(file_name, var_names["sheet_name"]["inten"])
+        dfr = u_pd.read_excel(file_name, var_names["sheet_name"]["inten"])
         # number of events (ignore centroid_ID column)
         # check the number of events is the same as the one in the frequency
         if dfr.shape[1] - 1 is not num_events:
