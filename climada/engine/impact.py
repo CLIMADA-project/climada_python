@@ -26,21 +26,21 @@ import csv
 import datetime as dt
 import logging
 import warnings
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field
 from itertools import zip_longest
 from pathlib import Path
-from typing import Any, Iterable, Union
+from typing import Any, Union
 
 import contextily as ctx
 import geopandas as gpd
 import h5py
-import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xlsxwriter
 from deprecation import deprecated
+from matplotlib import animation
 from matplotlib.colors import Normalize
 from pandas.api.types import is_string_dtype
 from pyproj import CRS as pyprojCRS
@@ -49,6 +49,7 @@ from scipy import sparse
 from tqdm import tqdm
 
 import climada.util.coordinates as u_coord
+import climada.util.dataframe_handling as u_pd
 import climada.util.dates_times as u_dt
 import climada.util.interpolation as u_interp
 import climada.util.plot as u_plot
@@ -1567,7 +1568,7 @@ class Impact:
             Impact from excel file
         """
         LOGGER.info("Reading %s", file_name)
-        imp_df = pd.read_excel(file_name)
+        imp_df = u_pd.read_excel(file_name)
         imp = cls(haz_type=str(imp_df["haz_type"][0]))
 
         imp.unit = imp_df["unit"][0]

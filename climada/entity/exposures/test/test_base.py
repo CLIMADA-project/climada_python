@@ -31,6 +31,7 @@ from shapely.geometry import MultiPolygon, Point, Polygon
 from sklearn.metrics import DistanceMetric
 
 import climada.util.coordinates as u_coord
+import climada.util.dataframe_handling as u_pd
 from climada import CONFIG
 from climada.entity import LitPop
 from climada.entity.exposures.base import (
@@ -425,7 +426,7 @@ class TestIO(unittest.TestCase):
 
     def test_read_template_pass(self):
         """Wrong exposures definition"""
-        df = pd.read_excel(ENT_TEMPLATE_XLS)
+        df = u_pd.read_excel(ENT_TEMPLATE_XLS)
         exp_df = Exposures(df)
         # set metadata
         exp_df.ref_year = 2020
@@ -434,7 +435,7 @@ class TestIO(unittest.TestCase):
 
     def test_handling_unit_conflicts_pass(self):
         """Check that the value_unit is correctly set when there are conflicting value_unit definitions in the data frame and the meta attribute."""
-        df = pd.read_excel(ENT_TEMPLATE_XLS)
+        df = u_pd.read_excel(ENT_TEMPLATE_XLS)
         exp_df = Exposures(df, meta={"value_unit": "XSD"}, value_unit="XSD")
         exp_df.check()
         self.assertEqual(exp_df.value_unit, "XSD")
@@ -444,7 +445,7 @@ class TestIO(unittest.TestCase):
     def test_io_hdf5_pass(self):
         """write and read hdf5"""
         exp = Exposures(
-            pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632", ref_year=2020
+            u_pd.read_excel(ENT_TEMPLATE_XLS), crs="epsg:32632", ref_year=2020
         )
 
         # add another geometry column
