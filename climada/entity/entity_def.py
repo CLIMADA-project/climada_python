@@ -105,7 +105,7 @@ class Entity:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Entity.from_mat instead."""
         LOGGER.warning(
-            "The use of Entity.read_mat is deprecated." "Use Entity.from_mat instead."
+            "The use of Entity.read_mat is deprecated. " "Use Entity.from_mat instead."
         )
         self.__dict__ = Entity.from_mat(*args, **kwargs).__dict__
 
