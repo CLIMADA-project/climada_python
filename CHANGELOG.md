@@ -31,7 +31,9 @@ Code freeze date: YYYY-MM-DD
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
 - `ImpactCalc.impact` now raises a clear `ValueError` when the supplied `Hazard` contains no events, instead of failing later inside `np.array_split` with an obscure message [#814](https://github.com/CLIMADA-project/climada_python/issues/814).
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
-- `TropCyclone.apply_climate_scenario_knu` now raises its `ValueError` for negative frequencies (the check `any(x) < 0` never triggered); fix missing spaces and `f` prefixes in warning and error messages; remove debug `print` calls [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
+- `TropCyclone.apply_climate_scenario_knu` now raises its `ValueError` for negative frequencies (the check `any(x) < 0` never triggered) [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
+- Fix missing spaces and `f` prefixes in warning and error messages [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
+- Remove debug `print` calls [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
 
 ### Deprecated
 - `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().interpolate()` instead.
