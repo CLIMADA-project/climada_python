@@ -45,6 +45,7 @@ Code freeze date: YYYY-MM-DD
 - `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
 - `climada.util.finance`: Removed constants `WORLD_BANK_WEALTH_ACC` and
   `FILE_WORLD_BANK_WEALTH_ACC`. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
+- `doc.development.Guide_Euler.ipynb` tutorial is not part of the climada docs anymore. For using climada on the ETHZ HPC Cluster Euler, see https://gitlab.ethz.ch/climada/climada-on-euler/ instead. [#1329](https://github.com/CLIMADA-project/climada_python/pull/1329)
 
 ## 6.1.0
 
