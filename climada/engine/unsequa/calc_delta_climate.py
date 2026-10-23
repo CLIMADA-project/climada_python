@@ -235,7 +235,7 @@ class CalcDeltaImpact(Calc):
 
         if unc_sample.samples_df.empty:
             raise ValueError(
-                "No sample was found. Please create one first"
+                "No sample was found. Please create one first "
                 "using UncImpact.make_sample(N)"
             )
 
