@@ -25,6 +25,7 @@ import numpy as np
 from cartopy.io import shapereader
 
 from climada.util.finance import (
+    WB_URBAN_LAND_MARKUP,
     _gdp_twn,
     download_world_bank_indicator,
     gdp,
