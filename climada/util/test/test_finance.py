@@ -215,7 +215,7 @@ class TestWBWealthAccount(unittest.TestCase):
                 14676399165833.0,  # 15/05/2026 from WB website
             ]
         )  # Values updated by worldbank at different dates
-        ref_val_noland = ref_val / 1.24  # dito
+        ref_val_noland = ref_val / WB_URBAN_LAND_MARKUP
         self.assertEqual(wb_year, ref_year)
         self.assertEqual(q, 1)
         self.assertIn(wb_val, ref_val)

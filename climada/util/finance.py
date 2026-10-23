@@ -61,6 +61,10 @@ FILE_GWP_WEALTH2GDP_FACTORS = "WEALTH2GDP_factors_CRI_2016.csv"
 Credit Suisse's Global Wealth Report 2017 (household wealth)"""
 
 WB_URBAN_LAND_MARKUP = 1.24
+"""
+Markup factor of 24% used by the world bank to include built-value.
+See Section 9.2 [Worldbank methodology](https://datacatalog.worldbank.org/search/dataset/0042066/wealth-accounting)
+"""
 
 
 def _nat_earth_shp(resolution="10m", category="cultural", name="admin_0_countries"):
@@ -446,7 +450,7 @@ def world_bank_wealth_account(
         If True, return produced capital without built-up land value
         (applies to 'NW.PCA.*' only). The world bank applies a 24% markup
         to include the built-up (or urban) land value, thus this divides
-        by a factor 1.24.
+        by a factor 1.24. (See section 9.2 of the worldbank methodology mentioned above).
         Default: True.
     """
 
