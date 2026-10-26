@@ -444,7 +444,7 @@ class TestDecay(unittest.TestCase):
         track_res = tc_synth._apply_decay_coeffs(
             track_gen, v_rel, p_rel, land_geom, True
         )
-        cp_actual = track_res["central_pressure"][9:11]
+        cp_actual = track_res["central_pressure"][9:11].to_numpy()
         self.assertTrue(
             np.allclose(cp_ref, cp_actual),
             msg=f"Expected {cp_ref[0]}, got {cp_actual[0]}"
