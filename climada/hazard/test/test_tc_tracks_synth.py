@@ -447,7 +447,8 @@ class TestDecay(unittest.TestCase):
         cp_actual = track_res["central_pressure"][9:11]
         self.assertTrue(
             np.allclose(cp_ref, cp_actual),
-            msg=f"Expected {cp_ref}, got {cp_actual} (difference: {cp_actual - cp_ref})",
+            msg=f"Expected {cp_ref[0]}, got {cp_actual[0]}"
+            f"(difference: {cp_actual[0] - cp_ref[0]})",
         )
 
     def test_decay_end_ocean(self):
