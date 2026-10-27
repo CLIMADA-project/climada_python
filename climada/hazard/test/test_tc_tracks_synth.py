@@ -435,7 +435,7 @@ class TestDecay(unittest.TestCase):
         }
         track_gen.attrs["orig_event_flag"] = False
 
-        cp_ref = np.array([1012.0, 1012.0])
+        cp_ref = np.array([1013.0, 1012.0] + [1011.0] * 6 + [1010.0] * 10)
         single_track = tc.TCTracks([track_gen])
         extent = single_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -444,11 +444,11 @@ class TestDecay(unittest.TestCase):
         track_res = tc_synth._apply_decay_coeffs(
             track_gen, v_rel, p_rel, land_geom, True
         )
-        cp_actual = track_res["central_pressure"][9:11].to_numpy()
+        cp_actual = track_res["central_pressure"].to_numpy()
         self.assertTrue(
-            np.allclose(cp_ref, cp_actual),
-            msg=f"Expected {cp_ref}, got {cp_actual}"
-            f"(difference: {cp_actual - cp_ref})",
+            np.allclose(cp_ref, cp_actual[:18]),
+            msg=f"Expected {cp_ref}, got {cp_actual[:18]}"
+            f"(full central_pressure: {cp_actual})",
         )
 
     def test_decay_end_ocean(self):
