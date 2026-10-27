@@ -476,7 +476,7 @@ class TestClimateSce(unittest.TestCase):
             )
 
     def test_knu_negative_frequency(self):
-        """A scenario that makes a frequency negative must raise."""
+        """A scenario that makes a frequency negative must raise a ValueError."""
         self.create_tc()
         # Mostly intense storms: the weak storms would need to lose more than 100% of their frequency.
         self.tc.category = np.array([4, 4, 0, 1])
