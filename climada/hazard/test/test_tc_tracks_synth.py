@@ -434,6 +434,7 @@ class TestDecay(unittest.TestCase):
             4: (1.0714354641894077, 0.002783787561718677),
         }
         track_gen.attrs["orig_event_flag"] = False
+
         # the reference central pressure may need to be updated when IBTrACS change their files,
         # which may happen even without an apparent version change
         cp_ref = np.array([1013.0, 1012.0] + [1011.0] * 6 + [1010.0] * 10)

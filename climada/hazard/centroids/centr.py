@@ -39,6 +39,7 @@ from pyproj.crs.crs import CRS
 from shapely.geometry.point import Point
 
 import climada.util.coordinates as u_coord
+import climada.util.dataframe_handling as u_pd
 from climada.util.constants import DEF_CRS
 
 __all__ = ["Centroids"]
@@ -882,7 +883,7 @@ class Centroids:
         """
         if sheet_name is None:
             sheet_name = "centroids"
-        df = pd.read_excel(file_path, sheet_name)
+        df = u_pd.read_excel(file_path, sheet_name)
         return cls._from_dataframe(df)
 
     def write_excel(self, file_path):
@@ -1053,7 +1054,7 @@ class Centroids:
     def _legacy_from_excel(cls, file_name, var_names):
         LOGGER.info("Reading %s", file_name)
         try:
-            df = pd.read_excel(file_name, var_names["sheet_name"])
+            df = u_pd.read_excel(file_name, var_names["sheet_name"])
             df = df.rename(columns=var_names["col_name"])
         except KeyError as err:
             raise KeyError("Not existing variable: %s" % str(err)) from err

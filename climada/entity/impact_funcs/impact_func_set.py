@@ -23,14 +23,15 @@ __all__ = ["ImpactFuncSet"]
 
 import copy
 import logging
+from collections.abc import Iterable
 from itertools import repeat
-from typing import Iterable, Optional, Union, overload
+from typing import Optional, Union, overload
 
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 import xlsxwriter
 
+import climada.util.dataframe_handling as u_pd
 import climada.util.hdf5_handler as u_hdf5
 import climada.util.plot as u_plot
 from climada.entity.impact_funcs.base import ImpactFunc
@@ -424,7 +425,7 @@ class ImpactFuncSet:
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL
-        dfr = pd.read_excel(file_name, var_names["sheet_name"])
+        dfr = u_pd.read_excel(file_name, var_names["sheet_name"])
 
         imp_func_set = cls()
         imp_func_set._fill_dfr(dfr, var_names)
