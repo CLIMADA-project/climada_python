@@ -475,6 +475,16 @@ class TestClimateSce(unittest.TestCase):
                 future_tc.frequency[cat45_sel & basin_sel],
             )
 
+    def test_knu_negative_frequency(self):
+        """A scenario that makes a frequency negative must raise a ValueError."""
+        self.create_tc()
+        # Mostly intense storms: the weak storms would need to lose more than 100% of their frequency.
+        self.tc.category = np.array([4, 4, 0, 1])
+        with self.assertRaises(ValueError):
+            self.tc.apply_climate_scenario_knu(
+                percentile="90/95", scenario="8.5", target_year=2100
+            )
+
     def test_apply_climate_scenario_knu_target_year_out_of_range(self):
         self.create_tc()
         with self.assertRaises(KeyError):

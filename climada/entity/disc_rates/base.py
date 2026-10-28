@@ -259,7 +259,7 @@ class DiscRates:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use ``DiscRates.from_mat`` instead."""
         LOGGER.warning(
-            "The use of DiscRates.read_mat is deprecated."
+            "The use of DiscRates.read_mat is deprecated. "
             "Use DiscRates.from_mat instead."
         )
         self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
@@ -305,7 +305,7 @@ class DiscRates:
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use DiscRates.from_excel instead."""
         LOGGER.warning(
-            "The use of DiscRates.read_excel is deprecated."
+            "The use of DiscRates.read_excel is deprecated. "
             "Use DiscRates.from_excel instead."
         )
         self.__dict__ = DiscRates.from_excel(*args, **kwargs).__dict__
