@@ -94,7 +94,7 @@ class LitPop(Exposures):
     def set_countries(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
         LOGGER.warning(
-            "The use of LitPop.set_countries is deprecated."
+            "The use of LitPop.set_countries is deprecated. "
             "Use LitPop.from_countries instead."
         )
         self.__dict__ = LitPop.from_countries(*args, **kwargs).__dict__
@@ -307,7 +307,7 @@ class LitPop(Exposures):
     def set_nightlight_intensity(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_nightlight_intensity instead."""
         LOGGER.warning(
-            "The use of LitPop.set_nightlight_intensity is deprecated."
+            "The use of LitPop.set_nightlight_intensity is deprecated. "
             "Use LitPop.from_nightlight_intensity instead."
         )
         self.__dict__ = LitPop.from_nightlight_intensity(*args, **kwargs).__dict__
@@ -409,7 +409,7 @@ class LitPop(Exposures):
     def set_population(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_population instead."""
         LOGGER.warning(
-            "The use of LitPop.set_population is deprecated."
+            "The use of LitPop.set_population is deprecated. "
             "Use LitPop.from_population instead."
         )
         self.__dict__ = LitPop.from_population(*args, **kwargs).__dict__
@@ -510,7 +510,7 @@ class LitPop(Exposures):
     def set_custom_shape_from_countries(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_shape_and_countries instead."""
         LOGGER.warning(
-            "The use of LitPop.set_custom_shape_from_countries is deprecated."
+            "The use of LitPop.set_custom_shape_from_countries is deprecated. "
             "Use LitPop.from_shape_and_countries instead."
         )
         self.__dict__ = LitPop.from_shape_and_countries(*args, **kwargs).__dict__
@@ -646,7 +646,7 @@ class LitPop(Exposures):
             gdf = exp.gdf.loc[idx]
         else:
             raise NotImplementedError(
-                "Not implemented for `shape` of type {type(shape)}"
+                f"Not implemented for `shape` of type {type(shape)}"
             )
 
         exp.description = (
@@ -681,7 +681,7 @@ class LitPop(Exposures):
     def set_custom_shape(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_shape instead."""
         LOGGER.warning(
-            "The use of LitPop.set_custom_shape is deprecated."
+            "The use of LitPop.set_custom_shape is deprecated. "
             "Use LitPop.from_shape instead."
         )
         self.__dict__ = LitPop.from_shape(*args, **kwargs).__dict__

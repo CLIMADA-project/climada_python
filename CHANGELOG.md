@@ -36,6 +36,7 @@ Code freeze date: YYYY-MM-DD
   (`databank.worldbank.org`) whose SSL certificate had expired. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 - `ImpactCalc.impact` now raises a clear `ValueError` when the supplied `Hazard` contains no events, instead of failing later inside `np.array_split` with an obscure message [#814](https://github.com/CLIMADA-project/climada_python/issues/814).
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
+- `TropCyclone.apply_climate_scenario_knu` now raises a `ValueError` if a frequency is negative [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
 
 ### Deprecated
 - `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().interpolate()` instead.

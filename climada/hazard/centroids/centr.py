@@ -1091,7 +1091,7 @@ class Centroids:
 
     @classmethod
     @deprecated(
-        details="Reading Centroids data from matlab files is not supported anymore."
+        details="Reading Centroids data from matlab files is not supported anymore. "
         "This method has been removed with climada 5.0"
     )
     def from_mat(cls, file_name, var_names=None):
