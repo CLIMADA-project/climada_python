@@ -252,7 +252,7 @@ class ImpactCalc:
         else:
             if isinstance(self.hazard, HazardForecast):
                 raise ValueError(
-                    "Saving impact matrix is required when using HazardForecast."
+                    "Saving impact matrix is required when using HazardForecast. "
                     "Please set save_mat=True."
                 )
             imp_mat = None

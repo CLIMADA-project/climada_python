@@ -135,7 +135,7 @@ def get_knutson_scaling_factor(
     ):
 
         raise ValueError(
-            "The selected historical baseline falls outside"
+            "The selected historical baseline falls outside "
             f"the GMST data period {gmst_info['gmst_start_year']}"
             f"-{gmst_info['gmst_end_year']}"
         )
@@ -160,7 +160,7 @@ def get_knutson_scaling_factor(
 
     except KeyError:
         LOGGER.warning(
-            f"No scaling factors are defined for basin {basin} therefore"
+            f"No scaling factors are defined for basin {basin} therefore "
             "no change will be projected for tracks in this basin"
         )
         return pd.DataFrame(

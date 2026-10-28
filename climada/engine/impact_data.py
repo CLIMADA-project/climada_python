@@ -410,7 +410,7 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
         all_hits.append(hits)
 
     # create data frame for output
-    hit_countries = pd.DataFrame(columns=["hit_country", "Date_start", "ibtracsID"])
+    hit_countries = []
     for track, _ in enumerate(names):
         # Check if track has hit any country else go to the next track
         if len(all_hits[track]) > 0:
@@ -419,16 +419,17 @@ def hit_country_per_hazard(intensity_path, names_path, reg_id_path, date_path):
                 # Hit country ISO
                 ctry_iso = u_coord.country_to_iso(all_hits[track][hit], "alpha3")
                 # create entry for each country a hazard has hit
-                hit_countries = hit_countries.append(
+                hit_countries.append(
                     {
                         "hit_country": ctry_iso,
                         "Date_start": date[track],
                         "ibtracsID": names[track],
-                    },
-                    ignore_index=True,
+                    }
                 )
     # retrun data frame with all hit countries per hazard
-    return hit_countries
+    return pd.DataFrame(
+        hit_countries, columns=["hit_country", "Date_start", "ibtracsID"]
+    )
 
 
 def create_lookup(emdat_data, start, end, disaster_subtype="Tropical cyclone"):
@@ -897,7 +898,6 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
             # get GDP value for each country and year:
             gdp_years[country] = dict()
             years_country = np.unique(year_values[iso3a_values == country])
-            print(years_country)
             for year in years_country:
                 gdp_years[country][year] = gdp(country, year)[1]
         # loop through each value and apply scaling:

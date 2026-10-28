@@ -535,7 +535,7 @@ class ImpactFuncSet:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use ImpactFuncSet.from_mat instead."""
         LOGGER.warning(
-            "The use of ImpactFuncSet.read_mat  is deprecated."
+            "The use of ImpactFuncSet.read_mat  is deprecated. "
             "Use ImpactFuncSet.from_mat  instead."
         )
         self.__dict__ = ImpactFuncSet.from_mat(*args, **kwargs).__dict__

@@ -118,7 +118,7 @@ class ImpfStormEurope(ImpactFunc):
         instead.
         """
         LOGGER.warning(
-            "The use of ImpfStormEurope.set_schwierz is deprecated."
+            "The use of ImpfStormEurope.set_schwierz is deprecated. "
             "Use ImpfStormEurope.from_schwierz instead."
         )
         self.__dict__ = ImpfStormEurope.from_schwierz(impf_id=impf_id).__dict__
@@ -129,7 +129,7 @@ class ImpfStormEurope(ImpactFunc):
         instead.
         """
         LOGGER.warning(
-            "The use of ImpfStormEurope.set_welker is deprecated."
+            "The use of ImpfStormEurope.set_welker is deprecated. "
             "Use ImpfStormEurope.from_welker instead."
         )
         self.__dict__ = ImpfStormEurope.from_welker(impf_id=impf_id).__dict__

@@ -434,8 +434,9 @@ class TestDecay(unittest.TestCase):
             4: (1.0714354641894077, 0.002783787561718677),
         }
         track_gen.attrs["orig_event_flag"] = False
-
-        cp_ref = np.array([1012.0, 1012.0])
+        # the reference central pressure may need to be updated when IBTrACS change their files,
+        # which may happen even without an apparent version change
+        cp_ref = np.array([1013.0, 1012.0] + [1011.0] * 6 + [1010.0] * 10)
         single_track = tc.TCTracks([track_gen])
         extent = single_track.get_extent()
         land_geom = climada.util.coordinates.get_land_geometry(
@@ -444,7 +445,12 @@ class TestDecay(unittest.TestCase):
         track_res = tc_synth._apply_decay_coeffs(
             track_gen, v_rel, p_rel, land_geom, True
         )
-        self.assertTrue(np.array_equal(cp_ref, track_res["central_pressure"][9:11]))
+        cp_actual = track_res["central_pressure"].to_numpy()
+        self.assertTrue(
+            np.allclose(cp_ref, cp_actual[:18]),
+            msg=f"Expected {cp_ref}, got {cp_actual[:18]}"
+            f"(full central_pressure: {cp_actual})",
+        )
 
     def test_decay_end_ocean(self):
         """Test decay is applied after landfall if the track ends over the ocean"""
