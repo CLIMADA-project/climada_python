@@ -446,7 +446,7 @@ class TestFunc(unittest.TestCase):
         with self.assertRaises(ValueError) as cm:
             u_coord.estimate_matching_threshold(coords_fail)
         self.assertIn(
-            "The coordinate assignement threshold cannot be"
+            "The coordinate assignement threshold cannot be "
             "estimated for a single coordinate. Please set the threshold explicitly",
             str(cm.exception),
         )

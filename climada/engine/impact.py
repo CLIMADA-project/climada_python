@@ -283,7 +283,7 @@ class Impact:
            instead.
         """
         LOGGER.warning(
-            "The Impact.tot_value attribute is deprecated."
+            "The Impact.tot_value attribute is deprecated. "
             "Use Exposures.affected_total_value to calculate the affected "
             "total exposure value based on a specific hazard intensity "
             "threshold"
@@ -294,7 +294,7 @@ class Impact:
     def tot_value(self, value):
         """Set the total exposure value close to a hazard"""
         LOGGER.warning(
-            "The Impact.tot_value attribute is deprecated."
+            "The Impact.tot_value attribute is deprecated. "
             "Use Exposures.affected_total_value to calculate the affected "
             "total exposure value based on a specific hazard intensity "
             "threshold"
@@ -485,7 +485,7 @@ class Impact:
     def calc_impact_year_set(self, all_years=True, year_range=None):
         """This function is deprecated, use Impact.impact_per_year instead."""
         LOGGER.warning(
-            "The use of Impact.calc_impact_year_set is deprecated."
+            "The use of Impact.calc_impact_year_set is deprecated. "
             "Use Impact.impact_per_year instead."
         )
         return self.impact_per_year(all_years=all_years, year_range=year_range)
@@ -566,7 +566,7 @@ class Impact:
         )
         if self.imp_mat.size == 0:
             raise ValueError(
-                "Attribute imp_mat is empty. Recalculate Impact"
+                "Attribute imp_mat is empty. Recalculate Impact "
                 "instance with parameter save_mat=True"
             )
 
@@ -713,7 +713,7 @@ class Impact:
         LOGGER.info("Computing return period map for impacts: %s", threshold_impact)
         if self.imp_mat.size == 0:
             raise ValueError(
-                "Attribute imp_mat is empty. Recalculate Impact"
+                "Attribute imp_mat is empty. Recalculate Impact "
                 "instance with parameter save_mat=True"
             )
 
@@ -1077,7 +1077,7 @@ class Impact:
         """
         if self.imp_mat.size == 0:
             raise ValueError(
-                "Attribute imp_mat is empty. Recalculate Impact"
+                "Attribute imp_mat is empty. Recalculate Impact "
                 "instance with parameter save_mat=True"
             )
         if "cmap" not in kwargs:
@@ -1145,7 +1145,7 @@ class Impact:
         """
         if self.imp_mat.size == 0:
             raise ValueError(
-                "Attribute imp_mat is empty. Recalculate Impact"
+                "Attribute imp_mat is empty. Recalculate Impact "
                 "instance with parameter save_mat=True"
             )
 
