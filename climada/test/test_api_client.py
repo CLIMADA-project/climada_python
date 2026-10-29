@@ -22,6 +22,7 @@ Test save module.
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import numpy as np
 
@@ -146,6 +147,33 @@ class TestClient(unittest.TestCase):
         self.assertEqual(download.stat().st_size, dataset.files[0].file_size)
         download.unlink()
         self.assertFalse(download.is_file())
+
+    def test_download_file_name_from_url(self):
+        """Client._download derives the local file name from the URL path
+        only: a query string or fragment never becomes part of it, while
+        percent-decoding of the file name is kept."""
+        client = Client()
+
+        def download(url, download_dir):
+            with mock.patch("climada.util.api_client.requests.get") as mock_get:
+                stream = mock_get.return_value.__enter__.return_value
+                stream.iter_content.return_value = [b"data"]
+                return client._download(url, Path(download_dir))
+
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            # plain URL (regression)
+            path = download("https://example.org/data/file.zip", tmp_dir)
+            self.assertEqual(path.name, "file.zip")
+            self.assertTrue(path.is_file())
+            # query string
+            path = download("https://example.org/data/file.zip?download=1", tmp_dir)
+            self.assertEqual(path.name, "file.zip")
+            # fragment
+            path = download("https://example.org/data/other.zip#section", tmp_dir)
+            self.assertEqual(path.name, "other.zip")
+            # percent-encoded file name is still decoded
+            path = download("https://example.org/data/my%20file.zip", tmp_dir)
+            self.assertEqual(path.name, "my file.zip")
 
     def test_download_dataset(self):
         """"""

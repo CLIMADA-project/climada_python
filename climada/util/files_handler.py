@@ -28,7 +28,8 @@ import glob
 import logging
 import math
 import urllib
-from pathlib import Path
+from pathlib import Path, PurePosixPath
+from urllib.parse import urlsplit
 
 import requests
 from tqdm import tqdm
@@ -78,8 +79,9 @@ def download_file(url, download_dir=None, overwrite=True):
     str
         the full path to the eventually downloaded file
     """
-    file_name = url.split("/")[-1]
-    if file_name.strip() == "":
+    url_path = urlsplit(url).path
+    file_name = PurePosixPath(url_path).name
+    if file_name.strip() == "" or url_path.endswith("/"):
         raise ValueError(f"cannot download {url} as a file")
     download_path = (
         CONFIG.local_data.save_dir.dir() if download_dir is None else Path(download_dir)

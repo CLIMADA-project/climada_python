@@ -26,7 +26,7 @@ import time
 from dataclasses import dataclass
 from datetime import datetime
 from os.path import commonprefix
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import quote, unquote, urlsplit, urlunsplit
 
 import pandas as pd
@@ -564,7 +564,7 @@ class Client:
             and replace is False
         """
         if path.is_dir():
-            path /= unquote(url.split("/")[-1])
+            path /= unquote(PurePosixPath(urlsplit(url).path).name)
         if path.is_file() and not replace:
             raise FileExistsError(path)
         with requests.get(url, stream=True, timeout=Client.DOWNLOAD_TIMEOUT) as stream:
