@@ -1,18 +1,14 @@
 climada\.entity\.measures package
 =================================
 
-climada\.entity\.measures\.base module
---------------------------------------
+.. note::
+   This package implements the new way of defining measures.
+   For the previous way, see :ref:`climada.entity._legacy_measures`
 
-.. automodule:: climada.entity.measures.base
-    :members:
-    :undoc-members:
-    :show-inheritance:
+climada\.entity\.measures\.measure_config module
+------------------------------------------------
 
-climada\.entity\.measures\.measure\_set module
-----------------------------------------------
-
-.. automodule:: climada.entity.measures.measure_set
+.. automodule:: climada.entity.measures.measure_config
     :members:
     :undoc-members:
     :show-inheritance:

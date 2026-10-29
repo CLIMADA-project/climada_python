@@ -149,8 +149,11 @@ class TestReadDefaultNetCDF(unittest.TestCase):
     def test_type_error(self):
         """Calling 'from_xarray_raster' with wrong data type should throw"""
         # Passing a DataArray
-        with xr.open_dataset(self.netcdf_path) as dset, self.assertRaisesRegex(
-            TypeError, "This method only supports passing xr.Dataset"
+        with (
+            xr.open_dataset(self.netcdf_path) as dset,
+            self.assertRaisesRegex(
+                TypeError, "This method only supports passing xr.Dataset"
+            ),
         ):
             Hazard.from_xarray_raster(dset["intensity"], "", "")
 

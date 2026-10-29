@@ -24,11 +24,11 @@ import unittest
 import numpy as np
 
 from climada import CONFIG
+from climada.entity._legacy_measures.measure_set import MeasureSet
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.entity_def import Entity
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.entity.measures.measure_set import MeasureSet
 from climada.util.constants import ENT_TEMPLATE_XLS
 
 ENT_TEST_MAT = CONFIG.exposures.test_data.dir().joinpath("demo_today.mat")

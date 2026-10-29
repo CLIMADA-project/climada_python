@@ -89,7 +89,7 @@ def get_string(array):
     -------
     string
     """
-    return "".join(chr(int(c)) for c in array)
+    return "".join(chr(c.item()) for c in array)
 
 
 def get_str_from_ref(file_name, var):

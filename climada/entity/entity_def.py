@@ -26,10 +26,10 @@ from typing import Optional
 
 import pandas as pd
 
+from climada.entity._legacy_measures.measure_set import Measure, MeasureSet
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
-from climada.entity.measures.measure_set import MeasureSet
 
 LOGGER = logging.getLogger(__name__)
 
@@ -105,7 +105,7 @@ class Entity:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Entity.from_mat instead."""
         LOGGER.warning(
-            "The use of Entity.read_mat is deprecated." "Use Entity.from_mat instead."
+            "The use of Entity.read_mat is deprecated. Use Entity.from_mat instead."
         )
         self.__dict__ = Entity.from_mat(*args, **kwargs).__dict__
 

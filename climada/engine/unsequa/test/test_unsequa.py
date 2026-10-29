@@ -41,22 +41,18 @@ from climada.engine.unsequa.calc_base import LOGGER
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.hazard import Hazard
-from climada.util.api_client import Client
+from climada.test import get_test_file
 from climada.util.constants import (
     ENT_DEMO_FUTURE,
     ENT_DEMO_TODAY,
-    EXP_DEMO_H5,
     HAZ_DEMO_H5,
     TEST_UNC_OUTPUT_COSTBEN,
     TEST_UNC_OUTPUT_IMPACT,
 )
 
-test_unc_output_impact = Client().get_dataset_file(
-    name=TEST_UNC_OUTPUT_IMPACT, status="test_dataset"
-)
-test_unc_output_costben = Client().get_dataset_file(
-    name=TEST_UNC_OUTPUT_COSTBEN, status="test_dataset"
-)
+EXP_DEMO_H5 = get_test_file("exp_demo_today", file_format="hdf5")
+test_unc_output_impact = get_test_file(TEST_UNC_OUTPUT_IMPACT)
+test_unc_output_costben = get_test_file(TEST_UNC_OUTPUT_COSTBEN)
 
 
 def impf_dem(x_paa=1, x_mdd=1):
@@ -578,7 +574,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {"S": 10, "seed": 12345},
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["CV", 16],
-                "test_si_value": [0.25000, 2],
+                "test_si_value": [0.250000, 2],
             },
             "hdmr": {
                 "sampling_method": "saltelli",
@@ -587,7 +583,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {},
                 "test_param_name": ["x_exp", 2],
                 "test_si_name": ["Sa", 4],
-                "test_si_value": [0.004658, 3],
+                "test_si_value": [0.004649, 3],
             },
             "ff": {
                 "sampling_method": "ff",
@@ -618,7 +614,7 @@ class TestCalcImpact(unittest.TestCase):
                 },
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["dgsm", 8],
-                "test_si_value": [1.697516e-01, 9],
+                "test_si_value": [0.1697516, 9],
             },
             "fast": {
                 "sampling_method": "fast_sampler",
@@ -627,7 +623,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {"M": 4, "seed": 12345},
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["S1_conf", 8],
-                "test_si_value": [0.671396, 1],
+                "test_si_value": [0.671546, 1],
             },
             "rbd_fast": {
                 "sampling_method": "saltelli",
@@ -636,7 +632,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {"M": 4, "seed": 12345},
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["S1_conf", 4],
-                "test_si_value": [0.152609, 4],
+                "test_si_value": [0.129919, 4],
             },
             "morris": {
                 "sampling_method": "morris",
@@ -645,7 +641,7 @@ class TestCalcImpact(unittest.TestCase):
                 "sensitivity_kwargs": {},
                 "test_param_name": ["x_exp", 0],
                 "test_si_name": ["mu", 1],
-                "test_si_value": [5066460029.63911, 8],
+                "test_si_value": [7935400297.813827, 8],
             },
         }
 
@@ -700,7 +696,7 @@ class TestCalcImpact(unittest.TestCase):
                 haz_unc,
                 sensitivity_method,
                 method_params,
-                places=2 if sensitivity_method == "rbd_fast" else 5,
+                places=5,
             )
 
 

@@ -12,14 +12,35 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- Support for ensemble forecast data as hazard via `HazardForecast` and `ImpactForecast`, see `doc.user_guide.climada_engine_ImpactForecast.ipynb` [#1115](https://github.com/CLIMADA-project/climada_python/pull/)
+- Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
+- Adds `MeasureConfig` and related dataclasses for new `Measure` object retrocompatibility and (de)serialization capabilities [#1276](https://github.com/CLIMADA-project/climada_python/pull/1276)
+- Add inter- and extrapolation options to `ImpactFreqCurve` with method `interpolate` [#1252](https://github.com/CLIMADA-project/climada_python/pull/1252)
+- Add `trajectory` module to ease the handling of multiple risk assessment at different point in time, and enable interpolation in between. [#1197](https://github.com/CLIMADA-project/climada_python/pull/1197), [#1198](https://github.com/CLIMADA-project/climada_python/pull/1198), [#1199](https://github.com/CLIMADA-project/climada_python/pull/1199), [#1200](https://github.com/CLIMADA-project/climada_python/pull/1197), [#1201](https://github.com/CLIMADA-project/climada_python/pull/1197)
+
 ### Changed
+
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
+- Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
+- `HazardForecast.quantile` and `ImpactForecast.quantile` compute quantiles block-wise instead of densifying the entire sparse matrix, greatly reducing peak memory. Results are unchanged. [#1203](https://github.com/CLIMADA-project/climada_python/issues/1203)
 
 ### Fixed
 
+- Preserve explicitly mapped dates in `HazardForecast.from_xarray_raster` [#1305](https://github.com/CLIMADA-project/climada_python/issues/1305).
+- Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
+- `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
+- `ImpactCalc.impact` now raises a clear `ValueError` when the supplied `Hazard` contains no events, instead of failing later inside `np.array_split` with an obscure message [#814](https://github.com/CLIMADA-project/climada_python/issues/814).
+- Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
+- Fix a wrong computation of EAI in the `trajectory` module when the index of the `GeoDataFrame` of an Exposures object is not a 0 to n range. [#1297](https://github.com/CLIMADA-project/climada_python/pull/1297).
+- `TropCyclone.apply_climate_scenario_knu` now raises a `ValueError` if a frequency is negative [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
+
 ### Deprecated
+- `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().interpolate()` instead.
 
 ### Removed
+- `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `doc.development.Guide_Euler.ipynb` tutorial is not part of the climada docs anymore. For using climada on the ETHZ HPC Cluster Euler, see https://gitlab.ethz.ch/climada/climada-on-euler/ instead. [#1329](https://github.com/CLIMADA-project/climada_python/pull/1329)
 
 ## 6.1.0
 
@@ -152,9 +173,9 @@ Removed:
 - `climada.entity.impact_funcs.trop_cyclone.ImpfSetTropCyclone.get_impf_id_regions_per_countries` function [#1034](https://github.com/CLIMADA-project/climada_python/pull/1034)
 - `climada.hazard.tc_tracks.BasinBoundsStorm` Enum class `climada.hazard.tc_tracks.subset_by_basin` function [#1031](https://github.com/CLIMADA-project/climada_python/pull/1031)
 - `climada.hazard.tc_tracks.TCTracks.subset_years` function [#1023](https://github.com/CLIMADA-project/climada_python/pull/1023)
--`climada.hazard.tc_tracks.compute_track_density` function, `climada.hazard.tc_tracks.compute_genesis_density` function, `climada.hazard.plot.plot_track_density` function
+- `climada.hazard.tc_tracks.compute_track_density` function, `climada.hazard.tc_tracks.compute_genesis_density` function, `climada.hazard.plot.plot_track_density` function
  [#1003](https://github.com/CLIMADA-project/climada_python/pull/1003)
--`climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
+- `climada.hazard.tc_tracks.TCTracks.from_FAST` function, add Australia basin (AU) [#993](https://github.com/CLIMADA-project/climada_python/pull/993)
 - Add `osm-flex` package to CLIMADA core [#981](https://github.com/CLIMADA-project/climada_python/pull/981)
 - `doc.tutorial.climada_entity_Exposures_osm.ipynb` tutorial explaining how to use `osm-flex` with CLIMADA
 - `climada.util.coordinates.bounding_box_global` function [#980](https://github.com/CLIMADA-project/climada_python/pull/980)
