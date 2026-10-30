@@ -78,7 +78,7 @@ class ModifierConfig:
             if defined_field.default_factory is not MISSING:
                 default = defined_field.default_factory()
 
-            if val != default:
+            if (default is None and val is not None) or val != default:
                 non_defaults[defined_field.name] = val
             else:
                 defaults[defined_field.name] = val
@@ -261,7 +261,7 @@ class HazardModifierConfig(ModifierConfig):
     Configuration for modifications to a hazard.
 
     Supports scaling or shifting hazard intensity, applying a return-period
-    frequency cutoff, and replacement of the hazard, loaded from a file path.
+    cutoff, and replacement of the hazard, loaded from a file path.
     If both a new file path and modifier values are provided, modifiers are
     applied after the replacement.
 
@@ -274,6 +274,12 @@ class HazardModifierConfig(ModifierConfig):
         Default is ``1.0`` (no change).
     haz_int_add : float, optional
         Additive offset applied to hazard intensity after multiplication.
+        Default is ``0.0``.
+    haz_freq_mult : float, optional
+        Multiplicative factor applied to hazard frequency.
+        Default is ``1.0`` (no change).
+    haz_freq_add : float, optional
+        Additive offset applied to hazard frequency after multiplication.
         Default is ``0.0``.
     new_hazard_path : str, optional
         Path to an HDF5 file containing a replacement hazard.
@@ -333,7 +339,8 @@ class ExposuresModifierConfig(ModifierConfig):
         impact function IDs in the exposures. If ``None``, no remapping
         is performed.
     set_to_zero : list of int, optional
-        Region IDs for which exposure values are set to zero.
+        Exposures GeoDataFrame indices for which exposure values
+        are set to zero.
         If ``None``, no zeroing is applied.
     new_exposures_path : str, optional
         Path to an HDF5 file containing replacement exposures.
