@@ -163,7 +163,7 @@ class TestPlotter(unittest.TestCase):
         """Test basemap function using osm images"""
         myexp = Exposures(lat=[30, 40, 50], lon=[0, 0, 0], value=[1, 1, 1])
         myexp.check()
-        myexp.plot_basemap(url=ctx.providers.OpenStreetMap.Mapnik)
+        myexp.plot_basemap(url=ctx.providers.Esri.WorldGrayCanvas)
 
     def test_disc_rates(self):
         """Test plot function of discount rates."""
