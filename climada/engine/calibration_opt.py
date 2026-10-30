@@ -91,7 +91,7 @@ def calib_instance(
             years_in_common = df_out.loc[
                 df_out["year"].isin(np.sort(list((iys.keys())))), "year"
             ]
-            for cnt_, year in years_in_common.iteritems():
+            for cnt_, year in years_in_common.items():
                 df_out.loc[df_out["year"] == year, "impact_CLIMADA"] = iys[year]
 
     else:  # impact per event
@@ -403,7 +403,7 @@ def calib_all(
         if df_result is None:
             df_result = copy.deepcopy(df_out)
         else:
-            df_result = df_result.append(df_out, input)
+            df_result = pd.concat([df_result, df_out], ignore_index=True)
 
     return df_result
 

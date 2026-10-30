@@ -764,7 +764,7 @@ def _interp_one_poly_grid(poly, x_grid, y_grid):
 
     if poly.is_empty:
         return shgeom.MultiPoint([])
-    in_geom = sh.vectorized.contains(poly, x_grid, y_grid)
+    in_geom = sh.contains_xy(poly, x_grid, y_grid)
 
     if sum(in_geom.flatten()) > 1:
         return shgeom.MultiPoint(list(zip(x_grid[in_geom], y_grid[in_geom])))
@@ -796,7 +796,7 @@ def _interp_one_poly(poly, res):
 
     height, width, trafo = u_coord.pts_to_raster_meta(poly.bounds, (res, res))
     x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
-    in_geom = sh.vectorized.contains(poly, x_grid, y_grid)
+    in_geom = sh.contains_xy(poly, x_grid, y_grid)
 
     if sum(in_geom.flatten()) > 1:
         return shgeom.MultiPoint(list(zip(x_grid[in_geom], y_grid[in_geom])))
@@ -835,7 +835,7 @@ def _interp_one_poly_m(poly, res, orig_crs):
     height, width, trafo = u_coord.pts_to_raster_meta(poly_m.bounds, (res, res))
     x_grid, y_grid = u_coord.raster_to_meshgrid(trafo, width, height)
 
-    in_geom = sh.vectorized.contains(poly_m, x_grid, y_grid)
+    in_geom = sh.contains_xy(poly_m, x_grid, y_grid)
     if sum(in_geom.flatten()) > 1:
         x_poly, y_poly = reproject_grid(
             x_grid[in_geom], y_grid[in_geom], m_crs, orig_crs

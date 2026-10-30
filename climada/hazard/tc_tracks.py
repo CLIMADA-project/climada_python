@@ -46,14 +46,13 @@ import numpy as np
 import pandas as pd
 import pathos
 import scipy.io.matlab as matlab
-import shapely.ops
+import shapely
 import statsmodels.api as sm
 import xarray as xr
 from matplotlib.collections import LineCollection
 from matplotlib.colors import BoundaryNorm, ListedColormap
 from matplotlib.lines import Line2D
 from shapely.geometry import LineString, MultiLineString, Point, Polygon
-from shapely.ops import unary_union
 from sklearn.metrics import DistanceMetric
 from tqdm import tqdm
 
@@ -264,7 +263,7 @@ class BasinBoundsStorm(Enum):
         [(10.0, -60.0), (135.0, -60.0), (135.0, -5.0), (10.0, -5.0), (10.0, -60.0)]
     )
 
-    SP = unary_union(
+    SP = shapely.union_all(
         [
             Polygon(  # west side of antimeridian
                 [
@@ -642,7 +641,7 @@ class TCTracks:
             raise Exception("this is not an Exposures object")
 
         exp_buffer = exposure.gdf.buffer(distance=buffer, resolution=0)
-        exp_buffer = exp_buffer.unary_union
+        exp_buffer = exp_buffer.union_all()
 
         tc_tracks_lines = self.to_geodataframe().buffer(distance=buffer)
         select_tracks = tc_tracks_lines.intersects(exp_buffer)
