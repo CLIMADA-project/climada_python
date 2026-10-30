@@ -21,6 +21,7 @@ Test Hazard base class.
 
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 import numpy as np
 from pathos.pools import ProcessPool as Pool
@@ -28,6 +29,7 @@ from scipy import sparse
 
 import climada.util.coordinates as u_coord
 import climada.util.dates_times as u_dt
+import climada.util.interpolation as u_interp
 from climada import CONFIG
 from climada.hazard.base import Hazard
 from climada.hazard.centroids.centr import Centroids
@@ -1327,6 +1329,64 @@ class TestStats(unittest.TestCase):
                 [[np.nan, np.nan, np.nan], [np.nan, 30, np.nan], [np.nan, 30, np.nan]]
             ),
             rtol=0.8,
+        )
+
+
+class TestSparseFastPathDispatch(unittest.TestCase):
+    """The local statistics methods must take the sparse fast path when they can.
+
+    The helpers are tested in climada.util.test.test_interpolation; these tests check
+    that the call sites dispatch correctly and that both paths give the same numbers.
+    """
+
+    def setUp(self):
+        self.hazard = dummy_hazard()
+        # dummy_hazard() has 4 events and 3 centroids
+        self.hazard.intensity = sparse.csr_matrix(
+            np.array([[0, 1, 2], [0, 4, 4], [0, 1, 1], [1, 1, 3]])
+        )
+        self.hazard.frequency = np.ones(4)
+
+    def test_local_exceedance_intensity_uses_fast_path(self):
+        with patch.object(
+            u_interp,
+            "sparse_local_exceedance",
+            wraps=u_interp.sparse_local_exceedance,
+        ) as spy:
+            self.hazard.local_exceedance_intensity(return_periods=(2, 5))
+        spy.assert_called_once()
+
+    def test_local_return_period_uses_fast_path(self):
+        with patch.object(
+            u_interp,
+            "sparse_local_frequency",
+            wraps=u_interp.sparse_local_frequency,
+        ) as spy:
+            self.hazard.local_return_period(threshold_intensities=(1, 3))
+        spy.assert_called_once()
+
+    def test_non_default_configuration_falls_back(self):
+        with patch.object(u_interp, "sparse_local_exceedance") as spy:
+            self.hazard.local_exceedance_intensity(
+                return_periods=(2, 5), method="extrapolate"
+            )
+            self.hazard.local_exceedance_intensity(
+                return_periods=(2, 5), min_intensity=1
+            )
+        spy.assert_not_called()
+
+    def test_both_paths_agree(self):
+        return_periods = (2, 5)
+        fast, _, _ = self.hazard.local_exceedance_intensity(
+            return_periods=return_periods
+        )
+        with patch.object(u_interp, "supports_sparse_fast_path", return_value=False):
+            slow, _, _ = self.hazard.local_exceedance_intensity(
+                return_periods=return_periods
+            )
+        np.testing.assert_array_equal(
+            fast[[f"{rp}" for rp in return_periods]].to_numpy(float),
+            slow[[f"{rp}" for rp in return_periods]].to_numpy(float),
         )
 
 

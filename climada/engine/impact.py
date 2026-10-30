@@ -583,26 +583,33 @@ class Impact:
             np.nan if method == "interpolate" else 0.0,
         )
 
-        nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
-
-        if not len(nonzero_centroids) == 0:
-            exceedance_impact[nonzero_centroids, :] = np.array(
-                [
-                    u_interp.preprocess_and_interpolate_ev(
-                        test_frequency,
-                        None,
-                        self.frequency,
-                        self.imp_mat.getcol(i_centroid).toarray().flatten(),
-                        log_frequency=log_frequency,
-                        log_values=log_impact,
-                        value_threshold=min_impact,
-                        method=method,
-                        y_asymptotic=0.0,
-                        bin_decimals=bin_decimals,
-                    )
-                    for i_centroid in nonzero_centroids
-                ]
+        if u_interp.supports_sparse_fast_path(
+            method, log_frequency, log_impact, min_impact, bin_decimals
+        ):
+            exceedance_impact = u_interp.sparse_local_exceedance(
+                test_frequency, self.frequency, self.imp_mat
             )
+        else:
+            nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
+
+            if not len(nonzero_centroids) == 0:
+                exceedance_impact[nonzero_centroids, :] = np.array(
+                    [
+                        u_interp.preprocess_and_interpolate_ev(
+                            test_frequency,
+                            None,
+                            self.frequency,
+                            self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                            log_frequency=log_frequency,
+                            log_values=log_impact,
+                            value_threshold=min_impact,
+                            method=method,
+                            y_asymptotic=0.0,
+                            bin_decimals=bin_decimals,
+                        )
+                        for i_centroid in nonzero_centroids
+                    ]
+                )
 
         # create the output GeoDataFrame
         gdf = gpd.GeoDataFrame(
@@ -724,27 +731,34 @@ class Impact:
 
         return_periods = np.full((self.imp_mat.shape[1], len(threshold_impact)), np.nan)
 
-        nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
-
         # calculate local return periods
-        if not len(nonzero_centroids) == 0:
-            return_periods[nonzero_centroids, :] = np.array(
-                [
-                    u_interp.preprocess_and_interpolate_ev(
-                        None,
-                        np.array(threshold_impact),
-                        self.frequency,
-                        self.imp_mat.getcol(i_centroid).toarray().flatten(),
-                        log_frequency=log_frequency,
-                        log_values=log_impact,
-                        value_threshold=min_impact,
-                        method=method,
-                        y_asymptotic=np.nan,
-                        bin_decimals=bin_decimals,
-                    )
-                    for i_centroid in nonzero_centroids
-                ]
+        if u_interp.supports_sparse_fast_path(
+            method, log_frequency, log_impact, min_impact, bin_decimals
+        ):
+            return_periods = u_interp.sparse_local_frequency(
+                np.array(threshold_impact), self.frequency, self.imp_mat
             )
+        else:
+            nonzero_centroids = np.where(self.imp_mat.getnnz(axis=0) > 0)[0]
+
+            if not len(nonzero_centroids) == 0:
+                return_periods[nonzero_centroids, :] = np.array(
+                    [
+                        u_interp.preprocess_and_interpolate_ev(
+                            None,
+                            np.array(threshold_impact),
+                            self.frequency,
+                            self.imp_mat.getcol(i_centroid).toarray().flatten(),
+                            log_frequency=log_frequency,
+                            log_values=log_impact,
+                            value_threshold=min_impact,
+                            method=method,
+                            y_asymptotic=np.nan,
+                            bin_decimals=bin_decimals,
+                        )
+                        for i_centroid in nonzero_centroids
+                    ]
+                )
         return_periods = safe_divide(1.0, return_periods)
 
         # create the output GeoDataFrame

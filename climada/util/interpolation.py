@@ -405,3 +405,149 @@ def _group_frequency(frequency, value, bin_decimals):
         return frequency, value_unique
 
     return frequency, value
+
+
+def _column_ev_curve(values, frequency):
+    """Exceedance curve of one sparse column, from its nonzero entries alone.
+
+    Returns the positive values sorted descending and their cumulative frequency
+    ascending, or ``(None, None)`` if fewer than two values are positive. Only the
+    nonzero entries are needed: the discarded values all sort below the retained ones,
+    so they never enter a retained cumulative sum.
+    """
+    positive = values > 0
+    if np.count_nonzero(positive) < 2:
+        return None, None
+    # cast before the caller takes logarithms: Hazard.from_raster yields float32
+    # intensity, which would otherwise interpolate at float32 precision while the
+    # per-column reference path upcasts
+    # to float first and produces slightly different values
+    values = values[positive].astype(float, copy=False)
+    frequency = frequency[positive].astype(float, copy=False)
+    order = np.argsort(values)[::-1]
+    return values[order], np.cumsum(frequency[order])
+
+
+def sparse_local_exceedance(test_frequency, frequency, matrix):
+    """Values at given exceedance frequencies, for every column of a sparse matrix.
+
+    Vectorised stand-in for calling :py:func:`preprocess_and_interpolate_ev` once per
+    column, avoiding both the dense column and the quadratic ``getcol`` on a CSR matrix.
+
+    Only reproduces the default configuration, i.e. ``method="interpolate"``,
+    ``log_frequency=True``, ``log_values=True``, ``value_threshold=0`` and
+    ``bin_decimals=None``. Callers must fall back to
+    :py:func:`preprocess_and_interpolate_ev` for any other combination; see
+    :py:func:`supports_sparse_fast_path`.
+
+    Parameters
+    ----------
+    test_frequency : array_like
+        Exceedance frequencies to interpolate to (that is, 1 / return periods).
+    frequency : np.array
+        Event frequencies, one per row of ``matrix``.
+    matrix : scipy.sparse matrix
+        Events by columns (exposure points or centroids).
+
+    Returns
+    -------
+    np.array
+        Shape (n_columns, len(test_frequency)). Columns that cannot be interpolated
+        are left as NaN, matching ``method="interpolate"``.
+    """
+    csc = matrix.tocsc()
+    frequency = np.asarray(frequency, dtype=float)
+    log_test = np.log10(np.asarray(test_frequency, dtype=float))
+    exceedance = np.full((csc.shape[1], log_test.size), np.nan)
+    indptr, indices, data = csc.indptr, csc.indices, csc.data
+
+    for i_column in range(csc.shape[1]):
+        start, end = indptr[i_column], indptr[i_column + 1]
+        if end - start < 2:
+            continue
+        values, cum_frequency = _column_ev_curve(
+            data[start:end], frequency[indices[start:end]]
+        )
+        if values is None:
+            continue
+        # np.interp needs increasing x: cumulative frequency ascends as value descends.
+        # left/right reproduce interp1d(bounds_error=False): NaN strictly outside the
+        # data range, but the endpoint value AT the boundary. With few events the
+        # cumulative frequencies land exactly on the test frequencies, so do not
+        # replace this with a searchsorted using a strict comparison.
+        exceedance[i_column] = 10.0 ** np.interp(
+            log_test,
+            np.log10(cum_frequency),
+            np.log10(values),
+            left=np.nan,
+            right=np.nan,
+        )
+    return exceedance
+
+
+def sparse_local_frequency(test_values, frequency, matrix):
+    """Exceedance frequencies at given values, for every column of a sparse matrix.
+
+    The inverse direction of :py:func:`sparse_local_exceedance`, used by the
+    local return period methods. The caller is still responsible for turning the
+    returned frequencies into return periods.
+
+    Same restriction to the default configuration as
+    :py:func:`sparse_local_exceedance`.
+
+    Parameters
+    ----------
+    test_values : array_like
+        Threshold values (impacts or intensities) to interpolate to.
+    frequency : np.array
+        Event frequencies, one per row of ``matrix``.
+    matrix : scipy.sparse matrix
+        Events by columns (exposure points or centroids).
+
+    Returns
+    -------
+    np.array
+        Shape (n_columns, len(test_values)), NaN where interpolation is not possible.
+    """
+    csc = matrix.tocsc()
+    frequency = np.asarray(frequency, dtype=float)
+    log_test = np.log10(np.asarray(test_values, dtype=float))
+    frequencies = np.full((csc.shape[1], log_test.size), np.nan)
+    indptr, indices, data = csc.indptr, csc.indices, csc.data
+
+    for i_column in range(csc.shape[1]):
+        start, end = indptr[i_column], indptr[i_column + 1]
+        if end - start < 2:
+            continue
+        values, cum_frequency = _column_ev_curve(
+            data[start:end], frequency[indices[start:end]]
+        )
+        if values is None:
+            continue
+        # np.interp needs increasing x: reverse so that the values ascend. See the
+        # note on left/right in sparse_local_exceedance.
+        frequencies[i_column] = 10.0 ** np.interp(
+            log_test,
+            np.log10(values[::-1]),
+            np.log10(cum_frequency[::-1]),
+            left=np.nan,
+            right=np.nan,
+        )
+    return frequencies
+
+
+def supports_sparse_fast_path(
+    method, log_frequency, log_values, value_threshold, bin_decimals
+):
+    """Whether :py:func:`sparse_local_exceedance` reproduces this configuration.
+
+    The sparse helpers implement only the default inter-/extrapolation setup. This
+    keeps the check in one place so the four call sites cannot drift apart.
+    """
+    return (
+        method == "interpolate"
+        and log_frequency
+        and log_values
+        and value_threshold == 0
+        and bin_decimals is None
+    )
