@@ -21,6 +21,9 @@ Code freeze date: YYYY-MM-DD
 ### Changed
 
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
+- `climada.util.finance`: `world_bank_wealth_account` now fetches data via the
+  World Bank Indicators API instead of downloading a ZIP/CSV file.
+  Updated available year range from 1995–2014 to 1995–2020. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 - Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
 - `HazardForecast.quantile` and `ImpactForecast.quantile` compute quantiles block-wise instead of densifying the entire sparse matrix, greatly reducing peak memory. Results are unchanged. [#1203](https://github.com/CLIMADA-project/climada_python/issues/1203)
 
@@ -29,9 +32,12 @@ Code freeze date: YYYY-MM-DD
 - Preserve explicitly mapped dates in `HazardForecast.from_xarray_raster` [#1305](https://github.com/CLIMADA-project/climada_python/issues/1305).
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
+- `climada.util.finance`: Fixed broken `WORLD_BANK_INC_GRP` download URL
+  (`databank.worldbank.org`) whose SSL certificate had expired. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 - `ImpactCalc.impact` now raises a clear `ValueError` when the supplied `Hazard` contains no events, instead of failing later inside `np.array_split` with an obscure message [#814](https://github.com/CLIMADA-project/climada_python/issues/814).
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
-- Replaced the calls to `DataFrame.append` and `Series.iteritems`, removed in pandas 2.0, that made `LitPop.from_shape_and_countries` (with a `GeoSeries` or `list` shape), `impact_data.hit_country_per_hazard`, `calibration_opt.calib_all` and `calibration_opt.calib_instance` (with a multi-row `df_out` and `yearly_impact=True`) raise `AttributeError`; `LitPop.from_shape_and_countries` no longer duplicates points that lie in overlapping shapes. [#1325](https://github.com/CLIMADA-project/climada_python/pull/1325), [#1320](https://github.com/CLIMADA-project/climada_python/pull/1320)
+- Fix a wrong computation of EAI in the `trajectory` module when the index of the `GeoDataFrame` of an Exposures object is not a 0 to n range. [#1297](https://github.com/CLIMADA-project/climada_python/pull/1297).
+- `TropCyclone.apply_climate_scenario_knu` now raises a `ValueError` if a frequency is negative [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
 
 ### Deprecated
 - `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().interpolate()` instead.
@@ -39,6 +45,9 @@ Code freeze date: YYYY-MM-DD
 ### Removed
 - `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
 - `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `climada.util.finance`: Removed constants `WORLD_BANK_WEALTH_ACC` and
+  `FILE_WORLD_BANK_WEALTH_ACC`. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
+- `doc.development.Guide_Euler.ipynb` tutorial is not part of the climada docs anymore. For using climada on the ETHZ HPC Cluster Euler, see https://gitlab.ethz.ch/climada/climada-on-euler/ instead. [#1329](https://github.com/CLIMADA-project/climada_python/pull/1329)
 
 ## 6.1.0
 

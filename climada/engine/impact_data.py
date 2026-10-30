@@ -898,7 +898,6 @@ def scale_impact2refyear(impact_values, year_values, iso3a_values, reference_yea
             # get GDP value for each country and year:
             gdp_years[country] = dict()
             years_country = np.unique(year_values[iso3a_values == country])
-            print(years_country)
             for year in years_country:
                 gdp_years[country][year] = gdp(country, year)[1]
         # loop through each value and apply scaling:

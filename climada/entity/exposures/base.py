@@ -1096,7 +1096,7 @@ class Exposures:
         buffer=0.0,
         extend="neither",
         zoom=10,
-        url=ctx.providers.CartoDB.Positron,
+        url=ctx.providers.Esri.WorldGrayCanvas,
         axis=None,
         **kwargs,
     ):
@@ -1120,8 +1120,7 @@ class Exposures:
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : Any, optional
-            image source, e.g., ``ctx.providers.OpenStreetMap.Mapnik``.
-            Default: ``ctx.providers.CartoDB.Positron``
+            Default: ``ctx.providers.Esri.WorldGrayCanvas``
         axis : matplotlib.axes._subplots.AxesSubplot, optional
             axis to use
         kwargs : optional
@@ -1180,7 +1179,7 @@ class Exposures:
     def read_hdf5(self, *args, **kwargs):
         """This function is deprecated, use Exposures.from_hdf5 instead."""
         LOGGER.warning(
-            "The use of Exposures.read_hdf5 is deprecated."
+            "The use of Exposures.read_hdf5 is deprecated. "
             "Use Exposures.from_hdf5 instead."
         )
         self.__dict__ = Exposures.from_hdf5(*args, **kwargs).__dict__
@@ -1233,7 +1232,7 @@ class Exposures:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use Exposures.from_mat instead."""
         LOGGER.warning(
-            "The use of Exposures.read_mat is deprecated."
+            "The use of Exposures.read_mat is deprecated. "
             "Use Exposures.from_mat instead."
         )
         self.__dict__ = Exposures.from_mat(*args, **kwargs).__dict__
