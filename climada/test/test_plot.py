@@ -21,14 +21,13 @@ test plots
 
 import copy
 import unittest
-import urllib
 from pathlib import Path
 
 import contextily as ctx
 import matplotlib.pyplot as plt
 import numpy as np
-import pandas as pd
 
+import climada.util.dataframe_handling as u_pd
 from climada.engine import CostBenefit, ImpactCalc, ImpactFreqCurve
 from climada.engine.unsequa import UncOutput
 from climada.entity import (
@@ -40,7 +39,7 @@ from climada.entity import (
     Measure,
     MeasureSet,
 )
-from climada.hazard import Centroids, Hazard
+from climada.hazard import Hazard
 from climada.test import get_test_file
 from climada.util.api_client import Client
 from climada.util.constants import ENT_DEMO_TODAY, HAZ_DEMO_FL, TEST_UNC_OUTPUT_COSTBEN
@@ -117,7 +116,7 @@ class TestPlotter(unittest.TestCase):
 
     def test_exposures_value_pass(self):
         """Plot exposures values."""
-        myexp = pd.read_excel(ENT_DEMO_TODAY)
+        myexp = u_pd.read_excel(ENT_DEMO_TODAY)
         myexp = Exposures(myexp)
         myexp.check()
         myexp.description = "demo_today"

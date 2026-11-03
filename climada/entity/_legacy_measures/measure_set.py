@@ -24,13 +24,12 @@ __all__ = ["MeasureSet"]
 import ast
 import copy
 import logging
-from typing import List, Optional
 
 import numpy as np
-import pandas as pd
 import xlsxwriter
 from matplotlib import colormaps as cm
 
+import climada.util.dataframe_handling as u_pd
 import climada.util.hdf5_handler as u_hdf5
 
 from .base import Measure
@@ -99,7 +98,7 @@ class MeasureSet:
         Use the available methods instead.
     """
 
-    def __init__(self, measure_list: Optional[List[Measure]] = None):
+    def __init__(self, measure_list: list[Measure] | None = None):
         """Initialize a new MeasureSet object with specified data.
 
         Parameters
@@ -130,7 +129,7 @@ class MeasureSet:
             for meas in measure_list:
                 self.append(meas)
 
-    def clear(self, _data: Optional[dict] = None):
+    def clear(self, _data: dict | None = None):
         """Reinitialize attributes.
 
         Parameters
@@ -544,7 +543,7 @@ class MeasureSet:
 
                 measures.append(Measure(**meas_kwargs))
 
-        dfr = pd.read_excel(file_name, var_names["sheet_name"])
+        dfr = u_pd.read_excel(file_name, var_names["sheet_name"])
         dfr = dfr.fillna("")
         meas_set = cls()
         try:

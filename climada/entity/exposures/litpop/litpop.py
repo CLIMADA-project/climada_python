@@ -31,6 +31,7 @@ from affine import Affine
 from shapefile import Shape
 
 import climada.util.coordinates as u_coord
+import climada.util.dataframe_handling as u_pd
 import climada.util.finance as u_fin
 from climada import CONFIG
 from climada.entity.exposures.base import DEF_REF_YEAR, INDICATOR_IMPF, Exposures
@@ -1493,7 +1494,7 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
     )
     if file_name is not None:
         # open spreadsheet and identify relevant columns:
-        admin1_xls_data = pd.read_excel(file_name)
+        admin1_xls_data = u_pd.read_excel(file_name)
         if admin1_xls_data.get("State_Province") is None:
             admin1_xls_data = admin1_xls_data.rename(
                 columns={admin1_xls_data.columns[0]: "State_Province"}

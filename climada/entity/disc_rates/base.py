@@ -32,6 +32,7 @@ import pandas as pd
 import xlsxwriter
 
 import climada.util.checker as u_check
+import climada.util.dataframe_handling as u_pd
 import climada.util.finance as u_fin
 import climada.util.hdf5_handler as u_hdf5
 
@@ -293,7 +294,7 @@ class DiscRates:
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL
-        dfr = pd.read_excel(file_name, var_names["sheet_name"])
+        dfr = u_pd.read_excel(file_name, var_names["sheet_name"])
         try:
             years = dfr[var_names["col_name"]["year"]].values.astype(int, copy=False)
             rates = dfr[var_names["col_name"]["disc"]].values

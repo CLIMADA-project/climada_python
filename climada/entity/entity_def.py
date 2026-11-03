@@ -24,9 +24,8 @@ __all__ = ["Entity"]
 import logging
 from typing import Optional
 
-import pandas as pd
-
-from climada.entity._legacy_measures.measure_set import Measure, MeasureSet
+import climada.util.dataframe_handling as u_pd
+from climada.entity._legacy_measures.measure_set import MeasureSet
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
@@ -128,7 +127,7 @@ class Entity:
             The entity from excel file
         """
 
-        exp = Exposures(pd.read_excel(file_name))
+        exp = Exposures(u_pd.read_excel(file_name))
 
         disc_rates = DiscRates.from_excel(file_name)
         impf_set = ImpactFuncSet.from_excel(file_name)
