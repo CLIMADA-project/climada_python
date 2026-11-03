@@ -675,10 +675,10 @@ class TestFunc(unittest.TestCase):
             area_unknown_unit = u_coord.get_gridcellarea(
                 lat, resolution, unit="unknown"
             )
-            self.assertIn(
-                f"'unknown' unit not recognized. Please use any of 'm2', 'km2' or 'ha'.",
-                str(cm.exception),
-            )
+        self.assertIn(
+            f"'unknown' unit not recognized. Please use any of 'm2', 'km2' or 'ha'.",
+            str(cm.exception),
+        )
 
     def test_read_vector_pass(self):
         """Test one columns data"""
@@ -1704,22 +1704,22 @@ class TestGetGeodata(unittest.TestCase):
         """get_country_geometries with offensive parameters"""
         with self.assertRaises(ValueError) as cm:
             u_coord.get_country_geometries(extent=(-20, 540, 0, 0))
-            self.assertEqual(
-                "Input lat and lon coordinates do not seem to correspond"
-                " to geographic coordinates in degrees. This can be because"
-                " total extents are > 180 for lat or > 360 for lon, lat coordinates"
-                " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
-                " If you use degree values outside of these ranges,"
-                " please shift the coordinates to the valid ranges.",
-                str(cm.exception),
-            )
+        self.assertEqual(
+            "Input lat and lon coordinates do not seem to correspond"
+            " to geographic coordinates in degrees. This can be because"
+            " total extents are > 180 for lat or > 360 for lon, lat coordinates"
+            " are outside of -90<lat<90, or lon coordinates are outside of -540<lon<540."
+            " If you use degree values outside of these ranges,"
+            " please shift the coordinates to the valid ranges.",
+            str(cm.exception),
+        )
         with self.assertRaises(ValueError) as cm:
             u_coord.get_country_geometries(extent=(340, -20, 0, 0))
-            self.assertEqual(
-                "longitude extent at the left (340) is larger "
-                "than longitude extent at the right (-20)",
-                str(cm.exception),
-            )
+        self.assertEqual(
+            "longitude extent at the left (340) is larger "
+            "than longitude extent at the right (-20)",
+            str(cm.exception),
+        )
 
     def test_country_code_pass(self):
         """Test set_region_id"""
