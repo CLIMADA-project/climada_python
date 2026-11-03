@@ -68,7 +68,7 @@ class TestDownloadFileName(unittest.TestCase):
     def test_plain_url_pass(self):
         """Regression: a plain URL keeps its file name."""
         with tempfile.TemporaryDirectory() as tmp_dir:
-            path = self._download("https://example.org/data/file.zip", tmp_dir)
+            path = self._download("https://example.ethz.ch/data/file.zip", tmp_dir)
             self.assertEqual(path.name, "file.zip")
             self.assertTrue(path.is_file())
 
@@ -76,7 +76,7 @@ class TestDownloadFileName(unittest.TestCase):
         """The query string is not part of the file name."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             path = self._download(
-                "https://example.org/data/"
+                "https://example.ethz.ch/data/"
                 "GMT_intermediate_coast_distance_01d.zip?download=1",
                 tmp_dir,
             )
@@ -86,7 +86,9 @@ class TestDownloadFileName(unittest.TestCase):
     def test_fragment_pass(self):
         """The fragment is not part of the file name."""
         with tempfile.TemporaryDirectory() as tmp_dir:
-            path = self._download("https://example.org/data/file.zip#section", tmp_dir)
+            path = self._download(
+                "https://example.ethz.ch/data/file.zip#section", tmp_dir
+            )
             self.assertEqual(path.name, "file.zip")
             self.assertTrue(path.is_file())
 
@@ -94,11 +96,11 @@ class TestDownloadFileName(unittest.TestCase):
         """A URL whose path holds no file name raises, query string or not."""
         with tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(ValueError):
-                self._download("https://example.org/data/?download=1", tmp_dir)
+                self._download("https://example.ethz.ch/data/?download=1", tmp_dir)
             with self.assertRaises(ValueError):
-                self._download("https://example.org/data/", tmp_dir)
+                self._download("https://example.ethz.ch/data/", tmp_dir)
             with self.assertRaises(ValueError):
-                self._download("https://example.org", tmp_dir)
+                self._download("https://example.ethz.ch", tmp_dir)
 
 
 class TestToStrList(unittest.TestCase):
