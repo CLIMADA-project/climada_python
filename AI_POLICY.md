@@ -4,6 +4,7 @@ We appreciate that we can't realistically police how you author your pull reques
 So, we don't.
 
 However, due to human reasons, we have to establish boundaries.
+Put bluntly, we have no time or interest to become part of your vibe coding loop where you drop LLM slop at our door, we spend time and energy to review it, and you just feed it back into the LLM for another iteration.
 In essence **we reserve the right to refuse any slop contributions, at our discretion, and close them without review, and to exclude contributors who continue to submit such material.**
 
 ---
@@ -37,4 +38,4 @@ In practice, this means:
 
 ## Thanks
 
-This policy is a simplified version based on the policy of the `pip` project. Many thanks to them for developing it.
+This policy is a simplified version based on the [policy](https://github.com/pypa/pip/blob/26.3/AI_POLICY.md) of the `pip` project. Many thanks to them for developing it.
