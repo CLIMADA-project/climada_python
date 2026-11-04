@@ -10,6 +10,35 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+Added:
+
+- `affine` >=2.4,<3.0
+
+Updated:
+
+- `contextily` >=1.6 &rarr; >=1.7
+- `dask` >=2025.9 &rarr; >=2026.8
+- `eccodes` >=2.42 &rarr; >=2.47
+- `gdal` >=3.10 &rarr; >=3.12
+- `h5py` >=3.14 &rarr; >=3.16
+- `matplotlib-base` >=3.10 &rarr; >=3.10,<3.11
+- `numba` >=0.62 &rarr; >=0.67
+- `numexpr` >=2.13 &rarr; >=2.14
+- `pandas` >=2.3 &rarr; >=2.2,<2.3
+- `peewee` >=3.18 &rarr; >=4.4
+- `pillow` =11.3 &rarr; =13.0
+- `pyarrow` >=21.0 &rarr; >=24.0
+- `pytables` >=3.10 &rarr; >=3.11
+- `rasterio` >=1.4 &rarr; >=1.4,<1.5
+- `requests` >=2.32 &rarr; >=2.34
+- `scikit-learn` >=1.7 &rarr; >=1.9
+- `scipy` >=1.16 &rarr; >=1.17
+- `sparse` >=0.17 &rarr; >=0.19
+- `statsmodels` >=0.14 &rarr; >=0.15
+- `tabulate` >=0.9 &rarr; >=0.10
+- `tqdm` >=4.67 &rarr; >=4.70
+- `xarray` >=2025.9 &rarr; >=2026.7
+
 ### Added
 
 - Support for ensemble forecast data as hazard via `HazardForecast` and `ImpactForecast`, see `doc.user_guide.climada_engine_ImpactForecast.ipynb` [#1115](https://github.com/CLIMADA-project/climada_python/pull/)
