@@ -485,6 +485,7 @@ class Hazard(HazardIO, HazardPlot):
         log_frequency=True,
         log_intensity=True,
         bin_decimals=None,
+        reverse=False,
     ):
         """Compute local exceedance intensity for given return periods. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -519,6 +520,9 @@ class Hazard(HazardIO, HazardPlot):
             Number of decimals to group and bin intensity values. Binning results in smoother (and
             coarser) interpolation and more stable extrapolation. For more details and sensible
             values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
+        reverse : bool, optional
+            If set to True, intensities are sorted in reverse order (larger intensity means
+            less impact). Defaults to False.
 
         Returns
         -------
@@ -577,6 +581,7 @@ class Hazard(HazardIO, HazardPlot):
                         method=method,
                         y_asymptotic=0.0,
                         bin_decimals=bin_decimals,
+                        reverse=reverse,
                     )
                     for i_centroid in nonzero_centroids
                 ]
@@ -627,6 +632,7 @@ class Hazard(HazardIO, HazardPlot):
         log_frequency=True,
         log_intensity=True,
         bin_decimals=None,
+        reverse=False,
     ):
         """Compute local return periods for given hazard intensities. The default method
         is fitting the ordered intensitites per centroid to the corresponding cummulated
@@ -662,6 +668,9 @@ class Hazard(HazardIO, HazardPlot):
             Number of decimals to group and bin intensity values. Binning results in smoother (and
             coarser) interpolation and more stable extrapolation. For more details and sensible
             values for bin_decimals, see Notes. If None, values are not binned. Defaults to None.
+        reverse : bool, optional
+            If set to True, intensities are sorted in reverse order (larger intensity means
+            less impact). Defaults to False.
 
 
         Returns
@@ -718,6 +727,7 @@ class Hazard(HazardIO, HazardPlot):
                         method=method,
                         y_asymptotic=np.nan,
                         bin_decimals=bin_decimals,
+                        reverse=reverse,
                     )
                     for i_centroid in nonzero_centroids
                 ]
