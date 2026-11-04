@@ -12,7 +12,7 @@ In essence **we reserve the right to refuse any slop contributions, at our discr
 By submitting a pull request, you certify that:
 
 - You are the author of the contribution or have the legal right to submit it.
-- You either hold the copyright to the changes or have explicit legal authorization to contribute them under this project's license.
+- You either hold the copyright to the changes or have explicit legal authorization to contribute them under this project's [license](LICENSE).
 - You understand the code.
 - You accept full responsibility for it.
 
@@ -22,12 +22,12 @@ In practice, this means:
 
 - LLM-generated comments must be concise and accurate, and you must be prepared to stand by them.
   Do not post summaries unless you are certain that they add value to the discussion.
-  Remember that all LLM output *looks* plausible.
+  Remember that all LLM output **looks** plausible.
   When using these tools, it's your responsibility to ensure that the output is correct, **and useful**.
 
 - By submitting a pull request, you take full technical and legal responsibility for the contents of the pull request and promise that you hold the copyright for the changes submitted.
 
-  "An LLM wrote it" is *not* an acceptable response to questions or critique.
+  "An LLM wrote it" is **not** an acceptable response to questions or critique.
   If you cannot explain and defend the changes you submit, do not submit them and open a high-quality bug report or feature request instead.
 
 - Pull requests that have an LLM product listed as co-author can't be merged and will be closed without further discussion.
