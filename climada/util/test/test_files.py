@@ -24,6 +24,8 @@ import unittest
 from pathlib import Path
 from unittest import mock
 
+import requests
+
 from climada.util.constants import (
     DEMO_DIR,
     ENT_TEMPLATE_XLS,
@@ -31,6 +33,7 @@ from climada.util.constants import (
     SYSTEM_DIR,
 )
 from climada.util.files_handler import (
+    DownloadException,
     download_file,
     get_extension,
     get_file_names,
@@ -44,11 +47,10 @@ class TestDownloadUrl(unittest.TestCase):
     def test_wrong_url_fail(self):
         """Error raised when wrong url."""
         url = "https://ngdc.noaa.gov/eog/data/web_data/v4composites/F172012.v4.tar"
-        try:
-            with self.assertRaises(ValueError):
-                download_file(url)
-        except IOError:
-            pass
+        with self.assertRaises(DownloadException) as cm:
+            download_file(url)
+        self.assertIsInstance(cm.exception.__cause__, requests.exceptions.HTTPError)
+        self.assertIn("404 Client Error:", str(cm.exception.__cause__))
 
 
 class TestDownloadFileName(unittest.TestCase):
