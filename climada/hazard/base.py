@@ -554,15 +554,6 @@ class Hazard(HazardIO, HazardPlot):
             self.frequency_unit
         )
 
-        # check method
-        if method not in [
-            "interpolate",
-            "extrapolate",
-            "extrapolate_constant",
-            "stepfunction",
-        ]:
-            raise ValueError(f"Unknown method: {method}")
-
         # calculate local exceedance intensity
         test_frequency = 1 / np.array(return_periods)
 
@@ -706,15 +697,6 @@ class Hazard(HazardIO, HazardPlot):
         return_period_unit = u_dt.convert_frequency_unit_to_time_unit(
             self.frequency_unit
         )
-
-        # check method
-        if method not in [
-            "interpolate",
-            "extrapolate",
-            "extrapolate_constant",
-            "stepfunction",
-        ]:
-            raise ValueError(f"Unknown method: {method}")
 
         return_periods = np.full(
             (self.intensity.shape[1], len(threshold_intensities)), np.nan
@@ -873,7 +855,7 @@ class Hazard(HazardIO, HazardPlot):
         """
         if self.frequency_unit not in ["1/year", "annual", "1/y", "1/a"]:
             LOGGER.warning(
-                "setting the frequency on a hazard object who's frequency unit"
+                "setting the frequency on a hazard object who's frequency unit "
                 "is %s and not %s will most likely lead to unexpected results",
                 self.frequency_unit,
                 u_const.DEF_FREQ_UNIT,
@@ -1226,8 +1208,8 @@ class Hazard(HazardIO, HazardPlot):
             mdr.data = impf.calc_mdr(mdr.data)
         else:
             LOGGER.warning(
-                "Impact function id=%d has mdr(0) != 0."
-                "The mean damage ratio must thus be computed for all values of"
+                "Impact function id=%d has mdr(0) != 0. "
+                "The mean damage ratio must thus be computed for all values of "
                 "hazard intensity including 0 which can be very time consuming.",
                 impf.id,
             )

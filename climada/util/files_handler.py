@@ -29,6 +29,7 @@ import logging
 import math
 import urllib
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 import requests
 from tqdm import tqdm
@@ -78,7 +79,8 @@ def download_file(url, download_dir=None, overwrite=True):
     str
         the full path to the eventually downloaded file
     """
-    file_name = url.split("/")[-1]
+    url_path = unquote(urlparse(url).path)
+    file_name = url_path.split("/")[-1]
     if file_name.strip() == "":
         raise ValueError(f"cannot download {url} as a file")
     download_path = (

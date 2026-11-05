@@ -47,26 +47,30 @@ DATA_FOLDER.mkdir(exist_ok=True)
 STR_DT = h5py.special_dtype(vlen=str)
 
 
-def dummy_impact():
-    """Return an impact object for testing"""
-    return Impact(
-        event_id=np.arange(6) + 10,
-        event_name=[0, 1, "two", "three", 30, 31],
-        date=np.arange(6),
-        coord_exp=np.array([[1, 2], [1.5, 2.5]]),
-        crs=DEF_CRS,
-        eai_exp=np.array([7.2, 7.2]),
-        at_event=np.array([0, 2, 4, 6, 60, 62]),
-        frequency=np.array([1 / 6, 1 / 6, 1, 1, 1 / 30, 1 / 30]),
-        tot_value=7,
-        aai_agg=14.4,
-        unit="USD",
-        frequency_unit="1/month",
-        imp_mat=sparse.csr_matrix(
+def impact_kwargs():
+    return {
+        "event_id": np.arange(6) + 10,
+        "event_name": [0, 1, "two", "three", 30, 31],
+        "date": np.arange(6),
+        "coord_exp": np.array([[1, 2], [1.5, 2.5]]),
+        "crs": DEF_CRS,
+        "eai_exp": np.array([7.2, 7.2]),
+        "at_event": np.array([0, 2, 4, 6, 60, 62]),
+        "frequency": np.array([1 / 6, 1 / 6, 1, 1, 1 / 30, 1 / 30]),
+        "tot_value": 7,
+        "aai_agg": 14.4,
+        "unit": "USD",
+        "frequency_unit": "1/month",
+        "imp_mat": sparse.csr_matrix(
             np.array([[0, 0], [1, 1], [2, 2], [3, 3], [30, 30], [31, 31]])
         ),
-        haz_type="TC",
-    )
+        "haz_type": "TC",
+    }
+
+
+def dummy_impact():
+    """Return an impact object for testing"""
+    return Impact(**impact_kwargs())
 
 
 def dummy_impact_yearly():
@@ -320,6 +324,61 @@ class TestFreqCurve(unittest.TestCase):
         self.assertEqual("Exceedance frequency curve", ifc.label)
         self.assertEqual("USD", ifc.unit)
         self.assertEqual("1/week", ifc.frequency_unit)
+
+    def test_interpolate_freq_curve(self):
+        """Test inter- and extrapolate method of freq curve"""
+        imp = Impact()
+        imp.frequency = np.array([0.2, 0.1, 0.1, 0.1])
+        imp.at_event = np.array([0.0, 100.0, 50.0, 110.0])
+        imp.unit = "USD"
+        imp.frequency_unit = "1/year"
+
+        ifc = imp.calc_freq_curve()
+        # the ifc has values
+        # impacts [0, 50, 100, 110]
+        # exceedance frequencies [.5, .3, .2, .1]
+        # return periods [2, 3.3, 5, 10]
+
+        # stepfunction assigns zero return periods below data and max(impact) for those above
+        npt.assert_array_almost_equal(
+            ifc.interpolate([1, 5, 20], method="stepfunction").impact,
+            [0.0, 100.0, 110.0],
+        )
+
+        # interpolate assigns nan to return periods outside of data
+        npt.assert_array_almost_equal(
+            ifc.interpolate([1, 5, 20], method="interpolate").impact,
+            [np.nan, 100.0, np.nan],
+        )
+
+        # extrapolate_constant assigns zero return periods below data and max(impact) for those above
+        npt.assert_array_almost_equal(
+            ifc.interpolate([1, 5, 20], method="extrapolate_constant").impact,
+            [0.0, 100.0, 110.0],
+        )
+
+        # by binning the last two digits, 100 and 110 are rounded to 100
+        npt.assert_array_almost_equal(
+            ifc.interpolate(
+                [1, 5, 20], method="extrapolate_constant", bin_decimals=-2
+            ).impact,
+            [0.0, 100.0, 100.0],
+        )
+
+        # extrapolation is done by neglecting 0 impacts (min_impact=0)
+        # rp=1: extrapolate impacts [50, 100] and ex_freqs [.3, .2] to ex_freq=1 --> 0
+        # rp=2.5: extrapolate impacts [50, 100] and ex_freqs [.3, .2] to ex_freq=0.4 --> 0
+        # rp=4: extrapolate impacts [50, 100] and ex_freqs [.3, .2] to ex_freq=0.25 --> 75
+        # rp=1: extrapolate impacts [100, 110] and ex_freqs [.2, .1] to ex_freq=0.05 --> 115
+        npt.assert_array_almost_equal(
+            ifc.interpolate(
+                [1.0, 2.5, 4, 20],
+                method="extrapolate",
+                log_frequency=False,
+                log_impact=False,
+            ).impact,
+            [-300.0, 0.0, 75.0, 115.0],
+        )
 
 
 class TestImpactPerYear(unittest.TestCase):

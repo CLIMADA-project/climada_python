@@ -34,14 +34,15 @@ from climada.engine.unsequa import CalcCostBenefit, InputVar
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
 from climada.entity.entity_def import Entity
 from climada.hazard import Hazard
+from climada.test import get_test_file
 from climada.util.constants import (
     ENT_DEMO_FUTURE,
     ENT_DEMO_TODAY,
-    EXP_DEMO_H5,
     HAZ_DEMO_H5,
 )
 
 DATA_DIR = CONFIG.engine.test_data.dir()
+EXP_DEMO_H5 = get_test_file("exp_demo_today", file_format="hdf5")
 EMDAT_TEST_CSV = DATA_DIR.joinpath("emdat_testdata_BGD_USA_1970-2017.csv")
 
 

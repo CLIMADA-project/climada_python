@@ -518,7 +518,7 @@ class InputVar:
         exp_list : [climada.entity.exposures.base.Exposure]
             The list of base exposure. Can be one or many to uniformly sample
             from.
-        meas_set : climada.entity.measures.measure_set.MeasureSet
+        meas_set : climada.entity._legacy_measures.measure_set.MeasureSet
             The base measures.
         haz_id_dict : dict
             Dictionary of the impact functions affected by uncertainty.
@@ -660,7 +660,7 @@ class InputVar:
         exp_list : [climada.entity.exposures.base.Exposure]
             The list of base exposure. Can be one or many to uniformly sample
             from.
-        meas_set : climada.entity.measures.measure_set.MeasureSet
+        meas_set : climada.entity._legacy_measures.measure_set.MeasureSet
             The base measures.
         haz_id_dict : dict
             Dictionary of the impact functions affected by uncertainty.

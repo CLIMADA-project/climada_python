@@ -23,6 +23,7 @@ __all__ = ["ImpfTropCyclone", "ImpfSetTropCyclone", "IFTropCyclone"]
 
 import logging
 from enum import Enum
+from typing import Literal, overload
 
 import numpy as np
 import pandas as pd
@@ -92,7 +93,7 @@ class CountryCode(Enum):
             "NAM", "NER", "NGA", "NLD", "NOR", "POL", "PRK", "PRT", "PSE", "REU", "ROU",
             "RUS", "RWA", "SDN", "SEN", "SGP", "SGS", "SJM", "SLE", "SMR", "SPM", "SRB",
             "SSD", "STP", "SVK", "SVN", "SWE", "SYC", "TCD", "TGO", "TUN", "TUR", "UKR",
-            "UMI", "VAT", "XKX", "ZMB",
+            "UMI", "VAT", "XKO", "ZMB",
         ],
     }
 
@@ -134,7 +135,7 @@ class ImpfTropCyclone(ImpactFunc):
     def set_emanuel_usa(self, *args, **kwargs):
         """This function is deprecated, use from_emanuel_usa() instead."""
         LOGGER.warning(
-            "The use of ImpfTropCyclone.set_emanuel_usa is deprecated."
+            "The use of ImpfTropCyclone.set_emanuel_usa is deprecated. "
             "Use ImpfTropCyclone.from_emanuel_usa instead."
         )
         self.__dict__ = ImpfTropCyclone.from_emanuel_usa(*args, **kwargs).__dict__
@@ -209,7 +210,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
     def set_calibrated_regional_ImpfSet(self, *args, **kwargs):
         """This function is deprecated, use from_calibrated_regional_ImpfSet() instead."""
         LOGGER.warning(
-            "ImpfSetTropCyclone.set_calibrated_regional_ImpfSet is deprecated."
+            "ImpfSetTropCyclone.set_calibrated_regional_ImpfSet is deprecated. "
             "Use ImpfSetTropCyclone.from_calibrated_regional_ImpfSet instead."
         )
         self.__dict__ = ImpfSetTropCyclone.from_calibrated_regional_ImpfSet(
@@ -363,10 +364,47 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             reg_v_half[regions_short[-1]] = np.round(df_reg["v_half"].values[0], 5)
         return reg_v_half
 
+    @overload
+    @staticmethod
+    def get_countries_per_region(
+        region: Literal["all"] = "all",
+    ) -> tuple[
+        dict[str, str],  # region_name
+        dict[str, int],  # impf_id
+        dict[str, list[int]],  # numeric
+        dict[str, list[str]],  # alpha3
+    ]: ...
+
+    @overload
+    @staticmethod
+    def get_countries_per_region(
+        region: None,
+    ) -> tuple[
+        dict[str, str], dict[str, int], dict[str, list[int]], dict[str, list[str]]
+    ]: ...
+
+    @overload
+    @staticmethod
+    def get_countries_per_region(
+        region: str,
+    ) -> tuple[
+        str, int, list[int], list[str]  # region_name  # impf_id  # numeric  # alpha3
+    ]: ...
+
     @staticmethod
     def get_countries_per_region(region=None):
-        """Returns dictionaries with numerical (numeric) and alphabetical (alpha3) ISO3 codes
-        of all countries associated to a calibration region.
+        """Returns countries within a TC calibration region and associated impact functions.
+
+        This method returns a tuple with numerical (numeric) and alphabetical (alpha3)
+        ISO3 codes of all countries associated to a calibration region.
+
+        If no region or "all" is provided as argument, the method return a tuple of
+        dictionaries with short name of the tropical cyclone calibration regions as
+        keys and the values for each of those.
+
+        Notes
+        -----
+
         Only contains countries that were affected by tropical cyclones
         between 1980 and 2017 according to EM-DAT.
 
@@ -395,9 +433,12 @@ class ImpfSetTropCyclone(ImpactFuncSet):
             return (
                 CountryCode.REGION_NAME.value,
                 CountryCode.IMPF_ID.value,
-                coordinates.country_to_iso(
-                    CountryCode.ALPHA3.value, representation="numeric"
-                ),
+                {
+                    reg: coordinates.country_to_iso(
+                        CountryCode.ALPHA3.value[reg], representation="numeric"
+                    )
+                    for reg in CountryCode.REGION_NAME.value
+                },
                 CountryCode.ALPHA3.value,
             )
 

@@ -24,8 +24,8 @@ import unittest
 import numpy as np
 
 from climada import CONFIG
-from climada.entity.measures.base import Measure
-from climada.entity.measures.measure_set import MeasureSet
+from climada.entity._legacy_measures.base import Measure
+from climada.entity._legacy_measures.measure_set import MeasureSet
 from climada.util.constants import ENT_DEMO_TODAY, ENT_TEMPLATE_XLS
 
 DATA_DIR = CONFIG.measures.test_data.dir()
@@ -58,7 +58,7 @@ class TestContainer(unittest.TestCase):
         """Test error is raised when wrong ImpactFunc provided."""
         meas = MeasureSet()
         with self.assertLogs(
-            "climada.entity.measures.measure_set", level="WARNING"
+            "climada.entity._legacy_measures.measure_set", level="WARNING"
         ) as cm:
             meas.append(Measure())
         self.assertIn("Input Measure's hazard type not set.", cm.output[0])
@@ -76,7 +76,9 @@ class TestContainer(unittest.TestCase):
     def test_remove_wrong_error(self):
         """Test error is raised when invalid inputs."""
         meas = MeasureSet(measure_list=[Measure(name="Mangrove", haz_type="FL")])
-        with self.assertLogs("climada.entity.measures.measure_set", level="INFO") as cm:
+        with self.assertLogs(
+            "climada.entity._legacy_measures.measure_set", level="INFO"
+        ) as cm:
             meas.remove_measure(name="Seawall")
         self.assertIn("No Measure with name Seawall.", cm.output[0])
 

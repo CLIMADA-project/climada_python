@@ -7,7 +7,7 @@ name = "climada"
 version = "6.1.1-dev"
 description = "Framework for climate risk assessment and adaptation option appraisal"
 readme = "README.md"
-requires-python = ">=3.10,<3.13"
+requires-python = ">=3.10,<3.14"
 license = { text = "GNU General Public License v3 (GPLv3)" }
 authors = [
     { name = "ETH", email = "climada-info@sympa.ethz.ch" }
