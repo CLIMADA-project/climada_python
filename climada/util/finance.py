@@ -120,7 +120,7 @@ def income_group(cntry_iso, ref_year, shp_file=None):
     """
     try:
         close_year, close_val = world_bank(cntry_iso, ref_year, "INC_GRP")
-    except (KeyError, IndexError):
+    except (ValueError, KeyError, IndexError):
         # take value from natural earth repository
         close_year, close_val = nat_earth_adm0(
             cntry_iso, "INCOME_GRP", shp_file=shp_file
@@ -275,6 +275,11 @@ def world_bank(cntry_iso, ref_year, info_ind):
         years = cntry_gdp.index
         sort_years = np.abs(years - ref_year).argsort()
         close_val = cntry_gdp.iloc[sort_years].dropna()
+        if close_val.empty:
+            raise ValueError(
+                f"No World Bank indicator '{info_ind}' data available for "
+                f"{cntry_iso}"
+            )
         close_year = close_val.index[0]
         close_val = float(close_val.iloc[0])
     else:  # income group level
@@ -299,6 +304,11 @@ def world_bank(cntry_iso, ref_year, info_ind):
         close_val = cntry_dfr.iloc[
             np.abs(np.array(cntry_dfr.index[1:]) - ref_year).argsort() + 1
         ].dropna()
+        if close_val.empty:
+            raise ValueError(
+                f"No World Bank indicator '{info_ind}' data available for "
+                f"{cntry_iso}"
+            )
         close_year = close_val.index[0]
         close_val = int(close_val.iloc[0])
 
@@ -333,20 +343,25 @@ def nat_earth_adm0(cntry_iso, info_name, year_name=None, shp_file=None):
     if not shp_file:
         shp_file = _nat_earth_shp("10m", "cultural", "admin_0_countries")
 
-    close_val = 0
+    close_val = None
     close_year = 0
+    iso_keys = ("ADM0_A3", "ISO_A3", "WB_A3", "ADM0_A3_US")
     for info in shp_file.records():
-        if info.attributes["ADM0_A3"] == cntry_iso:
+        if any(info.attributes.get(k) == cntry_iso for k in iso_keys):
             close_val = info.attributes[info_name]
             if year_name:
                 close_year = int(info.attributes[year_name])
             break
 
-    if not close_val:
+    if close_val is None:
         raise ValueError("No GDP for country %s found." % cntry_iso)
 
     # the variable name changed in Natural Earth v5.0.0
     if info_name in ["GDP_MD", "GDP_MD_EST"]:
+        if close_val == 0:
+            LOGGER.warning(
+                "Natural Earth %s for country %s is 0.", info_name, cntry_iso
+            )
         close_val *= 1e6
     elif info_name == "INCOME_GRP":
         close_val = INCOME_GRP_NE_TABLE.get(int(close_val[0]))
@@ -460,6 +475,11 @@ def world_bank_wealth_account(
             country_code=cntry_iso,
             indicator=variable_name,
         ).dropna()
+        if data_wealth.empty:
+            raise ValueError(
+                f"No World Bank indicator '{variable_name}' data available "
+                f"for {cntry_iso}"
+            )
     except ValueError:
         if "NW.PCA.TO" in variable_name:
             LOGGER.warning(
@@ -467,6 +487,13 @@ def world_bank_wealth_account(
             )
             gdp_year, gdp_val = gdp(cntry_iso, ref_year)
             fac = wealth2gdp(cntry_iso)[1]
+            if np.isnan(fac):
+                LOGGER.warning(
+                    "Missing wealth-to-gdp factor for country %s. "
+                    "Using GDP instead.",
+                    cntry_iso,
+                )
+                fac = 1.0
             return gdp_year, np.around((fac * gdp_val), 1), 0
         else:
             raise
