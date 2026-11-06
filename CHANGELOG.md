@@ -68,6 +68,7 @@ Updated:
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
 - Fix a wrong computation of EAI in the `trajectory` module when the index of the `GeoDataFrame` of an Exposures object is not a 0 to n range. [#1297](https://github.com/CLIMADA-project/climada_python/pull/1297).
 - `TropCyclone.apply_climate_scenario_knu` now raises a `ValueError` if a frequency is negative [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
+- `climada.util.finance`: Handle missing World Bank indicators, fallback Natural Earth ISO attributes (`ISO_A3`, `WB_A3`, `ADM0_A3_US`), zero-GDP territories, and missing `wealth2gdp` factors [#1331](https://github.com/CLIMADA-project/climada_python/issues/1331).
 
 ### Deprecated
 - `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().interpolate()` instead.
