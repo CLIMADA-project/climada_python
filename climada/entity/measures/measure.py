@@ -29,7 +29,7 @@ import copy
 import inspect
 import logging
 from functools import wraps
-from typing import TYPE_CHECKING, Any, TypeVar
+from typing import TYPE_CHECKING, TypeVar
 
 from climada.entity.measures.helper import (
     helper_exposure,
@@ -54,8 +54,6 @@ if TYPE_CHECKING:
     T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
 LOGGER = logging.getLogger(__name__)
-
-# TODO: risk transfer?
 
 
 def allow_kwargs(func):
@@ -199,10 +197,6 @@ class Measure:
         self.color_rgb = (0, 0, 0) if color_rgb is None else color_rgb
         self._config = _config
 
-    # DONE always provide exp, impfset and hazard as kwargs by default
-    # Have a precedence system (if users provide their own it takes over)
-    # TODO Check that it works
-
     @property
     def is_serializable(self) -> bool:
         """Returns True if the ``Measure`` was created from
@@ -212,7 +206,7 @@ class Measure:
         return self._config is not None
 
     @classmethod
-    def from_config(cls, config: MeasureConfig) -> "Measure":
+    def from_config(cls, config: MeasureConfig) -> Measure:
         """Create a ``Measure`` from a ``MeasureConfig`` object.
 
         The modifiers defined in the configuration are converted into change
@@ -245,7 +239,7 @@ class Measure:
         )
 
     @classmethod
-    def from_dict(cls, d: dict) -> "Measure":
+    def from_dict(cls, d: dict) -> Measure:
         """Create a ``Measure`` from a dictionary.
 
         The dictionary is first converted to a ``MeasureConfig`` with

@@ -22,6 +22,8 @@ effects on each part of risk/impacts (exposure, vulnerability and hazard).
 
 """
 
+from .measure import Measure
 from .measure_config import MeasureConfig
+from .measure_set import MeasureSet
 
-__all__ = ["MeasureConfig"]
+__all__ = ["Measure", "MeasureConfig", "MeasureSet"]
