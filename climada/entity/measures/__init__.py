@@ -22,8 +22,9 @@ effects on each part of risk/impacts (exposure, vulnerability and hazard).
 
 """
 
+from .cost_income import CostIncome
 from .measure import Measure
 from .measure_config import MeasureConfig
 from .measure_set import MeasureSet
 
-__all__ = ["Measure", "MeasureConfig", "MeasureSet"]
+__all__ = ["CostIncome", "Measure", "MeasureConfig", "MeasureSet"]
