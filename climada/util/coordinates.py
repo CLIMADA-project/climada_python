@@ -3101,13 +3101,25 @@ def points_to_raster(
     if not raster_res:
         raster_res = res
 
-    if "geometry" in points_df:
-        fun = lambda r: r.geometry.buffer(res / 2).envelope
-    else:
-        fun = lambda r: Point(r["longitude"], r["latitude"]).buffer(res / 2).envelope
+    half_res = res / 2
 
     def apply_box(df_exp):
-        return df_exp.apply(fun, axis=1)
+        if "geometry" in df_exp:
+            lon = df_exp.geometry.x.to_numpy()
+            lat = df_exp.geometry.y.to_numpy()
+        else:
+            lon = df_exp["longitude"].to_numpy()
+            lat = df_exp["latitude"].to_numpy()
+        return pd.Series(
+            shapely.box(
+                lon - half_res,
+                lat - half_res,
+                lon + half_res,
+                lat + half_res,
+            ),
+            index=df_exp.index,
+            dtype=object,
+        )
 
     LOGGER.info("Raster from resolution %s to %s.", res, raster_res)
     df_poly = gpd.GeoDataFrame(points_df[val_names])
