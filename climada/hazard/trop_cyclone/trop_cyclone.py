@@ -435,8 +435,8 @@ class TropCyclone(Hazard):
 
         if self.category.size == 0:
             LOGGER.warning(
-                "Tropical cyclone categories are missing and"
-                "no effect of climate change can be modelled."
+                "Tropical cyclone categories are missing and "
+                "no effect of climate change can be modelled. "
                 "The original event set is returned"
             )
             return self
@@ -478,7 +478,7 @@ class TropCyclone(Hazard):
             tc_cc.frequency[sel_cat03 & bas_sel] *= 1 + scale_year_rcp_03 / 100
             tc_cc.frequency[sel_cat45 & bas_sel] *= 1 + scale_year_rcp_45 / 100
 
-            if any(tc_cc.frequency) < 0:
+            if np.any(tc_cc.frequency < 0):
                 raise ValueError(
                     " The application of the climate scenario leads to "
                     " negative frequencies. One solution - if appropriate -"
@@ -490,7 +490,7 @@ class TropCyclone(Hazard):
     def set_climate_scenario_knu(self, *args, **kwargs):
         """This function is deprecated, use TropCyclone.apply_climate_scenario_knu instead."""
         LOGGER.warning(
-            "The use of TropCyclone.set_climate_scenario_knu is deprecated."
+            "The use of TropCyclone.set_climate_scenario_knu is deprecated. "
             "Use TropCyclone.apply_climate_scenario_knu instead."
         )
         return self.apply_climate_scenario_knu(*args, **kwargs)
@@ -785,7 +785,7 @@ class TropCyclone(Hazard):
 
         if (tc_cc.frequency < 0).any():
             raise ValueError(
-                "The application of the given climate scenario"
+                "The application of the given climate scenario "
                 "resulted in at least one negative frequency."
             )
 

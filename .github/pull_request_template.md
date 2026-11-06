@@ -6,7 +6,7 @@ This PR fixes #
 
 ### PR Author Checklist
 
-- [ ] Read the [Contribution Guide][contrib]
+- [ ] Read the [Contribution Guide][contrib] and [AI Policy][ai-policy]
 - [ ] Correct target branch selected (if unsure, select `develop`)
 - [ ] Descriptive pull request title added
 - [ ] Source branch up-to-date with target branch
@@ -18,11 +18,13 @@ This PR fixes #
 
 ### PR Reviewer Checklist
 
-- [ ] Read the [Contribution Guide][contrib]
+- [ ] Read the [Contribution Guide][contrib] and [AI Policy][ai-policy]
 - [ ] [CLIMADA Reviewer Checklist](https://climada-python.readthedocs.io/en/latest/development/Guide_Review.html) passed
 - [ ] [Tests][testing] passing
 - [ ] No new [linter issues][linter]
 
+
 [contrib]: https://github.com/CLIMADA-project/climada_python/blob/main/CONTRIBUTING.md
 [testing]: https://climada-python.readthedocs.io/en/latest/development/Guide_continuous_integration_GitHub_actions.html
 [linter]: https://climada-python.readthedocs.io/en/latest/development/Guide_continuous_integration_GitHub_actions.html#static-code-analysis
+[ai-policy]: https://github.com/CLIMADA-project/climada_python/blob/main/AI_POLICY.md

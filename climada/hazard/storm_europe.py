@@ -130,7 +130,7 @@ class StormEurope(Hazard):
     def read_footprints(self, *args, **kwargs):
         """This function is deprecated, use StormEurope.from_footprints instead."""
         LOGGER.warning(
-            "The use of StormEurope.read_footprints is deprecated."
+            "The use of StormEurope.read_footprints is deprecated. "
             "Use StormEurope.from_footprints instead."
         )
         self.__dict__ = StormEurope.from_footprints(*args, **kwargs).__dict__
@@ -288,7 +288,7 @@ class StormEurope(Hazard):
     def read_cosmoe_file(self, *args, **kwargs):
         """This function is deprecated, use StormEurope.from_cosmoe_file instead."""
         LOGGER.warning(
-            "The use of StormEurope.read_cosmoe_file is deprecated."
+            "The use of StormEurope.read_cosmoe_file is deprecated. "
             "Use StormEurope.from_cosmoe_file instead."
         )
         self.__dict__ = StormEurope.from_cosmoe_file(*args, **kwargs).__dict__
@@ -357,7 +357,7 @@ class StormEurope(Hazard):
                         "Extraction of date and coordinates failed. This is most likely "
                         "because the selected event_date "
                         f'{event_date.strftime("%Y-%m-%d")} is not contained in the '
-                        "weather forecast selected by fp_file {fp_file}. Please adjust "
+                        f"weather forecast selected by fp_file {fp_file}. Please adjust "
                         f"event_date or fp_file."
                     ) from ker
                 considered_dates = np.datetime64(event_date)
@@ -419,7 +419,7 @@ class StormEurope(Hazard):
     def read_icon_grib(self, *args, **kwargs):
         """This function is deprecated, use StormEurope.from_icon_grib instead."""
         LOGGER.warning(
-            "The use of StormEurope.read_icon_grib is deprecated."
+            "The use of StormEurope.read_icon_grib is deprecated. "
             "Use StormEurope.from_icon_grib instead."
         )
         self.__dict__ = StormEurope.from_icon_grib(*args, **kwargs).__dict__

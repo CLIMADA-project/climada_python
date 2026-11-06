@@ -1,6 +1,10 @@
 climada\.util package
 =====================
 
+.. toctree::
+
+    climada.util.calibrate
+
 climada\.util\.api\_client module
 ---------------------------------
 
@@ -8,14 +12,6 @@ climada\.util\.api\_client module
     :members:
     :undoc-members:
     :show-inheritance:
-
-climada\.util\.calibrate module
--------------------------------
-
-.. toctree::
-   :maxdepth: 1
-
-   climada.util.calibrate
 
 climada\.util\.checker module
 -----------------------------
@@ -45,6 +41,14 @@ climada\.util\.coordinates module
 ---------------------------------
 
 .. automodule:: climada.util.coordinates
+    :members:
+    :undoc-members:
+    :show-inheritance:
+
+climada\.util\.dataframe\_handling module
+-----------------------------------------
+
+.. automodule:: climada.util.dataframe_handling
     :members:
     :undoc-members:
     :show-inheritance:

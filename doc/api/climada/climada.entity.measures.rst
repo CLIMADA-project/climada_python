@@ -5,8 +5,8 @@ climada\.entity\.measures package
    This package implements the new way of defining measures.
    For the previous way, see :ref:`climada.entity._legacy_measures`
 
-climada\.entity\.measures\.measure_config module
-------------------------------------------------
+climada\.entity\.measures\.measure\_config module
+-------------------------------------------------
 
 .. automodule:: climada.entity.measures.measure_config
     :members:
