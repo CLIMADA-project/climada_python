@@ -1,12 +1,8 @@
 # Changelog
 
-## Unreleased
+## 6.2.0
 
-Release date: YYYY-MM-DD
-
-Code freeze date: YYYY-MM-DD
-
-### Description
+Release date: 2026-11-06
 
 ### Dependency Changes
 
