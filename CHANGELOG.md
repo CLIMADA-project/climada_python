@@ -29,6 +29,7 @@ Updated:
 - `pillow` =11.3 &rarr; =13.0
 - `pyarrow` >=21.0 &rarr; >=24.0
 - `pytables` >=3.10 &rarr; >=3.11
+- `python` >=3.10,<3.13 &rarr; >=3.11,<3.14
 - `rasterio` >=1.4 &rarr; >=1.4,<1.5
 - `requests` >=2.32 &rarr; >=2.34
 - `scikit-learn` >=1.7 &rarr; >=1.9
