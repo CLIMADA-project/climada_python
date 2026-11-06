@@ -10,6 +10,22 @@ Code freeze date: YYYY-MM-DD
 
 ### Dependency Changes
 
+### Added
+
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 6.2.0
+
+Release date: 2026-11-06
+
+### Dependency Changes
+
 Added:
 
 - `affine` >=2.4,<3.0

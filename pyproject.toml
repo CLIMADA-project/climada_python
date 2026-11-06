@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "climada"
-version = "6.1.1-dev"
+version = "6.2.1-dev"
 description = "Framework for climate risk assessment and adaptation option appraisal"
 readme = "README.md"
 requires-python = ">=3.11,<3.14"
