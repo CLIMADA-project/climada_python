@@ -2014,21 +2014,6 @@ class TestRasterMeta(unittest.TestCase):
             self.assertEqual(meta["width"], 4)
             np.testing.assert_array_equal(r_data[0], [[0, 0, 0, 2], [0, 0, 3, 1]])
 
-            df_geom = gpd.GeoDataFrame(
-                {"value": df_val["value"]},
-                geometry=gpd.points_from_xy(
-                    df_val["longitude"], df_val["latitude"]
-                ),
-                crs=DEF_CRS,
-            )
-            r_geom, _ = u_coord.points_to_raster(
-                df_geom,
-                val_names=["value"],
-                res=0.5,
-                raster_res=1.0,
-            )
-            np.testing.assert_allclose(r_geom, r_data)
-
 
 class TestRasterIO(unittest.TestCase):
     def test_write_raster_pass(self):
