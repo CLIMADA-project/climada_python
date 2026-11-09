@@ -372,6 +372,12 @@ class TestCombCostIncome:
         with pytest.raises(ValueError, match="income_growth_rate"):
             CostIncome.comb_cost_income([ci1, ci2])
 
+    def test_mismatched_period_freq_raises(self):
+        ci1 = CostIncome(mkt_price_year=2020, freq="Y")
+        ci2 = CostIncome(mkt_price_year=2020, freq="M")
+        with pytest.raises(ValueError, match="different period frequencies"):
+            CostIncome.comb_cost_income([ci1, ci2])
+
     def test_single_element_list(self):
         ci = CostIncome(mkt_price_year=2020, init_cost=500, periodic_income=100)
         combined = CostIncome.comb_cost_income([ci])
