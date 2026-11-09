@@ -38,7 +38,7 @@ from shapefile import Shape
 from climada import CONFIG
 from climada.util import ureg
 from climada.util.constants import SYSTEM_DIR
-from climada.util.files_handler import download_file
+from climada.util.files_handler import DownloadException, download_file
 from climada.util.save import save
 
 Image.MAX_IMAGE_PIXELS = 1e9
@@ -372,7 +372,7 @@ def download_nl_files(
                     LOGGER.info("Attempting to download file from %s", curr_file)
                     path_check = download_file(curr_file, download_dir=dwnl_path)
                     break  # leave loop if sucessful
-                except ValueError as err:
+                except DownloadException as err:
                     value_err = err
             if path_check:  # download succesful
                 continue
@@ -637,7 +637,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
                 try:
                     file_down = download_file(url, download_dir=SYSTEM_DIR)
                     break
-                except ValueError:
+                except DownloadException:
                     pass
             if "file_down" not in locals():
                 raise ValueError(
@@ -648,7 +648,7 @@ def load_nightlight_noaa(ref_year=2013, sat_name=None):
             url = noaa_url + sat_name + str(ref_year) + ".v4.tar"
             try:
                 file_down = download_file(url, download_dir=SYSTEM_DIR)
-            except ValueError as err:
+            except DownloadException as err:
                 raise ValueError(
                     f"Nightlight intensities for year {ref_year} and satellite"
                     f" {sat_name} do not exist."

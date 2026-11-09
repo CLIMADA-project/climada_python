@@ -20,6 +20,7 @@ Tests for Hazard Forecast.
 """
 
 import datetime as dt
+from unittest.mock import patch
 
 import numpy as np
 import numpy.testing as npt
@@ -31,6 +32,7 @@ from scipy.sparse import csr_matrix
 from climada.hazard.base import Hazard
 from climada.hazard.forecast import HazardForecast, xarray_has_timedelta_bug
 from climada.hazard.test.test_base import hazard_kwargs
+from climada.util.forecast import sparse_quantile_axis0
 
 # See https://docs.xarray.dev/en/stable/whats-new.html#id80
 xarray_leadtime = pytest.mark.skipif(
@@ -187,6 +189,7 @@ class TestXarrayReader:
             "n_lat": n_lat,
             "n_lon": n_lon,
             "eps": eps,
+            "ref_time": ref_time[0],
             "lead_time": lead_time_vals,
             "lon": lon,
             "lat": lat,
@@ -263,9 +266,10 @@ class TestXarrayReader:
         ]
         npt.assert_array_equal(haz_fc.event_name, event_names_expected)
 
+    @pytest.mark.parametrize("data_vars", [None, {"date": ""}])
     @xarray_leadtime
-    def test_from_xarray_raster_dates(self, forecast_netcdf_file):
-        """Test that dates are set to 0 for forecast events"""
+    def test_from_xarray_raster_dates(self, forecast_netcdf_file, data_vars):
+        """Test that dates default to 0 when no date coordinate is mapped"""
         haz_fc = HazardForecast.from_xarray_raster(
             forecast_netcdf_file["path"],
             hazard_type="PR",
@@ -276,6 +280,7 @@ class TestXarrayReader:
                 "lead_time": "lead_time",
                 "member": "eps",
             },
+            data_vars=data_vars,
             crs=forecast_netcdf_file["crs"],
         )
 
@@ -284,6 +289,29 @@ class TestXarrayReader:
             forecast_netcdf_file["n_eps"] * forecast_netcdf_file["n_lead_time"]
         )
         npt.assert_array_equal(haz_fc.date, np.zeros(expected_n_events, dtype=int))
+
+    @xarray_leadtime
+    def test_from_xarray_raster_dates_from_data(self, forecast_netcdf_file):
+        """Test that an explicitly mapped date coordinate is preserved"""
+        haz_fc = HazardForecast.from_xarray_raster(
+            forecast_netcdf_file["path"],
+            hazard_type="PR",
+            intensity_unit="mm/h",
+            coordinate_vars={
+                "longitude": "lon",
+                "latitude": "lat",
+                "lead_time": "lead_time",
+                "member": "eps",
+            },
+            data_vars={"date": "valid_time"},
+            crs=forecast_netcdf_file["crs"],
+        )
+
+        expected_dates = [
+            pd.Timestamp(forecast_netcdf_file["ref_time"] + lead_time).toordinal()
+            for lead_time in haz_fc.lead_time
+        ]
+        npt.assert_array_equal(haz_fc.date, expected_dates)
 
 
 class TestSelect:
@@ -505,6 +533,25 @@ class TestReduce:
         npt.assert_array_equal(
             haz_fcst_median.intensity.todense(),
             np.median(haz_fc.intensity.todense(), axis=0),
+        )
+
+    def test_quantile_uses_block_wise_helper(self, haz_fc):
+        """quantile passes intensity and fraction themselves to the block-wise helper"""
+        # wraps, so the real helper still runs and the result stays checkable
+        with patch(
+            "climada.hazard.forecast.sparse_quantile_axis0",
+            wraps=sparse_quantile_axis0,
+        ) as helper:
+            reduced = haz_fc.quantile(0.5)
+
+        assert helper.call_count == 2
+        intensity_call, fraction_call = helper.call_args_list
+        assert intensity_call.args[0] is haz_fc.intensity
+        assert fraction_call.args[0] is haz_fc.fraction
+        assert intensity_call.args[1] == fraction_call.args[1] == 0.5
+        npt.assert_array_equal(
+            reduced.intensity.toarray().squeeze(),
+            np.quantile(haz_fc.intensity.toarray(), 0.5, axis=0),
         )
 
     @pytest.mark.parametrize("attr", ["min", "mean", "max", "median", "quantile"])

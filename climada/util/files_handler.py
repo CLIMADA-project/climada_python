@@ -29,6 +29,7 @@ import logging
 import math
 import urllib
 from pathlib import Path
+from urllib.parse import unquote, urlparse
 
 import requests
 from tqdm import tqdm
@@ -36,6 +37,13 @@ from tqdm import tqdm
 from climada.util.config import CONFIG
 
 LOGGER = logging.getLogger(__name__)
+
+
+class DownloadException(Exception):
+    """Custom exception, to be catched when download_file is called.
+    Will be raised, e.g., when the url is wrong or the server is down
+    but not when the target path is corrupt.
+    """
 
 
 class DownloadProgressBar(tqdm):
@@ -78,27 +86,29 @@ def download_file(url, download_dir=None, overwrite=True):
     str
         the full path to the eventually downloaded file
     """
-    file_name = url.split("/")[-1]
+    url_path = unquote(urlparse(url).path)
+    file_name = url_path.split("/")[-1]
     if file_name.strip() == "":
         raise ValueError(f"cannot download {url} as a file")
     download_path = (
         CONFIG.local_data.save_dir.dir() if download_dir is None else Path(download_dir)
     )
     file_path = download_path.absolute().joinpath(file_name)
-    if file_path.exists():
-        if not file_path.is_file() or not overwrite:
-            raise FileExistsError(f"cannot download to {file_path}")
+    if file_path.exists() and (
+        not file_path.is_file() or not overwrite  # file is a link
+    ):
+        explanation = (
+            "file is a link" if file_path.is_file() else "`overwrite` is set to False"
+        )
+        raise FileExistsError(f"cannot download to {file_path}: {explanation}")
 
     try:
-        req_file = requests.get(url, stream=True)
-    except IOError as ioe:
-        raise type(ioe)("Check URL and internet connection: " + str(ioe)) from ioe
-    if req_file.status_code < 200 or req_file.status_code > 299:
-        raise ValueError(
-            f"Error loading page {url}\n"
-            f" Status: {req_file.status_code}\n"
-            f" Content: {req_file.content}"
-        )
+        # raises requests.exceptions.RequestException
+        req_file = requests.get(url, stream=True, timeout=(10, None))
+        # ... but not for HTTP 4xx/5xx responses
+        req_file.raise_for_status()
+    except (requests.exceptions.RequestException, requests.exceptions.HTTPError) as err:
+        raise DownloadException(f"download of {url} failed") from err
 
     total_size = int(req_file.headers.get("content-length", 0))
     block_size = 1024

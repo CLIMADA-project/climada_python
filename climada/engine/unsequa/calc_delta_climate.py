@@ -235,7 +235,7 @@ class CalcDeltaImpact(Calc):
 
         if unc_sample.samples_df.empty:
             raise ValueError(
-                "No sample was found. Please create one first"
+                "No sample was found. Please create one first "
                 "using UncImpact.make_sample(N)"
             )
 
@@ -280,8 +280,10 @@ class CalcDeltaImpact(Calc):
         at_event_unc_df = pd.DataFrame(at_event_list)
 
         if calc_eai_exp:
-            exp = self.exp_input_var.evaluate()
-            coord_df = exp.gdf[["latitude", "longitude"]]
+            exp = self.exp_final_input_var.evaluate()
+            coord_df = pd.DataFrame.from_dict(
+                {"latitude": exp.latitude, "longitude": exp.longitude}
+            )
         else:
             coord_df = pd.DataFrame([])
 

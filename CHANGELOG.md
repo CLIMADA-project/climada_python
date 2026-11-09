@@ -12,22 +12,80 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+### Changed
+
+### Fixed
+
+### Deprecated
+
+### Removed
+
+## 6.2.0
+
+Release date: 2026-11-06
+
+### Dependency Changes
+
+Added:
+
+- `affine` >=2.4,<3.0
+
+Updated:
+
+- `contextily` >=1.6 &rarr; >=1.7
+- `dask` >=2025.9 &rarr; >=2026.8
+- `eccodes` >=2.42 &rarr; >=2.47
+- `gdal` >=3.10 &rarr; >=3.12
+- `h5py` >=3.14 &rarr; >=3.16
+- `matplotlib-base` >=3.10 &rarr; >=3.10,<3.11
+- `numba` >=0.62 &rarr; >=0.67
+- `numexpr` >=2.13 &rarr; >=2.14
+- `pandas` >=2.3 &rarr; >=2.2,<2.3
+- `peewee` >=3.18 &rarr; >=4.4
+- `pillow` =11.3 &rarr; =13.0
+- `pyarrow` >=21.0 &rarr; >=24.0
+- `pytables` >=3.10 &rarr; >=3.11
+- `python` >=3.10,<3.13 &rarr; >=3.11,<3.14
+- `rasterio` >=1.4 &rarr; >=1.4,<1.5
+- `requests` >=2.32 &rarr; >=2.34
+- `scikit-learn` >=1.7 &rarr; >=1.9
+- `scipy` >=1.16 &rarr; >=1.17
+- `sparse` >=0.17 &rarr; >=0.19
+- `statsmodels` >=0.14 &rarr; >=0.15
+- `tabulate` >=0.9 &rarr; >=0.10
+- `tqdm` >=4.67 &rarr; >=4.70
+- `xarray` >=2025.9 &rarr; >=2026.7
+
+### Added
+
 - Support for ensemble forecast data as hazard via `HazardForecast` and `ImpactForecast`, see `doc.user_guide.climada_engine_ImpactForecast.ipynb` [#1115](https://github.com/CLIMADA-project/climada_python/pull/)
 - Better type hints and overloads signatures for ImpactFuncSet [#1250](https://github.com/CLIMADA-project/climada_python/pull/1250)
+- Tutorial for hail hazard data on API [#1275](https://github.com/CLIMADA-project/climada_python/pull/1275)
 - Adds `MeasureConfig` and related dataclasses for new `Measure` object retrocompatibility and (de)serialization capabilities [#1276](https://github.com/CLIMADA-project/climada_python/pull/1276)
 - Add inter- and extrapolation options to `ImpactFreqCurve` with method `interpolate` [#1252](https://github.com/CLIMADA-project/climada_python/pull/1252)
 - Add `trajectory` module to ease the handling of multiple risk assessment at different point in time, and enable interpolation in between. [#1197](https://github.com/CLIMADA-project/climada_python/pull/1197), [#1198](https://github.com/CLIMADA-project/climada_python/pull/1198), [#1199](https://github.com/CLIMADA-project/climada_python/pull/1199), [#1200](https://github.com/CLIMADA-project/climada_python/pull/1197), [#1201](https://github.com/CLIMADA-project/climada_python/pull/1197)
+- `climada.util.dataframe_handling.read_excel` a wrapper around `pandas.read_excel` that suppresses unrelated user-warnings [#1335](https://github.com/CLIMADA-project/climada_python/issues/1335)
 
 ### Changed
 
 - Updated Impact Calculation Tutorial (`doc.climada_engine_Impact.ipynb`) [#1095](https://github.com/CLIMADA-project/climada_python/pull/1095).
+- `climada.util.finance`: `world_bank_wealth_account` now fetches data via the
+  World Bank Indicators API instead of downloading a ZIP/CSV file.
+  Updated available year range from 1995–2014 to 1995–2020. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 - Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
+- `HazardForecast.quantile` and `ImpactForecast.quantile` compute quantiles block-wise instead of densifying the entire sparse matrix, greatly reducing peak memory. Results are unchanged. [#1203](https://github.com/CLIMADA-project/climada_python/issues/1203)
 
 ### Fixed
 
+- Preserve explicitly mapped dates in `HazardForecast.from_xarray_raster` [#1305](https://github.com/CLIMADA-project/climada_python/issues/1305).
 - Fixed asset count in impact logging message [#1195](https://github.com/CLIMADA-project/climada_python/pull/1195).
 - `Hazard.from_raster_xarray` now returns a sparse matrix instead of a sparse array [#1261](https://github.com/CLIMADA-project/climada_python/pull/1261).
+- `climada.util.finance`: Fixed broken `WORLD_BANK_INC_GRP` download URL
+  (`databank.worldbank.org`) whose SSL certificate had expired. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
+- `ImpactCalc.impact` now raises a clear `ValueError` when the supplied `Hazard` contains no events, instead of failing later inside `np.array_split` with an obscure message [#814](https://github.com/CLIMADA-project/climada_python/issues/814).
 - Fix TCTracks.from_FAST duplicate loading from year loop [#1269](github.com/CLIMADA-project/climada_python/pull/1269)
+- Fix a wrong computation of EAI in the `trajectory` module when the index of the `GeoDataFrame` of an Exposures object is not a 0 to n range. [#1297](https://github.com/CLIMADA-project/climada_python/pull/1297).
+- `TropCyclone.apply_climate_scenario_knu` now raises a `ValueError` if a frequency is negative [#1338](https://github.com/CLIMADA-project/climada_python/pull/1338).
 
 ### Deprecated
 - `Impact.calc_freq_curve()` should not be given the parameter `return_per`. Use the parameter `return_periods` in `Impact.calc_freq_curve().interpolate()` instead.
@@ -35,6 +93,9 @@ Code freeze date: YYYY-MM-DD
 ### Removed
 - `climada.util.earth_engine.py` Google Earth Engine methods did not facilitate direct use of GEE data in CLIMADA. Code was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
 - `doc.climada_util_earth_engine.ipynb` Tutorial about GEE not relevant to CLIMADA Core. Tutorial notebook was relocated to [climada-snippets](https://github.com/CLIMADA-project/climada-snippets). [#1109](https://github.com/CLIMADA-project/climada_python/pull/1109)
+- `climada.util.finance`: Removed constants `WORLD_BANK_WEALTH_ACC` and
+  `FILE_WORLD_BANK_WEALTH_ACC`. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
+- `doc.development.Guide_Euler.ipynb` tutorial is not part of the climada docs anymore. For using climada on the ETHZ HPC Cluster Euler, see https://gitlab.ethz.ch/climada/climada-on-euler/ instead. [#1329](https://github.com/CLIMADA-project/climada_python/pull/1329)
 
 ## 6.1.0
 

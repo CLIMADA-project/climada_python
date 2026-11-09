@@ -91,7 +91,7 @@ def calib_instance(
             years_in_common = df_out.loc[
                 df_out["year"].isin(np.sort(list((iys.keys())))), "year"
             ]
-            for cnt_, year in years_in_common.iteritems():
+            for cnt_, year in years_in_common.items():
                 df_out.loc[df_out["year"] == year, "impact_CLIMADA"] = iys[year]
 
     else:  # impact per event
@@ -221,7 +221,7 @@ def change_impf(impf_instance, param_dict):
             )
         else:
             raise AttributeError(
-                "keys in param_dict not recognized. Use only:"
+                "keys in param_dict not recognized. Use only: "
                 "paa_shift, paa_scale, mdd_shift, mdd_scale"
             )
 
@@ -394,7 +394,6 @@ def calib_all(
         for x in itertools.product(*param_full_dict.values())
     )
     for param_dict in params_generator:
-        print(param_dict)
         df_out = copy.deepcopy(df_impact_data)
         impact_func_final, df_out = init_impf(impf_name_or_instance, param_dict, df_out)
         df_out = calib_instance(
@@ -403,7 +402,7 @@ def calib_all(
         if df_result is None:
             df_result = copy.deepcopy(df_out)
         else:
-            df_result = df_result.append(df_out, input)
+            df_result = pd.concat([df_result, df_out], ignore_index=True)
 
     return df_result
 
@@ -475,7 +474,6 @@ def calib_optimize(
     # definie specific function to
     def specific_calib(values):
         param_dict_temp = dict(zip(param_dict.keys(), values))
-        print(param_dict_temp)
         return calib_instance(
             hazard,
             exposure,
@@ -519,7 +517,7 @@ def calib_optimize(
     else:
         LOGGER.info(
             "Opimization did not finish successfully. Check you input"
-            " or consult the detailed returns (with argument"
+            " or consult the detailed returns (with argument "
             "show_details=True) for further information."
         )
 

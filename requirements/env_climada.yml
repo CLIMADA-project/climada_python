@@ -10,7 +10,7 @@ dependencies:
 - cartopy>=0.25.0
 - cfgrib>=0.9.15.1
 - contextily>=1.7.0
-- dask>=2026.3.0
+- dask>=2026.8
 - deprecation>=2.1.0
 - fiona>=1.10.1
 - geopandas>=1.1.3

@@ -4,10 +4,10 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "climada"
-version = "6.1.1-dev"
+version = "6.2.1-dev"
 description = "Framework for climate risk assessment and adaptation option appraisal"
 readme = "README.md"
-requires-python = ">=3.10,<3.14"
+requires-python = ">=3.11,<3.14"
 license = { text = "GNU General Public License v3 (GPLv3)" }
 authors = [
     { name = "ETH", email = "climada-info@sympa.ethz.ch" }
@@ -27,7 +27,7 @@ dependencies = [
     "cartopy>=0.25.0",
     "cfgrib>=0.9.15.1",
     "contextily>=1.7.0",
-    "dask>=2026.3.0",
+    "dask>=2026.8",
     "deprecation>=2.1.0",
     "eccodeslib>=2.47.1.20",  # See https://github.com/ecmwf/eccodes-python/issues/150
     "fiona>=1.10.1",
