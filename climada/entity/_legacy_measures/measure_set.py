@@ -24,13 +24,12 @@ __all__ = ["MeasureSet"]
 import ast
 import copy
 import logging
-from typing import List, Optional
 
 import numpy as np
-import pandas as pd
 import xlsxwriter
 from matplotlib import colormaps as cm
 
+import climada.util.dataframe_handling as u_pd
 import climada.util.hdf5_handler as u_hdf5
 
 from .base import Measure
@@ -99,7 +98,7 @@ class MeasureSet:
         Use the available methods instead.
     """
 
-    def __init__(self, measure_list: Optional[List[Measure]] = None):
+    def __init__(self, measure_list: list[Measure] | None = None):
         """Initialize a new MeasureSet object with specified data.
 
         Parameters
@@ -130,7 +129,7 @@ class MeasureSet:
             for meas in measure_list:
                 self.append(meas)
 
-    def clear(self, _data: Optional[dict] = None):
+    def clear(self, _data: dict | None = None):
         """Reinitialize attributes.
 
         Parameters
@@ -451,7 +450,7 @@ class MeasureSet:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use MeasureSet.from_mat instead."""
         LOGGER.warning(
-            "The use of MeasureSet.read_mat is deprecated."
+            "The use of MeasureSet.read_mat is deprecated. "
             "Use MeasureSet.from_mat instead."
         )
         self.__dict__ = MeasureSet.from_mat(*args, **kwargs).__dict__
@@ -544,7 +543,7 @@ class MeasureSet:
 
                 measures.append(Measure(**meas_kwargs))
 
-        dfr = pd.read_excel(file_name, var_names["sheet_name"])
+        dfr = u_pd.read_excel(file_name, var_names["sheet_name"])
         dfr = dfr.fillna("")
         meas_set = cls()
         try:
@@ -557,7 +556,7 @@ class MeasureSet:
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use MeasureSet.from_excel instead."""
         LOGGER.warning(
-            "The use ofMeasureSet.read_excel is deprecated."
+            "The use of MeasureSet.read_excel is deprecated. "
             "Use MeasureSet.from_excel instead."
         )
         self.__dict__ = MeasureSet.from_excel(*args, **kwargs).__dict__

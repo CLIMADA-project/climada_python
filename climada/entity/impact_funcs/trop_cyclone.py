@@ -135,7 +135,7 @@ class ImpfTropCyclone(ImpactFunc):
     def set_emanuel_usa(self, *args, **kwargs):
         """This function is deprecated, use from_emanuel_usa() instead."""
         LOGGER.warning(
-            "The use of ImpfTropCyclone.set_emanuel_usa is deprecated."
+            "The use of ImpfTropCyclone.set_emanuel_usa is deprecated. "
             "Use ImpfTropCyclone.from_emanuel_usa instead."
         )
         self.__dict__ = ImpfTropCyclone.from_emanuel_usa(*args, **kwargs).__dict__
@@ -210,7 +210,7 @@ class ImpfSetTropCyclone(ImpactFuncSet):
     def set_calibrated_regional_ImpfSet(self, *args, **kwargs):
         """This function is deprecated, use from_calibrated_regional_ImpfSet() instead."""
         LOGGER.warning(
-            "ImpfSetTropCyclone.set_calibrated_regional_ImpfSet is deprecated."
+            "ImpfSetTropCyclone.set_calibrated_regional_ImpfSet is deprecated. "
             "Use ImpfSetTropCyclone.from_calibrated_regional_ImpfSet instead."
         )
         self.__dict__ = ImpfSetTropCyclone.from_calibrated_regional_ImpfSet(
