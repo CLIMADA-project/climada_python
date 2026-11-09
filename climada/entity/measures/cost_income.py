@@ -19,7 +19,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define the CostIncome class to handle the cash flow of measures.
 """
 
-from typing import Any, Optional, cast
+from typing import Any, cast
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -67,7 +67,7 @@ class CostIncome:
         periodic_income: float = 0.0,
         cost_yearly_growth_rate: float = 0.0,
         income_yearly_growth_rate: float = 0.0,
-        custom_cash_flows: Optional[pd.DataFrame] = None,
+        custom_cash_flows: pd.DataFrame | None = None,
         freq: str = "Y",
     ):
         """Initialize CostIncome with parameters.
@@ -113,8 +113,10 @@ class CostIncome:
             f"  periodic_income         = {self.periodic_income:,.2f}",
             f"  cost_yearly_growth_rate = {self.cost_growth_rate:.2%}",
             f"  income_yearly_growth_rate = {self.income_growth_rate:.2%}",
-            "  custom_cash_flows       = "
-            f"{None if self.custom_cash_flows is None else f'DataFrame({len(self.custom_cash_flows)} rows)'}",
+            (
+                "  custom_cash_flows       = "
+                f"{None if self.custom_cash_flows is None else f'DataFrame({len(self.custom_cash_flows)} rows)'}"
+            ),
             ")",
         ]
         return "\n".join(lines)
@@ -440,7 +442,7 @@ class CostIncome:
         start_date: Any,
         end_date: Any,
         figsize: tuple[int, int] = (12, 7),
-        title: Optional[str] = None,
+        title: str | None = None,
     ):
         """Plot periodic and cumulative cash flows over a given period.
 
@@ -580,7 +582,7 @@ class CostIncome:
             if str(err) == "All objects passed were None":
                 custom_cash_flows = None
             else:
-                raise err
+                raise
 
         return CostIncome(
             mkt_price_year=first_ci.mkt_price_year,
