@@ -19,10 +19,14 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test Impact class.
 """
 
+import pickle
+import tempfile
 import unittest
 import warnings
+from pathlib import Path
 
 import numpy as np
+from scipy import sparse
 
 import climada.engine.impact_data as im_d
 from climada import CONFIG
@@ -300,9 +304,45 @@ class TestEmdatToImpact(unittest.TestCase):
         self.assertAlmostEqual(1.610687e07, impact_emdat.at_event[4], places=0)
 
 
+class TestHitCountryPerHazard(unittest.TestCase):
+    """Test hit_country_per_hazard, which reads its inputs from pickle files."""
+
+    def test_hit_country_per_hazard_pass(self):
+        """One row per (track, hit country) pair."""
+        # two tracks over three centroids in USA (840) and CAN (124):
+        # track 0 hits centroids 0 and 2, track 1 hits centroid 1
+        inputs = {
+            "intensity": sparse.csr_matrix(
+                np.array([[10.0, 0.0, 20.0], [0.0, 30.0, 0.0]])
+            ),
+            "names": ["2017001N10W", "2017002N10W"],
+            "reg_id": np.array([840, 840, 124]),
+            "date": [736330, 736331],
+        }
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            paths = {}
+            for name, obj in inputs.items():
+                paths[name] = Path(tmp_dir, f"{name}.p")
+                with open(paths[name], "wb") as filef:
+                    pickle.dump(obj, filef)
+            hit_countries = im_d.hit_country_per_hazard(
+                paths["intensity"], paths["names"], paths["reg_id"], paths["date"]
+            )
+
+        self.assertListEqual(
+            list(hit_countries.columns), ["hit_country", "Date_start", "ibtracsID"]
+        )
+        self.assertEqual(hit_countries.shape[0], 3)
+        self.assertSetEqual(set(hit_countries["hit_country"]), {"USA", "CAN"})
+        self.assertListEqual(
+            list(hit_countries["Date_start"]), [736330, 736330, 736331]
+        )
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestEmdatImport)
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEmdatProcessing))
     TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestEmdatToImpact))
+    TESTS.addTests(unittest.TestLoader().loadTestsFromTestCase(TestHitCountryPerHazard))
     unittest.TextTestRunner(verbosity=2).run(TESTS)

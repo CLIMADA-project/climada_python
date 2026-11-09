@@ -31,11 +31,11 @@ from climada.hazard import tc_tracks as tc
 from climada.hazard.base import Hazard
 from climada.hazard.centroids import Centroids
 from climada.hazard.storm_europe import StormEurope
-from climada.hazard.test.test_base import dummy_hazard
 from climada.test import get_test_file
 from climada.util import coordinates as u_coord
 from climada.util.api_client import Client
 from climada.util.constants import DEF_CRS, HAZ_DEMO_FL, WS_DEMO_NC
+from climada.util.files_handler import DownloadException
 
 DATA_DIR = CONFIG.test_data.dir()
 
@@ -248,7 +248,7 @@ class TestStormEurope(unittest.TestCase):
         self.assertAlmostEqual(haz.intensity.max(), 17.276321, places=3)
         self.assertEqual(haz.fraction.shape, (40, 49))
         with self.assertLogs("climada.hazard.storm_europe", level="WARNING") as cm:
-            with self.assertRaises(ValueError):
+            with self.assertRaises(DownloadException):
                 haz = StormEurope.from_icon_grib(
                     dt.datetime(2021, 1, 28, 6),
                     dt.datetime(2021, 1, 28),

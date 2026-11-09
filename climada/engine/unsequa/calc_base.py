@@ -173,7 +173,7 @@ class Calc:
         if time_one_run > 5:
             LOGGER.warning(
                 "Computation time for one set of parameters is "
-                "%.2fs. This is rather long."
+                "%.2fs. This is rather long. "
                 "Potential reasons: InputVars are loading data, centroids have "
                 "been assigned to exp before defining input_var, ..."
                 "\n If computation cannot be reduced, consider using"
@@ -249,7 +249,7 @@ class Calc:
         if sampling_method == "ff":
             LOGGER.warning(
                 "You are using the 'ff' sampler which does not require "
-                "a value for N. The entered N value will be ignored"
+                "a value for N. The entered N value will be ignored "
                 "in the sampling process."
             )
         uniform_base_sample = self._make_uniform_base_sample(

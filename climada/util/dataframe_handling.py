@@ -19,6 +19,8 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define functions to handle with coordinates
 """
 
+import warnings
+
 import pandas as pd
 
 
@@ -63,3 +65,30 @@ def reorder_dataframe_columns(
         new_column_order.extend(remaining_columns)
 
     return dataframe[new_column_order]
+
+
+def read_excel(*args, **kwargs):
+    """A wrapper around pandas.read_excel that suppresses the openpyxl warning
+    'Unknown extension is not supported and will be removed', from openpyxl.worksheet._read_only
+
+    Parameters
+    ----------
+    *args
+        Positional arguments forwarded to :func:`pandas.read_excel`. The first
+        argument is typically the path to an Excel file or a file-like object.
+    **kwargs
+        Keyword arguments forwarded unchanged to :func:`pandas.read_excel`,
+        such as ``sheet_name``, ``header``, and ``usecols``.
+
+    Returns
+    -------
+    pandas.DataFrame
+    """
+    with warnings.catch_warnings():
+        warnings.filterwarnings(
+            "ignore",
+            message="Unknown extension is not supported and will be removed",
+            category=UserWarning,
+            module="openpyxl.worksheet._reader",
+        )
+        return pd.read_excel(*args, **kwargs)

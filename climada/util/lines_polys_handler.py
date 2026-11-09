@@ -604,7 +604,7 @@ def gdf_to_grid(gdf, grid):
 
     if line_mask.any() or pnt_mask.any():
         raise AttributeError(
-            "The dataframe contains lines and/or polygons."
+            "The dataframe contains lines and/or polygons. "
             "Currently only polygon dataframes can be "
             "disaggregated onto a fixed grid."
         )

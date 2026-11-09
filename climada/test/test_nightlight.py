@@ -116,7 +116,7 @@ class TestNightlight(unittest.TestCase):
         # Download 'BlackMarble_2016_A1_geo_gray.tif' in the temporary directory and create a path
         temp_dir = TemporaryDirectory()
         urls = CONFIG.exposures.litpop.nightlights.nasa_sites.list()
-        url = str(urls[0]) + "BlackMarble_2016_A1_geo_gray.tif"
+        url = str(urls[-1]) + "BlackMarble_2016_A1_geo_gray.tif"
         files_handler.download_file(url=url, download_dir=temp_dir.name)
         filename = "BlackMarble_2016_A1_geo_gray.tif"
 
