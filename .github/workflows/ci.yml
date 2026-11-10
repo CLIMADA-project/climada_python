@@ -20,6 +20,7 @@ defaults:
 
 env:
   CLIMADA_DATA_DOI: 10.5281/zenodo.20595842
+  PYTHON_VERSION: "3.12"
 
 jobs:
   integration-test:
@@ -63,7 +64,7 @@ jobs:
         name: Install uv
         uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b  # v8.1.0
         with:
-          python-version: "3.12"
+          python-version: ${{ env.PYTHON_VERSION }}
           enable-cache: true
           cache-suffix: integrationtest
       -
@@ -178,8 +179,6 @@ jobs:
     name: 'Core / Mamba Unit Tests'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    env:
-      PYTHON_VERSION: "3.12"
 
     steps:
       -
@@ -194,13 +193,13 @@ jobs:
         name: Create Environment with Mamba
         uses: mamba-org/setup-micromamba@v3
         with:
-          environment-name: climada_env_${PYTHON_VERSION}
+          environment-name: climada_env_${{ env.PYTHON_VERSION }}
           environment-file: requirements/env_climada.yml
           create-args: >-
-            python=${PYTHON_VERSION}
+            python=${{ env.PYTHON_VERSION }}
             make
           # Persist environment for branch, Python version, single day
-          cache-environment-key: env-${{ github.ref }}-${PYTHON_VERSION}-${{ steps.date.outputs.date }}
+          cache-environment-key: env-${{ github.ref }}-${{ env.PYTHON_VERSION }}-${{ steps.date.outputs.date }}
       -
         name: Install CLIMADA
         run: |
