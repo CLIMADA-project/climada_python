@@ -511,7 +511,7 @@ requires-dist = [
     { name = "peewee", specifier = ">=4.4" },
     { name = "pillow", specifier = ">=12.2.0" },
     { name = "pint", specifier = ">=0.25" },
-    { name = "pyarrow", specifier = ">=24.0.0" },
+    { name = "pyarrow", specifier = ">=24,<26" },
     { name = "pycountry", specifier = ">=24.6" },
     { name = "pyproj", specifier = ">=3.7" },
     { name = "rasterio", specifier = ">=1.4,<1.5" },

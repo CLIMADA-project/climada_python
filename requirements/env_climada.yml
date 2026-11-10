@@ -26,7 +26,7 @@ dependencies:
 - pillow>=12.2.0
 - pint>=0.25
 - pip
-- pyarrow>=24.0.0
+- pyarrow<26,>=24
 - pycountry>=24.6
 - pyproj>=3.7
 - pytables>=3.11
