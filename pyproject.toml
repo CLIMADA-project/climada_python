@@ -57,6 +57,7 @@ dependencies = [
     "tabulate>=0.10.0",
     "tqdm>=4.70",
     "xarray>=2026.7",
+    "xlrd>=2.0",
     "xlsxwriter>=3.2",
 ]
 
