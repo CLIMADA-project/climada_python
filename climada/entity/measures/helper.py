@@ -327,6 +327,14 @@ def helper_impfset(impfset_modifier: ImpfsetModifierConfig) -> ImpfsetChange:
     disk, then applies independent linear transformations to the ``intensity``,
     ``mdd``, and ``paa`` arrays of each targeted impact function.
 
+    Note that the rescale of the intensity axis uses the inverse of the
+    multiplicative factor and the negative of the additive one, such that a
+    [0-1] multiplicative factor or positive additive factor actually reduce the
+    impacts:
+
+    ``impf_int_mult=0.75`` effectively rescale the axis by ``1/0.75`` thus
+    reducing the impacts for any given intensity by a factor of 0.75.
+
     Parameters
     ----------
     impfset_modifier : ImpfsetModifierConfig
@@ -339,7 +347,7 @@ def helper_impfset(impfset_modifier: ImpfsetModifierConfig) -> ImpfsetChange:
           ``"all"`` to target every function of ``haz_type``, a single
           ``int`` or ``str``, or a ``list`` of IDs. Raises :class:`ValueError`
           for any other type.
-        - ``impf_int_mult``, ``impf_int_add`` : scale and shift for intensity.
+        - ``impf_int_mult``, ``impf_int_add`` : scale (1/value) and shift (-value) for intensity.
         - ``impf_mdd_mult``, ``impf_mdd_add`` : scale and shift for MDD.
         - ``impf_paa_mult``, ``impf_paa_add`` : scale and shift for PAA.
 
@@ -382,7 +390,7 @@ def helper_impfset(impfset_modifier: ImpfsetModifierConfig) -> ImpfsetChange:
                     impfset_modifier.impf_int_mult,
                     impfset_modifier.impf_int_add,
                 )
-                impf.intensity = impf.intensity * mult + add
+                impf.intensity = impf.intensity / mult - add
 
                 mult, add = (
                     impfset_modifier.impf_mdd_mult,
