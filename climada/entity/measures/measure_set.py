@@ -172,10 +172,14 @@ class MeasureSet:
         """Return the list of the measure names"""
         return list(self._data.keys())
 
+    def __len__(self) -> int:
+        """Number of measures in the set."""
+        return len(self._data)
+
     @property
     def size(self) -> int:
         """Number of measures in the set."""
-        return len(self._data)
+        return self.__len__()
 
     def __contains__(self, item: str) -> bool:
         """Check if a measure name exists in the set."""
