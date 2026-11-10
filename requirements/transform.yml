@@ -1,0 +1,13 @@
+# Transform file for creating Conda environment file
+# See https://github.com/peanutfun/pyproject-to-conda-env
+name: climada_env
+channels:
+  - conda-forge
+  - nodefaults
+conversions:
+  tables: pytables
+  eccodes: python-eccodes
+additions:
+  - pip
+deletions:
+pip-requirements:
