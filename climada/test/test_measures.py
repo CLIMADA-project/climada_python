@@ -1,306 +1,354 @@
 """
-Integration tests for the Measure class.
+This file is part of CLIMADA.
 
-These tests use real CLIMADA objects (Exposures, ImpactFuncSet, Hazard) built
-from the shared conftest fixtures.  They verify that Measure transformations
-produce analytically expected results rather than mocking internals.
+Copyright (C) 2017 ETH Zurich, CLIMADA contributors listed in AUTHORS.
 
-Expected impact values (from conftest docstring):
-    AAI   = 18
-    RP20  =  0   (event 1, freq 0.03)
-    RP50  =  0   (event 2, freq 0.01)
-    RP100 = 500  (event 3, freq 0.006  →  1000 * 0.5)
-    RP250 = 3750 (event 4, freq 0.004  →  15000 * 0.25)
+CLIMADA is free software: you can redistribute it and/or modify it under the
+terms of the GNU General Public License as published by the Free
+Software Foundation, version 3.
+
+CLIMADA is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE.  See the GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
+
+---
+
+Integration tests for the measure pipeline:
+MeasureConfig -> Measure -> modified (Exposures, ImpactFuncSet, Hazard) -> Impact.
+
+Expected values follow the analytical design of ``conftest.py``
+(linear impact function, baseline AAI = 18, at_event = [0, 0, 500, 3750, 0]).
 """
+
+from unittest.mock import patch
 
 import numpy as np
 import pytest
-from scipy.sparse import csr_matrix
 
-from climada.entity.measures.cost_income import CostIncome
+from climada.engine.impact_calc import ImpactCalc
+from climada.engine.test.test_impact_calc import exposure
 from climada.entity.measures.measure import Measure
-from climada.test.conftest import HAZARD_TYPE
+from climada.entity.measures.measure_config import (
+    CostIncomeConfig,
+    ExposuresModifierConfig,
+    HazardModifierConfig,
+    ImpfsetModifierConfig,
+    MeasureConfig,
+)
+from climada.hazard.base import Hazard
 
-# ===========================================================================
-# apply() — structural / immutability tests
-# ===========================================================================
+LOGGER = "climada.entity.measures.measure.LOGGER"
+BASELINE_AAI = 18.0
+
+# Note: at_event() does not care about the frequency
+BASELINE_AT_EVENT = [0.0, 0.0, 500.0, 3750.0, 15000.0]
+CATEGORIES = [1, 1, 2, 1, 1, 3]
 
 
-class TestApplyStructural:
-    """Verify that apply() correctly transforms the risk triplet."""
+@pytest.fixture
+def triplet(exposures_factory, impfset, hazard):
+    """Return (exposures, impfset, hazard) with centroids assigned."""
+    exposures = exposures_factory(categories=CATEGORIES)
+    exposures.assign_centroids(hazard)
+    return exposures, impfset, hazard
 
-    def test_identity_measure_returns_equal_objects(self, exposures, impfset, hazard):
-        """An identity measure should return objects equal to the originals."""
-        m = Measure("identity")
-        new_exp, new_impfset, new_haz = m.apply(exposures, impfset, hazard)
 
-        assert new_exp.gdf["value"].tolist() == exposures.gdf["value"].tolist()
-        assert new_haz.intensity.nnz == hazard.intensity.nnz
-        assert list(new_impfset.get_func(haz_type=HAZARD_TYPE)) == list(
-            impfset.get_func(haz_type=HAZARD_TYPE)
-        )
+@pytest.fixture
+def config_factory(hazard):
+    """Return a function building a MeasureConfig from modifier overrides."""
 
-    def test_enforce_copy_true_does_not_mutate_originals(
-        self, exposures, impfset, hazard
+    def _make_config(
+        name="measure",
+        impfset=None,
+        hazard_mod=None,
+        exposures_mod=None,
+        cost_income=None,
     ):
-        """With enforce_copy=True, the originals must not be mutated."""
-        original_values = exposures.gdf["value"].copy()
+        """
+        Parameters
+        ----------
+        name : str, optional
+            Measure name.
+        impfset, hazard_mod, exposures_mod, cost_income : dict, optional
+            Keyword arguments of the corresponding sub-configuration.
 
-        def double_values(exp, **kw):
-            exp.gdf["value"] *= 2
-            return exp
-
-        m = Measure("doubler", exposures_changes=double_values)
-        m.apply(exposures, impfset, hazard, enforce_copy=True)
-
-        np.testing.assert_array_equal(
-            exposures.gdf["value"].values, original_values.values
+        Returns
+        -------
+        MeasureConfig
+        """
+        haz_type = hazard.haz_type
+        return MeasureConfig(
+            name=name,
+            haz_type=haz_type,
+            impfset_modifier=ImpfsetModifierConfig(
+                haz_type=haz_type, **(impfset or {})
+            ),
+            hazard_modifier=HazardModifierConfig(
+                haz_type=haz_type, **(hazard_mod or {})
+            ),
+            exposures_modifier=ExposuresModifierConfig(**(exposures_mod or {})),
+            cost_income=CostIncomeConfig(**(cost_income or {})),
         )
 
-    def test_enforce_copy_false_mutates_original(self, exposures, impfset, hazard):
-        """With enforce_copy=False the change function receives the original object."""
-        received_ids = []
+    return _make_config
 
-        def record_id(exp, **kw):
-            received_ids.append(id(exp))
-            return exp
 
-        m = Measure("recorder", exposures_changes=record_id)
-        m.apply(exposures, impfset, hazard, enforce_copy=False)
+def _aai(measure, triplet, **kwargs):
+    """Return the AAI of the triplet after applying `measure`."""
+    return measure.calc_impact(*triplet, **kwargs).aai_agg
 
-        assert received_ids[0] == id(exposures)
 
-    def test_base_triplet_available_as_kwargs(self, exposures, impfset, hazard):
-        """Each change function receives base_exposures/impfset/hazard as kwargs."""
-        received = {}
+class TestBaseline:
+    def test_identity_measure_reproduces_analytical_impact(self, triplet):
+        impact = Measure("baseline").calc_impact(*triplet)
+        assert impact.aai_agg == pytest.approx(BASELINE_AAI)
+        np.testing.assert_allclose(impact.at_event, BASELINE_AT_EVENT)
 
-        def capture(**kwargs):
-            def fn(obj, **kw):
-                received.update(kw)
-                return obj
+    def test_default_config_is_identity(self, triplet, config_factory):
+        measure = Measure.from_config(config_factory())
+        assert _aai(measure, triplet) == pytest.approx(BASELINE_AAI)
 
-            return fn
 
-        m = Measure(
-            "capture",
-            exposures_changes=capture(),
+class TestConfigModifiers:
+    @pytest.mark.parametrize(
+        "modifiers, expected_aai",
+        [
+            ({"hazard_mod": {"haz_int_mult": 0.5}}, 9.0),
+            ({"hazard_mod": {"haz_freq_mult": 2.0}}, 36.0),
+            (
+                {"hazard_mod": {"haz_freq_add": -0.005}},
+                0.5,
+            ),  # Only event 3 with 0.001 freq
+            ({"hazard_mod": {"haz_freq_add": -0.01}}, 0.0),  # clipped at zero
+            ({"hazard_mod": {"impact_rp_cutoff": 200}}, 15.0),  # event 3 removed
+            ({"impfset": {"impf_mdd_mult": 0.5}}, 9.0),
+            ({"impfset": {"impf_paa_mult": 0.5}}, 9.0),
+            ({"impfset": {"impf_int_mult": 0.5}}, 9.0),  # inverse intensity axis
+            ({"exposures_mod": {"set_to_zero": [1]}}, 14.0),
+            (
+                {
+                    "hazard_mod": {"haz_int_mult": 0.5},
+                    "impfset": {"impf_mdd_mult": 0.5},
+                },
+                4.5,
+            ),
+        ],
+        ids=[
+            "haz_int_mult",
+            "haz_freq_mult",
+            "haz_freq_add",
+            "haz_freq_add_clipped",
+            "rp_cutoff",
+            "mdd_mult",
+            "paa_mult",
+            "impf_int_mult",
+            "set_to_zero",
+            "haz_and_mdd",
+        ],
+    )
+    def test_aai_after_modifier(self, triplet, config_factory, modifiers, expected_aai):
+        measure = Measure.from_config(config_factory(**modifiers))
+        assert _aai(measure, triplet) == pytest.approx(expected_aai)
+
+    def test_rp_cutoff_keeps_event_below_threshold(self, triplet, config_factory):
+        measure = Measure.from_config(
+            config_factory(hazard_mod={"impact_rp_cutoff": 200})
         )
-        m.apply(exposures, impfset, hazard, enforce_copy=False)
+        impact = measure.calc_impact(*triplet)
+        np.testing.assert_allclose(impact.at_event, [0.0, 0.0, 0.0, 3750.0, 15000.0])
 
-        assert "base_exposures" in received
-        assert "base_impfset" in received
-        assert "base_hazard" in received
-
-
-# ===========================================================================
-# Exposures transformations
-# ===========================================================================
-
-
-class TestExposuresTransformations:
-    """Measures that modify Exposures."""
-
-    def test_scale_values(self, exposures, impfset, hazard):
-        """Scaling exposure values by 0.5 should halve every entry."""
-
-        def scale_half(exp, **kw):
-            exp.gdf["value"] *= 0.5
-            return exp
-
-        m = Measure("scale_half", exposures_changes=scale_half)
-        new_exp, _, _ = m.apply(exposures, impfset, hazard)
-
-        np.testing.assert_allclose(
-            new_exp.gdf["value"].values, exposures.gdf["value"].values * 0.5
+    def test_rp_cutoff_keeps_event_below_threshold_edge(self, triplet, config_factory):
+        measure = Measure.from_config(
+            config_factory(hazard_mod={"impact_rp_cutoff": 250})
         )
+        impact = measure.calc_impact(*triplet)
+        np.testing.assert_allclose(impact.at_event, [0.0, 0.0, 0.0, 0.0, 15000.0])
 
-    def test_zero_all_values(self, exposures, impfset, hazard):
-        """Zeroing all exposures should produce zero impacts downstream."""
 
-        def zero_exp(exp, **kw):
-            exp.gdf["value"] = 0.0
-            return exp
+class TestImpfIds:
+    @pytest.mark.parametrize("impf_ids", [None, "all", 1, [1]])
+    def test_targeted_function_is_modified(self, triplet, config_factory, impf_ids):
+        measure = Measure.from_config(
+            config_factory(impfset={"impf_mdd_mult": 0.5, "impf_ids": impf_ids})
+        )
+        assert _aai(measure, triplet) == pytest.approx(9.0)
 
-        m = Measure("zero_exp", exposures_changes=zero_exp)
-        new_exp, _, _ = m.apply(exposures, impfset, hazard)
+    def test_other_function_leaves_impact_unchanged(self, triplet, config_factory):
+        measure = Measure.from_config(
+            config_factory(impfset={"impf_mdd_mult": 0.5, "impf_ids": [2]})
+        )
+        assert _aai(measure, triplet) == pytest.approx(BASELINE_AAI)
 
-        assert new_exp.gdf["value"].sum() == 0.0
+    def test_invalid_type_raises_value_error(self, triplet, config_factory):
+        measure = Measure.from_config(config_factory(impfset={"impf_ids": 2.5}))
+        with pytest.raises(ValueError, match="invalid"):
+            measure.apply_impfset_changes(triplet[1])
 
-    def test_exposures_change_uses_base_hazard_kwarg(
-        self, exposures, impfset, hazard_factory
+
+class TestReplacementFromDisk:
+    def test_hazard_replacement(
+        self, triplet, config_factory, hazard_factory, tmp_path
     ):
-        """Change function can inspect base_hazard via the default kwargs."""
-        captured_haz = {}
+        path = tmp_path / "hazard.hdf5"
+        hazard_factory(intensity_scale=0.5).write_hdf5(str(path))
 
-        def fn(exp, base_hazard=None, **kw):
-            captured_haz["haz"] = base_hazard
-            return exp
+        measure = Measure.from_config(
+            config_factory(hazard_mod={"new_hazard_path": str(path)})
+        )
+        assert _aai(measure, triplet) == pytest.approx(9.0)
 
-        haz = hazard_factory()
-        m = Measure("haz_aware", exposures_changes=fn)
-        m.apply(exposures, impfset, haz, enforce_copy=False)
-
-        assert captured_haz["haz"] is haz
-
-
-# ===========================================================================
-# Hazard transformations
-# ===========================================================================
-
-
-class TestHazardTransformations:
-    """Measures that modify the Hazard."""
-
-    def test_zero_intensity_eliminates_impacts(
-        self, exposures, impfset, hazard_factory
+    def test_hazard_replacement_then_modifier(
+        self, triplet, config_factory, hazard_factory, tmp_path
     ):
-        """Setting hazard intensity to zero should yield zero impacts."""
+        path = tmp_path / "hazard.hdf5"
+        hazard_factory(intensity_scale=0.5).write_hdf5(str(path))
 
-        def zero_intensity(haz, **kw):
-            haz.intensity = csr_matrix(haz.intensity.shape)
-            return haz
+        with pytest.warns(UserWarning, match="Both new hazard"):
+            config = config_factory(
+                hazard_mod={"new_hazard_path": str(path), "haz_int_mult": 0.5}
+            )
+        assert _aai(Measure.from_config(config), triplet) == pytest.approx(4.5)
 
-        haz = hazard_factory()
-        m = Measure("zero_haz", hazard_changes=zero_intensity)
-        new_exp, new_impfset, new_haz = m.apply(exposures, impfset, haz)
-
-        assert new_haz.intensity.nnz == 0
-
-    def test_scale_intensity(self, exposures, impfset, hazard_factory):
-        """Halving hazard intensity should halve non-zero entries."""
-        original_data = hazard_factory().intensity.data.copy()
-
-        def half_intensity(haz, **kw):
-            haz.intensity = haz.intensity * 0.5
-            return haz
-
-        m = Measure("half_haz", hazard_changes=half_intensity)
-        _, _, new_haz = m.apply(exposures, impfset, hazard_factory())
-
-        np.testing.assert_allclose(new_haz.intensity.data, original_data * 0.5)
-
-
-# ===========================================================================
-# ImpactFuncSet transformations
-# ===========================================================================
-
-
-class TestImpfsetTransformations:
-    """Measures that modify the ImpactFuncSet."""
-
-    def test_scale_paa_to_zero_eliminates_impacts(
-        self, exposures, impfset_factory, hazard
+    def test_impfset_replacement(
+        self, triplet, config_factory, impfset_factory, tmp_path
     ):
-        """Setting PAA to 0 should make all MDD-based impacts vanish."""
+        path = tmp_path / "impfset.xlsx"
+        impfset_factory(paa_scale=0.5).write_excel(str(path))
 
-        def zero_paa(ifs, **kw):
-            for func in ifs.get_func(haz_type=HAZARD_TYPE):
-                func.paa = np.zeros_like(func.paa)
-            return ifs
+        measure = Measure.from_config(
+            config_factory(impfset={"new_impfset_path": str(path)})
+        )
+        assert _aai(measure, triplet) == pytest.approx(9.0)
 
-        impfset = impfset_factory()
-        m = Measure("zero_paa", impfset_changes=zero_paa)
-        _, new_impfset, _ = m.apply(exposures, impfset, hazard)
-
-        for func in new_impfset.get_func(haz_type=HAZARD_TYPE):
-            np.testing.assert_array_equal(func.paa, 0)
-
-
-# ===========================================================================
-# Combined / multi-component transformations
-# ===========================================================================
-
-
-class TestCombinedTransformations:
-    """Measures that simultaneously affect more than one risk component."""
-
-    def test_combined_exposure_and_hazard_change(
-        self, exposures, impfset, hazard_factory
+    def test_impfset_replacement_then_modifier(
+        self, triplet, config_factory, impfset_factory, tmp_path
     ):
-        """Both exposure and hazard transforms should be applied independently."""
+        path = tmp_path / "impfset.xlsx"
+        impfset_factory(paa_scale=0.5).write_excel(str(path))
 
-        def double_values(exp, **kw):
-            exp.gdf["value"] *= 2
-            return exp
+        with pytest.warns(UserWarning, match="Both new impfset"):
+            config = config_factory(
+                impfset={"new_impfset_path": str(path), "impf_mdd_mult": 0.5}
+            )
+        assert _aai(Measure.from_config(config), triplet) == pytest.approx(4.5)
 
-        def half_intensity(haz, **kw):
-            haz.intensity = haz.intensity * 0.5
-            return haz
-
-        haz = hazard_factory()
-        original_intensity_data = haz.intensity.data.copy()
-
-        m = Measure(
-            "combined",
-            exposures_changes=double_values,
-            hazard_changes=half_intensity,
-        )
-        new_exp, _, new_haz = m.apply(exposures, impfset, haz)
-
-        np.testing.assert_allclose(
-            new_exp.gdf["value"].values, exposures.gdf["value"].values * 2
-        )
-        np.testing.assert_allclose(
-            new_haz.intensity.data, original_intensity_data * 0.5
-        )
-
-    def test_kwargs_exposures_and_kwargs_hazard_routed_correctly(
-        self, exposures, impfset, hazard
+    def test_exposures_replacement(
+        self, triplet, config_factory, exposures_factory, tmp_path
     ):
-        """kwargs_exposures and kwargs_hazard should reach the right function only."""
-        exp_extra, haz_extra = {}, {}
+        path = tmp_path / "exposures.hdf5"
+        exposures_factory(categories=CATEGORIES, value_factor=0.5).write_hdf5(str(path))
 
-        def track_exp(exp, my_exp_param=None, **kw):
-            exp_extra["val"] = my_exp_param
-            return exp
+        measure = Measure.from_config(
+            config_factory(exposures_mod={"new_exposures_path": str(path)})
+        )
+        assert _aai(measure, triplet) == pytest.approx(9.0)
 
-        def track_haz(haz, my_haz_param=None, **kw):
-            haz_extra["val"] = my_haz_param
-            return haz
+    @pytest.mark.parametrize(
+        "override",
+        [
+            {"hazard_mod": {"new_hazard_path": "nil"}},
+            {"impfset": {"new_impfset_path": "nil"}},
+            {"exposures_mod": {"new_exposures_path": "nil"}},
+        ],
+        ids=["hazard", "impfset", "exposures"],
+    )
+    def test_nil_path_means_no_replacement(self, triplet, config_factory, override):
+        measure = Measure.from_config(config_factory(**override))
+        assert _aai(measure, triplet) == pytest.approx(BASELINE_AAI)
 
-        m = Measure("routed", exposures_changes=track_exp, hazard_changes=track_haz)
-        m.apply(
-            exposures,
-            impfset,
-            hazard,
-            enforce_copy=False,
-            kwargs_exposures={"my_exp_param": "exp_value"},
-            kwargs_hazard={"my_haz_param": "haz_value"},
+
+class TestCopySemantics:
+    @pytest.fixture
+    def measure(self, config_factory):
+        return Measure.from_config(
+            config_factory(
+                hazard_mod={"haz_int_mult": 0.5},
+                impfset={"impf_mdd_mult": 0.5},
+                exposures_mod={"set_to_zero": [1]},
+            )
         )
 
-        assert exp_extra["val"] == "exp_value"
-        assert haz_extra["val"] == "haz_value"
+    def test_enforce_copy_preserves_inputs(self, measure, triplet):
+        exposures, impfset, hazard = triplet
+        intensity = hazard.intensity.toarray().copy()
+        values = exposures.gdf["value"].to_numpy().copy()
+
+        measure.apply(exposures, impfset, hazard, enforce_copy=True)
+
+        np.testing.assert_array_equal(hazard.intensity.toarray(), intensity)
+        np.testing.assert_array_equal(exposures.gdf["value"].to_numpy(), values)
+        assert _aai(Measure("baseline"), triplet) == pytest.approx(BASELINE_AAI)
+
+    def test_no_copy_modifies_inputs_in_place(self, measure, triplet):
+        exposures, impfset, hazard = triplet
+        intensity = hazard.intensity.toarray().copy()
+
+        measure.apply(exposures, impfset, hazard, enforce_copy=False)
+
+        np.testing.assert_allclose(hazard.intensity.toarray(), 0.5 * intensity)
+        assert exposures.gdf["value"].iloc[1] == 0
 
 
-# ===========================================================================
-# CostIncome integration
-# ===========================================================================
-
-
-class TestCostIncomeIntegration:
-    """Verify that CostIncome financial data survives through Measure construction."""
-
-    def test_cost_income_attached(self, exposures, impfset, hazard):
-        ci = CostIncome(mkt_price_year=2020, init_cost=10_000, periodic_income=500)
-        m = Measure("with_ci", cost_income=ci)
-        assert m.cost_income is ci
-
-    def test_total_cost_calculable_after_apply(self, exposures, impfset, hazard):
-        ci = CostIncome(
-            mkt_price_year=2020,
-            init_cost=10_000,
-            periodic_cost=1_000,
-            periodic_income=2_000,
+class TestCalcImpact:
+    def test_matches_manual_apply_and_impact_calc(self, triplet, config_factory):
+        measure = Measure.from_config(
+            config_factory(
+                hazard_mod={"haz_int_mult": 0.5},
+                impfset={"impf_paa_mult": 0.5},
+            )
         )
-        m = Measure("ci_measure", cost_income=ci)
-        m.apply(exposures, impfset, hazard)
+        new_exp, new_impfset, new_haz = measure.apply(*triplet)
+        manual = ImpactCalc(new_exp, new_impfset, new_haz).impact(save_mat=False)
 
-        total_net, total_cost, total_inc = m.cost_income.calc_total(
-            impl_date="2020-01-01",
-            start_date="2020-01-01",
-            end_date="2030-01-01",
+        impact = measure.calc_impact(*triplet)
+
+        assert impact.aai_agg == pytest.approx(manual.aai_agg)
+        np.testing.assert_allclose(impact.at_event, manual.at_event)
+
+    def test_warns_and_assigns_missing_centroids(
+        self, exposures_factory, impfset, hazard
+    ):
+        exposures = exposures_factory(categories=CATEGORIES)
+        with patch(LOGGER) as mock_logger:
+            impact = Measure("baseline").calc_impact(exposures, impfset, hazard)
+
+        mock_logger.warning.assert_called_once()
+        assert hazard.centr_exp_col in exposures.gdf.columns
+        assert impact.aai_agg == pytest.approx(BASELINE_AAI)
+
+    def test_no_warning_when_centroids_assigned(self, triplet):
+        with patch(LOGGER) as mock_logger:
+            Measure("baseline").calc_impact(*triplet)
+
+        mock_logger.warning.assert_not_called()
+
+
+class TestCustomFunction:
+    def test_custom_measure(self, measure_on_exposures, triplet):
+        impact = measure_on_exposures.calc_impact(
+            *triplet, kwargs_exposures={"reduction_factor": 0.1}
         )
-        # Over 10 years: init_cost once + 9 periodic_costs + 10 periodic_incomes
-        assert total_cost < 0
-        assert total_inc > 0
-        assert isinstance(total_net, float)
+        assert impact.aai_agg == pytest.approx(BASELINE_AAI * 0.9)
+
+    def test_custom_measure_missing_kwarg(self, measure_on_exposures, triplet):
+        with pytest.raises(TypeError, match="kwargs_exposures"):
+            measure_on_exposures.calc_impact(*triplet)
+
+    def test_wrong_custom_measure(self, triplet):
+        def wrong_change(arg1):
+            return "wrong return type"
+
+        meas = Measure(name="", exposures_changes=wrong_change)
+        with pytest.raises(TypeError, match="did not return an Exposures"):
+            meas.apply(*triplet)
+
+        meas = Measure(name="", hazard_changes=wrong_change)
+        with pytest.raises(TypeError, match="did not return an Hazard"):
+            meas.apply(*triplet)
+
+        meas = Measure(name="", impfset_changes=wrong_change)
+        with pytest.raises(TypeError, match="did not return an ImpactFuncSet"):
+            meas.apply(*triplet)
