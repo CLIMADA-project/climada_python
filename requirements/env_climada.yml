@@ -30,7 +30,7 @@ dependencies:
 - pycountry>=24.6
 - pyproj>=3.7
 - pytables>=3.11
-- python-eccodes>=2.47.1.20
+- python-eccodes>=2.47.0
 - rasterio<1.5,>=1.4
 - salib>=1.5.2
 - scikit-learn>=1.9
