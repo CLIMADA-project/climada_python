@@ -31,6 +31,7 @@ from affine import Affine
 from shapefile import Shape
 
 import climada.util.coordinates as u_coord
+import climada.util.dataframe_handling as u_pd
 import climada.util.finance as u_fin
 from climada import CONFIG
 from climada.entity.exposures.base import DEF_REF_YEAR, INDICATOR_IMPF, Exposures
@@ -94,7 +95,7 @@ class LitPop(Exposures):
     def set_countries(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
         LOGGER.warning(
-            "The use of LitPop.set_countries is deprecated."
+            "The use of LitPop.set_countries is deprecated. "
             "Use LitPop.from_countries instead."
         )
         self.__dict__ = LitPop.from_countries(*args, **kwargs).__dict__
@@ -145,7 +146,7 @@ class LitPop(Exposures):
 
             * 'pc': produced capital (Source: World Bank), incl. manufactured or
               built assets such as machinery, equipment, and physical structures
-              `pc` is in constant 2014 USD.
+              `pc` is in real chained 2019 USD.
             * 'pop': population count (source: GPW, same as gridded population).
               The unit is 'people'.
             * 'gdp': gross-domestic product (Source: World Bank) [USD]
@@ -307,7 +308,7 @@ class LitPop(Exposures):
     def set_nightlight_intensity(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_nightlight_intensity instead."""
         LOGGER.warning(
-            "The use of LitPop.set_nightlight_intensity is deprecated."
+            "The use of LitPop.set_nightlight_intensity is deprecated. "
             "Use LitPop.from_nightlight_intensity instead."
         )
         self.__dict__ = LitPop.from_nightlight_intensity(*args, **kwargs).__dict__
@@ -409,7 +410,7 @@ class LitPop(Exposures):
     def set_population(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_population instead."""
         LOGGER.warning(
-            "The use of LitPop.set_population is deprecated."
+            "The use of LitPop.set_population is deprecated. "
             "Use LitPop.from_population instead."
         )
         self.__dict__ = LitPop.from_population(*args, **kwargs).__dict__
@@ -510,7 +511,7 @@ class LitPop(Exposures):
     def set_custom_shape_from_countries(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_shape_and_countries instead."""
         LOGGER.warning(
-            "The use of LitPop.set_custom_shape_from_countries is deprecated."
+            "The use of LitPop.set_custom_shape_from_countries is deprecated. "
             "Use LitPop.from_shape_and_countries instead."
         )
         self.__dict__ = LitPop.from_shape_and_countries(*args, **kwargs).__dict__
@@ -560,7 +561,7 @@ class LitPop(Exposures):
 
             * 'pc': produced capital (Source: World Bank), incl. manufactured or
               built assets such as machinery, equipment, and physical structures
-              (pc is in constant 2014 USD)
+              (pc is in real chained 2019 USD)
             * 'pop': population count (source: GPW, same as gridded population).
               The unit is 'people'.
             * 'gdp': gross-domestic product (Source: World Bank) [USD]
@@ -646,7 +647,7 @@ class LitPop(Exposures):
             gdf = exp.gdf.loc[idx]
         else:
             raise NotImplementedError(
-                "Not implemented for `shape` of type {type(shape)}"
+                f"Not implemented for `shape` of type {type(shape)}"
             )
 
         exp.description = (
@@ -681,7 +682,7 @@ class LitPop(Exposures):
     def set_custom_shape(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_shape instead."""
         LOGGER.warning(
-            "The use of LitPop.set_custom_shape is deprecated."
+            "The use of LitPop.set_custom_shape is deprecated. "
             "Use LitPop.from_shape instead."
         )
         self.__dict__ = LitPop.from_shape(*args, **kwargs).__dict__
@@ -1196,11 +1197,11 @@ def _get_total_value_per_country(cntry_iso3a, fin_mode, reference_year):
         to the grid points within the country
             * 'pc': produced capital (Source: World Bank), incl. manufactured or
               built assets such as machinery, equipment, and physical structures
-              (pc is in constant 2014 USD)
+              (pc is in real chained 2019 USD)
             * 'pc_land': produced capital (Source: World Bank), incl. manufactured or
               built assets such as machinery, equipment, physical structures,
               and land value for built-up land.
-              (pc is in constant 2014 USD)
+              (pc is in real chained 2019 USD)
             * 'gdp': gross-domestic product (Source: World Bank) [USD]
             * 'income_group': gdp multiplied by country's income group+1 [USD]
               Income groups are 1 (low) to 4 (high income).
@@ -1493,7 +1494,7 @@ def _grp_read(country_iso3, admin1_info=None, data_dir=SYSTEM_DIR):
     )
     if file_name is not None:
         # open spreadsheet and identify relevant columns:
-        admin1_xls_data = pd.read_excel(file_name)
+        admin1_xls_data = u_pd.read_excel(file_name)
         if admin1_xls_data.get("State_Province") is None:
             admin1_xls_data = admin1_xls_data.rename(
                 columns={admin1_xls_data.columns[0]: "State_Province"}

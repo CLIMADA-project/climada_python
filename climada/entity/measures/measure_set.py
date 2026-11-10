@@ -19,12 +19,15 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define MeasureSet class.
 """
 
+import copy
+from typing import no_type_check
+
 __all__ = ["MeasureSet"]
 
 import json
 import logging
+from collections.abc import Iterable
 from functools import reduce
-from typing import Iterable
 
 import geopandas as gpd
 import numpy as np
@@ -138,14 +141,14 @@ class MeasureSet:
 
         self._data[measure.name] = measure
 
-    def select(self, names: Iterable[str]) -> dict[str, Measure]:
+    def select(self, names: str | Iterable[str]) -> dict[str, Measure]:
         """
         Get a dictionary of measures.
 
         Parameters
         ----------
-        names : Iterable[str], optional
-            Filter by these measure names. If None, returns all.
+        names : str|[str]
+            Filter by these measure names.
 
         Returns
         -------
@@ -153,29 +156,30 @@ class MeasureSet:
             dictionary of measure names and objects.
 
         """
-        if not isinstance(names, list):
+        if isinstance(names, str):
             name_list = [names]
         else:
-            name_list = names
+            name_list = list(names)
 
-        result = {}
-        for name in name_list:
-            if name not in self._data:
-                raise ValueError(f"No measure named {name} in the measure set.")
-            else:
-                result[name] = self._data[name]
+        missing = [name for name in name_list if name not in self._data]
+        if missing:
+            raise ValueError(f"No measure named {missing} in the measure set.")
 
-        return result
+        return {name: self._data[name] for name in name_list}
 
     @property
     def names(self) -> list[str]:
         """Return the list of the measure names"""
         return list(self._data.keys())
 
+    def __len__(self) -> int:
+        """Number of measures in the set."""
+        return len(self._data)
+
     @property
     def size(self) -> int:
         """Number of measures in the set."""
-        return len(self._data)
+        return self.__len__()
 
     def __contains__(self, item: str) -> bool:
         """Check if a measure name exists in the set."""
@@ -258,7 +262,7 @@ class MeasureSet:
         fractions = [h.fraction for h in modified_hazards]
         frequencies = [h.frequency for h in modified_hazards]
 
-        hazard_mod = modified_hazards[0]
+        hazard_mod = copy.deepcopy(modified_hazards[0])
         hazard_mod.intensity = reduce(lambda a, b: a.minimum(b), intensities)
         hazard_mod.fraction = reduce(lambda a, b: a.minimum(b), fractions)
         hazard_mod.frequency = np.minimum.reduce(frequencies)
@@ -478,6 +482,7 @@ class MeasureSet:
             cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
         )
 
+    @no_type_check
     @classmethod
     def from_mat(cls, file_name: str, var_names: dict | None = None) -> "MeasureSet":
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
@@ -537,27 +542,29 @@ class MeasureSet:
                 )
 
             return MeasureConfig.from_dict(
-                dict(
-                    name=u_hdf5.get_str_from_ref(file_name, data[vn["name"]][idx][0]),
-                    haz_type=haz_type,
-                    impf_id=impf_id,
-                    impf_mdd_mult=float(data[vn["mdd_a"]][idx][0]),
-                    impf_mdd_add=float(data[vn["mdd_b"]][idx][0]),
-                    impf_paa_mult=float(data[vn["paa_a"]][idx][0]),
-                    impf_paa_add=float(data[vn["paa_b"]][idx][0]),
-                    intensity_multiplier=float(haz_int_a),
-                    intensity_add=float(haz_int_b),
-                    new_hazard_path=haz_set if haz_set != "nil" else None,
-                    impact_rp_cutoff=float(data[vn["haz_frq"]][idx][0]) or None,
-                    reassign_impf_id=(
+                {
+                    "name": u_hdf5.get_str_from_ref(
+                        file_name, data[vn["name"]][idx][0]
+                    ),
+                    "haz_type": haz_type,
+                    "impf_id": impf_id,
+                    "impf_mdd_mult": float(data[vn["mdd_a"]][idx][0]),
+                    "impf_mdd_add": float(data[vn["mdd_b"]][idx][0]),
+                    "impf_paa_mult": float(data[vn["paa_a"]][idx][0]),
+                    "impf_paa_add": float(data[vn["paa_b"]][idx][0]),
+                    "intensity_multiplier": float(haz_int_a),
+                    "intensity_add": float(haz_int_b),
+                    "new_hazard_path": haz_set if haz_set != "nil" else None,
+                    "impact_rp_cutoff": float(data[vn["haz_frq"]][idx][0]) or None,
+                    "reassign_impf_id": (
                         parse_mapping_string(fun_map)
                         if fun_map and fun_map != "nil"
                         else None
                     ),
-                    new_exposures_path=exp_set if exp_set != "nil" else None,
-                    init_cost=float(data[vn["cost"]][idx][0]),
-                    color_rgb=tuple(np.fromstring(color_str, dtype=float, sep=" ")),
-                )
+                    "new_exposures_path": exp_set if exp_set != "nil" else None,
+                    "init_cost": float(data[vn["cost"]][idx][0]),
+                    "color_rgb": tuple(np.fromstring(color_str, dtype=float, sep=" ")),
+                }
             )
 
         data = u_hdf5.read(file_name)
@@ -583,7 +590,7 @@ class MeasureSet:
         if var_names is None:
             var_names = DEF_VAR_EXCEL
 
-        df = pd.read_excel(file_name, sheet_name=var_names["sheet_name"])
+        df = pd.read_excel(file_name, sheet_name=var_names["sheet_name"])  # ty: ignore
         # inv_map = {v: k for k, v in var_names["col_name"].items()}
         df = df.rename(columns=var_names["col_name"])
 
@@ -615,25 +622,30 @@ class MeasureSet:
 
     @classmethod
     def from_dict(cls, d: dict) -> "MeasureSet":
+        """Build a MeasureSet from a dictionary configuration."""
         measures = [
             Measure.from_config(MeasureConfig.from_dict(m)) for m in d["measures"]
         ]
         return cls(measures)
 
     def to_yaml(self, path: str) -> None:
+        """Write the MeasureSet to a yaml file. Only serializable measures are written."""
         with open(path, "w", encoding="utf-8") as f:
             yaml.dump(self.to_dict(), f, default_flow_style=False, sort_keys=False)
 
     @classmethod
     def from_yaml(cls, path: str) -> "MeasureSet":
+        """Read a MeasureSet from a yaml file."""
         with open(path, "r", encoding="utf-8") as f:
             return cls.from_dict(yaml.safe_load(f))
 
     def to_json(self, path: str) -> None:
+        """Write the MeasureSet to a json file. Only serializable measures are written."""
         with open(path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
     def from_json(cls, path: str) -> "MeasureSet":
+        """Read a MeasureSet from a json file."""
         with open(path, "r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))
