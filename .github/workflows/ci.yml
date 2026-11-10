@@ -69,7 +69,7 @@ jobs:
       -
         name: Install dependencies
         run: |
-          uv sync --locked --dev
+          uv sync --locked --group test
       -
         name: Cache testing data
         uses: actions/cache@v5
@@ -132,7 +132,7 @@ jobs:
         run: |
           pip install --upgrade pip
           pip install -e ./
-          pip install --group dev
+          pip install --group test
       -
         name: Run Unit Tests
         run: |
@@ -173,6 +173,43 @@ jobs:
           files: "results/**/*.xml"
           check_name: "Core / Test Results"
           comment_mode: "off"
+
+  mamba-pipeline:
+    name: 'Core / Mamba Unit Tests'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PYTHON_VERSION: "3.12"
+
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v7
+      -
+        # Store the current date to use it as cache key for the environment
+        name: Get current date
+        id: date
+        run: echo "date=$(date +%Y-%m-%d)" >> "${GITHUB_OUTPUT}"
+      -
+        name: Create Environment with Mamba
+        uses: mamba-org/setup-micromamba@v3
+        with:
+          environment-name: climada_env_${PYTHON_VERSION}
+          environment-file: requirements/env_climada.yml
+          create-args: >-
+            python=${PYTHON_VERSION}
+            make
+          # Persist environment for branch, Python version, single day
+          cache-environment-key: env-${{ github.ref }}-${PYTHON_VERSION}-${{ steps.date.outputs.date }}
+      -
+        name: Install CLIMADA
+        run: |
+          python -m pip install -e ./
+          python -m pip install --group test
+      -
+        name: Run Unit Tests
+        run: |
+          make unit_test
 
   test-petals:
     name: Petals Compatibility
