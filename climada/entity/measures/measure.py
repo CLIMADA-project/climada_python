@@ -31,6 +31,8 @@ import logging
 from functools import wraps
 from typing import TYPE_CHECKING, TypeVar
 
+from climada.entity.exposures.base import Exposures
+from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
 from climada.entity.measures.helper import (
     helper_exposure,
     helper_hazard,
@@ -38,18 +40,17 @@ from climada.entity.measures.helper import (
     identity_function,
 )
 from climada.entity.measures.measure_config import MeasureConfig
+from climada.hazard.base import Hazard
 
 from .cost_income import CostIncome
 
 if TYPE_CHECKING:
-    from climada.entity.exposures.base import Exposures
-    from climada.entity.impact_funcs.impact_func_set import ImpactFuncSet
+
     from climada.entity.measures.types import (
         ExposuresChange,
         HazardChange,
         ImpfsetChange,
     )
-    from climada.hazard.base import Hazard
 
     T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
@@ -331,9 +332,14 @@ class Measure:
             else exposures
         )
         try:
-            return self.exposures_changes(changed_exp, **kwargs)
+            changed_exp = self.exposures_changes(changed_exp, **kwargs)
+            if not isinstance(changed_exp, Exposures):
+                raise TypeError(
+                    "Exposures change function did not return an Exposures object."
+                )
+            return changed_exp
         except TypeError as exc:
-            # Check if it's a missing argument error
+            # Make sure it's a missing argument error
             if "missing" in str(exc) and "required positional argument" in str(exc):
                 raise TypeError(
                     f"The function to apply to the exposures requires additional arguments\
@@ -389,7 +395,12 @@ class Measure:
             else impfset
         )
         try:
-            return self.impfset_changes(changed_impfset, **kwargs)
+            changed_impfset = self.impfset_changes(changed_impfset, **kwargs)
+            if not isinstance(changed_impfset, ImpactFuncSet):
+                raise TypeError(
+                    "Impfset change function did not return an ImpactFuncSet object."
+                )
+            return changed_impfset
         except TypeError as exc:
             # Check if it's a missing argument error
             if "missing" in str(exc) and "required positional argument" in str(exc):
@@ -446,7 +457,12 @@ class Measure:
             else hazard
         )
         try:
-            return self.hazard_changes(changed_hazard, **kwargs)
+            changed_hazard = self.hazard_changes(changed_hazard, **kwargs)
+            if not isinstance(changed_hazard, Hazard):
+                raise TypeError(
+                    "Hazard change function did not return an Hazard object."
+                )
+            return changed_hazard
         except TypeError as exc:
             # Check if it's a missing argument error
             if "missing" in str(exc) and "required positional argument" in str(exc):
