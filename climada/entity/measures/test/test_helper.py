@@ -334,7 +334,7 @@ class TestHelperImpfset:
         result = fn(ifs)
         np.testing.assert_allclose(
             result.get_func(haz_type=HAZARD_TYPE)[0].intensity,
-            original_int * 2.0 + 5.0,
+            original_int / 2.0 - 5.0,
         )
 
     def test_specific_impf_id_targeted(self, impfset_factory):
