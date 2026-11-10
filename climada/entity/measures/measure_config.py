@@ -208,10 +208,14 @@ class ImpfsetModifierConfig(ModifierConfig):
         Additive offset applied to the PAA curve after multiplication.
         Default is ``0.0``.
     impf_int_mult : float, optional
-        Multiplicative factor applied to the intensity axis.
+        Inverse of the multiplicative factor applied to the intensity axis.
+        That is ``0.5`` would double the values of the intensity axis, namely reducing by 50%
+        the damages for a given intensity.
         Default is ``1.0``.
     impf_int_add : float, optional
-        Additive offset applied to the intensity axis after multiplication.
+        Negative additive offset applied to the intensity axis after multiplication.
+        That a positive value shifts the values of the intensity axis to the left, namely
+        shifting the impact function to the right.
         Default is ``0.0``.
     new_impfset_path : str, optional
         Path to an Excel file containing a replacement impact function set.
