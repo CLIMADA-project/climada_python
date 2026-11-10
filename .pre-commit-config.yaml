@@ -27,13 +27,9 @@ repos:
     hooks:
       - id: uv-lock
 
-  - repo: local
+  - repo: https://github.com/peanutfun/pyproject-to-conda-env
+    rev: v1.1
     hooks:
-      - id: conda-env
-        name: Compile Conda Environment
-        entry: python script/make_conda_env.py
-        language: python
-        files: ^(pyproject\.toml|script\/make_conda_env\.py)$
-        pass_filenames: false
-        additional_dependencies:
-          - PyYAML
+      - id: pyproject_to_conda_env
+        files: ^(pyproject\.toml|requirements/(transform|env_climada)\.yml)$
+        args: [pyproject.toml, -t, requirements/transform.yml, -o, requirements/env_climada.yml]
