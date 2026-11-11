@@ -64,7 +64,7 @@ jobs:
         name: Install Python
         uses: actions/setup-python@v6
         with:
-          python-version: ${{ matrix.python-version }}
+          python-version: ${{ env.PYTHON_VERSION }}
           cache: 'pip' # caching pip dependencies
       -
         name: Install dependencies
@@ -72,6 +72,11 @@ jobs:
           pip install --upgrade pip
           pip install -e ./
           pip install --group test
+      -
+        name: Check cfgrib
+        run: |
+          python -m cfgrib selfcheck
+          python -c "import xarray as xr; print(xr.backends.list_engines().keys())"
       -
         name: Restore testing data cache
         id: cache-testing-data
