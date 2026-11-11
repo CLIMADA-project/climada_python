@@ -74,8 +74,8 @@ jobs:
       -
         name: Check cfgrib
         run: |
-          python -m cfgrib selfcheck
-          python -c "import xarray as xr; print(xr.backends.list_engines().keys())"
+          uv run -- python -m cfgrib selfcheck
+          uv run -- python -c "import xarray as xr; print(xr.backends.list_engines().keys())"
       -
         name: Restore testing data cache
         id: cache-testing-data
