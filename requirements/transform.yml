@@ -10,5 +10,4 @@ conversions:
 additions:
   - pip
 deletions:
-  - eccodeslib
 pip-requirements:

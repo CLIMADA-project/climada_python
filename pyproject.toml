@@ -30,7 +30,6 @@ dependencies = [
     "dask>=2026.8",
     "deprecation>=2.1.0",
     "eccodes>=2.47.0",
-    "eccodeslib>=2.47.0",
     "fiona>=1.10",
     "geopandas>=1.1",
     "h5py>=3.16.0",
