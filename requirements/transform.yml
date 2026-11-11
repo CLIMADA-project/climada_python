@@ -10,4 +10,5 @@ conversions:
 additions:
   - pip
 deletions:
+  - eccodeslib  # Bundled into the conda package
 pip-requirements:
