@@ -21,3 +21,15 @@ repos:
     rev: '24.4.2'
     hooks:
       - id: black-jupyter
+
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    rev: 0.11.7
+    hooks:
+      - id: uv-lock
+
+  - repo: https://github.com/peanutfun/pyproject-to-conda-env
+    rev: v1.1
+    hooks:
+      - id: pyproject_to_conda_env
+        files: ^(pyproject\.toml|requirements/(transform|env_climada)\.yml)$
+        args: [pyproject.toml, -t, requirements/transform.yml, -o, requirements/env_climada.yml]

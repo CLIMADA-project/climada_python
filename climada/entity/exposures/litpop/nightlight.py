@@ -32,7 +32,6 @@ import numpy as np
 import rasterio
 import scipy.sparse as sparse
 from affine import Affine
-from osgeo import gdal
 from PIL import Image
 from shapefile import Shape
 
@@ -479,7 +478,7 @@ def load_nightlight_nasa(bounds, req_files, year):
             continue
         extent = np.int64(np.clip(extent, 0, tile_size[None] - 1))
         # pylint: disable=unsubscriptable-object
-        im_nl, _ = read_bm_file(SYSTEM_DIR, fname % (year))
+        im_nl = read_bm_file(SYSTEM_DIR, fname % (year))
         im_nl = np.flipud(im_nl)
         im_nl = sparse.csc.csc_matrix(im_nl)
         im_nl = im_nl[extent[0, 0] : extent[1, 0] + 1, extent[0, 1] : extent[1, 1] + 1]
@@ -512,8 +511,6 @@ def read_bm_file(bm_path, filename):
     -------
     arr1 : array
         Raw BM data
-    curr_file : gdal GeoTiff File
-        Additional info from which coordinates can be calculated.
     """
     path = Path(bm_path, filename)
     LOGGER.debug("Importing%s.", path)
@@ -521,9 +518,8 @@ def read_bm_file(bm_path, filename):
         raise FileNotFoundError(
             "Invalid path: check that the path to BlackMarble file is correct."
         )
-    curr_file = gdal.Open(str(path))
-    arr1 = curr_file.GetRasterBand(1).ReadAsArray()
-    return arr1, curr_file
+    curr_file = rasterio.open(path)
+    return curr_file.read(1)
 
 
 def unzip_tif_to_py(file_gz):

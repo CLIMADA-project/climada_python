@@ -6,66 +6,17 @@ The following sections will guide you through the installation of CLIMADA and it
 
 .. attention::
 
-    CLIMADA has a complicated set of dependencies that cannot be installed with ``pip`` alone.
-    Please follow the installation instructions carefully!
     We recommend to use a ``conda``-based python environment manager such as `Mamba`_ or `Conda`_ for creating a suitable software environment to execute CLIMADA.
 
-All following instructions should work on any operating system (OS) that is supported by ``conda``, including in particular: **Windows**, **macOS**, and **Linux**.
+All following instructions should work on any operating system (OS), including in particular: **Windows**, **macOS**, and **Linux**.
 
 .. hint:: If you need help with the vocabulary used on this page, refer to the :ref:`Glossary <install-glossary>`.
 
-.. _install-manager:
-
----------------------------
-Install environment manager
----------------------------
-
-If you haven't already installed an environment management system like `Mamba`_ or `Conda`_, you have to do so now.
-We recommend to use ``mamba`` (see :ref:`conda-instead-of-mamba`) which is available in the installer Miniforge (see below).
-
-macOS and Linux
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-* Open the "Terminal" app, copy-paste the two commands below, and hit enter:
-
-  .. code-block:: shell
-
-     curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-     bash Miniforge3-$(uname)-$(uname -m).sh
-
-* Accept the license terms.
-* You can confirm the default location.
-* Answer 'yes' when asked if if you wish to update your shell profile to automatically initialize conda. **Do not just hit ENTER but first type 'yes'**
-* If at some point you encounter ``command not found: mamba``, open a new terminal window.
-* If you encounter ``Run 'mamba init' to be able to run mamba activate/deactivate ...``, please run ``mamba init zsh`` or ``mamba init``.
-
-Windows
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-
-* Download the Windows installer at the Install section from `Miniforge`_.
-* Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
-
-.. _python-versions:
-
-.. admonition:: Python Versions
-
-   CLIMADA is primarily tested against a **supported** Python version, but is allowed to run with others.
-   If you follow the installation instructions exactly, you will create an environment with the supported version.
-   Depending on your setup, you are free to choose another allowed version, but we recommend the supported one.
-
-   .. list-table::
-      :width: 60%
-
-      * - **Supported Version**
-        - ``3.11``
-      * - Allowed Versions
-        - ``3.11``, ``3.12``, ``3.13``
-
 .. _install-choice:
 
----------------------------------------
+---------------------------
 Decide on Your Entry Level!
----------------------------------------
+---------------------------
 
 .. hint:: When mentioning the terms "terminal" or "command line" in the following, we are referring to the "Terminal" apps on macOS or Linux and the "Miniforge Prompt" on Windows.
 
@@ -98,7 +49,85 @@ CLIMADA Petals can be used to generate additional data of this type, or to have 
 Both :ref:`installation approaches <install-choice>` mentioned above support CLIMADA Petals.
 If you are unsure whether you need Petals, you can install the Core first and later add Petals in both approaches.
 
+.. warning::
+
+   At the moment, not all package managers support both Core and Petals in both :ref:`installation approaches <install-choice>`.
+   See the list below.
+
+.. _install-manager:
+
+---------------------------
+Install Environment Manager
+---------------------------
+
+You will need to choose a suitable Python environment manager.
+If you have Python installed, Pip should be installed alongside it.
+
+
+.. list-table::
+   :header-rows: 1
+   :width: 60%
+
+   * - Manager
+     - CLIMADA Core
+     - CLIMADA Petals
+   * - `Mamba`_
+     - ✅
+     - ✅
+   * - `Pixi`_
+     - :ref:`Simple <install-simple>` only
+     - :ref:`Simple <install-simple>` only
+   * - `uv`_
+     - ✅
+     - ❌
+   * - Pip
+     - ✅
+     - ❌
+
+**We highly recommend `Mamba`_ or `Conda`_, as this supports both simple and advanced installations for both Core and Petals**, and installs a useful shell on Windows.
+The tool ``mamba`` (see :ref:`conda-instead-of-mamba`) is available in the installer `Miniforge`_:
+
+.. tabs::
+
+   .. group-tab:: macOS & Linux
+
+      * Open the "Terminal" app, copy-paste the two commands below, and hit enter:
+
+      .. code-block:: shell
+
+         curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+         bash Miniforge3-$(uname)-$(uname -m).sh
+
+      * Accept the license terms.
+      * You can confirm the default location.
+      * Answer 'yes' when asked if if you wish to update your shell profile to automatically initialize conda. **Do not just hit ENTER but first type 'yes'**
+      * If at some point you encounter ``command not found: mamba``, open a new terminal window.
+      * If you encounter ``Run 'mamba init' to be able to run mamba activate/deactivate ...``, please run ``mamba init zsh`` or ``mamba init``.
+
+   .. group-tab:: Windows
+
+      * Download the Windows installer at the Install section from `Miniforge`_.
+      * Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
+
+.. _python-versions:
+
+.. admonition:: Python Versions
+
+   CLIMADA is primarily tested against a **supported** Python version, but is allowed to run with others.
+   If you follow the installation instructions exactly, you will create an environment with the supported version.
+   Depending on your setup, you are free to choose another allowed version, but we recommend the supported one.
+
+   .. list-table::
+      :width: 60%
+
+      * - **Supported Version**
+        - ``3.11``
+      * - Allowed Versions
+        - ``3.11``, ``3.12``, ``3.13``
+
+
 .. _install-simple:
+.. _install-pixi:
 
 -------------------
 Simple Instructions
@@ -106,103 +135,139 @@ Simple Instructions
 
 These instructions will install the most recent stable version of CLIMADA without cloning its repository.
 
-#. Open the command line.
-   Create a new Conda environment with CLIMADA by executing
+.. tabs::
 
-   .. code-block:: shell
+   .. group-tab:: Mamba
 
-      mamba create -n climada_env -c conda-forge climada
+      #. Open the command line.
+         Create a new Conda environment with CLIMADA by executing
 
-#. Activate the environment:
+         .. code-block:: shell
 
-   .. code-block:: shell
+            mamba create -n climada_env -c conda-forge climada
 
-      mamba activate climada_env
+      #. Activate the environment:
 
-   You should now see ``(climada_env)`` appear in the beginning of your command prompt.
-   This means the environment is activated.
+         .. code-block:: shell
 
-#. Verify that everything is installed correctly by executing a single test:
+            mamba activate climada_env
 
-   .. code-block:: shell
+         You should now see ``(climada_env)`` appear in the beginning of your command prompt.
+         This means the environment is activated.
 
-      python -m unittest climada.engine.test.test_impact
+      #. Verify that everything is installed correctly by executing a single test:
 
-   Executing CLIMADA for the first time will take some time because it will generate a directory tree in your home/user directory.
-   After a while, some text should appear in your terminal.
-   In the end, you should see an "Ok".
-   If so, great! You are good to go.
+         .. code-block:: shell
 
-#. *Optional:* Install CLIMADA Petals into the environment:
+            python -m unittest climada.engine.test.test_impact
 
-   .. code-block:: shell
+         Executing CLIMADA for the first time will take some time because it will generate a directory tree in your home/user directory.
+         After a while, some text should appear in your terminal.
+         In the end, you should see an "Ok".
+         If so, great! You are good to go.
 
-      mamba install -n climada_env -c conda-forge climada-petals
+      #. *Optional:* Install CLIMADA Petals into the environment:
 
-   .. attention::
+         .. code-block:: shell
 
-      On Windows, installing ``climada-petals`` with Conda/Mamba may be prohibited as it takes forever to resolve the dependency tree.
-      In these cases, `Pixi`_ is often the only reliable fallback (s.b.).
+            mamba install -n climada_env -c conda-forge climada-petals
 
-.. _install-pixi:
+         .. attention::
 
--------------------------------------------
-Simple Instructions with Pixi (Alternative)
--------------------------------------------
+            On Windows, installing ``climada-petals`` with Conda/Mamba may be prohibited as it takes forever to resolve the dependency tree.
+            In these cases, `Pixi`_ is often the only reliable fallback.
 
-As an alternative to mamba `Pixi`_ can be used to install climada from conda-forge.
-Pixi is a modern package manager, based on Conda, that offers much faster dependency resolution.
+   .. group-tab:: Pixi
 
-#. Open the command line and create a new folder for your Pixi project:
+      As an alternative to mamba `Pixi`_ can be used to install climada from conda-forge.
+      Pixi is a modern package manager, based on Conda, that offers much faster dependency resolution.
 
-   .. code-block:: shell
+      #. Open the command line and create a new folder for your Pixi project:
 
-      pixi init climada_pixi
+         .. code-block:: shell
 
-#. Add CLIMADA from ``conda-forge``:
+            pixi init climada_pixi
 
-   .. code-block:: shell
+      #. Add CLIMADA from ``conda-forge``:
 
-      pixi add --manifest-path climada_pixi/pixi.toml climada
+         .. code-block:: shell
 
-#. Verify that everything is installed correctly by executing a single test:
+            pixi add --manifest-path climada_pixi/pixi.toml climada
 
-   .. code-block:: shell
+      #. Verify that everything is installed correctly by executing a single test:
 
-      # the pixi way to activate an environment
-      pixi shell --manifest-path climada_pixi/pixi.toml
-      # execute the test
-      python -m unittest climada.engine.test.test_impact
-      # the pixi way to deactivate an environment
-      exit
+         .. code-block:: shell
 
-   Executing CLIMADA for the first time in a pixi environment will take quite some time because it will generate
-   a directory tree in your home/user directory. If this test passes, great! You are good to go.
+            # the pixi way to activate an environment
+            pixi shell --manifest-path climada_pixi/pixi.toml
+            # execute the test
+            python -m unittest climada.engine.test.test_impact
+            # the pixi way to deactivate an environment
+            exit
 
-#. *Optional:* Install CLIMADA Petals into the same Pixi environment:
+         Executing CLIMADA for the first time in a pixi environment will take quite some time because it will generate
+         a directory tree in your home/user directory. If this test passes, great! You are good to go.
 
-   .. code-block:: shell
+      #. *Optional:* Install CLIMADA Petals into the same Pixi environment:
 
-      pixi add --manifest-path climada_pixi/pixi.toml climada-petals
+         .. code-block:: shell
+
+            pixi add --manifest-path climada_pixi/pixi.toml climada-petals
+
+   .. group-tab:: uv
+
+      You can `execute a script or program <https://docs.astral.sh/uv/guides/scripts/>`_ and include CLIMADA in the current environment like so:
+
+      .. code-block:: shell
+
+         uv run --with climada <script.py>
+
+      Start a JupyterLab session with CLIMADA installed by executing
+
+      .. code-block:: shell
+
+         uv run -w climada -w jupyterlab jupyter lab
+
+   .. group-tab:: Pip
+
+      #. Open the command line.
+         It usually makes sense to install CLIMADA in a new virtual environment (venv).
+         Choose a suitable ``path/to/climada_venv``, and create one there:
+
+         .. code-block:: shell
+
+            python -m venv path/to/climada_venv
+
+      #. Activate the virtual environment.
+
+         .. code-block:: shell
+
+            source path/to/climada_venv/bin/activate
+
+         You should see ``(climada_venv)`` at the beginning of your command line now.
+
+      #. Install CLIMADA into the venv.
+
+         .. code-block:: shell
+
+            pip install climada
+
+      .. note::
+
+         To deactivate the venv, simply execute
+
+         .. code-block:: shell
+
+            deactivate
 
 .. _install-advanced:
 
 ---------------------------------------------
-Advanced Instructions: Installing from source
+Advanced Instructions: Installing from Source
 ---------------------------------------------
 
 For advanced Python users or developers of CLIMADA, cloning the CLIMADA repository and installing the package from source.
 Installing from source also allows you to :ref:`switch branches <switch-branch>`.
-
-.. warning::
-
-   If you followed the :ref:`install-simple` before, make sure you **either** remove the environment with:
-
-   .. code-block:: shell
-
-      mamba env remove -n climada_env
-
-   before you continue, **or** you use a **different** environment name for the following instructions (e.g. ``climada_dev`` instead of ``climada_env``).
 
 #. If you are using a **Linux** OS, make sure you have ``git`` installed
    (Windows and macOS users are good to go once Conda is installed).
@@ -237,99 +302,237 @@ Installing from source also allows you to :ref:`switch branches <switch-branch>`
       cd climada_python
       git checkout develop
 
-#. Create an Conda environment called ``climada_env`` for installing CLIMADA:
+The following steps depend on your choice of :ref:`package manager <install-manager>`:
 
-   .. code-block:: shell
+.. tabs::
 
-      mamba create -n climada_env "python=3.11.*"
+   .. group-tab:: Mamba
 
-   .. hint::
+      .. warning::
 
-      Use the wildcard ``.*`` at the end to allow a downgrade of the bugfix version of Python.
-      This increases compatibility when installing the requirements in the next step.
+         If you followed the :ref:`install-simple` before, make sure you **either** remove the environment with:
 
-   .. note:: You may choose any of the  :ref:`allowed Python versions <python-versions>` from the list above.
+         .. code-block:: shell
 
-#. Use the default environment specs in ``env_climada.yml`` to install all dependencies.
-   Then activate the environment:
+            mamba env remove -n climada_env
 
-   .. code-block:: shell
+         before you continue, **or** you use a **different** environment name for the following instructions (e.g. ``climada_dev`` instead of ``climada_env``).
 
-      mamba env update -n climada_env -f requirements/env_climada.yml
-      mamba activate climada_env
+      #. Create an Conda environment called ``climada_env`` for installing CLIMADA:
 
-#. Install the local CLIMADA source files as Python package using ``pip``:
+         .. code-block:: shell
 
-   .. code-block:: shell
+            mamba create -n climada_env "python=3.11.*"
 
-      python -m pip install -e ./
+         .. hint::
 
-   .. hint::
+            Use the wildcard ``.*`` at the end to allow a downgrade of the bugfix version of Python.
+            This increases compatibility when installing the requirements in the next step.
 
-      Using a path ``./`` (referring to the path you are currently located at) will instruct ``pip`` to install the local files instead of downloading the module from the internet.
-      The ``-e`` (for "editable") option further instructs ``pip`` to link to the source files instead of copying them during installation.
-      This means that any changes to the source files will have immediate effects in your environment, and re-installing the module is never required.
+         .. note:: You may choose any of the  :ref:`allowed Python versions <python-versions>` from the list above.
 
-      Further note that this works only for the source files not for the dependencies. If you change the latter, you will need to update the environment with step 6. !
+      #. Use the default environment specs in ``env_climada.yml`` to install all dependencies.
+         Then activate the environment:
 
-#. Verify that everything is installed correctly by executing a single test:
+         .. code-block:: shell
 
-   .. code-block:: shell
+            mamba env update -n climada_env -f requirements/env_climada.yml
+            mamba activate climada_env
 
-      python -m unittest climada.engine.test.test_impact
+      #. Install the local CLIMADA source files as Python package using ``pip``:
 
-   Executing CLIMADA for the first time will take some time because it will generate a directory tree in your home/user directory.
-   If this test passes, great!
-   You are good to go.
+         .. code-block:: shell
+
+            python -m pip install -e ./
+
+         .. hint::
+
+            Using a path ``./`` (referring to the path you are currently located at) will instruct ``pip`` to install the local files instead of downloading the module from the internet.
+            The ``-e`` (for "editable") option further instructs ``pip`` to link to the source files instead of copying them during installation.
+            This means that any changes to the source files will have immediate effects in your environment, and re-installing the module is only required when the dependencies change.
+
+      #. Verify that everything is installed correctly by executing a single test:
+
+         .. code-block:: shell
+
+            python -m unittest climada.engine.test.test_impact
+
+         Executing CLIMADA for the first time will take some time because it will generate a directory tree in your home/user directory.
+         If this test passes, great!
+         You are good to go.
+
+   .. group-tab:: uv
+
+      #. Create a local venv and synchronize it:
+
+         .. code-block:: shell
+
+            uv sync
+
+         .. note:: uv will automatically install the local package in editable mode.
+
+   .. group-tab:: Pip
+
+      #. Create a virtual environment in the repository folder and activate it:
+
+         .. code-block:: shell
+
+            python -m venv .venv
+            source .venv/bin/activate
+
+      #. Install CLIMADA into the environment:
+
+         .. code-block:: shell
+
+            python -m pip install -e ./
+
+         .. hint::
+
+            Using a path ``./`` (referring to the path you are currently located at) will instruct ``pip`` to install the local files instead of downloading the module from the internet.
+            The ``-e`` (for "editable") option further instructs ``pip`` to link to the source files instead of copying them during installation.
+            This means that any changes to the source files will have immediate effects in your environment, and re-installing the module is only required when the dependencies change.
 
 .. _devdeps:
 
 Install Developer Dependencies (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Building the documentation and running the entire test suite of CLIMADA requires additional dependencies which are not installed by default.
+Building the documentation and running the entire test suite of CLIMADA requires additional dependencies () which are not installed by default.
 They are also not needed for using CLIMADA.
 However, if you want to develop CLIMADA, we strongly recommend you install them.
 
-With the ``climada_env`` activated, enter the workspace directory and then the CLIMADA repository as above.
-Then, add the ``test`` extra specification to the ``pip install`` command (**mind the quotation marks**,
-and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
+Dependency Groups
+"""""""""""""""""
 
-.. code-block:: shell
-
-   python -m pip install -e "./[dev]"
-
-The CLIMADA Python package defines the following `extras <https://peps.python.org/pep-0508/#extras>`_:
+The CLIMADA Python package defines the following `dependency groups <https://packaging.python.org/en/latest/specifications/dependency-groups/>`_:
 
 .. list-table::
    :header-rows: 1
-   :widths: 1 5
 
-   * - Extra
+   * - Dependency Group
      - Includes Dependencies...
    * - ``dev``
-     - for developers, needed for running and evaluating tests and pre-commit actions
+     - for all developer needs (includes all others)
    * - ``doc``
      - for building the documentation files from in-source pydoc annotations
+   * - ``test``
+     - for executing the tests
 
-The developer dependencies also include `pre-commit <https://pre-commit.com/#intro>`_, which is used to install and run automated, so-called pre-commit hooks before a new commit.
-In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install the hooks first.
-With the ``climada_env`` activated, execute
+Installation works as follows:
 
-.. code-block:: shell
+.. tabs::
 
-   pre-commit install
+   .. group-tab:: Mamba
 
+      With the ``climada_env`` activated, enter the workspace directory and then the CLIMADA repository as above.
+      Then, tell Pip to install the ``dev`` dependency group:
+
+      .. code-block:: shell
+
+         python -m pip install --group dev
+
+   .. group-tab:: uv
+
+      No action required, ``uv sync`` installs the ``dev`` dependency group by default.
+      To request (only) a specific group, execute
+
+      .. code-block:: shell
+
+         uv sync --group <group>
+
+   .. group-tab:: Pip
+
+      Activate the venv, and enter the workspace directory and then the CLIMADA repository as above.
+      Then, tell Pip to install the ``dev`` dependency group:
+
+      .. code-block:: shell
+
+         python -m pip install --group dev
+
+      .. note::
+
+         If your ``pip`` does not recognize the ``--group`` option, make sure you update to the latest version:
+
+         .. code-block:: shell
+
+            python -m pip install --upgrade pip
+
+pre-commit
+""""""""""
+
+We use `pre-commit <https://pre-commit.com/#intro>`_ to install and run automated, so-called pre-commit hooks before a new commit.
+These ensure, e.g., that files are formatted correctly.
 Please refer to the :ref:`guide on pre-commit hooks <dev-pre-commit-hooks>` for information on how to use this tool.
 
-For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
-On macOS and on Linux it is pre-installed. On Windows, it can easily be installed with Conda:
+In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install pre-commit and its hooks first.
 
-.. code-block:: shell
+.. tabs::
 
-   mamba install -n climada_env make
+   .. group-tab:: Mamba
+
+      With the ``climada_env`` activated, move to the repository and execute
+
+      .. code-block:: shell
+
+         python -m pip install pre-commit
+         pre-commit install
+
+   .. group-tab:: uv
+
+      uv supports running `tools <https://docs.astral.sh/uv/guides/tools/>`_ that are not part of the local Python environment.
+      These tools can be downloaded and run when invoked, or `installed <https://docs.astral.sh/uv/guides/tools/#installing-tools>`_ when needed repeatedly.
+      We use this function for installing pre-commit:
+
+      .. code-block:: shell
+
+         uv tool install pre-commit --with pre-commit-uv
+
+      pre-commit is now available as tool in your shell.
+      Move to the repository and install the hooks:
+
+      .. code-block:: shell
+
+         pre-commit install
+
+   .. group-tab:: Pip
+
+      With the ``climada_venv`` activated, move to the repository and execute
+
+      .. code-block:: shell
+
+         python -m pip install pre-commit
+         pre-commit install
+
+make
+""""
 
 Instructions for running the test scripts can be found in the :doc:`Testing Guide </development/Guide_Testing>`.
+For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
+
+.. tabs::
+
+   .. group-tab:: macOS & Linux
+
+      No action required.
+      ``make`` is installed by default.
+
+   .. group-tab:: Windows
+
+      .. tabs::
+
+         .. group-tab:: Mamba
+
+            .. code-block:: shell
+
+               mamba install -n climada_env make
+
+         .. group-tab:: uv
+
+            *tbd*
+
+         .. group-tab:: Pip
+
+            *tbd*
 
 Install CLIMADA Petals (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -349,19 +552,32 @@ To install CLIMADA Petals, we assume you have already installed CLIMADA Core wit
       cd climada_petals
       git checkout develop
 
-#. Update the Conda environment with the specifications from Petals and activate it:
+The following steps depend on your choice of :ref:`package manager <install-manager>`:
 
-   .. code-block:: shell
+.. tabs::
 
-      mamba env update -n climada_env -f requirements/env_climada.yml
-      mamba activate climada_env
+   .. group-tab:: Mamba
 
-#. Install the CLIMADA Petals package:
+      #. Update the Conda environment with the specifications from Petals and activate it:
 
-   .. code-block:: shell
+         .. code-block:: shell
 
-      python -m pip install -e ./
+            mamba env update -n climada_env -f requirements/env_climada.yml
+            mamba activate climada_env
 
+      #. Install the CLIMADA Petals package:
+
+         .. code-block:: shell
+
+            python -m pip install -e ./
+
+   .. group-tab:: uv
+
+      *Petals currently cannot be installed from source with uv.*
+
+   .. group-tab:: Pip
+
+      *Petals currently cannot be installed from source with Pip.*
 
 ------------
 Code Editors
@@ -370,20 +586,47 @@ Code Editors
 JupyterLab
 ^^^^^^^^^^
 
-#. Install JupyterLab into the Conda environment:
+.. tabs::
 
-   .. code-block:: shell
+   .. group-tab:: Mamba
 
-      mamba install -n climada_env -c conda-forge jupyterlab
+      #. Install JupyterLab into the Conda environment:
 
-#. Make sure that the ``climada_env`` is activated (see above) and then start JupyterLab:
+         .. code-block:: shell
 
-   .. code-block:: shell
+            mamba install -n climada_env -c conda-forge jupyterlab
 
-      mamba activate climada_env
-      jupyter-lab
+      #. Make sure that the ``climada_env`` is activated (see above) and then start JupyterLab:
 
-   JupyterLab will open in a new window of your default browser.
+         .. code-block:: shell
+
+            mamba activate climada_env
+            jupyter lab
+
+         JupyterLab will open in a new window of your default browser.
+
+   .. group-tab:: uv
+
+      Start JupyterLab in the local environment without adding it to the dependencies:
+
+      .. code-block:: shell
+
+         uv run --with jupyterlab jupyter lab
+
+   .. group-tab:: Pip
+
+      #. When inside the CLIMADA repository folder, activate the venv and install JupyterLab:
+
+         .. code-block:: shell
+
+            source ./venv/bin/activate
+            python -m pip install jupyterlab
+
+      #. Start JupyterLab:
+
+         .. code-block:: shell
+
+            jupyter lab
 
 Visual Studio Code (VSCode)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -399,6 +642,10 @@ Basic Setup
 
 #. Open a Jupyter Notebook or create a new one.
    On the top right, click on *Select Kernel*, select *Python Environments...* and then choose the Python interpreter from the ``climada_env``.
+
+   If you are **not** using Mamba, your Python environment is not known system-wide.
+   To find your interpreter, open the VSCode in the folder where your repository or venv is located.
+   VSCode should detect it then.
 
 See the VSCode docs on `Python <https://code.visualstudio.com/docs/python/python-tutorial>`_ and `Jupyter Notebooks <https://code.visualstudio.com/docs/datascience/jupyter-notebooks>`_ for further information.
 
@@ -421,7 +668,7 @@ Setting up a workspace for the CLIMADA source code is only available for :ref:`a
 #. Open the Command Palette by clicking *View* > *Command Palette* or by using the shortcut keys ``Ctrl+Shift+P`` (Windows, Linux) / ``Cmd+Shift+P`` (macOS).
    Start typing "Python: Select Interpreter" and select it from the dropdown menu.
    If prompted, choose the option to set the interpreter for the workspace, not just the current folder.
-   Then, choose the Python interpreter from the ``climada_env``.
+   Then, choose the Python interpreter from the ``climada_env`` (or venv).
 
 For further information, refer to the VSCode docs on `Workspaces <https://code.visualstudio.com/docs/editor/workspaces>`_.
 
@@ -449,53 +696,55 @@ For further information, see the VSCode docs on `Python Testing <https://code.vi
 Spyder
 ^^^^^^
 
-Installing Spyder into the existing Conda environment for CLIMADA might fail depending on the exact versions of dependencies installed.
-Therefore, we recommend installing Spyder in a *separate* environment, and then connecting it to a kernel in the original ``climada_env``.
+.. dropdown:: Spyter Setup (outdated)
 
-#. Follow the `Spyder installation instructions <https://docs.spyder-ide.org/current/installation.html#installing-with-conda>`_.
-   You can follow the "Conda" installation instructions.
-   Keep in mind you are using ``mamba``, though!
+   Installing Spyder into the existing Conda environment for CLIMADA might fail depending on the exact versions of dependencies installed.
+   Therefore, we recommend installing Spyder in a *separate* environment, and then connecting it to a kernel in the original ``climada_env``.
 
-#. Check the version of the Spyder kernel in the new environment:
+   #. Follow the `Spyder installation instructions <https://docs.spyder-ide.org/current/installation.html#installing-with-conda>`_.
+      You can follow the "Conda" installation instructions.
+      Keep in mind you are using ``mamba``, though!
 
-   .. code-block:: shell
+   #. Check the version of the Spyder kernel in the new environment:
 
-      mamba env export -n spyder-env | grep spyder-kernels
+      .. code-block:: shell
 
-   This will return a line like this:
+         mamba env export -n spyder-env | grep spyder-kernels
 
-   .. code-block:: shell
+      This will return a line like this:
 
-      - spyder-kernels=X.Y.Z=<hash>
+      .. code-block:: shell
 
-   Copy the part ``spyder-kernels=X.Y.Z`` (until the second ``=``) and paste it into the following command to install the same kernel version into the ``climada_env``:
+         - spyder-kernels=X.Y.Z=<hash>
 
-   .. code-block:: shell
+      Copy the part ``spyder-kernels=X.Y.Z`` (until the second ``=``) and paste it into the following command to install the same kernel version into the ``climada_env``:
 
-      mamba install -n climada_env spyder-kernels=X.Y.Z
+      .. code-block:: shell
 
-#. Obtain the path to the Python interpreter of your ``climada_env``.
-   Execute the following commands:
+         mamba install -n climada_env spyder-kernels=X.Y.Z
 
-   .. code-block:: shell
+   #. Obtain the path to the Python interpreter of your ``climada_env``.
+      Execute the following commands:
 
-      mamba activate climada_env
-      python -c "import sys; print(sys.executable)"
+      .. code-block:: shell
 
-   Copy the resulting path.
+         mamba activate climada_env
+         python -c "import sys; print(sys.executable)"
 
-#. Open Spyder through the command line:
+      Copy the resulting path.
 
-   .. code-block:: shell
+   #. Open Spyder through the command line:
 
-      mamba activate spyder-env
-      spyder
+      .. code-block:: shell
 
-#. Set the Python interpreter used by Spyder to the one of ``climada_env``.
-   Select *Preferences* > *Python Interpreter* > *Use the following interpreter* and paste the iterpreter path you copied from the ``climada_env``.
+         mamba activate spyder-env
+         spyder
+
+   #. Set the Python interpreter used by Spyder to the one of ``climada_env``.
+      Select *Preferences* > *Python Interpreter* > *Use the following interpreter* and paste the iterpreter path you copied from the ``climada_env``.
 
 -----------------------------
-Apps for working with CLIMADA
+Apps for Working with CLIMADA
 -----------------------------
 
 To work with CLIMADA, you will need an application that supports Jupyter Notebooks.
@@ -558,28 +807,81 @@ How to update CLIMADA?
 We recommend keeping CLIMADA up-to-date.
 To update, follow the instructions based on your :ref:`installation type <install-choice>`:
 
-* **Simple Instructions:** Update CLIMADA using ``mamba``:
+Simple Instructions
+"""""""""""""""""""
 
-  .. code-block:: shell
+.. tabs::
 
-     mamba update -n climada_env -c conda-forge climada
+   .. group-tab:: Mamba
 
-* **Advanced Instructions:** Move into your local CLIMADA repository and pull the latest version of your respective branch:
+      .. code-block:: shell
 
-  .. code-block:: shell
+         mamba update -n climada_env -c conda-forge climada
 
-     cd <path/to/workspace>/climada_python
-     git pull
+      If Petals is installed, you can also update it:
 
-  Then, update the environment and reinstall the package:
+      .. code-block:: shell
 
-  .. code-block:: shell
+         mamba update -n climada_env -c conda-forge climada_petals
 
-     mamba env update -n climada_env -f requirements/env_climada.yml
-     mamba activate climada_env
-     python -m pip install -e ./
+   .. group-tab:: uv
 
-  The same instructions apply for CLIMADA Petals.
+      No action required.
+      If you have not `locked <https://docs.astral.sh/uv/guides/scripts/#locking-dependencies>`_ your script dependencies, uv will always use the latest version.
+
+   .. group-tab:: Pip
+
+      With the venv activated, upgrade CLIMADA:
+
+      .. code-block:: shell
+
+         python -m pip install --upgrade climada
+
+.. _update-climada-advanced:
+
+Advanced Instructions
+"""""""""""""""""""""
+
+Move into your local CLIMADA repository and pull the latest version of your respective branch:
+
+.. code-block:: shell
+
+   cd <path/to/workspace>/climada_python
+   git pull
+
+Then, update the environment and reinstall the package:
+
+.. tabs::
+
+   .. group-tab:: Mamba
+
+      .. code-block:: shell
+
+         mamba env update -n climada_env -f requirements/env_climada.yml
+         mamba activate climada_env
+         python -m pip install -e ./
+
+      The same instructions apply for CLIMADA Petals.
+
+      .. note::
+
+         In rare cases, updating the environment might fail after switching a branch because the dependency updates are incompatible.
+         If this happens, create a new environment (see the :ref:`advanced instructions <install-advanced>`).
+
+   .. group-tab:: uv
+
+      .. code-block:: shell
+
+         uv sync
+
+   .. group-tab:: Pip
+
+      Activate the venv first.
+
+      .. code-block:: shell
+
+         python -m pip install -e ./
+
 
 .. _switch-branch:
 
@@ -599,9 +901,7 @@ Then fetch the latest changes from the remote, switch to the target branch, and 
    git checkout <branch>
    git pull
 
-After switching, it is good practice to :ref:`update your environment <update-climada>`, as the dependency definitions might have been changed.
-In rare cases, updating the environment might fail after switching a branch because the dependency updates are incompatible.
-If this happens, create a new environment (see the :ref:`advanced instructions <install-advanced>`).
+After switching, it is good practice to :ref:`update your environment <update-climada-advanced>`, as the dependency definitions might have been changed.
 
 The above instructions also apply for CLIMADA Petals, but you have to ``cd`` into the ``climada_petals`` repository in the first step, of course.
 
@@ -610,36 +910,84 @@ The above instructions also apply for CLIMADA Petals, but you have to ``cd`` int
 Installing More Packages
 ^^^^^^^^^^^^^^^^^^^^^^^^
 
-You might use CLIMADA in code that requires more packages than the ones readily available in the CLIMADA Conda environment.
-If so, **prefer installing these packages via Conda**, and only rely on ``pip`` if that fails.
-The default channels of Conda sometimes contain outdated versions.
-Therefore, use the ``conda-forge`` channel:
+You might use CLIMADA in code that requires more packages than the ones readily available in the CLIMADA environment.
 
-.. code-block:: shell
+.. tabs::
 
-   mamba install -n climada_env -c conda-forge <package>
+   .. group-tab:: Mamba
 
-Only if the desired package (version) is not available, go for ``pip``:
+      **Prefer installing these packages via Conda**, and only rely on ``pip`` if that fails.
+      The default channels of Conda sometimes contain outdated versions.
+      Therefore, use the ``conda-forge`` channel:
 
-.. code-block:: shell
+      .. code-block:: shell
 
-   mamba activate climada_env
-   python -m pip install <package>
+         mamba install -n climada_env -c conda-forge <package>
+
+      Only if the desired package (version) is not available, go for ``pip``:
+
+      .. code-block:: shell
+
+         mamba activate climada_env
+         python -m pip install <package>
+
+   .. group-tab:: uv
+
+      If you need additional dependencies for a script or program, use ``-w/--with`` (possibly multiple times):
+
+      .. code-block:: shell
+
+         uv run --with <package> <script.py>
+
+      If you manage a downstream project, you can `add a new dependency <https://docs.astral.sh/uv/guides/projects/#managing-dependencies>`_.
+
+   .. group-tab:: Pip
+
+      Activate the venv.
+      Then use pip:
+
+      .. code-block:: shell
+
+         python -m pip install <package>
 
 Verifying Your Installation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If you followed the installation instructions, you already executed a single unit test.
-This test, however, will not cover all issues that could occur within your installation setup.
-If you are unsure if everything works as intended, try running all unit tests.
+If you are unsure if everything works as intended, try running all tests.
 This is only available for :ref:`advanced setups <install-advanced>`!
-Move into the CLIMADA repository, activate the environment and then execute the tests:
 
-.. code-block:: shell
+.. tabs::
 
-   cd <path/to/workspace>/climada_python
-   mamba activate climada_env
-   python -m unittest discover -s climada -p "test*.py"
+   .. group-tab:: Mamba
+
+      Move into the CLIMADA repository, activate the environment and then execute the tests:
+
+      .. code-block:: shell
+
+         cd <path/to/workspace>/climada_python
+         mamba activate climada_env
+         make unit_test
+         make integ_test
+
+   .. group-tab:: uv
+
+      Move into the CLIMADA repository and then execute the tests:
+
+      .. code-block:: shell
+
+         uv run -- make unit_test
+         uv run -- make integ_test
+
+   .. group-tab:: Pip
+
+      Move into the CLIMADA repository, activate the venv and then execute the tests:
+
+      .. code-block:: shell
+
+         cd <path/to/workspace>/climada_python
+         source .venv/bin/activate
+         make unit_test
+         make integ_test
 
 Error: ``ModuleNotFoundError``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -647,33 +995,45 @@ Error: ``ModuleNotFoundError``
 Something is wrong with the environment you are using.
 After **each** of the following steps, check if the problem is solved, and only continue if it is **not**:
 
-#. Make sure you are working in the CLIMADA environment:
+.. tabs::
 
-   .. code-block:: shell
+   .. group-tab:: Mamba
 
-      mamba activate climada_env
+      #. Make sure you are working in the CLIMADA environment:
 
-#. :ref:`Update the Conda environment and CLIMADA <update-climada>`.
+         .. code-block:: shell
 
-#. Conda will notify you if it is not up-to-date.
-   In this case, follow its instructions to update it.
-   Then, repeat the last step and update the environment and CLIMADA (again).
+            mamba activate climada_env
 
-#. Install the missing package manually.
-   Follow the instructions for :ref:`installing more packages <install-more-packages>`.
+      #. :ref:`Update the Conda environment and CLIMADA <update-climada>`.
 
-#. If you reached this point, something is severely broken.
-   The last course of action is to delete your CLIMADA environment:
+      #. Conda will notify you if it is not up-to-date.
+         In this case, follow its instructions to update it.
+         Then, repeat the last step and update the environment and CLIMADA (again).
 
-   .. code-block:: shell
+      #. Install the missing package manually.
+         Follow the instructions for :ref:`installing more packages <install-more-packages>`.
 
-      mamba deactivate
-      mamba env remove -n climada_env
+      #. If you reached this point, something is severely broken.
+         The last course of action is to delete your CLIMADA environment:
 
-   Now repeat the :ref:`installation process <install-choice>`.
+         .. code-block:: shell
 
-#. Still no good?
-   Please raise an `issue on GitHub <https://github.com/CLIMADA-project/climada_python/issues>`_ to get help.
+            mamba deactivate
+            mamba env remove -n climada_env
+
+         Now repeat the :ref:`installation process <install-choice>`.
+
+      #. Still no good?
+         Please raise an `issue on GitHub <https://github.com/CLIMADA-project/climada_python/issues>`_ to get help.
+
+   .. group-tab:: uv
+
+      *todo*
+
+   .. group-tab:: Pip
+
+      *todo*
 
 Logging Configuration
 ^^^^^^^^^^^^^^^^^^^^^
@@ -766,6 +1126,9 @@ Terminal, Command Line
 `Pixi`_
     The much faster modern package manager based on ``conda``.
 
+`uv`_
+    A modern, fast Python package manager.
+
 Environment (Programming)
     A setup where only a specific set of modules and programs can interact.
     This is especially useful if you want to install programs with mutually incompatible requirements.
@@ -795,3 +1158,4 @@ IDE
 .. _Miniforge: https://github.com/conda-forge/miniforge
 .. _Pixi: https://pixi.sh/
 .. _CLIMADA Petals: https://climada-petals.readthedocs.io/en/latest/
+.. _uv: https://docs.astral.sh/uv/

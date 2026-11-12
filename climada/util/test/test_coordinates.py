@@ -1924,6 +1924,10 @@ class TestRasterMeta(unittest.TestCase):
         self.assertAlmostEqual(res_lat, 1)
         self.assertAlmostEqual(res_lon, 1)
 
+    @unittest.skipIf(
+        tuple(map(int, gpd.__version__.split("."))) > (1, 1, 3),
+        "Change in geopandas resolution",
+    )
     def test_get_resolution_meters_pass(self):
         centr = Centroids.from_pnt_bounds((-180, -90, 180, 90), 1)
         centr.to_crs("EPSG:4087", inplace=True)  # meters
@@ -1968,7 +1972,6 @@ class TestRasterMeta(unittest.TestCase):
     def test_points_to_raster_pass(self):
         """Test points_to_raster"""
         for scheduler in [None, "threads", "synchronous", "processes"]:
-
             df_val = gpd.GeoDataFrame()
             x, y = np.meshgrid(np.linspace(0, 2, 5), np.linspace(40, 50, 10))
             df_val["latitude"] = y.flatten()
