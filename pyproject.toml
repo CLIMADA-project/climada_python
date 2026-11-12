@@ -83,6 +83,7 @@ doc = [
     "sphinx-design>=0.6.1",
     "sphinx-markdown-tables>=0.0.17",
     "sphinx-mdinclude>=0.6.2",
+    "sphinx-tabs>=3.5.0",
 ]
 interactive = [
     "ipython>=8.39.0",
