@@ -12,6 +12,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Added
 
+- Adds `CostIncome` class and related tutorial for future new `Measure` class. [#1277](https://github.com/CLIMADA-project/climada_python/pull/1277)
+
 ### Changed
 
 ### Fixed
