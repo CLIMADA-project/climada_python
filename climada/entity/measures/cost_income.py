@@ -28,6 +28,8 @@ import yaml
 
 from climada.entity.measures.measure_config import CostIncomeConfig
 
+__all__ = ["CostIncome"]
+
 
 class CostIncome:
     """

@@ -51,6 +51,7 @@ from scipy.sparse import csr_matrix
 from shapely.geometry import Point
 
 from climada.entity import Exposures, ImpactFunc, ImpactFuncSet
+from climada.entity.measures import Measure
 from climada.hazard import Centroids, Hazard
 
 # ---------------------------------------------------------------------------
@@ -306,3 +307,13 @@ def impfset_factory(impf_factory):
 @pytest.fixture
 def impfset(impfset_factory):
     return impfset_factory()
+
+
+@pytest.fixture
+def measure_on_exposures():
+    def reduce_exposure_value(exposures, reduction_factor):
+        """Reduces the value of all assets by a fixed percentage."""
+        exposures.gdf["value"] *= 1 - reduction_factor
+        return exposures
+
+    return Measure(name="Exposure reduction", exposures_changes=reduce_exposure_value)

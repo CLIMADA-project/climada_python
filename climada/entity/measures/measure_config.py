@@ -24,7 +24,6 @@ from __future__ import annotations
 import logging
 import warnings
 from dataclasses import MISSING, dataclass, field, fields
-from datetime import datetime
 from typing import TYPE_CHECKING, Any
 
 if TYPE_CHECKING:
@@ -37,10 +36,10 @@ import yaml
 LOGGER = logging.getLogger(__name__)
 
 __all__ = [
-    "HazardModifierConfig",
-    "ExposuresModifierConfig",
-    "ImpfsetModifierConfig",
     "CostIncomeConfig",
+    "ExposuresModifierConfig",
+    "HazardModifierConfig",
+    "ImpfsetModifierConfig",
     "MeasureConfig",
 ]
 
@@ -209,10 +208,14 @@ class ImpfsetModifierConfig(ModifierConfig):
         Additive offset applied to the PAA curve after multiplication.
         Default is ``0.0``.
     impf_int_mult : float, optional
-        Multiplicative factor applied to the intensity axis.
+        Inverse of the multiplicative factor applied to the intensity axis.
+        That is ``0.5`` would double the values of the intensity axis, namely reducing by 50%
+        the damages for a given intensity.
         Default is ``1.0``.
     impf_int_add : float, optional
-        Additive offset applied to the intensity axis after multiplication.
+        Negative additive offset applied to the intensity axis after multiplication.
+        That a positive value shifts the values of the intensity axis to the left, namely
+        shifting the impact function to the right.
         Default is ``0.0``.
     new_impfset_path : str, optional
         Path to an Excel file containing a replacement impact function set.
@@ -400,9 +403,9 @@ class CostIncomeConfig(ModifierConfig):
         Explicit cash flow schedule as a list of records with at minimum
         a ``"date"`` key (ISO 8601 string) and a value key. If provided,
         overrides the periodic cost/income logic.
-    """  # noqa
+    """
 
-    mkt_price_year: int | None = field(default_factory=lambda: datetime.today().year)
+    mkt_price_year: int | None = field(default_factory=lambda: pd.Timestamp.now().year)
     init_cost: float = 0.0
     periodic_cost: float = 0.0
     periodic_income: float = 0.0
@@ -412,7 +415,7 @@ class CostIncomeConfig(ModifierConfig):
     custom_cash_flows: list[dict] | None = None
 
     @classmethod
-    def from_cost_income(cls, cost_income: CostIncome) -> "CostIncomeConfig":
+    def from_cost_income(cls, cost_income: CostIncome) -> CostIncomeConfig:
         """
         Construct a :class:`CostIncomeConfig` from a live
         :class:`CostIncome` object.
@@ -530,7 +533,7 @@ class MeasureConfig(ModifierConfig):
         }
 
     @classmethod
-    def from_dict(cls, kwargs_dict: dict) -> "MeasureConfig":
+    def from_dict(cls, kwargs_dict: dict) -> MeasureConfig:
         """
         Instantiate a :class:`MeasureConfig` from a flat dictionary.
 
@@ -604,7 +607,7 @@ class MeasureConfig(ModifierConfig):
             )
 
     @classmethod
-    def from_yaml(cls, path: str) -> "MeasureConfig":
+    def from_yaml(cls, path: str) -> MeasureConfig:
         """
         Load a :class:`MeasureConfig` from a YAML file.
 
@@ -627,7 +630,7 @@ class MeasureConfig(ModifierConfig):
             return cls.from_dict(yaml.safe_load(opened_file)["measures"][0])
 
     @classmethod
-    def from_row(cls, row: pd.Series) -> "MeasureConfig":
+    def from_row(cls, row: pd.Series) -> MeasureConfig:
         """
         Construct a :class:`MeasureConfig` from a legacy Excel row.
 
