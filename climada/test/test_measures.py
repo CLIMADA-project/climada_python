@@ -29,7 +29,7 @@ import numpy as np
 import pytest
 
 from climada.engine.impact_calc import ImpactCalc
-from climada.engine.test.test_impact_calc import exposure
+from climada.entity.measures.helper import replace_hazard
 from climada.entity.measures.measure import Measure
 from climada.entity.measures.measure_config import (
     CostIncomeConfig,
@@ -38,6 +38,7 @@ from climada.entity.measures.measure_config import (
     ImpfsetModifierConfig,
     MeasureConfig,
 )
+from climada.entity.measures.measure_set import MeasureSet
 from climada.hazard.base import Hazard
 
 LOGGER = "climada.entity.measures.measure.LOGGER"
@@ -46,6 +47,32 @@ BASELINE_AAI = 18.0
 # Note: at_event() does not care about the frequency
 BASELINE_AT_EVENT = [0.0, 0.0, 500.0, 3750.0, 15000.0]
 CATEGORIES = [1, 1, 2, 1, 1, 3]
+
+BASELINE_AAI = 18.0
+
+MEASURE_MODIFIERS = {
+    "half_hazard": {"hazard_mod": {"haz_int_mult": 0.5}},
+    "quarter_hazard": {"hazard_mod": {"haz_int_mult": 0.25}},
+    "half_mdd": {"impfset": {"impf_mdd_mult": 0.5}},
+    "half_paa": {"impfset": {"impf_paa_mult": 0.5}},
+    "zero_1": {"exposures_mod": {"set_to_zero": [1]}},
+    "zero_2": {"exposures_mod": {"set_to_zero": [2]}},
+    "rp_cutoff": {"hazard_mod": {"impact_rp_cutoff": 200}},
+}
+
+# (names, expected AAI) once combined: the most effective change wins
+COMBINATIONS = [
+    (["half_hazard", "quarter_hazard"], 4.5),
+    (["half_mdd", "half_paa"], 4.5),
+    (["zero_1", "zero_2"], 12.0),
+    (["rp_cutoff", "half_hazard"], 7.5),
+]
+COMBINATION_IDS = ["hazards", "mdd_paa", "disjoint_exposures", "rp_cutoff_hazard"]
+
+
+def _aai(measure, triplet):
+    """Return the AAI of the triplet after applying `measure`."""
+    return measure.calc_impact(*triplet).aai_agg
 
 
 @pytest.fixture
@@ -96,9 +123,14 @@ def config_factory(hazard):
     return _make_config
 
 
-def _aai(measure, triplet, **kwargs):
-    """Return the AAI of the triplet after applying `measure`."""
-    return measure.calc_impact(*triplet, **kwargs).aai_agg
+@pytest.fixture
+def measure_set(config_factory):
+    return MeasureSet(
+        [
+            Measure.from_config(config_factory(name=name, **modifiers))
+            for name, modifiers in MEASURE_MODIFIERS.items()
+        ]
+    )
 
 
 class TestBaseline:
@@ -352,3 +384,203 @@ class TestCustomFunction:
         meas = Measure(name="", impfset_changes=wrong_change)
         with pytest.raises(TypeError, match="did not return an ImpactFuncSet"):
             meas.apply(*triplet)
+
+
+#########################################################################################
+#  Integration tests for MeasureSet.compose and MeasureSet.combine on real measures.    #
+#                                                                                       #
+#  Expected values follow the analytical design of ``conftest.py`` (baseline AAI = 18,  #
+#  linear impact function). Individual AAIs of the measures defined below:              #
+#  half_hazard = 9, quarter_hazard = 4.5, half_mdd = 9, half_paa = 9,                   #
+#  zero_1 = 14, zero_2 = 16, rp_cutoff = 15.                                            #
+#########################################################################################
+
+
+class TestCompose:
+    @pytest.mark.parametrize(
+        "names, expected_aai",
+        [
+            (["half_hazard", "half_mdd"], 4.5),
+            (["half_hazard", "quarter_hazard"], 2.25),  # effects multiply
+            (["rp_cutoff", "half_hazard"], 7.5),  # base triplet reaches the cutoff
+            (["zero_1", "zero_2"], 12.0),  # sequential, no conflict
+        ],
+        ids=["hazard_mdd", "hazards_multiply", "rp_cutoff_hazard", "exposures"],
+    )
+    def test_aai(self, measure_set, triplet, names, expected_aai):
+        composed = measure_set.compose(names)
+        assert _aai(composed, triplet) == pytest.approx(expected_aai)
+
+    def test_single_measure_is_equivalent(self, measure_set, triplet):
+        single = measure_set.select("half_mdd")["half_mdd"]
+        composed = measure_set.compose(["half_mdd"])
+        assert _aai(composed, triplet) == pytest.approx(_aai(single, triplet))
+
+
+class TestComposeOrder:
+    @pytest.fixture
+    def replace_set(self, config_factory, hazard_factory):
+        """MeasureSet of a 0.5 hazard scaling and a replacement by a 0.5 hazard."""
+        replacement = hazard_factory(intensity_scale=0.5)
+        scale = Measure.from_config(
+            config_factory(name="scale", hazard_mod={"haz_int_mult": 0.5})
+        )
+        replace = Measure("replace", hazard_changes=replace_hazard(replacement))
+        return MeasureSet([scale, replace]), replacement
+
+    @pytest.mark.parametrize(
+        "names, expected_aai",
+        [(["scale", "replace"], 4.5), (["replace", "scale"], 9.0)],
+        ids=["replace_then_scale", "scale_then_replace"],
+    )
+    def test_applied_right_to_left(self, replace_set, triplet, names, expected_aai):
+        measure_set, _ = replace_set
+        assert _aai(measure_set.compose(names), triplet) == pytest.approx(expected_aai)
+
+    @pytest.mark.xfail(
+        strict=True,
+        reason="replace_hazard returns a shared object that the next change "
+        "function scales in place.",
+    )
+    def test_replacement_hazard_is_not_mutated(self, replace_set, triplet):
+        measure_set, replacement = replace_set
+        before = replacement.intensity.toarray().copy()
+
+        _aai(measure_set.compose(["scale", "replace"]), triplet)
+
+        np.testing.assert_allclose(replacement.intensity.toarray(), before)
+
+
+class TestCombine:
+    @pytest.mark.parametrize("names, expected_aai", COMBINATIONS, ids=COMBINATION_IDS)
+    def test_aai(self, measure_set, triplet, names, expected_aai):
+        combined = measure_set.combine(names)
+        assert _aai(combined, triplet) == pytest.approx(expected_aai)
+
+    @pytest.mark.parametrize("names, _", COMBINATIONS, ids=COMBINATION_IDS)
+    def test_at_least_as_effective_as_each_member(self, measure_set, triplet, names, _):
+        combined_aai = _aai(measure_set.combine(names), triplet)
+        for name in names:
+            member_aai = _aai(measure_set.select(name)[name], triplet)
+            assert combined_aai <= member_aai + 1e-9
+
+    def test_conflicting_exposure_changes_raise(
+        self, measure_set, config_factory, triplet
+    ):
+        measure_set.append(
+            Measure.from_config(
+                config_factory(name="zero_1_bis", exposures_mod={"set_to_zero": [1]})
+            )
+        )
+        combined = measure_set.combine(["zero_1", "zero_1_bis"])
+        with pytest.raises(ValueError, match="Conflict"):
+            combined.calc_impact(*triplet)
+
+    def test_combining_a_composed_measure(self, measure_set, triplet):
+        composed = measure_set.compose(["half_hazard", "half_mdd"])
+        measure_set.append(composed)
+
+        names = [composed.name, "half_paa"]
+        combined = measure_set.combine(names)
+
+        assert combined.sub_measures == names
+        assert _aai(combined, triplet) == pytest.approx(2.25)
+
+
+class TestNoSideEffects:
+    @pytest.mark.parametrize("method", ["combine", "compose"])
+    def test_inputs_untouched(self, measure_set, triplet, method):
+        names = ["half_hazard", "half_mdd", "zero_1"]
+        exposures, _, hazard = triplet
+        intensity = hazard.intensity.toarray().copy()
+        values = exposures.gdf["value"].to_numpy().copy()
+
+        _aai(getattr(measure_set, method)(names), triplet)
+
+        np.testing.assert_array_equal(hazard.intensity.toarray(), intensity)
+        np.testing.assert_array_equal(exposures.gdf["value"].to_numpy(), values)
+        assert _aai(Measure("baseline"), triplet) == pytest.approx(BASELINE_AAI)
+
+
+class TestComposeVersusCombine:
+    @pytest.mark.parametrize(
+        "names",
+        [
+            ["half_hazard", "half_mdd"],
+            ["half_hazard", "zero_1"],
+            ["half_mdd", "zero_1"],
+        ],
+        ids=["hazard_impfset", "hazard_exposures", "impfset_exposures"],
+    )
+    def test_same_impact_for_measures_on_different_entities(
+        self, measure_set, triplet, names
+    ):
+        composed_aai = _aai(measure_set.compose(names), triplet)
+        combined_aai = _aai(measure_set.combine(names), triplet)
+        assert composed_aai == pytest.approx(combined_aai)
+
+    def test_differ_for_measures_on_the_same_entity(self, measure_set, triplet):
+        names = ["half_hazard", "quarter_hazard"]
+        composed_aai = _aai(measure_set.compose(names), triplet)
+        combined_aai = _aai(measure_set.combine(names), triplet)
+        assert composed_aai < combined_aai
+
+
+class TestCosts:
+    @pytest.fixture
+    def costed_set(self, config_factory):
+        return MeasureSet(
+            [
+                Measure.from_config(
+                    config_factory(
+                        name=name,
+                        cost_income={
+                            "init_cost": cost,
+                            "periodic_cost": cost / 10,
+                            "periodic_income": cost / 100,
+                        },
+                    )
+                )
+                for name, cost in [("a", 100.0), ("b", 200.0), ("c", 300.0)]
+            ]
+        )
+
+    @pytest.mark.parametrize("method", ["combine", "compose"])
+    def test_costs_and_incomes_are_summed(self, costed_set, method):
+        cost_income = getattr(costed_set, method)(["a", "b", "c"]).cost_income
+
+        # costs are stored as negative numbers
+        assert cost_income.init_cost == pytest.approx(-600.0)
+        assert cost_income.periodic_cost == pytest.approx(-60.0)
+        assert cost_income.periodic_income == pytest.approx(6.0)
+
+    @pytest.mark.parametrize("method", ["combine", "compose"])
+    @pytest.mark.parametrize(
+        "first, second, message",
+        [
+            ({"mkt_price_year": 2020}, {"mkt_price_year": 2021}, "market price years"),
+            (
+                {"cost_yearly_growth_rate": 0.0},
+                {"cost_yearly_growth_rate": 0.02},
+                "cost_growth_rate",
+            ),
+            (
+                {"income_yearly_growth_rate": 0.0},
+                {"income_yearly_growth_rate": 0.02},
+                "income_growth_rate",
+            ),
+            ({"freq": "Y"}, {"freq": "M"}, "period frequencies"),
+        ],
+        ids=["mkt_price_year", "cost_growth", "income_growth", "freq"],
+    )
+    def test_incompatible_cost_incomes_raise(
+        self, config_factory, method, first, second, message
+    ):
+        measure_set = MeasureSet(
+            [
+                Measure.from_config(config_factory(name="a", cost_income=first)),
+                Measure.from_config(config_factory(name="b", cost_income=second)),
+            ]
+        )
+        with pytest.raises(ValueError, match=message):
+            getattr(measure_set, method)(["a", "b"])
