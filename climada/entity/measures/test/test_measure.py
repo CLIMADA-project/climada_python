@@ -24,13 +24,15 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from climada.entity import Exposures, ImpactFuncSet
 from climada.entity.measures.cost_income import CostIncome
 from climada.entity.measures.measure import Measure, allow_kwargs
+from climada.hazard import Hazard
 
 
-def _make_mock():
+def _make_mock(mock_type=None):
     """Return a simple MagicMock to stand in for Exposures / ImpactFuncSet / Hazard."""
-    m = MagicMock()
+    m = MagicMock(spec=mock_type)
     m.__deepcopy__ = lambda self: copy.copy(self)  # survive deepcopy
     return m
 
@@ -111,8 +113,9 @@ class TestMeasureInit:
 
         m = Measure("test", exposures_changes=my_fn)
         # The wrapped function should not raise on extra kwargs
-        stub = _make_mock()
+        stub = _make_mock(mock_type=Exposures)
         result = m.exposures_changes(stub, unexpected_kwarg=42)
+
         assert result is stub
 
 
@@ -130,13 +133,13 @@ class TestIsSerializable:
 class TestApplyExposuresChanges:
     def test_identity_does_not_deepcopy(self):
         m = Measure("test")  # defaults to identity_function
-        exp = _make_mock()
+        exp = _make_mock(mock_type=Exposures)
         result = m.apply_exposures_changes(exp, enforce_copy=True)
         assert result is exp  # identity: no copy
 
     def test_custom_fn_deepcopies_when_enforce_copy(self):
-        copied = _make_mock()
-        original = _make_mock()
+        copied = _make_mock(mock_type=Exposures)
+        original = _make_mock(mock_type=Exposures)
 
         def fn(obj, **kw):
             return obj
@@ -150,9 +153,10 @@ class TestApplyExposuresChanges:
             assert result is copied
 
     def test_no_deepcopy_when_enforce_copy_false(self):
-        original = _make_mock()
+        original = _make_mock(mock_type=Exposures)
 
         def fn(obj, **kw):
+
             return obj
 
         with patch("climada.entity.measures.measure.copy.deepcopy") as mock_dc:
@@ -168,7 +172,8 @@ class TestApplyExposuresChanges:
             return obj
 
         m = Measure("test", exposures_changes=fn)
-        exp = _make_mock()
+        exp = _make_mock(mock_type=Exposures)
+
         m.apply_exposures_changes(exp, enforce_copy=False, year=2030)
         assert received.get("year") == 2030
 
@@ -178,18 +183,21 @@ class TestApplyExposuresChanges:
 
         m = Measure("test", exposures_changes=fn)
         with pytest.raises(TypeError, match="required positional argument"):
-            m.apply_exposures_changes(_make_mock(), enforce_copy=False)
+            m.apply_exposures_changes(
+                _make_mock(mock_type=Exposures), enforce_copy=False
+            )
 
 
 class TestApplyImpfsetChanges:
     def test_identity_returns_same_object(self):
         m = Measure("test")
-        impfset = _make_mock()
+        impfset = _make_mock(mock_type=ImpactFuncSet)
+
         result = m.apply_impfset_changes(impfset, enforce_copy=True)
         assert result is impfset
 
     def test_custom_fn_deepcopies_when_enforce_copy(self):
-        copied = _make_mock()
+        copied = _make_mock(mock_type=ImpactFuncSet)
 
         def fn(obj, **kw):
             return obj
@@ -198,7 +206,9 @@ class TestApplyImpfsetChanges:
             "climada.entity.measures.measure.copy.deepcopy", return_value=copied
         ):
             m = Measure("test", impfset_changes=fn)
-            result = m.apply_impfset_changes(_make_mock(), enforce_copy=True)
+            result = m.apply_impfset_changes(
+                _make_mock(mock_type=ImpactFuncSet), enforce_copy=True
+            )
             assert result is copied
 
     def test_kwargs_forwarded(self):
@@ -209,27 +219,33 @@ class TestApplyImpfsetChanges:
             return obj
 
         m = Measure("test", impfset_changes=fn)
-        m.apply_impfset_changes(_make_mock(), enforce_copy=False, scenario="rcp85")
+        m.apply_impfset_changes(
+            _make_mock(mock_type=ImpactFuncSet), enforce_copy=False, scenario="rcp85"
+        )
         assert received.get("scenario") == "rcp85"
 
     def test_missing_required_arg_raises_type_error_with_message(self):
+
         def fn(obj, required_arg):
             return obj
 
         m = Measure("test", impfset_changes=fn)
         with pytest.raises(TypeError, match="required positional argument"):
-            m.apply_impfset_changes(_make_mock(), enforce_copy=False)
+            m.apply_impfset_changes(
+                _make_mock(mock_type=ImpactFuncSet), enforce_copy=False
+            )
 
 
 class TestApplyHazardChanges:
     def test_identity_returns_same_object(self):
         m = Measure("test")
-        hazard = _make_mock()
+        hazard = _make_mock(mock_type=Hazard)
+
         result = m.apply_hazard_changes(hazard, enforce_copy=True)
         assert result is hazard
 
     def test_custom_fn_deepcopies_when_enforce_copy(self):
-        copied = _make_mock()
+        copied = _make_mock(mock_type=Hazard)
 
         def fn(obj, **kw):
             return obj
@@ -238,7 +254,9 @@ class TestApplyHazardChanges:
             "climada.entity.measures.measure.copy.deepcopy", return_value=copied
         ):
             m = Measure("test", hazard_changes=fn)
-            result = m.apply_hazard_changes(_make_mock(), enforce_copy=True)
+            result = m.apply_hazard_changes(
+                _make_mock(mock_type=Hazard), enforce_copy=True
+            )
             assert result is copied
 
     def test_no_deepcopy_when_enforce_copy_false(self):
@@ -247,7 +265,7 @@ class TestApplyHazardChanges:
 
         with patch("climada.entity.measures.measure.copy.deepcopy") as mock_dc:
             m = Measure("test", hazard_changes=fn)
-            m.apply_hazard_changes(_make_mock(), enforce_copy=False)
+            m.apply_hazard_changes(_make_mock(mock_type=Hazard), enforce_copy=False)
             mock_dc.assert_not_called()
 
     def test_kwargs_forwarded(self):
@@ -258,7 +276,9 @@ class TestApplyHazardChanges:
             return obj
 
         m = Measure("test", hazard_changes=fn)
-        m.apply_hazard_changes(_make_mock(), enforce_copy=False, intensity_scale=0.8)
+        m.apply_hazard_changes(
+            _make_mock(mock_type=Hazard), enforce_copy=False, intensity_scale=0.8
+        )
         assert received.get("intensity_scale") == 0.8
 
     def test_missing_required_arg_raises_type_error_with_message(self):
@@ -267,12 +287,13 @@ class TestApplyHazardChanges:
 
         m = Measure("test", hazard_changes=fn)
         with pytest.raises(TypeError, match="required positional argument"):
-            m.apply_hazard_changes(_make_mock(), enforce_copy=False)
+            m.apply_hazard_changes(_make_mock(mock_type=Hazard), enforce_copy=False)
 
 
 class TestApply:
     def _make_measure_with_trackers(self):
         """Return a Measure whose change functions record received kwargs."""
+
         exp_kwargs, haz_kwargs, impfset_kwargs = {}, {}, {}
 
         def track_exp(obj, **kw):
@@ -297,13 +318,21 @@ class TestApply:
 
     def test_returns_three_objects(self):
         m = Measure("test")
-        exp, impfset, haz = _make_mock(), _make_mock(), _make_mock()
+        exp, impfset, haz = (
+            _make_mock(mock_type=Exposures),
+            _make_mock(mock_type=ImpactFuncSet),
+            _make_mock(mock_type=Hazard),
+        )
         result = m.apply(exp, impfset, haz)
         assert len(result) == 3
 
     def test_default_triplet_context_passed_as_kwargs(self):
         m, exp_kw, haz_kw, impfset_kw = self._make_measure_with_trackers()
-        exp, impfset, haz = _make_mock(), _make_mock(), _make_mock()
+        exp, impfset, haz = (
+            _make_mock(mock_type=Exposures),
+            _make_mock(mock_type=ImpactFuncSet),
+            _make_mock(mock_type=Hazard),
+        )
         m.apply(exp, impfset, haz, enforce_copy=False)
 
         assert exp_kw["base_exposures"] is exp
@@ -312,7 +341,12 @@ class TestApply:
 
     def test_entity_specific_kwargs_override_defaults(self):
         m, exp_kw, _, _ = self._make_measure_with_trackers()
-        exp, impfset, haz = _make_mock(), _make_mock(), _make_mock()
+        exp, impfset, haz = (
+            _make_mock(mock_type=Exposures),
+            _make_mock(mock_type=ImpactFuncSet),
+            _make_mock(mock_type=Hazard),
+        )
+
         custom = _make_mock()
         m.apply(
             exp,
@@ -325,7 +359,12 @@ class TestApply:
 
     def test_entity_specific_kwargs_not_leaked_to_other_functions(self):
         m, exp_kw, haz_kw, _ = self._make_measure_with_trackers()
-        exp, impfset, haz = _make_mock(), _make_mock(), _make_mock()
+
+        exp, impfset, haz = (
+            _make_mock(mock_type=Exposures),
+            _make_mock(mock_type=ImpactFuncSet),
+            _make_mock(mock_type=Hazard),
+        )
         m.apply(
             exp,
             impfset,
@@ -338,9 +377,14 @@ class TestApply:
 
     def test_apply_with_all_identities_returns_originals(self):
         m = Measure("test")  # all identity functions
-        exp, impfset, haz = _make_mock(), _make_mock(), _make_mock()
+        exp, impfset, haz = (
+            _make_mock(mock_type=Exposures),
+            _make_mock(mock_type=ImpactFuncSet),
+            _make_mock(mock_type=Hazard),
+        )
         new_exp, new_impfset, new_haz = m.apply(exp, impfset, haz)
         assert new_exp is exp
+
         assert new_impfset is impfset
         assert new_haz is haz
 
@@ -361,7 +405,12 @@ class TestApply:
             hazard_changes=track("hazard"),
             impfset_changes=track("impfset"),
         )
-        m.apply(_make_mock(), _make_mock(), _make_mock(), enforce_copy=False)
+        m.apply(
+            _make_mock(mock_type=Exposures),
+            _make_mock(mock_type=ImpactFuncSet),
+            _make_mock(mock_type=Hazard),
+            enforce_copy=False,
+        )
         assert call_order == ["exposures", "hazard", "impfset"]
 
 
@@ -372,7 +421,12 @@ class TestCalcImpact:
 
     def _make_triplet(self, with_centroids=True):
         """Return mock (exposures, impfset, hazard) with a ``gdf.columns`` list."""
-        exp, impfset, haz = _make_mock(), _make_mock(), _make_mock()
+        exp, impfset, haz = (
+            _make_mock(mock_type=Exposures),
+            _make_mock(mock_type=ImpactFuncSet),
+            _make_mock(mock_type=Hazard),
+        )
+
         haz.centr_exp_col = self.CENTR_COL
         exp.gdf.columns = ["value"] + ([self.CENTR_COL] if with_centroids else [])
         return exp, impfset, haz
@@ -421,6 +475,7 @@ class TestCalcImpact:
     def test_enforce_copy_and_kwargs_forwarded_to_apply(self):
         triplet = self._make_triplet()
         kwargs_hazard = {"threshold": 3.5}
+
         m = Measure("test")
         with (
             patch(self.IMPACT_CALC),
@@ -434,7 +489,7 @@ class TestCalcImpact:
 
     def test_kwargs_reach_change_function_and_result_is_used(self):
         exp, impfset, haz = self._make_triplet()
-        changed_haz = _make_mock()
+        changed_haz = _make_mock(mock_type=Hazard)
         changed_haz.centr_exp_col = self.CENTR_COL
         received = {}
 
@@ -457,6 +512,7 @@ class TestCalcImpact:
 
     def test_warns_and_assigns_centroids_when_missing(self):
         exp, impfset, haz = self._make_triplet(with_centroids=False)
+
         order = MagicMock()
         order.attach_mock(exp.assign_centroids, "assign")
         with patch(self.IMPACT_CALC) as mock_calc, patch(self.LOGGER) as mock_logger:
