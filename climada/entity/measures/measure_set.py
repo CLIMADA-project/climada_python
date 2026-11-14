@@ -26,7 +26,7 @@ __all__ = ["MeasureSet"]
 
 import json
 import logging
-from collections.abc import Iterable
+from collections.abc import Iterable, Iterator, Mapping, MutableMapping
 from functools import reduce
 
 import geopandas as gpd
@@ -101,7 +101,7 @@ DEF_VAR_EXCEL = {
 """Excel variable names"""
 
 
-class MeasureSet:
+class MeasureSet(MutableMapping[str, Measure]):
     """Contains measures of type Measure.
 
     Attributes
@@ -110,7 +110,7 @@ class MeasureSet:
         Contains Measure objects keyed by their name.
     """
 
-    def __init__(self, measures: Iterable[Measure]):
+    def __init__(self, measures: Iterable[Measure] | Mapping[str, Measure] = ()):
         """Initialize a new MeasureSet object.
 
         Parameters
@@ -119,7 +119,40 @@ class MeasureSet:
             The measures to include in the MeasureSet.
 
         """
-        self._data: dict[str, Measure] = {meas.name: meas for meas in measures}
+        self._data: dict[str, Measure] = {}
+        values = measures.values() if isinstance(measures, Mapping) else measures
+        for measure in values:
+            self.append(measure)
+
+    def __getitem__(self, name: str) -> Measure:
+        return self._data[name]
+
+    def __setitem__(self, name: str, measure: Measure) -> None:
+        """Add or overwrite a measure.
+
+        Raises
+        ------
+        TypeError
+            If `measure` is not an instance of Measure.
+        ValueError
+            If `name` differs from ``measure.name``.
+        """
+        if not isinstance(measure, Measure):
+            raise TypeError(f"Expected Measure, got {type(measure).__name__}")
+        if name != measure.name:
+            raise ValueError(
+                f"Key '{name}' does not match the measure name '{measure.name}'."
+            )
+        self._data[name] = measure
+
+    def __delitem__(self, name: str) -> None:
+        del self._data[name]
+
+    def __iter__(self) -> Iterator[str]:
+        return iter(self._data)
+
+    def __len__(self) -> int:
+        return len(self._data)
 
     def append(self, measure: Measure):
         """
@@ -139,7 +172,7 @@ class MeasureSet:
         if not isinstance(measure, Measure):
             raise TypeError(f"Expected Measure, got {type(measure).__name__}")
 
-        self._data[measure.name] = measure
+        self[measure.name] = measure
 
     def select(self, names: str | Iterable[str]) -> dict[str, Measure]:
         """
@@ -170,20 +203,15 @@ class MeasureSet:
     @property
     def names(self) -> list[str]:
         """Return the list of the measure names"""
-        return list(self._data.keys())
-
-    def __len__(self) -> int:
-        """Number of measures in the set."""
-        return len(self._data)
+        return list(self)
 
     @property
     def size(self) -> int:
         """Number of measures in the set."""
-        return self.__len__()
+        return len(self)
 
-    def __contains__(self, item: str) -> bool:
-        """Check if a measure name exists in the set."""
-        return item in self._data
+    def __repr__(self) -> str:
+        return f"{self.__class__.__name__}({self.names})"
 
     def compose(self, names: list[str], combo_name: str | None = None) -> Measure:
         """
