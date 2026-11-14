@@ -14,20 +14,18 @@ climada\.hazard\.base module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.io module
---------------------------
+climada\.hazard\.forecast module
+--------------------------------
 
-.. automodule:: climada.hazard.io
+.. automodule:: climada.hazard.forecast
     :members:
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.xarray module
-------------------------------
+climada\.hazard\.io module
+--------------------------
 
-Helper module ro read xarray data as Hazard.
-
-.. automodule:: climada.hazard.xarray
+.. automodule:: climada.hazard.io
     :members:
     :undoc-members:
     :show-inheritance:
@@ -80,10 +78,10 @@ climada\.hazard\.tc\_tracks\_synth module
     :undoc-members:
     :show-inheritance:
 
-climada\.hazard\.forecast module
---------------------------------
+climada\.hazard\.xarray module
+------------------------------
 
-.. automodule:: climada.hazard.forecast
+.. automodule:: climada.hazard.xarray
     :members:
     :undoc-members:
     :show-inheritance:

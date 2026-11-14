@@ -86,6 +86,11 @@ In particular, please check out the [Pull Request instructions](https://climada-
 We provide a description template for pull requests that helps you provide the essential information for reviewers.
 It also contains a checklist for both pull request authors and reviewers to guide the review process.
 
+## AI Use
+
+We employ a relatively [strict policy](AI_POLICY.md) on the use of AI tools.
+In short, you may use them, but we require you to stand by your suggestions as if you authored them yourself.
+
 [docs]: https://climada-python.readthedocs.io/en/latest/
 [devguide]: https://climada-python.readthedocs.io/en/latest/#developer-guide
 [testing]: https://climada-python.readthedocs.io/en/latest/development/Guide_Testing.html

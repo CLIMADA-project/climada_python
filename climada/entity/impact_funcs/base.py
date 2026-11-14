@@ -306,7 +306,7 @@ class ImpactFunc:
     def set_sigmoid_impf(self, *args, **kwargs):
         """This function is deprecated, use LitPop.from_countries instead."""
         LOGGER.warning(
-            "The use of ImpactFunc.set_sigmoid_impf is deprecated."
+            "The use of ImpactFunc.set_sigmoid_impf is deprecated. "
             "Use ImpactFunc.from_sigmoid_impf instead."
         )
         self.__dict__ = ImpactFunc.from_sigmoid_impf(*args, **kwargs).__dict__

@@ -26,21 +26,21 @@ import csv
 import datetime as dt
 import logging
 import warnings
-from collections.abc import Collection
+from collections.abc import Collection, Iterable
 from dataclasses import dataclass, field
 from itertools import zip_longest
 from pathlib import Path
-from typing import Any, Iterable, Union
+from typing import Any, Union
 
 import contextily as ctx
 import geopandas as gpd
 import h5py
-import matplotlib.animation as animation
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import xlsxwriter
 from deprecation import deprecated
+from matplotlib import animation
 from matplotlib.colors import Normalize
 from pandas.api.types import is_string_dtype
 from pyproj import CRS as pyprojCRS
@@ -49,6 +49,7 @@ from scipy import sparse
 from tqdm import tqdm
 
 import climada.util.coordinates as u_coord
+import climada.util.dataframe_handling as u_pd
 import climada.util.dates_times as u_dt
 import climada.util.interpolation as u_interp
 import climada.util.plot as u_plot
@@ -283,7 +284,7 @@ class Impact:
            instead.
         """
         LOGGER.warning(
-            "The Impact.tot_value attribute is deprecated."
+            "The Impact.tot_value attribute is deprecated. "
             "Use Exposures.affected_total_value to calculate the affected "
             "total exposure value based on a specific hazard intensity "
             "threshold"
@@ -294,7 +295,7 @@ class Impact:
     def tot_value(self, value):
         """Set the total exposure value close to a hazard"""
         LOGGER.warning(
-            "The Impact.tot_value attribute is deprecated."
+            "The Impact.tot_value attribute is deprecated. "
             "Use Exposures.affected_total_value to calculate the affected "
             "total exposure value based on a specific hazard intensity "
             "threshold"
@@ -485,7 +486,7 @@ class Impact:
     def calc_impact_year_set(self, all_years=True, year_range=None):
         """This function is deprecated, use Impact.impact_per_year instead."""
         LOGGER.warning(
-            "The use of Impact.calc_impact_year_set is deprecated."
+            "The use of Impact.calc_impact_year_set is deprecated. "
             "Use Impact.impact_per_year instead."
         )
         return self.impact_per_year(all_years=all_years, year_range=year_range)
@@ -566,7 +567,7 @@ class Impact:
         )
         if self.imp_mat.size == 0:
             raise ValueError(
-                "Attribute imp_mat is empty. Recalculate Impact"
+                "Attribute imp_mat is empty. Recalculate Impact "
                 "instance with parameter save_mat=True"
             )
 
@@ -713,7 +714,7 @@ class Impact:
         LOGGER.info("Computing return period map for impacts: %s", threshold_impact)
         if self.imp_mat.size == 0:
             raise ValueError(
-                "Attribute imp_mat is empty. Recalculate Impact"
+                "Attribute imp_mat is empty. Recalculate Impact "
                 "instance with parameter save_mat=True"
             )
 
@@ -987,7 +988,7 @@ class Impact:
         buffer=0.0,
         extend="neither",
         zoom=10,
-        url=ctx.providers.CartoDB.Positron,
+        url=ctx.providers.Esri.WorldGrayCanvas,
         axis=None,
         **kwargs,
     ):
@@ -1010,7 +1011,7 @@ class Impact:
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : str, optional
-            image source, default: ctx.providers.CartoDB.Positron
+            image source, default: ctx.providers.Esri.WorldGrayCanvas
         axis : matplotlib.axes.Axes, optional
             axis to use
         kwargs : dict, optional
@@ -1077,7 +1078,7 @@ class Impact:
         """
         if self.imp_mat.size == 0:
             raise ValueError(
-                "Attribute imp_mat is empty. Recalculate Impact"
+                "Attribute imp_mat is empty. Recalculate Impact "
                 "instance with parameter save_mat=True"
             )
         if "cmap" not in kwargs:
@@ -1105,7 +1106,7 @@ class Impact:
         buffer=0.0,
         extend="neither",
         zoom=10,
-        url=ctx.providers.CartoDB.Positron,
+        url=ctx.providers.Esri.WorldGrayCanvas,
         axis=None,
         **kwargs,
     ):
@@ -1132,7 +1133,7 @@ class Impact:
         zoom : int, optional
             zoom coefficient used in the satellite image
         url : str, optional
-            image source, default: ctx.providers.CartoDB.Positron
+            image source, default: ctx.providers.Esri.WorldGrayCanvas
         axis : matplotlib.axes.Axes, optional
             axis to use
         kwargs : dict, optional
@@ -1145,7 +1146,7 @@ class Impact:
         """
         if self.imp_mat.size == 0:
             raise ValueError(
-                "Attribute imp_mat is empty. Recalculate Impact"
+                "Attribute imp_mat is empty. Recalculate Impact "
                 "instance with parameter save_mat=True"
             )
 
@@ -1567,7 +1568,7 @@ class Impact:
             Impact from excel file
         """
         LOGGER.info("Reading %s", file_name)
-        imp_df = pd.read_excel(file_name)
+        imp_df = u_pd.read_excel(file_name)
         imp = cls(haz_type=str(imp_df["haz_type"][0]))
 
         imp.unit = imp_df["unit"][0]

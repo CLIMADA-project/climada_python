@@ -105,11 +105,11 @@ class TestNightLight(unittest.TestCase):
 
                 nightlight.get_required_nl_files(bounds=bounds)
 
-                self.assertEqual(
-                    "Invalid bounds supplied. `bounds` must be tuple"
-                    " with (min_lon, min_lat, max_lon, max_lat).",
-                    str(cm.exception),
-                )
+            self.assertEqual(
+                "Invalid bounds supplied. `bounds` must be tuple"
+                " with (min_lon, min_lat, max_lon, max_lat).",
+                str(cm.exception),
+            )
 
         # test first correct bounds configurations
         req_files = nightlight.get_required_nl_files(bounds=bounds_c1)

@@ -10,5 +10,6 @@ that handle tropical cyclones and winter storms more specifically.
 
     climada_hazard_Hazard
     Tropical Cyclones <climada_hazard_TropCyclone>
-    European Winter Storms <climada_hazard_StormEurope>
     Copernicus Seasonal Forecast Tools <climada_hazard_copernicus_seasonal_forecast>
+    European Winter Storms <climada_hazard_StormEurope>
+    European Hail <climada_hazard_HailEurope>

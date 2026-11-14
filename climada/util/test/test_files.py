@@ -19,8 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Test files_handler module.
 """
 
+import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
+
+import requests
 
 from climada.util.constants import (
     DEMO_DIR,
@@ -29,6 +33,7 @@ from climada.util.constants import (
     SYSTEM_DIR,
 )
 from climada.util.files_handler import (
+    DownloadException,
     download_file,
     get_extension,
     get_file_names,
@@ -42,11 +47,62 @@ class TestDownloadUrl(unittest.TestCase):
     def test_wrong_url_fail(self):
         """Error raised when wrong url."""
         url = "https://ngdc.noaa.gov/eog/data/web_data/v4composites/F172012.v4.tar"
-        try:
+        with self.assertRaises(DownloadException) as cm:
+            download_file(url)
+        self.assertIsInstance(cm.exception.__cause__, requests.exceptions.HTTPError)
+        self.assertIn("404 Client Error:", str(cm.exception.__cause__))
+
+
+class TestDownloadFileName(unittest.TestCase):
+    """The local file name is derived from the URL path only, so that a
+    query string or fragment never becomes part of the file name."""
+
+    def _download(self, url, download_dir):
+        response = mock.Mock()
+        response.status_code = 200
+        response.headers = {"content-length": "4"}
+        response.iter_content.return_value = [b"data"]
+        with mock.patch(
+            "climada.util.files_handler.requests.get", return_value=response
+        ):
+            return Path(download_file(url, download_dir=download_dir))
+
+    def test_plain_url_pass(self):
+        """Regression: a plain URL keeps its file name."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = self._download("https://example.ethz.ch/data/file.zip", tmp_dir)
+            self.assertEqual(path.name, "file.zip")
+            self.assertTrue(path.is_file())
+
+    def test_query_string_pass(self):
+        """The query string is not part of the file name."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = self._download(
+                "https://example.ethz.ch/data/"
+                "GMT_intermediate_coast_distance_01d.zip?download=1",
+                tmp_dir,
+            )
+            self.assertEqual(path.name, "GMT_intermediate_coast_distance_01d.zip")
+            self.assertTrue(path.is_file())
+
+    def test_fragment_pass(self):
+        """The fragment is not part of the file name."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
+            path = self._download(
+                "https://example.ethz.ch/data/file.zip#section", tmp_dir
+            )
+            self.assertEqual(path.name, "file.zip")
+            self.assertTrue(path.is_file())
+
+    def test_no_file_name_fail(self):
+        """A URL whose path holds no file name raises, query string or not."""
+        with tempfile.TemporaryDirectory() as tmp_dir:
             with self.assertRaises(ValueError):
-                download_file(url)
-        except IOError:
-            pass
+                self._download("https://example.ethz.ch/data/?download=1", tmp_dir)
+            with self.assertRaises(ValueError):
+                self._download("https://example.ethz.ch/data/", tmp_dir)
+            with self.assertRaises(ValueError):
+                self._download("https://example.ethz.ch", tmp_dir)
 
 
 class TestToStrList(unittest.TestCase):

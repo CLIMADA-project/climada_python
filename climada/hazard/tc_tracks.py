@@ -1677,7 +1677,7 @@ class TCTracks:
     def calc_random_walk(self, **kwargs):
         """Deprecated. Use `TCTracks.calc_perturbed_trajectories` instead."""
         LOGGER.warning(
-            "The use of TCTracks.calc_random_walk is deprecated."
+            "The use of TCTracks.calc_random_walk is deprecated. "
             "Use TCTracks.calc_perturbed_trajectories instead."
         )
         if kwargs.get("ens_size"):

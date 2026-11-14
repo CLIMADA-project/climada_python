@@ -39,7 +39,8 @@ CRS_WGS84 = "EPSG:4326"
 EXP_DESC = "Test exposure dataset"
 EXPOSURE_REF_YEAR = 2020
 EXPOSURE_VALUE_UNIT = "USD"
-VALUES = np.array([0, 1000, 2000, 3000, 4000, 5000])
+EXPOSURE_INDICES = np.array([0, 1, 2, 7, 8, 5])
+EXPOSURE_VALUES = np.array([0, 1000, 2000, 3000, 4000, 5000])
 CATEGORIES = np.array([1, 1, 2, 1, 1, 3])
 
 # Exposure coordinates
@@ -60,7 +61,7 @@ HAZ_LATS = EXP_LATS + HAZ_JITTER
 # Hazard events
 EVENT_IDS = np.array([1, 2, 3, 4, 5])
 EVENT_NAMES = ["ev1", "ev2", "ev3", "ev4", "ev5"]
-DATES = np.array([1, 2, 3, 4, 5])
+DATES = np.array([1, 2, 7, 4, 5])
 
 # Frequency are choosen so that they cumulate nicely
 # to correspond to 250, 100, 50, and 20y return periods (for impacts)
@@ -80,9 +81,9 @@ IMPF_ID = 1
 IMPF_NAME = "IMPF_1"
 
 # Sanity checks
-for const in [VALUES, CATEGORIES, EXP_LONS, EXP_LATS]:
+for const in [EXPOSURE_VALUES, CATEGORIES, EXP_LONS, EXP_LATS]:
     assert len(const) == len(
-        VALUES
+        EXPOSURE_VALUES
     ), "VALUES, REGIONS, CATEGORIES, EXP_LONS, EXP_LATS should all have the same lengths."
 
 for const in [EVENT_IDS, EVENT_NAMES, DATES, FREQUENCY]:
@@ -93,7 +94,7 @@ for const in [EVENT_IDS, EVENT_NAMES, DATES, FREQUENCY]:
 
 @pytest.fixture(scope="session")
 def exposure_values():
-    return VALUES.copy()
+    return EXPOSURE_VALUES.copy()
 
 
 @pytest.fixture(scope="session")
@@ -124,6 +125,7 @@ def exposures_factory(
                 "geometry": exposure_geometry,
             },
             crs=CRS_WGS84,
+            index=EXPOSURE_INDICES,
         )
         if group_id is not None:
             gdf["group_id"] = group_id

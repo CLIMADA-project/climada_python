@@ -292,7 +292,8 @@ They are also not needed for using CLIMADA.
 However, if you want to develop CLIMADA, we strongly recommend you install them.
 
 With the ``climada_env`` activated, enter the workspace directory and then the CLIMADA repository as above.
-Then, add the ``test`` extra specification to the ``pip install`` command (**mind the quotation marks**, and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
+Then, add the ``test`` extra specification to the ``pip install`` command (**mind the quotation marks**,
+and see also `pip install examples <https://pip.pypa.io/en/stable/cli/pip_install/#examples>`_):
 
 .. code-block:: shell
 

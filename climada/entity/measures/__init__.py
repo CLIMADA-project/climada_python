@@ -19,10 +19,12 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 This module implements measure and measure set objects, as well as cost income
 objects which enable the definition of adapation measures and their associated
 effects on each part of risk/impacts (exposure, vulnerability and hazard).
+
 """
 
+from .cost_income import CostIncome
 from .measure import Measure
 from .measure_config import MeasureConfig
 from .measure_set import MeasureSet
 
-__all__ = ["Measure", "MeasureSet", "MeasureConfig"]
+__all__ = ["CostIncome", "Measure", "MeasureConfig", "MeasureSet"]

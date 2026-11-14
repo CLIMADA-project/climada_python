@@ -1,20 +1,20 @@
-climada\.entity\._legacy_measures package
-=========================================
+climada\.entity\.\_legacy\_measures package
+===========================================
 
 .. note::
    This package implements the legacy way of defining measures
    and is retained for compatibility.
 
-climada\.entity\._legacy_measures\.base module
-----------------------------------------------
+climada\.entity\.\_legacy\_measures\.base module
+------------------------------------------------
 
 .. automodule:: climada.entity._legacy_measures.base
     :members:
     :undoc-members:
     :show-inheritance:
 
-climada\.entity\._legacy_measures\.measure\_set module
-------------------------------------------------------
+climada\.entity\.\_legacy\_measures\.measure\_set module
+--------------------------------------------------------
 
 .. automodule:: climada.entity._legacy_measures.measure_set
     :members:

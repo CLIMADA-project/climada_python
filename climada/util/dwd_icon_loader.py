@@ -37,7 +37,7 @@ from pathlib import Path
 import numpy as np
 
 from climada.util.config import CONFIG
-from climada.util.files_handler import download_file
+from climada.util.files_handler import DownloadException, download_file
 
 LOGGER = logging.getLogger(__name__)
 
@@ -102,7 +102,7 @@ def download_icon_grib(
         if not bz2_pathfile_i.exists():
             try:
                 download_file(url + file_name_i, download_dir=download_dir)
-            except Exception as err:
+            except DownloadException as err:
                 err_msg = ""
                 if run_datetime > (dt.datetime.utcnow() - dt.timedelta(hours=6)):
                     err_msg += (
@@ -320,7 +320,7 @@ def download_icon_centroids_file(model_name="icon-eu-eps", download_dir=None):
         if not bz2_pathfile.exists():
             try:
                 download_file(url + file_name, download_dir=download_path)
-            except ValueError as err:
+            except DownloadException as err:
                 raise ValueError(f"Error while downloading {url + file_name}.") from err
         with open(bz2_pathfile, "rb") as source, open(nc_pathfile, "wb") as dest:
             dest.write(bz2.decompress(source.read()))

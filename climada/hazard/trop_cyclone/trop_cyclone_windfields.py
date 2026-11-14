@@ -131,7 +131,7 @@ def compute_angular_windspeeds(
 
     if cyclostrophic is not None:
         warnings.warn(
-            "The 'cyclostrophic' argument is deprecated and will be removed in a future"
+            "The 'cyclostrophic' argument is deprecated and will be removed in a future "
             "release. Include it in 'model_kwargs' instead.",
             DeprecationWarning,
         )

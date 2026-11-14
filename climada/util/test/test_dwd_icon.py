@@ -27,6 +27,7 @@ import numpy as np
 
 from climada.util.constants import SYSTEM_DIR
 from climada.util.dwd_icon_loader import (
+    DownloadException,
     _create_icon_grib_name,
     delete_icon_grib,
     download_icon_centroids_file,
@@ -81,11 +82,8 @@ class TestDownloadIcon(unittest.TestCase):
 
     def test_download_icon(self):
         """Value Error if date to old"""
-        try:
-            with self.assertRaises(ValueError):
-                download_icon_grib(dt.datetime(2020, 1, 1))
-        except IOError:
-            pass
+        with self.assertRaises(DownloadException):
+            download_icon_grib(dt.datetime(2020, 1, 1))
 
 
 class TestDownloadIconCentroids(unittest.TestCase):

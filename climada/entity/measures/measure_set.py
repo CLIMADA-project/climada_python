@@ -19,26 +19,30 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 Define MeasureSet class.
 """
 
+import copy
+from typing import no_type_check
+
 __all__ = ["MeasureSet"]
 
+import json
 import logging
+from collections.abc import Iterable
 from functools import reduce
-from typing import Any, Callable, Dict, Iterable, List, Optional, TypeVar, cast
 
+import geopandas as gpd
 import numpy as np
 import pandas as pd
+import yaml
 
 import climada.util.hdf5_handler as u_hdf5
 from climada.entity.exposures.base import Exposures
 from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
-from climada.entity.measures.base import Measure
 from climada.entity.measures.cost_income import CostIncome
 from climada.entity.measures.helper import composite_fun
-from climada.entity.measures.measure_config import ImpfsetModifierConfig, MeasureConfig
+from climada.entity.measures.measure import Measure
+from climada.entity.measures.measure_config import MeasureConfig
 from climada.hazard.base import Hazard
-from climada.util.string_parsers import parse_mapping_string, parse_range
-
-T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
+from climada.util.string_parsers import parse_mapping_string
 
 LOGGER = logging.getLogger(__name__)
 
@@ -115,7 +119,7 @@ class MeasureSet:
             The measures to include in the MeasureSet.
 
         """
-        self._data: Dict[str, Measure] = {meas.name: meas for meas in measures}
+        self._data: dict[str, Measure] = {meas.name: meas for meas in measures}
 
     def append(self, measure: Measure):
         """
@@ -137,71 +141,51 @@ class MeasureSet:
 
         self._data[measure.name] = measure
 
-    def measures(self, names: Optional[Iterable[str]] = None) -> Dict[str, Measure]:
+    def select(self, names: str | Iterable[str]) -> dict[str, Measure]:
         """
         Get a dictionary of measures.
 
         Parameters
         ----------
-        names : Iterable[str], optional
-            Filter by these measure names. If None, returns all.
+        names : str|[str]
+            Filter by these measure names.
 
         Returns
         -------
-        Dict[str, Measure]
-            Dictionary of measure names and objects.
+        dict[str, Measure]
+            dictionary of measure names and objects.
 
         """
-        if names is None:
-            return self._data
-        return {name: self._data[name] for name in names if name in self._data}
+        if isinstance(names, str):
+            name_list = [names]
+        else:
+            name_list = list(names)
 
-    def get_measure(self, haz_type=None, name=None):
-        """This function is deprecated, use Entity.from_mat instead."""
-        LOGGER.warning(
-            "The use of MeasureSet.get_measure() is deprecated."
-            "Use MeasureSet.measures().values() instead."
-        )
-        if haz_type is not None:
-            LOGGER.warning(
-                "Selection per hazard type has been deprecated (as measures are no longer"
-                "considered specific to a hazard)"
-            )
-        return self.measures(names=name).values()
+        missing = [name for name in name_list if name not in self._data]
+        if missing:
+            raise ValueError(f"No measure named {missing} in the measure set.")
+
+        return {name: self._data[name] for name in name_list}
 
     @property
-    def names(self):
-        """Get measures names contained for the hazard type provided.
-        Return all names for each hazard type if no input hazard type.
-
-        Parameters
-        ----------
-        haz_type : str, optional
-            hazard type from which to obtain the names
-
-        Returns
-        -------
-        list(Measure.name) (if haz_type provided),
-        {Measure.haz_type : list(Measure.name)} (if no haz_type)
-        """
+    def names(self) -> list[str]:
+        """Return the list of the measure names"""
         return list(self._data.keys())
+
+    def __len__(self) -> int:
+        """Number of measures in the set."""
+        return len(self._data)
 
     @property
     def size(self) -> int:
-        """
-        Number of measures in the set.
-
-        Returns
-        -------
-        int
-        """
-        return len(self._data)
+        """Number of measures in the set."""
+        return self.__len__()
 
     def __contains__(self, item: str) -> bool:
         """Check if a measure name exists in the set."""
         return item in self._data
 
-    def compose(self, names: List[str], combo_name: Optional[str] = None) -> Measure:
+    def compose(self, names: list[str], combo_name: str | None = None) -> Measure:
         """
         Compose multiple measures into a single meta-Measure.
 
@@ -242,7 +226,7 @@ class MeasureSet:
             or if the MeasureSet is empty.
 
         """
-        meas_list = list(self.measures(names).values())
+        meas_list = list(self.select(names).values())
 
         if not meas_list:
             raise ValueError("No measures found to compose.")
@@ -263,7 +247,7 @@ class MeasureSet:
             )
 
         return Measure(
-            name=combo_name or "_".join(names) + "composed",
+            name=combo_name or "_".join(names) + "_composed",
             exposures_changes=exposure_changes,
             impfset_changes=impfset_changes,
             hazard_changes=hazard_changes,
@@ -278,7 +262,7 @@ class MeasureSet:
         fractions = [h.fraction for h in modified_hazards]
         frequencies = [h.frequency for h in modified_hazards]
 
-        hazard_mod = modified_hazards[0]
+        hazard_mod = copy.deepcopy(modified_hazards[0])
         hazard_mod.intensity = reduce(lambda a, b: a.minimum(b), intensities)
         hazard_mod.fraction = reduce(lambda a, b: a.minimum(b), fractions)
         hazard_mod.frequency = np.minimum.reduce(frequencies)
@@ -324,6 +308,11 @@ class MeasureSet:
                 "All change DataFrames must have identical column structure and order."
             )
 
+        if not all(
+            new_gdf.index.equals(base_exp.gdf.index) for new_gdf in new_exps_gdfs
+        ):
+            raise ValueError("All change DataFrames must have the same index.")
+
         # Align all changes into a single MultiIndexed DataFrame
         # This stacks all change-sets on top of each other
         stack = pd.concat(
@@ -335,12 +324,15 @@ class MeasureSet:
         # Create a broadcasted baseline to match the stack's shape
         # We use take() to repeat baseline rows for every change-set
         baseline_repeated = base_exp.gdf.iloc[
-            np.tile(np.arange(len(base_exp.gdf)), len(base_exp.gdf))
+            np.tile(np.arange(len(base_exp.gdf)), len(modified_exps))
         ]
         baseline_repeated.index = stack.index  # Align indices for direct comparison
 
         # Identify changes: Mask is True where a cell differs from baseline
-        diff_mask = stack != baseline_repeated
+        # Note that a != b is true if a.isna() and b.isna(), so it is trickier
+        diff_mask = ~(
+            (stack == baseline_repeated) | (stack.isna() & baseline_repeated.isna())
+        )
 
         # Check for Conflicts:
         # Sum the True values across the 'change_idx' level for every (row, col)
@@ -361,14 +353,19 @@ class MeasureSet:
         # We take the baseline and update it with the sum of differences
         # Only works if the data is numeric. For general objects (like 'if_' IDs):
         result = base_exp.gdf.copy()
+        geometry = result["geometry"]
 
         # Efficiently collapse the stack:
         # Since only one change exists per cell (checked in step 5),
         # we can 'first' or 'max' to get the non-baseline value.
         updates = stack.where(diff_mask).groupby(level="row_idx").first()
+        updates = updates.combine_first(result)
+
+        # combine_first is pure DataFrame
+        new_gdf = gpd.GeoDataFrame(updates, geometry=geometry, crs=result.crs)
 
         exp_mod = Exposures(
-            updates.combine_first(result),
+            new_gdf,
             crs=base_exp.crs,
             description=base_exp.description,
             ref_year=base_exp.ref_year,
@@ -377,7 +374,7 @@ class MeasureSet:
         return exp_mod
 
     def combine(
-        self, names: Optional[list[str]] = None, combo_name: Optional[str] = None
+        self, names: list[str] | None = None, combo_name: str | None = None
     ) -> Measure:
         """Combine multiple measures into a single composite Measure object.
 
@@ -446,7 +443,7 @@ class MeasureSet:
         the combined operation.
         """
         names = self.names if names is None else names
-        meas_list = list(self.measures(names).values())
+        meas_list = list(self.select(names).values())
 
         if not meas_list:
             raise ValueError("No measures found to combine.")
@@ -485,22 +482,9 @@ class MeasureSet:
             cost_income=CostIncome.comb_cost_income([m.cost_income for m in meas_list]),
         )
 
+    @no_type_check
     @classmethod
-    def from_excel(cls, file_name: str, var_names: Optional[dict] = None):
-        """Read excel file following template and return a MeasureSet."""
-        if var_names is None:
-            var_names = DEF_VAR_EXCEL
-
-        df = pd.read_excel(file_name, sheet_name=var_names["sheet_name"])
-        # inv_map = {v: k for k, v in var_names["col_name"].items()}
-        df = df.rename(columns=var_names["col_name"])
-
-        # Extract row processing to reduce locals in main method
-        measures = [cls._process_excel_row(row) for _, row in df.iterrows()]
-        return MeasureSet(measures)
-
-    @classmethod
-    def from_mat(cls, file_name: str, var_names: Optional[dict] = None) -> "MeasureSet":
+    def from_mat(cls, file_name: str, var_names: dict | None = None) -> "MeasureSet":
         """Read MATLAB file generated with previous MATLAB CLIMADA version.
 
         Parameters
@@ -549,6 +533,7 @@ class MeasureSet:
                     "and will be ignored. It will be reimplemented in a future version.",
                     u_hdf5.get_str_from_ref(file_name, data[vn["name"]][idx][0]),
                 )
+
             if data[vn["risk_att"]][idx][0] or data[vn["risk_cov"]][idx][0]:
                 LOGGER.warning(
                     "Measure '%s' has risk_transf_attach/cover set, which is no longer "
@@ -557,27 +542,29 @@ class MeasureSet:
                 )
 
             return MeasureConfig.from_dict(
-                dict(
-                    name=u_hdf5.get_str_from_ref(file_name, data[vn["name"]][idx][0]),
-                    haz_type=haz_type,
-                    impf_id=impf_id,
-                    impf_mdd_mult=data[vn["mdd_a"]][idx][0],
-                    impf_mdd_add=data[vn["mdd_b"]][idx][0],
-                    impf_paa_mult=data[vn["paa_a"]][idx][0],
-                    impf_paa_add=data[vn["paa_b"]][idx][0],
-                    intensity_multiplier=float(haz_int_a),
-                    intensity_add=float(haz_int_b),
-                    new_hazard_path=haz_set if haz_set != "nil" else None,
-                    impact_rp_cutoff=float(data[vn["haz_frq"]][idx][0]) or None,
-                    reassign_impf_id=(
+                {
+                    "name": u_hdf5.get_str_from_ref(
+                        file_name, data[vn["name"]][idx][0]
+                    ),
+                    "haz_type": haz_type,
+                    "impf_id": impf_id,
+                    "impf_mdd_mult": float(data[vn["mdd_a"]][idx][0]),
+                    "impf_mdd_add": float(data[vn["mdd_b"]][idx][0]),
+                    "impf_paa_mult": float(data[vn["paa_a"]][idx][0]),
+                    "impf_paa_add": float(data[vn["paa_b"]][idx][0]),
+                    "intensity_multiplier": float(haz_int_a),
+                    "intensity_add": float(haz_int_b),
+                    "new_hazard_path": haz_set if haz_set != "nil" else None,
+                    "impact_rp_cutoff": float(data[vn["haz_frq"]][idx][0]) or None,
+                    "reassign_impf_id": (
                         parse_mapping_string(fun_map)
                         if fun_map and fun_map != "nil"
                         else None
                     ),
-                    new_exposures_path=exp_set if exp_set != "nil" else None,
-                    init_cost=float(data[vn["cost"]][idx][0]),
-                    color_rgb=tuple(np.fromstring(color_str, dtype=float, sep=" ")),
-                )
+                    "new_exposures_path": exp_set if exp_set != "nil" else None,
+                    "init_cost": float(data[vn["cost"]][idx][0]),
+                    "color_rgb": tuple(np.fromstring(color_str, dtype=float, sep=" ")),
+                }
             )
 
         data = u_hdf5.read(file_name)
@@ -598,11 +585,18 @@ class MeasureSet:
         return cls(measures)
 
     @classmethod
-    def _load_dataset(cls, path: Optional[str], loader_func) -> Optional[Any]:
-        """Load dataset from path if valid, otherwise return None."""
-        if path and path != "nil":
-            return loader_func(path)
-        return None
+    def from_excel(cls, file_name: str, var_names: dict | None = None):
+        """Read excel file following template and return a MeasureSet."""
+        if var_names is None:
+            var_names = DEF_VAR_EXCEL
+
+        df = pd.read_excel(file_name, sheet_name=var_names["sheet_name"])  # ty: ignore
+        # inv_map = {v: k for k, v in var_names["col_name"].items()}
+        df = df.rename(columns=var_names["col_name"])
+
+        # Extract row processing to reduce locals in main method
+        measures = [cls._process_excel_row(row) for _, row in df.iterrows()]
+        return cls(measures)
 
     @classmethod
     def _process_excel_row(cls, row: pd.Series) -> Measure:
@@ -612,7 +606,7 @@ class MeasureSet:
     def to_dict(self) -> dict:
         """Serialize all serializable measures to a dict. Skips function-only measures."""
         serializable = {
-            name: measure._config.to_dict()
+            name: measure.to_dict()
             for name, measure in self._data.items()
             if measure.is_serializable
         }
@@ -628,33 +622,30 @@ class MeasureSet:
 
     @classmethod
     def from_dict(cls, d: dict) -> "MeasureSet":
+        """Build a MeasureSet from a dictionary configuration."""
         measures = [
             Measure.from_config(MeasureConfig.from_dict(m)) for m in d["measures"]
         ]
         return cls(measures)
 
     def to_yaml(self, path: str) -> None:
-        import yaml
-
-        with open(path, "w") as f:
+        """Write the MeasureSet to a yaml file. Only serializable measures are written."""
+        with open(path, "w", encoding="utf-8") as f:
             yaml.dump(self.to_dict(), f, default_flow_style=False, sort_keys=False)
 
     @classmethod
     def from_yaml(cls, path: str) -> "MeasureSet":
-        import yaml
-
-        with open(path) as f:
+        """Read a MeasureSet from a yaml file."""
+        with open(path, "r", encoding="utf-8") as f:
             return cls.from_dict(yaml.safe_load(f))
 
     def to_json(self, path: str) -> None:
-        import json
-
-        with open(path, "w") as f:
+        """Write the MeasureSet to a json file. Only serializable measures are written."""
+        with open(path, "w", encoding="utf-8") as f:
             json.dump(self.to_dict(), f, indent=2)
 
     @classmethod
     def from_json(cls, path: str) -> "MeasureSet":
-        import json
-
-        with open(path) as f:
+        """Read a MeasureSet from a json file."""
+        with open(path, "r", encoding="utf-8") as f:
             return cls.from_dict(json.load(f))

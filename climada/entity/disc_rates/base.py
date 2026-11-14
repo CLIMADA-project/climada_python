@@ -32,6 +32,7 @@ import pandas as pd
 import xlsxwriter
 
 import climada.util.checker as u_check
+import climada.util.dataframe_handling as u_pd
 import climada.util.finance as u_fin
 import climada.util.hdf5_handler as u_hdf5
 
@@ -259,7 +260,7 @@ class DiscRates:
     def read_mat(self, *args, **kwargs):
         """This function is deprecated, use ``DiscRates.from_mat`` instead."""
         LOGGER.warning(
-            "The use of DiscRates.read_mat is deprecated."
+            "The use of DiscRates.read_mat is deprecated. "
             "Use DiscRates.from_mat instead."
         )
         self.__dict__ = DiscRates.from_mat(*args, **kwargs).__dict__
@@ -293,7 +294,7 @@ class DiscRates:
         """
         if var_names is None:
             var_names = DEF_VAR_EXCEL
-        dfr = pd.read_excel(file_name, var_names["sheet_name"])
+        dfr = u_pd.read_excel(file_name, var_names["sheet_name"])
         try:
             years = dfr[var_names["col_name"]["year"]].values.astype(int, copy=False)
             rates = dfr[var_names["col_name"]["disc"]].values
@@ -305,7 +306,7 @@ class DiscRates:
     def read_excel(self, *args, **kwargs):
         """This function is deprecated, use DiscRates.from_excel instead."""
         LOGGER.warning(
-            "The use of DiscRates.read_excel is deprecated."
+            "The use of DiscRates.read_excel is deprecated. "
             "Use DiscRates.from_excel instead."
         )
         self.__dict__ = DiscRates.from_excel(*args, **kwargs).__dict__
