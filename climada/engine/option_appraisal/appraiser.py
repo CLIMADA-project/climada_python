@@ -20,7 +20,7 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 import copy
 import logging
-from typing import Iterable
+from collections.abc import Iterable
 
 import pandas as pd
 from tqdm import tqdm
