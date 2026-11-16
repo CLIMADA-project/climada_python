@@ -110,7 +110,7 @@ class StaticAppraiser(StaticRiskTrajectory):
         """Adds the risk metric calculators for the different adaptation options."""
         calculators = [risk_metrics_calculators] + [
             risk_metrics_calculators.apply_measure(meas)
-            for _, meas in measure_set.measures().items()
+            for meas in measure_set.values()
         ]
         return calculators
 
@@ -224,7 +224,7 @@ class StaticAppraiser(StaticRiskTrajectory):
             if measure_name == NO_MEASURE_VALUE:
                 return 0.0
 
-            return self.measure_set.measures()[measure_name].cost_income.init_cost
+            return self.measure_set[measure_name].cost_income.init_cost
 
         metric_df = self._handle_group_categories(metric_df)
         if self._risk_disc_rates:
