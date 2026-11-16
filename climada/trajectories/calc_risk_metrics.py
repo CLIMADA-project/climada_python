@@ -30,6 +30,7 @@ import datetime
 import itertools
 import logging
 import re
+from typing import Any
 
 import numpy as np
 import pandas as pd
@@ -37,7 +38,8 @@ from scipy.sparse import csr_matrix
 
 from climada.engine.impact import Impact, ImpactFreqCurve
 from climada.engine.impact_calc import ImpactCalc
-from climada.entity._legacy_measures.base import Measure
+from climada.entity.measures import Measure
+from climada.entity.measures.types import KwargsSpec, MeasureKwargs
 from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     CONTRIBUTION_BASE_RISK_NAME,
@@ -70,12 +72,12 @@ from climada.util.config import CONFIG
 LOGGER = logging.getLogger(__name__)
 
 __all__ = [
-    "CalcRiskMetricsPoints",
     "CalcRiskMetricsPeriod",
+    "CalcRiskMetricsPoints",
+    "calc_freq_curve",
     "calc_per_date_aais",
     "calc_per_date_eais",
     "calc_per_date_rps",
-    "calc_freq_curve",
 ]
 
 
@@ -118,6 +120,33 @@ def lazy_property(method):
         return getattr(self, attr_name)
 
     return _lazy
+
+
+def resolve_kwargs(spec: KwargsSpec | None, snapshot) -> dict[str, Any]:
+    """Return the kwargs to apply a measure to `snapshot`.
+
+    Parameters
+    ----------
+    spec : MeasureKwargs or callable, optional
+        Static kwargs, or a function ``snapshot -> MeasureKwargs``.
+    snapshot : Snapshot
+        The snapshot the measure is applied to.
+
+    Returns
+    -------
+    MeasureKwargs
+
+    Raises
+    ------
+    TypeError
+        If `spec` (or the provider's return value) is not a `MeasureKwargs`.
+    """
+    if spec is None:
+        return {}
+    resolved = spec(snapshot) if callable(spec) else spec
+    if not isinstance(resolved, MeasureKwargs):
+        raise TypeError(f"Expected MeasureKwargs, got {type(resolved).__name__}")
+    return resolved.to_apply_kwargs()
 
 
 class CalcRiskMetricsPoints:
@@ -208,7 +237,7 @@ class CalcRiskMetricsPoints:
     @impact_computation_strategy.setter
     def impact_computation_strategy(self, value, /):
         if not isinstance(value, ImpactComputationStrategy):
-            raise ValueError(
+            raise TypeError(
                 "The provided value is not an ImpactComputationStrategy object. "
                 "See the trajectory module documentation for more information on "
                 "how to define your own impact computation strategies."
@@ -364,7 +393,12 @@ class CalcRiskMetricsPoints:
         rp_df[UNIT_COL_NAME] = self.snapshots[0].exposure.value_unit
         return rp_df
 
-    def apply_measure(self, measure: Measure) -> "CalcRiskMetricsPoints":
+    def apply_measure(
+        self,
+        measure: Measure,
+        enforce_copy: bool = True,
+        kwargs_spec: KwargsSpec | None = None,
+    ) -> "CalcRiskMetricsPoints":
         """Creates a new `CalcRiskMetricsPoints` object by applying the effects
         of the given measure.
 
@@ -384,7 +418,14 @@ class CalcRiskMetricsPoints:
             The risk period with given measure applied.
 
         """
-        snapshots = [snap.apply_measure(measure) for snap in self.snapshots]
+        snapshots = [
+            snap.apply_measure(
+                measure=measure,
+                enforce_copy=enforce_copy,
+                **resolve_kwargs(kwargs_spec, snap),
+            )
+            for snap in self.snapshots
+        ]
         risk_period = CalcRiskMetricsPoints(
             snapshots,
             self.impact_computation_strategy,
@@ -529,7 +570,7 @@ class CalcRiskMetricsPeriod:
         ret = pd.period_range(
             date1,
             date2,
-            freq=freq,  # type: ignore
+            freq=freq,
             name=name,
         )
         return ret
@@ -552,7 +593,7 @@ class CalcRiskMetricsPeriod:
     @date_idx.setter
     def date_idx(self, value, /):
         if not isinstance(value, pd.PeriodIndex):
-            raise ValueError("Not a PeriodIndex")
+            raise TypeError("Not a PeriodIndex")
 
         self._date_idx = value  # Avoids weird hourly data
         self._time_resolution = self.date_idx.freq
@@ -588,7 +629,7 @@ class CalcRiskMetricsPeriod:
     @interpolation_strategy.setter
     def interpolation_strategy(self, value, /):
         if not isinstance(value, ImpactInterpolationStrategy):
-            raise ValueError("Not an interpolation strategy")
+            raise TypeError("Not an interpolation strategy")
 
         self._interpolation_strategy = value
         self._reset_impact_data()
@@ -601,7 +642,7 @@ class CalcRiskMetricsPeriod:
     @impact_computation_strategy.setter
     def impact_computation_strategy(self, value, /):
         if not isinstance(value, ImpactComputationStrategy):
-            raise ValueError("Not an impact computation strategy")
+            raise TypeError("Not an impact computation strategy")
 
         self._impact_computation_strategy = value
         self._reset_impact_data()

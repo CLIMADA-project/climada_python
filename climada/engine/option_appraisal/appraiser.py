@@ -31,7 +31,7 @@ from climada.engine.option_appraisal.constants import (
     REFERENCE_RISK_NAME,
 )
 from climada.entity.disc_rates.base import DiscRates
-from climada.entity.measures.measure_set import MeasureSet
+from climada.entity.measures import MeasureSet
 from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPoints
 from climada.trajectories.constants import (
     COORD_ID_COL_NAME,
@@ -65,6 +65,8 @@ class StaticAppraiser(StaticRiskTrajectory):
         risk_disc_rates: DiscRates | None = None,
         cost_disc_rates: DiscRates | None = None,
         impact_computation_strategy: ImpactComputationStrategy | None = None,
+        measure_kwargs=None,
+        enforce_baseline_copy=True,
     ):
         """Initialize a new `StaticAppraiser`.
 
@@ -90,6 +92,12 @@ class StaticAppraiser(StaticRiskTrajectory):
             of the two snapshots. Defaults to :class:`ImpactCalcComputation`.
 
         """
+        self._measure_kwargs = dict(measure_kwargs or {})
+        self._enforce_copy = enforce_baseline_copy
+        self.applied_kwargs = {}  # (snapshot date, measure name) -> resolved kwargs
+        unknown = set(self._measure_kwargs) - set(measure_set.names)
+        if unknown:
+            raise ValueError(f"Kwargs given for unknown measures: {sorted(unknown)}")
 
         self._cost_disc_rates = cost_disc_rates
         self.measure_set = copy.deepcopy(measure_set)
@@ -100,17 +108,25 @@ class StaticAppraiser(StaticRiskTrajectory):
             impact_computation_strategy=impact_computation_strategy,
         )
         self._risk_metrics_calculators = self._add_adaptation_metrics_calculators(
-            self._risk_metrics_calculators, measure_set
+            self._risk_metrics_calculators,
+            measure_set,
+            enforce_copy=self._enforce_copy,
+            measure_specs=self._measure_kwargs,
         )
 
     @staticmethod
     def _add_adaptation_metrics_calculators(
-        risk_metrics_calculators, measure_set: MeasureSet
+        risk_metrics_calculators,
+        measure_set: MeasureSet,
+        enforce_copy,
+        measure_specs: dict,
     ) -> list[CalcRiskMetricsPoints]:
         """Adds the risk metric calculators for the different adaptation options."""
         calculators = [risk_metrics_calculators] + [
-            risk_metrics_calculators.apply_measure(meas)
-            for meas in measure_set.values()
+            risk_metrics_calculators.apply_measure(
+                meas, enforce_copy=enforce_copy, kwargs_spec=measure_specs[meas_name]
+            )
+            for meas_name, meas in measure_set.items()
         ]
         return calculators
 
