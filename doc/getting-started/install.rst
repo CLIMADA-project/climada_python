@@ -80,11 +80,11 @@ If you have Python installed, Pip should be installed alongside it.
    * - `uv`_
      - ✅
      - ❌
-   * - Pip
+   * - `Pip`_
      - ✅
      - ❌
 
-**We highly recommend `Mamba`_ or `Conda`_, as this supports both simple and advanced installations for both Core and Petals**, and installs a useful shell on Windows.
+We **highly recommend** `Mamba`_ or `Conda`_, as this supports **both** simple and advanced installations for both Core and Petals, and also installs a useful shell on **Windows**.
 The tool ``mamba`` (see :ref:`conda-instead-of-mamba`) is available in the installer `Miniforge`_:
 
 .. tabs::
@@ -111,19 +111,20 @@ The tool ``mamba`` (see :ref:`conda-instead-of-mamba`) is available in the insta
 
 .. _python-versions:
 
-.. admonition:: Python Versions
+Python Versions
+^^^^^^^^^^^^^^^
 
-   CLIMADA is primarily tested against a **supported** Python version, but is allowed to run with others.
-   If you follow the installation instructions exactly, you will create an environment with the supported version.
-   Depending on your setup, you are free to choose another allowed version, but we recommend the supported one.
+CLIMADA is primarily tested against a **supported** Python version, but is allowed to run with others.
+If you follow the installation instructions exactly, you will create an environment with the supported version.
+Depending on your setup, you are free to choose another allowed version, but we recommend the supported one.
 
-   .. list-table::
-      :width: 60%
+.. list-table::
+   :width: 60%
 
-      * - **Supported Version**
-        - ``3.11``
-      * - Allowed Versions
-        - ``3.11``, ``3.12``, ``3.13``
+   * - **Supported Version**
+      - ``3.11``
+   * - Allowed Versions
+      - ``3.11``, ``3.12``, ``3.13``
 
 
 .. _install-simple:
@@ -397,7 +398,7 @@ The following steps depend on your choice of :ref:`package manager <install-mana
 Install Developer Dependencies (Optional)
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Building the documentation and running the entire test suite of CLIMADA requires additional dependencies () which are not installed by default.
+Building the documentation and running the entire test suite of CLIMADA requires additional dependencies, which are not installed by default.
 They are also not needed for using CLIMADA.
 However, if you want to develop CLIMADA, we strongly recommend you install them.
 
@@ -433,7 +434,8 @@ Installation works as follows:
 
    .. group-tab:: uv
 
-      No action required, ``uv sync`` installs the ``dev`` dependency group by default.
+      No action required. ``uv sync`` installs the ``dev`` dependency group by default.
+
       To request (only) a specific group, execute
 
       .. code-block:: shell
@@ -995,45 +997,66 @@ Error: ``ModuleNotFoundError``
 Something is wrong with the environment you are using.
 After **each** of the following steps, check if the problem is solved, and only continue if it is **not**:
 
-.. tabs::
+#. If you are working with Conda or Pip, make sure you are working in the CLIMADA environment or venv.
+   This is usually indicated by ``(climada_env)`` (or the name you chose) in the beginning of your command line.
 
-   .. group-tab:: Mamba
+   .. tabs::
 
-      #. Make sure you are working in the CLIMADA environment:
+      .. group-tab:: Mamba
 
          .. code-block:: shell
 
             mamba activate climada_env
 
-      #. :ref:`Update the Conda environment and CLIMADA <update-climada>`.
+      .. group-tab:: Pip
 
-      #. Conda will notify you if it is not up-to-date.
-         In this case, follow its instructions to update it.
-         Then, repeat the last step and update the environment and CLIMADA (again).
+         .. code-block:: shell
 
-      #. Install the missing package manually.
-         Follow the instructions for :ref:`installing more packages <install-more-packages>`.
+            source <path/to/venv>/bin/activate
 
-      #. If you reached this point, something is severely broken.
-         The last course of action is to delete your CLIMADA environment:
+#. :ref:`Update the environment and CLIMADA <update-climada>`.
+
+#. Make sure your package manager is up-to-date.
+
+#. Install the missing package manually.
+   Follow the instructions for :ref:`installing more packages <install-more-packages>`.
+
+#. If you reached this point, something is severely broken.
+
+   .. tabs::
+
+      .. group-tab:: Mamba
+
+         The last course of action is to delete your CLIMADA environment.
 
          .. code-block:: shell
 
             mamba deactivate
             mamba env remove -n climada_env
 
-         Now repeat the :ref:`installation process <install-choice>`.
+         Then repeat the :ref:`installation process <install-choice>`.
 
-      #. Still no good?
-         Please raise an `issue on GitHub <https://github.com/CLIMADA-project/climada_python/issues>`_ to get help.
+      .. group-tab:: uv
 
-   .. group-tab:: uv
+         Reinstall all packages:
 
-      *todo*
+         .. code-block:: shell
 
-   .. group-tab:: Pip
+            uv sync --reinstall
 
-      *todo*
+      .. group-tab:: Pip
+
+         The last course of action is to delete your venv.
+
+         .. code-block:: shell
+
+            deactivate
+            rm -r <path/to/venv>
+
+         Then repeat the :ref:`installation process <install-choice>`.
+
+#. Still no good?
+   Please raise an `issue on GitHub <https://github.com/CLIMADA-project/climada_python/issues>`_ to get help.
 
 Logging Configuration
 ^^^^^^^^^^^^^^^^^^^^^
@@ -1159,3 +1182,4 @@ IDE
 .. _Pixi: https://pixi.sh/
 .. _CLIMADA Petals: https://climada-petals.readthedocs.io/en/latest/
 .. _uv: https://docs.astral.sh/uv/
+.. _Pip: https://pip.pypa.io/en/stable/index.html
