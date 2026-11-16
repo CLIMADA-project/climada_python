@@ -834,6 +834,7 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
         self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
+        np.testing.assert_allclose(at_reg_event["A"], self.imp.at_event)
 
         # Aggregate over two different regions
         region_ids = ["A", "B"]
@@ -845,6 +846,7 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
         self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
+        np.testing.assert_allclose(at_reg_event, self.imp.imp_mat.toarray())
 
     def test_admin0(self):
         """Test with aggregation to countries"""
