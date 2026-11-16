@@ -315,6 +315,7 @@ class TestCombine:
         combo = measure_set.combine()
 
         with patch.object(MeasureSet, helper) as mock_helper:
+            mock_helper.return_value = MagicMock(spec=spec)
             result = getattr(combo, method)(obj, enforce_copy=False)
 
         # identity sub-measures return the input, one modified object per measure
