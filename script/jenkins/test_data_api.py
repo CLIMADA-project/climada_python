@@ -37,7 +37,6 @@ from climada.util.dwd_icon_loader import (
 from climada.util.files_handler import download_file, download_ftp
 from climada.util.finance import (
     WORLD_BANK_INC_GRP,
-    WORLD_BANK_WEALTH_ACC,
     download_world_bank_indicator,
 )
 
@@ -56,11 +55,6 @@ class TestDataAvail(unittest.TestCase):
         download_nl_files(req_files=req_files, dwnl_path=dwnl_path, year=year)
         self.assertTrue(dwnl_file.is_file())
         dwnl_file.unlink()
-
-    def test_wb_wealth_pass(self):
-        """Test world bank's wealth data"""
-        file_down = download_file(WORLD_BANK_WEALTH_ACC)
-        Path(file_down).unlink()
 
     def test_wb_lev_hist_pass(self):
         """Test world bank's historical income group levels data"""

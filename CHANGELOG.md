@@ -74,6 +74,7 @@ Updated:
   Updated available year range from 1995–2014 to 1995–2020. [#1292](https://github.com/CLIMADA-project/climada_python/pull/1292)
 - Makes current `measure` module a legacy module, moving it to `_legacy_measure`, to retain compatibility with `CostBenefit` class and various tests. [#1274](https://github.com/CLIMADA-project/climada_python/pull/1274)
 - `HazardForecast.quantile` and `ImpactForecast.quantile` compute quantiles block-wise instead of densifying the entire sparse matrix, greatly reducing peak memory. Results are unchanged. [#1203](https://github.com/CLIMADA-project/climada_python/issues/1203)
+- Vectorize `Impact.impact_at_reg` via sparse indicator matrix multiplication and `climada.util.coordinates.points_to_raster` via `shapely.box`. [#1350](https://github.com/CLIMADA-project/climada_python/pull/1350)
 
 ### Fixed
 

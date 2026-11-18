@@ -468,14 +468,16 @@ class Impact:
             )
 
         agg_regions = np.asanyarray(agg_regions)
-        agg_reg_unique = np.unique(agg_regions)
-
-        at_reg_event = np.hstack(
-            [
-                self.imp_mat[:, np.where(agg_regions == reg)[0]].sum(1)
-                for reg in agg_reg_unique
-            ]
+        agg_reg_unique, inv_idx = np.unique(agg_regions, return_inverse=True)
+        n_exp = self.imp_mat.shape[1]
+        reg_ind = sparse.csr_matrix(
+            (
+                np.ones(n_exp, dtype=self.imp_mat.dtype),
+                (np.arange(n_exp), inv_idx.ravel()),
+            ),
+            shape=(n_exp, agg_reg_unique.size),
         )
+        at_reg_event = (self.imp_mat @ reg_ind).toarray()
 
         at_reg_event = pd.DataFrame(
             at_reg_event, columns=agg_reg_unique, index=self.event_id
