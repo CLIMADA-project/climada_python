@@ -39,4 +39,3 @@
 * Dahyann Araya
 * Giovanni Cozzolongo
 * Thomas Struys
-* Napat Phasundhiae
