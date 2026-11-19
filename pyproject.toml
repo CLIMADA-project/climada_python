@@ -30,7 +30,6 @@ dependencies = [
     "dask>=2026.8",
     "deprecation>=2.1.0",
     "eccodes>=2.47.0",
-    "eccodeslib>=2.47.0",  # See https://github.com/astral-sh/uv/issues/23222
     "fiona>=1.10",
     "geopandas>=1.1",
     "h5py>=3.16.0",
@@ -61,6 +60,17 @@ dependencies = [
     "xlrd>=2.0",
     "xlsxwriter>=3.2",
 ]
+
++[[dependency-metadata]]
++name = "eccodes"
++version = "2.47.0"
++requires-dist = [
++    "numpy",
++    "attrs",
++    "cffi",
++    "findlibs",
++    "eccodeslib; platform_system != 'Windows'",
++]
 
 [dependency-groups]
 dev = [
