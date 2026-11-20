@@ -22,6 +22,7 @@ Define Measure class.
 from __future__ import annotations
 
 import logging
+import warnings
 from functools import reduce
 from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, cast
@@ -188,7 +189,11 @@ def impact_intensity_rp_cutoff_helper(
 
     from climada.engine.impact_calc import ImpactCalc
 
-    def hazard_change(
+    if cut_off_rp < 1:
+        warnings.warn("RP cut of below 1 detected. Assuming it is a frequency instead.")
+        cut_off_rp = 1 / cut_off_rp
+
+    def apply_cutoff(
         hazard: Hazard,
         base_exposures: Exposures,
         base_impfset: ImpactFuncSet,
@@ -209,6 +214,10 @@ def impact_intensity_rp_cutoff_helper(
         exceed_freq = np.cumsum(imp.frequency[sort_idxs])
         events_below_cutoff = sort_idxs[exceed_freq >= (1 / cut_off_rp)]
         # Modify sparse data structure
+        LOGGER.debug(
+            "Events with non zero impacts removed: %s",
+            (imp.at_event[events_below_cutoff].sum() != 0),
+        )
         intensity_modified = hazard.intensity.copy()
         for event in events_below_cutoff:
             start, end = (
@@ -221,7 +230,7 @@ def impact_intensity_rp_cutoff_helper(
         hazard.intensity.eliminate_zeros()
         return hazard
 
-    return hazard_change
+    return apply_cutoff
 
 
 def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
@@ -300,7 +309,10 @@ def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
         changed_hazard.frequency = changed_hazard.frequency.clip(0, None)
         return changed_hazard
 
-    if hazard_modifier.impact_rp_cutoff is not None:
+    if (
+        hazard_modifier.impact_rp_cutoff is not None
+        and hazard_modifier.impact_rp_cutoff != 0
+    ):
         hazard_change = composite_fun(
             impact_intensity_rp_cutoff_helper(hazard_modifier.impact_rp_cutoff),
             hazard_change,
