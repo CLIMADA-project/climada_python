@@ -31,9 +31,9 @@ from typing import cast
 import numpy as np
 import pandas as pd
 
-from climada.entity._legacy_measures.base import Measure
 from climada.entity.exposures import Exposures
 from climada.entity.impact_funcs import ImpactFuncSet
+from climada.entity.measures import Measure
 from climada.hazard import Hazard
 
 LOGGER = logging.getLogger(__name__)
@@ -172,7 +172,9 @@ class Snapshot:
 
         return cast(pd.Timestamp, date)
 
-    def apply_measure(self, measure: Measure) -> "Snapshot":
+    def apply_measure(
+        self, measure: Measure, enforce_copy: bool = True, **kwargs
+    ) -> "Snapshot":
         """Create a new snapshot by applying a Measure object.
 
         This method creates a new `Snapshot` object by applying a measure on
@@ -190,7 +192,13 @@ class Snapshot:
         """
 
         LOGGER.debug("Applying measure %s on snapshot %s", measure.name, id(self))
-        exp, impfset, haz = measure.apply(self.exposure, self.impfset, self.hazard)
+        exp, impfset, haz = measure.apply(
+            self.exposure,
+            self.impfset,
+            self.hazard,
+            enforce_copy=enforce_copy,
+            **kwargs,
+        )
         snap = Snapshot(
             exposure=exp,
             hazard=haz,

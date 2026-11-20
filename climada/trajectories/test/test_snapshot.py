@@ -5,9 +5,9 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from climada.entity._legacy_measures.base import Measure
 from climada.entity.exposures import Exposures
 from climada.entity.impact_funcs import ImpactFunc, ImpactFuncSet
+from climada.entity.measures.base import Measure
 from climada.hazard import Hazard
 from climada.trajectories.snapshot import Snapshot
 from climada.util.constants import EXP_DEMO_H5, HAZ_DEMO_H5
