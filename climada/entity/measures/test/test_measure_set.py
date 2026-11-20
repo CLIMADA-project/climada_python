@@ -27,10 +27,12 @@ import pandas as pd
 import pytest
 import yaml
 
+from climada.entity import Exposures, ImpactFuncSet
 from climada.entity.measures.cost_income import CostIncome
 from climada.entity.measures.measure import Measure
 from climada.entity.measures.measure_config import MeasureConfig
 from climada.entity.measures.measure_set import MeasureSet
+from climada.hazard import Hazard
 
 MODULE = "climada.entity.measures.measure_set"
 NAMES = ["flood_barrier", "sea_wall", "early_warning"]
@@ -299,20 +301,21 @@ class TestCombine:
             measure_set.combine(["unknown"])
 
     @pytest.mark.parametrize(
-        "method, helper, has_base",
+        "method, helper, spec, has_base",
         [
-            ("apply_exposures_changes", "_combine_exposures", True),
-            ("apply_impfset_changes", "_combine_impfsets", True),
-            ("apply_hazard_changes", "_combine_hazards", False),
+            ("apply_exposures_changes", "_combine_exposures", Exposures, True),
+            ("apply_impfset_changes", "_combine_impfsets", ImpactFuncSet, True),
+            ("apply_hazard_changes", "_combine_hazards", Hazard, False),
         ],
     )
     def test_delegates_to_combination_helper(
-        self, measure_set, method, helper, has_base
+        self, measure_set, method, helper, spec, has_base
     ):
-        obj = _make_mock()
+        obj = MagicMock(spec=spec)
         combo = measure_set.combine()
 
         with patch.object(MeasureSet, helper) as mock_helper:
+            mock_helper.return_value = MagicMock(spec=spec)
             result = getattr(combo, method)(obj, enforce_copy=False)
 
         # identity sub-measures return the input, one modified object per measure
@@ -329,9 +332,10 @@ class TestCombine:
             return obj
 
         ms = MeasureSet([_make_measure("a", hazard_changes=track)])
-        with patch.object(MeasureSet, "_combine_hazards"):
+        with patch.object(MeasureSet, "_combine_hazards") as _comb_haz:
+            _comb_haz.return_value = Hazard()
             ms.combine().apply_hazard_changes(
-                _make_mock(), enforce_copy=False, threshold=3.5
+                MagicMock(spec=Hazard), enforce_copy=False, threshold=3.5
             )
 
         assert received.get("threshold") == 3.5

@@ -22,9 +22,10 @@ Define Measure class.
 from __future__ import annotations
 
 import logging
+from collections.abc import Callable
 from functools import reduce
 from pathlib import Path
-from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, cast
+from typing import TYPE_CHECKING, Any, TypeVar, cast
 
 import numpy as np
 import pandas as pd
@@ -46,11 +47,21 @@ if TYPE_CHECKING:
         HazardChange,
         ImpfsetChange,
     )
-    from climada.hazard.base import Hazard
+    from climada.hazard.base import Hazard  # noqa: TC004
 
     T = TypeVar("T", Exposures, ImpactFuncSet, Hazard)
 
 LOGGER = logging.getLogger(__name__)
+
+__all__ = [
+    "change_impfset",
+    "helper_exposure",
+    "helper_hazard",
+    "helper_impfset",
+    "identity_function",
+    "impact_intensity_rp_cutoff_helper",
+    "replace_hazard",
+]
 
 
 def identity_function(x: T, **_kwargs: Any) -> T:
@@ -193,7 +204,7 @@ def impact_intensity_rp_cutoff_helper(
         base_exposures: Exposures,
         base_impfset: ImpactFuncSet,
         base_hazard: Hazard,
-        exposures_region_id: Optional[list[int]] = None,
+        exposures_region_id: list[int] | None = None,
         **_kwargs,
     ) -> Hazard:
         exp_imp = base_exposures
@@ -304,7 +315,7 @@ def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
         hazard_change = composite_fun(
             impact_intensity_rp_cutoff_helper(hazard_modifier.impact_rp_cutoff),
             hazard_change,
-        )
+        )  # ty: ignore[invalid-assignment]
 
     if hazard_modifier.new_hazard_path is not None:
         if not isinstance(hazard_modifier.new_hazard_path, (str, Path)):
