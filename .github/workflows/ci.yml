@@ -18,14 +18,108 @@ defaults:
   run:
     shell: bash -el {0}
 
+env:
+  CLIMADA_DATA_DOI: 10.5281/zenodo.20595842
+  PYTHON_VERSION: "3.12"
+
 jobs:
+  integration-test:
+    name: 'Core / Integration Test Pipeline'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v7
+
+      #  --- Modify paths in climada.conf ---
+      -
+        name: Write climada.conf system data
+        uses: amochkin/action-json@v1
+        with:
+          mode: write
+          file: climada.conf
+          property: local_data.system
+          value: ${{ github.workspace }}/climada/data
+      -
+        name: Write climada.conf demo data
+        uses: amochkin/action-json@v1
+        with:
+          mode: write
+          file: climada.conf
+          property: local_data.demo
+          value: ${{ github.workspace }}/climada/demo
+      -
+        run: |
+          cat climada.conf
+      # ---
+
+      -
+        name: Install make
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: make
+      -
+        name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+          enable-cache: true
+          cache-suffix: integrationtest
+      -
+        name: Install dependencies
+        run: |
+          uv sync --locked --group test
+      -
+        name: Check cfgrib
+        run: |
+          uv run -- python -m cfgrib selfcheck
+          uv run -- python -c "import xarray as xr; print(xr.backends.list_engines().keys())"
+      -
+        name: Restore testing data cache
+        id: cache-testing-data
+        uses: actions/cache/restore@v5
+        with:
+          path: climada.zip
+          key: ${{ env.CLIMADA_DATA_DOI }}
+      -
+        # NOTE: This will skip downloading if 'climada.zip' exists
+        name: Download and unzip testing data
+        run: |
+          uvx zenodo_get ${{ env.CLIMADA_DATA_DOI }}
+          unzip -o climada.zip -d ${{ github.workspace }}
+      -
+        name: Run Integration Tests
+        run: |
+          uv run -- make integ_test
+      -
+        name: Upload Test Results
+        if: (!cancelled())
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-core-integrationtests
+          path: tests_xml/tests.xml
+      -
+        name: Upload Coverage Reports
+        if: (!cancelled())
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report-core-integrationtests
+          path: coverage/
+      -
+        # NOTE: We use the explicit save step to store the cache also if tests fail
+        name: Save testing data cache
+        if: ${{ !cancelled() && steps.cache-testing-data.outputs.cache-hit != 'true' }}
+        uses: actions/cache/save@v5
+        with:
+          path: climada.zip
+          key: ${{ env.CLIMADA_DATA_DOI }}
+
   build-and-test:
     name: 'Core / Unit Test Pipeline'
     runs-on: ubuntu-latest
     timeout-minutes: 20
-    permissions:
-      # For publishing results
-      checks: write
 
     # Run this test for different Python versions
     strategy:
@@ -37,7 +131,74 @@ jobs:
     steps:
       -
         name: Checkout Repo
-        uses: actions/checkout@v6
+        uses: actions/checkout@v7
+      -
+        name: Install make
+        uses: awalsh128/cache-apt-pkgs-action@v1
+        with:
+          packages: make
+      -
+        name: Install Python
+        uses: actions/setup-python@v6
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip' # caching pip dependencies
+      -
+        name: Install dependencies
+        run: |
+          pip install --upgrade pip
+          pip install -e ./
+          pip install --group test
+      -
+        name: Run Unit Tests
+        run: |
+          make unit_test
+      -
+        name: Upload Test Results
+        if: (!cancelled())
+        uses: actions/upload-artifact@v7
+        with:
+          name: test-results-core-unittests-py${{ matrix.python-version }}
+          path: tests_xml/tests.xml
+      -
+        name: Upload Coverage Reports
+        if: (!cancelled())
+        uses: actions/upload-artifact@v7
+        with:
+          name: coverage-report-core-unittests-py${{ matrix.python-version }}
+          path: coverage/
+
+  publish-test-results:
+    name: "Core / Publish Test Results"
+    if: ${{ always() }} # For reporting, run this job even if the previous jobs fail
+    needs: [build-and-test, integration-test]
+    runs-on: ubuntu-latest
+    permissions:
+      checks: write
+    steps:
+      -
+        name: Download Test Results
+        uses: actions/download-artifact@v8
+        with:
+          pattern: test-results-core*
+          path: results
+      -
+        name: Publish Test Results
+        uses: EnricoMi/publish-unit-test-result-action@v2
+        with:
+          files: "results/**/*.xml"
+          check_name: "Core / Test Results"
+          comment_mode: "off"
+
+  mamba-pipeline:
+    name: 'Core / Mamba Unit Tests'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      -
+        name: Checkout Repo
+        uses: actions/checkout@v7
       -
         # Store the current date to use it as cache key for the environment
         name: Get current date
@@ -47,43 +208,29 @@ jobs:
         name: Create Environment with Mamba
         uses: mamba-org/setup-micromamba@v3
         with:
-          environment-name: climada_env_${{ matrix.python-version }}
+          environment-name: climada_env_${{ env.PYTHON_VERSION }}
           environment-file: requirements/env_climada.yml
           create-args: >-
-            python=${{ matrix.python-version }}
+            python=${{ env.PYTHON_VERSION }}
             make
           # Persist environment for branch, Python version, single day
-          cache-environment-key: env-${{ github.ref }}-${{ matrix.python-version }}-${{ steps.date.outputs.date }}
+          cache-environment-key: env-${{ github.ref }}-${{ env.PYTHON_VERSION }}-${{ steps.date.outputs.date }}
       -
         name: Install CLIMADA
         run: |
-          python -m pip install "./[dev]"
+          python -m pip install -e ./
+          python -m pip install --group test
       -
         name: Run Unit Tests
         run: |
           make unit_test
-      -
-        name: Publish Test Results
-        uses: EnricoMi/publish-unit-test-result-action@v2
-        if: always()
-        with:
-          junit_files: tests_xml/tests.xml
-          check_name: "Core / Unit Test Results (${{ matrix.python-version }})"
-          comment_mode: "off"
-      -
-        name: Upload Coverage Reports
-        if: always()
-        uses: actions/upload-artifact@v7
-        with:
-          name: coverage-report-core-unittests-py${{ matrix.python-version }}
-          path: coverage/
 
   test-petals:
     name: Petals Compatibility
-    uses: CLIMADA-project/climada_petals/.github/workflows/testing.yml@develop
+    uses: CLIMADA-project/climada_petals/.github/workflows/testing.yml@add-uv-config
     needs: build-and-test
     with:
       core_branch: ${{ github.ref }}
-      petals_branch: develop
+      petals_branch: add-uv-config
     permissions:
       checks: write
