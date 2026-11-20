@@ -124,7 +124,9 @@ class StaticAppraiser(StaticRiskTrajectory):
         """Adds the risk metric calculators for the different adaptation options."""
         calculators = [risk_metrics_calculators] + [
             risk_metrics_calculators.apply_measure(
-                meas, enforce_copy=enforce_copy, kwargs_spec=measure_specs[meas_name]
+                meas,
+                enforce_copy=enforce_copy,
+                kwargs_spec=measure_specs.get(meas_name),
             )
             for meas_name, meas in measure_set.items()
         ]
