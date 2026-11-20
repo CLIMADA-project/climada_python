@@ -14,6 +14,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Changed
 
+- Vectorize `Impact.impact_at_reg` via sparse indicator matrix multiplication and `climada.util.coordinates.points_to_raster` via `shapely.box`. [#1350](https://github.com/CLIMADA-project/climada_python/pull/1350), [#1357](https://github.com/CLIMADA-project/climada_python/issues/1357)
+
 ### Fixed
 
 ### Deprecated
