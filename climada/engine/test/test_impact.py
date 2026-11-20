@@ -834,6 +834,7 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
         self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
+        npt.assert_allclose(at_reg_event["A"], self.imp.at_event)
 
         # Aggregate over two different regions
         region_ids = ["A", "B"]
@@ -845,6 +846,28 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
         self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
+        npt.assert_allclose(at_reg_event, self.imp.imp_mat.toarray())
+
+    def test_agg_regions_length(self):
+        """Test shorter, over-length, empty, and 2D agg_regions"""
+        imp_orig = self.imp.imp_mat
+        extra_col = sparse.csr_matrix(
+            np.arange(imp_orig.shape[0], dtype=imp_orig.dtype).reshape(-1, 1)
+        )
+        self.imp.imp_mat = sparse.hstack([imp_orig, extra_col], format="csr")
+
+        at_reg_event = self.imp.impact_at_reg(["A", "B"])
+        self.assertListEqual(list(at_reg_event.columns), ["A", "B"])
+        npt.assert_allclose(at_reg_event, imp_orig.toarray())
+
+        at_reg_2d = self.imp.impact_at_reg(np.array([["A"], ["B"]]))
+        npt.assert_allclose(at_reg_2d, imp_orig.toarray())
+
+        with self.assertRaises(IndexError):
+            self.imp.impact_at_reg(["A", "B", "C", "D"])
+
+        with self.assertRaises(ValueError):
+            self.imp.impact_at_reg([])
 
     def test_admin0(self):
         """Test with aggregation to countries"""

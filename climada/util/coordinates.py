@@ -46,7 +46,7 @@ import shapely
 import shapely.wkt
 from cartopy.io import shapereader
 from pyproj.crs import CRS as PCRS
-from shapely.geometry import MultiPolygon, Point, box
+from shapely.geometry import MultiPolygon, box
 from sklearn.neighbors import BallTree
 
 import climada.util.hdf5_handler as u_hdf5
@@ -3101,13 +3101,19 @@ def points_to_raster(
     if not raster_res:
         raster_res = res
 
-    if "geometry" in points_df:
-        fun = lambda r: r.geometry.buffer(res / 2).envelope
-    else:
-        fun = lambda r: Point(r["longitude"], r["latitude"]).buffer(res / 2).envelope
-
     def apply_box(df_exp):
-        return df_exp.apply(fun, axis=1)
+        if "geometry" in df_exp:
+            lon = df_exp.geometry.x
+            lat = df_exp.geometry.y
+        else:
+            lon = df_exp["longitude"]
+            lat = df_exp["latitude"]
+        return shapely.box(
+            lon - res / 2,
+            lat - res / 2,
+            lon + res / 2,
+            lat + res / 2,
+        )
 
     LOGGER.info("Raster from resolution %s to %s.", res, raster_res)
     df_poly = gpd.GeoDataFrame(points_df[val_names])
