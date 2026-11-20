@@ -20,8 +20,10 @@ Test of finance module
 """
 
 import unittest
+from unittest.mock import patch
 
 import numpy as np
+import pandas as pd
 from cartopy.io import shapereader
 
 from climada.util.finance import (
@@ -100,6 +102,40 @@ class TestWBData(unittest.TestCase):
         ref_val = 1.75e08
         self.assertEqual(ne_year, ref_year)
         self.assertEqual(ne_val, ref_val)
+
+    def test_ne_fallback_iso_and_zero_gdp_pass(self):
+        """Test nat_earth_adm0 fallback ISO attributes and zero GDP."""
+        ne_year, ne_val = nat_earth_adm0(
+            "ESH", "GDP_MD", "GDP_YEAR", SHP_FILE
+        )
+        self.assertEqual(ne_year, 2007)
+        self.assertEqual(ne_val, 9.07e08)
+
+        ne_year, ne_val = nat_earth_adm0(
+            "ALA", "INCOME_GRP", shp_file=SHP_FILE
+        )
+        self.assertEqual(ne_year, 0)
+        self.assertEqual(ne_val, 4)
+
+        ne_year, ne_val = nat_earth_adm0(
+            "HMD", "GDP_MD", "GDP_YEAR", SHP_FILE
+        )
+        self.assertEqual(ne_year, 2016)
+        self.assertEqual(ne_val, 0.0)
+
+    def test_wb_empty_indicator_raises_value_error(self):
+        """Test world_bank raises ValueError on all-NaN indicator series."""
+        empty_series = pd.Series([np.nan, np.nan], index=[2019, 2020])
+        with patch(
+            "climada.util.finance.download_world_bank_indicator",
+            return_value=empty_series,
+        ):
+            with self.assertRaisesRegex(
+                ValueError,
+                "No World Bank indicator 'NY.GDP.MKTP.CD' data available "
+                "for GIB",
+            ):
+                world_bank("GIB", 2020, "NY.GDP.MKTP.CD")
 
     def test_gdp_sxm_2010_pass(self):
         """Test gdp function Sint Maarten."""
@@ -271,6 +307,19 @@ class TestWBWealthAccount(unittest.TestCase):
         self.assertEqual(q, 0)
         self.assertEqual(wb_year, ref_year)
         self.assertIn(wb_val, ref_val)
+
+    def test_pca_missing_wealth2gdp_factor_pass(self):
+        """Test world_bank_wealth_account fallback when wealth2gdp is NaN."""
+        ref_year = 2015
+        cntry_iso = "LBY"
+        wb_year, wb_val, q = world_bank_wealth_account(
+            cntry_iso, ref_year, no_land=True
+        )
+        gdp_year, gdp_val = gdp(cntry_iso, ref_year)
+        self.assertEqual(q, 0)
+        self.assertEqual(wb_year, gdp_year)
+        self.assertFalse(np.isnan(wb_val))
+        self.assertAlmostEqual(wb_val, np.around(gdp_val, 1))
 
 
 # Execute Tests
