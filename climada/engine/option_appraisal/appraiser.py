@@ -22,6 +22,7 @@ import copy
 import logging
 from collections.abc import Iterable
 
+import numpy as np
 import pandas as pd
 from tqdm import tqdm
 
@@ -143,7 +144,7 @@ class StaticAppraiser(StaticRiskTrajectory):
             if measure_name == NO_MEASURE_VALUE:
                 return 0.0
 
-            return self.measure_set[measure_name].cost_income.init_cost
+            return -self.measure_set[measure_name].cost_income.init_cost
 
         metric_df = self._avoid_duplicates(metric_df)
         metric_df = self._handle_group_categories(metric_df)
@@ -187,3 +188,112 @@ class StaticAppraiser(StaticRiskTrajectory):
             dropna=False,
             observed=False,
         ).apply(subtract_no_measure, no_measure=no_measures_metrics, merger=merger)
+
+    @staticmethod
+    def _to_timestamp(value, *, end: bool) -> pd.Timestamp:
+        """Convert a year (int) or any pandas-parsable date to a Timestamp.
+
+        Integer years are inclusive: a start year is mapped to 1 January of that
+        year, an end year to 1 January of the following year.
+        """
+        if isinstance(value, (int, np.integer)):
+            return pd.Timestamp(year=int(value) + int(end), month=1, day=1)
+        return pd.Timestamp(value)
+
+    def cost_benefit_over_period(
+        self,
+        period: tuple[int | pd.Timestamp, int | pd.Timestamp],
+        disc_rates: DiscRates | None = None,
+    ) -> pd.DataFrame:
+        """Benefit, net cost and benefit-cost ratio of each measure over a period.
+
+        Each year of the period is attributed to the nearest snapshot (ties go to
+        the later one), whose averted risk is taken as representative of that year.
+        Years only partially covered by the period are weighted accordingly.
+        Measures are assumed to be implemented at the start of the period.
+
+        Parameters
+        ----------
+        period : tuple
+            Start and end of the period. Either integers (years, both included),
+            or dates parsable by `pandas.Timestamp` (end excluded).
+        disc_rates : DiscRates, optional
+            Used to discount benefits to the first year of the period.
+            Defaults to None (no discounting).
+
+        Returns
+        -------
+        pd.DataFrame
+            One row per measure, with the benefit, the costs, the incomes, the
+            net cost and the benefit-cost ratio (benefit divided by net cost).
+
+        Raises
+        ------
+        ValueError
+            If the period is empty, or if `risk_disc_rates` was set at instantiation
+            (it would discount the benefits twice).
+        NotImplementedError
+            If `cost_disc_rates` is set (not applied by `calc_total`).
+        """
+        if self._risk_disc_rates is not None:
+            raise ValueError(
+                "Instantiate without `risk_disc_rates`; pass `disc_rates` here."
+            )
+        if self._cost_disc_rates is not None:
+            raise NotImplementedError("`cost_disc_rates` is not supported here yet.")
+
+        start = self._to_timestamp(period[0], end=False)
+        end = self._to_timestamp(period[1], end=True)
+        if end <= start:
+            raise ValueError(f"Empty period: {start} -> {end}.")
+
+        # Fraction of each calendar year covered by the period
+        years = np.arange(start.year, end.year + 1)
+        y_start = np.array([f"{y}-01-01" for y in years], dtype="datetime64[ns]")
+        y_next = np.array([f"{y + 1}-01-01" for y in years], dtype="datetime64[ns]")
+        covered = np.minimum(y_next, end.to_datetime64()) - np.maximum(
+            y_start, start.to_datetime64()
+        )
+        weights = np.clip(covered / (y_next - y_start), 0.0, 1.0)
+
+        # Nearest snapshot to the middle of each year
+        df = self.aai_metrics()
+        df = df[
+            (df[MEASURE_COL_NAME] != NO_MEASURE_VALUE)
+            & (df[GROUP_COL_NAME] == self._all_groups_name)
+        ]
+        snap_dates = pd.DatetimeIndex(sorted(df[DATE_COL_NAME].unique()))
+        if start < snap_dates[0] or end > snap_dates[-1]:
+            LOGGER.warning(
+                "Period extends beyond the snapshots: extrapolating nearest values."
+            )
+        mid_years = pd.DatetimeIndex(y_start + (y_next - y_start) // 2)
+        nearest = snap_dates.get_indexer(mid_years, method="nearest")
+
+        rows = {}
+        for meas_name, sub in df.groupby(MEASURE_COL_NAME, observed=True):
+            averted = (
+                sub.set_index(DATE_COL_NAME)[AVERTED_RISK_NAME]
+                .reindex(snap_dates)
+                .to_numpy()[nearest]
+                * weights
+            )
+            benefit = (
+                disc_rates.net_present_value(start.year, end.year, averted)
+                if disc_rates
+                else averted.sum()
+            )
+            net, costs, incomes = self.measure_set[meas_name].cost_income.calc_total(
+                start, start, end
+            )
+            rows[meas_name] = {
+                "benefit": benefit,
+                "costs": -costs,
+                "incomes": incomes,
+                "net_cost": -net,
+            }
+
+        out = pd.DataFrame.from_dict(rows, orient="index")
+        out.index.name = MEASURE_COL_NAME
+        out["benefit_cost_ratio"] = out["benefit"] / out["net_cost"]
+        return out
