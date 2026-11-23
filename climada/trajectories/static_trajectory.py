@@ -22,7 +22,8 @@ of risk at multiple points in time (snapshots).
 """
 
 import logging
-from typing import Iterable
+from collections.abc import Iterable
+from typing import ClassVar
 
 import pandas as pd
 
@@ -32,11 +33,8 @@ from climada.trajectories.constants import (
     AAI_METRIC_NAME,
     AAI_PER_GROUP_METRIC_NAME,
     COORD_ID_COL_NAME,
-    DATE_COL_NAME,
     EAI_METRIC_NAME,
     GROUP_COL_NAME,
-    MEASURE_COL_NAME,
-    METRIC_COL_NAME,
     RETURN_PERIOD_METRIC_NAME,
 )
 from climada.trajectories.impact_calc_strat import (
@@ -45,12 +43,12 @@ from climada.trajectories.impact_calc_strat import (
 )
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.trajectory import (
-    DEFAULT_ALLGROUP_NAME,
     DEFAULT_DF_COLUMN_PRIORITY,
     DEFAULT_RP,
+    INDEXING_COLUMNS,
     RiskTrajectory,
 )
-from climada.util import log_level
+from climada.util import CONFIG, log_level
 from climada.util.dataframe_handling import reorder_dataframe_columns
 
 LOGGER = logging.getLogger(__name__)
@@ -72,7 +70,7 @@ class StaticRiskTrajectory(RiskTrajectory):
 
     """
 
-    POSSIBLE_METRICS = [
+    POSSIBLE_METRICS: ClassVar = [
         EAI_METRIC_NAME,
         AAI_METRIC_NAME,
         RETURN_PERIOD_METRIC_NAME,
@@ -92,7 +90,7 @@ class StaticRiskTrajectory(RiskTrajectory):
 
     """
 
-    _DEFAULT_ALL_METRICS = [
+    _DEFAULT_ALL_METRICS: ClassVar = [
         AAI_METRIC_NAME,
         RETURN_PERIOD_METRIC_NAME,
         AAI_PER_GROUP_METRIC_NAME,
@@ -141,7 +139,7 @@ class StaticRiskTrajectory(RiskTrajectory):
     @impact_computation_strategy.setter
     def impact_computation_strategy(self, value, /):
         if not isinstance(value, ImpactComputationStrategy):
-            raise ValueError(
+            raise TypeError(
                 "The provided impact computation strategy is not an ImpactComputationStrategy, "
                 "please refer to the documentation to define your own strategies or stick to the "
                 "default one"

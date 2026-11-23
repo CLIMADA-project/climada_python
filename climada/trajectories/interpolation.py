@@ -24,7 +24,7 @@ interpolation approaches.
 import logging
 from abc import ABC
 from collections.abc import Callable
-from typing import Any, Dict, List, Optional
+from typing import Any
 
 import numpy as np
 from scipy import sparse
@@ -34,10 +34,10 @@ LOGGER = logging.getLogger(__name__)
 __all__ = [
     "AllLinearStrategy",
     "ExponentialExposureStrategy",
-    "linear_convex_combination",
-    "linear_interp_matrix_elemwise",
     "exponential_convex_combination",
     "exponential_interp_matrix_elemwise",
+    "linear_convex_combination",
+    "linear_interp_matrix_elemwise",
 ]
 
 
@@ -45,7 +45,7 @@ def linear_interp_matrix_elemwise(
     mat_start: sparse.csr_matrix,
     mat_end: sparse.csr_matrix,
     number_of_interpolation_points: int,
-) -> List[sparse.csr_matrix]:
+) -> list[sparse.csr_matrix]:
     r"""
     Linearly interpolates between two sparse impact matrices.
 
@@ -89,7 +89,7 @@ def exponential_interp_matrix_elemwise(
     mat_start: sparse.csr_matrix,
     mat_end: sparse.csr_matrix,
     number_of_interpolation_points: int,
-) -> List[sparse.csr_matrix]:
+) -> list[sparse.csr_matrix]:
     r"""
     Exponentially interpolates between two "impact matrices".
 
@@ -331,8 +331,8 @@ class ImpactInterpolationStrategy(ABC):
         imp_E1: sparse.csr_matrix,
         interpolation_range: int,
         /,
-        **kwargs: Optional[Dict[str, Any]],
-    ) -> List[sparse.csr_matrix]:
+        **kwargs: dict[str, Any] | None,
+    ) -> list[sparse.csr_matrix]:
         """
         Interpolates between two impact matrices using the defined strategy for the exposure
         dimension.
@@ -371,7 +371,7 @@ class ImpactInterpolationStrategy(ABC):
                     "A possible reason could be Exposures of different shapes."
                 ) from err
 
-            raise err
+            raise
 
         return res
 
@@ -380,7 +380,7 @@ class ImpactInterpolationStrategy(ABC):
         metric_0: np.ndarray,
         metric_1: np.ndarray,
         /,
-        **kwargs: Optional[Dict[str, Any]],
+        **kwargs: dict[str, Any] | None,
     ) -> np.ndarray:
         """
         Generates the convex combination between two arrays of metrics using
@@ -409,7 +409,7 @@ class ImpactInterpolationStrategy(ABC):
         metric_0: np.ndarray,
         metric_1: np.ndarray,
         /,
-        **kwargs: Optional[Dict[str, Any]],
+        **kwargs: dict[str, Any] | None,
     ) -> np.ndarray:
         """
         Generates the convex combination between two arrays of metrics using

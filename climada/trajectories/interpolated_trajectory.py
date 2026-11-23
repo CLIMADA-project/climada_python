@@ -24,7 +24,8 @@ of risk in between points in time (snapshots).
 import datetime
 import itertools
 import logging
-from typing import Callable, Iterable, cast
+from collections.abc import Callable, Iterable
+from typing import ClassVar, cast
 
 import matplotlib as mpl
 import matplotlib.dates as mdates
@@ -91,10 +92,10 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
     """
 
-    _grouper = [MEASURE_COL_NAME, METRIC_COL_NAME]
+    _grouper: ClassVar = [MEASURE_COL_NAME, METRIC_COL_NAME]
     """Results dataframe grouper"""
 
-    POSSIBLE_METRICS = [
+    POSSIBLE_METRICS: ClassVar = [
         EAI_METRIC_NAME,
         AAI_METRIC_NAME,
         RETURN_PERIOD_METRIC_NAME,
@@ -118,7 +119,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
 
     """
 
-    _DEFAULT_ALL_METRICS = [
+    _DEFAULT_ALL_METRICS: ClassVar = [
         AAI_METRIC_NAME,
         RETURN_PERIOD_METRIC_NAME,
         AAI_PER_GROUP_METRIC_NAME,
@@ -180,7 +181,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     @interpolation_strategy.setter
     def interpolation_strategy(self, value, /):
         if not isinstance(value, ImpactInterpolationStrategy):
-            raise ValueError("Not an interpolation strategy")
+            raise TypeError("Not an interpolation strategy")
 
         self._reset_metrics()
         for rmcalc in self._risk_metrics_calculators:
@@ -194,7 +195,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     @impact_computation_strategy.setter
     def impact_computation_strategy(self, value, /):
         if not isinstance(value, ImpactComputationStrategy):
-            raise ValueError("Not an interpolation strategy")
+            raise TypeError("Not an interpolation strategy")
 
         self._reset_metrics()
         for rmcalc in self._risk_metrics_calculators:
@@ -219,7 +220,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
     @time_resolution.setter
     def time_resolution(self, value, /):
         if not isinstance(value, str):
-            raise ValueError(
+            raise TypeError(
                 "time_resolution should be a valid pandas Period"
                 ' frequency string (e.g., `"Y"`, `"M"`, `"D"`).'
             )
@@ -345,7 +346,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         except ValueError as exc:
             if str(exc) == "All objects passed were None":
                 return pd.DataFrame()
-            raise exc
+            raise
 
         if len(tmp) == 0:
             return pd.DataFrame()
@@ -516,7 +517,7 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
                 :,
                 :,
                 CONTRIBUTION_BASE_RISK_NAME,
-            ]  # type: ignore
+            ]
         ].values
         for p2 in periods_dates[1:]:
             for metric in [
@@ -814,14 +815,14 @@ class InterpolatedRiskTrajectory(RiskTrajectory):
         }
         csequence = mpl.color_sequences["tab10"]
         ax.stackplot(
-            positive_contrib.index.to_timestamp(),  # type: ignore
+            positive_contrib.index.to_timestamp(),
             [positive_contrib[col] for col in positive_contrib.columns],
             labels=positive_contrib.columns,
             colors=[csequence[color_index[col]] for col in positive_contrib.columns],
         )
         if not negative_contrib.empty:
             ax.stackplot(
-                negative_contrib.index.to_timestamp(),  # type: ignore
+                negative_contrib.index.to_timestamp(),
                 [negative_contrib[col] for col in negative_contrib.columns],
                 labels=negative_contrib.columns,
                 colors=[

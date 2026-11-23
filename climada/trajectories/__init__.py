@@ -29,7 +29,7 @@ from .static_trajectory import StaticRiskTrajectory
 __all__ = [
     "AllLinearStrategy",
     "ExponentialExposureStrategy",
+    "InterpolatedRiskTrajectory",
     "Snapshot",
     "StaticRiskTrajectory",
-    "InterpolatedRiskTrajectory",
 ]

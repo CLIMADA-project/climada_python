@@ -24,7 +24,8 @@ interpolated and static trajectories.
 import datetime
 import logging
 from abc import ABC, abstractmethod
-from typing import Iterable
+from collections.abc import Iterable
+from typing import ClassVar
 
 import pandas as pd
 
@@ -38,6 +39,7 @@ from climada.trajectories.constants import (
     METRIC_COL_NAME,
     PERIOD_COL_NAME,
     RISK_COL_NAME,
+    SNAP_ID_NAME,
     UNIT_COL_NAME,
 )
 from climada.trajectories.snapshot import Snapshot
@@ -47,6 +49,7 @@ LOGGER = logging.getLogger(__name__)
 __all__ = ["RiskTrajectory"]
 
 DEFAULT_DF_COLUMN_PRIORITY = [
+    SNAP_ID_NAME,
     DATE_COL_NAME,
     PERIOD_COL_NAME,
     GROUP_COL_NAME,
@@ -65,10 +68,10 @@ class RiskTrajectory(ABC):
 
     """
 
-    _grouper = [MEASURE_COL_NAME, METRIC_COL_NAME]
+    _grouper: ClassVar = [MEASURE_COL_NAME, METRIC_COL_NAME]
     """Results dataframe grouper used in most `groupby()` calls."""
 
-    POSSIBLE_METRICS = []
+    POSSIBLE_METRICS: ClassVar = []
     """Class variable listing the risk metrics that can be computed."""
 
     def __init__(
@@ -82,8 +85,8 @@ class RiskTrajectory(ABC):
         self._snapshots = sorted(snapshots_list, key=lambda snap: snap.date)
         self._all_groups_name = DEFAULT_ALLGROUP_NAME
         self._return_periods = return_periods
-        self.start_date = min((snapshot.date for snapshot in snapshots_list))
-        self.end_date = max((snapshot.date for snapshot in snapshots_list))
+        self.start_date = min(snapshot.date for snapshot in snapshots_list)
+        self.end_date = max(snapshot.date for snapshot in snapshots_list)
         self._risk_disc_rates = risk_disc_rates
 
     def _reset_metrics(self) -> None:
@@ -150,9 +153,9 @@ class RiskTrajectory(ABC):
     @return_periods.setter
     def return_periods(self, value, /):
         if not isinstance(value, Iterable):
-            raise ValueError("Return periods need to be a list of int.")
+            raise TypeError("Return periods need to be a list of int.")
         if any(not isinstance(i, int) for i in value):
-            raise ValueError("Return periods need to be a list of int.")
+            raise TypeError("Return periods need to be a list of int.")
         self._return_periods_metrics = None
         self._return_periods = value
 
@@ -248,7 +251,7 @@ class RiskTrajectory(ABC):
             return cash_flows
 
         if not isinstance(cash_flows.index, (pd.PeriodIndex, pd.DatetimeIndex)):
-            raise ValueError(
+            raise TypeError(
                 "cash_flows must be a pandas Series with a PeriodIndex or DatetimeIndex"
             )
 
@@ -258,5 +261,5 @@ class RiskTrajectory(ABC):
             .add(1)
             .cumprod()
         )
-        discount_factors = 1 / cash_flows.index.year.map(growth_factors).fillna(1.0)
+        discount_factors = 1 / cash_flows.index.year.map(growth_factors).fillna(1.0)  # type: ignore
         return cash_flows.multiply(discount_factors, axis=0)
