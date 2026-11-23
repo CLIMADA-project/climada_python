@@ -42,6 +42,7 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx_design",
     "sphinx_mdinclude",
+    "sphinx_tabs.tabs",
     "myst_nb",
     "sphinx_markdown_tables",
 ]
@@ -270,6 +271,11 @@ def remove_module_docstring(app, what, name, obj, options, lines):
 
 
 autodoc_member_order = "bysource"
+
+# --- Sphinx Tab settings ---
+
+# Disable option to close tabs completely
+sphinx_tabs_disable_tab_closing = True
 
 # --- MYST Parser settings ----
 
