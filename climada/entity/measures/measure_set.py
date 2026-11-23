@@ -95,6 +95,7 @@ DEF_VAR_EXCEL = {
         "Region_ID": "exp_reg",
         "peril_ID": "haz_type",
         "Impact RP cutoff": "impact_rp_cutoff",
+        "hazard high frequency cutoff": "impact_rp_cutoff",
         "assets zeroing": "assets_to_zero",
     },
 }
