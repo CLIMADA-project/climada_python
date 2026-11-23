@@ -834,6 +834,7 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
         self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
+        npt.assert_allclose(at_reg_event["A"], self.imp.at_event)
 
         # Aggregate over two different regions
         region_ids = ["A", "B"]
@@ -845,6 +846,52 @@ class TestImpactReg(unittest.TestCase):
         self.assertEqual(at_reg_event.sum().sum(), self.imp.at_event.sum())
         self.assertEqual(at_reg_event.shape[0], self.imp.at_event.shape[0])
         self.assertEqual(at_reg_event.shape[1], np.unique(region_ids).shape[0])
+        npt.assert_allclose(at_reg_event, self.imp.imp_mat.toarray())
+
+        # Asymmetric columns with unsorted duplicate regions & float32 dtype
+        asym_mat = sparse.csr_matrix(
+            np.array(
+                [
+                    [1.0, 10.0, 100.0],
+                    [2.0, 20.0, 200.0],
+                    [3.0, 30.0, 300.0],
+                    [4.0, 40.0, 400.0],
+                    [5.0, 50.0, 500.0],
+                    [6.0, 60.0, 600.0],
+                ],
+                dtype=np.float32,
+            )
+        )
+        self.imp.imp_mat = asym_mat
+        at_reg_asym = self.imp.impact_at_reg(["B", "A", "B"])
+        self.assertListEqual(list(at_reg_asym.columns), ["A", "B"])
+        self.assertEqual(at_reg_asym["A"].dtype, np.float32)
+        self.assertEqual(at_reg_asym["B"].dtype, np.float32)
+        npt.assert_allclose(at_reg_asym["A"], [10, 20, 30, 40, 50, 60])
+        npt.assert_allclose(at_reg_asym["B"], [101, 202, 303, 404, 505, 606])
+        self.assertAlmostEqual(at_reg_asym.sum().sum(), asym_mat.sum())
+
+    def test_agg_regions_invalid(self):
+        """Test invalid agg_regions length or shape raises ValueError"""
+        invalid_inputs = [
+            [],
+            ["A"],
+            ["A", "B", "C"],
+            "A",
+            1,
+            np.array([["A"], ["B"]]),
+            np.array([["A", "B"]]),
+        ]
+        msg = "1D array of length 2"
+        for bad_regions in invalid_inputs:
+            with self.subTest(bad_regions=bad_regions):
+                with self.assertRaisesRegex(ValueError, msg):
+                    self.imp.impact_at_reg(bad_regions)
+
+        # Scalar must also be rejected when imp_mat has a single exposure point
+        self.imp.imp_mat = self.imp.imp_mat[:, :1]
+        with self.assertRaisesRegex(ValueError, "1D array of length 1"):
+            self.imp.impact_at_reg("A")
 
     def test_admin0(self):
         """Test with aggregation to countries"""
