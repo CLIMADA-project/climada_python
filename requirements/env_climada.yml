@@ -32,10 +32,11 @@ dependencies:
   - pip
   - pyarrow>=24.0
   - pycountry>=24.6
-  - pyproj>=3.7
+  - pyproj>=3.8
   - pytables>=3.11  # this is the name of the pypi 'tables' package on conda-forge
+  - python>=3.11,<3.14
   - pyxlsb>=1.0
-  - rasterio>=1.4,<1.5  # 1.4 compatible with python 3.11; discrepancies between 1.4 and 1.5, see #1316
+  - rasterio>=1.5
   - requests>=2.34
   - rtree>=1.4
   - salib>=1.5
