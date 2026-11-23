@@ -94,7 +94,6 @@ class StaticAppraiser(StaticRiskTrajectory):
         """
         self._measure_kwargs = dict(measure_kwargs or {})
         self._enforce_copy = enforce_baseline_copy
-        self.applied_kwargs = {}  # (snapshot date, measure name) -> resolved kwargs
         unknown = set(self._measure_kwargs) - set(measure_set.names)
         if unknown:
             raise ValueError(f"Kwargs given for unknown measures: {sorted(unknown)}")
