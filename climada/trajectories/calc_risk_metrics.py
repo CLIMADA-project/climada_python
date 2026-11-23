@@ -59,6 +59,7 @@ from climada.trajectories.constants import (
     NO_MEASURE_VALUE,
     RISK_COL_NAME,
     RP_VALUE_PREFIX,
+    SNAP_ID_NAME,
     UNIT_COL_NAME,
 )
 from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
@@ -190,13 +191,9 @@ class CalcRiskMetricsPoints:
         """
 
         self._init_impact_data()
-        self.snapshots = snapshots
+        self._snapshots = snapshots
         self.impact_computation_strategy = impact_computation_strategy
-        self._date_idx = pd.DatetimeIndex(
-            [snap.date for snap in self.snapshots],
-            name=DATE_COL_NAME,
-        )
-        self.measure = None
+        self._snap_idx = self._build_indexes()
         try:
             self._group_id = np.unique(
                 np.concatenate(
@@ -213,6 +210,25 @@ class CalcRiskMetricsPoints:
                 self._group_id = np.array([])
             else:
                 raise
+
+    @property
+    def snapshots(self):
+        return self._snapshots
+
+    def _build_indexes(self) -> pd.MultiIndex:
+        return pd.MultiIndex.from_arrays(
+            [
+                pd.RangeIndex(len(self.snapshots)),
+                pd.DatetimeIndex(
+                    [snap.date for snap in self.snapshots],
+                ),
+                [
+                    snap.measure.name if snap.measure else NO_MEASURE_VALUE
+                    for snap in self.snapshots
+                ],
+            ],
+            names=[SNAP_ID_NAME, DATE_COL_NAME, MEASURE_COL_NAME],
+        )
 
     def _init_impact_data(self):
         """Util method that resets computed data, for instance when
@@ -286,36 +302,35 @@ class CalcRiskMetricsPoints:
 
         metric_df = pd.DataFrame(
             self.per_date_eai,
-            index=self._date_idx,
+            index=self._snap_idx,
             columns=self.snapshots[0].exposure.gdf.index,
         )
 
         metric_df = metric_df.reset_index().melt(
-            id_vars=DATE_COL_NAME, var_name=COORD_ID_COL_NAME, value_name=RISK_COL_NAME
+            id_vars=list(self._snap_idx.names),
+            var_name=COORD_ID_COL_NAME,
+            value_name=RISK_COL_NAME,
         )
         eai_gdf = pd.concat(
             [
                 snap.exposure.gdf.reset_index(names=[COORD_ID_COL_NAME]).assign(
-                    date=snap.date.as_unit(self._date_idx.unit)
+                    **{SNAP_ID_NAME: i, DATE_COL_NAME: snap.date},
                 )
-                for snap in self.snapshots
+                for i, snap in enumerate(self.snapshots)
             ]
         )
         if GROUP_ID_COL_NAME in eai_gdf.columns:
-            eai_gdf = eai_gdf[[DATE_COL_NAME, COORD_ID_COL_NAME, GROUP_ID_COL_NAME]]
+            eai_gdf = eai_gdf[[SNAP_ID_NAME, COORD_ID_COL_NAME, GROUP_ID_COL_NAME]]
         else:
             eai_gdf[[GROUP_ID_COL_NAME]] = pd.NA
-            eai_gdf = eai_gdf[[DATE_COL_NAME, COORD_ID_COL_NAME, GROUP_ID_COL_NAME]]
+            eai_gdf = eai_gdf[[SNAP_ID_NAME, COORD_ID_COL_NAME, GROUP_ID_COL_NAME]]
 
-        eai_gdf = eai_gdf.merge(metric_df, on=[DATE_COL_NAME, COORD_ID_COL_NAME])
+        eai_gdf = eai_gdf.merge(metric_df, on=[SNAP_ID_NAME, COORD_ID_COL_NAME])
         eai_gdf = eai_gdf.rename(columns={GROUP_ID_COL_NAME: GROUP_COL_NAME})
         eai_gdf[GROUP_COL_NAME] = pd.Categorical(
             eai_gdf[GROUP_COL_NAME], categories=self._group_id
         )
         eai_gdf[METRIC_COL_NAME] = EAI_METRIC_NAME
-        eai_gdf[MEASURE_COL_NAME] = (
-            self.measure.name if self.measure else NO_MEASURE_VALUE
-        )
         eai_gdf[UNIT_COL_NAME] = self.snapshots[0].exposure.value_unit
         return eai_gdf
 
@@ -323,15 +338,12 @@ class CalcRiskMetricsPoints:
         """Compute a DataFrame of the AAI for each snapshot."""
 
         aai_df = pd.DataFrame(
-            index=self._date_idx, columns=[RISK_COL_NAME], data=self.per_date_aai
+            index=self._snap_idx, columns=[RISK_COL_NAME], data=self.per_date_aai
         )
         aai_df[GROUP_COL_NAME] = pd.Categorical(
             [pd.NA] * len(aai_df), categories=self._group_id
         )
         aai_df[METRIC_COL_NAME] = AAI_METRIC_NAME
-        aai_df[MEASURE_COL_NAME] = (
-            self.measure.name if self.measure else NO_MEASURE_VALUE
-        )
         aai_df[UNIT_COL_NAME] = self.snapshots[0].exposure.value_unit
         aai_df.reset_index(inplace=True)
         return aai_df
@@ -349,15 +361,21 @@ class CalcRiskMetricsPoints:
             return None
 
         eai_pres_groups = self.calc_eai_gdf()[
-            [DATE_COL_NAME, COORD_ID_COL_NAME, GROUP_COL_NAME, RISK_COL_NAME]
+            [
+                SNAP_ID_NAME,
+                MEASURE_COL_NAME,
+                DATE_COL_NAME,
+                COORD_ID_COL_NAME,
+                GROUP_COL_NAME,
+                RISK_COL_NAME,
+            ]
         ].copy()
         aai_per_group_df = eai_pres_groups.groupby(
-            [DATE_COL_NAME, GROUP_COL_NAME], as_index=False, observed=True
+            [SNAP_ID_NAME, MEASURE_COL_NAME, DATE_COL_NAME],
+            as_index=False,
+            observed=True,
         ).agg({RISK_COL_NAME: "sum"})
         aai_per_group_df[METRIC_COL_NAME] = AAI_METRIC_NAME
-        aai_per_group_df[MEASURE_COL_NAME] = (
-            self.measure.name if self.measure else NO_MEASURE_VALUE
-        )
         aai_per_group_df[UNIT_COL_NAME] = self.snapshots[0].exposure.value_unit
         return aai_per_group_df
 
@@ -379,7 +397,7 @@ class CalcRiskMetricsPoints:
             ]
         )
         rp_df = pd.DataFrame(
-            index=self._date_idx, columns=return_periods, data=per_date_rp
+            index=self._snap_idx, columns=return_periods, data=per_date_rp
         ).melt(value_name=RISK_COL_NAME, var_name="rp", ignore_index=False)
         rp_df.reset_index(inplace=True)
         rp_df[GROUP_COL_NAME] = pd.Categorical(
@@ -387,13 +405,10 @@ class CalcRiskMetricsPoints:
         )
         rp_df[METRIC_COL_NAME] = RP_VALUE_PREFIX + "_" + rp_df["rp"].astype(str)
         rp_df = rp_df.drop("rp", axis=1)
-        rp_df[MEASURE_COL_NAME] = (
-            self.measure.name if self.measure else NO_MEASURE_VALUE
-        )
         rp_df[UNIT_COL_NAME] = self.snapshots[0].exposure.value_unit
         return rp_df
 
-    def apply_measure(
+    def _apply_measure(
         self,
         measure: Measure,
         enforce_copy: bool = True,
@@ -418,7 +433,7 @@ class CalcRiskMetricsPoints:
             The risk period with given measure applied.
 
         """
-        snapshots = [
+        snapshots_meas = [
             snap.apply_measure(
                 measure=measure,
                 enforce_copy=enforce_copy,
@@ -427,11 +442,9 @@ class CalcRiskMetricsPoints:
             for snap in self.snapshots
         ]
         risk_period = CalcRiskMetricsPoints(
-            snapshots,
+            self.snapshots + snapshots_meas,
             self.impact_computation_strategy,
         )
-
-        risk_period.measure = measure
         return risk_period
 
 

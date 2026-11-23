@@ -30,6 +30,7 @@ METRIC_COL_NAME = "metric"
 UNIT_COL_NAME = "unit"
 RISK_COL_NAME = "risk"
 COORD_ID_COL_NAME = "coord_id"
+SNAP_ID_NAME = "snap_id"
 
 DEFAULT_PERIOD_INDEX_NAME = "date"
 

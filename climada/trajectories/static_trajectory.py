@@ -219,35 +219,46 @@ class StaticRiskTrajectory(RiskTrajectory):
             if tmp is None:
                 return tmp
 
-        tmp = tmp.set_index(
-            [DATE_COL_NAME, GROUP_COL_NAME, MEASURE_COL_NAME, METRIC_COL_NAME]
-        )
-        if COORD_ID_COL_NAME in tmp.columns:
-            tmp = tmp.set_index([COORD_ID_COL_NAME], append=True)
+        tmp = self._metric_post_treatment(tmp)
 
-        # When more than 2 snapshots, there might be duplicated rows, we need to remove them.
-        # Should not be the case in static trajectory, but in any case we really don't want
-        # duplicated rows, which would mess up some dataframe manipulation down the road.
-        if tmp.index.duplicated().any():
-            LOGGER.warning(
-                "Duplicated rows were found in the results. Will keep the first one."
-            )
-            tmp = tmp[~tmp.index.duplicated(keep="first")]
+        if CONFIG.trajectory_caching.bool():
+            LOGGER.debug("All computing done, caching value.")
+            setattr(self, attr_name, tmp)
+            return getattr(self, attr_name)
 
-        tmp = tmp.reset_index()
-        if self._all_groups_name not in tmp[GROUP_COL_NAME].cat.categories:
-            tmp[GROUP_COL_NAME] = tmp[GROUP_COL_NAME].cat.add_categories(
-                [self._all_groups_name]
-            )
-            tmp[GROUP_COL_NAME] = tmp[GROUP_COL_NAME].fillna(self._all_groups_name)
+        return tmp
+
+    def _metric_post_treatment(self, metric_df: pd.DataFrame) -> pd.DataFrame:
+        metric_df = self._avoid_duplicates(metric_df)
+        metric_df = self._handle_group_categories(metric_df)
 
         if self._risk_disc_rates:
-            tmp = self.npv_transform(tmp, self._risk_disc_rates)
+            LOGGER.debug("Found risk discount rate. Computing NPV.")
+            metric_df = self.npv_transform(metric_df, self._risk_disc_rates)
 
-        tmp = reorder_dataframe_columns(tmp, DEFAULT_DF_COLUMN_PRIORITY)
+        metric_df = reorder_dataframe_columns(metric_df, DEFAULT_DF_COLUMN_PRIORITY)
+        return metric_df
 
-        setattr(self, attr_name, tmp)
-        return getattr(self, attr_name)
+    def _avoid_duplicates(self, metric_df: pd.DataFrame) -> pd.DataFrame:
+        metric_df = metric_df.set_index(INDEXING_COLUMNS)
+        if COORD_ID_COL_NAME in metric_df.columns:
+            metric_df = metric_df.set_index([COORD_ID_COL_NAME], append=True)
+
+        # When more than 2 snapshots, there are duplicated rows, we need to remove them.
+        metric_df = metric_df[~metric_df.index.duplicated(keep="first")]
+        metric_df = metric_df.reset_index()
+        return metric_df
+
+    def _handle_group_categories(self, metric_df: pd.DataFrame) -> pd.DataFrame:
+        if self._all_groups_name not in metric_df[GROUP_COL_NAME].cat.categories:
+            metric_df[GROUP_COL_NAME] = metric_df[GROUP_COL_NAME].cat.add_categories(
+                [self._all_groups_name]
+            )
+            metric_df[GROUP_COL_NAME] = metric_df[GROUP_COL_NAME].fillna(
+                self._all_groups_name
+            )
+
+        return metric_df
 
     def eai_metrics(self, **kwargs) -> pd.DataFrame:
         """Return the estimated annual impacts at each exposure point for each date.
