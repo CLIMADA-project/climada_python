@@ -32,7 +32,7 @@ from climada.engine.option_appraisal.constants import (
 )
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures import MeasureSet
-from climada.trajectories.calc_risk_metrics import CalcRiskMetricsPoints
+from climada.trajectories.calc_risk_metrics import resolve_kwargs
 from climada.trajectories.constants import (
     COORD_ID_COL_NAME,
     DATE_COL_NAME,
@@ -58,7 +58,7 @@ LOGGER = logging.getLogger(__name__)
 class StaticAppraiser(StaticRiskTrajectory):
     def __init__(
         self,
-        snapshots_list: Iterable[Snapshot],
+        snapshots_list: list[Snapshot],
         *,
         measure_set: MeasureSet,
         return_periods: Iterable[int] = DEFAULT_RP,
@@ -100,36 +100,23 @@ class StaticAppraiser(StaticRiskTrajectory):
 
         self._cost_disc_rates = cost_disc_rates
         self.measure_set = copy.deepcopy(measure_set)
+
+        snapshots_adapt = []
+        for meas_name, meas in self.measure_set.items():
+            for snap in snapshots_list:
+                snapshots_adapt.append(
+                    snap.apply_measure(
+                        meas,
+                        enforce_copy=self._enforce_copy,
+                        **resolve_kwargs(self._measure_kwargs.get(meas_name), snap),
+                    )
+                )
         super().__init__(
-            snapshots_list,
+            snapshots_list + snapshots_adapt,
             return_periods=return_periods,
             risk_disc_rates=risk_disc_rates,
             impact_computation_strategy=impact_computation_strategy,
         )
-        self._risk_metrics_calculators = self._add_adaptation_metrics_calculators(
-            self._risk_metrics_calculators,
-            measure_set,
-            enforce_copy=self._enforce_copy,
-            measure_specs=self._measure_kwargs,
-        )
-
-    @staticmethod
-    def _add_adaptation_metrics_calculators(
-        risk_metrics_calculators,
-        measure_set: MeasureSet,
-        enforce_copy,
-        measure_specs: dict,
-    ) -> list[CalcRiskMetricsPoints]:
-        """Adds the risk metric calculators for the different adaptation options."""
-        calculators = [risk_metrics_calculators] + [
-            risk_metrics_calculators.apply_measure(
-                meas,
-                enforce_copy=enforce_copy,
-                kwargs_spec=measure_specs.get(meas_name),
-            )
-            for meas_name, meas in measure_set.items()
-        ]
-        return calculators
 
     @property
     def cost_disc_rates(self) -> DiscRates | None:
@@ -151,120 +138,24 @@ class StaticAppraiser(StaticRiskTrajectory):
         self._reset_metrics()
         self._cost_disc_rates = value
 
-    def _generic_metrics(
-        self,
-        metric_name: str | None = None,
-        metric_meth: str | None = None,
-        **kwargs,
-    ) -> pd.DataFrame:
-        """Generic method to compute metrics based on the provided metric name and method.
-
-        This method calls the appropriate method from each calculators (corresponding to
-        each adaptation) to return the results for the given metric,
-        in a tidy formatted dataframe.
-
-        It first checks whether the requested metric is a valid one.
-        Then looks for a possible cached value and otherwised asks the
-        calculators (`self._risk_metric_calculators`) to run the computation.
-        The results are then regrouped in a nice and tidy DataFrame.
-        If a `risk_disc_rates` was set, values are converted to net present values.
-        Results are then cached within `self._<metric_name>_metrics` and returned.
-
-        Parameters
-        ----------
-        metric_name : str, optional
-            The name of the metric to return results for.
-        metric_meth : str, optional
-            The name of the specific method of the calculator to call.
-
-        Returns
-        -------
-        pd.DataFrame
-            A tidy formatted dataframe of the risk metric computed for the
-            different snapshots.
-
-        Raises
-        ------
-        NotImplementedError
-            If the requested metric is not part of `POSSIBLE_METRICS`.
-        ValueError
-            If either of the arguments are not provided.
-
-        """
-
-        if metric_name is None or metric_meth is None:
-            raise ValueError("Both metric_name and metric_meth must be provided.")
-
-        if metric_name not in self.POSSIBLE_METRICS:
-            raise NotImplementedError(
-                f"{metric_name} not implemented ({self.POSSIBLE_METRICS})."
-            )
-
-        # Construct the attribute name for storing the metric results
-        attr_name = f"_{metric_name}_metrics"
-
-        if getattr(self, attr_name) is not None:
-            LOGGER.debug("Returning cached %s", attr_name)
-            return getattr(self, attr_name)
-
-        LOGGER.debug("Computing %s", attr_name)
-        with log_level(level="WARNING", name_prefix="climada"):
-            tmp = [
-                getattr(calc_period, metric_meth)(**kwargs)
-                for calc_period in self._risk_metrics_calculators
-            ]
-
-        try:
-            tmp = pd.concat(tmp)
-        except ValueError as exc:
-            if str(exc) == "All objects passed were None":
-                return pd.DataFrame()
-            raise exc
-
-        if len(tmp) == 0:
-            return pd.DataFrame()
-
-        tmp = self._metric_post_treatment(tmp, metric_name)
-
-        if CONFIG.trajectory_caching.bool():
-            LOGGER.debug("All computing done, caching value.")
-            setattr(self, attr_name, tmp)
-            return getattr(self, attr_name)
-
-        return tmp
-
-    def _metric_post_treatment(
-        self, metric_df: pd.DataFrame, metric_name: str
-    ) -> pd.DataFrame:
-        # Notably for per_group_aai being None:
+    def _metric_post_treatment(self, metric_df: pd.DataFrame) -> pd.DataFrame:
         def meas_impl_cost(measure_name: str) -> float:
             if measure_name == NO_MEASURE_VALUE:
                 return 0.0
 
             return self.measure_set[measure_name].cost_income.init_cost
 
+        metric_df = self._avoid_duplicates(metric_df)
         metric_df = self._handle_group_categories(metric_df)
         if self._risk_disc_rates:
             LOGGER.debug("Found risk discount rate. Computing NPV.")
             metric_df = self.npv_transform(metric_df, self._risk_disc_rates)
 
-        LOGGER.debug("Computing averted risk for: %s.", metric_name)
         metric_df = self._calc_averted(metric_df)
         metric_df[MEASURE_IMPL_COST_NAME] = metric_df[MEASURE_COL_NAME].map(
             meas_impl_cost
         )
         metric_df = reorder_dataframe_columns(metric_df, DEFAULT_DF_COLUMN_PRIORITY)
-        return metric_df
-
-    def _handle_group_categories(self, metric_df: pd.DataFrame) -> pd.DataFrame:
-        if self._all_groups_name not in metric_df[GROUP_COL_NAME].cat.categories:
-            metric_df[GROUP_COL_NAME] = metric_df[GROUP_COL_NAME].cat.add_categories(
-                [self._all_groups_name]
-            )
-            metric_df[GROUP_COL_NAME] = metric_df[GROUP_COL_NAME].fillna(
-                self._all_groups_name
-            )
-
         return metric_df
 
     @staticmethod
