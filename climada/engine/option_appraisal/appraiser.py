@@ -20,7 +20,9 @@ with CLIMADA. If not, see <https://www.gnu.org/licenses/>.
 
 import copy
 import logging
+import warnings
 from collections.abc import Iterable
+from typing import cast
 
 import numpy as np
 import pandas as pd
@@ -28,11 +30,17 @@ from tqdm import tqdm
 
 from climada.engine.option_appraisal.constants import (
     AVERTED_RISK_NAME,
+    BENEFIT_COL_NAME,
     MEASURE_IMPL_COST_NAME,
     REFERENCE_RISK_NAME,
 )
 from climada.entity.disc_rates.base import DiscRates
 from climada.entity.measures import MeasureSet
+from climada.entity.measures.cost_income import (
+    COST_COL_NAME,
+    INCOME_COL_NAME,
+    NET_COL_NAME,
+)
 from climada.trajectories.calc_risk_metrics import resolve_kwargs
 from climada.trajectories.constants import (
     COORD_ID_COL_NAME,
@@ -47,8 +55,6 @@ from climada.trajectories.impact_calc_strat import ImpactComputationStrategy
 from climada.trajectories.snapshot import Snapshot
 from climada.trajectories.static_trajectory import StaticRiskTrajectory
 from climada.trajectories.trajectory import DEFAULT_DF_COLUMN_PRIORITY, DEFAULT_RP
-from climada.util import log_level
-from climada.util.config import CONFIG
 from climada.util.dataframe_handling import reorder_dataframe_columns
 
 tqdm.pandas()
@@ -197,103 +203,264 @@ class StaticAppraiser(StaticRiskTrajectory):
         year, an end year to 1 January of the following year.
         """
         if isinstance(value, (int, np.integer)):
-            return pd.Timestamp(year=int(value) + int(end), month=1, day=1)
-        return pd.Timestamp(value)
-
-    def cost_benefit_over_period(
-        self,
-        period: tuple[int | pd.Timestamp, int | pd.Timestamp],
-        disc_rates: DiscRates | None = None,
-    ) -> pd.DataFrame:
-        """Benefit, net cost and benefit-cost ratio of each measure over a period.
-
-        Each year of the period is attributed to the nearest snapshot (ties go to
-        the later one), whose averted risk is taken as representative of that year.
-        Years only partially covered by the period are weighted accordingly.
-        Measures are assumed to be implemented at the start of the period.
-
-        Parameters
-        ----------
-        period : tuple
-            Start and end of the period. Either integers (years, both included),
-            or dates parsable by `pandas.Timestamp` (end excluded).
-        disc_rates : DiscRates, optional
-            Used to discount benefits to the first year of the period.
-            Defaults to None (no discounting).
-
-        Returns
-        -------
-        pd.DataFrame
-            One row per measure, with the benefit, the costs, the incomes, the
-            net cost and the benefit-cost ratio (benefit divided by net cost).
-
-        Raises
-        ------
-        ValueError
-            If the period is empty, or if `risk_disc_rates` was set at instantiation
-            (it would discount the benefits twice).
-        NotImplementedError
-            If `cost_disc_rates` is set (not applied by `calc_total`).
-        """
-        if self._risk_disc_rates is not None:
-            raise ValueError(
-                "Instantiate without `risk_disc_rates`; pass `disc_rates` here."
+            return cast(
+                pd.Timestamp, pd.Timestamp(year=int(value) + int(end), month=1, day=1)
             )
-        if self._cost_disc_rates is not None:
-            raise NotImplementedError("`cost_disc_rates` is not supported here yet.")
+        return cast(pd.Timestamp, pd.Timestamp(value))
 
+    def _period_bounds(self, period: tuple) -> tuple[pd.Timestamp, pd.Timestamp]:
+        """Return the period as two Timestamps (end excluded)."""
         start = self._to_timestamp(period[0], end=False)
         end = self._to_timestamp(period[1], end=True)
         if end <= start:
             raise ValueError(f"Empty period: {start} -> {end}.")
+        return start, end
 
-        # Fraction of each calendar year covered by the period
-        years = np.arange(start.year, end.year + 1)
-        y_start = np.array([f"{y}-01-01" for y in years], dtype="datetime64[ns]")
-        y_next = np.array([f"{y + 1}-01-01" for y in years], dtype="datetime64[ns]")
-        covered = np.minimum(y_next, end.to_datetime64()) - np.maximum(
-            y_start, start.to_datetime64()
+    @staticmethod
+    def _check_rates_cover(
+        disc_rates: DiscRates | None, ref_year: int, last_year: int, name: str
+    ) -> None:
+        """Raise if `disc_rates` misses years needed to discount to `ref_year`.
+
+        `_calc_npv_cash_flows` silently uses a factor of 1 beyond the years
+        of the discount rates.
+        """
+        if disc_rates is None:
+            return
+        missing = sorted(
+            set(range(ref_year + 1, last_year + 1)) - {int(y) for y in disc_rates.years}
         )
-        weights = np.clip(covered / (y_next - y_start), 0.0, 1.0)
+        if missing:
+            raise ValueError(
+                f"`{name}` do not cover the years {missing[0]}-{missing[-1]} "
+                f"needed to discount to {ref_year}."
+            )
 
-        # Nearest snapshot to the middle of each year
+    def _discount_factors(
+        self, disc_rates: DiscRates | None, dates, ref_date: pd.Timestamp
+    ) -> np.ndarray:
+        """Discount factor of each date, relative to `ref_date`.
+
+        Uses the same convention as the discounting of the risk metrics.
+        """
+        ones = pd.Series(1.0, index=pd.DatetimeIndex(dates))
+        return np.asarray(self._calc_npv_cash_flows(ones, ref_date, disc_rates))
+
+    def _yearly_benefits(
+        self,
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+        risk_disc_rates: DiscRates | None,
+    ) -> pd.DataFrame:
+        """Averted risk of each measure for each calendar year of the period.
+
+        Each year is attributed to the snapshot nearest to its middle (ties
+        go to the later one), weighted by the fraction of the year covered
+        by the period, and discounted to the start of the period.
+
+        If `risk_disc_rates` was set at instantiation, the tidy values are net
+        present values at the snapshot dates: this is undone first.
+
+        Returns
+        -------
+        pd.DataFrame
+            Indexed by the first day of each year, one column per measure.
+        """
+        years = np.arange(start.year, end.year + 1)
+        y_start = pd.DatetimeIndex(
+            [pd.Timestamp(year=y, month=1, day=1) for y in years]
+        ).as_unit("ns")
+        y_next = pd.DatetimeIndex(
+            [pd.Timestamp(year=y + 1, month=1, day=1) for y in years]
+        ).as_unit("ns")
+        lo = y_start.where(y_start > start, start)
+        hi = y_next.where(y_next < end, end)
+        weights = np.clip(np.asarray((hi - lo) / (y_next - y_start), dtype=float), 0, 1)
+        keep = weights > 0
+        y_start, y_next, weights = y_start[keep], y_next[keep], weights[keep]
+
         df = self.aai_metrics()
+        df = df.assign(
+            **{
+                MEASURE_COL_NAME: df[MEASURE_COL_NAME].astype(str),
+                GROUP_COL_NAME: df[GROUP_COL_NAME].astype(str),
+            }
+        )
         df = df[
             (df[MEASURE_COL_NAME] != NO_MEASURE_VALUE)
-            & (df[GROUP_COL_NAME] == self._all_groups_name)
+            & (df[GROUP_COL_NAME] == str(self._all_groups_name))
         ]
-        snap_dates = pd.DatetimeIndex(sorted(df[DATE_COL_NAME].unique()))
-        if start < snap_dates[0] or end > snap_dates[-1]:
-            LOGGER.warning(
-                "Period extends beyond the snapshots: extrapolating nearest values."
+        table = df.pivot(
+            index=DATE_COL_NAME, columns=MEASURE_COL_NAME, values=AVERTED_RISK_NAME
+        ).sort_index()
+        table = table[[n for n in self.measure_set.names if n in table.columns]]
+
+        snap_dates = pd.DatetimeIndex(table.index).as_unit("ns")
+        last_year = int((end - pd.Timedelta(days=1)).year)
+        if start.year < snap_dates[0].year or last_year > snap_dates[-1].year:
+            warnings.warn(
+                "Period extends beyond the snapshots: using the nearest snapshot."
             )
-        mid_years = pd.DatetimeIndex(y_start + (y_next - y_start) // 2)
-        nearest = snap_dates.get_indexer(mid_years, method="nearest")
+        if self._risk_disc_rates is not None:
+            table = table.div(
+                self._discount_factors(
+                    self._risk_disc_rates, snap_dates, snap_dates[0]
+                ),
+                axis=0,
+            )
+
+        bounds = snap_dates[:-1] + (snap_dates[1:] - snap_dates[:-1]) / 2
+        mid_years = y_start + (y_next - y_start) / 2
+        nearest = np.searchsorted(bounds.to_numpy(), mid_years.to_numpy(), side="right")
+
+        self._check_rates_cover(
+            risk_disc_rates, start.year, last_year, "risk_disc_rates"
+        )
+        factors = self._discount_factors(risk_disc_rates, y_start, start)
+        values = table.to_numpy()[nearest] * (weights * factors)[:, None]
+        return pd.DataFrame(values, index=y_start, columns=table.columns)
+
+    def _cost_flows(
+        self,
+        measure_name: str,
+        start: pd.Timestamp,
+        end: pd.Timestamp,
+        cost_disc_rates: DiscRates | None,
+    ) -> pd.DataFrame:
+        """Dated cash flows of a measure over the period, discounted to `start`.
+
+        The measure is implemented at `start`. Cash flows are those of the
+        `CostIncome`, at its own frequency, with the `CostIncome` sign
+        convention (costs are negative, net = income + cost).
+
+        Returns
+        -------
+        pd.DataFrame
+            Indexed by period, with columns "net", "costs" and "incomes".
+        """
+        cost_income = self.measure_set[measure_name].cost_income
+        # `calc_cash_flows` includes the period containing its end date
+        last = cast(pd.Timestamp, end - pd.Timedelta(days=1))
+        flows = cost_income.to_dataframe(start, start, last).set_index(DATE_COL_NAME)
+        self._check_rates_cover(
+            cost_disc_rates, start.year, last.year, "cost_disc_rates"
+        )
+        npv = flows.transform(
+            self._calc_npv_cash_flows,
+            start_date=flows.index.min(),
+            disc_rates=cost_disc_rates,
+        )
+        return npv
+
+    def cost_benefit_over_period(
+        self,
+        period: tuple[int | pd.Timestamp, int | pd.Timestamp],
+        risk_disc_rates: DiscRates | None = None,
+        cost_disc_rates: DiscRates | None = None,
+    ) -> pd.DataFrame:
+        """Benefit, net cost and benefit-cost ratio of each measure over a period.
+
+        Each year of the period is attributed to the nearest snapshot, whose
+        averted risk is taken as representative of that year. Years only
+        partially covered by the period are weighted accordingly for the
+        benefit (not for the costs, which follow the cash flows of the
+        measure). Measures are assumed to be implemented at the start of the
+        period.
+
+        Parameters
+        ----------
+        period : tuple
+            Start and end of the period. Either integers (years, both
+            included), or dates parsable by `pandas.Timestamp` (end excluded).
+        risk_disc_rates : DiscRates, optional
+            Discount rates for the benefits, overriding those given at
+            instantiation. Defaults to those given at instantiation, if any.
+        cost_disc_rates : DiscRates, optional
+            Discount rates for the costs and incomes, overriding those given at
+            instantiation. Defaults to those given at instantiation, if any.
+
+        Returns
+        -------
+        pd.DataFrame
+            One row per measure, with the benefit, the cost, the income, the
+            net cost (cost minus income) and the benefit-cost ratio (benefit
+            divided by net cost, larger is better). Costs and incomes are
+            positive amounts.
+
+        Raises
+        ------
+        ValueError
+            If the period is empty or the discount rates do not cover it.
+        """
+        risk_rates = (
+            risk_disc_rates if risk_disc_rates is not None else self._risk_disc_rates
+        )
+        cost_rates = (
+            cost_disc_rates if cost_disc_rates is not None else self._cost_disc_rates
+        )
+        start, end = self._period_bounds(period)
+        benefits = self._yearly_benefits(start, end, risk_rates)
 
         rows = {}
-        for meas_name, sub in df.groupby(MEASURE_COL_NAME, observed=True):
-            averted = (
-                sub.set_index(DATE_COL_NAME)[AVERTED_RISK_NAME]
-                .reindex(snap_dates)
-                .to_numpy()[nearest]
-                * weights
-            )
-            benefit = (
-                disc_rates.net_present_value(start.year, end.year, averted)
-                if disc_rates
-                else averted.sum()
-            )
-            net, costs, incomes = self.measure_set[meas_name].cost_income.calc_total(
-                start, start, end
-            )
-            rows[meas_name] = {
-                "benefit": benefit,
-                "costs": -costs,
-                "incomes": incomes,
-                "net_cost": -net,
+        for name in benefits.columns:
+            flows = self._cost_flows(name, start, end, cost_rates)
+            rows[name] = {
+                BENEFIT_COL_NAME: benefits[name].sum(),
+                COST_COL_NAME: -flows[COST_COL_NAME].sum(),
+                INCOME_COL_NAME: flows[INCOME_COL_NAME].sum(),
+                NET_COL_NAME: -flows[NET_COL_NAME].sum(),
             }
-
         out = pd.DataFrame.from_dict(rows, orient="index")
         out.index.name = MEASURE_COL_NAME
-        out["benefit_cost_ratio"] = out["benefit"] / out["net_cost"]
+        out["benefit_cost_ratio"] = out[BENEFIT_COL_NAME] / out[NET_COL_NAME]
         return out
+
+    def cumulative_net_benefit(
+        self,
+        period: tuple[int | pd.Timestamp, int | pd.Timestamp],
+        risk_disc_rates: DiscRates | None = None,
+        cost_disc_rates: DiscRates | None = None,
+    ) -> pd.DataFrame:
+        """Cumulated benefit plus cumulated net cash flow, at the end of each year.
+
+        Parameters
+        ----------
+        period : tuple
+            See `cost_benefit_over_period`.
+        risk_disc_rates : DiscRates, optional
+            See `cost_benefit_over_period`.
+        cost_disc_rates : DiscRates, optional
+            See `cost_benefit_over_period`.
+
+        Returns
+        -------
+        pd.DataFrame
+            Indexed by date (the start of the period, then the end of each
+            year), one column per measure. The year at which a column
+            becomes positive is the payback time of the measure.
+        """
+        risk_rates = (
+            risk_disc_rates if risk_disc_rates is not None else self._risk_disc_rates
+        )
+        cost_rates = (
+            cost_disc_rates if cost_disc_rates is not None else self._cost_disc_rates
+        )
+        start, end = self._period_bounds(period)
+        benefits = self._yearly_benefits(start, end, risk_rates)
+
+        dates = pd.DatetimeIndex(
+            [start, *(min(t + pd.DateOffset(years=1), end) for t in benefits.index)],
+            name=DATE_COL_NAME,
+        )
+        out = {}
+        for name in benefits.columns:
+            net = self._cost_flows(name, start, end, cost_rates)["net"]
+            net_per_year = net.groupby(net.index.start_time.year).sum()
+            cum_net = net_per_year.reindex(
+                benefits.index.year, fill_value=0.0
+            ).cumsum()  # ty: ignore
+            out[name] = np.r_[
+                net.iloc[0],  # at the start: what is spent at implementation
+                benefits[name].cumsum().to_numpy() + cum_net.to_numpy(),
+            ]
+        return pd.DataFrame(out, index=dates)
