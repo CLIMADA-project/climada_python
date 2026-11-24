@@ -104,7 +104,9 @@ def _get_ax(ax: Axes | None) -> Axes:
 def _get_axes(axes, n: int) -> np.ndarray:
     """Return `n` axes in a flat array, creating a row of panels if needed."""
     if axes is None:
-        _, axes = plt.subplots(1, n, figsize=(4 * n, 3.5), sharey=True, squeeze=False)
+        _, axes = plt.subplots(
+            1, n, figsize=(4 * n, 3.5), sharey=True, squeeze=False, layout="constrained"
+        )
     axes = np.atleast_1d(axes).ravel()
     if len(axes) < n:
         raise ValueError(f"Need {n} axes, got {len(axes)}.")
@@ -298,6 +300,8 @@ def plot_exceedance_curves(
         ax.set_xlabel("Return period")
         if logx:
             ax.set_xscale("log")
+            ax.set_xticks(base.index, [f"{rp:g}" for rp in base.index])
+            ax.minorticks_off()
     axes[0].set_ylabel("Impact")
     axes[0].legend()
     return axes
@@ -516,13 +520,13 @@ def plot_cost_benefit_area(cb: pd.DataFrame, *, ax: Axes | None = None) -> Axes:
     -------
     Axes
     """
+    colors = _measure_colors(cb.index.astype(str))  # before sorting: stable colors
     keep = np.isfinite(cb[RATIO_COL]) & (cb["benefit"] > 0)
     if not keep.all():
         LOGGER.warning("Measures not plotted: %s", list(cb.index[~keep]))
     cb = cb[keep].sort_values(RATIO_COL, ascending=False)
     if cb.empty:
         raise ValueError("No measure with a positive benefit and a finite ratio.")
-    colors = _measure_colors(cb.index.astype(str))
     left = cb["benefit"].cumsum() - cb["benefit"]
 
     ax = _get_ax(ax)
