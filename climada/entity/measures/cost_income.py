@@ -30,6 +30,12 @@ from climada.entity.measures.measure_config import CostIncomeConfig
 
 __all__ = ["CostIncome"]
 
+from climada.trajectories.constants import DATE_COL_NAME
+
+NET_COL_NAME = "net"
+COST_COL_NAME = "cost"
+INCOME_COL_NAME = "income"
+
 
 class CostIncome:
     """
@@ -168,7 +174,7 @@ class CostIncome:
             Processed custom cashflow
         """
 
-        if "date" not in df.columns:
+        if DATE_COL_NAME not in df.columns:
             raise ValueError("No 'date' column found in custom cash flow DataFrame.")
 
         if "cost" not in df.columns and "income" not in df.columns:
@@ -178,8 +184,8 @@ class CostIncome:
 
         df = df.copy()
         df["cost"] = -df["cost"].abs()
-        df["date"] = pd.to_datetime(df["date"])
-        df = df.set_index("date")
+        df[DATE_COL_NAME] = pd.to_datetime(df[DATE_COL_NAME])
+        df = df.set_index(DATE_COL_NAME)
 
         freq = self._make_offset_compat(self.freq)
         return df.resample(freq).sum()
@@ -213,7 +219,7 @@ class CostIncome:
         df = None
         if config.custom_cash_flows is not None:
             df = pd.DataFrame(config.custom_cash_flows)
-            df["date"] = pd.to_datetime(df["date"])
+            df[DATE_COL_NAME] = pd.to_datetime(df[DATE_COL_NAME])
         return cls(
             mkt_price_year=config.mkt_price_year,
             init_cost=config.init_cost,
@@ -531,7 +537,12 @@ class CostIncome:
         periods = pd.period_range(start=start_date, end=end_date, freq=self.freq)
 
         return pd.DataFrame(
-            {"date": periods, "net": net, "cost": costs, "income": incs}
+            {
+                DATE_COL_NAME: periods,
+                NET_COL_NAME: net,
+                COST_COL_NAME: costs,
+                INCOME_COL_NAME: incs,
+            }
         )
 
     @staticmethod
