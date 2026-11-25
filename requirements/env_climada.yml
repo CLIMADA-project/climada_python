@@ -34,7 +34,6 @@ dependencies:
   - pycountry>=24.6
   - pyproj>=3.8
   - pytables>=3.11  # this is the name of the pypi 'tables' package on conda-forge
-  - python>=3.11,<3.14
   - pyxlsb>=1.0
   - rasterio>=1.5
   - requests>=2.34
