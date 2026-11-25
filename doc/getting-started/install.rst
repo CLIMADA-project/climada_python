@@ -87,9 +87,11 @@ If you have Python installed, Pip should be installed alongside it.
 We **highly recommend** `Mamba`_ or `Conda`_, as this supports **both** simple and advanced installations for both Core and Petals, and also installs a useful shell on **Windows**.
 The tool ``mamba`` (see :ref:`conda-instead-of-mamba`) is available in the installer `Miniforge`_:
 
-.. tabs::
+.. tab-set::
+   :sync-group: OS
 
-   .. group-tab:: macOS & Linux
+   .. tab-item:: macOS & Linux
+      :sync: Linux
 
       * Open the "Terminal" app, copy-paste the two commands below, and hit enter:
 
@@ -104,7 +106,8 @@ The tool ``mamba`` (see :ref:`conda-instead-of-mamba`) is available in the insta
       * If at some point you encounter ``command not found: mamba``, open a new terminal window.
       * If you encounter ``Run 'mamba init' to be able to run mamba activate/deactivate ...``, please run ``mamba init zsh`` or ``mamba init``.
 
-   .. group-tab:: Windows
+   .. tab-item:: Windows
+      :sync: Windows
 
       * Download the Windows installer at the Install section from `Miniforge`_.
       * Execute the installer. This will install Mamba and provide the "Miniforge Prompt" program as a command line replacement.
@@ -136,9 +139,11 @@ Simple Instructions
 
 These instructions will install the most recent stable version of CLIMADA without cloning its repository.
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       #. Open the command line.
          Create a new Conda environment with CLIMADA by executing
@@ -178,7 +183,8 @@ These instructions will install the most recent stable version of CLIMADA withou
             On Windows, installing ``climada-petals`` with Conda/Mamba may be prohibited as it takes forever to resolve the dependency tree.
             In these cases, `Pixi`_ is often the only reliable fallback.
 
-   .. group-tab:: Pixi
+   .. tab-item:: Pixi
+      :sync: Pixi
 
       As an alternative to mamba `Pixi`_ can be used to install climada from conda-forge.
       Pixi is a modern package manager, based on Conda, that offers much faster dependency resolution.
@@ -215,7 +221,8 @@ These instructions will install the most recent stable version of CLIMADA withou
 
             pixi add --manifest-path climada_pixi/pixi.toml climada-petals
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       You can `execute a script or program <https://docs.astral.sh/uv/guides/scripts/>`_ and include CLIMADA in the current environment like so:
 
@@ -229,7 +236,8 @@ These instructions will install the most recent stable version of CLIMADA withou
 
          uv run -w climada -w jupyterlab jupyter lab
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       #. Open the command line.
          It usually makes sense to install CLIMADA in a new virtual environment (venv).
@@ -305,9 +313,11 @@ Installing from source also allows you to :ref:`switch branches <switch-branch>`
 
 The following steps depend on your choice of :ref:`package manager <install-manager>`:
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       .. warning::
 
@@ -362,7 +372,8 @@ The following steps depend on your choice of :ref:`package manager <install-mana
          If this test passes, great!
          You are good to go.
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       #. Create a local venv and synchronize it:
 
@@ -372,7 +383,8 @@ The following steps depend on your choice of :ref:`package manager <install-mana
 
          .. note:: uv will automatically install the local package in editable mode.
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       #. Create a virtual environment in the repository folder and activate it:
 
@@ -421,9 +433,11 @@ The CLIMADA Python package defines the following `dependency groups <https://pac
 
 Installation works as follows:
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       With the ``climada_env`` activated, enter the workspace directory and then the CLIMADA repository as above.
       Then, tell Pip to install the ``dev`` dependency group:
@@ -432,7 +446,8 @@ Installation works as follows:
 
          python -m pip install --group dev
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       No action required. ``uv sync`` installs the ``dev`` dependency group by default.
 
@@ -442,7 +457,8 @@ Installation works as follows:
 
          uv sync --group <group>
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       Activate the venv, and enter the workspace directory and then the CLIMADA repository as above.
       Then, tell Pip to install the ``dev`` dependency group:
@@ -468,9 +484,11 @@ Please refer to the :ref:`guide on pre-commit hooks <dev-pre-commit-hooks>` for 
 
 In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to install pre-commit and its hooks first.
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       With the ``climada_env`` activated, move to the repository and execute
 
@@ -479,7 +497,8 @@ In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to in
          python -m pip install pre-commit
          pre-commit install
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       uv supports running `tools <https://docs.astral.sh/uv/guides/tools/>`_ that are not part of the local Python environment.
       These tools can be downloaded and run when invoked, or `installed <https://docs.astral.sh/uv/guides/tools/#installing-tools>`_ when needed repeatedly.
@@ -496,7 +515,8 @@ In order to use the hooks defined in ``.pre-commit-config.yaml``, you need to in
 
          pre-commit install
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       With the ``climada_venv`` activated, move to the repository and execute
 
@@ -511,28 +531,35 @@ make
 Instructions for running the test scripts can be found in the :doc:`Testing Guide </development/Guide_Testing>`.
 For executing the pre-defined test scripts in exactly the same way as they are executed by the automated CI pipeline, you will need ``make`` to be installed.
 
-.. tabs::
+.. tab-set::
+   :sync-group: OS
 
-   .. group-tab:: macOS & Linux
+   .. tab-item:: macOS & Linux
+      :sync: Linux
 
       No action required.
       ``make`` is installed by default.
 
-   .. group-tab:: Windows
+   .. tab-item:: Windows
+      :sync: Windows
 
-      .. tabs::
+      .. tab-set::
+         :sync-group: pkg-manager
 
-         .. group-tab:: Mamba
+         .. tab-item:: Mamba
+            :sync: Mamba
 
             .. code-block:: shell
 
                mamba install -n climada_env make
 
-         .. group-tab:: uv
+         .. tab-item:: uv
+            :sync: uv
 
             *tbd*
 
-         .. group-tab:: Pip
+         .. tab-item:: Pip
+            :sync: Pip
 
             *tbd*
 
@@ -556,9 +583,11 @@ To install CLIMADA Petals, we assume you have already installed CLIMADA Core wit
 
 The following steps depend on your choice of :ref:`package manager <install-manager>`:
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       #. Update the Conda environment with the specifications from Petals and activate it:
 
@@ -573,11 +602,13 @@ The following steps depend on your choice of :ref:`package manager <install-mana
 
             python -m pip install -e ./
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       *Petals currently cannot be installed from source with uv.*
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       *Petals currently cannot be installed from source with Pip.*
 
@@ -588,9 +619,11 @@ Code Editors
 JupyterLab
 ^^^^^^^^^^
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       #. Install JupyterLab into the Conda environment:
 
@@ -607,7 +640,8 @@ JupyterLab
 
          JupyterLab will open in a new window of your default browser.
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       Start JupyterLab in the local environment without adding it to the dependencies:
 
@@ -615,7 +649,8 @@ JupyterLab
 
          uv run --with jupyterlab jupyter lab
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       #. When inside the CLIMADA repository folder, activate the venv and install JupyterLab:
 
@@ -812,9 +847,11 @@ To update, follow the instructions based on your :ref:`installation type <instal
 Simple Instructions
 """""""""""""""""""
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       .. code-block:: shell
 
@@ -826,12 +863,14 @@ Simple Instructions
 
          mamba update -n climada_env -c conda-forge climada_petals
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       No action required.
       If you have not `locked <https://docs.astral.sh/uv/guides/scripts/#locking-dependencies>`_ your script dependencies, uv will always use the latest version.
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       With the venv activated, upgrade CLIMADA:
 
@@ -853,9 +892,11 @@ Move into your local CLIMADA repository and pull the latest version of your resp
 
 Then, update the environment and reinstall the package:
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       .. code-block:: shell
 
@@ -870,13 +911,15 @@ Then, update the environment and reinstall the package:
          In rare cases, updating the environment might fail after switching a branch because the dependency updates are incompatible.
          If this happens, create a new environment (see the :ref:`advanced instructions <install-advanced>`).
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       .. code-block:: shell
 
          uv sync
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       Activate the venv first.
 
@@ -914,9 +957,11 @@ Installing More Packages
 
 You might use CLIMADA in code that requires more packages than the ones readily available in the CLIMADA environment.
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       **Prefer installing these packages via Conda**, and only rely on ``pip`` if that fails.
       The default channels of Conda sometimes contain outdated versions.
@@ -933,7 +978,8 @@ You might use CLIMADA in code that requires more packages than the ones readily 
          mamba activate climada_env
          python -m pip install <package>
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       If you need additional dependencies for a script or program, use ``-w/--with`` (possibly multiple times):
 
@@ -943,7 +989,8 @@ You might use CLIMADA in code that requires more packages than the ones readily 
 
       If you manage a downstream project, you can `add a new dependency <https://docs.astral.sh/uv/guides/projects/#managing-dependencies>`_.
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       Activate the venv.
       Then use pip:
@@ -958,9 +1005,11 @@ Verifying Your Installation
 If you are unsure if everything works as intended, try running all tests.
 This is only available for :ref:`advanced setups <install-advanced>`!
 
-.. tabs::
+.. tab-set::
+   :sync-group: pkg-manager
 
-   .. group-tab:: Mamba
+   .. tab-item:: Mamba
+      :sync: Mamba
 
       Move into the CLIMADA repository, activate the environment and then execute the tests:
 
@@ -971,7 +1020,8 @@ This is only available for :ref:`advanced setups <install-advanced>`!
          make unit_test
          make integ_test
 
-   .. group-tab:: uv
+   .. tab-item:: uv
+      :sync: uv
 
       Move into the CLIMADA repository and then execute the tests:
 
@@ -980,7 +1030,8 @@ This is only available for :ref:`advanced setups <install-advanced>`!
          uv run -- make unit_test
          uv run -- make integ_test
 
-   .. group-tab:: Pip
+   .. tab-item:: Pip
+      :sync: Pip
 
       Move into the CLIMADA repository, activate the venv and then execute the tests:
 
@@ -1000,15 +1051,18 @@ After **each** of the following steps, check if the problem is solved, and only 
 #. If you are working with Conda or Pip, make sure you are working in the CLIMADA environment or venv.
    This is usually indicated by ``(climada_env)`` (or the name you chose) in the beginning of your command line.
 
-   .. tabs::
+   .. tab-set::
+      :sync-group: pkg-manager
 
-      .. group-tab:: Mamba
+      .. tab-item:: Mamba
+         :sync: Mamba
 
          .. code-block:: shell
 
             mamba activate climada_env
 
-      .. group-tab:: Pip
+      .. tab-item:: Pip
+         :sync: Pip
 
          .. code-block:: shell
 
@@ -1023,9 +1077,11 @@ After **each** of the following steps, check if the problem is solved, and only 
 
 #. If you reached this point, something is severely broken.
 
-   .. tabs::
+   .. tab-set::
+      :sync-group: pkg-manager
 
-      .. group-tab:: Mamba
+      .. tab-item:: Mamba
+         :sync: Mamba
 
          The last course of action is to delete your CLIMADA environment.
 
@@ -1036,7 +1092,8 @@ After **each** of the following steps, check if the problem is solved, and only 
 
          Then repeat the :ref:`installation process <install-choice>`.
 
-      .. group-tab:: uv
+      .. tab-item:: uv
+         :sync: uv
 
          Reinstall all packages:
 
@@ -1044,7 +1101,8 @@ After **each** of the following steps, check if the problem is solved, and only 
 
             uv sync --reinstall
 
-      .. group-tab:: Pip
+      .. tab-item:: Pip
+         :sync: Pip
 
          The last course of action is to delete your venv.
 

@@ -42,7 +42,6 @@ extensions = [
     "sphinx.ext.ifconfig",
     "sphinx_design",
     "sphinx_mdinclude",
-    "sphinx_tabs.tabs",
     "myst_nb",
     "sphinx_markdown_tables",
 ]
