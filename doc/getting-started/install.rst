@@ -57,7 +57,7 @@ Windows
       :width: 60%
 
       * - **Supported Version**
-        - ``3.11``
+        - ``3.12``
       * - Allowed Versions
         - ``3.11``, ``3.12``, ``3.13``
 

@@ -18,10 +18,10 @@ jobs:
         name: Checkout target commit
         run: git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --depth=50 origin ${{ github.event.pull_request.base.ref }}
       -
-        name: Set up Python 3.11
+        name: Set up Python 3.12
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11'
+          python-version: '3.12'
       -
         # Store the current date to use it as cache key
         name: Get current date
