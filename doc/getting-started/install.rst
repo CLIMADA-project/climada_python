@@ -95,10 +95,10 @@ The tool ``mamba`` (see :ref:`conda-instead-of-mamba`) is available in the insta
 
       * Open the "Terminal" app, copy-paste the two commands below, and hit enter:
 
-      .. code-block:: shell
+         .. code-block:: shell
 
-         curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
-         bash Miniforge3-$(uname)-$(uname -m).sh
+            curl -L -O "https://github.com/conda-forge/miniforge/releases/latest/download/Miniforge3-$(uname)-$(uname -m).sh"
+            bash Miniforge3-$(uname)-$(uname -m).sh
 
       * Accept the license terms.
       * You can confirm the default location.
@@ -125,9 +125,9 @@ Depending on your setup, you are free to choose another allowed version, but we 
    :width: 60%
 
    * - **Supported Version**
-      - ``3.11``
+     - ``3.11``
    * - Allowed Versions
-      - ``3.11``, ``3.12``, ``3.13``
+     - ``3.11``, ``3.12``, ``3.13``
 
 
 .. _install-simple:
