@@ -313,6 +313,57 @@ class TestXarrayReader:
         ]
         npt.assert_array_equal(haz_fc.date, expected_dates)
 
+    @pytest.mark.parametrize(
+        "eps_idx, lead_time_idx",
+        [([0], [0, 1, 2, 3]), ([0, 1, 2, 3, 4], [0]), ([0], [0])],
+        ids=["single_member", "single_lead_time", "single_member_and_lead_time"],
+    )
+    @xarray_leadtime
+    def test_from_xarray_raster_size_one_dims(
+        self, forecast_netcdf_file, eps_idx, lead_time_idx
+    ):
+        """Test that member and lead time dimensions of size 1 are kept
+
+        The other dimensions of size 1 (here ``ref_time``) are still squeezed.
+        """
+        coordinate_vars = {
+            "longitude": "lon",
+            "latitude": "lat",
+            "lead_time": "lead_time",
+            "member": "eps",
+        }
+        haz_fc_full = HazardForecast.from_xarray_raster(
+            forecast_netcdf_file["path"],
+            hazard_type="PR",
+            intensity_unit="mm/h",
+            coordinate_vars=coordinate_vars,
+        )
+        with xr.open_dataset(forecast_netcdf_file["path"]) as dset:
+            dset = dset.isel(eps=eps_idx, lead_time=lead_time_idx).load()
+        haz_fc = HazardForecast.from_xarray_raster(
+            dset,
+            hazard_type="PR",
+            intensity_unit="mm/h",
+            coordinate_vars=coordinate_vars,
+        )
+
+        eps = forecast_netcdf_file["eps"][eps_idx]
+        lead_time = forecast_netcdf_file["lead_time"][lead_time_idx]
+        n_events = len(eps) * len(lead_time)
+        assert len(haz_fc.event_id) == n_events
+        npt.assert_array_equal(np.unique(haz_fc.member), eps)
+        npt.assert_array_equal(np.unique(haz_fc.lead_time), lead_time)
+        assert haz_fc.intensity.shape == (n_events, haz_fc_full.centroids.size)
+
+        # Same events as in the hazard read from the full file
+        haz_fc_sel = haz_fc_full.select(member=list(eps), lead_time=list(lead_time))
+        npt.assert_array_equal(haz_fc.member, haz_fc_sel.member)
+        npt.assert_array_equal(haz_fc.lead_time, haz_fc_sel.lead_time)
+        npt.assert_array_equal(haz_fc.event_name, haz_fc_sel.event_name)
+        npt.assert_array_equal(
+            haz_fc.intensity.todense(), haz_fc_sel.intensity.todense()
+        )
+
 
 class TestSelect:
     @pytest.mark.parametrize(

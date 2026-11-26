@@ -508,7 +508,13 @@ class HazardForecast(ForecastMixin, Hazard):
             )
         )
 
-        dset_squeezed = dset.squeeze()
+        dset_squeezed = dset.squeeze(
+            [
+                d
+                for d, n in dset.sizes.items()
+                if n == 1 and d not in (leadtime_var, member_var)
+            ]
+        )
 
         # Prepare coordinate_vars for parent call
         parent_coord_vars = {
