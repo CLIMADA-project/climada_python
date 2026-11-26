@@ -39,6 +39,7 @@ def preprocess_and_interpolate_ev(
     method="interpolate",
     y_asymptotic=np.nan,
     bin_decimals=None,
+    reverse=False,
 ):
     """Function to first preprocess (frequency, values) data (if extrapolating, one can bin the
     data according to their value, see Notes), compute the cumulative frequencies, and then
@@ -81,6 +82,9 @@ def preprocess_and_interpolate_ev(
         Number of decimals to group and bin the values. Binning results in smoother (and coarser)
         interpolation and more stable extrapolation. For more details and sensible values for
         bin_decimals, see Notes. If None, values are not binned. Defaults to None.
+    reverse : bool, optional
+        If set to True, values are sorted in reverse order (i.e., larger values means
+        less impact). Defaults to False.
 
     Returns
     -------
@@ -129,9 +133,12 @@ def preprocess_and_interpolate_ev(
     values = np.squeeze(values[sorted_idxs])
     frequency = frequency[sorted_idxs]
 
+    if reverse:
+        values, frequency = (values[::-1], frequency[::-1])
+
     # group similar values together
     if isinstance(bin_decimals, int):
-        frequency, values = _group_frequency(frequency, values, bin_decimals)
+        frequency, values = _group_frequency(frequency, values, bin_decimals, reverse)
 
     # transform frequencies to cummulative frequencies
     frequency = np.cumsum(frequency[::-1])[::-1]
@@ -362,7 +369,7 @@ def _interpolate_small_input(x_test, x_train, y_train, logy, y_asymptotic):
     return y_test
 
 
-def _group_frequency(frequency, value, bin_decimals):
+def _group_frequency(frequency, value, bin_decimals, reverse=False):
     """
     Util function to aggregate (add) frequencies for equal values
 
@@ -375,6 +382,8 @@ def _group_frequency(frequency, value, bin_decimals):
         bin_decimals : int
             decimals according to which values are binned and their corresponding frequency are
             grouped.
+        reverse: bool, optional
+            if frequencies should be summed in reverse order. Defaults to False.
 
     Returns
     -------
@@ -385,7 +394,8 @@ def _group_frequency(frequency, value, bin_decimals):
     frequency, value = np.array(frequency), np.array(value)
     if frequency.size == 0 and value.size == 0:
         return ([], [])
-
+    if reverse:
+        frequency, value = (frequency[::-1], value[::-1])
     # round values and group them
     value = np.around(value, decimals=bin_decimals)
     value_unique, start_indices = np.unique(value, return_index=True)
@@ -402,6 +412,7 @@ def _group_frequency(frequency, value, bin_decimals):
         # add frequency for equal value
         start_indices = np.insert(start_indices, value_unique.size, frequency.size)
         frequency = np.add.reduceat(frequency, start_indices[:-1])
-        return frequency, value_unique
-
+        value = value_unique
+    if reverse:
+        frequency, value = (frequency[::-1], value[::-1])
     return frequency, value
