@@ -11,7 +11,7 @@ build:
   # Pin Python version in requirements
   jobs:
     pre_create_environment:
-      - sed -i 's/^  - python[<>=].*/  - python=3.12/' requirements/env_climada.yml
+      - echo "  - python=3.12" >> requirements/env_climada.yml
 
 conda:
   environment: requirements/env_climada.yml
