@@ -22,6 +22,7 @@ Test of interpolation module
 import unittest
 
 import numpy as np
+from scipy import sparse
 
 import climada.util.interpolation as u_interp
 
@@ -283,7 +284,160 @@ class TestFitMethods(unittest.TestCase):
             u_interp.preprocess_and_interpolate_ev(None, None, frequency, values)
 
 
+class TestSparseLocalExceedance(unittest.TestCase):
+    """The sparse fast path must reproduce preprocess_and_interpolate_ev exactly.
+
+    Equality is asserted with assert_array_equal rather than assert_allclose: the fast
+    path is only worth having if it is a drop-in, so "close" would hide a divergence.
+    """
+
+    def setUp(self):
+        self.frequency = np.array([0.1, 0.1, 0.1, 0.1])
+        self.test_frequency = 1 / np.array([5.0, 10.0, 20.0])
+        self.test_values = np.array([2.0, 4.0])
+
+    def reference_exceedance(self, values):
+        """Per-column preprocess_and_interpolate_ev, the path sparse_local_exceedance replaces."""
+        return np.array(
+            [
+                u_interp.preprocess_and_interpolate_ev(
+                    self.test_frequency,
+                    None,
+                    self.frequency,
+                    values[:, i_column],
+                    log_frequency=True,
+                    log_values=True,
+                    value_threshold=0,
+                    method="interpolate",
+                    y_asymptotic=0.0,
+                    bin_decimals=None,
+                )
+                for i_column in range(values.shape[1])
+            ]
+        )
+
+    def reference_frequency(self, values):
+        """Per-column preprocess_and_interpolate_ev, the path sparse_local_frequency replaces."""
+        return np.array(
+            [
+                u_interp.preprocess_and_interpolate_ev(
+                    None,
+                    self.test_values,
+                    self.frequency,
+                    values[:, i_column],
+                    log_frequency=True,
+                    log_values=True,
+                    value_threshold=0,
+                    method="interpolate",
+                    y_asymptotic=np.nan,
+                    bin_decimals=None,
+                )
+                for i_column in range(values.shape[1])
+            ]
+        )
+
+    def assert_matches_reference(self, dense, dtype=float):
+        matrix = sparse.csr_matrix(dense.astype(dtype))
+        np.testing.assert_array_equal(
+            u_interp.sparse_local_exceedance(
+                self.test_frequency, self.frequency, matrix
+            ),
+            self.reference_exceedance(dense.astype(dtype)),
+        )
+        np.testing.assert_array_equal(
+            u_interp.sparse_local_frequency(self.test_values, self.frequency, matrix),
+            self.reference_frequency(dense.astype(dtype)),
+        )
+
+    def test_typical_column(self):
+        """A column with several distinct positive values."""
+        self.assert_matches_reference(
+            np.array([[5.0, 1.0], [4.0, 2.0], [3.0, 3.0], [1.0, 4.0]])
+        )
+
+    def test_duplicate_values(self):
+        """Repeated values make the interpolation abscissa non-strictly-increasing."""
+        self.assert_matches_reference(
+            np.array([[5.0, 1.0], [5.0, 2.0], [3.0, 3.0], [0.0, 4.0]])
+        )
+
+    def test_zero_and_negative_values_are_dropped(self):
+        """Only values above the threshold of 0 take part, as in the reference."""
+        self.assert_matches_reference(
+            np.array([[-2.0, 1.0], [5.0, 2.0], [3.0, 3.0], [0.0, 4.0]])
+        )
+
+    def test_all_zero_column(self):
+        """A column with nothing above the threshold yields NaN, not an exception."""
+        dense = np.zeros((4, 2))
+        dense[:, 1] = [1.0, 2.0, 3.0, 4.0]
+        self.assert_matches_reference(dense)
+
+    def test_single_positive_value(self):
+        """Interpolation needs two points; one is not enough."""
+        dense = np.zeros((4, 1))
+        dense[0, 0] = 7.0
+        self.assert_matches_reference(dense)
+
+    def test_explicitly_stored_zeros(self):
+        """Stored zeros must be ignored the same way implicit ones are.
+
+        Impact matrices come out of arithmetic, which can leave explicit zeros behind.
+        """
+        dense = np.array([[5.0], [0.0], [3.0], [0.0]])
+        matrix = sparse.csr_matrix(dense)
+        matrix.data = np.array([5.0, 0.0, 3.0, 0.0])
+        matrix.indices = np.zeros(4, dtype=int)
+        matrix.indptr = np.array([0, 1, 2, 3, 4])
+        self.assertEqual(matrix.nnz, 4)  # the zeros really are stored
+        np.testing.assert_array_equal(
+            u_interp.sparse_local_exceedance(
+                self.test_frequency, self.frequency, matrix
+            ),
+            self.reference_exceedance(dense),
+        )
+
+    def test_float32_matrix(self):
+        """A float32 matrix must not be interpolated at float32 precision.
+
+        Hazard.from_raster produces float32 intensity, so this is reachable. Taking
+        logarithms before upcasting gives results that differ from the reference in
+        the last decimals.
+        """
+        dense = np.array([[5.0, 1.0], [4.0, 2.0], [3.0, 3.0], [1.0, 4.0]])
+        self.assert_matches_reference(dense, dtype=np.float32)
+
+    def test_frequency_as_sequence(self):
+        """The replaced function accepted any array_like, so this one must too."""
+        matrix = sparse.csr_matrix(np.array([[5.0], [4.0], [3.0], [1.0]]))
+        np.testing.assert_array_equal(
+            u_interp.sparse_local_exceedance(
+                self.test_frequency, list(self.frequency), matrix
+            ),
+            self.reference_exceedance(matrix.toarray()),
+        )
+
+    def test_supports_sparse_fast_path(self):
+        """The guard must admit only the configuration the helpers implement."""
+        self.assertTrue(
+            u_interp.supports_sparse_fast_path("interpolate", True, True, 0, None)
+        )
+        for args in (
+            ("extrapolate", True, True, 0, None),
+            ("stepfunction", True, True, 0, None),
+            ("interpolate", False, True, 0, None),
+            ("interpolate", True, False, 0, None),
+            ("interpolate", True, True, 1, None),
+            ("interpolate", True, True, 0, 2),
+        ):
+            with self.subTest(args=args):
+                self.assertFalse(u_interp.supports_sparse_fast_path(*args))
+
+
 # Execute Tests
 if __name__ == "__main__":
     TESTS = unittest.TestLoader().loadTestsFromTestCase(TestFitMethods)
+    TESTS.addTests(
+        unittest.TestLoader().loadTestsFromTestCase(TestSparseLocalExceedance)
+    )
     unittest.TextTestRunner(verbosity=2).run(TESTS)
