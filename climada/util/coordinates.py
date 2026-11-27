@@ -1134,82 +1134,6 @@ def estimate_matching_threshold(coords_to_assign):
     return 2 * max(abs(r) for r in get_resolution(coords_to_assign.T))
 
 
-def degree_to_km(degree):
-    r"""Convert an angle from degrees to kilometers.
-
-    This function converts a given angle in degrees to its equivalent distance in
-    kilometers on the Earth's surface. It assumes a spherical Earth with a constant
-    radius.
-
-    Parameters
-    ----------
-    degree : float or array_like
-        The angle(s) in degrees to convert.
-
-    Returns
-    -------
-    float or ndarray
-        The equivalent distance(s) in kilometers.
-
-    See Also
-    --------
-    km_to_degree : The inverse function to convert kilometers to degrees.
-
-    Notes
-    -----
-    The conversion is based on the formula:
-
-    .. math::
-       d = a \times R
-
-    where d is the distance in km, a is the angle in radians, and R is the Earth's radius in km.
-
-    Examples
-    --------
-    >>> degree_to_km(1.0)
-    111.19492664455822
-    """
-    return np.deg2rad(degree) * EARTH_RADIUS_KM
-
-
-def km_to_degree(km):
-    r"""Convert a distance from kilometers to degrees.
-
-     This function converts a given distance in kilometers on the Earth's surface
-     to its equivalent angle in degrees. It assumes a spherical Earth with a
-     constant radius.
-
-     Parameters
-     ----------
-     km : float or array_like
-         The distance(s) in kilometers to convert.
-
-     Returns
-     -------
-     float or ndarray
-         The equivalent angle(s) in degrees.
-
-     See Also
-     --------
-     degree_to_km : The inverse function to convert degrees to kilometers.
-
-     Notes
-     -----
-     The conversion is based on the formula:
-
-    .. math::
-        a = d / R
-
-     where a is the angle in radians, d is the distance in km, and R is the Earth's radius in km.
-
-     Examples
-     --------
-     >>> km_to_degree(111.195)
-     1.0000030589140416
-    """
-    return np.rad2deg(km / EARTH_RADIUS_KM)
-
-
 def match_coordinates(
     coords,
     coords_to_assign,
@@ -1282,10 +1206,6 @@ def match_coordinates(
     --------
     climada.util.coordinates.estimate_matching_threshold:
         method to calculate the default threshold
-    climada.util.coordinates.km_to_degree:
-        method to approximately convert kilometers to degrees
-    climada.util.coordinates.degree_to_km:
-        method to approximately convert degrees to kilometers
     """
     crs = PCRS.from_user_input(crs)
 
@@ -1396,10 +1316,6 @@ def match_centroids(
     climada.util.coordinates.match_coordinates: method to match coordinates
     climada.util.coordinates.estimate_matching_threshold: method to estimate the
         default threshold
-    climada.util.coordinates.km_to_degree:
-        method to approximately convert kilometers to degrees
-    climada.util.coordinates.degree_to_km:
-        method to approximately convert degrees to kilometers
     climada.util.coordinates.match_grid_points: method to associate centroids to
         coordinate points when centroids is a raster
 
@@ -1478,7 +1394,7 @@ def _nearest_neighbor_approx(
     crs : pyproj crs
         Coordinate reference system (crs) of the input coordinates and centroids.
     threshold : float
-        Assignement threshold in units of the provided crs.
+        Assignement threshold in degree.
         If the distance to the nearest neighbor exceeds `threshold`, the index `-1` is assigned.
     check_antimedirian: bool, optional
         If True, the nearest neighbor in a strip with lon size equal to threshold around the
@@ -1500,7 +1416,7 @@ def _nearest_neighbor_approx(
     check_if_geo_coords(centroids[:, 0], centroids[:, 1])
     check_if_geo_coords(coordinates[:, 0], coordinates[:, 1])
     # convert the degree threshold in to km at equator threshold
-    threshold_km = degree_to_km(threshold)
+    threshold_km = abs(threshold) * ONE_LAT_KM
     # Compute only for the unique coordinates. Copy the results for the
     # not unique coordinates
     _, idx, inv = np.unique(coordinates, axis=0, return_index=True, return_inverse=True)

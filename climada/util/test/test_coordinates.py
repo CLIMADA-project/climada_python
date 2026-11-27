@@ -1481,7 +1481,7 @@ class TestAssign(unittest.TestCase):
                 convert_coordinates(self.coords_to_assign, DEF_CRS, crs)[:-1],
                 distance=distance,
                 crs=crs,
-                threshold=u_coord.degree_to_km(thresh) * 3280,  # US foot
+                threshold=thresh * ONE_LAT_KM * 3280,  # US foot
             )
             np.testing.assert_array_equal(assigned_idx, result[:-1])
 
@@ -1498,7 +1498,7 @@ class TestAssign(unittest.TestCase):
                 convert_coordinates(self.coords_to_assign, DEF_CRS, crs)[:-1],
                 distance=distance,
                 crs=crs,
-                threshold=u_coord.degree_to_km(thresh) * 1000,  # meters
+                threshold=thresh * ONE_LAT_KM * 1000,  # meters
             )
             np.testing.assert_array_equal(assigned_idx, result[:-1])
 
@@ -1515,7 +1515,7 @@ class TestAssign(unittest.TestCase):
                 convert_coordinates(self.coords_to_assign, DEF_CRS, crs)[:-1],
                 distance=distance,
                 crs=crs,
-                threshold=u_coord.degree_to_km(thresh) * 1000,  # meters
+                threshold=thresh * ONE_LAT_KM * 1000,  # meters
             )
             np.testing.assert_array_equal(assigned_idx, result[:-1])
 
@@ -1927,10 +1927,16 @@ class TestRasterMeta(unittest.TestCase):
     def test_get_resolution_meters_pass(self):
         centr = Centroids.from_pnt_bounds((-180, -90, 180, 90), 1)
         centr.to_crs("EPSG:4087", inplace=True)  # meters
-        res = u_coord.degree_to_km(1) * 1000
+        res = ONE_LAT_KM * 1000
         res_lat, res_lon = u_coord.get_resolution(centr.lat, centr.lon)
-        self.assertAlmostEqual(res_lat, res, delta=500)  # approx to 500m correct
-        self.assertAlmostEqual(res_lon, res, delta=500)  # approx to 500m correct
+        # since proj 9.8.1 the ellipsoid shape of earth is taken into account and latitudinal
+        # so the latitudinal resolution is a bit further off from the ONE_LAT_KM approximation
+        self.assertAlmostEqual(
+            res_lat, res, delta=550
+        )  # approx to 550m correct, off by 0.5%
+        self.assertAlmostEqual(
+            res_lon, res, delta=200
+        )  # approx to 200m correct, off by 0.2%
 
     def test_vector_to_raster_pass(self):
         """Test vector_to_raster"""

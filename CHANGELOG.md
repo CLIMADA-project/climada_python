@@ -20,6 +20,8 @@ Code freeze date: YYYY-MM-DD
 
 ### Removed
 
+- `climada.util.coordinates.km_to_degree` and `climada.util.coordinates.degree_to_km`, use `climada.util.constants.ONE_LAT_KM` instead.
+
 ## 6.2.0
 
 Release date: 2026-11-06

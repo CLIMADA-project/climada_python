@@ -269,7 +269,7 @@ class TestFuncs(unittest.TestCase):
                 0.0,
             ],
         )
-        exp.assign_centroids(haz, threshold=u_coord.km_to_degree(100))
+        exp.assign_centroids(haz, threshold=100.0 / ONE_LAT_KM)
 
         expected_result = [
             # constant y-value, varying x-value

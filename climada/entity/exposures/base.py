@@ -632,10 +632,6 @@ class Exposures:
             method to associate centroids to exposure points
         climada.util.coordinates.estimate_matching_threshold:
             method to calculate the default threshold
-        climada.util.coordinates.km_to_degree:
-            method to approximately convert kilometers to degrees
-        climada.util.coordinates.degree_to_km:
-            method to approximately convert degrees to kilometers
 
         Notes
         -----
