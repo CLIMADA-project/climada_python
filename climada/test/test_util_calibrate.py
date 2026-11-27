@@ -54,7 +54,11 @@ class TestScipyMinimizeOptimizer(unittest.TestCase):
         self.data = pd.DataFrame(
             data={"a": [3, 1], "b": [0.2, 0.01]}, index=self.events
         )
-        self.impact_to_dataframe = lambda impact: impact.impact_at_reg(["a", "b"])
+
+        def impact_to_dataframe(impact):
+            return impact.impact_at_reg(["a", "b", "c"])[["a", "b"]]
+
+        self.impact_to_dataframe = impact_to_dataframe
         self.impact_func_creator = lambda slope: ImpactFuncSet(
             [
                 ImpactFunc(
@@ -148,7 +152,11 @@ class TestBayesianOptimizer(unittest.TestCase):
         self.data = pd.DataFrame(
             data={"a": [3, 1], "b": [0.2, 0.01]}, index=self.events
         )
-        self.impact_to_dataframe = lambda impact: impact.impact_at_reg(["a", "b"])
+
+        def impact_to_dataframe(impact):
+            return impact.impact_at_reg(["a", "b", "c"])[["a", "b"]]
+
+        self.impact_to_dataframe = impact_to_dataframe
         self.impact_func_creator = lambda slope: ImpactFuncSet(
             [
                 ImpactFunc(

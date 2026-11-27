@@ -455,6 +455,13 @@ class Impact:
         pd.DataFrame
             Contains the aggregated data per event.
             Rows: Hazard events. Columns: Aggregation regions.
+
+        Raises
+        ------
+        ValueError
+            If ``Impact.imp_mat`` is empty or ``agg_regions`` is not
+            a 1D array-like with length equal to the number of exposure
+            points.
         """
         if np.prod(self.imp_mat.shape) == 0:
             raise ValueError(
@@ -467,15 +474,23 @@ class Impact:
                 u_coord.get_country_code(self.coord_exp[:, 0], self.coord_exp[:, 1])
             )
 
-        agg_regions = np.asanyarray(agg_regions)
-        agg_reg_unique = np.unique(agg_regions)
+        agg_regions = np.asarray(agg_regions)
+        n_exp = self.imp_mat.shape[1]
+        if agg_regions.ndim != 1 or agg_regions.shape[0] != n_exp:
+            raise ValueError(
+                f"agg_regions must be a 1D array of length {n_exp} "
+                f"(number of exposure points), got shape {agg_regions.shape}."
+            )
 
-        at_reg_event = np.hstack(
-            [
-                self.imp_mat[:, np.where(agg_regions == reg)[0]].sum(1)
-                for reg in agg_reg_unique
-            ]
+        agg_reg_unique, inv_idx = np.unique(agg_regions, return_inverse=True)
+        reg_ind = sparse.csr_matrix(
+            (
+                np.ones(n_exp, dtype=self.imp_mat.dtype),
+                (np.arange(n_exp), inv_idx),
+            ),
+            shape=(n_exp, agg_reg_unique.size),
         )
+        at_reg_event = (self.imp_mat @ reg_ind).toarray()
 
         at_reg_event = pd.DataFrame(
             at_reg_event, columns=agg_reg_unique, index=self.event_id
