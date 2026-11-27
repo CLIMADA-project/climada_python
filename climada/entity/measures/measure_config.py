@@ -25,7 +25,10 @@ import logging
 import warnings
 from dataclasses import MISSING, dataclass, field, fields
 from datetime import datetime
-from typing import Any, Dict, Optional, Tuple
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    from climada.entity.measures.cost_income import CostIncome
 
 import numpy as np
 import pandas as pd
@@ -288,12 +291,12 @@ class HazardModifierConfig(ModifierConfig):
     """
 
     haz_type: str
-    haz_int_mult: Optional[float] = 1.0
-    haz_int_add: Optional[float] = 0.0
-    haz_freq_mult: Optional[float] = 1.0
-    haz_freq_add: Optional[float] = 0.0
-    new_hazard_path: Optional[str] = None
-    impact_rp_cutoff: Optional[float] = None
+    haz_int_mult: float | None = 1.0
+    haz_int_add: float | None = 0.0
+    haz_freq_mult: float | None = 1.0
+    haz_freq_add: float | None = 0.0
+    new_hazard_path: str | None = None
+    impact_rp_cutoff: float | None = None
 
     def __post_init__(self):
         config = self.to_dict()
@@ -344,9 +347,9 @@ class ExposuresModifierConfig(ModifierConfig):
         modifier values.
     """
 
-    reassign_impf_id: Optional[Dict[str, Dict[int | str, int | str]]] = None
-    set_to_zero: Optional[list[int]] = None
-    new_exposures_path: Optional[str] = None
+    reassign_impf_id: dict[str, dict[int | str, int | str]] | None = None
+    set_to_zero: list[int] | None = None
+    new_exposures_path: str | None = None
 
     def __post_init__(self):
         config = self.to_dict()
@@ -392,17 +395,17 @@ class CostIncomeConfig(ModifierConfig):
         overrides the periodic cost/income logic.
     """  # noqa
 
-    mkt_price_year: Optional[int] = field(default_factory=lambda: datetime.today().year)
+    mkt_price_year: int | None = field(default_factory=lambda: datetime.today().year)
     init_cost: float = 0.0
     periodic_cost: float = 0.0
     periodic_income: float = 0.0
     cost_yearly_growth_rate: float = 0.0
     income_yearly_growth_rate: float = 0.0
     freq: str = "Y"
-    custom_cash_flows: Optional[list[dict]] = None
+    custom_cash_flows: list[dict] | None = None
 
     @classmethod
-    def from_cost_income(cls, cost_income: "CostIncome") -> "CostIncomeConfig":
+    def from_cost_income(cls, cost_income: CostIncome) -> "CostIncomeConfig":
         """
         Construct a :class:`CostIncomeConfig` from a live
         :class:`CostIncome` object.
@@ -427,7 +430,7 @@ class CostIncomeConfig(ModifierConfig):
                 .to_dict(orient="records")
             )
         return cls(
-            mkt_price_year=cost_income.mkt_price_year.year,  # datetime → int
+            mkt_price_year=cost_income.mkt_price_year,
             init_cost=abs(cost_income.init_cost),  # stored negative → positive
             periodic_cost=abs(cost_income.periodic_cost),
             periodic_income=cost_income.periodic_income,
@@ -449,7 +452,7 @@ class MeasureConfig(ModifierConfig):
 
     This class is the primary entry point for defining measures in a
     declarative, file-based workflow and serves as the serialization
-    counterpart to :class:`~climada.entity.measures.base.Measure`.
+    counterpart to :class:`~climada.entity.measures.measure.Measure`.
 
     Parameters
     ----------
@@ -465,10 +468,6 @@ class MeasureConfig(ModifierConfig):
         Configuration describing modifications to the exposures.
     cost_income : CostIncomeConfig
         Financial parameters associated with implementing this measure.
-    implementation_duration : str, optional
-        Pandas period alias (e.g. ``"2Y"``) representing the time before
-        the measure is fully operational. If ``None``, the measure takes
-        effect immediately.
     color_rgb : tuple of float, optional
         RGB colour triple in the range ``[0, 1]`` used for visualisation.
         If ``None``, defaults to black ``(0, 0, 0)``.
@@ -480,8 +479,7 @@ class MeasureConfig(ModifierConfig):
     hazard_modifier: HazardModifierConfig
     exposures_modifier: ExposuresModifierConfig
     cost_income: CostIncomeConfig
-    implementation_duration: Optional[str] = None
-    color_rgb: Optional[Tuple[float, float, float]] = None
+    color_rgb: tuple[float, float, float] | None = None
 
     def __repr__(self) -> str:
         """
@@ -521,7 +519,6 @@ class MeasureConfig(ModifierConfig):
             **self.hazard_modifier.to_dict(omit_default),
             **self.exposures_modifier.to_dict(omit_default),
             **self.cost_income.to_dict(omit_default),
-            "implementation_duration": self.implementation_duration,
             "color_rgb": list(self.color_rgb) if self.color_rgb is not None else None,
         }
 
@@ -554,7 +551,6 @@ class MeasureConfig(ModifierConfig):
             hazard_modifier=HazardModifierConfig.from_dict(kwargs_dict),
             exposures_modifier=ExposuresModifierConfig.from_dict(kwargs_dict),
             cost_income=CostIncomeConfig.from_dict(kwargs_dict),
-            implementation_duration=kwargs_dict.get("implementation_duration"),
             color_rgb=cls._normalize_color(kwargs_dict.get("color_rgb")),
         )
 
