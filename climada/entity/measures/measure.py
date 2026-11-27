@@ -265,6 +265,34 @@ class Measure:
         """
         return cls.from_config(MeasureConfig.from_dict(d))
 
+    def to_dict(self) -> dict:
+        """Serialize the measure to a dictionary.
+
+        Only measures created from a ``MeasureConfig`` (see
+        :attr:`is_serializable`) can be serialized. The result is the flat
+        dictionary returned by :py:meth:`MeasureConfig.to_dict`, so it can be
+        read back with :py:meth:`Measure.from_dict`.
+
+        Returns
+        -------
+        dict
+            Flat dictionary representation of the measure configuration.
+
+        Raises
+        ------
+        ValueError
+            If the measure was not created from a ``MeasureConfig``, for
+            instance when it was defined with Python functions.
+        """
+        if self._config is None:
+            raise ValueError(
+                f"Measure '{self.name}' cannot be serialized: it was not created "
+                "from a MeasureConfig (Python change functions cannot be "
+                "serialized). Define it with Measure.from_config, from_dict "
+                "or a MeasureConfig instead."
+            )
+        return self._config.to_dict()
+
     def apply_exposures_changes(
         self, exposures: Exposures, enforce_copy: bool = True, **kwargs
     ) -> Exposures:

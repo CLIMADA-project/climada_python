@@ -22,7 +22,9 @@ Define Measure class.
 from __future__ import annotations
 
 import logging
+import warnings
 from functools import reduce
+from pathlib import Path
 from typing import TYPE_CHECKING, Any, Callable, Optional, TypeVar, cast
 
 import numpy as np
@@ -187,7 +189,11 @@ def impact_intensity_rp_cutoff_helper(
 
     from climada.engine.impact_calc import ImpactCalc
 
-    def hazard_change(
+    if cut_off_rp < 1:
+        warnings.warn("RP cut of below 1 detected. Assuming it is a frequency instead.")
+        cut_off_rp = 1 / cut_off_rp
+
+    def apply_cutoff(
         hazard: Hazard,
         base_exposures: Exposures,
         base_impfset: ImpactFuncSet,
@@ -208,6 +214,10 @@ def impact_intensity_rp_cutoff_helper(
         exceed_freq = np.cumsum(imp.frequency[sort_idxs])
         events_below_cutoff = sort_idxs[exceed_freq >= (1 / cut_off_rp)]
         # Modify sparse data structure
+        LOGGER.debug(
+            "Events with non zero impacts removed: %s",
+            (imp.at_event[events_below_cutoff].sum() != 0),
+        )
         intensity_modified = hazard.intensity.copy()
         for event in events_below_cutoff:
             start, end = (
@@ -220,7 +230,7 @@ def impact_intensity_rp_cutoff_helper(
         hazard.intensity.eliminate_zeros()
         return hazard
 
-    return hazard_change
+    return apply_cutoff
 
 
 def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
@@ -274,6 +284,7 @@ def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
     """
 
     def hazard_change(hazard: Hazard, **_kwargs) -> Hazard:
+
         changed_hazard = (
             Hazard.from_hdf5(hazard_modifier.new_hazard_path)
             if hazard_modifier.new_hazard_path is not None
@@ -298,11 +309,23 @@ def helper_hazard(hazard_modifier: HazardModifierConfig) -> HazardChange:
         changed_hazard.frequency = changed_hazard.frequency.clip(0, None)
         return changed_hazard
 
-    if hazard_modifier.impact_rp_cutoff is not None:
+    if (
+        hazard_modifier.impact_rp_cutoff is not None
+        and hazard_modifier.impact_rp_cutoff != 0
+    ):
         hazard_change = composite_fun(
             impact_intensity_rp_cutoff_helper(hazard_modifier.impact_rp_cutoff),
             hazard_change,
         )
+
+    if hazard_modifier.new_hazard_path is not None:
+        if not isinstance(hazard_modifier.new_hazard_path, (str, Path)):
+            raise ValueError(
+                f"The new hazard path has incorrect type: {type(hazard_modifier.new_hazard_path)}"
+            )
+
+        if hazard_modifier.new_hazard_path == "nil":
+            hazard_modifier.new_hazard_path = None
 
     return hazard_change
 
@@ -395,6 +418,15 @@ def helper_impfset(impfset_modifier: ImpfsetModifierConfig) -> ImpfsetChange:
 
         return changed_impfset
 
+    if impfset_modifier.new_impfset_path is not None:
+        if not isinstance(impfset_modifier.new_impfset_path, (str, Path)):
+            raise ValueError(
+                f"The new impfset path has incorrect type: {type(impfset_modifier.new_impfset_path)}"
+            )
+
+        if impfset_modifier.new_impfset_path == "nil":
+            impfset_modifier.new_impfset_path = None
+
     return impfset_change
 
 
@@ -472,5 +504,14 @@ def helper_exposure(exposures_modifier: ExposuresModifierConfig) -> ExposuresCha
             gdf.loc[exposures_modifier.set_to_zero, "value"] = 0
 
         return changed_exposures
+
+    if exposures_modifier.new_exposures_path is not None:
+        if not isinstance(exposures_modifier.new_exposures_path, (str, Path)):
+            raise ValueError(
+                f"The new exposures path has incorrect type: {type(exposures_modifier.new_exposures_path)}"
+            )
+
+        if exposures_modifier.new_exposures_path == "nil":
+            exposures_modifier.new_exposures_path = None
 
     return exposures_change

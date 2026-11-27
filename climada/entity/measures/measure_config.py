@@ -563,11 +563,20 @@ class MeasureConfig(ModifierConfig):
 
     @staticmethod
     def _normalize_color(color_rgb):
+        import re
+
+        FLOAT = r"[+-]?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?"
+        pattern = re.compile(rf"({FLOAT})\s+({FLOAT})\s+({FLOAT})")
         # 1. Handle None and NaN (np.nan, pd.NA, float('nan'))
         if color_rgb is None or pd.isna(color_rgb) is True:
             return None
 
         # 2. Convert sequence types (list, np.array, tuple) to a standard tuple
+        if isinstance(color_rgb, str):
+            m = pattern.search(color_rgb)
+            if m:
+                color_rgb = m.groups()
+
         try:
             # Flatten in case it's a nested numpy array, then convert to tuple
             result = tuple(np.array(color_rgb).flatten().tolist())
